@@ -1,0 +1,71 @@
+// @ts-nocheck
+import { CheckCircle2, UserPlus, Wallet, Trophy, Gavel } from 'lucide-react';
+
+const steps = [
+  {
+    id: '01',
+    name: 'Register & Verify',
+    description: 'Create an account and submit your organization details for robust KYC verification to ensure platform security.',
+    icon: UserPlus,
+  },
+  {
+    id: '02',
+    name: 'Deposit EMD',
+    description: 'Pay the Earnest Money Deposit securely through our integrated wallet to qualify for high-value auctions.',
+    icon: Wallet,
+  },
+  {
+    id: '03',
+    name: 'Bid Live',
+    description: 'Participate in transparent forward auctions or submit sealed technical and financial bids for tenders.',
+    icon: Gavel,
+  },
+  {
+    id: '04',
+    name: 'Win & Procure',
+    description: 'Receive immediate notifications on winning bids. Download system-generated payment receipts and allotment letters.',
+    icon: Trophy,
+  },
+];
+
+export function HowItWorksSection() {
+
+  return (
+    <section className="py-20 bg-white border-t border-slate-100">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">How the Platform Works</h2>
+          <p className="mt-4 text-lg text-slate-600">
+            A streamlined, transparent, and secure 4-step process for buyers and sellers.
+          </p>
+        </div>
+
+        <div className="relative">
+          {/* Connecting line for desktop */}
+          <div className="hidden md:block absolute top-12 left-[10%] right-[10%] h-0.5 bg-slate-200" aria-hidden="true" />
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+            {steps.map((step) => {
+              const Icon = step.icon;
+              return (
+                <div key={step.id} className="relative flex flex-col items-center text-center">
+                  <div className="w-24 h-24 rounded-full bg-white border-4 border-slate-50 shadow-sm flex items-center justify-center relative z-10 mb-6 group hover:border-primary/20 transition-colors">
+                    <div className="absolute inset-0 bg-primary/5 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300"></div>
+                    <Icon className="w-10 h-10 text-primary relative z-10" />
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md">
+                      {step.id}
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-3">{step.name}</h3>
+                  <p className="text-slate-600 leading-relaxed text-sm">
+                    {step.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

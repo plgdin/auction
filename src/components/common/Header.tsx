@@ -1,0 +1,154 @@
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
+import { useState } from 'react';
+import { useAuthStore } from '../../store/authStore';
+import clsx from 'clsx';
+
+export function Header() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+  const location = useLocation();
+
+  const navigation = [
+    { name: 'Home', href: '/' },
+    { name: 'Auctions', href: '/auctions' },
+    { name: 'Tenders', href: '/tenders' },
+    { name: 'Notices', href: '/notices' },
+    { name: 'News', href: '/news' },
+    { name: 'FAQ', href: '/faq' },
+    { name: 'About', href: '/about' },
+    { name: 'Contact', href: '/contact' },
+  ];
+
+  const isActive = (path: string) => location.pathname === path;
+
+  return (
+    <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-20">
+          <div className="flex-shrink-0 flex items-center">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-primary text-white rounded-lg flex items-center justify-center font-bold text-xl">
+                M
+              </div>
+              <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Auction e-Procurement
+              </span>
+            </Link>
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex space-x-1 lg:space-x-4 items-center">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={clsx(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  isActive(item.href)
+                    ? "text-primary bg-primary/10"
+                    : "text-slate-600 hover:text-primary hover:bg-slate-50"
+                )}
+              >
+                {item.name}
+              </Link>
+            ))}
+
+            <div className="pl-4 ml-4 border-l border-slate-200 flex items-center space-x-4">
+              {isAuthenticated ? (
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/auth/login"
+                    className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    to="/auth/register"
+                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
+                  >
+                    Register
+                  </Link>
+                </>
+              )}
+            </div>
+          </nav>
+
+          {/* Mobile menu button */}
+          <div className="flex items-center md:hidden">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
+            >
+              <span className="sr-only">Open main menu</span>
+              {isMobileMenuOpen ? (
+                <X className="block h-6 w-6" aria-hidden="true" />
+              ) : (
+                <Menu className="block h-6 w-6" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Navigation */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden border-t border-slate-200 bg-white">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={clsx(
+                  "block px-3 py-2 rounded-md text-base font-medium",
+                  isActive(item.href)
+                    ? "text-primary bg-primary/10"
+                    : "text-slate-600 hover:text-primary hover:bg-slate-50"
+                )}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                {item.name}
+              </Link>
+            ))}
+            
+            <div className="pt-4 mt-4 border-t border-slate-200">
+              {isAuthenticated ? (
+                <Link
+                  to="/dashboard"
+                  className="block w-full text-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <div className="space-y-3">
+                  <Link
+                    to="/auth/login"
+                    className="block w-full text-center px-4 py-3 border border-slate-300 rounded-md shadow-sm text-base font-medium text-slate-700 bg-white hover:bg-slate-50"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    to="/auth/register"
+                    className="block w-full text-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Register
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </header>
+  );
+}
