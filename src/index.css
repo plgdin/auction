@@ -1,76 +1,146 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&display=swap');
+
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #357CB8;
-  --color-primary-50: #F3F7FC;
-  --color-primary-100: #E6EEF8;
-  --color-primary-200: #C7DCF0;
-  --color-primary-300: #95BFE4;
-  --color-primary-400: #5C9DD4;
-  --color-primary-500: #357CB8;
-  --color-primary-600: #2766A2;
-  --color-primary-700: #215283;
-  --color-primary-800: #1F466D;
-  --color-primary-900: #1E3C5C;
-  --color-primary-950: #14273D;
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  
+  --color-secondary: var(--secondary);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary-container: var(--on-secondary-container);
+  
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-on-tertiary-container: var(--on-tertiary-container);
 
-  --color-blue-50: #F3F7FC;
-  --color-blue-100: #E6EEF8;
-  --color-blue-200: #C7DCF0;
-  --color-blue-300: #95BFE4;
-  --color-blue-400: #5C9DD4;
-  --color-blue-500: #357CB8;
-  --color-blue-600: #2766A2;
-  --color-blue-700: #215283;
-  --color-blue-800: #1F466D;
-  --color-blue-900: #1E3C5C;
-  --color-blue-950: #14273D;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  
+  --color-border: var(--border);
+  --color-outline: var(--outline);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Specific color shades for general component compatibility */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+  --color-primary-950: #172554;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --font-mono-data: 'Geist Mono', monospace;
+  
+  --radius-sm: 0.125rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
 }
 
 @layer base {
   :root {
-    --background: #F3F7FC; /* Lochmara 50 */
-    --foreground: #14273D; /* Lochmara 950 */
+    /* Stitch: Lochmara Institutional / B2B Precision */
+    --background: #faf8ff;
+    --foreground: #1f466d; /* Neutral navy */
+    
     --card: #ffffff;
-    --card-foreground: #14273D;
+    --card-foreground: #1f466d;
+    
     --popover: #ffffff;
-    --popover-foreground: #14273D;
-    --primary: #357CB8; /* Lochmara 500 */
+    --popover-foreground: #1f466d;
+    
+    --primary: #2766a2; /* Primary Lochmara Blue */
     --primary-foreground: #ffffff;
-    --secondary: #E6EEF8; /* Lochmara 100 */
-    --secondary-foreground: #14273D;
-    --muted: #E6EEF8;
-    --muted-foreground: #1F466D; /* Lochmara 800 */
-    --accent: #E6EEF8;
-    --accent-foreground: #14273D;
-    --destructive: #ef4444;
+    --primary-container: #5c9dd4;
+    --on-primary-container: #faf8ff;
+    
+    --secondary: #5c9dd4;
+    --secondary-foreground: #ffffff;
+    --secondary-container: #e6f0fa;
+    --on-secondary-container: #1f466d;
+    
+    --tertiary: #8f5600; /* Tertiary Amber Accent */
+    --tertiary-container: #ffdcc3;
+    --on-tertiary-container: #2e1500;
+    
+    --muted: #f2f3ff;
+    --muted-foreground: #5c748e;
+    
+    --accent: #e6f0fa;
+    --accent-foreground: #1f466d;
+    
+    --destructive: #ba1a1a;
     --destructive-foreground: #ffffff;
-    --border: #C7DCF0; /* Lochmara 200 */
-    --input: #C7DCF0;
-    --ring: #357CB8;
-    --radius: 0.5rem;
+    
+    --border: #c3c6d7;
+    --outline: #737686;
+    --input: #c3c6d7;
+    --ring: #2766a2;
+    --radius: 0.25rem;
   }
 
   .dark {
-    --background: #14273D; /* Lochmara 950 */
-    --foreground: #F3F7FC; /* Lochmara 50 */
-    --card: #1E3C5C; /* Lochmara 900 */
-    --card-foreground: #F3F7FC;
-    --popover: #1E3C5C;
-    --popover-foreground: #F3F7FC;
-    --primary: #5C9DD4; /* Lochmara 400 */
-    --primary-foreground: #14273D;
-    --secondary: #1F466D; /* Lochmara 800 */
-    --secondary-foreground: #F3F7FC;
-    --muted: #1F466D;
-    --muted-foreground: #95BFE4; /* Lochmara 300 */
-    --accent: #1F466D;
-    --accent-foreground: #F3F7FC;
-    --destructive: #7f1d1d;
-    --destructive-foreground: #F3F7FC;
-    --border: #1F466D;
-    --input: #1F466D;
-    --ring: #5C9DD4;
+    /* Lochmara Dark Palette */
+    --background: #0f1c2a;
+    --foreground: #eeefff;
+    
+    --card: #172d42;
+    --card-foreground: #eeefff;
+    
+    --popover: #172d42;
+    --popover-foreground: #eeefff;
+    
+    --primary: #5c9dd4;
+    --primary-foreground: #0f1c2a;
+    --primary-container: #2766a2;
+    --on-primary-container: #faf8ff;
+    
+    --secondary: #97a8c3;
+    --secondary-foreground: #0f1c2a;
+    --secondary-container: #1f334a;
+    --on-secondary-container: #eeefff;
+    
+    --tertiary: #ffb77c;
+    --tertiary-container: #6a3a00;
+    --on-tertiary-container: #ffdcc3;
+    
+    --muted: #132435;
+    --muted-foreground: #8d92a6;
+    
+    --accent: #1f334a;
+    --accent-foreground: #eeefff;
+    
+    --destructive: #ffb4ab;
+    --destructive-foreground: #690005;
+    
+    --border: #38485d;
+    --outline: #8d92a6;
+    --input: #38485d;
+    --ring: #5c9dd4;
   }
 }
 
@@ -81,6 +151,24 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--font-sans);
   }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@utility animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@utility animate-scale-up {
+  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

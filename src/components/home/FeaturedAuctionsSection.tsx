@@ -32,7 +32,7 @@ export function FeaturedAuctionsSection() {
         <div className="flex justify-between items-end mb-12 border-b border-slate-200 pb-6">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Recommended Auctions</h2>
-            <p className="mt-4 text-lg text-slate-600">
+            <p className="mt-4 text-lg text-slate-650">
               Personalized asset recommendations tailored to your procurement preferences.
             </p>
           </div>
@@ -46,6 +46,11 @@ export function FeaturedAuctionsSection() {
         {isLoading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        ) : isAuthenticated && auctions.length === 0 ? (
+          <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-8">
+            <h3 className="text-lg font-bold text-slate-900">No active auctions at the moment.</h3>
+            <p className="mt-2 text-slate-600">Please check back later or subscribe to our notices.</p>
           </div>
         ) : (
           <div className="relative">
@@ -76,9 +81,12 @@ export function FeaturedAuctionsSection() {
                       </div>
                     </div>
                     
-                    <button className="mt-6 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-900">
+                    <Link
+                      to={`/auctions/${auction.id}`}
+                      className="mt-6 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-900 hover:bg-primary hover:shadow-md transition-all duration-200"
+                    >
                       View Details
-                    </button>
+                    </Link>
                   </div>
                 </div>
               ))}

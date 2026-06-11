@@ -71,8 +71,8 @@ export function Dashboard() {
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Welcome Section */}
-      <div className="bg-slate-900 rounded-2xl p-8 text-white relative overflow-hidden shadow-lg">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/40 to-transparent"></div>
+      <div className="bg-foreground rounded-lg p-8 text-white relative overflow-hidden shadow">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-transparent"></div>
         <div className="relative z-10">
           <h1 className="text-3xl font-extrabold mb-2">
             Welcome back, {profile?.first_name || 'User'}
@@ -85,51 +85,51 @@ export function Dashboard() {
 
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded bg-primary/10 text-primary flex items-center justify-center">
               <Gavel className="w-6 h-6" />
             </div>
             <span className="text-sm font-medium text-green-600 flex items-center">
               <TrendingUp className="w-4 h-4 mr-1" /> +2
             </span>
           </div>
-          <h3 className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-1">Active Bids</h3>
-          <p className="text-3xl font-extrabold text-slate-900">{stats.activeBids}</p>
+          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Active Bids</h3>
+          <p className="text-3xl font-extrabold text-foreground">{stats.activeBids}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded bg-green-50 text-green-600 flex items-center justify-center">
               <Trophy className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-1">Won Auctions</h3>
-          <p className="text-3xl font-extrabold text-slate-900">{stats.wonAuctions}</p>
+          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Won Auctions</h3>
+          <p className="text-3xl font-extrabold text-foreground">{stats.wonAuctions}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded bg-blue-50 text-blue-600 flex items-center justify-center">
               <Wallet className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-1">Available Balance</h3>
-          <p className="text-3xl font-extrabold text-slate-900 flex items-center">
-            <IndianRupee className="w-6 h-6 mr-1 text-slate-400" />
+          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Available Balance</h3>
+          <p className="text-3xl font-extrabold text-foreground flex items-center">
+            <IndianRupee className="w-6 h-6 mr-1 text-muted-foreground" />
             {stats.availableBalance.toLocaleString()}
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded bg-orange-50 text-orange-600 flex items-center justify-center">
               <ShieldAlert className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-1">Blocked EMD</h3>
-          <p className="text-3xl font-extrabold text-slate-900 flex items-center">
-            <IndianRupee className="w-6 h-6 mr-1 text-slate-400" />
+          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Blocked EMD</h3>
+          <p className="text-3xl font-extrabold text-foreground flex items-center">
+            <IndianRupee className="w-6 h-6 mr-1 text-muted-foreground" />
             {stats.blockedEmd.toLocaleString()}
           </p>
         </div>
@@ -139,13 +139,13 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left: Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-border p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center">
+            <h2 className="text-xl font-bold text-foreground flex items-center">
               <Activity className="w-5 h-5 mr-2 text-primary" />
               Bidding Activity Overview
             </h2>
-            <select className="bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary">
+            <select className="bg-muted border border-border text-sm rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary">
               <option>Last 6 Months</option>
               <option>This Year</option>
             </select>
@@ -156,46 +156,46 @@ export function Dashboard() {
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorBids" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0f172a" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#0f172a" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#004ac6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#004ac6" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  contentStyle={{ borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
                 />
-                <Area type="monotone" dataKey="bids" stroke="#0f172a" strokeWidth={3} fillOpacity={1} fill="url(#colorBids)" />
+                <Area type="monotone" dataKey="bids" stroke="#004ac6" strokeWidth={3} fillOpacity={1} fill="url(#colorBids)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Right: Recent Bids */}
-        <div className="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+        <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-border p-6 flex flex-col">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Recent Bids</h2>
+            <h2 className="text-xl font-bold text-foreground">Recent Bids</h2>
             <Link to="/dashboard/bids" className="text-primary text-sm font-medium hover:underline">View All</Link>
           </div>
 
           <div className="flex-grow flex flex-col">
             {recentBids.length === 0 ? (
-              <div className="flex-grow flex flex-col items-center justify-center text-slate-500 py-8">
-                <Gavel className="w-10 h-10 mb-3 text-slate-300" />
+              <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground py-8">
+                <Gavel className="w-10 h-10 mb-3 text-muted-foreground/50" />
                 <p>No recent bidding activity.</p>
               </div>
             ) : (
-              <ul className="divide-y divide-slate-100 flex-grow">
+              <ul className="divide-y divide-border flex-grow">
                 {recentBids.map((bid) => (
                   <li key={bid.id} className="py-4">
                     <div className="flex justify-between items-start mb-1">
-                      <h4 className="text-sm font-bold text-slate-900 line-clamp-1 mr-4">{bid.auction.title}</h4>
+                      <h4 className="text-sm font-bold text-foreground line-clamp-1 mr-4">{bid.auction.title}</h4>
                       <span className="text-sm font-bold text-primary shrink-0">₹{bid.amount.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">REF: {bid.auction.reference_number}</span>
-                      <span className="text-slate-400">{new Date(bid.created_at).toLocaleDateString()}</span>
+                      <span className="text-muted-foreground">REF: {bid.auction.reference_number}</span>
+                      <span className="text-muted-foreground/80">{new Date(bid.created_at).toLocaleDateString()}</span>
                     </div>
                   </li>
                 ))}
@@ -205,7 +205,7 @@ export function Dashboard() {
           
           <Link 
             to="/auctions"
-            className="mt-4 w-full flex justify-center items-center py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-600 font-medium hover:border-primary hover:text-primary transition-colors"
+            className="mt-4 w-full flex justify-center items-center py-3 border border-dashed border-border rounded text-muted-foreground font-medium hover:border-primary hover:text-primary transition-colors"
           >
             Find more auctions <ArrowRight className="w-4 h-4 ml-2" />
           </Link>
