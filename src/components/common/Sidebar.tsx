@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Gavel, Heart, Wallet, Bell, 
-  Settings, Building2, LogOut, FileText, FolderLock
+  Settings, Building2, LogOut, FolderLock
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import clsx from 'clsx';
@@ -13,7 +13,6 @@ export function Sidebar() {
   const navItems = [
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { name: 'My Bids', path: '/dashboard/bids', icon: Gavel },
-    { name: 'My Tenders', path: '/dashboard/tenders', icon: FileText },
     { name: 'Watchlist', path: '/dashboard/watchlist', icon: Heart },
     { name: 'Wallet & EMD', path: '/dashboard/wallet', icon: Wallet },
     { name: 'Document Vault', path: '/dashboard/documents', icon: FolderLock },
@@ -29,9 +28,7 @@ export function Sidebar() {
     <aside className="w-64 bg-slate-900 min-h-screen text-slate-300 flex flex-col hidden lg:flex sticky top-0 h-screen">
       <div className="h-20 flex items-center px-6 border-b border-slate-800 shrink-0">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary text-white rounded-md flex items-center justify-center font-bold text-lg">
-            M
-          </div>
+          <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain" />
           <span className="text-xl font-bold text-white tracking-tight">
             Auction Dashboard
           </span>

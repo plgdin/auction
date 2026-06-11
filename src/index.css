@@ -1,63 +1,76 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
-  --color-primary-950: #172554;
+  --color-primary: #357CB8;
+  --color-primary-50: #F3F7FC;
+  --color-primary-100: #E6EEF8;
+  --color-primary-200: #C7DCF0;
+  --color-primary-300: #95BFE4;
+  --color-primary-400: #5C9DD4;
+  --color-primary-500: #357CB8;
+  --color-primary-600: #2766A2;
+  --color-primary-700: #215283;
+  --color-primary-800: #1F466D;
+  --color-primary-900: #1E3C5C;
+  --color-primary-950: #14273D;
+
+  --color-blue-50: #F3F7FC;
+  --color-blue-100: #E6EEF8;
+  --color-blue-200: #C7DCF0;
+  --color-blue-300: #95BFE4;
+  --color-blue-400: #5C9DD4;
+  --color-blue-500: #357CB8;
+  --color-blue-600: #2766A2;
+  --color-blue-700: #215283;
+  --color-blue-800: #1F466D;
+  --color-blue-900: #1E3C5C;
+  --color-blue-950: #14273D;
 }
 
 @layer base {
   :root {
-    --background: #f8fafc; /* slate-50 */
-    --foreground: #0f172a; /* slate-900 */
+    --background: #F3F7FC; /* Lochmara 50 */
+    --foreground: #14273D; /* Lochmara 950 */
     --card: #ffffff;
-    --card-foreground: #0f172a;
+    --card-foreground: #14273D;
     --popover: #ffffff;
-    --popover-foreground: #0f172a;
-    --primary: #1e40af; /* primary-800 */
+    --popover-foreground: #14273D;
+    --primary: #357CB8; /* Lochmara 500 */
     --primary-foreground: #ffffff;
-    --secondary: #f1f5f9; /* slate-100 */
-    --secondary-foreground: #0f172a;
-    --muted: #f1f5f9;
-    --muted-foreground: #64748b; /* slate-500 */
-    --accent: #f1f5f9;
-    --accent-foreground: #0f172a;
-    --destructive: #ef4444; /* red-500 */
+    --secondary: #E6EEF8; /* Lochmara 100 */
+    --secondary-foreground: #14273D;
+    --muted: #E6EEF8;
+    --muted-foreground: #1F466D; /* Lochmara 800 */
+    --accent: #E6EEF8;
+    --accent-foreground: #14273D;
+    --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    --border: #e2e8f0; /* slate-200 */
-    --input: #e2e8f0;
-    --ring: #1e40af;
+    --border: #C7DCF0; /* Lochmara 200 */
+    --input: #C7DCF0;
+    --ring: #357CB8;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: #0f172a; /* slate-900 */
-    --foreground: #f8fafc; /* slate-50 */
-    --card: #1e293b; /* slate-800 */
-    --card-foreground: #f8fafc;
-    --popover: #1e293b;
-    --popover-foreground: #f8fafc;
-    --primary: #3b82f6; /* primary-500 */
-    --primary-foreground: #ffffff;
-    --secondary: #1e293b;
-    --secondary-foreground: #f8fafc;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8; /* slate-400 */
-    --accent: #1e293b;
-    --accent-foreground: #f8fafc;
-    --destructive: #7f1d1d; /* red-900 */
-    --destructive-foreground: #f8fafc;
-    --border: #334155; /* slate-700 */
-    --input: #334155;
-    --ring: #3b82f6;
+    --background: #14273D; /* Lochmara 950 */
+    --foreground: #F3F7FC; /* Lochmara 50 */
+    --card: #1E3C5C; /* Lochmara 900 */
+    --card-foreground: #F3F7FC;
+    --popover: #1E3C5C;
+    --popover-foreground: #F3F7FC;
+    --primary: #5C9DD4; /* Lochmara 400 */
+    --primary-foreground: #14273D;
+    --secondary: #1F466D; /* Lochmara 800 */
+    --secondary-foreground: #F3F7FC;
+    --muted: #1F466D;
+    --muted-foreground: #95BFE4; /* Lochmara 300 */
+    --accent: #1F466D;
+    --accent-foreground: #F3F7FC;
+    --destructive: #7f1d1d;
+    --destructive-foreground: #F3F7FC;
+    --border: #1F466D;
+    --input: #1F466D;
+    --ring: #5C9DD4;
   }
 }
 

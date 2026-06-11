@@ -2,8 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
-  FileText, Calendar, IndianRupee, Download, CheckCircle2, 
-  ArrowRight, Activity, AlertCircle, Building, Clock
+  FileText, Download, CheckCircle2, 
+  ArrowRight, Activity, Building, Clock
 } from 'lucide-react';
 import { tenderService } from '../services/tenderService';
 import { useAuthStore } from '../store/authStore';

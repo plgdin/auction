@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { CheckCircle2, UserPlus, Wallet, Trophy, Gavel } from 'lucide-react';
+import { UserPlus, Wallet, Trophy, Gavel } from 'lucide-react';
 
 const steps = [
   {

@@ -12,8 +12,6 @@ export function Header() {
   const navigation = [
     { name: 'Home', href: '/' },
     { name: 'Auctions', href: '/auctions' },
-    { name: 'Tenders', href: '/tenders' },
-    { name: 'Notices', href: '/notices' },
     { name: 'News', href: '/news' },
     { name: 'FAQ', href: '/faq' },
     { name: 'About', href: '/about' },
@@ -24,13 +22,11 @@ export function Header() {
 
   return (
     <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-8 lg:px-12">
         <div className="flex justify-between items-center h-20">
-          <div className="flex-shrink-0 flex items-center">
+          <div className="flex-shrink-0 flex items-center -ml-4">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-primary text-white rounded-lg flex items-center justify-center font-bold text-xl">
-                M
-              </div>
+              <img src="/logo.png" alt="Logo" className="w-20 h-20 object-contain" />
               <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
                 Auction e-Procurement
               </span>
@@ -44,10 +40,10 @@ export function Header() {
                 key={item.name}
                 to={item.href}
                 className={clsx(
-                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  "px-4 py-2.5 rounded-md text-base font-medium transition-all duration-300",
                   isActive(item.href)
-                    ? "text-primary bg-primary/10"
-                    : "text-slate-600 hover:text-primary hover:bg-slate-50"
+                    ? "text-primary-700 bg-primary-100 shadow-sm"
+                    : "text-slate-800 hover:text-primary-700 hover:bg-primary-100/70 hover:shadow-sm hover:-translate-y-0.5"
                 )}
               >
                 {item.name}
@@ -58,25 +54,17 @@ export function Header() {
               {isAuthenticated ? (
                 <Link
                   to="/dashboard"
-                  className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
+                  className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
                 >
                   Dashboard
                 </Link>
               ) : (
-                <>
-                  <Link
-                    to="/auth/login"
-                    className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
-                  >
-                    Log in
-                  </Link>
-                  <Link
-                    to="/auth/register"
-                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
-                  >
-                    Register
-                  </Link>
-                </>
+                <Link
+                  to="/auth/register"
+                  className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+                >
+                  Sign Up
+                </Link>
               )}
             </div>
           </nav>
@@ -107,10 +95,10 @@ export function Header() {
                 key={item.name}
                 to={item.href}
                 className={clsx(
-                  "block px-3 py-2 rounded-md text-base font-medium",
+                  "block px-3 py-2 rounded-md text-base font-medium transition-all duration-200",
                   isActive(item.href)
-                    ? "text-primary bg-primary/10"
-                    : "text-slate-600 hover:text-primary hover:bg-slate-50"
+                    ? "text-primary-700 bg-primary-100"
+                    : "text-slate-800 hover:text-primary-700 hover:bg-primary-100/70"
                 )}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -130,18 +118,11 @@ export function Header() {
               ) : (
                 <div className="space-y-3">
                   <Link
-                    to="/auth/login"
-                    className="block w-full text-center px-4 py-3 border border-slate-300 rounded-md shadow-sm text-base font-medium text-slate-700 bg-white hover:bg-slate-50"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Log in
-                  </Link>
-                  <Link
                     to="/auth/register"
-                    className="block w-full text-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700"
+                    className="block w-full text-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary-600 hover:bg-primary-700"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Register
+                    Sign Up
                   </Link>
                 </div>
               )}

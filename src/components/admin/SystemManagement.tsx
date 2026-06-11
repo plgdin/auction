@@ -38,14 +38,14 @@ export function SystemManagement() {
     resolver: zodResolver(directMessageSchema)
   });
 
-  useEffect(() => {
-    loadAnnouncements();
-  }, []);
-
   const loadAnnouncements = async () => {
     const data = await adminService.getActiveAnnouncements();
     setAnnouncements(data);
   };
+
+  useEffect(() => {
+    loadAnnouncements();
+  }, []);
 
   const onAnnounceSubmit = async (data: AnnouncementValues) => {
     setIsSubmitting(true);

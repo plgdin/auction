@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
-import { Users, CheckCircle2, ShieldAlert, Edit2, Shield } from 'lucide-react';
+import { Users, CheckCircle2, ShieldAlert, Shield } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import clsx from 'clsx';
 
@@ -9,16 +9,16 @@ export function UserManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
   const loadUsers = async () => {
     setIsLoading(true);
     const data = await adminService.getUsers();
     setUsers(data);
     setIsLoading(false);
   };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const handleRoleChange = async (userId: string, currentRole: string) => {
     const newRole = currentRole === 'buyer' ? 'seller' : 'buyer';

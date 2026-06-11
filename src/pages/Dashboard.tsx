@@ -11,7 +11,6 @@ import {
 import { useAuthStore } from '../store/authStore';
 import { auctionService } from '../services/auctionService';
 import { paymentService } from '../services/paymentService';
-import type { Auction } from '../../types/database.types';
 
 // Mock data for the chart
 const chartData = [

@@ -54,7 +54,7 @@ export function TenderSubmissionModal({ isOpen, onClose, tender, onSuccess }: Te
       } else {
         setErrorMsg('Failed to submit tender. Please try again.');
       }
-    } catch (error) {
+    } catch {
       setErrorMsg('An unexpected error occurred.');
     } finally {
       setIsSubmitting(false);

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Gavel, Search, ArrowRight, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Gavel, ArrowRight, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { auctionService } from '../../services/auctionService';
 import type { Auction } from '../../types/database.types';
@@ -83,9 +83,9 @@ export function MyBids() {
                   <div className="text-center py-16 px-4">
                     <Gavel className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-slate-900">No active bids</h3>
-                    <p className="text-slate-500 mt-1 mb-6">You haven't placed any bids on live auctions yet.</p>
+                    <p className="text-slate-500 mt-1 mb-6">You haven't placed any bids on auctions yet.</p>
                     <Link to="/auctions" className="inline-flex items-center text-primary font-medium hover:underline">
-                      Explore live auctions <ArrowRight className="w-4 h-4 ml-1" />
+                      Explore auctions <ArrowRight className="w-4 h-4 ml-1" />
                     </Link>
                   </div>
                 ) : (

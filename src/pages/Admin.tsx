@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState } from 'react';
-import { LayoutDashboard, Users, Megaphone, Server, Shield, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Users, Megaphone, Shield, BarChart3 } from 'lucide-react';
 import { AdminOverview } from '../components/admin/AdminOverview';
 import { UserManagement } from '../components/admin/UserManagement';
 import { SystemManagement } from '../components/admin/SystemManagement';

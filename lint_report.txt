@@ -1,0 +1,358 @@
+﻿
+> auction-platform@0.0.0 lint
+> eslint .
+
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\admin\AdminOverview.tsx
+  1:1  error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\admin\ReportsAnalytics.tsx
+  1:1  error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\admin\SystemManagement.tsx
+   1:1   error  Do not use "@ts-nocheck" because it alters compilation errors                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/ban-ts-comment
+  42:5   error  Error: Cannot access variable before it is declared
+
+`loadAnnouncements` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\admin\SystemManagement.tsx:42:5
+  40 |
+  41 |   useEffect(() => {
+> 42 |     loadAnnouncements();
+     |     ^^^^^^^^^^^^^^^^^ `loadAnnouncements` accessed before it is declared
+  43 |   }, []);
+  44 |
+  45 |   const loadAnnouncements = async () => {
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\admin\SystemManagement.tsx:45:3
+  43 |   }, []);
+  44 |
+> 45 |   const loadAnnouncements = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 46 |     const data = await adminService.getActiveAnnouncements();
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 47 |     setAnnouncements(data);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 48 |   };
+     | ^^^^^ `loadAnnouncements` is declared here
+  49 |
+  50 |   const onAnnounceSubmit = async (data: AnnouncementValues) => {
+  51 |     setIsSubmitting(true);  react-hooks/immutability
+  57:29  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\admin\SystemManagement.tsx:57:29
+  55 |       priority: data.priority,
+  56 |       is_published: true,
+> 57 |       valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // Valid for 30 days
+     |                             ^^^^^^^^^^ Cannot call impure function
+  58 |     });
+  59 |
+  60 |     if (newAnnouncement) {                                                                                                                                                                                                                                                                                                                                                                                                                                                react-hooks/purity
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\admin\UserManagement.tsx
+   1:1   error  Do not use "@ts-nocheck" because it alters compilation errors                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/ban-ts-comment
+   3:44  error  'Edit2' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+   8:38  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  13:5   error  Error: Cannot access variable before it is declared
+
+`loadUsers` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\admin\UserManagement.tsx:13:5
+  11 |
+  12 |   useEffect(() => {
+> 13 |     loadUsers();
+     |     ^^^^^^^^^ `loadUsers` accessed before it is declared
+  14 |   }, []);
+  15 |
+  16 |   const loadUsers = async () => {
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\admin\UserManagement.tsx:16:3
+  14 |   }, []);
+  15 |
+> 16 |   const loadUsers = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 17 |     setIsLoading(true);
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 18 |     const data = await adminService.getUsers();
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 19 |     setUsers(data);
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 20 |     setIsLoading(false);
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+> 21 |   };
+     | ^^^^^ `loadUsers` is declared here
+  22 |
+  23 |   const handleRoleChange = async (userId: string, currentRole: string) => {
+  24 |     const newRole = currentRole === 'buyer' ? 'seller' : 'buyer';  react-hooks/immutability
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\auction\AuctionCard.tsx
+  1:1  error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\auction\BiddingPanel.tsx
+    1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+    3:10  error  'Link' is defined but never used                               @typescript-eslint/no-unused-vars
+   15:9   error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+   82:14  error  'error' is defined but never used                              @typescript-eslint/no-unused-vars
+  109:14  error  'error' is defined but never used                              @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\auction\CountdownTimer.tsx
+  41:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\auction\CountdownTimer.tsx:41:5
+  39 |     };
+  40 |
+> 41 |     setTimeLeft(calculateTimeLeft());
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  42 |
+  43 |     const timer = setInterval(() => {
+  44 |       const newTimeLeft = calculateTimeLeft();  react-hooks/set-state-in-effect
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\common\ErrorBoundary.tsx
+  1:1  error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\forms\ForgotPasswordForm.tsx
+  32:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\forms\LoginForm.tsx
+  37:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\forms\RegisterForm.tsx
+  42:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\forms\ResetPasswordForm.tsx
+  39:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\home\FeaturedAuctionsSection.tsx
+  1:1  error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\home\HowItWorksSection.tsx
+  1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  2:10  error  'CheckCircle2' is defined but never used                       @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\payment\PaymentModal.tsx
+   1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  44:14  error  'error' is defined but never used                              @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\payment\ReceiptModal.tsx
+  1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  2:22  error  'Download' is defined but never used                           @typescript-eslint/no-unused-vars
+  8:16  error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\components\tender\TenderSubmissionModal.tsx
+   1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  57:14  error  'error' is defined but never used                              @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\hooks\useAuctionRealtime.ts
+   1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+   9:36  error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+  57:16  error  'payload' is defined but never used                            @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\Admin.tsx
+  1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  3:45  error  'Server' is defined but never used                             @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\AuctionDetail.tsx
+    1:1   error  Do not use "@ts-nocheck" because it alters compilation errors                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/ban-ts-comment
+   28:10  error  'activeTab' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   28:21  error  'setActiveTab' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   66:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\AuctionDetail.tsx:66:5
+  64 |
+  65 |   useEffect(() => {
+> 66 |     loadAuctionData();
+     |     ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  67 |     window.scrollTo(0, 0);
+  68 |   }, [loadAuctionData]);
+  69 |  react-hooks/set-state-in-effect
+  131:4   error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\Auctions.tsx
+    1:1   error  Do not use "@ts-nocheck" because it alters compilation errors                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/ban-ts-comment
+   58:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\Auctions.tsx:58:5
+  56 |
+  57 |   useEffect(() => {
+> 58 |     loadData();
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  59 |   }, [loadData]);
+  60 |
+  61 |   const handleSearch = (e: React.FormEvent) => {  react-hooks/set-state-in-effect
+  149:49  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\Contact.tsx
+  48:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\Dashboard.tsx
+   1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  14:15  error  'Auction' is defined but never used                            @typescript-eslint/no-unused-vars
+  34:48  error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\FAQ.tsx
+  26:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\FAQ.tsx:26:7
+  24 |   useEffect(() => {
+  25 |     if (!searchQuery.trim()) {
+> 26 |       setFilteredFaqs(faqs);
+     |       ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  27 |     } else {
+  28 |       const lowerQuery = searchQuery.toLowerCase();
+  29 |       setFilteredFaqs(  react-hooks/set-state-in-effect
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\TenderDetail.tsx
+   1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+   5:13  error  'Calendar' is defined but never used                           @typescript-eslint/no-unused-vars
+   5:23  error  'IndianRupee' is defined but never used                        @typescript-eslint/no-unused-vars
+   6:25  error  'AlertCircle' is defined but never used                        @typescript-eslint/no-unused-vars
+  38:26  error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+  39:37  error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\Tenders.tsx
+  17:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\dashboard\DocumentVault.tsx
+  27:5  error    Error: Cannot access variable before it is declared
+
+`loadDocuments` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\dashboard\DocumentVault.tsx:27:5
+  25 |
+  26 |   useEffect(() => {
+> 27 |     loadDocuments();
+     |     ^^^^^^^^^^^^^ `loadDocuments` accessed before it is declared
+  28 |   }, [user]);
+  29 |
+  30 |   const loadDocuments = async () => {
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\dashboard\DocumentVault.tsx:30:3
+  28 |   }, [user]);
+  29 |
+> 30 |   const loadDocuments = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 31 |     if (!user) return;
+     | ^^^^^^^^^^^^^^^^^^^^^^
+> 32 |     setIsLoading(true);
+     | ^^^^^^^^^^^^^^^^^^^^^^
+> 33 |     const docs = await storageService.getUserDocuments(user.id);
+     | ^^^^^^^^^^^^^^^^^^^^^^
+> 34 |     setDocuments(docs);
+     | ^^^^^^^^^^^^^^^^^^^^^^
+> 35 |     setIsLoading(false);
+     | ^^^^^^^^^^^^^^^^^^^^^^
+> 36 |   };
+     | ^^^^^ `loadDocuments` is declared here
+  37 |
+  38 |   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  39 |     const file = event.target.files?.[0];  react-hooks/immutability
+  28:6  warning  React Hook useEffect has a missing dependency: 'loadDocuments'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\dashboard\MyBids.tsx
+   1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+   4:17  error  'Search' is defined but never used                             @typescript-eslint/no-unused-vars
+  15:36  error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\dashboard\MyTenders.tsx
+   1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+   4:55  error  'CheckCircle2' is defined but never used                       @typescript-eslint/no-unused-vars
+   4:69  error  'Clock' is defined but never used                              @typescript-eslint/no-unused-vars
+  11:50  error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\dashboard\Notifications.tsx
+  1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  3:49  error  'Trash2' is defined but never used                             @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\dashboard\ProfileSettings.tsx
+  1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  6:22  error  'Building' is defined but never used                           @typescript-eslint/no-unused-vars
+  6:56  error  'Shield' is defined but never used                             @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\dashboard\Wallet.tsx
+    1:1   error    Do not use "@ts-nocheck" because it alters compilation errors                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/ban-ts-comment
+   20:65  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+   39:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\dashboard\Wallet.tsx:39:5
+  37 |
+  38 |   useEffect(() => {
+> 39 |     loadWallet();
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  40 |   }, [user]);
+  41 |
+  42 |   return (  react-hooks/set-state-in-effect
+   40:6   warning  React Hook useEffect has a missing dependency: 'loadWallet'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+  206:38  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\dashboard\Watchlist.tsx
+  1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  4:17  error  'Search' is defined but never used                             @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\seller\AuctionForm.tsx
+  107:14  error  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\seller\ManageAuctions.tsx
+  1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  4:26  error  'ArrowRight' is defined but never used                         @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\pages\seller\SellerDashboard.tsx
+  1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  9:17  error  'profile' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\services\adminService.ts
+  129:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\services\auctionService.ts
+    1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+    3:72  error  'Watchlist' is defined but never used                          @typescript-eslint/no-unused-vars
+  228:20  error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+  296:32  error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+  301:61  error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\services\tenderService.ts
+   1:1   error  Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+   3:41  error  'TenderDocument' is defined but never used                     @typescript-eslint/no-unused-vars
+  81:59  error  Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\store\authStore.ts
+   7:9   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   8:12  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\acer\Stuff\CompanyStuff\DON SAVIOOOO\auction\auction\src\types\database.types.ts
+  180:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Ô£û 95 problems (93 errors, 2 warnings)
+

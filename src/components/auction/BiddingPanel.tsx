@@ -1,6 +1,6 @@
 // @ts-nocheck
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { IndianRupee, Clock, ShieldAlert, ArrowUpRight, CheckCircle2, History, AlertTriangle } from 'lucide-react';
 import { CountdownTimer } from './CountdownTimer';
 import { BidConfirmationModal } from './BidConfirmationModal';
@@ -79,7 +79,7 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
         setErrorMsg(response.message || 'Failed to place bid. Please try again.');
         setIsModalOpen(false);
       }
-    } catch (error) {
+    } catch {
       setErrorMsg('An unexpected error occurred.');
       setIsModalOpen(false);
     } finally {
@@ -106,7 +106,7 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
           setErrorMsg(response.message);
         }
       }
-    } catch (error) {
+    } catch {
       setErrorMsg('Failed to block EMD.');
     } finally {
       setIsBlockingEmd(false);

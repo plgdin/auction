@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
-import { Bell, CheckCircle2, AlertCircle, Info, Trash2, Check } from 'lucide-react';
+import { Bell, CheckCircle2, AlertCircle, Info, Check } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { adminService } from '../../services/adminService';
 import type { Notification } from '../../types/database.types';

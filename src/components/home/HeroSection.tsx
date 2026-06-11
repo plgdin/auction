@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Gavel, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 export function HeroSection() {
   return (
@@ -22,33 +22,11 @@ export function HeroSection() {
           <div className="flex flex-col sm:flex-row gap-4">
             <Link
               to="/auctions"
-              className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-600 transition-colors shadow-lg hover:shadow-primary/30"
+              className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-sm"
             >
-              View Live Auctions
+              View Auctions
               <ArrowRight className="ml-2 -mr-1 w-5 h-5" />
             </Link>
-            <Link
-              to="/tenders"
-              className="inline-flex items-center justify-center px-8 py-4 border border-slate-600 text-base font-medium rounded-md text-white hover:bg-slate-800 transition-colors"
-            >
-              Browse Open Tenders
-            </Link>
-          </div>
-        </div>
-
-        {/* Feature badges */}
-        <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-3 max-w-3xl">
-          <div className="flex items-center text-slate-300">
-            <ShieldCheck className="h-6 w-6 text-primary-400 mr-3" />
-            <span className="font-medium text-sm">Bank-Grade Security</span>
-          </div>
-          <div className="flex items-center text-slate-300">
-            <Gavel className="h-6 w-6 text-primary-400 mr-3" />
-            <span className="font-medium text-sm">Transparent Bidding</span>
-          </div>
-          <div className="flex items-center text-slate-300">
-            <Zap className="h-6 w-6 text-primary-400 mr-3" />
-            <span className="font-medium text-sm">Real-time Updates</span>
           </div>
         </div>
       </div>

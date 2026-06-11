@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin, Gavel, FileText, ArrowRight } from 'lucide-react';
+import { Mail, Phone, MapPin, Gavel, ArrowRight } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -10,9 +10,7 @@ export function Footer() {
           {/* Brand */}
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary text-white rounded-md flex items-center justify-center font-bold text-lg">
-                M
-              </div>
+              <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain" />
               <span className="text-xl font-bold text-white tracking-tight">
                 Auction e-Procurement
               </span>
@@ -28,17 +26,7 @@ export function Footer() {
             <ul className="space-y-3">
               <li>
                 <Link to="/auctions" className="hover:text-primary transition-colors flex items-center gap-2 text-sm">
-                  <Gavel size={16} /> Live Auctions
-                </Link>
-              </li>
-              <li>
-                <Link to="/tenders" className="hover:text-primary transition-colors flex items-center gap-2 text-sm">
-                  <FileText size={16} /> Open Tenders
-                </Link>
-              </li>
-              <li>
-                <Link to="/notices" className="hover:text-primary transition-colors flex items-center gap-2 text-sm">
-                  <ArrowRight size={16} /> Official Notices
+                  <Gavel size={16} /> Auctions
                 </Link>
               </li>
               <li>

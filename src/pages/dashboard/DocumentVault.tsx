@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { FileText, FileImage, Download, UploadCloud, X, FolderLock, Eye } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { storageService } from '../../services/storageService';
@@ -23,17 +23,17 @@ export function DocumentVault() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    loadDocuments();
-  }, [user]);
-
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
     const docs = await storageService.getUserDocuments(user.id);
     setDocuments(docs);
     setIsLoading(false);
-  };
+  }, [user]);
+
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

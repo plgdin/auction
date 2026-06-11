@@ -42,6 +42,23 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
 
   const isActive = auction.status === 'active';
 
+  const now = new Date();
+  const endTime = new Date(auction.end_time);
+  const createdAt = new Date(auction.created_at);
+  const fortyEightHoursLater = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  let statusBadgeLabel = 'Upcoming';
+  let statusBadgeColor = 'bg-primary-600';
+
+  if (endTime > now && endTime <= fortyEightHoursLater) {
+    statusBadgeLabel = 'Closes Soon';
+    statusBadgeColor = 'bg-amber-600 animate-pulse';
+  } else if (createdAt >= sevenDaysAgo) {
+    statusBadgeLabel = 'Recently Added';
+    statusBadgeColor = 'bg-green-650';
+  }
+
   if (!isGrid) {
     // LIST VIEW
     return (
@@ -56,9 +73,9 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
           <div className="absolute top-3 left-3 flex gap-2">
             <span className={clsx(
               "px-2.5 py-1 text-xs font-bold rounded-md shadow-sm uppercase tracking-wider text-white",
-              isActive ? "bg-green-500" : "bg-slate-500"
+              statusBadgeColor
             )}>
-              {auction.status}
+              {statusBadgeLabel}
             </span>
           </div>
           <button
@@ -93,6 +110,17 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
             {auction.description || 'No description provided.'}
           </p>
 
+          <div className="flex flex-wrap items-center gap-3 mb-4 text-xs">
+            <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded-md font-medium border border-slate-200">
+              Office: {auction.regional_office}
+            </span>
+            {auction.pre_bid && (
+              <span className="bg-amber-50 text-amber-800 px-2 py-1 rounded-md font-semibold border border-amber-200">
+                Pre-bid Required
+              </span>
+            )}
+          </div>
+
           <div className="mt-auto grid grid-cols-2 gap-4 items-center">
             <div className="flex items-center text-sm text-slate-500">
               <MapPin className="w-4 h-4 mr-1.5" />
@@ -124,9 +152,9 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
         <div className="absolute top-3 left-3 flex gap-2">
           <span className={clsx(
             "px-2.5 py-1 text-xs font-bold rounded-md shadow-sm uppercase tracking-wider text-white",
-            isActive ? "bg-green-500" : "bg-slate-500"
+            statusBadgeColor
           )}>
-            {auction.status}
+            {statusBadgeLabel}
           </span>
         </div>
         <button
@@ -146,9 +174,19 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
           {auction.title}
         </h3>
         
-        <div className="flex items-center text-sm text-slate-500 mb-4">
-          <MapPin className="w-4 h-4 mr-1.5" />
-          <span className="truncate">{auction.location || 'Multiple Locations'}</span>
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center text-sm text-slate-600">
+            <MapPin className="w-4 h-4 mr-1.5 text-slate-400 shrink-0" />
+            <span className="truncate">{auction.location || 'Multiple Locations'}</span>
+          </div>
+          <div className="text-xs text-slate-500 flex justify-between items-center gap-2">
+            <span className="truncate">Office: {auction.regional_office}</span>
+            {auction.pre_bid && (
+              <span className="bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded font-semibold border border-amber-200 shrink-0">
+                Pre-bid
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-end">

@@ -52,6 +52,9 @@ export interface Auction {
   start_time: string;
   end_time: string;
   terms_conditions?: string;
+  regional_office?: string;
+  location?: string;
+  pre_bid?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Calendar, IndianRupee, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
+import { FileText, Calendar, IndianRupee, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { tenderService } from '../../services/tenderService';
 import clsx from 'clsx';

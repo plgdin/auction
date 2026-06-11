@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useState } from 'react';
 import { Users, Gavel, FileText, Activity, ShieldAlert } from 'lucide-react';
 import { adminService } from '../../services/adminService';
@@ -52,7 +51,7 @@ export function AdminOverview() {
               <Gavel className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-1">Live Auctions</h3>
+          <h3 className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-1">Auctions</h3>
           <p className="text-3xl font-extrabold text-slate-900">{analytics.activeAuctions}</p>
         </div>
 
@@ -94,8 +93,10 @@ export function AdminOverview() {
                       <div className="flex items-start gap-3">
                         <ShieldAlert className="w-5 h-5 text-slate-400 mt-0.5" />
                         <div>
-                          <p className="text-sm font-bold text-slate-900">{log.action_type}</p>
-                          <p className="text-xs text-slate-500">{log.action_details}</p>
+                          <p className="text-sm font-bold text-slate-900">{log.action}</p>
+                          <p className="text-xs text-slate-500">
+                            {log.details ? (typeof log.details === 'string' ? log.details : JSON.stringify(log.details)) : (log.entity_type ? `${log.entity_type} (${log.entity_id || 'N/A'})` : 'No details available')}
+                          </p>
                         </div>
                       </div>
                     </td>

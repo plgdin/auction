@@ -25,7 +25,6 @@ export function AuctionDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [isWatchlisted, setIsWatchlisted] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'terms' | 'documents'>('details');
   const [shareCopied, setShareCopied] = useState(false);
 
   const loadAuctionData = useCallback(async () => {
@@ -284,7 +283,7 @@ function AuctionDetailInner({
         {related.length > 0 && (
           <div className="pt-12 border-t border-slate-200">
             <div className="flex justify-between items-end mb-8">
-              <h2 className="text-2xl font-bold text-slate-900">Similar Live Auctions</h2>
+              <h2 className="text-2xl font-bold text-slate-900">Similar Auctions</h2>
               <Link to={`/auctions?category=${auction.category_id}`} className="text-primary font-medium hover:underline">
                 View category
               </Link>

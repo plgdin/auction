@@ -54,7 +54,7 @@ export function useAuctionRealtime(initialAuction: Auction) {
           table: 'bids',
           filter: `auction_id=eq.${initialAuction.id}`
         },
-        async (payload) => {
+        async (_payload) => {
           // payload.new is the new bid row. But it lacks the nested 'bidder' relation data.
           // We can fetch the history again to get the full joined data, or do a targeted fetch.
           // For safety and correctness of the list, we fetch the updated history.

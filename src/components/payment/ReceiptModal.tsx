@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { X, Printer, Download } from 'lucide-react';
+import { X, Printer } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 interface ReceiptModalProps {

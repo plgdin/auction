@@ -41,7 +41,7 @@ export function PaymentModal({ isOpen, onClose, onSuccess }: PaymentModalProps) 
       } else {
         setErrorMsg('Payment failed. Please try again.');
       }
-    } catch (error) {
+    } catch {
       setErrorMsg('An unexpected error occurred.');
     } finally {
       setIsProcessing(false);
