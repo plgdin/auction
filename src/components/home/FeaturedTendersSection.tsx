@@ -38,39 +38,39 @@ export function FeaturedTendersSection() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         ) : tenders.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-300">
-            <h3 className="text-lg font-medium text-slate-900">No open tenders available.</h3>
-            <p className="mt-2 text-slate-500">Please check back later.</p>
+          <div className="text-center py-12 bg-white rounded border border-dashed border-border">
+            <h3 className="text-lg font-bold text-foreground">No open tenders available.</h3>
+            <p className="mt-2 text-muted-foreground">Please check back later.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {tenders.map((tender) => (
-              <div key={tender.id} className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200 hover:border-primary/50 transition-colors flex flex-col sm:flex-row gap-6 items-start sm:items-center">
-                <div className="flex-shrink-0 w-16 h-16 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
+              <div key={tender.id} className="bg-white p-6 sm:p-8 rounded shadow-sm border border-border hover:border-primary/50 transition-colors flex flex-col sm:flex-row gap-6 items-start sm:items-center">
+                <div className="flex-shrink-0 w-16 h-16 bg-primary/10 rounded flex items-center justify-center text-primary">
                   <FileText className="w-8 h-8" />
                 </div>
                 <div className="flex-grow">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-xs font-bold bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded uppercase tracking-wide">
+                    <span className="text-xs font-bold bg-primary/20 text-primary px-2.5 py-0.5 rounded uppercase tracking-wide">
                       {tender.reference_number}
                     </span>
-                    <span className="text-xs font-medium text-slate-500">
+                    <span className="text-xs font-semibold text-muted-foreground">
                       EMD: ₹{tender.emd_amount.toLocaleString()}
                     </span>
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-2">{tender.title}</h3>
-                  <p className="text-slate-600 text-sm line-clamp-2 sm:line-clamp-1 mb-4 sm:mb-0">
+                  <h3 className="text-xl font-bold text-foreground mb-2">{tender.title}</h3>
+                  <p className="text-muted-foreground text-sm line-clamp-2 sm:line-clamp-1 mb-4 sm:mb-0">
                     {tender.description}
                   </p>
                 </div>
-                <div className="flex-shrink-0 w-full sm:w-auto flex flex-col sm:items-end border-t sm:border-t-0 sm:border-l border-slate-100 pt-4 sm:pt-0 sm:pl-6">
-                  <div className="flex items-center text-sm text-slate-500 mb-4">
+                <div className="flex-shrink-0 w-full sm:w-auto flex flex-col sm:items-end border-t sm:border-t-0 sm:border-l border-border pt-4 sm:pt-0 sm:pl-6">
+                  <div className="flex items-center text-sm text-muted-foreground mb-4">
                     <Calendar className="w-4 h-4 mr-2" />
                     Due: {new Date(tender.submission_deadline).toLocaleDateString()}
                   </div>
                   <Link 
                     to={`/tenders/${tender.id}`}
-                    className="w-full sm:w-auto inline-flex justify-center items-center px-6 py-2.5 border border-primary text-sm font-medium rounded-md text-primary bg-transparent hover:bg-primary hover:text-white transition-colors"
+                    className="w-full sm:w-auto inline-flex justify-center items-center px-6 py-2.5 border border-primary text-sm font-medium rounded text-primary bg-transparent hover:bg-primary hover:text-white transition-colors"
                   >
                     Submit Bid
                   </Link>

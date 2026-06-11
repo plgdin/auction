@@ -1,0 +1,316 @@
+MSTC Auction Categories & Sub-Categories:
+===========================================
+
+■ Agricultural Produce
+  ├─ Cereals
+  │    └─ Maize
+  │    └─ Barley
+  │    └─ Bajra
+  │    └─ Ragi
+  │    └─ Jowar
+  │    └─ Paddy
+  │    └─ Wheat
+  ├─ Pulses
+  │    └─ Gram/Chickpea
+  │    └─ Moong Dal /Green gram
+  │    └─ Toor Dal/ Arhar Dal
+  │    └─ Urad / Black Gram
+  ├─ Oil seeds/oil
+  │    └─ Mustard Seed
+  │    └─ Ground Nut
+  │    └─ Sesamum Seed
+  │    └─ Soyabean
+  │    └─ Sunflower Seed
+  │    └─ Copra
+  │    └─ Palm Oil
+  │    └─ Kernel Oil
+  ├─ Cotton
+  │    └─ Cotton Bale
+  │    └─ Cotton Seed
+  ├─ Spices
+  │    └─ Cardamom
+  │    └─ Pepper
+  │    └─ Onion
+  │    └─ Ginger
+  ├─ Others
+  │    └─ Makhana/Fox Nut
+  │    └─ Medicinal Plants/ Plant parts
+  │    └─ Plantation
+  ├─ Cashew
+  ├─ Arecanut/betel nut
+  ├─ Coconut
+
+■ Aquatic Produce
+  ├─ Fish
+
+■ Ash
+  ├─ Fly ash
+  ├─ Pond ash
+  ├─ Bottom ash
+
+■ Chemicals
+  ├─ Paints, dyes and pigments
+  ├─ Spent catalyst
+  ├─ Others
+  ├─ Resins
+  ├─ Acid
+
+■ Coal
+  ├─ Coal
+  ├─ Coal  linkage
+  ├─ Lignite
+  ├─ Coal by products
+  │    └─ Graphite Fines
+  │    └─ Met Coke Dust/Fines
+
+■ Container
+  ├─ Barrel/drum
+  │    └─ MS Barrel/Drum
+  │    └─ Plastic Barrel/Drum
+  ├─ Can/tin
+
+■ Diamond
+  ├─ Rough diamond
+  ├─ Gem-individual
+  ├─ Gem-packets
+  ├─ Off colour-packets
+  ├─ Darkbrown-packets
+
+■ Electrical Items
+  ├─ Air conditioner/ac plant
+  ├─ Battery
+  ├─ Cables
+  ├─ Transformer
+  ├─ Others
+  ├─ Dg sets/generators
+  ├─ Conductors
+  │    └─ AAC
+  │    └─ AAAC
+  │    └─ ACSR
+  ├─ Circuit breaker
+  ├─ Meter scrap
+  ├─ Crgo scrap
+
+■ Electronics Items
+  ├─ Compters/peripherals
+  ├─ Others
+  ├─ Mobile/tablet
+
+■ Forest Produce
+  ├─ Timber
+  ├─ Poles
+  ├─ Billets
+  ├─ Ntfd
+  ├─ Canes
+  ├─ Timber - teak
+  ├─ Timber - rosewood
+  ├─ Timber - others
+  ├─ Timber cut sizes
+  ├─ Sandal wood
+  ├─ Red sander
+  ├─ Sandalwood oil
+  ├─ Poles- teak
+  ├─ Poles - others
+  ├─ Pulpwood
+  ├─ Firewood
+  ├─ Tendu leaves
+  ├─ Others
+
+■ Immovable Property
+  ├─ Residential
+  │    └─ Flat
+  │    └─ Plot/Land
+  │    └─ Independent House
+  ├─ Commercial
+  │    └─ Shops
+  │    └─ Showroom
+  │    └─ Office
+  │    └─ Land/Plot
+  │    └─ Buildings
+  │    └─ Malls
+  │    └─ Storage Space
+  │    └─ Godowns
+  │    └─ Hoardings
+  │    └─ Bus Adda
+  │    └─ Parking Lot
+  │    └─ Toilets/Bathrooms/Washrooms
+  ├─ Agriculture
+  │    └─ Land/Plot
+  │    └─ Farmhouse
+  │    └─ Agriculture
+  ├─ Industry
+  │    └─ Building
+  │    └─ Land/Plot
+  │    └─ Warehouse
+  │    └─ Industrial Shed
+  │    └─ Shed with Plant and Machinery
+  ├─ Others
+
+■ Liquor License Contracts
+  ├─ Liquor shop license
+
+■ Metal
+  ├─ Iron and steel
+  ├─ Aluminium
+  ├─ Brass
+  ├─ Copper
+  ├─ Lead
+  ├─ Gold
+  ├─ Platinum
+  ├─ Silver
+  ├─ Zinc
+  ├─ Nickle
+  ├─ Gun metal/bronze
+  ├─ Other metals
+  ├─ Mixed metal scraps
+
+■ Mine Block
+  ├─ Mine block
+  ├─ Coal mine
+  ├─ Iron ore mine
+  ├─ Lime stone mine
+  ├─ Graphite mine
+  ├─ Gold mine
+  ├─ Manganese ore mine
+  ├─ Diamond mine
+  ├─ Bauxite mine
+  ├─ Copper ore mine
+  ├─ Platinum ore mine
+  ├─ Sand block
+  ├─ Murram block
+  ├─ Rcc/ercc
+  ├─ Magnesite mine
+  ├─ Decorative stone mine
+  ├─ Limestone mine
+  ├─ Phosphorite mine
+  ├─ Basemetal  mine
+  ├─ Vanadium mine
+  ├─ Iron ore & manganese ore mine
+  ├─ Gold and basemetal mine
+  ├─ Graphite & vanadium mine
+  ├─ Flourite mine
+  ├─ Siliceous earth mine
+  ├─ Potash mine
+  ├─ Rare earth elements mine
+  ├─ Garnet mine
+  ├─ Copper lead zinc mine
+  ├─ Copper and associated gold mine
+  ├─ Lead zinc mine
+  ├─ Emerald mine
+  ├─ Ordinary sand mine
+
+■ Minerals
+  ├─ Blue stone
+  ├─ Iron ore
+  │    └─ Mixed - Fines and Lumps
+  ├─ Manganese/ferro-manganese ore
+  ├─ Sand
+  ├─ Clay
+  ├─ Chrome ore
+  ├─ Baryte
+  ├─ Dolomite
+  ├─ Granite
+  ├─ Limestone
+  ├─ Marble
+  ├─ Silica sand
+  ├─ Gypsum
+  ├─ Fluorspar
+  ├─ Weathered/mixed stone
+  ├─ Inferior quality material
+  ├─ M-sand
+  ├─ Bauxite
+  ├─ Magnesite
+  ├─ Dunite
+  ├─ Salt
+  ├─ Low graded/nala sand
+  ├─ Primarily blue stone
+  ├─ Rock phosphate
+
+■ Miscellaneous
+  ├─ Plastic
+  ├─ Leather
+  ├─ Rubber
+  ├─ Building materials
+  ├─ Cenosphere
+  ├─ Dismantaling of buildings/plants
+  ├─ Furniture
+  ├─ Wooden items
+  ├─ Scrips
+  ├─ Miscellaneous items
+  ├─ Fgd gypsum
+  ├─ Paper and related products
+  │    └─ Paper
+  │    └─ Board
+  │    └─ Cartoons
+  │    └─ Paper Bricks
+  │    └─ others
+  ├─ Cloth/garments
+  │    └─ Fabric/Yarn/Cloth
+  │    └─ Garbage/Sweeping Dust/Broom Waste
+  ├─ Glass
+  ├─ Medical
+  │    └─ Medical Equipment
+  │    └─ Medical Waste
+  │    └─ Medical Machinery
+  │    └─ Lab Equipment
+  │    └─ Medicines
+  ├─ Garbage/sweeping dust/broom waste
+  ├─ Human hair
+  ├─ Silk cocoons
+  ├─ Fibre scrap or fiber glass scrap
+  ├─ Footwear
+  ├─ Packing material
+  │    └─ Gunny Bags
+  │    └─ Jute Bags
+  │    └─ Corrugated Box
+  ├─ Textile
+  │    └─ Jute Items/Jute Waste
+  │    └─ Cotton Items/Cotton Waste
+  │    └─ Tents/Tarpaulin
+  ├─ Custom goods
+  │    └─ Unclaimed/Uncleared Cargo
+  │    └─ CFS Containers
+  ├─ Safety equipment
+  ├─ Household and office items
+  ├─ Artifacts
+  ├─ Musical instruments
+  ├─ Tdr -transferrable development rights
+  ├─ Omda
+
+■ Petroleum Products
+  ├─ Pet coke
+  ├─ Used/ waste oil
+  ├─ Lubricants
+  ├─ Rlng
+  ├─ Bitumen
+  ├─ Wax
+
+■ Plant/Machineries
+  ├─ Plants
+  ├─ Machinery items
+  ├─ Aircrafts
+  ├─ Crane/earth moving equipments
+  │    └─ Forklift
+  ├─ Surplus stores/ spares
+  ├─ Engine assemblies/ vehicle comp.
+  ├─ Tools & equipments
+  ├─ Spare parts
+
+■ Transport Vehicles
+  ├─ Auto rikshaw
+  ├─ Two-wheller
+  ├─ Car
+  ├─ Bus
+  ├─ Truck
+  ├─ End of life vehicles
+  ├─ Cycles
+  ├─ E-rikshaw
+  ├─ Spv - special purpose vehicle
+  ├─ Others
+
+■ Vessels
+  ├─ Ship
+  ├─ Boat
+  ├─ Tug
+  ├─ Barge
+  ├─ Dredger
