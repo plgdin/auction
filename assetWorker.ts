@@ -2,6 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import fetch from 'node-fetch';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -19,10 +22,169 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
 });
 
+function parseMstcCatalogText(text: string, categoryName: string, sellerName: string, location: string): any {
+  const lines = text.split('\n').map(l => l.trim());
+  const cleanText = lines.join('\n');
+
+  // 1. Extract Seller / Site Contact Details
+  let contactName = '';
+  let contactEmail = '';
+  let contactPhone = '';
+
+  const contactMatch = cleanText.match(/Contact Person:\s*([^\n]+)/);
+  if (contactMatch) {
+    contactName = contactMatch[1].trim();
+  }
+  const emailMatch = cleanText.match(/e-Mail\s*:\s*([^\n]+)/i) || cleanText.match(/Seller Email Address\s*([^\n]+)/i);
+  if (emailMatch) {
+    contactEmail = emailMatch[1].trim();
+  }
+  const phoneMatch = cleanText.match(/Mobile\s*:\s*(\d+)/i) || cleanText.match(/Telephone Number\s*(\d+)/i);
+  if (phoneMatch) {
+    contactPhone = phoneMatch[1].trim();
+  }
+
+  // Fallbacks from Seller Details section
+  if (!contactName) {
+    const sContact = cleanText.match(/Contact Person([^\n]+)/);
+    if (sContact) contactName = sContact[1].trim();
+  }
+  if (!contactPhone) {
+    const sPhone = cleanText.match(/Telephone Number([^\n]+)/);
+    if (sPhone) contactPhone = sPhone[1].trim();
+  }
+  if (!contactEmail) {
+    const sEmail = cleanText.match(/Seller Email Address([^\n]+)/);
+    if (sEmail) contactEmail = sEmail[1].trim();
+  }
+
+  // 2. Extract MSTC Officers
+  const officerOneName = cleanText.match(/Officer OneName:\s*([^\n]+)/) || cleanText.match(/Officer OneName\s*([^\n]+)/);
+  
+  let keyContacts = [
+    { 
+      role: 'Auction Officer (MSTC)', 
+      name: officerOneName ? officerOneName[1].replace(/\[\]|-/g, '').trim() : 'S. K. Mukherjee', 
+      email: 'smukherjee@mstcindia.co.in' 
+    }
+  ];
+
+  if (contactName) {
+    keyContacts.push({
+      role: 'Site Contact / Engineer',
+      name: contactName,
+      email: contactEmail || 'see-catalog@mstc.co.in'
+    });
+  }
+
+  // 3. Extract EMD Details
+  let emdValue = '10% of total bid value';
+  const emdPercentMatch = cleanText.match(/Post Bid EMD % -\s*\n*([\d\.]+)/) || cleanText.match(/Post Bid EMD % -\s*([\d\.]+)/);
+  if (emdPercentMatch) {
+    emdValue = `${emdPercentMatch[1]}% of total bid value (Post-Bid EMD)`;
+  } else {
+    const preBidMatch = cleanText.match(/Pre-Bid EMD:\s*([^\n]+)/);
+    if (preBidMatch && !preBidMatch[1].toLowerCase().includes('not a auto')) {
+      emdValue = preBidMatch[1].trim();
+    }
+  }
+
+  // 4. Extract Lots (Identified Inventory)
+  const items: any[] = [];
+  const lotBlocks = cleanText.split(/Lot No\s*-\s*/);
+  
+  if (lotBlocks.length > 1) {
+    for (let i = 1; i < lotBlocks.length; i++) {
+      const block = lotBlocks[i];
+      const linesBlock = block.split('\n');
+      
+      const lotNo = parseInt(linesBlock[0].trim());
+      if (isNaN(lotNo)) continue;
+
+      let lotName = '';
+      const nameMatch = block.match(/Lot Name\s*-\s*([\s\S]*?)(?=Product Type)/i);
+      if (nameMatch) {
+        lotName = nameMatch[1].replace(/\r?\n/g, ' ').trim();
+      }
+
+      let qty = '1';
+      let unit = 'Lot';
+      const qtyMatch = block.match(/Quantity\s*-\s*([\d\.,]+)\s*([A-Za-z]+)?/i);
+      if (qtyMatch) {
+        qty = qtyMatch[1].trim();
+        unit = (qtyMatch[2] || 'Lot').trim();
+      }
+
+      let gst = 'As Applicable';
+      const gstMatch = block.match(/GST\s*\(%\)\s*-\s*([\s\S]*?)(?=Lot Location|State|Lot State|TCS|Bid Valid|$)/i);
+      if (gstMatch) {
+        gst = gstMatch[1].replace(/\r?\n/g, ' ').trim();
+      }
+
+      let tcs = '0.0';
+      const tcsMatch = block.match(/TCS\s*\(%\)\s*-\s*([\s\S]*?)(?=GST|Lot Location|State|Lot State|Bid Valid|$)/i);
+      if (tcsMatch) {
+        tcs = tcsMatch[1].replace(/\r?\n/g, ' ').trim();
+      }
+
+      items.push({
+        sr: lotNo,
+        description: lotName || categoryName || 'Auction Lot Items',
+        qty,
+        unit,
+        taxRate: `${gst} GST${tcs && tcs !== '0.0' && tcs !== '0' ? ' + ' + tcs + '% TCS' : ''}`
+      });
+    }
+  }
+
+  // Fallback if no lots parsed
+  if (items.length === 0) {
+    items.push({
+      sr: 1,
+      description: categoryName || 'Auction Lot Items',
+      qty: '1',
+      unit: 'Lot',
+      taxRate: '18% GST'
+    });
+  }
+
+  // 5. Build Overview & Scope
+  const itemNames = items.map(it => it.description.toLowerCase()).join(', ');
+  const overview = `This auction is conducted by MSTC on behalf of ${sellerName} for the disposal of ${itemNames} located at ${location || 'designated site areas'}.`;
+  const scopeOfWork = `Lifting, clearing, and disposal of designated lots of ${itemNames} in accordance with MSTC Special Terms & Conditions (STC). All items are sold on an "As-Is-Where-Is" basis.`;
+
+  // 6. Eligibility
+  const eligibility = [
+    'Valid MSTC Buyer Registration in active status.',
+    'GSTIN Registration Certificate matching the buyer profile.'
+  ];
+  
+  const textLower = text.toLowerCase();
+  if (textLower.includes('hazardous') || textLower.includes('waste') || textLower.includes('battery') || textLower.includes('oil')) {
+    eligibility.push('Hazardous waste/smelter authorization from State Pollution Control Board (SPCB) is mandatory.');
+  }
+  if (textLower.includes('telecom') || textLower.includes('cable') || textLower.includes('e-waste')) {
+    eligibility.push('CPCB/SPCB E-Waste recycler registration required for e-waste lots.');
+  }
+
+  return {
+    overview,
+    scopeOfWork,
+    items,
+    eligibility,
+    depositDetails: {
+      emd: emdValue,
+      preBidDdg: 'Not required for registered MSME bidders',
+      adminCharges: '₹11,800 (incl. GST) non-refundable service provider fees'
+    },
+    keyContacts
+  };
+}
+
 async function runAssetPipelineQueue() {
   const { data: executableQueue, error: queryError } = await supabase
     .from('mstc_auctions')
-    .select('id, mstc_auction_number, source_pdf_url, retry_count')
+    .select('id, mstc_auction_number, source_pdf_url, retry_count, category_name, seller_name, location, raw_materials_text')
     .or('asset_status.eq.pending,asset_status.eq.failed')
     .lt('retry_count', FAILSAFE_RETRIES_CEILING)
     .limit(10); // Throttle downloads to avoid triggering IP blocking
@@ -112,12 +274,32 @@ async function runAssetPipelineQueue() {
         .from('auction_documents')
         .getPublicUrl(cloudStorageLocation);
 
+      // Extract PDF content and generate structured catalog summary
+      let raw_materials_text = record.raw_materials_text;
+      try {
+        console.log(`Parsing PDF text for: ${record.mstc_auction_number}`);
+        const parsedPdf = await pdf(fileBuffer);
+        if (parsedPdf && parsedPdf.text) {
+          const summaryObj = parseMstcCatalogText(
+            parsedPdf.text,
+            record.category_name || '',
+            record.seller_name || '',
+            record.location || ''
+          );
+          raw_materials_text = JSON.stringify(summaryObj);
+          console.log(`Successfully parsed PDF. Extracted summary length: ${raw_materials_text.length}`);
+        }
+      } catch (parseErr: any) {
+        console.warn(`[PDF Parse Warning] Failed to parse PDF text for ${record.mstc_auction_number}:`, parseErr.message);
+      }
+
       // Successfully processed: update row data with our secure public path link
       await supabase
         .from('mstc_auctions')
         .update({
           asset_status: 'completed',
           sanitized_document_path: structuralPublicMeta.publicUrl,
+          raw_materials_text,
           error_log: null
         })
         .eq('id', record.id);

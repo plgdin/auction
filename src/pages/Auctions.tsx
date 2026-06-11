@@ -26,6 +26,24 @@ interface CatalogSummary {
 }
 
 const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
+  if (item.raw_materials_text) {
+    try {
+      const parsed = JSON.parse(item.raw_materials_text);
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        parsed.items &&
+        parsed.eligibility &&
+        parsed.depositDetails &&
+        parsed.keyContacts
+      ) {
+        return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to parse raw_materials_text as JSON, falling back to mock generator:', e);
+    }
+  }
+
   const cat = (item.category_name || '').toUpperCase();
   const seller = (item.seller_name || '').toUpperCase();
   
@@ -614,48 +632,69 @@ export function Auctions() {
                               </div>
                             )}
                             <div className="flex justify-between text-sm">
-                              <span className="text-slate-400">Opening Date</span>
+                              <span className="text-slate-400">Auction Date</span>
                               <span className="font-medium text-slate-700">{new Date(item.opening_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-slate-400">Closing Date</span>
-                              <span className="font-medium text-slate-700">{new Date(item.closing_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
+                              <span className="text-slate-400">Bidding Closes</span>
+                              <span className="font-medium text-slate-700">
+                                {(() => {
+                                  const auctionDate = new Date(item.opening_date);
+                                  const biddingCloseDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                                  return biddingCloseDate.toLocaleDateString(undefined, { dateStyle: 'medium' });
+                                })()}
+                              </span>
                             </div>
-                          </div>
-
-                          {/* Dynamic AI Summary box inside the card */}
-                          <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3.5 mb-4 text-xs text-slate-700 leading-relaxed shadow-3xs">
-                            <div className="flex items-center gap-1.5 text-emerald-800 font-bold mb-1 font-mono uppercase tracking-wider text-[10px]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                              AI Catalog Summary
-                            </div>
-                            <p className="text-slate-700 mb-2 font-medium leading-relaxed">
-                              {generateCatalogSummary(item).overview}
-                            </p>
-                            <div className="border-t border-emerald-100/60 pt-2 space-y-1">
-                              <span className="font-bold text-slate-800 text-[10px] uppercase font-mono tracking-wider">Identified Materials:</span>
-                              <ul className="list-disc pl-4 text-slate-650 space-y-0.5 mt-0.5">
-                                {generateCatalogSummary(item).items.map((lot) => (
-                                  <li key={lot.sr}>
-                                    <strong className="text-slate-800">{lot.description}</strong> ({lot.qty} {lot.unit})
-                                  </li>
-                                ))}
-                              </ul>
+                            {/* Remaining time indicator */}
+                            <div className="flex justify-between items-center text-sm border-t border-slate-100 pt-2 mt-1">
+                              <span className="text-slate-400">Time Left</span>
+                              {(() => {
+                                const auctionDate = new Date(item.opening_date);
+                                const biddingCloseDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                                const now = new Date();
+                                const diffMs = biddingCloseDate.getTime() - now.getTime();
+                                if (diffMs <= 0) {
+                                  return <span className="font-bold text-rose-600 text-xs bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">Bidding Closed</span>;
+                                }
+                                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                const isUrgent = diffDays < 3;
+                                const isWarning = diffDays < 7;
+                                return (
+                                  <span className={clsx(
+                                    "font-bold text-xs px-2 py-0.5 rounded-full border",
+                                    isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
+                                    isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
+                                    "text-emerald-700 bg-emerald-50 border-emerald-200"
+                                  )}>
+                                    {diffDays}d {diffHours}h left
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </div>
                         </div>
 
                         <div>
                           {item.sanitized_document_path ? (
-                            <a
-                              href={item.sanitized_document_path}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="w-full inline-flex justify-center items-center py-3 px-4 rounded-xl text-sm font-semibold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
-                            >
-                              <Download className="w-4 h-4 mr-2" />
-                              Download PDF Catalog
-                            </a>
+                            <div className="flex gap-2 w-full">
+                              <button
+                                onClick={() => setSelectedPreviewItem(item)}
+                                className="flex-grow inline-flex justify-center items-center py-3 px-4 rounded-xl text-sm font-semibold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </button>
+                              <a
+                                href={item.sanitized_document_path}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex justify-center items-center p-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 active:scale-[0.98] transition-all duration-200 shrink-0 cursor-pointer"
+                                title="Download PDF Catalog"
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                            </div>
                           ) : (
                             <button
                               disabled
@@ -678,205 +717,48 @@ export function Auctions() {
         </div>
       </div>
 
-      {/* Document Preview Modal */}
+      {/* Catalog Details Modal */}
       {selectedPreviewItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 sm:p-6 md:p-8 animate-fade-in">
-          <div className="relative w-full max-w-6xl h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row border border-slate-200 animate-scale-up">
-            {/* Left Panel (Interactive Summary or PDF Viewer) */}
-            <div className="flex-1 bg-slate-900 relative flex flex-col h-1/2 md:h-full overflow-hidden">
-              {/* Tab Bar Header */}
-              <div className="absolute top-4 left-4 z-10 flex gap-2 animate-fade-in">
-                <button
-                  onClick={() => setPreviewTab('summary')}
-                  className={clsx(
-                    "text-[10px] tracking-wider uppercase px-3 py-1.5 rounded-lg font-mono font-bold shadow-sm cursor-pointer transition-all duration-200",
-                    previewTab === 'summary'
-                      ? "bg-primary text-white"
-                      : "bg-slate-950/75 text-slate-300 hover:bg-slate-900"
-                  )}
-                >
-                  ⚡ AI Summary
-                </button>
-                <button
-                  onClick={() => setPreviewTab('pdf')}
-                  className={clsx(
-                    "text-[10px] tracking-wider uppercase px-3 py-1.5 rounded-lg font-mono font-bold shadow-sm cursor-pointer transition-all duration-200",
-                    previewTab === 'pdf'
-                      ? "bg-primary text-white"
-                      : "bg-slate-950/75 text-slate-300 hover:bg-slate-900"
-                  )}
-                >
-                  📄 Original PDF
-                </button>
+          <div className="relative w-full max-w-4xl h-[90vh] md:h-[80vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100 font-mono uppercase tracking-wider">
+                  Gov Catalog
+                </span>
+                <span className="text-sm font-semibold text-slate-400 font-mono">
+                  Ref: {selectedPreviewItem.mstc_auction_number.split('/').pop()}
+                </span>
               </div>
-
-              {previewTab === 'pdf' ? (
-                <iframe
-                  src={`${selectedPreviewItem.sanitized_document_path}#toolbar=1&navpanes=0&view=FitH`}
-                  className="w-full h-full pt-14 border-0"
-                  title={selectedPreviewItem.category_name}
-                />
-              ) : (
-                /* AI Summary Layout */
-                <div className="w-full h-full pt-14 pb-6 px-6 overflow-y-auto bg-slate-950 text-slate-200 select-text scrollbar-thin">
-                  <div className="max-w-3xl mx-auto space-y-6">
-                    {/* Header Banner */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-md space-y-2.5">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider">
-                          Auto-Generated
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          Ref: {selectedPreviewItem.mstc_auction_number}
-                        </span>
-                      </div>
-                      <h2 className="text-xl font-black text-white leading-tight">
-                        AI-Generated Catalog Summary Report
-                      </h2>
-                      <p className="text-xs text-slate-400">
-                        Extracted and summarized from the official MSTC auction detailed report. Verify all terms with the original document before bidding.
-                      </p>
-                    </div>
-
-                    {/* Quick Stats Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">Total Lots</span>
-                        <p className="text-lg font-bold text-white mt-1">
-                          {generateCatalogSummary(selectedPreviewItem).items.length} lots
-                        </p>
-                      </div>
-                      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">Tax Structure</span>
-                        <p className="text-lg font-bold text-white mt-1">18% GST (average)</p>
-                      </div>
-                      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 col-span-2 sm:col-span-1">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">Pre-Bid EMD</span>
-                        <p className="text-lg font-bold text-white mt-1 truncate" title={generateCatalogSummary(selectedPreviewItem).depositDetails.emd}>
-                          10% of Bid
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Section: Executive Overview */}
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-bold text-slate-350 uppercase tracking-wider border-b border-slate-800 pb-1.5 font-mono">
-                        Executive Overview
-                      </h3>
-                      <p className="text-sm text-slate-300 leading-relaxed">
-                        {generateCatalogSummary(selectedPreviewItem).overview}
-                      </p>
-                      <p className="text-sm text-slate-300 leading-relaxed mt-2">
-                        <strong>Scope of Work:</strong> {generateCatalogSummary(selectedPreviewItem).scopeOfWork}
-                      </p>
-                    </div>
-
-                    {/* Section: Inventory Lots */}
-                    <div className="space-y-3.5">
-                      <h3 className="text-sm font-bold text-slate-350 uppercase tracking-wider border-b border-slate-800 pb-1.5 font-mono">
-                        Identified Inventory & Materials
-                      </h3>
-                      <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/40">
-                        <table className="w-full text-left border-collapse text-xs">
-                          <thead>
-                            <tr className="bg-slate-900 text-slate-300 border-b border-slate-800 font-mono">
-                              <th className="py-2.5 px-3 font-semibold w-12 text-center">Lot</th>
-                              <th className="py-2.5 px-3 font-semibold">Material Description</th>
-                              <th className="py-2.5 px-3 font-semibold text-right">Quantity</th>
-                              <th className="py-2.5 px-3 font-semibold text-center">Taxes</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-800/60 text-slate-350">
-                            {generateCatalogSummary(selectedPreviewItem).items.map((row) => (
-                              <tr key={row.sr} className="hover:bg-slate-900/40">
-                                <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                                <td className="py-2.5 px-3 font-semibold text-slate-100">{row.description}</td>
-                                <td className="py-2.5 px-3 text-right font-mono text-white font-bold">{row.qty} {row.unit}</td>
-                                <td className="py-2.5 px-3 text-center font-mono text-[10px]">{row.taxRate}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    {/* Section: Eligibility Criteria */}
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-bold text-slate-350 uppercase tracking-wider border-b border-slate-800 pb-1.5 font-mono">
-                        Buyer Eligibility & Compliance
-                      </h3>
-                      <ul className="list-disc pl-5 space-y-1.5 text-sm text-slate-300">
-                        {generateCatalogSummary(selectedPreviewItem).eligibility.map((el, i) => (
-                          <li key={i} className="leading-relaxed">{el}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Section: Charges */}
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-bold text-slate-350 uppercase tracking-wider border-b border-slate-800 pb-1.5 font-mono">
-                        Financial Terms & Fees
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
-                          <span className="text-slate-400 font-mono">Pre-Bid EMD:</span>
-                          <span className="font-semibold text-slate-200">10% of bid value</span>
-                        </div>
-                        <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
-                          <span className="text-slate-400 font-mono">Service Fee:</span>
-                          <span className="font-semibold text-slate-200">₹11,800 non-refundable</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Section: Officers & Contacts */}
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-bold text-slate-350 uppercase tracking-wider border-b border-slate-800 pb-1.5 font-mono">
-                        Key Contact Personnel
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {generateCatalogSummary(selectedPreviewItem).keyContacts.map((contact, i) => (
-                          <div key={i} className="bg-slate-900/40 border border-slate-800 p-3 rounded-xl space-y-1">
-                            <span className="text-[9px] font-mono text-primary uppercase tracking-wider">{contact.role}</span>
-                            <h4 className="text-xs font-bold text-white">{contact.name}</h4>
-                            <p className="text-[10px] text-slate-400 font-mono break-all">{contact.email}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => setSelectedPreviewItem(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5.5 h-5.5" />
+              </button>
             </div>
 
+            {/* Modal Body (Scrollable) */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/25">
+              
+              {/* Category & Auction Ref Title */}
+              <div>
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
+                <h3 className="text-2xl font-black text-slate-950 leading-tight">
+                  {selectedPreviewItem.category_name}
+                </h3>
+              </div>
 
-            {/* Info Sidebar (Right) */}
-            <div className="w-full md:w-80 shrink-0 bg-slate-50 border-t md:border-t-0 md:border-l border-slate-200 p-6 flex flex-col justify-between h-1/2 md:h-full overflow-y-auto">
-              <div className="space-y-6">
-                <div className="flex justify-between items-start">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-2xs">
-                    PDF Connected
-                  </span>
-                  <button
-                    onClick={() => setSelectedPreviewItem(null)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-slate-650 hover:bg-slate-200 transition-colors cursor-pointer"
-                    title="Close Preview"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-
-                <div>
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Category / Item Type</h4>
-                  <h3 className="text-lg font-extrabold text-slate-950 leading-snug">
-                    {selectedPreviewItem.category_name}
-                  </h3>
-                </div>
-
-                <div>
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Auction Reference Number</h4>
-                  <div className="bg-white rounded-xl p-3 border border-slate-200 font-mono text-xs text-slate-650 break-all select-all flex justify-between items-center group shadow-2xs">
-                    <span className="truncate mr-2">{selectedPreviewItem.mstc_auction_number}</span>
+              {/* General Parameters Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Reference Number */}
+                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1.5">
+                  <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Ref Number</h5>
+                  <div className="font-mono text-sm text-slate-700 break-all select-all flex justify-between items-center bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                    <span className="mr-2 text-[13px] font-bold leading-snug">{selectedPreviewItem.mstc_auction_number}</span>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(selectedPreviewItem.mstc_auction_number);
@@ -887,7 +769,7 @@ export function Auctions() {
                       title="Copy reference"
                     >
                       {copied ? (
-                        <span className="text-[10px] font-bold text-emerald-650 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 animate-bounce">
+                        <span className="text-[9px] font-bold text-emerald-650 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-150">
                           Copied!
                         </span>
                       ) : (
@@ -899,85 +781,175 @@ export function Auctions() {
                   </div>
                 </div>
 
-                <div className="space-y-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+                {/* Seller & Location Details */}
+                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2.5">
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Seller</span>
-                    <span className="text-sm font-bold text-slate-800 leading-tight">{selectedPreviewItem.seller_name}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Seller Authority</span>
+                    <span className="text-sm font-bold text-slate-800 leading-tight mt-0.5">{selectedPreviewItem.seller_name}</span>
                   </div>
                   {selectedPreviewItem.location && (
-                    <div className="flex flex-col border-t border-slate-100 pt-2.5">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Location / State</span>
-                      <span className="text-sm font-bold text-slate-800">{selectedPreviewItem.location}</span>
+                    <div className="flex flex-col border-t border-slate-100 pt-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Location / State</span>
+                      <span className="text-sm font-bold text-slate-800 mt-0.5">{selectedPreviewItem.location}</span>
                     </div>
                   )}
-                  <div className="flex flex-col border-t border-slate-100 pt-2.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Opening Date</span>
-                    <span className="text-sm font-semibold text-slate-700">
-                      {new Date(selectedPreviewItem.opening_date).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                </div>
+
+                {/* Dates & Countdown */}
+                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400 font-mono uppercase tracking-wider">Auction Date:</span>
+                    <span className="font-semibold text-slate-800">
+                      {new Date(selectedPreviewItem.opening_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                     </span>
                   </div>
-                  <div className="flex flex-col border-t border-slate-100 pt-2.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Closing Date</span>
-                    <span className="text-sm font-semibold text-slate-700">
-                      {new Date(selectedPreviewItem.closing_date).toLocaleDateString(undefined, { dateStyle: 'long' })}
-                    </span>
-                  </div>
-                  <div className="flex flex-col border-t border-slate-100 pt-2.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Time Remaining</span>
-                    <span className={clsx(
-                      "text-sm font-bold",
-                      selectedPreviewItem.closing_date && new Date(selectedPreviewItem.closing_date).getTime() - new Date().getTime() < 24 * 60 * 60 * 1000
-                        ? "text-rose-600 animate-pulse"
-                        : "text-slate-800"
-                    )}>
+                  <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5">
+                    <span className="text-slate-400 font-mono uppercase tracking-wider">Bidding Closes:</span>
+                    <span className="font-semibold text-slate-800">
                       {(() => {
-                        const closingDate = new Date(selectedPreviewItem.closing_date);
-                        const now = new Date();
-                        const diffMs = closingDate.getTime() - now.getTime();
-                        if (diffMs <= 0) return 'Ended';
-
-                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                        const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-                        if (diffDays > 0) {
-                          return `${diffDays}d ${diffHours}h left`;
-                        }
-                        return `${diffHours}h ${diffMins}m left`;
+                        const auctionDate = new Date(selectedPreviewItem.opening_date);
+                        const biddingCloseDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                        return biddingCloseDate.toLocaleDateString(undefined, { dateStyle: 'medium' });
                       })()}
                     </span>
                   </div>
-                </div>
-                
-                <div className="text-xs text-slate-400 bg-amber-50 border border-amber-100 rounded-xl p-3 leading-relaxed flex items-start gap-2 shadow-2xs">
-                  <svg className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <span>
-                    <strong>Pro-tip:</strong> Use the preview toolbar to search (Ctrl+F), zoom, or print the document directly.
-                  </span>
+                  <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5 items-center">
+                    <span className="text-slate-400 font-mono uppercase tracking-wider">Remaining:</span>
+                    {(() => {
+                      const auctionDate = new Date(selectedPreviewItem.opening_date);
+                      const biddingCloseDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                      const now = new Date();
+                      const diffMs = biddingCloseDate.getTime() - now.getTime();
+                      if (diffMs <= 0) {
+                        return <span className="font-bold text-sm text-rose-600">Bidding Closed</span>;
+                      }
+                      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                      const isUrgent = diffDays < 3;
+                      const isWarning = diffDays < 7;
+                      return (
+                        <span className={clsx(
+                          "font-bold text-sm",
+                          isUrgent ? "text-rose-600 animate-pulse" :
+                          isWarning ? "text-amber-600" :
+                          "text-slate-800"
+                        )}>
+                          {diffDays > 0 ? `${diffDays}d ${diffHours}h left` : `${diffHours}h ${diffMins}m left`}
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2.5 pt-6 border-t border-slate-200 mt-6 md:mt-0">
-                <a
-                  href={selectedPreviewItem.sanitized_document_path || '#'}
-                  download
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full inline-flex justify-center items-center py-3.5 px-4 rounded-xl text-sm font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-lg active:scale-[0.98] transition-all cursor-pointer"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download PDF Catalog
-                </a>
-                <button
-                  onClick={() => setSelectedPreviewItem(null)}
-                  className="w-full py-3 px-4 rounded-xl text-sm font-bold text-slate-700 bg-slate-200/60 hover:bg-slate-200 active:scale-[0.98] transition-all cursor-pointer"
-                >
-                  Close Preview
-                </button>
+              {/* Identified Materials & Lots */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
+                  <span>Identified Inventory & Materials</span>
+                  <span className="text-[10px] text-slate-405 font-medium normal-case font-sans">
+                    {generateCatalogSummary(selectedPreviewItem).items.length} lots identified
+                  </span>
+                </h4>
+                
+                <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
+                        <th className="py-2.5 px-3.5 font-bold w-12 text-center">Lot</th>
+                        <th className="py-2.5 px-3.5 font-bold">Material Description</th>
+                        <th className="py-2.5 px-3.5 font-bold text-right">Quantity</th>
+                        <th className="py-2.5 px-3.5 font-bold text-center">Taxes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {generateCatalogSummary(selectedPreviewItem).items.map((row) => (
+                        <tr key={row.sr} className="hover:bg-slate-50/50">
+                          <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
+                          <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.description}</td>
+                          <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
+                          <td className="py-2.5 px-3.5 text-center font-mono text-[10px] text-slate-500">{row.taxRate}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
+              {/* Eligibility, Compliance & Financial Terms */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Compliance Card */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                    Buyer Eligibility & Compliance
+                  </h4>
+                  <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-650">
+                    {generateCatalogSummary(selectedPreviewItem).eligibility.map((el, i) => (
+                      <li key={i} className="leading-relaxed">{el}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Financial Charges Card */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                    Financial Terms & Service Fees
+                  </h4>
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-slate-500 font-mono">EMD Details</span>
+                      <span className="font-bold text-slate-800">
+                        {generateCatalogSummary(selectedPreviewItem).depositDetails.emd}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-slate-500 font-mono">Service Charge / Fees</span>
+                      <span className="font-bold text-slate-800">
+                        {generateCatalogSummary(selectedPreviewItem).depositDetails.adminCharges}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Contact Personnel */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3.5">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                  Key Contact Personnel
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {generateCatalogSummary(selectedPreviewItem).keyContacts.map((contact, i) => (
+                    <div key={i} className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl space-y-1">
+                      <span className="text-[9px] font-mono text-primary font-bold uppercase tracking-wider">{contact.role}</span>
+                      <h4 className="text-xs font-black text-slate-900">{contact.name}</h4>
+                      <p className="text-[10px] text-slate-500 font-mono break-all mt-0.5">{contact.email}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
             </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-150 bg-slate-50/50 flex flex-col sm:flex-row gap-3 sm:justify-end items-center">
+              <button
+                onClick={() => setSelectedPreviewItem(null)}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-bold text-slate-650 hover:text-slate-850 hover:bg-slate-200 transition-all cursor-pointer text-center"
+              >
+                Close Details
+              </button>
+              <a
+                href={selectedPreviewItem.sanitized_document_path || '#'}
+                download
+                target="_blank"
+                rel="noreferrer"
+                className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-6 rounded-xl text-sm font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download PDF Catalog
+              </a>
+            </div>
+
           </div>
         </div>
       )}
