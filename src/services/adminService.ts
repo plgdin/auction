@@ -173,5 +173,57 @@ export const adminService = {
       activeAuctions: auctionCount || 0,
       activeTenders: tenderCount || 0
     };
+  },
+
+  // Scraper & Asset Worker Dashboard Services
+  async getScraperAnalytics() {
+    const { data: allAuctions, error } = await supabase
+      .from('mstc_auctions')
+      .select('asset_status');
+
+    if (error) {
+      console.error('Error fetching scraper analytics:', error);
+      return { total: 0, pending: 0, processing: 0, completed: 0, failed: 0 };
+    }
+
+    const stats = { total: 0, pending: 0, processing: 0, completed: 0, failed: 0 };
+    allAuctions.forEach(row => {
+      stats.total++;
+      if (row.asset_status === 'pending') stats.pending++;
+      else if (row.asset_status === 'processing') stats.processing++;
+      else if (row.asset_status === 'completed') stats.completed++;
+      else if (row.asset_status === 'failed') stats.failed++;
+    });
+
+    return stats;
+  },
+
+  async getScraperAuctions(limit: number = 100): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('mstc_auctions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching scraper auctions:', error);
+      return [];
+    }
+    return data;
+  },
+
+  async getScraperLogs(limit: number = 100): Promise<AuditLog[]> {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .in('action', ['mstc_auction_downloaded', 'mstc_auction_deleted', 'mstc_auction_failed'])
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching scraper audit logs:', error);
+      return [];
+    }
+    return data;
   }
 };

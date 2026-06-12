@@ -304,6 +304,19 @@ async function runAssetPipelineQueue() {
         })
         .eq('id', record.id);
 
+      // Log download event to audit logs
+      await supabase
+        .from('audit_logs')
+        .insert({
+          action: 'mstc_auction_downloaded',
+          entity_type: 'mstc_auction',
+          entity_id: record.id,
+          details: {
+            mstc_auction_number: record.mstc_auction_number,
+            sanitized_document_path: structuralPublicMeta.publicUrl
+          }
+        });
+
       console.log(`Document processing successfully finalized for: ${record.mstc_auction_number}`);
 
     } catch (jobExecutionFault: any) {
@@ -320,6 +333,21 @@ async function runAssetPipelineQueue() {
           error_log: `[Error State Cycle ${scaledRetryTracker}] ${jobExecutionFault.message}`
         })
         .eq('id', record.id);
+
+      // Log failure event to audit logs
+      await supabase
+        .from('audit_logs')
+        .insert({
+          action: 'mstc_auction_failed',
+          entity_type: 'mstc_auction',
+          entity_id: record.id,
+          details: {
+            mstc_auction_number: record.mstc_auction_number,
+            retry_count: scaledRetryTracker,
+            reached_max_limit: reachedMaxLimit,
+            error: jobExecutionFault.message
+          }
+        });
     }
   }
 }

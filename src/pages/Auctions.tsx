@@ -144,8 +144,14 @@ export function Auctions() {
   
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
   const [isMstcLoading, setIsMstcLoading] = useState(false);
-  const [mstcOptions, setMstcOptions] = useState<{ categories: string[]; sellers: string[]; locations: string[] }>({
+  const [mstcOptions, setMstcOptions] = useState<{
+    categories: string[];
+    subcategories: Record<string, string[]>;
+    sellers: string[];
+    locations: string[];
+  }>({
     categories: [],
+    subcategories: {},
     sellers: [],
     locations: []
   });
@@ -155,6 +161,7 @@ export function Auctions() {
   const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
 
   const selectedMstcCategory = searchParams.get('mstc_category') || '';
+  const selectedMstcSubcategory = searchParams.get('mstc_subcategory') || '';
   const selectedMstcLocation = searchParams.get('mstc_location') || '';
 
   const [isGridView, setIsGridView] = useState(true);
@@ -250,6 +257,7 @@ export function Auctions() {
     try {
       const data = await MstcSearchService.searchMarketplaceCatalog(searchQuery, {
         category: selectedMstcCategory || undefined,
+        subcategory: selectedMstcSubcategory || undefined,
         location: selectedMstcLocation || undefined
       });
       setMstcAuctions(data);
@@ -258,7 +266,7 @@ export function Auctions() {
     } finally {
       setIsMstcLoading(false);
     }
-  }, [searchQuery, selectedMstcCategory, selectedMstcLocation]);
+  }, [searchQuery, selectedMstcCategory, selectedMstcSubcategory, selectedMstcLocation]);
 
   const loadMstcOptions = useCallback(async () => {
     try {
@@ -560,7 +568,7 @@ export function Auctions() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
                     <select
@@ -573,6 +581,7 @@ export function Auctions() {
                         } else {
                           newParams.delete('mstc_category');
                         }
+                        newParams.delete('mstc_subcategory');
                         setSearchParams(newParams);
                       }}
                       className="w-full pl-3 pr-10 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-primary focus:border-primary text-slate-750 bg-white"
@@ -581,6 +590,38 @@ export function Auctions() {
                       {mstcOptions.categories.map(cat => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
+                    <select
+                      value={selectedMstcSubcategory}
+                      disabled={!selectedMstcCategory}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const newParams = new URLSearchParams(searchParams);
+                        if (val) {
+                          newParams.set('mstc_subcategory', val);
+                        } else {
+                          newParams.delete('mstc_subcategory');
+                        }
+                        setSearchParams(newParams);
+                      }}
+                      className={`w-full pl-3 pr-10 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-primary focus:border-primary text-slate-750 bg-white ${
+                        !selectedMstcCategory ? 'border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50' : 'border-slate-300'
+                      }`}
+                    >
+                      {!selectedMstcCategory ? (
+                        <option value="">Select a category first</option>
+                      ) : (
+                        <>
+                          <option value="">All Sub-Categories</option>
+                          {(mstcOptions.subcategories[selectedMstcCategory] || []).map(sub => (
+                            <option key={sub} value={sub}>{sub}</option>
+                          ))}
+                        </>
+                      )}
                     </select>
                   </div>
 
@@ -749,9 +790,27 @@ export function Auctions() {
                             </span>
                           </div>
                           
-                          <h3 className="text-lg font-bold text-slate-950 mb-2 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
-                            {item.category_name}
-                          </h3>
+                          {(() => {
+                            const parts = item.category_name.split(' | ');
+                            const mainCat = parts[0];
+                            const subCat = parts[1];
+                            return (
+                              <div className="mb-2">
+                                {subCat ? (
+                                  <>
+                                    <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">{mainCat}</div>
+                                    <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                                      {subCat}
+                                    </h3>
+                                  </>
+                                ) : (
+                                  <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                                    {mainCat}
+                                  </h3>
+                                )}
+                              </div>
+                            );
+                          })()}
                           
                           <div className="bg-slate-50 rounded-xl p-3 mb-4 font-mono text-xs text-slate-650 break-all select-all border border-slate-100">
                             {item.mstc_auction_number}
@@ -884,9 +943,23 @@ export function Auctions() {
               {/* Category & Auction Ref Title */}
               <div>
                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
-                <h3 className="text-2xl font-black text-slate-950 leading-tight">
-                  {selectedPreviewItem.category_name}
-                </h3>
+                {(() => {
+                  const parts = selectedPreviewItem.category_name.split(' | ');
+                  const mainCat = parts[0];
+                  const subCat = parts[1];
+                  return (
+                    <div className="flex flex-col gap-0.5">
+                      {subCat ? (
+                        <>
+                          <span className="text-xs font-semibold text-primary uppercase tracking-wider">{mainCat}</span>
+                          <h3 className="text-2xl font-black text-slate-950 leading-tight">{subCat}</h3>
+                        </>
+                      ) : (
+                        <h3 className="text-2xl font-black text-slate-950 leading-tight">{mainCat}</h3>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* General Parameters Grid */}

@@ -78,7 +78,7 @@ export const MstcSearchService = {
    */
   async searchMarketplaceCatalog(
     query: string,
-    filters?: { category?: string; seller?: string; location?: string }
+    filters?: { category?: string; subcategory?: string; seller?: string; location?: string }
   ): Promise<MstcSanitizedAuction[]> {
     try {
       let queryBuilder = supabase
@@ -90,8 +90,10 @@ export const MstcSearchService = {
         queryBuilder = queryBuilder.or(`mstc_auction_number.ilike.%${query}%,seller_name.ilike.%${query}%,category_name.ilike.%${query}%`);
       }
       
-      if (filters?.category) {
-        queryBuilder = queryBuilder.eq('category_name', filters.category);
+      if (filters?.category && filters?.subcategory) {
+        queryBuilder = queryBuilder.eq('category_name', `${filters.category} | ${filters.subcategory}`);
+      } else if (filters?.category) {
+        queryBuilder = queryBuilder.ilike('category_name', `${filters.category} | %`);
       }
       
       if (filters?.seller) {
@@ -117,7 +119,12 @@ export const MstcSearchService = {
   /**
    * Fetches unique filter options (State/Location, Category, Seller) from the database
    */
-  async getMstcFilterOptions(): Promise<{ categories: string[]; sellers: string[]; locations: string[] }> {
+  async getMstcFilterOptions(): Promise<{
+    categories: string[];
+    subcategories: Record<string, string[]>;
+    sellers: string[];
+    locations: string[];
+  }> {
     try {
       const { data, error } = await supabase
         .from('mstc_auctions')
@@ -127,23 +134,42 @@ export const MstcSearchService = {
       if (error) throw error;
       
       const categories = new Set<string>();
+      const subcategoriesMap: Record<string, Set<string>> = {};
       const sellers = new Set<string>();
       const locations = new Set<string>();
       
       data?.forEach(row => {
-        if (row.category_name) categories.add(row.category_name);
+        if (row.category_name) {
+          const parts = row.category_name.split(' | ');
+          const cat = parts[0].trim();
+          const sub = parts[1]?.trim();
+          
+          categories.add(cat);
+          if (sub) {
+            if (!subcategoriesMap[cat]) {
+              subcategoriesMap[cat] = new Set<string>();
+            }
+            subcategoriesMap[cat].add(sub);
+          }
+        }
         if (row.seller_name) sellers.add(row.seller_name);
         if (row.location) locations.add(row.location);
       });
+
+      const subcategories: Record<string, string[]> = {};
+      for (const [cat, subSet] of Object.entries(subcategoriesMap)) {
+        subcategories[cat] = Array.from(subSet).sort();
+      }
       
       return {
         categories: Array.from(categories).sort(),
+        subcategories,
         sellers: Array.from(sellers).sort(),
         locations: Array.from(locations).sort()
       };
     } catch (error) {
       console.error('Failed to fetch MSTC filter options:', error);
-      return { categories: [], sellers: [], locations: [] };
+      return { categories: [], subcategories: {}, sellers: [], locations: [] };
     }
   },
 
