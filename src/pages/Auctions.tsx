@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X } from 'lucide-react';
 import { AuctionCard } from '../components/auction/AuctionCard';
+import { MstcCard } from '../components/auction/MstcCard';
 import { AuctionFilters } from '../components/auction/AuctionFilters';
 import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
@@ -135,7 +136,7 @@ export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
   
-  const activeTab = searchParams.get('tab') === 'mstc' ? 'mstc' : 'commercial';
+  const activeTab = searchParams.get('tab') === 'commercial' ? 'commercial' : 'mstc';
 
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -163,6 +164,7 @@ export function Auctions() {
   const selectedMstcCategory = searchParams.get('mstc_category') || '';
   const selectedMstcSubcategory = searchParams.get('mstc_subcategory') || '';
   const selectedMstcLocation = searchParams.get('mstc_location') || '';
+  const selectedMstcSeller = searchParams.get('mstc_seller') || '';
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -258,15 +260,34 @@ export function Auctions() {
       const data = await MstcSearchService.searchMarketplaceCatalog(searchQuery, {
         category: selectedMstcCategory || undefined,
         subcategory: selectedMstcSubcategory || undefined,
-        location: selectedMstcLocation || undefined
+        location: selectedMstcLocation || undefined,
+        seller: selectedMstcSeller || undefined
       });
-      setMstcAuctions(data);
+      
+      let filteredData = data;
+      if (startDate) {
+        const start = new Date(startDate);
+        filteredData = filteredData.filter(item => {
+          if (!item.opening_date) return false;
+          const openDate = new Date(item.opening_date);
+          return openDate >= start;
+        });
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        filteredData = filteredData.filter(item => {
+          if (!item.opening_date) return false;
+          const openDate = new Date(item.opening_date);
+          return openDate <= end;
+        });
+      }
+      setMstcAuctions(filteredData);
     } catch (error) {
       console.error('Error loading MSTC catalogs:', error);
     } finally {
       setIsMstcLoading(false);
     }
-  }, [searchQuery, selectedMstcCategory, selectedMstcSubcategory, selectedMstcLocation]);
+  }, [searchQuery, selectedMstcCategory, selectedMstcSubcategory, selectedMstcLocation, selectedMstcSeller, startDate, endDate]);
 
   const loadMstcOptions = useCallback(async () => {
     try {
@@ -286,10 +307,9 @@ export function Auctions() {
   }, [activeTab, loadData, loadMstcData]);
 
   useEffect(() => {
-    if (activeTab === 'mstc') {
-      loadMstcOptions();
-    }
-  }, [activeTab, loadMstcOptions]);
+    // Load options when tab is active OR initially on mount
+    loadMstcOptions();
+  }, [loadMstcOptions]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -300,6 +320,69 @@ export function Auctions() {
       } else {
         next.delete('q');
       }
+      next.set('page', '1');
+      return next;
+    });
+  };
+
+  const handleMstcFilterChange = (newFilters: any) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      
+      // Update Category
+      if ('categoryIds' in newFilters) {
+        if (newFilters.categoryIds && newFilters.categoryIds.length > 0) {
+          next.set('mstc_category', newFilters.categoryIds[0]);
+        } else {
+          next.delete('mstc_category');
+        }
+      }
+
+      // Update Subcategory
+      if ('subcategory' in newFilters) {
+        if (newFilters.subcategory) {
+          next.set('mstc_subcategory', newFilters.subcategory);
+        } else {
+          next.delete('mstc_subcategory');
+        }
+      }
+      
+      // Update Location
+      if ('location' in newFilters) {
+        if (newFilters.location) {
+          next.set('mstc_location', newFilters.location);
+        } else {
+          next.delete('mstc_location');
+        }
+      }
+
+      // Update Seller (mapped to regionalOffice)
+      if ('regionalOffice' in newFilters) {
+        if (newFilters.regionalOffice) {
+          next.set('mstc_seller', newFilters.regionalOffice);
+        } else {
+          next.delete('mstc_seller');
+        }
+      }
+
+      // Update startDate
+      if ('startDate' in newFilters) {
+        if (newFilters.startDate) {
+          next.set('startDate', newFilters.startDate);
+        } else {
+          next.delete('startDate');
+        }
+      }
+
+      // Update endDate
+      if ('endDate' in newFilters) {
+        if (newFilters.endDate) {
+          next.set('endDate', newFilters.endDate);
+        } else {
+          next.delete('endDate');
+        }
+      }
+      
       next.set('page', '1');
       return next;
     });
@@ -412,31 +495,29 @@ export function Auctions() {
           <div className="flex space-x-6 mb-6 border-b border-slate-800 pb-2">
             <button
               onClick={() => {
-                setSearchParams({});
-                setPage(1);
-              }}
-              className={clsx(
-                "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none",
-                activeTab === 'commercial' 
-                  ? "border-primary text-white" 
-                  : "border-transparent text-slate-450 hover:text-slate-200"
-              )}
-            >
-              Commercial Auctions
-            </button>
-            <button
-              onClick={() => {
                 setSearchParams({ tab: 'mstc' });
-                setPage(1);
               }}
               className={clsx(
-                "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none",
+                "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none cursor-pointer",
                 activeTab === 'mstc' 
-                  ? "border-primary text-white" 
-                  : "border-transparent text-slate-450 hover:text-slate-200"
+                  ? "border-primary text-white font-bold" 
+                  : "border-transparent text-slate-300 hover:text-white"
               )}
             >
               MSTC Government Catalogs
+            </button>
+            <button
+              onClick={() => {
+                setSearchParams({ tab: 'commercial' });
+              }}
+              className={clsx(
+                "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none cursor-pointer",
+                activeTab === 'commercial' 
+                  ? "border-primary text-white font-bold" 
+                  : "border-transparent text-slate-300 hover:text-white"
+              )}
+            >
+              Commercial Auctions
             </button>
           </div>
 
@@ -464,47 +545,54 @@ export function Auctions() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           
-          {/* Sidebar Filters (only for commercial auctions tab) */}
-          {activeTab === 'commercial' && (
-            <>
-              {/* Mobile Filter Toggle */}
-              <div className="lg:hidden flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                <button 
-                  onClick={() => setIsFiltersOpen(true)}
-                  className="flex items-center text-slate-700 font-medium"
-                >
-                  <SlidersHorizontal className="w-5 h-5 mr-2" />
-                  Filters
-                </button>
-                <div className="text-sm text-slate-500">
-                  {!isAnyFilterActive ? '0 results' : `${totalCount} results`}
-                </div>
-              </div>
+          {/* Mobile Filter Toggle */}
+          <div className="lg:hidden flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 w-full mb-4">
+            <button 
+              onClick={() => setIsFiltersOpen(true)}
+              className="flex items-center text-slate-700 font-medium cursor-pointer"
+            >
+              <SlidersHorizontal className="w-5 h-5 mr-2" />
+              Filters
+            </button>
+            <div className="text-sm text-slate-500 font-medium">
+              {activeTab === 'commercial' 
+                ? (!isAnyFilterActive ? '0 results' : `${totalCount} results`)
+                : `${mstcAuctions.length} results`
+              }
+            </div>
+          </div>
 
-              {/* Sidebar Filters */}
-              <div className="lg:w-1/4 shrink-0">
-                <AuctionFilters 
-                  isOpen={isFiltersOpen} 
-                  onClose={() => setIsFiltersOpen(false)} 
-                  onFilterChange={handleFilterChange}
-                  initialFilters={filters}
-                />
-                {/* Overlay for mobile filters */}
-                {isFiltersOpen && (
-                  <div 
-                    className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden"
-                    onClick={() => setIsFiltersOpen(false)}
-                  />
-                )}
-              </div>
-            </>
-          )}
+          {/* Sidebar Filters */}
+          <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto custom-scrollbar z-20">
+            <AuctionFilters 
+              isOpen={isFiltersOpen} 
+              onClose={() => setIsFiltersOpen(false)} 
+              onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
+              initialFilters={activeTab === 'commercial' ? filters : {
+                categoryIds: selectedMstcCategory ? [selectedMstcCategory] : [],
+                subcategory: selectedMstcSubcategory,
+                location: selectedMstcLocation,
+                regionalOffice: selectedMstcSeller,
+                startDate,
+                endDate
+              }}
+              activeTab={activeTab}
+              customCategories={mstcOptions.categories}
+              customSubcategories={mstcOptions.subcategories}
+              customLocations={mstcOptions.locations}
+              customSellers={mstcOptions.sellers}
+            />
+            {/* Overlay for mobile filters */}
+            {isFiltersOpen && (
+              <div 
+                className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden"
+                onClick={() => setIsFiltersOpen(false)}
+              />
+            )}
+          </div>
 
           {/* Main Content */}
-          <div className={clsx(
-            "flex-grow flex flex-col",
-            activeTab === 'commercial' ? "lg:w-3/4" : "w-full"
-          )}>
+          <div className="flex-grow flex flex-col lg:w-3/4">
             
             {/* Toolbar */}
             {activeTab === 'commercial' ? (
@@ -554,98 +642,35 @@ export function Auctions() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
-                  <h2 className="text-lg font-bold text-slate-900">Filter Government Catalogs</h2>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm text-slate-600 font-medium bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs">
-                      Total Matching: <strong className="text-slate-900 font-bold">{mstcAuctions.length}</strong>
-                    </span>
-                    <span className="text-sm text-emerald-700 font-medium bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 flex items-center gap-1.5 shadow-xs animate-pulse">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      PDF Previews Available: <strong className="text-emerald-900 font-bold">{mstcAuctions.filter(item => item.sanitized_document_path).length}</strong>
-                    </span>
-                  </div>
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="text-sm text-slate-650 font-semibold flex items-center gap-2">
+                  <span>Showing {mstcAuctions.length} Government Catalogs</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                  <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 flex items-center gap-1 font-semibold text-xs shadow-3xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    {mstcAuctions.filter(item => item.sanitized_document_path).length} PDF Previews
+                  </span>
                 </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
-                    <select
-                      value={selectedMstcCategory}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const newParams = new URLSearchParams(searchParams);
-                        if (val) {
-                          newParams.set('mstc_category', val);
-                        } else {
-                          newParams.delete('mstc_category');
-                        }
-                        newParams.delete('mstc_subcategory');
-                        setSearchParams(newParams);
-                      }}
-                      className="w-full pl-3 pr-10 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-primary focus:border-primary text-slate-750 bg-white"
-                    >
-                      <option value="">All Categories</option>
-                      {mstcOptions.categories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
-                    <select
-                      value={selectedMstcSubcategory}
-                      disabled={!selectedMstcCategory}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const newParams = new URLSearchParams(searchParams);
-                        if (val) {
-                          newParams.set('mstc_subcategory', val);
-                        } else {
-                          newParams.delete('mstc_subcategory');
-                        }
-                        setSearchParams(newParams);
-                      }}
-                      className={`w-full pl-3 pr-10 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-primary focus:border-primary text-slate-750 bg-white ${
-                        !selectedMstcCategory ? 'border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50' : 'border-slate-300'
-                      }`}
-                    >
-                      {!selectedMstcCategory ? (
-                        <option value="">Select a category first</option>
-                      ) : (
-                        <>
-                          <option value="">All Sub-Categories</option>
-                          {(mstcOptions.subcategories[selectedMstcCategory] || []).map(sub => (
-                            <option key={sub} value={sub}>{sub}</option>
-                          ))}
-                        </>
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
+                    <button
+                      onClick={() => setIsGridView(true)}
+                      className={clsx(
+                        "p-1.5 rounded-md transition-colors cursor-pointer",
+                        isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
                       )}
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Location / State</label>
-                    <select
-                      value={selectedMstcLocation}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const newParams = new URLSearchParams(searchParams);
-                        if (val) {
-                          newParams.set('mstc_location', val);
-                        } else {
-                          newParams.delete('mstc_location');
-                        }
-                        setSearchParams(newParams);
-                      }}
-                      className="w-full pl-3 pr-10 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-primary focus:border-primary text-slate-750 bg-white"
                     >
-                      <option value="">All Locations</option>
-                      {mstcOptions.locations.map(loc => (
-                        <option key={loc} value={loc}>{loc}</option>
-                      ))}
-                    </select>
+                      <LayoutGrid className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setIsGridView(false)}
+                      className={clsx(
+                        "p-1.5 rounded-md transition-colors cursor-pointer",
+                        !isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
+                      )}
+                    >
+                      <List className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -777,132 +802,17 @@ export function Auctions() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className={clsx(
+                    "gap-6",
+                    isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
+                  )}>
                     {mstcAuctions.map(item => (
-                      <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300 flex flex-col justify-between group">
-                        <div>
-                          <div className="flex justify-between items-start mb-4">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">
-                              Gov Catalog
-                            </span>
-                            <span className="text-xs text-slate-400 font-mono">
-                              ID: {item.mstc_auction_number.split('/').pop()}
-                            </span>
-                          </div>
-                          
-                          {(() => {
-                            const parts = item.category_name.split(' | ');
-                            const mainCat = parts[0];
-                            const subCat = parts[1];
-                            return (
-                              <div className="mb-2">
-                                {subCat ? (
-                                  <>
-                                    <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">{mainCat}</div>
-                                    <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
-                                      {subCat}
-                                    </h3>
-                                  </>
-                                ) : (
-                                  <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
-                                    {mainCat}
-                                  </h3>
-                                )}
-                              </div>
-                            );
-                          })()}
-                          
-                          <div className="bg-slate-50 rounded-xl p-3 mb-4 font-mono text-xs text-slate-650 break-all select-all border border-slate-100">
-                            {item.mstc_auction_number}
-                          </div>
-
-                          <div className="space-y-2 mb-4">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-400">Seller</span>
-                              <span className="font-semibold text-slate-750">{item.seller_name}</span>
-                            </div>
-                            {item.location && (
-                              <div className="flex justify-between text-sm">
-                                <span className="text-slate-400">Location / State</span>
-                                <span className="font-semibold text-slate-750">{item.location}</span>
-                              </div>
-                            )}
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-400">Auction Date</span>
-                              <span className="font-medium text-slate-700">{new Date(item.opening_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-400">Bidding Closes</span>
-                              <span className="font-medium text-slate-700">
-                                {(() => {
-                                  const auctionDate = new Date(item.opening_date);
-                                  const biddingCloseDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-                                  return biddingCloseDate.toLocaleDateString(undefined, { dateStyle: 'medium' });
-                                })()}
-                              </span>
-                            </div>
-                            {/* Remaining time indicator */}
-                            <div className="flex justify-between items-center text-sm border-t border-slate-100 pt-2 mt-1">
-                              <span className="text-slate-400">Time Left</span>
-                              {(() => {
-                                const auctionDate = new Date(item.opening_date);
-                                const biddingCloseDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-                                const now = new Date();
-                                const diffMs = biddingCloseDate.getTime() - now.getTime();
-                                if (diffMs <= 0) {
-                                  return <span className="font-bold text-rose-600 text-xs bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">Bidding Closed</span>;
-                                }
-                                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                                const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                                const isUrgent = diffDays < 3;
-                                const isWarning = diffDays < 7;
-                                return (
-                                  <span className={clsx(
-                                    "font-bold text-xs px-2 py-0.5 rounded-full border",
-                                    isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
-                                    isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
-                                    "text-emerald-700 bg-emerald-50 border-emerald-200"
-                                  )}>
-                                    {diffDays}d {diffHours}h left
-                                  </span>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          {item.sanitized_document_path ? (
-                            <div className="flex gap-2 w-full">
-                              <button
-                                onClick={() => setSelectedPreviewItem(item)}
-                                className="flex-grow inline-flex justify-center items-center py-3 px-4 rounded-xl text-sm font-semibold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
-                              >
-                                <Eye className="w-4 h-4 mr-2" />
-                                View Details
-                              </button>
-                              <a
-                                href={item.sanitized_document_path}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex justify-center items-center p-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 active:scale-[0.98] transition-all duration-200 shrink-0 cursor-pointer"
-                                title="Download PDF Catalog"
-                              >
-                                <Download className="w-4 h-4" />
-                              </a>
-                            </div>
-                          ) : (
-                            <button
-                              disabled
-                              className="w-full inline-flex justify-center items-center py-3 px-4 rounded-xl text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
-                            >
-                              <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
-                              PDF Processing...
-                            </button>
-                          )}
-                        </div>
-
-                      </div>
+                      <MstcCard 
+                        key={item.id} 
+                        item={item} 
+                        isGrid={isGridView}
+                        onPreview={setSelectedPreviewItem}
+                      />
                     ))}
                   </div>
                 )}
