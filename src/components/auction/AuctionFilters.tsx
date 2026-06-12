@@ -31,6 +31,10 @@ interface AuctionFiltersProps {
     startDate?: string; 
     endDate?: string; 
   };
+  activeTab?: 'commercial' | 'mstc';
+  customCategories?: string[];
+  customLocations?: string[];
+  customSellers?: string[];
 }
 
 interface CategoryNode {
@@ -40,7 +44,16 @@ interface CategoryNode {
   children: CategoryNode[];
 }
 
-export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters }: AuctionFiltersProps) {
+export function AuctionFilters({ 
+  onFilterChange, 
+  isOpen, 
+  onClose, 
+  initialFilters,
+  activeTab = 'commercial',
+  customCategories = [],
+  customLocations = [],
+  customSellers = []
+}: AuctionFiltersProps) {
   const [categories, setCategories] = useState<AuctionCategory[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedListingType, setSelectedListingType] = useState<string>(initialFilters.listingType || 'all');
@@ -50,7 +63,10 @@ export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters
   const [startDate, setStartDate] = useState<string>(initialFilters.startDate || '');
   const [endDate, setEndDate] = useState<string>(initialFilters.endDate || '');
   const [showAllCategories, setShowAllCategories] = useState(false);
-  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+    if (initialFilters.startDate) return new Date(initialFilters.startDate);
+    return new Date();
+  });
 
   useEffect(() => {
     async function loadCategories() {
@@ -68,6 +84,12 @@ export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters
     setSelectedPreBid(initialFilters.preBid || 'all');
     setStartDate(initialFilters.startDate || '');
     setEndDate(initialFilters.endDate || '');
+
+    if (initialFilters.startDate) {
+      setCalendarMonth(new Date(initialFilters.startDate));
+    } else {
+      setCalendarMonth(new Date());
+    }
 
     if (initialFilters.categoryIds && initialFilters.categoryIds.length > 0) {
       setSelectedCategories(initialFilters.categoryIds);
@@ -348,9 +370,45 @@ export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters
     }))
   };
 
+  const customSellerItems = [
+    { key: '', label: 'All Sellers' },
+    ...customSellers.map(seller => ({ key: seller, label: seller }))
+  ];
+
+  const customSellerMenu = {
+    items: customSellerItems.map(item => ({
+      key: item.key,
+      label: (
+        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", selectedRegionalOffice === item.key && "font-bold text-primary bg-slate-50 rounded")}>
+          {item.label}
+        </span>
+      ),
+      onClick: () => setSelectedRegionalOffice(item.key)
+    }))
+  };
+
+  const customCategoryItems = [
+    { key: '', label: 'All Categories' },
+    ...customCategories.map(cat => ({ key: cat, label: cat }))
+  ];
+
+  const customCategoryMenu = {
+    items: customCategoryItems.map(item => ({
+      key: item.key,
+      label: (
+        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", (selectedCategories[0] || '') === item.key && "font-bold text-primary bg-slate-50 rounded")}>
+          {item.label}
+        </span>
+      ),
+      onClick: () => setSelectedCategories(item.key ? [item.key] : [])
+    }))
+  };
+
+  const currentLocations = activeTab === 'mstc' ? customLocations : LOCATIONS;
+
   const locationItems = [
     { key: '', label: 'All Locations' },
-    ...LOCATIONS.map(loc => ({ key: loc, label: loc }))
+    ...currentLocations.map(loc => ({ key: loc, label: loc }))
   ];
 
   const locationMenu = {
@@ -367,7 +425,8 @@ export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters
 
   return (
     <div className={clsx(
-      "fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 overflow-y-auto",
+      "fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out overflow-y-auto",
+      "lg:relative lg:translate-x-0 lg:w-full lg:h-fit lg:bg-white lg:border lg:border-slate-200 lg:rounded-2xl lg:shadow-xs",
       isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:shadow-none"
     )}>
       <div className="p-6">
@@ -376,7 +435,7 @@ export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters
             <Filter className="w-5 h-5 mr-2 text-primary" />
             Filters
           </h2>
-          <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="lg:hidden text-slate-450 hover:text-slate-600">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -384,102 +443,124 @@ export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters
         {/* Categories */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Categories</h3>
-          <div className="space-y-1">
-            <div 
-              className={clsx(
-                "group flex items-center justify-between py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150",
-                isAllSelected 
-                  ? "bg-primary-50/50 font-medium text-slate-900" 
-                  : "hover:bg-slate-50 text-slate-600 hover:text-slate-955"
-              )}
-              onClick={handleSelectAll}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="flex-shrink-0 flex items-center justify-center rounded pl-5">
-                  {isAllSelected ? (
-                    <span className="w-4 h-4 rounded border border-primary bg-primary flex-shrink-0 duration-150 transition-colors" />
-                  ) : (
-                    <span className="w-4 h-4 rounded border border-slate-300 group-hover:border-slate-450 bg-white flex-shrink-0 duration-150 transition-colors" />
-                  )}
-                </span>
-                <span className="text-sm leading-relaxed truncate">All Categories</span>
-              </div>
+          {activeTab === 'mstc' ? (
+            <div className="space-y-1">
+              <Dropdown menu={customCategoryMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
+                <button 
+                  type="button"
+                  className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                >
+                  <span className="truncate">
+                    {selectedCategories[0] || 'All Categories'}
+                  </span>
+                  <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                </button>
+              </Dropdown>
             </div>
-
-            {displayedRoots.map(root => renderCategoryNode(root))}
-
-            {rootNodes.length > 6 && (
-              <button
-                type="button"
-                onClick={() => setShowAllCategories(!showAllCategories)}
-                className="text-sm font-semibold text-primary hover:text-primary-700 focus:outline-none mt-3 pl-2 flex items-center gap-1"
+          ) : (
+            <div className="space-y-1">
+              <div 
+                className={clsx(
+                  "group flex items-center justify-between py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150",
+                  isAllSelected 
+                    ? "bg-primary-50/50 font-medium text-slate-900" 
+                    : "hover:bg-slate-50 text-slate-600 hover:text-slate-955"
+                )}
+                onClick={handleSelectAll}
               >
-                {showAllCategories ? 'Show Less' : `+ Show ${rootNodes.length - 6} More`}
-              </button>
-            )}
-
-            {selectedCategories.length > 0 && !isAllSelected && (
-              <div className="mt-4 p-3 bg-primary-50/40 border border-primary-100 rounded-xl text-xs space-y-1 text-slate-600">
-                <div className="font-bold flex items-center gap-1.5 text-primary">
-                  <span className="flex h-1.5 w-1.5 rounded-full bg-primary" />
-                  Multi-Category Filter Active
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="flex-shrink-0 flex items-center justify-center rounded pl-5">
+                    {isAllSelected ? (
+                      <span className="w-4 h-4 rounded border border-primary bg-primary flex-shrink-0 duration-150 transition-colors" />
+                    ) : (
+                      <span className="w-4 h-4 rounded border border-slate-300 group-hover:border-slate-450 bg-white flex-shrink-0 duration-150 transition-colors" />
+                    )}
+                  </span>
+                  <span className="text-sm leading-relaxed truncate">All Categories</span>
                 </div>
-                <p className="leading-relaxed">
-                  You can select multiple categories and subcategories. Subcategories are automatically included when selecting parent categories.
-                </p>
               </div>
-            )}
-          </div>
+
+              {displayedRoots.map(root => renderCategoryNode(root))}
+
+              {rootNodes.length > 6 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCategories(!showAllCategories)}
+                  className="text-sm font-semibold text-primary hover:text-primary-700 focus:outline-none mt-3 pl-2 flex items-center gap-1"
+                >
+                  {showAllCategories ? 'Show Less' : `+ Show ${rootNodes.length - 6} More`}
+                </button>
+              )}
+
+              {selectedCategories.length > 0 && !isAllSelected && (
+                <div className="mt-4 p-3 bg-primary-50/40 border border-primary-100 rounded-xl text-xs space-y-1 text-slate-600">
+                  <div className="font-bold flex items-center gap-1.5 text-primary">
+                    <span className="flex h-1.5 w-1.5 rounded-full bg-primary" />
+                    Multi-Category Filter Active
+                  </div>
+                  <p className="leading-relaxed">
+                    You can select multiple categories and subcategories. Subcategories are automatically included when selecting parent categories.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Filter By */}
-        <div className="mb-8">
-          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Filter By</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'All Upcoming Auctions', value: 'all' },
-              { label: 'Registration Closes Soon', value: 'closes_soon' },
-              { label: 'Recently Added', value: 'recently_added' },
-            ].map((option) => (
-              <label key={option.value} className="flex items-center cursor-pointer">
-                <input 
-                  type="radio" 
-                  name="listingType" 
-                  checked={selectedListingType === option.value}
-                  onChange={() => setSelectedListingType(option.value)}
-                  className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
-                />
-                <span className="ml-3 text-sm text-slate-700">
-                  {option.label}
-                </span>
-              </label>
-            ))}
+        {activeTab !== 'mstc' && (
+          <div className="mb-8">
+            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Filter By</h3>
+            <div className="space-y-3">
+              {[
+                { label: 'All Upcoming Auctions', value: 'all' },
+                { label: 'Registration Closes Soon', value: 'closes_soon' },
+                { label: 'Recently Added', value: 'recently_added' },
+              ].map((option) => (
+                <label key={option.value} className="flex items-center cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="listingType" 
+                    checked={selectedListingType === option.value}
+                    onChange={() => setSelectedListingType(option.value)}
+                    className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
+                  />
+                  <span className="ml-3 text-sm text-slate-700">
+                    {option.label}
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Regional Office */}
-        <div className="mb-8">
-          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Regional Office</h3>
-          <Dropdown menu={regionalOfficeMenu} trigger={['click']}>
-            <button 
-              type="button"
-              className="w-full flex justify-between items-center px-3 py-2 border border-slate-300 rounded-md shadow-sm bg-white text-sm text-slate-700 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-left"
-            >
-              <span className="truncate">
-                {selectedRegionalOffice || 'All Regional Offices'}
-              </span>
-              <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
-            </button>
-          </Dropdown>
-        </div>
+        {activeTab !== 'mstc' && (
+          <div className="mb-8">
+            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
+              Regional Office
+            </h3>
+            <Dropdown menu={regionalOfficeMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
+              <button 
+                type="button"
+                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+              >
+                <span className="truncate">
+                  {selectedRegionalOffice || 'All Regional Offices'}
+                </span>
+                <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+              </button>
+            </Dropdown>
+          </div>
+        )}
 
         {/* Location */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Location</h3>
-          <Dropdown menu={locationMenu} trigger={['click']}>
+          <Dropdown menu={locationMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
             <button 
               type="button"
-              className="w-full flex justify-between items-center px-3 py-2 border border-slate-300 rounded-md shadow-sm bg-white text-sm text-slate-700 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-left"
+              className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
             >
               <span className="truncate">
                 {selectedLocation || 'All Locations'}
@@ -490,29 +571,31 @@ export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters
         </div>
 
         {/* Pre-bid Requirement */}
-        <div className="mb-8">
-          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Pre-Bid Requirement</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'All', value: 'all' },
-              { label: 'Pre-bid Required', value: 'yes' },
-              { label: 'No Pre-bid Required', value: 'no' },
-            ].map((option) => (
-              <label key={option.value} className="flex items-center cursor-pointer">
-                <input 
-                  type="radio" 
-                  name="preBid" 
-                  checked={selectedPreBid === option.value}
-                  onChange={() => setSelectedPreBid(option.value)}
-                  className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
-                />
-                <span className="ml-3 text-sm text-slate-700">
-                  {option.label}
-                </span>
-              </label>
-            ))}
+        {activeTab !== 'mstc' && (
+          <div className="mb-8">
+            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Pre-Bid Requirement</h3>
+            <div className="space-y-3">
+              {[
+                { label: 'All', value: 'all' },
+                { label: 'Pre-bid Required', value: 'yes' },
+                { label: 'No Pre-bid Required', value: 'no' },
+              ].map((option) => (
+                <label key={option.value} className="flex items-center cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="preBid" 
+                    checked={selectedPreBid === option.value}
+                    onChange={() => setSelectedPreBid(option.value)}
+                    className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
+                  />
+                  <span className="ml-3 text-sm text-slate-700">
+                    {option.label}
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Date Range */}
         <div className="mb-8">
@@ -521,7 +604,7 @@ export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="w-full flex justify-between items-center px-3 py-2 border border-slate-300 rounded-md shadow-sm bg-white text-sm text-slate-700 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-left"
+                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
               >
                 <span className="truncate">
                   {startDate && endDate
@@ -533,13 +616,15 @@ export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters
                 <CalendarDays className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto overflow-hidden p-0" align="start" sideOffset={4}>
+            <PopoverContent className="w-auto overflow-hidden p-0 rounded-2xl border border-slate-200 shadow-lg" align="start" sideOffset={4}>
               <Calendar
                 mode="range"
                 selected={{
                   from: startDate ? new Date(startDate) : undefined,
                   to: endDate ? new Date(endDate) : undefined,
                 } as DateRange}
+                month={calendarMonth}
+                onMonthChange={setCalendarMonth}
                 captionLayout="dropdown"
                 onSelect={(range: DateRange | undefined) => {
                   if (range?.from) {
@@ -566,7 +651,7 @@ export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters
             <button
               type="button"
               onClick={() => { setStartDate(''); setEndDate(''); }}
-              className="mt-2 text-xs text-primary hover:text-primary-700 font-medium"
+              className="mt-2 text-xs text-primary hover:text-primary-700 font-medium cursor-pointer"
             >
               Clear dates
             </button>
@@ -576,13 +661,13 @@ export function AuctionFilters({ onFilterChange, isOpen, onClose, initialFilters
         <div className="flex gap-4">
           <button
             onClick={handleReset}
-            className="w-full px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            className="w-full px-4 py-2.5 border border-slate-250 text-sm font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/25 transition-all cursor-pointer"
           >
             Reset
           </button>
           <button
             onClick={handleApply}
-            className="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            className="w-full px-4 py-2.5 border border-transparent text-sm font-semibold rounded-xl text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/25 transition-all cursor-pointer"
           >
             Apply
           </button>
