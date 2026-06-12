@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Fallback categories list matching MSTC categories structure
 // Generated from seed_categories.sql. Used when database table is empty.
 

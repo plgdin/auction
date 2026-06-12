@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Filter, X, ChevronRight, ChevronDown, CalendarDays } from 'lucide-react';
 import { auctionService } from '../../services/auctionService';
 import type { AuctionCategory } from '../../types/database.types';
@@ -36,7 +36,7 @@ interface AuctionFiltersProps {
 interface CategoryNode {
   id: string;
   name: string;
-  parent_id: string | null;
+  parent_id?: string;
   children: CategoryNode[];
 }
 
