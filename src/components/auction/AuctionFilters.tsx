@@ -34,7 +34,6 @@ interface AuctionFiltersProps {
   activeTab?: 'commercial' | 'mstc';
   customCategories?: string[];
   customLocations?: string[];
-  customSellers?: string[];
 }
 
 interface CategoryNode {
@@ -51,8 +50,7 @@ export function AuctionFilters({
   initialFilters,
   activeTab = 'commercial',
   customCategories = [],
-  customLocations = [],
-  customSellers = []
+  customLocations = []
 }: AuctionFiltersProps) {
   const [categories, setCategories] = useState<AuctionCategory[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -63,6 +61,7 @@ export function AuctionFilters({
   const [startDate, setStartDate] = useState<string>(initialFilters.startDate || '');
   const [endDate, setEndDate] = useState<string>(initialFilters.endDate || '');
   const [showAllCategories, setShowAllCategories] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
     if (initialFilters.startDate) return new Date(initialFilters.startDate);
     return new Date();
@@ -166,7 +165,7 @@ export function AuctionFilters({
 
   const toggleExpand = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setExpandedIds(prev => ({ ...prev, [id]: !prev[id] }));
+    setExpandedIds((prev: Record<string, boolean>) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const rootNodes = buildCategoryTree(categories);
@@ -370,22 +369,7 @@ export function AuctionFilters({
     }))
   };
 
-  const customSellerItems = [
-    { key: '', label: 'All Sellers' },
-    ...customSellers.map(seller => ({ key: seller, label: seller }))
-  ];
 
-  const customSellerMenu = {
-    items: customSellerItems.map(item => ({
-      key: item.key,
-      label: (
-        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", selectedRegionalOffice === item.key && "font-bold text-primary bg-slate-50 rounded")}>
-          {item.label}
-        </span>
-      ),
-      onClick: () => setSelectedRegionalOffice(item.key)
-    }))
-  };
 
   const customCategoryItems = [
     { key: '', label: 'All Categories' },
