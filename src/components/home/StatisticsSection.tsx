@@ -88,7 +88,7 @@ export function StatisticsSection() {
                   suffix={stat.suffix} 
                 />
               </span>
-              <span className="text-slate-350 font-semibold uppercase tracking-wider text-xs sm:text-sm">
+              <span className="text-slate-300 font-semibold uppercase tracking-wider text-xs sm:text-sm">
                 {stat.label}
               </span>
             </div>
