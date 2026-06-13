@@ -9,34 +9,24 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-async function inspectRecord() {
-  const { data: records, error } = await supabase
-    .from('mstc_auctions')
-    .select('*')
-    .ilike('mstc_auction_number', '%/10465');
+async function resetAdminPassword() {
+  const adminUserId = '26fbe5e9-f1ae-47de-ada7-2f2992c5ed41'; // ID of admin@auction.com
+  const newPassword = 'AdminPassword123!';
+
+  console.log(`Updating password for admin@auction.com (ID: ${adminUserId})...`);
+  const { data, error } = await supabase.auth.admin.updateUserById(
+    adminUserId,
+    { password: newPassword }
+  );
 
   if (error) {
-    console.error('Error fetching record:', error.message);
+    console.error('Failed to update admin password:', error.message);
     return;
   }
 
-  if (!records || records.length === 0) {
-    console.log('Record 10465 not found.');
-    return;
-  }
-
-  const rec = records[0];
-  console.log(`Auction Number: ${rec.mstc_auction_number}`);
-  console.log(`Asset Status: ${rec.asset_status}`);
-  console.log(`Sanitized Doc Path: ${rec.sanitized_document_path}`);
-  
-  try {
-    const parsed = JSON.parse(rec.raw_materials_text || '{}');
-    console.log(`Preview Image URL: ${parsed.preview_image_url}`);
-    console.log(`Extracted Images count: ${parsed.extracted_images?.length}`);
-  } catch (e) {
-    console.log(`Raw Materials Text (Raw): ${rec.raw_materials_text}`);
-  }
+  console.log(`Password updated successfully!`);
+  console.log(`Email: admin@auction.com`);
+  console.log(`Password: ${newPassword}`);
 }
 
-inspectRecord().catch(console.error);
+resetAdminPassword().catch(console.error);
