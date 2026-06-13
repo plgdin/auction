@@ -2,6 +2,20 @@
 import { supabase } from '../lib/supabase';
 import type { Auction, AuctionCategory, AuctionImage, AuctionDocument, Watchlist } from '../types/database.types';
 import { FALLBACK_CATEGORIES } from './fallbackCategories';
+import {
+  INVERTED_SYNONYM_MAP,
+  CONCEPT_MAP,
+  STOP_WORDS,
+  GENERIC_KEYWORDS,
+  getInflections,
+  extractTokens,
+  findClosestKeyword,
+  parsePriceConstraint,
+  cleanQueryFromPriceConstraint,
+  filterCompoundComponents,
+  matchWholeWord,
+  buildTaxonomyFromCategories
+} from './nlpSearchUtils';
 
 export interface AuctionFilterParams {
   categoryId?: string;
@@ -124,10 +138,8 @@ export const auctionService = {
         query = query.eq('id', '00000000-0000-0000-0000-000000000000');
       }
     }
-    if (params.searchQuery) {
-      query = query.ilike('title', `%${params.searchQuery}%`);
-    }
 
+    // Note: Database title search is bypassed in favor of unified layman search if params.searchQuery is present.
     const { data: dbData, error } = await query;
 
     if (error || !dbData) {
@@ -184,35 +196,253 @@ export const auctionService = {
       enriched = enriched.filter(item => new Date(item.end_time) <= endLimit);
     }
 
-    // Programmatic Sorting
-    switch (params.sortBy) {
-      case 'ending_soon':
-        enriched.sort((a, b) => new Date(a.end_time).getTime() - new Date(b.end_time).getTime());
-        break;
-      case 'price_asc':
-        enriched.sort((a, b) => a.starting_price - b.starting_price);
-        break;
-      case 'price_desc':
-        enriched.sort((a, b) => b.starting_price - a.starting_price);
-        break;
-      case 'newest':
-      default:
-        enriched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        break;
+    // --- APPLY NLP SEARCH ENGINE IF SEARCH QUERY IS PRESENT ---
+    let finalAuctions = enriched;
+    if (params.searchQuery) {
+      const categories = await this.getCategories();
+      const catMap = new Map(categories.map(c => [c.id, c]));
+
+      const priceConstraint = parsePriceConstraint(params.searchQuery);
+      const cleanedQuery = cleanQueryFromPriceConstraint(params.searchQuery);
+
+      const extractedTokensList = extractTokens(cleanedQuery);
+      const rawTokens = filterCompoundComponents(extractedTokensList);
+
+      // Build taxonomy
+      const { categoryKeywords, subcategoryKeywords } = buildTaxonomyFromCategories(categories);
+
+      const knownKeywords = new Set<string>();
+      Object.keys(categoryKeywords).forEach(k => knownKeywords.add(k));
+      Object.keys(subcategoryKeywords).forEach(k => knownKeywords.add(k));
+      Object.keys(INVERTED_SYNONYM_MAP).forEach(k => knownKeywords.add(k));
+
+      // Correct typos
+      const normalizedTokens = rawTokens.map(token => {
+        if (STOP_WORDS.has(token)) return token;
+        const closest = findClosestKeyword(token, knownKeywords);
+        return closest || token;
+      });
+
+      const substantiveTokens: string[] = [];
+      const optionalTokens: string[] = [];
+      for (const token of normalizedTokens) {
+        if (STOP_WORDS.has(token)) continue;
+        const isSubstantive =
+          (token in categoryKeywords ||
+           token in subcategoryKeywords ||
+           token in INVERTED_SYNONYM_MAP) &&
+          !GENERIC_KEYWORDS.has(token);
+        if (isSubstantive) {
+          substantiveTokens.push(token);
+        } else {
+          optionalTokens.push(token);
+        }
+      }
+
+      // Target category scoping check
+      const targetCategories = new Set<string>();
+      const categoryScores = new Map<string, number>();
+      const classificationTokens = substantiveTokens.length > 0 ? substantiveTokens : optionalTokens;
+
+      for (const token of classificationTokens) {
+        const synonyms = [token, ...(INVERTED_SYNONYM_MAP[token] || [])];
+        for (const term of synonyms) {
+          const catLevel = categoryKeywords[term];
+          if (catLevel) {
+            catLevel.forEach(c => {
+              categoryScores.set(c, (categoryScores.get(c) || 0) + 40);
+            });
+          }
+          const subcatLevel = subcategoryKeywords[term];
+          if (subcatLevel) {
+            subcatLevel.forEach(c => {
+              categoryScores.set(c, (categoryScores.get(c) || 0) + 20);
+            });
+          }
+        }
+      }
+
+      if (categoryScores.size > 0) {
+        let maxScore = 0;
+        for (const score of categoryScores.values()) {
+          if (score > maxScore) maxScore = score;
+        }
+        for (const [catName, score] of categoryScores.entries()) {
+          if (score >= 15 && score >= maxScore * 0.5) {
+            targetCategories.add(catName);
+          }
+        }
+      }
+
+      const scoredData = enriched.map(item => {
+        let score = 0;
+        const cat = item.category_id ? catMap.get(item.category_id) : null;
+        const subcategory = cat ? cat.name : '';
+        const parent = cat && cat.parent_id ? catMap.get(cat.parent_id) : null;
+        const mainCategory = parent ? parent.name : subcategory;
+
+        const title = item.title || '';
+        const desc = item.description || '';
+        const tc = item.terms_conditions || '';
+        const locLower = (item.location || '').toLowerCase();
+
+        // 1. Strict Price/Pre-Bid Constraint Filtering
+        if (priceConstraint) {
+          const compareVal = priceConstraint.field === 'pre_bid' ? (item.emd_amount || 0) : (item.starting_price || 0);
+          if (compareVal > 0) {
+            if (priceConstraint.operator === 'less' && compareVal > priceConstraint.value) {
+              return { item, score: 0 };
+            }
+            if (priceConstraint.operator === 'greater' && compareVal < priceConstraint.value) {
+              return { item, score: 0 };
+            }
+            if (priceConstraint.operator === 'equal' && compareVal !== priceConstraint.value) {
+              return { item, score: 0 };
+            }
+          }
+        }
+
+        // 2. Category intent scoping filter
+        if (targetCategories.size > 0) {
+          if (!targetCategories.has(mainCategory)) {
+            return { item, score: 0 };
+          }
+        }
+
+        // A. Match Substantive Tokens strictly:
+        let allSubstantiveMatched = true;
+        for (const token of substantiveTokens) {
+          let tokenMatched = false;
+
+          // A1. Implicit Match for Category-Level Keywords:
+          const inflections = getInflections(token);
+          for (const inf of inflections) {
+            const catLevel = categoryKeywords[inf];
+            if (catLevel && catLevel.includes(mainCategory)) {
+              score += 30;
+              tokenMatched = true;
+              break;
+            }
+          }
+
+          // A2. Synonym & Text Matching:
+          if (!tokenMatched) {
+            const terms = new Set<string>();
+            for (const inf of inflections) {
+              terms.add(inf);
+              const synonyms = INVERTED_SYNONYM_MAP[inf];
+              if (synonyms) {
+                synonyms.forEach(s => terms.add(s));
+              }
+            }
+
+            for (const term of terms) {
+              if (matchWholeWord(subcategory, term)) {
+                score += 15;
+                tokenMatched = true;
+                break;
+              }
+              if (matchWholeWord(title, term)) {
+                score += 10;
+                tokenMatched = true;
+                break;
+              }
+              if (matchWholeWord(desc, term) || matchWholeWord(tc, term)) {
+                score += 3;
+                tokenMatched = true;
+                break;
+              }
+            }
+          }
+
+          if (!tokenMatched) {
+            allSubstantiveMatched = false;
+          }
+        }
+
+        if (substantiveTokens.length > 0 && !allSubstantiveMatched) {
+          return { item, score: 0 };
+        }
+
+        // B. Match Optional Tokens for scoring boosts:
+        for (const token of optionalTokens) {
+          if (locLower.includes(token)) {
+            score += 100;
+          }
+          if (
+            matchWholeWord(subcategory, token) ||
+            matchWholeWord(title, token) ||
+            matchWholeWord(desc, token) ||
+            matchWholeWord(tc, token)
+          ) {
+            score += 15;
+          }
+        }
+
+        if (targetCategories.size > 0 && targetCategories.has(mainCategory)) {
+          score += 50;
+        }
+
+        if (score === 0 && substantiveTokens.length === 0 && optionalTokens.length === 0) {
+          score = 1;
+        } else if (score === 0 && substantiveTokens.length === 0 && optionalTokens.length > 0) {
+          return { item, score: 0 };
+        }
+
+        return { item, score };
+      });
+
+      finalAuctions = scoredData
+        .filter(d => d.score > 0)
+        .sort((a, b) => {
+          if (b.score !== a.score) {
+            return b.score - a.score;
+          }
+          // Secondary sort: use params.sortBy logic
+          if (params.sortBy === 'ending_soon') {
+            return new Date(a.item.end_time).getTime() - new Date(b.item.end_time).getTime();
+          }
+          if (params.sortBy === 'price_asc') {
+            return a.item.starting_price - b.item.starting_price;
+          }
+          if (params.sortBy === 'price_desc') {
+            return b.item.starting_price - a.item.starting_price;
+          }
+          return new Date(b.item.created_at).getTime() - new Date(a.item.created_at).getTime();
+        })
+        .map(d => d.item);
+    } else {
+      // Programmatic Sorting
+      switch (params.sortBy) {
+        case 'ending_soon':
+          finalAuctions.sort((a, b) => new Date(a.end_time).getTime() - new Date(b.end_time).getTime());
+          break;
+        case 'price_asc':
+          finalAuctions.sort((a, b) => a.starting_price - b.starting_price);
+          break;
+        case 'price_desc':
+          finalAuctions.sort((a, b) => b.starting_price - a.starting_price);
+          break;
+        case 'newest':
+        default:
+          finalAuctions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          break;
+      }
     }
 
     // Programmatic Pagination
-    const totalCount = enriched.length;
+    const totalCount = finalAuctions.length;
     const page = params.page || 1;
     const limit = params.limit || 12;
     const from = (page - 1) * limit;
-    const paginated = enriched.slice(from, from + limit);
+    const paginated = finalAuctions.slice(from, from + limit);
 
     return {
       data: paginated,
       count: totalCount
     };
   },
+
 
   async getAuctionById(id: string): Promise<Auction | null> {
     const { data, error } = await supabase
