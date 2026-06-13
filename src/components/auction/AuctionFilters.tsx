@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 interface AuctionFiltersProps {
   onFilterChange: (filters: { 
     categoryIds?: string[]; 
+    subcategory?: string;
     listingType?: string; 
     regionalOffice?: string; 
     location?: string; 
@@ -24,6 +25,7 @@ interface AuctionFiltersProps {
   onClose: () => void;
   initialFilters: { 
     categoryIds?: string[]; 
+    subcategory?: string;
     listingType?: string; 
     regionalOffice?: string; 
     location?: string; 
@@ -33,7 +35,9 @@ interface AuctionFiltersProps {
   };
   activeTab?: 'commercial' | 'mstc';
   customCategories?: string[];
+  customSubcategories?: Record<string, string[]>;
   customLocations?: string[];
+  customSellers?: string[];
 }
 
 interface CategoryNode {
@@ -50,11 +54,13 @@ export function AuctionFilters({
   initialFilters,
   activeTab = 'commercial',
   customCategories = [],
-  customLocations = []
+  customSubcategories = {},
+  customLocations = [],
+  customSellers = []
 }: AuctionFiltersProps) {
   const [categories, setCategories] = useState<AuctionCategory[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>(initialFilters.subcategory || '');
   const [selectedListingType, setSelectedListingType] = useState<string>(initialFilters.listingType || 'all');
   const [selectedRegionalOffice, setSelectedRegionalOffice] = useState<string>(initialFilters.regionalOffice || '');
   const [selectedLocation, setSelectedLocation] = useState<string>(initialFilters.location || '');
@@ -78,6 +84,7 @@ export function AuctionFilters({
 
   // Sync state with initialFilters when props change
   useEffect(() => {
+    setSelectedSubcategory(initialFilters.subcategory || '');
     setSelectedListingType(initialFilters.listingType || 'all');
     setSelectedRegionalOffice(initialFilters.regionalOffice || '');
     setSelectedLocation(initialFilters.location || '');
@@ -248,6 +255,7 @@ export function AuctionFilters({
   const handleApply = () => {
     onFilterChange({
       categoryIds: selectedCategories.length > 0 ? selectedCategories : undefined,
+      subcategory: selectedSubcategory || undefined,
       listingType: selectedListingType !== 'all' ? selectedListingType : undefined,
       regionalOffice: selectedRegionalOffice || undefined,
       location: selectedLocation || undefined,
@@ -260,6 +268,7 @@ export function AuctionFilters({
 
   const handleReset = () => {
     setSelectedCategories([]);
+    setSelectedSubcategory('');
     setSelectedListingType('all');
     setSelectedRegionalOffice('');
     setSelectedLocation('');
@@ -385,7 +394,30 @@ export function AuctionFilters({
           {item.label}
         </span>
       ),
-      onClick: () => setSelectedCategories(item.key ? [item.key] : [])
+      onClick: () => {
+        setSelectedCategories(item.key ? [item.key] : []);
+        setSelectedSubcategory('');
+      }
+    }))
+  };
+
+  const selectedMstcCategory = selectedCategories[0] || '';
+  const availableSubcategories = selectedMstcCategory ? (customSubcategories[selectedMstcCategory] || []) : [];
+
+  const customSubcategoryItems = [
+    { key: '', label: 'All Sub-Categories' },
+    ...availableSubcategories.map(sub => ({ key: sub, label: sub }))
+  ];
+
+  const customSubcategoryMenu = {
+    items: customSubcategoryItems.map(item => ({
+      key: item.key,
+      label: (
+        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", selectedSubcategory === item.key && "font-bold text-primary bg-slate-50 rounded")}>
+          {item.label}
+        </span>
+      ),
+      onClick: () => setSelectedSubcategory(item.key)
     }))
   };
 
@@ -429,18 +461,47 @@ export function AuctionFilters({
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Categories</h3>
           {activeTab === 'mstc' ? (
-            <div className="space-y-1">
-              <Dropdown menu={customCategoryMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
-                <button 
-                  type="button"
-                  className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
+                <Dropdown menu={customCategoryMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
+                  <button 
+                    type="button"
+                    className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                  >
+                    <span className="truncate">
+                      {selectedCategories[0] || 'All Categories'}
+                    </span>
+                    <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                  </button>
+                </Dropdown>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
+                <Dropdown 
+                  menu={customSubcategoryMenu} 
+                  trigger={['click']} 
+                  disabled={!selectedMstcCategory}
+                  dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
                 >
-                  <span className="truncate">
-                    {selectedCategories[0] || 'All Categories'}
-                  </span>
-                  <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
-                </button>
-              </Dropdown>
+                  <button 
+                    type="button"
+                    disabled={!selectedMstcCategory}
+                    className={clsx(
+                      "w-full flex justify-between items-center px-3.5 py-2.5 border rounded-xl shadow-2xs text-sm transition-all text-left",
+                      !selectedMstcCategory 
+                        ? "border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50" 
+                        : "border-slate-250 bg-white text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                    )}
+                  >
+                    <span className="truncate">
+                      {!selectedMstcCategory ? 'Select a category first' : (selectedSubcategory || 'All Sub-Categories')}
+                    </span>
+                    <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                  </button>
+                </Dropdown>
+              </div>
             </div>
           ) : (
             <div className="space-y-1">

@@ -200,8 +200,14 @@ export function Auctions() {
   
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
   const [isMstcLoading, setIsMstcLoading] = useState(false);
-  const [mstcOptions, setMstcOptions] = useState<{ categories: string[]; sellers: string[]; locations: string[] }>({
+  const [mstcOptions, setMstcOptions] = useState<{
+    categories: string[];
+    subcategories: Record<string, string[]>;
+    sellers: string[];
+    locations: string[];
+  }>({
     categories: [],
+    subcategories: {},
     sellers: [],
     locations: []
   });
@@ -211,6 +217,7 @@ export function Auctions() {
   const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
 
   const selectedMstcCategory = searchParams.get('mstc_category') || '';
+  const selectedMstcSubcategory = searchParams.get('mstc_subcategory') || '';
   const selectedMstcLocation = searchParams.get('mstc_location') || '';
   const selectedMstcSeller = searchParams.get('mstc_seller') || '';
 
@@ -307,6 +314,7 @@ export function Auctions() {
     try {
       const data = await MstcSearchService.searchMarketplaceCatalog(searchQuery, {
         category: selectedMstcCategory || undefined,
+        subcategory: selectedMstcSubcategory || undefined,
         location: selectedMstcLocation || undefined,
         seller: selectedMstcSeller || undefined
       });
@@ -334,7 +342,7 @@ export function Auctions() {
     } finally {
       setIsMstcLoading(false);
     }
-  }, [searchQuery, selectedMstcCategory, selectedMstcLocation, selectedMstcSeller, startDate, endDate]);
+  }, [searchQuery, selectedMstcCategory, selectedMstcSubcategory, selectedMstcLocation, selectedMstcSeller, startDate, endDate]);
 
   const loadMstcOptions = useCallback(async () => {
     try {
@@ -382,6 +390,15 @@ export function Auctions() {
           next.set('mstc_category', newFilters.categoryIds[0]);
         } else {
           next.delete('mstc_category');
+        }
+      }
+
+      // Update Subcategory
+      if ('subcategory' in newFilters) {
+        if (newFilters.subcategory) {
+          next.set('mstc_subcategory', newFilters.subcategory);
+        } else {
+          next.delete('mstc_subcategory');
         }
       }
       
@@ -608,6 +625,7 @@ export function Auctions() {
               onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
               initialFilters={activeTab === 'commercial' ? filters : {
                 categoryIds: selectedMstcCategory ? [selectedMstcCategory] : [],
+                subcategory: selectedMstcSubcategory,
                 location: selectedMstcLocation,
                 regionalOffice: selectedMstcSeller,
                 startDate,
@@ -615,6 +633,7 @@ export function Auctions() {
               }}
               activeTab={activeTab}
               customCategories={mstcOptions.categories}
+              customSubcategories={mstcOptions.subcategories}
               customLocations={mstcOptions.locations}
               customSellers={mstcOptions.sellers}
             />
@@ -682,7 +701,6 @@ export function Auctions() {
                 <div className="text-sm text-slate-650 font-semibold flex items-center gap-2">
                   <span>Showing {mstcAuctions.length} Government Catalogs</span>
                 </div>
-
                 <div className="flex items-center gap-4 w-full sm:w-auto">
                   <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
                     <button
@@ -882,9 +900,23 @@ export function Auctions() {
               {/* Category & Auction Ref Title */}
               <div>
                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
-                <h3 className="text-2xl font-black text-slate-950 leading-tight">
-                  {selectedPreviewItem.category_name}
-                </h3>
+                {(() => {
+                  const parts = selectedPreviewItem.category_name.split(' | ');
+                  const mainCat = parts[0];
+                  const subCat = parts[1];
+                  return (
+                    <div className="flex flex-col gap-0.5">
+                      {subCat ? (
+                        <>
+                          <span className="text-xs font-semibold text-primary uppercase tracking-wider">{mainCat}</span>
+                          <h3 className="text-2xl font-black text-slate-950 leading-tight">{subCat}</h3>
+                        </>
+                      ) : (
+                        <h3 className="text-2xl font-black text-slate-950 leading-tight">{mainCat}</h3>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* General Parameters Grid */}

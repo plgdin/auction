@@ -140,9 +140,27 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
         <div>
           {cardHeader}
           
-          <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2 mb-3" title={item.category_name}>
-            {item.category_name}
-          </h3>
+          {(() => {
+            const parts = item.category_name.split(' | ');
+            const mainCat = parts[0];
+            const subCat = parts[1];
+            return (
+              <div className="mb-3">
+                {subCat ? (
+                  <>
+                    <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCat}</div>
+                    <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                      {subCat}
+                    </h3>
+                  </>
+                ) : (
+                  <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                    {mainCat}
+                  </h3>
+                )}
+              </div>
+            );
+          })()}
 
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -237,9 +255,27 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
       <div>
         {cardHeader}
 
-        <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2 mb-3" title={item.category_name}>
-          {item.category_name}
-        </h3>
+        {(() => {
+          const parts = item.category_name.split(' | ');
+          const mainCat = parts[0];
+          const subCat = parts[1];
+          return (
+            <div className="mb-3">
+              {subCat ? (
+                <>
+                  <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCat}</div>
+                  <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                    {subCat}
+                  </h3>
+                </>
+              ) : (
+                <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                  {mainCat}
+                </h3>
+              )}
+            </div>
+          );
+        })()}
 
 
 
