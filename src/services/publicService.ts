@@ -107,6 +107,8 @@ const SYNONYM_MAP: Record<string, string[]> = {
   wires: ['cable', 'conductor', 'winding', 'electrical', 'wire'],
   cable: ['wire', 'conductor', 'winding', 'electrical', 'cables'],
   cables: ['wire', 'conductor', 'winding', 'electrical', 'cable'],
+  'four-wheeler': ['four-wheelers', 'car', 'cars', 'automobile', 'automobiles'],
+  'two-wheeler': ['two-wheelers', 'motorcycle', 'motorcycles', 'scooter', 'scooters', 'bike', 'bikes'],
 };
 
 // 1. Build an Inverted Synonym Map at startup
@@ -227,7 +229,9 @@ function getInflections(word: string): string[] {
   } else {
     if (!word.endsWith('s')) {
       inflections.add(word + 's');
-      inflections.add(word + 'es');
+      if (/(s|sh|ch|x|z)$/i.test(word)) {
+        inflections.add(word + 'es');
+      }
     }
   }
   
@@ -236,10 +240,12 @@ function getInflections(word: string): string[] {
 
 function extractTokens(text: string): string[] {
   if (!text) return [];
-  const words = text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
+  const lowercase = text.toLowerCase();
+  
+  // Split by spaces or hyphens to get individual words
+  const words = lowercase
+    .replace(/[^a-z0-9\s\-]/g, ' ')
+    .split(/[\s\-]+/)
     .filter(Boolean);
     
   const tokens = new Set<string>();
@@ -252,6 +258,20 @@ function extractTokens(text: string): string[] {
       }
     }
   }
+  
+  // Capture compound expressions
+  const compounds = [
+    { pattern: /two\s*wheelers?/g, token: 'two-wheeler' },
+    { pattern: /four\s*wheelers?/g, token: 'four-wheeler' },
+    { pattern: /three\s*wheelers?/g, token: 'three-wheeler' }
+  ];
+  
+  for (const comp of compounds) {
+    if (comp.pattern.test(lowercase)) {
+      tokens.add(comp.token);
+    }
+  }
+  
   return Array.from(tokens);
 }
 
@@ -392,6 +412,31 @@ function cleanQueryFromPriceConstraint(query: string): string {
   return query.replace(pattern, ' ').trim();
 }
 
+function filterCompoundComponents(tokens: string[]): string[] {
+  const result = new Set<string>(tokens);
+  
+  if (result.has('four-wheeler')) {
+    result.delete('four');
+    result.delete('fours');
+    result.delete('wheeler');
+    result.delete('wheelers');
+  }
+  if (result.has('two-wheeler')) {
+    result.delete('two');
+    result.delete('twos');
+    result.delete('wheeler');
+    result.delete('wheelers');
+  }
+  if (result.has('three-wheeler')) {
+    result.delete('three');
+    result.delete('threes');
+    result.delete('wheeler');
+    result.delete('wheelers');
+  }
+  
+  return Array.from(result);
+}
+
 function expandQueryToTsQuery(query: string): string {
   const tokens = query
     .toLowerCase()
@@ -469,12 +514,9 @@ export const MstcSearchService = {
       const priceConstraint = parsePriceConstraint(query);
       const cleanedQuery = cleanQueryFromPriceConstraint(query);
 
-      // Tokenize and normalize query
-      const rawTokens = cleanedQuery
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, ' ')
-        .split(/\s+/)
-        .filter(Boolean);
+      // Tokenize and normalize query (including compound expressions)
+      const extractedTokensList = extractTokens(cleanedQuery);
+      const rawTokens = filterCompoundComponents(extractedTokensList);
 
       if (rawTokens.length === 0) {
         return data as MstcSanitizedAuction[];
