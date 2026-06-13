@@ -54,6 +54,7 @@ export function AuctionFilters({
 }: AuctionFiltersProps) {
   const [categories, setCategories] = useState<AuctionCategory[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   const [selectedListingType, setSelectedListingType] = useState<string>(initialFilters.listingType || 'all');
   const [selectedRegionalOffice, setSelectedRegionalOffice] = useState<string>(initialFilters.regionalOffice || '');
   const [selectedLocation, setSelectedLocation] = useState<string>(initialFilters.location || '');
@@ -518,8 +519,25 @@ export function AuctionFilters({
           </div>
         )}
 
-        {/* Regional Office */}
-        {activeTab !== 'mstc' && (
+        {/* Regional Office / Sellers */}
+        {activeTab === 'mstc' ? (
+          <div className="mb-8">
+            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
+              Sellers
+            </h3>
+            <Dropdown menu={customSellerMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
+              <button 
+                type="button"
+                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+              >
+                <span className="truncate">
+                  {selectedRegionalOffice || 'All Sellers'}
+                </span>
+                <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+              </button>
+            </Dropdown>
+          </div>
+        ) : (
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
               Regional Office

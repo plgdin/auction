@@ -38,6 +38,61 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
         parsed.depositDetails &&
         parsed.keyContacts
       ) {
+        // EMD extraction/cleaning logic
+        let emdVal = parsed.depositDetails.emd || '';
+        let preBidDdg = parsed.depositDetails.preBidDdg || 'Not required for registered MSME bidders';
+        
+        if (emdVal.includes('%')) {
+          const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
+          if (percentMatch) {
+            const percentVal = parseFloat(percentMatch[1]);
+            if (percentVal > 100) {
+              // Parse error / invalid percent, reset
+              emdVal = '10% of total bid value';
+              preBidDdg = 'Not required for registered MSME bidders';
+            }
+          }
+        } else {
+          const numMatch = emdVal.match(/([\d\.]+)/);
+          if (numMatch) {
+            const val = parseFloat(numMatch[1]);
+            if (val > 100) {
+              // Value is a large number (e.g. 7600000), make it pre-bid value
+              preBidDdg = `₹${val.toLocaleString('en-IN')}`;
+              emdVal = '10% of total bid value';
+            }
+          }
+        }
+        
+        parsed.depositDetails.emd = emdVal;
+        parsed.depositDetails.preBidDdg = preBidDdg;
+
+        // Clean items list: if lot.description is purely numeric, replace with category_name
+        if (parsed.items && Array.isArray(parsed.items)) {
+          parsed.items = parsed.items.map(lot => {
+            let desc = lot.description || '';
+            if (desc && /^\d+$/.test(desc.trim())) {
+              desc = item.category_name || 'Auction Lot Items';
+            }
+            
+            let tax = lot.taxRate || '';
+            if (tax) {
+              if (tax.includes('%')) {
+                const taxMatch = tax.match(/([\d\.]+)\s*%/);
+                if (taxMatch && parseFloat(taxMatch[1]) > 100) {
+                  tax = 'As Applicable GST';
+                }
+              }
+            }
+            
+            return {
+              ...lot,
+              description: desc,
+              taxRate: tax
+            };
+          });
+        }
+
         return parsed;
       }
     } catch (e) {
@@ -626,11 +681,6 @@ export function Auctions() {
               <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="text-sm text-slate-650 font-semibold flex items-center gap-2">
                   <span>Showing {mstcAuctions.length} Government Catalogs</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                  <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 flex items-center gap-1 font-semibold text-xs shadow-3xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    {mstcAuctions.filter(item => item.sanitized_document_path).length} PDF Previews
-                  </span>
                 </div>
 
                 <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -813,9 +863,6 @@ export function Auctions() {
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2.5">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100 font-mono uppercase tracking-wider">
-                  Gov Catalog
-                </span>
                 <span className="text-sm font-semibold text-slate-400 font-mono">
                   Ref: {selectedPreviewItem.mstc_auction_number.split('/').pop()}
                 </span>
@@ -841,9 +888,9 @@ export function Auctions() {
               </div>
 
               {/* General Parameters Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 {/* Reference Number */}
-                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1.5">
+                <div className="md:col-span-5 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1.5">
                   <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Ref Number</h5>
                   <div className="font-mono text-sm text-slate-700 break-all select-all flex justify-between items-center bg-slate-50/50 p-3 rounded-lg border border-slate-100">
                     <span className="mr-2 text-[13px] font-bold leading-snug">{selectedPreviewItem.mstc_auction_number}</span>
@@ -870,10 +917,15 @@ export function Auctions() {
                 </div>
 
                 {/* Seller & Location Details */}
-                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2.5">
+                <div className="md:col-span-4 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2.5">
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Seller Authority</span>
-                    <span className="text-sm font-bold text-slate-800 leading-tight mt-0.5">{selectedPreviewItem.seller_name}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Regional Office</span>
+                    <span className="text-sm font-bold text-slate-800 leading-tight mt-0.5">
+                      {(() => {
+                        const parts = selectedPreviewItem.mstc_auction_number.split('/');
+                        return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : selectedPreviewItem.seller_name;
+                      })()}
+                    </span>
                   </div>
                   {selectedPreviewItem.location && (
                     <div className="flex flex-col border-t border-slate-100 pt-2">
@@ -884,7 +936,7 @@ export function Auctions() {
                 </div>
 
                 {/* Dates & Countdown */}
-                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2">
+                <div className="md:col-span-3 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-400 font-mono uppercase tracking-wider">Auction Date:</span>
                     <span className="font-semibold text-slate-800">
@@ -892,24 +944,24 @@ export function Auctions() {
                     </span>
                   </div>
                   <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5">
-                    <span className="text-slate-400 font-mono uppercase tracking-wider">Bidding Closes:</span>
+                    <span className="text-slate-400 font-mono uppercase tracking-wider">Bidding Starts:</span>
                     <span className="font-semibold text-slate-800">
                       {(() => {
                         const auctionDate = new Date(selectedPreviewItem.opening_date);
-                        const biddingCloseDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-                        return biddingCloseDate.toLocaleDateString(undefined, { dateStyle: 'medium' });
+                        const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                        return biddingStartDate.toLocaleDateString(undefined, { dateStyle: 'medium' });
                       })()}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5 items-center">
-                    <span className="text-slate-400 font-mono uppercase tracking-wider">Remaining:</span>
+                    <span className="text-slate-400 font-mono uppercase tracking-wider">Status:</span>
                     {(() => {
                       const auctionDate = new Date(selectedPreviewItem.opening_date);
-                      const biddingCloseDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                      const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
                       const now = new Date();
-                      const diffMs = biddingCloseDate.getTime() - now.getTime();
+                      const diffMs = biddingStartDate.getTime() - now.getTime();
                       if (diffMs <= 0) {
-                        return <span className="font-bold text-sm text-rose-600">Bidding Closed</span>;
+                        return <span className="font-bold text-xs px-2.5 py-0.5 rounded-md border border-emerald-200 text-emerald-700 bg-emerald-50">Bidding Started</span>;
                       }
                       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                       const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -918,12 +970,12 @@ export function Auctions() {
                       const isWarning = diffDays < 7;
                       return (
                         <span className={clsx(
-                          "font-bold text-sm",
-                          isUrgent ? "text-rose-600 animate-pulse" :
-                          isWarning ? "text-amber-600" :
-                          "text-slate-800"
+                          "font-bold text-xs px-2.5 py-0.5 rounded-md border",
+                          isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
+                          isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
+                          "text-emerald-700 bg-emerald-50 border-emerald-200"
                         )}>
-                          {diffDays > 0 ? `${diffDays}d ${diffHours}h left` : `${diffHours}h ${diffMins}m left`}
+                          {diffDays > 0 ? `Starts in ${diffDays}d ${diffHours}h` : `Starts in ${diffHours}h ${diffMins}m`}
                         </span>
                       );
                     })()}
@@ -991,9 +1043,9 @@ export function Auctions() {
                       </span>
                     </div>
                     <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 font-mono">Service Charge / Fees</span>
+                      <span className="text-slate-500 font-mono">Pre-bid EMD</span>
                       <span className="font-bold text-slate-800">
-                        {generateCatalogSummary(selectedPreviewItem).depositDetails.adminCharges}
+                        {generateCatalogSummary(selectedPreviewItem).depositDetails.preBidDdg}
                       </span>
                     </div>
                   </div>

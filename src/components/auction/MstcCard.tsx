@@ -31,16 +31,38 @@ const generateCatalogSummary = (item: MstcSanitizedAuction, shortId: string): Ca
     try {
       const parsed = JSON.parse(item.raw_materials_text);
       if (parsed && typeof parsed === 'object') {
-        const rawPreBid = parsed.depositDetails?.preBidDdg;
-        const finalPreBid = rawPreBid && !rawPreBid.toLowerCase().includes('not required')
-          ? rawPreBid
+        let emdVal = parsed.depositDetails?.emd || '10% of total bid value';
+        let preBidDdg = parsed.depositDetails?.preBidDdg;
+
+        if (emdVal.includes('%')) {
+          const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
+          if (percentMatch) {
+            const percentVal = parseFloat(percentMatch[1]);
+            if (percentVal > 100) {
+              emdVal = '10% of total bid value';
+              preBidDdg = 'Not required for registered MSME bidders';
+            }
+          }
+        } else {
+          const numMatch = emdVal.match(/([\d\.]+)/);
+          if (numMatch) {
+            const val = parseFloat(numMatch[1]);
+            if (val > 100) {
+              preBidDdg = `₹${val.toLocaleString('en-IN')}`;
+              emdVal = '10% of total bid value';
+            }
+          }
+        }
+
+        const finalPreBid = preBidDdg && !preBidDdg.toLowerCase().includes('not required')
+          ? preBidDdg
           : fallbackPreBid;
 
         return {
           overview: parsed.overview || `Disposal of materials from ${item.seller_name} located at ${item.location || 'various sites'}.`,
           scopeOfWork: parsed.scopeOfWork || `Assets and scrap materials offered strictly on an "As-Is-Where-Is" basis.`,
           depositDetails: {
-            emd: parsed.depositDetails?.emd || '10% of total bid value',
+            emd: emdVal,
             preBidDdg: finalPreBid
           }
         };
@@ -89,7 +111,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
 
   const timeLeftBadge = isClosed ? (
     <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-rose-200 text-rose-700 bg-rose-50">
-      Bidding Closed
+      Bidding Started
     </span>
   ) : (
     <span className={clsx(
@@ -99,7 +121,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
       "text-emerald-700 bg-emerald-50 border-emerald-200"
     )}>
       <Clock className="w-3.5 h-3.5" />
-      {diffDays}d {diffHours}h left
+      Starts in {diffDays}d {diffHours}h
     </span>
   );
 
@@ -125,9 +147,17 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className="space-y-2 text-xs">
-              <div className="flex items-center text-slate-600">
+              <div className="flex items-center text-slate-600" title={(() => {
+                const parts = item.mstc_auction_number.split('/');
+                return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
+              })()}>
                 <Building2 className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                <span className="font-semibold text-slate-700 truncate">{item.seller_name}</span>
+                <span className="font-semibold text-slate-700 truncate">
+                  Office: {(() => {
+                    const parts = item.mstc_auction_number.split('/');
+                    return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
+                  })()}
+                </span>
               </div>
               {item.location && (
                 <div className="flex items-center text-slate-600">
@@ -155,7 +185,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
               </div>
               <div className="flex items-center text-slate-600">
                 <Clock className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                <span>Closes: <strong className="text-slate-700 font-semibold">{biddingCloseDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
+                <span>Starts: <strong className="text-slate-700 font-semibold">{biddingCloseDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
               </div>
             </div>
           </div>
@@ -215,8 +245,16 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
 
         <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4 space-y-2 text-xs">
           <div className="flex items-center text-slate-655 justify-between">
-            <span className="text-slate-400">Seller:</span>
-            <span className="truncate font-semibold text-slate-705 max-w-[200px]">{item.seller_name}</span>
+            <span className="text-slate-400">Regional Office:</span>
+            <span className="truncate font-semibold text-slate-705 max-w-[200px]" title={(() => {
+              const parts = item.mstc_auction_number.split('/');
+              return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
+            })()}>
+              {(() => {
+                const parts = item.mstc_auction_number.split('/');
+                return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
+              })()}
+            </span>
           </div>
           {item.location && (
             <div className="flex items-center text-slate-655 justify-between">
@@ -224,7 +262,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
               <span className="truncate font-semibold text-slate-705 max-w-[200px]">{item.location}</span>
             </div>
           )}
-          <div className="flex items-center text-slate-655 justify-between pt-1.5 border-t border-slate-200/40">
+          <div className="flex items-center text-slate-655 justify-between">
             <span className="text-slate-400">EMD Required:</span>
             <span className="font-semibold text-slate-705 truncate max-w-[200px]" title={summary.depositDetails.emd}>{summary.depositDetails.emd}</span>
           </div>
@@ -240,7 +278,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
             <span className="font-semibold text-slate-700">{auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
           </div>
           <div className="flex justify-between">
-            <span>Bidding Closes:</span>
+            <span>Bidding Starts:</span>
             <span className="font-semibold text-slate-700">{biddingCloseDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
           </div>
         </div>
