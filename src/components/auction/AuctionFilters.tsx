@@ -917,7 +917,7 @@ export function AuctionFilters({
           </button>
           <button
             onClick={handleApply}
-            className="w-full px-4 py-2.5 text-sm font-semibold rounded-lg text-white bg-[#1c4973] hover:bg-primary hover:shadow-sm transition-all duration-200 cursor-pointer"
+            className="w-full px-4 py-2.5 text-sm font-semibold rounded-lg text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
           >
             Apply
           </button>

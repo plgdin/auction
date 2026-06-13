@@ -248,7 +248,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
                 <>
                   <button
                     onClick={() => onPreview(item)}
-                    className="flex-grow sm:flex-none inline-flex justify-center items-center py-2 px-5 rounded-lg text-sm font-semibold text-white bg-[#1c4973] hover:bg-primary hover:shadow-sm transition-all duration-200 cursor-pointer"
+                    className="flex-grow sm:flex-none inline-flex justify-center items-center py-2 px-5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
                   >
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
@@ -375,7 +375,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
             <>
               <button
                 onClick={() => onPreview(item)}
-                className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-[#1c4973] hover:bg-primary hover:shadow-sm transition-all duration-200 cursor-pointer"
+                className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
               >
                 <Eye className="w-4 h-4 mr-2" />
                 View Details

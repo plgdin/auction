@@ -650,7 +650,7 @@ export function Auctions() {
             />
             <button
               type="submit"
-              className="absolute right-2 top-2 bottom-2 px-6 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
+              className="absolute right-2 top-2 bottom-2 px-6 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
             >
               Search
             </button>
