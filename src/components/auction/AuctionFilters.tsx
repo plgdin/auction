@@ -379,7 +379,22 @@ export function AuctionFilters({
     }))
   };
 
+  const customSellerItems = [
+    { key: '', label: 'All Sellers' },
+    ...customSellers.map(seller => ({ key: seller, label: seller }))
+  ];
 
+  const customSellerMenu = {
+    items: customSellerItems.map(item => ({
+      key: item.key,
+      label: (
+        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", selectedRegionalOffice === item.key && "font-bold text-primary bg-slate-50 rounded")}>
+          {item.label}
+        </span>
+      ),
+      onClick: () => setSelectedRegionalOffice(item.key)
+    }))
+  };
 
   const customCategoryItems = [
     { key: '', label: 'All Categories' },

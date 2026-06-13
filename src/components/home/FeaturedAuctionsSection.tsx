@@ -15,8 +15,12 @@ export function FeaturedAuctionsSection() {
     async function loadAuctions() {
       try {
         // Fetch active auctions
-        const data = await auctionService.getAuctions({});
-        setAuctions(data.slice(0, 3));
+        const response = await auctionService.getAuctions({});
+        if (response && Array.isArray(response.data)) {
+          setAuctions(response.data.slice(0, 3));
+        } else {
+          setAuctions([]);
+        }
       } catch (error) {
         console.error('Error loading recommended auctions:', error);
       } finally {
