@@ -70,19 +70,25 @@ export function StatisticsSection() {
   ];
 
   return (
-    <section className="bg-primary py-16 relative overflow-hidden">
+    <section className="relative bg-slate-900 py-16 overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
+        <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-800/20 to-transparent" />
+      </div>
+
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center divide-y sm:divide-y-0 sm:divide-x divide-white/20">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center divide-y sm:divide-y-0 sm:divide-x divide-slate-800">
           {stats.map((stat, index) => (
             <div key={index} className="flex flex-col items-center justify-center p-4">
-              <span className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-2 drop-shadow-sm">
+              <span className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-2 drop-shadow-xs">
                 <AnimatedNumber 
                   value={stat.value} 
                   prefix={stat.prefix} 
                   suffix={stat.suffix} 
                 />
               </span>
-              <span className="text-white/80 font-semibold uppercase tracking-wider text-xs sm:text-sm">
+              <span className="text-slate-350 font-semibold uppercase tracking-wider text-xs sm:text-sm">
                 {stat.label}
               </span>
             </div>
