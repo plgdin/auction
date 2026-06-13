@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Filter, X, ChevronRight, ChevronDown, CalendarDays } from 'lucide-react';
 import { auctionService } from '../../services/auctionService';
 import { expandMstcOffice } from '../../services/publicService';
@@ -63,6 +63,7 @@ export function AuctionFilters({
   customSellers = [],
   customRegionalOffices = []
 }: AuctionFiltersProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [categories, setCategories] = useState<AuctionCategory[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>(initialFilters.subcategory || '');
@@ -482,11 +483,14 @@ export function AuctionFilters({
   };
 
   return (
-    <div className={clsx(
-      "fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out overflow-y-auto",
-      "lg:relative lg:translate-x-0 lg:w-full lg:h-fit lg:bg-white lg:border lg:border-slate-200 lg:rounded-2xl lg:shadow-xs",
-      isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:shadow-none"
-    )}>
+    <div 
+      ref={containerRef}
+      className={clsx(
+        "fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out overflow-y-auto",
+        "lg:relative lg:translate-x-0 lg:w-full lg:h-fit lg:bg-white lg:border lg:border-slate-200 lg:rounded-2xl lg:shadow-xs lg:overflow-visible",
+        isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:shadow-none"
+      )}
+    >
       <div className="p-6">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-xl font-bold text-slate-900 flex items-center">
@@ -505,7 +509,14 @@ export function AuctionFilters({
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
-                <Dropdown menu={customCategoryMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
+                <Dropdown 
+                  menu={customCategoryMenu} 
+                  trigger={['click']} 
+                  placement="bottomLeft"
+                  align={{ overflow: { adjustX: false, adjustY: false } }}
+                  getPopupContainer={() => containerRef.current || document.body}
+                  dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
+                >
                   <button 
                     type="button"
                     className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
@@ -524,6 +535,9 @@ export function AuctionFilters({
                   menu={customSubcategoryMenu} 
                   trigger={['click']} 
                   disabled={!selectedMstcCategory}
+                  placement="bottomLeft"
+                  align={{ overflow: { adjustX: false, adjustY: false } }}
+                  getPopupContainer={() => containerRef.current || document.body}
                   dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
                 >
                   <button 
@@ -628,7 +642,14 @@ export function AuctionFilters({
               <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
                 Regional Office
               </h3>
-              <Dropdown menu={customRegionalOfficeMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
+              <Dropdown 
+                menu={customRegionalOfficeMenu} 
+                trigger={['click']} 
+                placement="bottomLeft"
+                align={{ overflow: { adjustX: false, adjustY: false } }}
+                getPopupContainer={() => containerRef.current || document.body}
+                dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
+              >
                 <button 
                   type="button"
                   className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
@@ -645,7 +666,14 @@ export function AuctionFilters({
               <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
                 Sellers
               </h3>
-              <Dropdown menu={customSellerMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
+              <Dropdown 
+                menu={customSellerMenu} 
+                trigger={['click']} 
+                placement="bottomLeft"
+                align={{ overflow: { adjustX: false, adjustY: false } }}
+                getPopupContainer={() => containerRef.current || document.body}
+                dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
+              >
                 <button 
                   type="button"
                   className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
@@ -663,7 +691,14 @@ export function AuctionFilters({
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
               Regional Office
             </h3>
-            <Dropdown menu={regionalOfficeMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
+            <Dropdown 
+              menu={regionalOfficeMenu} 
+              trigger={['click']} 
+              placement="bottomLeft"
+              align={{ overflow: { adjustX: false, adjustY: false } }}
+              getPopupContainer={() => containerRef.current || document.body}
+              dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
+            >
               <button 
                 type="button"
                 className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
@@ -680,7 +715,14 @@ export function AuctionFilters({
         {/* Location */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Location</h3>
-          <Dropdown menu={locationMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
+          <Dropdown 
+            menu={locationMenu} 
+            trigger={['click']} 
+            placement="bottomLeft"
+            align={{ overflow: { adjustX: false, adjustY: false } }}
+            getPopupContainer={() => containerRef.current || document.body}
+            dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
+          >
             <button 
               type="button"
               className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
@@ -739,7 +781,14 @@ export function AuctionFilters({
                 <CalendarDays className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto overflow-hidden p-0 rounded-2xl border border-slate-200 shadow-lg" align="start" sideOffset={4}>
+            <PopoverContent 
+              className="w-auto overflow-hidden p-0 rounded-2xl border border-slate-200 shadow-lg" 
+              align="start" 
+              sideOffset={4}
+              side="bottom"
+              avoidCollisions={false}
+              container={containerRef.current}
+            >
               <Calendar
                 mode="range"
                 selected={{

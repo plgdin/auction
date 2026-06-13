@@ -161,6 +161,7 @@ function Calendar({
             trigger={['click']} 
             placement="bottomLeft"
             overlayClassName="calendar-dropdown-overlay"
+            getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
             dropdownRender={(menu) => (
               <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">
                 {menu}
@@ -212,6 +213,7 @@ function Calendar({
           trigger={['click']} 
           placement="bottomLeft"
           overlayClassName="calendar-dropdown-overlay"
+          getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
           dropdownRender={(menu) => (
             <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">
               {menu}

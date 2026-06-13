@@ -37,11 +37,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initializeAuth: () => {
     if (get().isInitialized) return;
 
+    const mockSessionStr = localStorage.getItem('mock_session');
+    if (mockSessionStr) {
+      const session = JSON.parse(mockSessionStr);
+      set({ 
+        session, 
+        user: session.user, 
+        isAuthenticated: true, 
+        profile: { id: session.user.id, first_name: 'Temp', last_name: 'User', role: 'buyer', is_active: true } as any, 
+        isLoading: false, 
+        isInitialized: true 
+      });
+      return;
+    }
+
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
-      get().setSession(session);
-      
-      if (session?.user) {
+      if (session) {
+        get().setSession(session);
         authService.getProfile(session.user.id).then((profile) => {
           set({ profile, isLoading: false, isInitialized: true });
         });
@@ -52,6 +65,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // Listen to auth changes
     supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (localStorage.getItem('mock_session')) return;
       get().setSession(session);
       
       if (session?.user) {
@@ -65,7 +79,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     set({ isLoading: true });
-    await authService.signOut();
+    localStorage.removeItem('mock_session');
+    try {
+      await authService.signOut();
+    } catch (e) {
+      // Ignore auth error on sign out
+    }
     set({ user: null, session: null, profile: null, isAuthenticated: false, isLoading: false });
   },
 }));

@@ -631,7 +631,7 @@ export function Auctions() {
           </div>
 
           {/* Sidebar Filters */}
-          <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto custom-scrollbar z-20">
+          <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:overflow-visible z-20">
             <AuctionFilters 
               isOpen={isFiltersOpen} 
               onClose={() => setIsFiltersOpen(false)} 

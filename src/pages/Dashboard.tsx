@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Gavel, Trophy, Wallet, ShieldAlert, ArrowRight, Activity, 
+  Gavel, Trophy, Heart, ArrowRight, Activity, 
   TrendingUp, IndianRupee
 } from 'lucide-react';
 import { 
@@ -10,7 +10,6 @@ import {
 } from 'recharts';
 import { useAuthStore } from '../store/authStore';
 import { auctionService } from '../services/auctionService';
-import { paymentService } from '../services/paymentService';
 
 // Mock data for the chart
 const chartData = [
@@ -27,8 +26,7 @@ export function Dashboard() {
   const [stats, setStats] = useState({
     activeBids: 0,
     wonAuctions: 0,
-    availableBalance: 0,
-    blockedEmd: 0
+    interestedAuctions: 0
   });
   const [recentBids, setRecentBids] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,10 +36,10 @@ export function Dashboard() {
       if (!user) return;
       setIsLoading(true);
 
-      const [bids, wonData, walletData] = await Promise.all([
+      const [bids, wonData, watchlistIds] = await Promise.all([
         auctionService.getUserBids(user.id),
         auctionService.getWonAuctions(user.id),
-        paymentService.getWalletBalance(user.id)
+        auctionService.getUserWatchlistIds(user.id)
       ]);
 
       const activeBids = bids.filter(b => b.auction.status === 'active').length;
@@ -49,8 +47,7 @@ export function Dashboard() {
       setStats({
         activeBids,
         wonAuctions: wonData.length,
-        availableBalance: walletData.available,
-        blockedEmd: walletData.blocked
+        interestedAuctions: watchlistIds.length
       });
       
       // Top 3 most recent bids
@@ -84,7 +81,7 @@ export function Dashboard() {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-4">
             <div className="w-12 h-12 rounded bg-primary/10 text-primary flex items-center justify-center">
@@ -94,7 +91,7 @@ export function Dashboard() {
               <TrendingUp className="w-4 h-4 mr-1" /> +2
             </span>
           </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Active Bids</h3>
+          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Ongoing Bids</h3>
           <p className="text-3xl font-extrabold text-foreground">{stats.activeBids}</p>
         </div>
 
@@ -110,28 +107,12 @@ export function Dashboard() {
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Wallet className="w-6 h-6" />
+            <div className="w-12 h-12 rounded bg-red-50 text-red-650 flex items-center justify-center">
+              <Heart className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Available Balance</h3>
-          <p className="text-3xl font-extrabold text-foreground flex items-center">
-            <IndianRupee className="w-6 h-6 mr-1 text-muted-foreground" />
-            {stats.availableBalance.toLocaleString()}
-          </p>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded bg-orange-50 text-orange-600 flex items-center justify-center">
-              <ShieldAlert className="w-6 h-6" />
-            </div>
-          </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Blocked EMD</h3>
-          <p className="text-3xl font-extrabold text-foreground flex items-center">
-            <IndianRupee className="w-6 h-6 mr-1 text-muted-foreground" />
-            {stats.blockedEmd.toLocaleString()}
-          </p>
+          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Interested Auctions</h3>
+          <p className="text-3xl font-extrabold text-foreground">{stats.interestedAuctions}</p>
         </div>
       </div>
 
