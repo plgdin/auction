@@ -39,13 +39,14 @@ function parseMstcCatalogText(text: string, categoryName: string, sellerName: st
 
   // 2. Extract MSTC Officers
   const officerOneName = cleanText.match(/Officer OneName:\s*([^\n]+)/) || cleanText.match(/Officer OneName\s*([^\n]+)/);
-  const officerOneEmail = cleanText.match(/Officer OneName[\s\S]*?Email:\s*([^\n]+)/) || cleanText.match(/ smukherjee@mstcindia\.co\.in/); // standard fallback
+  const officerOneEmailMatch = cleanText.match(/Officer OneName[\s\S]*?Email:\s*([^\n]+)/);
+  const officerOneEmail = officerOneEmailMatch ? officerOneEmailMatch[1].trim() : 'smukherjee@mstcindia.co.in';
   
   let keyContacts = [
     { 
       role: 'Auction Officer (MSTC)', 
       name: officerOneName ? officerOneName[1].replace(/\[\]|-/g, '').trim() : 'S. K. Mukherjee', 
-      email: 'smukherjee@mstcindia.co.in' 
+      email: officerOneEmail 
     }
   ];
 

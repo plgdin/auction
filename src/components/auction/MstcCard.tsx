@@ -1,4 +1,5 @@
 import { Eye, Download, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark } from 'lucide-react';
+import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import clsx from 'clsx';
 
@@ -99,6 +100,11 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
   const summary = generateCatalogSummary(item, shortId);
 
+  const parts = item.mstc_auction_number.split('/');
+  const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
+  const regionalOfficeName = expandMstcOffice(rawOffice);
+  const locationName = expandMstcOffice(item.location);
+
   const auctionDate = new Date(item.opening_date);
   const biddingCloseDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
   const now = new Date();
@@ -165,22 +171,16 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className="space-y-2 text-xs">
-              <div className="flex items-center text-slate-600" title={(() => {
-                const parts = item.mstc_auction_number.split('/');
-                return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
-              })()}>
+              <div className="flex items-center text-slate-600" title={regionalOfficeName}>
                 <Building2 className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                 <span className="font-semibold text-slate-700 truncate">
-                  Office: {(() => {
-                    const parts = item.mstc_auction_number.split('/');
-                    return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
-                  })()}
+                  Office: {regionalOfficeName}
                 </span>
               </div>
               {item.location && (
-                <div className="flex items-center text-slate-600">
+                <div className="flex items-center text-slate-600" title={locationName}>
                   <MapPin className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span className="font-semibold text-slate-700 truncate">{item.location}</span>
+                  <span className="font-semibold text-slate-700 truncate">{locationName}</span>
                 </div>
               )}
             </div>
@@ -282,20 +282,14 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
         <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4 space-y-2 text-xs">
           <div className="flex items-center text-slate-655 justify-between">
             <span className="text-slate-400">Regional Office:</span>
-            <span className="truncate font-semibold text-slate-705 max-w-[200px]" title={(() => {
-              const parts = item.mstc_auction_number.split('/');
-              return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
-            })()}>
-              {(() => {
-                const parts = item.mstc_auction_number.split('/');
-                return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
-              })()}
+            <span className="truncate font-semibold text-slate-705 max-w-[200px]" title={regionalOfficeName}>
+              {regionalOfficeName}
             </span>
           </div>
           {item.location && (
             <div className="flex items-center text-slate-655 justify-between">
               <span className="text-slate-400">Location:</span>
-              <span className="truncate font-semibold text-slate-705 max-w-[200px]">{item.location}</span>
+              <span className="truncate font-semibold text-slate-705 max-w-[200px]" title={locationName}>{locationName}</span>
             </div>
           )}
           <div className="flex items-center text-slate-655 justify-between">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Filter, X, ChevronRight, ChevronDown, CalendarDays } from 'lucide-react';
 import { auctionService } from '../../services/auctionService';
+import { expandMstcOffice } from '../../services/publicService';
 import type { AuctionCategory } from '../../types/database.types';
 import clsx from 'clsx';
 import { Dropdown } from 'antd';
@@ -16,6 +17,7 @@ interface AuctionFiltersProps {
     subcategory?: string;
     listingType?: string; 
     regionalOffice?: string; 
+    mstcSeller?: string;
     location?: string; 
     preBid?: string; 
     startDate?: string; 
@@ -28,6 +30,7 @@ interface AuctionFiltersProps {
     subcategory?: string;
     listingType?: string; 
     regionalOffice?: string; 
+    mstcSeller?: string;
     location?: string; 
     preBid?: string; 
     startDate?: string; 
@@ -38,6 +41,7 @@ interface AuctionFiltersProps {
   customSubcategories?: Record<string, string[]>;
   customLocations?: string[];
   customSellers?: string[];
+  customRegionalOffices?: string[];
 }
 
 interface CategoryNode {
@@ -56,13 +60,15 @@ export function AuctionFilters({
   customCategories = [],
   customSubcategories = {},
   customLocations = [],
-  customSellers = []
+  customSellers = [],
+  customRegionalOffices = []
 }: AuctionFiltersProps) {
   const [categories, setCategories] = useState<AuctionCategory[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>(initialFilters.subcategory || '');
   const [selectedListingType, setSelectedListingType] = useState<string>(initialFilters.listingType || 'all');
   const [selectedRegionalOffice, setSelectedRegionalOffice] = useState<string>(initialFilters.regionalOffice || '');
+  const [selectedMstcSeller, setSelectedMstcSeller] = useState<string>(initialFilters.mstcSeller || '');
   const [selectedLocation, setSelectedLocation] = useState<string>(initialFilters.location || '');
   const [selectedPreBid, setSelectedPreBid] = useState<string>(initialFilters.preBid || 'all');
   const [startDate, setStartDate] = useState<string>(initialFilters.startDate || '');
@@ -87,6 +93,7 @@ export function AuctionFilters({
     setSelectedSubcategory(initialFilters.subcategory || '');
     setSelectedListingType(initialFilters.listingType || 'all');
     setSelectedRegionalOffice(initialFilters.regionalOffice || '');
+    setSelectedMstcSeller(initialFilters.mstcSeller || '');
     setSelectedLocation(initialFilters.location || '');
     setSelectedPreBid(initialFilters.preBid || 'all');
     setStartDate(initialFilters.startDate || '');
@@ -258,6 +265,7 @@ export function AuctionFilters({
       subcategory: selectedSubcategory || undefined,
       listingType: selectedListingType !== 'all' ? selectedListingType : undefined,
       regionalOffice: selectedRegionalOffice || undefined,
+      mstcSeller: selectedMstcSeller || undefined,
       location: selectedLocation || undefined,
       preBid: selectedPreBid !== 'all' ? selectedPreBid : undefined,
       startDate: startDate || undefined,
@@ -271,6 +279,7 @@ export function AuctionFilters({
     setSelectedSubcategory('');
     setSelectedListingType('all');
     setSelectedRegionalOffice('');
+    setSelectedMstcSeller('');
     setSelectedLocation('');
     setSelectedPreBid('all');
     setStartDate('');
@@ -386,6 +395,23 @@ export function AuctionFilters({
 
   const customSellerMenu = {
     items: customSellerItems.map(item => ({
+      key: item.key,
+      label: (
+        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", selectedMstcSeller === item.key && "font-bold text-primary bg-slate-50 rounded")}>
+          {item.label}
+        </span>
+      ),
+      onClick: () => setSelectedMstcSeller(item.key)
+    }))
+  };
+
+  const customRegionalOfficeItems = [
+    { key: '', label: 'All Regional Offices' },
+    ...customRegionalOffices.map(office => ({ key: office, label: expandMstcOffice(office) }))
+  ];
+
+  const customRegionalOfficeMenu = {
+    items: customRegionalOfficeItems.map(item => ({
       key: item.key,
       label: (
         <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", selectedRegionalOffice === item.key && "font-bold text-primary bg-slate-50 rounded")}>
@@ -597,22 +623,41 @@ export function AuctionFilters({
 
         {/* Regional Office / Sellers */}
         {activeTab === 'mstc' ? (
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
-              Sellers
-            </h3>
-            <Dropdown menu={customSellerMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
-              <button 
-                type="button"
-                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
-              >
-                <span className="truncate">
-                  {selectedRegionalOffice || 'All Sellers'}
-                </span>
-                <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
-              </button>
-            </Dropdown>
-          </div>
+          <>
+            <div className="mb-8">
+              <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
+                Regional Office
+              </h3>
+              <Dropdown menu={customRegionalOfficeMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
+                <button 
+                  type="button"
+                  className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                >
+                  <span className="truncate">
+                    {expandMstcOffice(selectedRegionalOffice) || 'All Regional Offices'}
+                  </span>
+                  <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                </button>
+              </Dropdown>
+            </div>
+
+            <div className="mb-8">
+              <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
+                Sellers
+              </h3>
+              <Dropdown menu={customSellerMenu} trigger={['click']} dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}>
+                <button 
+                  type="button"
+                  className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                >
+                  <span className="truncate">
+                    {selectedMstcSeller || 'All Sellers'}
+                  </span>
+                  <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                </button>
+              </Dropdown>
+            </div>
+          </>
         ) : (
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">

@@ -9,7 +9,7 @@ import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
 import type { Auction } from '../types/database.types';
-import { MstcSearchService } from '../services/publicService';
+import { MstcSearchService, expandMstcOffice } from '../services/publicService';
 import type { MstcSanitizedAuction } from '../services/publicService';
 import clsx from 'clsx';
 
@@ -205,11 +205,13 @@ export function Auctions() {
     subcategories: Record<string, string[]>;
     sellers: string[];
     locations: string[];
+    regionalOffices: string[];
   }>({
     categories: [],
     subcategories: {},
     sellers: [],
-    locations: []
+    locations: [],
+    regionalOffices: []
   });
 
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<MstcSanitizedAuction | null>(null);
@@ -220,6 +222,7 @@ export function Auctions() {
   const selectedMstcSubcategory = searchParams.get('mstc_subcategory') || '';
   const selectedMstcLocation = searchParams.get('mstc_location') || '';
   const selectedMstcSeller = searchParams.get('mstc_seller') || '';
+  const selectedMstcRegionalOffice = searchParams.get('mstc_regional_office') || '';
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -316,7 +319,8 @@ export function Auctions() {
         category: selectedMstcCategory || undefined,
         subcategory: selectedMstcSubcategory || undefined,
         location: selectedMstcLocation || undefined,
-        seller: selectedMstcSeller || undefined
+        seller: selectedMstcSeller || undefined,
+        regionalOffice: selectedMstcRegionalOffice || undefined
       });
       
       let filteredData = data;
@@ -342,7 +346,7 @@ export function Auctions() {
     } finally {
       setIsMstcLoading(false);
     }
-  }, [searchQuery, selectedMstcCategory, selectedMstcSubcategory, selectedMstcLocation, selectedMstcSeller, startDate, endDate]);
+  }, [searchQuery, selectedMstcCategory, selectedMstcSubcategory, selectedMstcLocation, selectedMstcSeller, selectedMstcRegionalOffice, startDate, endDate]);
 
   const loadMstcOptions = useCallback(async () => {
     try {
@@ -411,10 +415,19 @@ export function Auctions() {
         }
       }
 
-      // Update Seller (mapped to regionalOffice)
+      // Update Regional Office
       if ('regionalOffice' in newFilters) {
         if (newFilters.regionalOffice) {
-          next.set('mstc_seller', newFilters.regionalOffice);
+          next.set('mstc_regional_office', newFilters.regionalOffice);
+        } else {
+          next.delete('mstc_regional_office');
+        }
+      }
+
+      // Update Seller
+      if ('mstcSeller' in newFilters) {
+        if (newFilters.mstcSeller) {
+          next.set('mstc_seller', newFilters.mstcSeller);
         } else {
           next.delete('mstc_seller');
         }
@@ -627,7 +640,8 @@ export function Auctions() {
                 categoryIds: selectedMstcCategory ? [selectedMstcCategory] : [],
                 subcategory: selectedMstcSubcategory,
                 location: selectedMstcLocation,
-                regionalOffice: selectedMstcSeller,
+                regionalOffice: selectedMstcRegionalOffice,
+                mstcSeller: selectedMstcSeller,
                 startDate,
                 endDate
               }}
@@ -636,6 +650,7 @@ export function Auctions() {
               customSubcategories={mstcOptions.subcategories}
               customLocations={mstcOptions.locations}
               customSellers={mstcOptions.sellers}
+              customRegionalOffices={mstcOptions.regionalOffices}
             />
             {/* Overlay for mobile filters */}
             {isFiltersOpen && (
@@ -955,14 +970,15 @@ export function Auctions() {
                     <span className="text-sm font-bold text-slate-800 leading-tight mt-0.5">
                       {(() => {
                         const parts = selectedPreviewItem.mstc_auction_number.split('/');
-                        return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : selectedPreviewItem.seller_name;
+                        const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : selectedPreviewItem.seller_name;
+                        return expandMstcOffice(rawOffice);
                       })()}
                     </span>
                   </div>
                   {selectedPreviewItem.location && (
                     <div className="flex flex-col border-t border-slate-100 pt-2">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Location / State</span>
-                      <span className="text-sm font-bold text-slate-800 mt-0.5">{selectedPreviewItem.location}</span>
+                      <span className="text-sm font-bold text-slate-800 mt-0.5">{expandMstcOffice(selectedPreviewItem.location)}</span>
                     </div>
                   )}
                 </div>
