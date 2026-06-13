@@ -109,6 +109,22 @@ const SYNONYM_MAP: Record<string, string[]> = {
   cables: ['wire', 'conductor', 'winding', 'electrical', 'cable'],
 };
 
+// 1. Build an Inverted Synonym Map at startup
+const INVERTED_SYNONYM_MAP: Record<string, string[]> = {};
+for (const [key, synList] of Object.entries(SYNONYM_MAP)) {
+  const allSyns = new Set<string>([key, ...synList]);
+  allSyns.forEach(syn => {
+    if (!INVERTED_SYNONYM_MAP[syn]) {
+      INVERTED_SYNONYM_MAP[syn] = [];
+    }
+    allSyns.forEach(s => {
+      if (!INVERTED_SYNONYM_MAP[syn].includes(s)) {
+        INVERTED_SYNONYM_MAP[syn].push(s);
+      }
+    });
+  });
+}
+
 const CONCEPT_MAP: Record<string, string[]> = {
   chemistry: ['Chemicals'],
   chemical: ['Chemicals'],
@@ -309,6 +325,73 @@ function findClosestKeyword(token: string, knownKeywords: Set<string>): string |
   return null;
 }
 
+interface PriceConstraint {
+  operator: 'less' | 'greater';
+  value: number;
+}
+
+function estimateAuctionValue(item: MstcSanitizedAuction): number {
+  if (!item.raw_materials_text) return 0;
+  try {
+    const parsed = JSON.parse(item.raw_materials_text);
+    if (!parsed || typeof parsed !== 'object') return 0;
+    
+    let emdVal = parsed.depositDetails?.emd || '';
+    let preBidDdg = parsed.depositDetails?.preBidDdg || '';
+    
+    let preBidAmount = 0;
+    const preBidClean = preBidDdg.replace(/,/g, '');
+    const preBidMatch = preBidClean.match(/₹?\s*(\d+(\.\d+)?)/);
+    if (preBidMatch) {
+      preBidAmount = parseFloat(preBidMatch[1]);
+    }
+    
+    let emdPercent = 0.1; // fallback is 10%
+    const emdMatch = emdVal.match(/([\d\.]+)\s*%/);
+    if (emdMatch) {
+      emdPercent = parseFloat(emdMatch[1]) / 100;
+    }
+    
+    if (preBidAmount > 100 && emdPercent > 0 && emdPercent <= 1) {
+      return preBidAmount / emdPercent;
+    }
+    
+    return preBidAmount;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function parsePriceConstraint(query: string): PriceConstraint | null {
+  const normalizedQuery = query.toLowerCase();
+  const pattern = /(below|under|less\s+than|above|over|more\s+than)\s*₹?\s*([\d\.,\s]+)\s*(lakh|lakhs|crore|crores|thousand|k)?/i;
+  const match = normalizedQuery.match(pattern);
+  if (!match) return null;
+  
+  const opWord = match[1].toLowerCase();
+  const numStr = match[2].replace(/[\s,]/g, '');
+  const multiplierWord = match[3] ? match[3].toLowerCase() : '';
+  
+  let value = parseFloat(numStr);
+  if (isNaN(value)) return null;
+  
+  if (multiplierWord.startsWith('lakh')) {
+    value *= 100000;
+  } else if (multiplierWord.startsWith('crore')) {
+    value *= 10000000;
+  } else if (multiplierWord === 'thousand' || multiplierWord === 'k') {
+    value *= 1000;
+  }
+  
+  const operator = (opWord.includes('below') || opWord.includes('under') || opWord.includes('less')) ? 'less' : 'greater';
+  return { operator, value };
+}
+
+function cleanQueryFromPriceConstraint(query: string): string {
+  const pattern = /(below|under|less\s+than|above|over|more\s+than)\s*₹?\s*([\d\.,\s]+)\s*(lakh|lakhs|crore|crores|thousand|k)?/gi;
+  return query.replace(pattern, ' ').trim();
+}
+
 function expandQueryToTsQuery(query: string): string {
   const tokens = query
     .toLowerCase()
@@ -319,7 +402,7 @@ function expandQueryToTsQuery(query: string): string {
   if (tokens.length === 0) return '';
   
   const expandedTokens = tokens.map(token => {
-    const synonyms = SYNONYM_MAP[token];
+    const synonyms = INVERTED_SYNONYM_MAP[token];
     if (synonyms && synonyms.length > 0) {
       const cleanSynonyms = synonyms
         .map(s => s.replace(/[^a-z0-9]/g, ''))
@@ -382,8 +465,12 @@ export const MstcSearchService = {
         return data as MstcSanitizedAuction[];
       }
 
+      // Extract price constraint and clean query first
+      const priceConstraint = parsePriceConstraint(query);
+      const cleanedQuery = cleanQueryFromPriceConstraint(query);
+
       // Tokenize and normalize query
-      const rawTokens = query
+      const rawTokens = cleanedQuery
         .toLowerCase()
         .replace(/[^a-z0-9\s]/g, ' ')
         .split(/\s+/)
@@ -400,7 +487,7 @@ export const MstcSearchService = {
       const knownKeywords = new Set<string>();
       Object.keys(categoryKeywords).forEach(k => knownKeywords.add(k));
       Object.keys(subcategoryKeywords).forEach(k => knownKeywords.add(k));
-      Object.keys(SYNONYM_MAP).forEach(k => knownKeywords.add(k));
+      Object.keys(INVERTED_SYNONYM_MAP).forEach(k => knownKeywords.add(k));
 
       // Fuzzy correct raw tokens using dynamic known keywords
       const normalizedTokens = rawTokens.map(token => {
@@ -422,7 +509,7 @@ export const MstcSearchService = {
         const isSubstantive =
           (token in categoryKeywords ||
            token in subcategoryKeywords ||
-           token in SYNONYM_MAP) &&
+           token in INVERTED_SYNONYM_MAP) &&
           !GENERIC_KEYWORDS.has(token);
 
         if (isSubstantive) {
@@ -440,26 +527,30 @@ export const MstcSearchService = {
       const classificationTokens = substantiveTokens.length > 0 ? substantiveTokens : optionalTokens;
 
       for (const token of classificationTokens) {
-        // 1. Check Category Level Keywords
-        const catLevel = categoryKeywords[token];
-        if (catLevel) {
-          catLevel.forEach(c => {
-            categoryScores.set(c, (categoryScores.get(c) || 0) + 40);
-          });
-        }
+        // Check the token and all of its synonyms to map target categories
+        const synonyms = [token, ...(INVERTED_SYNONYM_MAP[token] || [])];
+        for (const term of synonyms) {
+          // 1. Check Category Level Keywords
+          const catLevel = categoryKeywords[term];
+          if (catLevel) {
+            catLevel.forEach(c => {
+              categoryScores.set(c, (categoryScores.get(c) || 0) + 40);
+            });
+          }
 
-        // 2. Check Subcategory Level Keywords
-        const subcatLevel = subcategoryKeywords[token];
-        if (subcatLevel) {
-          subcatLevel.forEach(c => {
-            categoryScores.set(c, (categoryScores.get(c) || 0) + 20);
-          });
-        }
+          // 2. Check Subcategory Level Keywords
+          const subcatLevel = subcategoryKeywords[term];
+          if (subcatLevel) {
+            subcatLevel.forEach(c => {
+              categoryScores.set(c, (categoryScores.get(c) || 0) + 20);
+            });
+          }
 
-        // 3. Exact Category Name match
-        for (const catName of MAIN_CATEGORIES) {
-          if (catName.toLowerCase().includes(token)) {
-            categoryScores.set(catName, (categoryScores.get(catName) || 0) + 100);
+          // 3. Exact Category Name match
+          for (const catName of MAIN_CATEGORIES) {
+            if (catName.toLowerCase().includes(term)) {
+              categoryScores.set(catName, (categoryScores.get(catName) || 0) + 100);
+            }
           }
         }
       }
@@ -497,6 +588,19 @@ export const MstcSearchService = {
         const mainCategory = parts[0].trim();
         const subcategory = parts[1]?.trim() || category;
 
+        // Apply price constraint filtering if present
+        if (priceConstraint) {
+          const estimatedVal = estimateAuctionValue(item);
+          if (estimatedVal > 0) {
+            if (priceConstraint.operator === 'less' && estimatedVal > priceConstraint.value) {
+              return { item, score: 0 };
+            }
+            if (priceConstraint.operator === 'greater' && estimatedVal < priceConstraint.value) {
+              return { item, score: 0 };
+            }
+          }
+        }
+
         // Scoping Check: If the search matches a distinct category intent, filter out all items from other categories
         if (targetCategories.size > 0) {
           if (!targetCategories.has(mainCategory)) {
@@ -519,7 +623,7 @@ export const MstcSearchService = {
 
           // A2. Normal Text/Synonym Matching:
           if (!tokenMatched) {
-            const synonyms = [token, ...(SYNONYM_MAP[token] || [])];
+            const synonyms = [token, ...(INVERTED_SYNONYM_MAP[token] || [])];
             for (const term of synonyms) {
               if (matchWholeWord(subcategory, term)) {
                 score += 15;
