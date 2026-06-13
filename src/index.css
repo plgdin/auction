@@ -75,9 +75,9 @@
     --popover: #ffffff;
     --popover-foreground: #1f466d;
     
-    --primary: #2766a2; /* Primary Lochmara Blue */
+    --primary: #2563eb; /* Primary Bright Blue */
     --primary-foreground: #ffffff;
-    --primary-container: #5c9dd4;
+    --primary-container: #3b82f6;
     --on-primary-container: #faf8ff;
     
     --secondary: #5c9dd4;
@@ -101,7 +101,7 @@
     --border: #c3c6d7;
     --outline: #737686;
     --input: #c3c6d7;
-    --ring: #2766a2;
+    --ring: #2563eb;
     --radius: 0.25rem;
   }
 
@@ -116,9 +116,9 @@
     --popover: #172d42;
     --popover-foreground: #eeefff;
     
-    --primary: #5c9dd4;
+    --primary: #3b82f6;
     --primary-foreground: #0f1c2a;
-    --primary-container: #2766a2;
+    --primary-container: #1d4ed8;
     --on-primary-container: #faf8ff;
     
     --secondary: #97a8c3;
@@ -142,7 +142,7 @@
     --border: #38485d;
     --outline: #8d92a6;
     --input: #38485d;
-    --ring: #5c9dd4;
+    --ring: #3b82f6;
   }
 }
 
