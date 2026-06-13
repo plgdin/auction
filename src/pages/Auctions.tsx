@@ -312,7 +312,8 @@ export function Auctions() {
   const loadMstcData = useCallback(async () => {
     setIsMstcLoading(true);
     try {
-      const data = await MstcSearchService.searchMarketplaceCatalog(searchQuery, {
+      const qParam = searchParams.get('q') || '';
+      const data = await MstcSearchService.searchMarketplaceCatalog(qParam, {
         category: selectedMstcCategory || undefined,
         subcategory: selectedMstcSubcategory || undefined,
         location: selectedMstcLocation || undefined,
@@ -342,7 +343,7 @@ export function Auctions() {
     } finally {
       setIsMstcLoading(false);
     }
-  }, [searchQuery, selectedMstcCategory, selectedMstcSubcategory, selectedMstcLocation, selectedMstcSeller, startDate, endDate]);
+  }, [searchParams, selectedMstcCategory, selectedMstcSubcategory, selectedMstcLocation, selectedMstcSeller, startDate, endDate]);
 
   const loadMstcOptions = useCallback(async () => {
     try {

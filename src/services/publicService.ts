@@ -72,24 +72,283 @@ export interface MstcSanitizedAuction {
   status: string;
 }
 
+const SYNONYM_MAP: Record<string, string[]> = {
+  boat: ['boats', 'vessel', 'vessels', 'ship', 'ships', 'watercraft', 'craft', 'marine'],
+  boats: ['boat', 'vessel', 'vessels', 'ship', 'ships', 'watercraft', 'craft', 'marine'],
+  ship: ['ships', 'vessel', 'vessels', 'boat', 'boats', 'marine'],
+  ships: ['ship', 'vessel', 'vessels', 'boat', 'boats', 'marine'],
+  vessel: ['vessels', 'ship', 'ships', 'boat', 'boats', 'marine'],
+  vessels: ['vessel', 'ship', 'ships', 'boat', 'boats', 'marine'],
+  engine: ['engines', 'motor', 'motors'],
+  engines: ['engine', 'motor', 'motors'],
+  motor: ['motors', 'engine', 'engines'],
+  motors: ['motor', 'engine', 'engines'],
+  generator: ['generators', 'genset', 'gensets', 'dg set', 'dg sets', 'alternator'],
+  generators: ['generator', 'genset', 'gensets', 'dg set', 'dg sets', 'alternator'],
+  anchor: ['anchors', 'chain', 'mooring'],
+  anchors: ['anchor', 'chain', 'mooring'],
+  copper: ['non-ferrous', 'brass', 'bronze', 'cable', 'winding', 'wire'],
+  aluminum: ['non-ferrous', 'alloy', 'cable', 'wire'],
+  steel: ['ferrous', 'iron', 'plate', 'structure', 'pipe', 'channel', 'ms'],
+  iron: ['ferrous', 'steel', 'scrap', 'metal'],
+  parts: ['component', 'spare', 'equipment', 'fitting', 'accessory', 'spares', 'components', 'fittings', 'accessories', 'part'],
+  part: ['component', 'spare', 'equipment', 'fitting', 'accessory', 'spares', 'components', 'fittings', 'accessories', 'parts'],
+  hull: ['plate', 'steel', 'structure', 'vessel', 'deck', 'salvage', 'hulls'],
+  hulls: ['plate', 'steel', 'structure', 'vessel', 'deck', 'salvage', 'hull'],
+  salvage: ['scrap', 'decommissioned', 'unserviceable', 'condemned', 'waste'],
+  scrap: ['salvage', 'unserviceable', 'condemned', 'waste', 'disposal'],
+  car: ['cars', 'automobile', 'automobiles'],
+  cars: ['car', 'automobile', 'automobiles'],
+  bus: ['buses', 'omnibus', 'coach', 'coaches'],
+  buses: ['bus', 'omnibus', 'coach', 'coaches'],
+  truck: ['trucks', 'lorry', 'lorries', 'dumper', 'tipper'],
+  trucks: ['truck', 'lorry', 'lorries', 'dumper', 'tipper'],
+  wire: ['cable', 'conductor', 'winding', 'electrical', 'wires'],
+  wires: ['cable', 'conductor', 'winding', 'electrical', 'wire'],
+  cable: ['wire', 'conductor', 'winding', 'electrical', 'cables'],
+  cables: ['wire', 'conductor', 'winding', 'electrical', 'cable'],
+};
+
+const CONCEPT_MAP: Record<string, string[]> = {
+  chemistry: ['Chemicals'],
+  chemical: ['Chemicals'],
+  chemicals: ['Chemicals'],
+  estate: ['Immovable Property'],
+  metallurgy: ['Metal'],
+};
+
+const MAIN_CATEGORIES = [
+  'Agricultural Produce',
+  'Aquatic Produce',
+  'Ash',
+  'Chemicals',
+  'Coal',
+  'Container',
+  'Diamond',
+  'Electrical Items',
+  'Electronics Items',
+  'Forest Produce',
+  'Immovable Property',
+  'Liquor License Contracts',
+  'Metal',
+  'Mine Block',
+  'Minerals',
+  'Miscellaneous',
+  'Petroleum Products',
+  'Plant/Machineries',
+  'Transport Vehicles',
+  'Vessels'
+];
+
+const STOP_WORDS = new Set([
+  'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours',
+  'he', 'him', 'his', 'she', 'her', 'it', 'its', 'they', 'them', 'their', 'what',
+  'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are', 'was',
+  'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did',
+  'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while',
+  'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through',
+  'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out',
+  'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there',
+  'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most',
+  'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than',
+  'too', 'very', 's', 't', 'can', 'will', 'just', 'should', 'now', 'need', 'wants',
+  'want', 'show', 'me', 'find', 'get', 'search', 'buy', 'purchase', 'looking', 'look',
+  'please', 'give', 'list', 'display', 'auctions', 'auction', 'scrap', 'scraps', 'government',
+  'mstc', 'price', 'range', 'lakh', 'lakhs', 'crore', 'crores', 'rs', 'rupees', 'value'
+]);
+
+function getLevenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          Math.min(
+            matrix[i][j - 1] + 1, // insertion
+            matrix[i - 1][j] + 1 // deletion
+          )
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+const GENERIC_KEYWORDS = new Set([
+  'parts', 'part', 'component', 'components', 'spare', 'spares',
+  'equipment', 'equipments', 'scrap', 'scraps', 'salvage', 'waste',
+  'condemned', 'unserviceable', 'fitting', 'fittings', 'accessory',
+  'accessories', 'material', 'materials', 'item', 'items'
+]);
+
+function getInflections(word: string): string[] {
+  const inflections = new Set<string>([word]);
+  
+  if (word.endsWith('ies')) {
+    inflections.add(word.slice(0, -3) + 'y');
+  } else if (word.endsWith('y')) {
+    inflections.add(word.slice(0, -1) + 'ies');
+  }
+  
+  if (word.endsWith('es')) {
+    inflections.add(word.slice(0, -2));
+    inflections.add(word.slice(0, -1));
+  } else if (word.endsWith('s') && !word.endsWith('ss')) {
+    inflections.add(word.slice(0, -1));
+  } else {
+    if (!word.endsWith('s')) {
+      inflections.add(word + 's');
+      inflections.add(word + 'es');
+    }
+  }
+  
+  return Array.from(inflections).filter(w => w.length > 1);
+}
+
+function extractTokens(text: string): string[] {
+  if (!text) return [];
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+    
+  const tokens = new Set<string>();
+  for (const word of words) {
+    if (STOP_WORDS.has(word)) continue;
+    const inflections = getInflections(word);
+    for (const inf of inflections) {
+      if (!STOP_WORDS.has(inf)) {
+        tokens.add(inf);
+      }
+    }
+  }
+  return Array.from(tokens);
+}
+
+function buildTaxonomy(data: MstcSanitizedAuction[]): {
+  categoryKeywords: Record<string, string[]>;
+  subcategoryKeywords: Record<string, string[]>;
+} {
+  const categoryKeywords: Record<string, string[]> = {};
+  const subcategoryKeywords: Record<string, string[]> = {};
+
+  // Seed with CONCEPT_MAP
+  for (const [conceptWord, catList] of Object.entries(CONCEPT_MAP)) {
+    categoryKeywords[conceptWord] = [...catList];
+  }
+
+  // Iterate over data to extract and map keywords from categories/subcategories
+  for (const item of data) {
+    if (!item.category_name) continue;
+    const parts = item.category_name.split(' | ');
+    const mainCategory = parts[0].trim();
+    const subcategory = parts[1]?.trim();
+
+    // 1. Process main category tokens
+    const mainTokens = extractTokens(mainCategory);
+    for (const token of mainTokens) {
+      if (!categoryKeywords[token]) {
+        categoryKeywords[token] = [];
+      }
+      if (!categoryKeywords[token].includes(mainCategory)) {
+        categoryKeywords[token].push(mainCategory);
+      }
+    }
+
+    // 2. Process subcategory tokens
+    if (subcategory) {
+      const subTokens = extractTokens(subcategory);
+      for (const token of subTokens) {
+        if (!subcategoryKeywords[token]) {
+          subcategoryKeywords[token] = [];
+        }
+        if (!subcategoryKeywords[token].includes(mainCategory)) {
+          subcategoryKeywords[token].push(mainCategory);
+        }
+      }
+    }
+  }
+
+  return { categoryKeywords, subcategoryKeywords };
+}
+
+function findClosestKeyword(token: string, knownKeywords: Set<string>): string | null {
+  let bestMatch: string | null = null;
+  let minDistance = Infinity;
+
+  for (const keyword of knownKeywords) {
+    const dist = getLevenshteinDistance(token, keyword);
+    if (dist < minDistance) {
+      minDistance = dist;
+      bestMatch = keyword;
+    }
+  }
+
+  if (bestMatch) {
+    if (minDistance === 0) return bestMatch;
+    // Allow 1 typo for words of length >= 3
+    if (bestMatch.length >= 3 && minDistance <= 1) return bestMatch;
+    // Allow 2 typos only for long words (length >= 7 and token length >= 7)
+    if (bestMatch.length >= 7 && token.length >= 7 && minDistance <= 2) return bestMatch;
+  }
+
+  return null;
+}
+
+function expandQueryToTsQuery(query: string): string {
+  const tokens = query
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+    
+  if (tokens.length === 0) return '';
+  
+  const expandedTokens = tokens.map(token => {
+    const synonyms = SYNONYM_MAP[token];
+    if (synonyms && synonyms.length > 0) {
+      const cleanSynonyms = synonyms
+        .map(s => s.replace(/[^a-z0-9]/g, ''))
+        .filter(Boolean);
+      return `(${[token, ...cleanSynonyms].join(' | ')})`;
+    }
+    const cleanToken = token.replace(/[^a-z0-9]/g, '');
+    if (!cleanToken) return '';
+    // Only use prefix matching wildcard for tokens with length >= 4 to avoid short word collisions (e.g., 'car' matching 'carton')
+    return cleanToken.length >= 4 ? `${cleanToken}:*` : cleanToken;
+  }).filter(Boolean);
+  
+  return expandedTokens.join(' & ');
+}
+
 export const MstcSearchService = {
   /**
-   * High-speed catalog search engine filtering through clean, deduplicated snapshots
+   * Client-side layman search fallback when Supabase RPC is not deployed.
    */
-  async searchMarketplaceCatalog(
+  async searchClientSide(
     query: string,
-    filters?: { category?: string; subcategory?: string; seller?: string; location?: string }
+    filters?: { category?: string; subcategory?: string; seller?: string; location?: string; startDate?: string; endDate?: string }
   ): Promise<MstcSanitizedAuction[]> {
     try {
       let queryBuilder = supabase
         .from('mstc_auctions')
         .select('*')
-        .eq('asset_status', 'completed'); // Only show items that have ready, downloaded PDFs
+        .eq('asset_status', 'completed');
 
-      if (query) {
-        queryBuilder = queryBuilder.or(`mstc_auction_number.ilike.%${query}%,seller_name.ilike.%${query}%,category_name.ilike.%${query}%`);
-      }
-      
       if (filters?.category && filters?.subcategory) {
         queryBuilder = queryBuilder.eq('category_name', `${filters.category} | ${filters.subcategory}`);
       } else if (filters?.category) {
@@ -104,15 +363,266 @@ export const MstcSearchService = {
         queryBuilder = queryBuilder.eq('location', filters.location);
       }
 
+      if (filters?.startDate) {
+        queryBuilder = queryBuilder.gte('opening_date', filters.startDate);
+      }
+      if (filters?.endDate) {
+        queryBuilder = queryBuilder.lte('opening_date', filters.endDate);
+      }
+
+      // Fetch items to apply client-side filtering and sorting
       const { data, error } = await queryBuilder
         .order('opening_date', { ascending: false })
-        .limit(200); // Load up to 200 items for responsive viewing
+        .limit(1000);
 
       if (error) throw error;
+      if (!data) return [];
+
+      if (!query) {
+        return data as MstcSanitizedAuction[];
+      }
+
+      // Tokenize and normalize query
+      const rawTokens = query
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter(Boolean);
+
+      if (rawTokens.length === 0) {
+        return data as MstcSanitizedAuction[];
+      }
+
+      // 1. Build Taxonomy dynamically from search data
+      const { categoryKeywords, subcategoryKeywords } = buildTaxonomy(data as MstcSanitizedAuction[]);
+
+      // 2. Pre-build the set of all known keywords for typo correction
+      const knownKeywords = new Set<string>();
+      Object.keys(categoryKeywords).forEach(k => knownKeywords.add(k));
+      Object.keys(subcategoryKeywords).forEach(k => knownKeywords.add(k));
+      Object.keys(SYNONYM_MAP).forEach(k => knownKeywords.add(k));
+
+      // Fuzzy correct raw tokens using dynamic known keywords
+      const normalizedTokens = rawTokens.map(token => {
+        if (STOP_WORDS.has(token)) {
+          return token;
+        }
+        const closest = findClosestKeyword(token, knownKeywords);
+        return closest || token;
+      });
+
+      // Filter tokens into Substantive and Optional
+      const substantiveTokens: string[] = [];
+      const optionalTokens: string[] = [];
+
+      for (const token of normalizedTokens) {
+        if (STOP_WORDS.has(token)) {
+          continue;
+        }
+        const isSubstantive =
+          (token in categoryKeywords ||
+           token in subcategoryKeywords ||
+           token in SYNONYM_MAP) &&
+          !GENERIC_KEYWORDS.has(token);
+
+        if (isSubstantive) {
+          substantiveTokens.push(token);
+        } else {
+          optionalTokens.push(token);
+        }
+      }
+
+      // Determine scoped categories based on query tokens (intent classification)
+      const targetCategories = new Set<string>();
+      const categoryScores = new Map<string, number>();
+
+      // Prioritize substantive tokens for category classification
+      const classificationTokens = substantiveTokens.length > 0 ? substantiveTokens : optionalTokens;
+
+      for (const token of classificationTokens) {
+        // 1. Check Category Level Keywords
+        const catLevel = categoryKeywords[token];
+        if (catLevel) {
+          catLevel.forEach(c => {
+            categoryScores.set(c, (categoryScores.get(c) || 0) + 40);
+          });
+        }
+
+        // 2. Check Subcategory Level Keywords
+        const subcatLevel = subcategoryKeywords[token];
+        if (subcatLevel) {
+          subcatLevel.forEach(c => {
+            categoryScores.set(c, (categoryScores.get(c) || 0) + 20);
+          });
+        }
+
+        // 3. Exact Category Name match
+        for (const catName of MAIN_CATEGORIES) {
+          if (catName.toLowerCase().includes(token)) {
+            categoryScores.set(catName, (categoryScores.get(catName) || 0) + 100);
+          }
+        }
+      }
+
+      // If we got category scores, find the ones with significant signal
+      if (categoryScores.size > 0) {
+        let maxScore = 0;
+        for (const score of categoryScores.values()) {
+          if (score > maxScore) maxScore = score;
+        }
+
+        for (const [catName, score] of categoryScores.entries()) {
+          if (score >= 15 && score >= maxScore * 0.5) {
+            targetCategories.add(catName);
+          }
+        }
+      }
+
+      // Helper for whole-word boundary matching (allows basic English plurals like -s or -es)
+      const matchWholeWord = (text: string, term: string): boolean => {
+        const escaped = term.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const regex = new RegExp(`\\b${escaped}(s|es)?\\b`, 'i');
+        return regex.test(text);
+      };
+
+      const scoredData = data.map(item => {
+        let score = 0;
+        const category = item.category_name || '';
+        const seller = item.seller_name || '';
+        const num = item.mstc_auction_number || '';
+        const rawText = item.raw_materials_text || '';
+        const locationLower = (item.location || '').toLowerCase();
+
+        const parts = category.split(' | ');
+        const mainCategory = parts[0].trim();
+        const subcategory = parts[1]?.trim() || category;
+
+        // Scoping Check: If the search matches a distinct category intent, filter out all items from other categories
+        if (targetCategories.size > 0) {
+          if (!targetCategories.has(mainCategory)) {
+            return { item, score: 0 };
+          }
+        }
+
+        // A. Match Substantive Tokens strictly:
+        let allSubstantiveMatched = true;
+
+        for (const token of substantiveTokens) {
+          let tokenMatched = false;
+
+          // A1. Implicit Match for Category-Level Keywords:
+          const catLevel = categoryKeywords[token];
+          if (catLevel && catLevel.includes(mainCategory)) {
+            score += 30; // Category level match bonus
+            tokenMatched = true;
+          }
+
+          // A2. Normal Text/Synonym Matching:
+          if (!tokenMatched) {
+            const synonyms = [token, ...(SYNONYM_MAP[token] || [])];
+            for (const term of synonyms) {
+              if (matchWholeWord(subcategory, term)) {
+                score += 15;
+                tokenMatched = true;
+              }
+              if (matchWholeWord(seller, term) || matchWholeWord(num, term)) {
+                score += 5;
+                tokenMatched = true;
+              }
+              if (matchWholeWord(rawText, term)) {
+                score += 3;
+                tokenMatched = true;
+              }
+            }
+          }
+
+          if (!tokenMatched) {
+            allSubstantiveMatched = false;
+          }
+        }
+
+        // If substantive tokens were present and any of them failed to match, exclude this item
+        if (substantiveTokens.length > 0 && !allSubstantiveMatched) {
+          return { item, score: 0 };
+        }
+
+        // B. Match Optional Tokens for scoring boosts:
+        for (const token of optionalTokens) {
+          // Boost for matching location tag
+          if (locationLower.includes(token)) {
+            score += 100;
+          }
+          // Boost for matching in text
+          if (
+            matchWholeWord(subcategory, token) ||
+            matchWholeWord(seller, token) ||
+            matchWholeWord(num, token) ||
+            matchWholeWord(rawText, token)
+          ) {
+            score += 15;
+          }
+        }
+
+        // Boost if matches target category
+        if (targetCategories.size > 0 && targetCategories.has(mainCategory)) {
+          score += 50;
+        }
+
+        // If no substantive tokens matched (or none existed) and score is still 0, we can give a baseline score
+        // to prevent filtering out items when there are no query terms left after stop words
+        if (score === 0 && substantiveTokens.length === 0 && optionalTokens.length === 0) {
+          score = 1;
+        } else if (score === 0 && substantiveTokens.length === 0 && optionalTokens.length > 0) {
+          // If query had only optional tokens and none matched, filter it out
+          return { item, score: 0 };
+        }
+
+        return { item, score };
+      });
+
+      return scoredData
+        .filter(d => d.score > 0)
+        .sort((a, b) => b.score - a.score || new Date(b.item.opening_date).getTime() - new Date(a.item.opening_date).getTime())
+        .map(d => d.item)
+        .slice(0, 200) as MstcSanitizedAuction[];
+    } catch (error) {
+      console.error('Client-side layman search failed:', error);
+      return [];
+    }
+  },
+
+  /**
+   * High-speed catalog search engine filtering through clean, deduplicated snapshots with Layman's search
+   */
+  async searchMarketplaceCatalog(
+    query: string,
+    filters?: { category?: string; subcategory?: string; seller?: string; location?: string; startDate?: string; endDate?: string }
+  ): Promise<MstcSanitizedAuction[]> {
+    try {
+      const formattedQuery = query ? expandQueryToTsQuery(query) : '';
+
+      const { data, error } = await supabase.rpc('search_mstc_catalog_v2', {
+        p_search_query: formattedQuery || null,
+        p_category_filter: filters?.category || null,
+        p_subcategory_filter: filters?.subcategory || null,
+        p_location_filter: filters?.location || null,
+        p_seller_filter: filters?.seller || null,
+        p_start_date: filters?.startDate || null,
+        p_end_date: filters?.endDate || null
+      });
+
+      if (error) {
+        // Handle RPC missing errors gracefully by falling back to client-side search
+        if (error.code === 'P0001' || (error as any).status === 404 || error.message?.includes('does not exist')) {
+          console.warn('RPC search_mstc_catalog_v2 not found in remote DB. Falling back to client-side search.');
+          return MstcSearchService.searchClientSide(query, filters);
+        }
+        throw error;
+      }
       return (data as MstcSanitizedAuction[]) || [];
     } catch (error) {
-      console.error('Failed to fetch filtered MSTC catalogs:', error);
-      return [];
+      console.warn('RPC search failed, falling back to client-side search:', error);
+      return MstcSearchService.searchClientSide(query, filters);
     }
   },
 
@@ -193,4 +703,3 @@ export const MstcSearchService = {
     }
   }
 };
-
