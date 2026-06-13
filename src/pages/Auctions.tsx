@@ -24,6 +24,8 @@ interface CatalogSummary {
     adminCharges: string;
   };
   keyContacts: { role: string; name: string; email: string }[];
+  preview_image_url?: string | null;
+  extracted_images?: string[];
 }
 
 const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
@@ -907,215 +909,270 @@ export function Auctions() {
               >
                 <X className="w-5.5 h-5.5" />
               </button>
-            </div>
-
-            {/* Modal Body (Scrollable) */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/25">
-              
-              {/* Category & Auction Ref Title */}
-              <div>
-                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
-                {(() => {
-                  const parts = selectedPreviewItem.category_name.split(' | ');
-                  const mainCat = parts[0];
-                  const subCat = parts[1];
-                  return (
-                    <div className="flex flex-col gap-0.5">
-                      {subCat ? (
-                        <>
-                          <span className="text-xs font-semibold text-primary uppercase tracking-wider">{mainCat}</span>
-                          <h3 className="text-2xl font-black text-slate-950 leading-tight">{subCat}</h3>
-                        </>
-                      ) : (
-                        <h3 className="text-2xl font-black text-slate-950 leading-tight">{mainCat}</h3>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* General Parameters Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                {/* Reference Number */}
-                <div className="md:col-span-5 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1.5">
-                  <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Ref Number</h5>
-                  <div className="font-mono text-sm text-slate-700 break-all select-all flex justify-between items-center bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                    <span className="mr-2 text-[13px] font-bold leading-snug">{selectedPreviewItem.mstc_auction_number}</span>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(selectedPreviewItem.mstc_auction_number);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      }}
-                      className="text-slate-400 hover:text-primary transition-colors shrink-0 cursor-pointer"
-                      title="Copy reference"
-                    >
-                      {copied ? (
-                        <span className="text-[9px] font-bold text-emerald-650 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-150">
-                          Copied!
-                        </span>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
-                        </svg>
-                      )}
-                    </button>
-                  </div>
+            </div>            {/* Modal Body */}
+            <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
+              {/* Left Side: Details Scrollable */}
+              <div className="flex-grow overflow-y-auto p-6 space-y-6 bg-slate-50/25">
+                
+                {/* Category & Auction Ref Title */}
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
+                  {(() => {
+                    const parts = selectedPreviewItem.category_name.split(' | ');
+                    const mainCat = parts[0];
+                    const subCat = parts[1];
+                    return (
+                      <div className="flex flex-col gap-0.5">
+                        {subCat ? (
+                          <>
+                            <span className="text-xs font-semibold text-primary uppercase tracking-wider">{mainCat}</span>
+                            <h3 className="text-2xl font-black text-slate-950 leading-tight">{subCat}</h3>
+                          </>
+                        ) : (
+                          <h3 className="text-2xl font-black text-slate-950 leading-tight">{mainCat}</h3>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                {/* Seller & Location Details */}
-                <div className="md:col-span-4 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2.5">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Regional Office</span>
-                    <span className="text-sm font-bold text-slate-800 leading-tight mt-0.5">
-                      {(() => {
-                        const parts = selectedPreviewItem.mstc_auction_number.split('/');
-                        const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : selectedPreviewItem.seller_name;
-                        return expandMstcOffice(rawOffice);
-                      })()}
-                    </span>
-                  </div>
-                  {selectedPreviewItem.location && (
-                    <div className="flex flex-col border-t border-slate-100 pt-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Location / State</span>
-                      <span className="text-sm font-bold text-slate-800 mt-0.5">{expandMstcOffice(selectedPreviewItem.location)}</span>
+                {/* General Parameters Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  {/* Reference Number */}
+                  <div className="md:col-span-5 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1.5">
+                    <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Ref Number</h5>
+                    <div className="font-mono text-sm text-slate-700 break-all select-all flex justify-between items-center bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                      <span className="mr-2 text-[13px] font-bold leading-snug">{selectedPreviewItem.mstc_auction_number}</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedPreviewItem.mstc_auction_number);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                        className="text-slate-400 hover:text-primary transition-colors shrink-0 cursor-pointer"
+                        title="Copy reference"
+                      >
+                        {copied ? (
+                          <span className="text-[9px] font-bold text-emerald-650 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-150">
+                            Copied!
+                          </span>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                          </svg>
+                        )}
+                      </button>
                     </div>
-                  )}
-                </div>
-
-                {/* Dates & Countdown */}
-                <div className="md:col-span-3 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-400 font-mono uppercase tracking-wider">Auction Date:</span>
-                    <span className="font-semibold text-slate-800">
-                      {new Date(selectedPreviewItem.opening_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
-                    </span>
                   </div>
-                  <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5">
-                    <span className="text-slate-400 font-mono uppercase tracking-wider">Bidding Starts:</span>
-                    <span className="font-semibold text-slate-800">
+
+                  {/* Seller & Location Details */}
+                  <div className="md:col-span-4 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2.5">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Regional Office</span>
+                      <span className="text-sm font-bold text-slate-800 leading-tight mt-0.5">
+                        {(() => {
+                          const parts = selectedPreviewItem.mstc_auction_number.split('/');
+                          const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : selectedPreviewItem.seller_name;
+                          return expandMstcOffice(rawOffice);
+                        })()}
+                      </span>
+                    </div>
+                    {selectedPreviewItem.location && (
+                      <div className="flex flex-col border-t border-slate-100 pt-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Location / State</span>
+                        <span className="text-sm font-bold text-slate-800 mt-0.5">{expandMstcOffice(selectedPreviewItem.location)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dates & Countdown */}
+                  <div className="md:col-span-3 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400 font-mono uppercase tracking-wider">Auction Date:</span>
+                      <span className="font-semibold text-slate-800">
+                        {new Date(selectedPreviewItem.opening_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5">
+                      <span className="text-slate-400 font-mono uppercase tracking-wider">Bidding Starts:</span>
+                      <span className="font-semibold text-slate-800">
+                        {(() => {
+                          const auctionDate = new Date(selectedPreviewItem.opening_date);
+                          const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                          return biddingStartDate.toLocaleDateString(undefined, { dateStyle: 'medium' });
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5 items-center">
+                      <span className="text-slate-400 font-mono uppercase tracking-wider">Status:</span>
                       {(() => {
                         const auctionDate = new Date(selectedPreviewItem.opening_date);
                         const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-                        return biddingStartDate.toLocaleDateString(undefined, { dateStyle: 'medium' });
+                        const now = new Date();
+                        const diffMs = biddingStartDate.getTime() - now.getTime();
+                        if (diffMs <= 0) {
+                          return <span className="font-bold text-xs px-2.5 py-0.5 rounded-md border border-emerald-200 text-emerald-700 bg-emerald-50">Bidding Started</span>;
+                        }
+                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                        const isUrgent = diffDays < 3;
+                        const isWarning = diffDays < 7;
+                        return (
+                          <span className={clsx(
+                            "font-bold text-xs px-2.5 py-0.5 rounded-md border",
+                            isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
+                            isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
+                            "text-emerald-700 bg-emerald-50 border-emerald-200"
+                          )}>
+                            {diffDays > 0 ? `Starts in ${diffDays}d ${diffHours}h` : `Starts in ${diffHours}h ${diffMins}m`}
+                          </span>
+                        );
                       })()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Identified Materials & Lots */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
+                    <span>Identified Inventory & Materials</span>
+                    <span className="text-[10px] text-slate-405 font-medium normal-case font-sans">
+                      {generateCatalogSummary(selectedPreviewItem).items.length} lots identified
                     </span>
-                  </div>
-                  <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5 items-center">
-                    <span className="text-slate-400 font-mono uppercase tracking-wider">Status:</span>
-                    {(() => {
-                      const auctionDate = new Date(selectedPreviewItem.opening_date);
-                      const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-                      const now = new Date();
-                      const diffMs = biddingStartDate.getTime() - now.getTime();
-                      if (diffMs <= 0) {
-                        return <span className="font-bold text-xs px-2.5 py-0.5 rounded-md border border-emerald-200 text-emerald-700 bg-emerald-50">Bidding Started</span>;
-                      }
-                      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                      const isUrgent = diffDays < 3;
-                      const isWarning = diffDays < 7;
-                      return (
-                        <span className={clsx(
-                          "font-bold text-xs px-2.5 py-0.5 rounded-md border",
-                          isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
-                          isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
-                          "text-emerald-700 bg-emerald-50 border-emerald-200"
-                        )}>
-                          {diffDays > 0 ? `Starts in ${diffDays}d ${diffHours}h` : `Starts in ${diffHours}h ${diffMins}m`}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Identified Materials & Lots */}
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
-                  <span>Identified Inventory & Materials</span>
-                  <span className="text-[10px] text-slate-405 font-medium normal-case font-sans">
-                    {generateCatalogSummary(selectedPreviewItem).items.length} lots identified
-                  </span>
-                </h4>
-                
-                <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
-                        <th className="py-2.5 px-3.5 font-bold w-12 text-center">Lot</th>
-                        <th className="py-2.5 px-3.5 font-bold">Material Description</th>
-                        <th className="py-2.5 px-3.5 font-bold text-right">Quantity</th>
-                        <th className="py-2.5 px-3.5 font-bold text-center">Taxes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {generateCatalogSummary(selectedPreviewItem).items.map((row) => (
-                        <tr key={row.sr} className="hover:bg-slate-50/50">
-                          <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                          <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.description}</td>
-                          <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
-                          <td className="py-2.5 px-3.5 text-center font-mono text-[10px] text-slate-500">{row.taxRate}</td>
+                  </h4>
+                  
+                  <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
+                          <th className="py-2.5 px-3.5 font-bold w-12 text-center">Lot</th>
+                          <th className="py-2.5 px-3.5 font-bold">Material Description</th>
+                          <th className="py-2.5 px-3.5 font-bold text-right">Quantity</th>
+                          <th className="py-2.5 px-3.5 font-bold text-center">Taxes</th>
                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {generateCatalogSummary(selectedPreviewItem).items.map((row) => (
+                          <tr key={row.sr} className="hover:bg-slate-50/50">
+                            <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
+                            <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.description}</td>
+                            <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
+                            <td className="py-2.5 px-3.5 text-center font-mono text-[10px] text-slate-500">{row.taxRate}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Eligibility, Compliance & Financial Terms */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Compliance Card */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                      Buyer Eligibility & Compliance
+                    </h4>
+                    <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-650">
+                      {generateCatalogSummary(selectedPreviewItem).eligibility.map((el, i) => (
+                        <li key={i} className="leading-relaxed">{el}</li>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                    </ul>
+                  </div>
 
-              {/* Eligibility, Compliance & Financial Terms */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Compliance Card */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
-                    Buyer Eligibility & Compliance
-                  </h4>
-                  <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-650">
-                    {generateCatalogSummary(selectedPreviewItem).eligibility.map((el, i) => (
-                      <li key={i} className="leading-relaxed">{el}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Financial Charges Card */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
-                    Financial Terms & Service Fees
-                  </h4>
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 font-mono">EMD Details</span>
-                      <span className="font-bold text-slate-800">
-                        {generateCatalogSummary(selectedPreviewItem).depositDetails.emd}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 font-mono">Pre-bid EMD</span>
-                      <span className="font-bold text-slate-800">
-                        {generateCatalogSummary(selectedPreviewItem).depositDetails.preBidDdg}
-                      </span>
+                  {/* Financial Charges Card */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                      Financial Terms & Service Fees
+                    </h4>
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <span className="text-slate-500 font-mono">EMD Details</span>
+                        <span className="font-bold text-slate-800">
+                          {generateCatalogSummary(selectedPreviewItem).depositDetails.emd}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <span className="text-slate-500 font-mono">Pre-bid EMD</span>
+                        <span className="font-bold text-slate-800">
+                          {generateCatalogSummary(selectedPreviewItem).depositDetails.preBidDdg}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Key Contact Personnel */}
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3.5">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
-                  Key Contact Personnel
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {generateCatalogSummary(selectedPreviewItem).keyContacts.map((contact, i) => (
-                    <div key={i} className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl space-y-1">
-                      <span className="text-[9px] font-mono text-primary font-bold uppercase tracking-wider">{contact.role}</span>
-                      <h4 className="text-xs font-black text-slate-900">{contact.name}</h4>
-                      <p className="text-[10px] text-slate-500 font-mono break-all mt-0.5">{contact.email}</p>
-                    </div>
-                  ))}
+                {/* Key Contact Personnel */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3.5">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                    Key Contact Personnel
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {generateCatalogSummary(selectedPreviewItem).keyContacts.map((contact, i) => (
+                      <div key={i} className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl space-y-1">
+                        <span className="text-[9px] font-mono text-primary font-bold uppercase tracking-wider">{contact.role}</span>
+                        <h4 className="text-xs font-black text-slate-900">{contact.name}</h4>
+                        <p className="text-[10px] text-slate-500 font-mono break-all mt-0.5">{contact.email}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
               </div>
 
+              {/* Right Side: Image/Preview Panel */}
+              {(() => {
+                const summary = generateCatalogSummary(selectedPreviewItem);
+                return (
+                  <div className="w-full md:w-[320px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
+                    {/* Item Photos */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
+                        Item Photos
+                      </h4>
+                      {summary.extracted_images && summary.extracted_images.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          {summary.extracted_images.map((imgUrl, idx) => (
+                            <a 
+                              key={idx} 
+                              href={imgUrl} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-primary transition-colors cursor-zoom-in flex items-center justify-center"
+                            >
+                              <img src={imgUrl} alt={`Extracted ${idx}`} className="w-full h-full object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="w-full py-8 flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                          <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                          </svg>
+                          <span className="text-[11px] font-medium tracking-wide">No pictures available</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {summary.preview_image_url && (
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
+                          Catalog Document Preview
+                        </h4>
+                        <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group">
+                          <a href={summary.preview_image_url} target="_blank" rel="noreferrer" className="block cursor-zoom-in">
+                            <img 
+                              src={summary.preview_image_url} 
+                              alt="PDF First Page Preview" 
+                              className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-250"
+                            />
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Modal Footer */}

@@ -177,25 +177,26 @@ export const adminService = {
 
   // Scraper & Asset Worker Dashboard Services
   async getScraperAnalytics() {
-    const { data: allAuctions, error } = await supabase
-      .from('mstc_auctions')
-      .select('asset_status');
+    try {
+      const [totalRes, pendingRes, processingRes, completedRes, failedRes] = await Promise.all([
+        supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }),
+        supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).eq('asset_status', 'pending'),
+        supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).eq('asset_status', 'processing'),
+        supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).eq('asset_status', 'completed'),
+        supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).eq('asset_status', 'failed'),
+      ]);
 
-    if (error) {
+      return {
+        total: totalRes.count || 0,
+        pending: pendingRes.count || 0,
+        processing: processingRes.count || 0,
+        completed: completedRes.count || 0,
+        failed: failedRes.count || 0
+      };
+    } catch (error) {
       console.error('Error fetching scraper analytics:', error);
       return { total: 0, pending: 0, processing: 0, completed: 0, failed: 0 };
     }
-
-    const stats = { total: 0, pending: 0, processing: 0, completed: 0, failed: 0 };
-    allAuctions.forEach(row => {
-      stats.total++;
-      if (row.asset_status === 'pending') stats.pending++;
-      else if (row.asset_status === 'processing') stats.processing++;
-      else if (row.asset_status === 'completed') stats.completed++;
-      else if (row.asset_status === 'failed') stats.failed++;
-    });
-
-    return stats;
   },
 
   async getScraperAuctions(limit: number = 100): Promise<any[]> {
