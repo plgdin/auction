@@ -22,13 +22,13 @@ export const authService = {
   },
 
   async signIn(email: string, password: string) {
-    if (email === 'temp@mail.com' && password === 'temp123') {
+    if ((email === 'temp@mail.com' && password === 'temp123') || (email === 'test@mail.com' && password === 'test123')) {
       const mockSession = {
         user: {
-          id: 'temp-user-id',
-          email: 'temp@mail.com',
+          id: 'da75b8e0-1cfa-4d1a-8cfa-a006be1350a4',
+          email: email,
           user_metadata: {
-            first_name: 'Temp',
+            first_name: email === 'test@mail.com' ? 'Test' : 'Temp',
             last_name: 'User'
           }
         },

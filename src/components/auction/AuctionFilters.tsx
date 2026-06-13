@@ -15,10 +15,14 @@ interface AuctionFiltersProps {
   onFilterChange: (filters: { 
     categoryIds?: string[]; 
     subcategory?: string;
+    subcategories?: string[];
     listingType?: string; 
     regionalOffice?: string; 
+    regionalOffices?: string[];
     mstcSeller?: string;
+    mstcSellers?: string[];
     location?: string; 
+    locations?: string[];
     preBid?: string; 
     startDate?: string; 
     endDate?: string; 
@@ -28,10 +32,14 @@ interface AuctionFiltersProps {
   initialFilters: { 
     categoryIds?: string[]; 
     subcategory?: string;
+    subcategories?: string[];
     listingType?: string; 
     regionalOffice?: string; 
+    regionalOffices?: string[];
     mstcSeller?: string;
+    mstcSellers?: string[];
     location?: string; 
+    locations?: string[];
     preBid?: string; 
     startDate?: string; 
     endDate?: string; 
@@ -66,11 +74,19 @@ export function AuctionFilters({
   const containerRef = useRef<HTMLDivElement>(null);
   const [categories, setCategories] = useState<AuctionCategory[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string>(initialFilters.subcategory || '');
+  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>(
+    initialFilters.subcategories || (initialFilters.subcategory ? [initialFilters.subcategory] : [])
+  );
   const [selectedListingType, setSelectedListingType] = useState<string>(initialFilters.listingType || 'all');
-  const [selectedRegionalOffice, setSelectedRegionalOffice] = useState<string>(initialFilters.regionalOffice || '');
-  const [selectedMstcSeller, setSelectedMstcSeller] = useState<string>(initialFilters.mstcSeller || '');
-  const [selectedLocation, setSelectedLocation] = useState<string>(initialFilters.location || '');
+  const [selectedRegionalOffices, setSelectedRegionalOffices] = useState<string[]>(
+    initialFilters.regionalOffices || (initialFilters.regionalOffice ? [initialFilters.regionalOffice] : [])
+  );
+  const [selectedMstcSellers, setSelectedMstcSellers] = useState<string[]>(
+    initialFilters.mstcSellers || (initialFilters.mstcSeller ? [initialFilters.mstcSeller] : [])
+  );
+  const [selectedLocations, setSelectedLocations] = useState<string[]>(
+    initialFilters.locations || (initialFilters.location ? [initialFilters.location] : [])
+  );
   const [selectedPreBid, setSelectedPreBid] = useState<string>(initialFilters.preBid || 'all');
   const [startDate, setStartDate] = useState<string>(initialFilters.startDate || '');
   const [endDate, setEndDate] = useState<string>(initialFilters.endDate || '');
@@ -91,11 +107,19 @@ export function AuctionFilters({
 
   // Sync state with initialFilters when props change
   useEffect(() => {
-    setSelectedSubcategory(initialFilters.subcategory || '');
+    setSelectedSubcategories(
+      initialFilters.subcategories || (initialFilters.subcategory ? [initialFilters.subcategory] : [])
+    );
     setSelectedListingType(initialFilters.listingType || 'all');
-    setSelectedRegionalOffice(initialFilters.regionalOffice || '');
-    setSelectedMstcSeller(initialFilters.mstcSeller || '');
-    setSelectedLocation(initialFilters.location || '');
+    setSelectedRegionalOffices(
+      initialFilters.regionalOffices || (initialFilters.regionalOffice ? [initialFilters.regionalOffice] : [])
+    );
+    setSelectedMstcSellers(
+      initialFilters.mstcSellers || (initialFilters.mstcSeller ? [initialFilters.mstcSeller] : [])
+    );
+    setSelectedLocations(
+      initialFilters.locations || (initialFilters.location ? [initialFilters.location] : [])
+    );
     setSelectedPreBid(initialFilters.preBid || 'all');
     setStartDate(initialFilters.startDate || '');
     setEndDate(initialFilters.endDate || '');
@@ -260,14 +284,24 @@ export function AuctionFilters({
     }
   };
 
+  const handleMstcCategoryChange = (newCats: string[]) => {
+    setSelectedCategories(newCats);
+    const stillAvailable = newCats.flatMap(cat => customSubcategories[cat] || []);
+    setSelectedSubcategories(prev => prev.filter(sub => stillAvailable.includes(sub)));
+  };
+
   const handleApply = () => {
     onFilterChange({
       categoryIds: selectedCategories.length > 0 ? selectedCategories : undefined,
-      subcategory: selectedSubcategory || undefined,
+      subcategory: selectedSubcategories[0] || undefined,
+      subcategories: selectedSubcategories.length > 0 ? selectedSubcategories : undefined,
       listingType: selectedListingType !== 'all' ? selectedListingType : undefined,
-      regionalOffice: selectedRegionalOffice || undefined,
-      mstcSeller: selectedMstcSeller || undefined,
-      location: selectedLocation || undefined,
+      regionalOffice: selectedRegionalOffices[0] || undefined,
+      regionalOffices: selectedRegionalOffices.length > 0 ? selectedRegionalOffices : undefined,
+      mstcSeller: selectedMstcSellers[0] || undefined,
+      mstcSellers: selectedMstcSellers.length > 0 ? selectedMstcSellers : undefined,
+      location: selectedLocations[0] || undefined,
+      locations: selectedLocations.length > 0 ? selectedLocations : undefined,
       preBid: selectedPreBid !== 'all' ? selectedPreBid : undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
@@ -277,15 +311,29 @@ export function AuctionFilters({
 
   const handleReset = () => {
     setSelectedCategories([]);
-    setSelectedSubcategory('');
+    setSelectedSubcategories([]);
     setSelectedListingType('all');
-    setSelectedRegionalOffice('');
-    setSelectedMstcSeller('');
-    setSelectedLocation('');
+    setSelectedRegionalOffices([]);
+    setSelectedMstcSellers([]);
+    setSelectedLocations([]);
     setSelectedPreBid('all');
     setStartDate('');
     setEndDate('');
-    onFilterChange({});
+    onFilterChange({
+      categoryIds: [],
+      subcategory: undefined,
+      subcategories: [],
+      listingType: 'all',
+      regionalOffice: undefined,
+      regionalOffices: [],
+      mstcSeller: undefined,
+      mstcSellers: [],
+      location: undefined,
+      locations: [],
+      preBid: 'all',
+      startDate: undefined,
+      endDate: undefined,
+    });
   };
 
   const renderCategoryNode = (node: CategoryNode, depth = 0) => {
@@ -372,115 +420,119 @@ export function AuctionFilters({
     'Uttar Pradesh'
   ];
 
-  const regionalOfficeItems = [
-    { key: '', label: 'All Regional Offices' },
-    ...REGIONAL_OFFICES.map(office => ({ key: office, label: office }))
-  ];
+  const renderMultiSelectMenu = (
+    options: { key: string; label: string }[],
+    selectedValues: string[],
+    onChange: (values: string[]) => void,
+    placeholder: string
+  ) => {
+    return (
+      <div 
+        className="bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[200px] max-h-[240px] overflow-y-auto custom-scrollbar flex flex-col gap-0.5"
+        style={{ scrollbarWidth: 'thin' }}
+      >
+        {/* "Select All / Reset" item */}
+        <div 
+          onClick={() => onChange([])}
+          className={clsx(
+            "flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium transition-colors select-none",
+            selectedValues.length === 0 
+              ? "bg-primary-50/70 text-primary" 
+              : "hover:bg-slate-50 text-slate-700 hover:text-slate-900"
+          )}
+        >
+          <span className={clsx(
+            "w-4 h-4 rounded border transition-colors flex items-center justify-center flex-shrink-0",
+            selectedValues.length === 0 
+              ? "border-primary bg-primary" 
+              : "border-slate-300 bg-white"
+          )}>
+            {selectedValues.length === 0 && (
+              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+            )}
+          </span>
+          <span>{placeholder}</span>
+        </div>
 
-  const regionalOfficeMenu = {
-    items: regionalOfficeItems.map(item => ({
-      key: item.key,
-      label: (
-        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", selectedRegionalOffice === item.key && "font-bold text-primary bg-slate-50 rounded")}>
-          {item.label}
-        </span>
-      ),
-      onClick: () => setSelectedRegionalOffice(item.key)
-    }))
+        {/* Separator line */}
+        <div className="h-px bg-slate-100 my-1" />
+
+        {/* Option items */}
+        {options.map(opt => {
+          const isChecked = selectedValues.includes(opt.key);
+          return (
+            <div 
+              key={opt.key}
+              onClick={() => {
+                if (isChecked) {
+                  onChange(selectedValues.filter(val => val !== opt.key));
+                } else {
+                  onChange([...selectedValues, opt.key]);
+                }
+              }}
+              className={clsx(
+                "flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium transition-colors select-none",
+                isChecked 
+                  ? "bg-primary-50/40 text-primary font-semibold" 
+                  : "hover:bg-slate-50 text-slate-600 hover:text-slate-900"
+              )}
+            >
+              <span className={clsx(
+                "w-4 h-4 rounded border transition-colors flex items-center justify-center flex-shrink-0",
+                isChecked 
+                  ? "border-primary bg-primary" 
+                  : "border-slate-300 bg-white"
+              )}>
+                {isChecked && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-2.5 h-2.5 text-white">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </span>
+              <span className="truncate">{opt.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
-  const customSellerItems = [
-    { key: '', label: 'All Sellers' },
-    ...customSellers.map(seller => ({ key: seller, label: seller }))
-  ];
-
-  const customSellerMenu = {
-    items: customSellerItems.map(item => ({
-      key: item.key,
-      label: (
-        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", selectedMstcSeller === item.key && "font-bold text-primary bg-slate-50 rounded")}>
-          {item.label}
-        </span>
-      ),
-      onClick: () => setSelectedMstcSeller(item.key)
-    }))
+  const getTriggerLabel = (
+    selectedValues: string[], 
+    allLabel: string, 
+    labelsMap?: Record<string, string>
+  ) => {
+    if (selectedValues.length === 0) return allLabel;
+    const firstVal = selectedValues[0];
+    const firstLabel = labelsMap ? (labelsMap[firstVal] || firstVal) : firstVal;
+    if (selectedValues.length === 1) return firstLabel;
+    return `${firstLabel} (+${selectedValues.length - 1})`;
   };
 
-  const customRegionalOfficeItems = [
-    { key: '', label: 'All Regional Offices' },
-    ...customRegionalOffices.map(office => ({ key: office, label: expandMstcOffice(office) }))
-  ];
+  // Mapped options for MSTC & Commercial
+  const customCategoryOptions = customCategories.map(cat => ({ key: cat, label: cat }));
+  
+  const availableSubcategories = selectedCategories.length > 0
+    ? selectedCategories.flatMap(cat => customSubcategories[cat] || [])
+    : [];
 
-  const customRegionalOfficeMenu = {
-    items: customRegionalOfficeItems.map(item => ({
-      key: item.key,
-      label: (
-        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", selectedRegionalOffice === item.key && "font-bold text-primary bg-slate-50 rounded")}>
-          {item.label}
-        </span>
-      ),
-      onClick: () => setSelectedRegionalOffice(item.key)
-    }))
-  };
-
-  const customCategoryItems = [
-    { key: '', label: 'All Categories' },
-    ...customCategories.map(cat => ({ key: cat, label: cat }))
-  ];
-
-  const customCategoryMenu = {
-    items: customCategoryItems.map(item => ({
-      key: item.key,
-      label: (
-        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", (selectedCategories[0] || '') === item.key && "font-bold text-primary bg-slate-50 rounded")}>
-          {item.label}
-        </span>
-      ),
-      onClick: () => {
-        setSelectedCategories(item.key ? [item.key] : []);
-        setSelectedSubcategory('');
-      }
-    }))
-  };
-
-  const selectedMstcCategory = selectedCategories[0] || '';
-  const availableSubcategories = selectedMstcCategory ? (customSubcategories[selectedMstcCategory] || []) : [];
-
-  const customSubcategoryItems = [
-    { key: '', label: 'All Sub-Categories' },
-    ...availableSubcategories.map(sub => ({ key: sub, label: sub }))
-  ];
-
-  const customSubcategoryMenu = {
-    items: customSubcategoryItems.map(item => ({
-      key: item.key,
-      label: (
-        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", selectedSubcategory === item.key && "font-bold text-primary bg-slate-50 rounded")}>
-          {item.label}
-        </span>
-      ),
-      onClick: () => setSelectedSubcategory(item.key)
-    }))
-  };
+  const customSubcategoryOptions = availableSubcategories.map(sub => ({ key: sub, label: sub }));
+  
+  const customSellerOptions = customSellers.map(seller => ({ key: seller, label: seller }));
+  
+  const currentRegionalOffices = activeTab === 'mstc' ? customRegionalOffices : REGIONAL_OFFICES;
+  const regionalOfficeOptions = currentRegionalOffices.map(office => ({
+    key: office,
+    label: activeTab === 'mstc' ? expandMstcOffice(office) : office
+  }));
 
   const currentLocations = activeTab === 'mstc' ? customLocations : LOCATIONS;
+  const locationOptions = currentLocations.map(loc => ({ key: loc, label: loc }));
 
-  const locationItems = [
-    { key: '', label: 'All Locations' },
-    ...currentLocations.map(loc => ({ key: loc, label: loc }))
-  ];
-
-  const locationMenu = {
-    items: locationItems.map(item => ({
-      key: item.key,
-      label: (
-        <span className={clsx("block px-2 py-1 text-sm font-medium text-slate-700 hover:text-primary transition-colors", selectedLocation === item.key && "font-bold text-primary bg-slate-50 rounded")}>
-          {item.label}
-        </span>
-      ),
-      onClick: () => setSelectedLocation(item.key)
-    }))
-  };
+  const expandMstcOfficeMap = customRegionalOffices.reduce((acc, office) => {
+    acc[office] = expandMstcOffice(office);
+    return acc;
+  }, {} as Record<string, string>);
 
   return (
     <div 
@@ -510,19 +562,23 @@ export function AuctionFilters({
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
                 <Dropdown 
-                  menu={customCategoryMenu} 
+                  popupRender={() => renderMultiSelectMenu(
+                    customCategoryOptions,
+                    selectedCategories,
+                    (cats) => handleMstcCategoryChange(cats),
+                    'All Categories'
+                  )}
                   trigger={['click']} 
                   placement="bottomLeft"
                   align={{ overflow: { adjustX: false, adjustY: false } }}
                   getPopupContainer={() => containerRef.current || document.body}
-                  dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
                 >
                   <button 
                     type="button"
                     className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
                   >
                     <span className="truncate">
-                      {selectedCategories[0] || 'All Categories'}
+                      {getTriggerLabel(selectedCategories, 'All Categories')}
                     </span>
                     <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
                   </button>
@@ -532,26 +588,32 @@ export function AuctionFilters({
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
                 <Dropdown 
-                  menu={customSubcategoryMenu} 
+                  popupRender={() => renderMultiSelectMenu(
+                    customSubcategoryOptions,
+                    selectedSubcategories,
+                    setSelectedSubcategories,
+                    'All Sub-Categories'
+                  )}
                   trigger={['click']} 
-                  disabled={!selectedMstcCategory}
+                  disabled={selectedCategories.length === 0}
                   placement="bottomLeft"
                   align={{ overflow: { adjustX: false, adjustY: false } }}
                   getPopupContainer={() => containerRef.current || document.body}
-                  dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
                 >
                   <button 
                     type="button"
-                    disabled={!selectedMstcCategory}
+                    disabled={selectedCategories.length === 0}
                     className={clsx(
                       "w-full flex justify-between items-center px-3.5 py-2.5 border rounded-xl shadow-2xs text-sm transition-all text-left",
-                      !selectedMstcCategory 
+                      selectedCategories.length === 0 
                         ? "border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50" 
                         : "border-slate-250 bg-white text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
                     )}
                   >
                     <span className="truncate">
-                      {!selectedMstcCategory ? 'Select a category first' : (selectedSubcategory || 'All Sub-Categories')}
+                      {selectedCategories.length === 0 
+                        ? 'Select a category first' 
+                        : getTriggerLabel(selectedSubcategories, 'All Sub-Categories')}
                     </span>
                     <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
                   </button>
@@ -643,19 +705,23 @@ export function AuctionFilters({
                 Regional Office
               </h3>
               <Dropdown 
-                menu={customRegionalOfficeMenu} 
+                popupRender={() => renderMultiSelectMenu(
+                  regionalOfficeOptions,
+                  selectedRegionalOffices,
+                  setSelectedRegionalOffices,
+                  'All Regional Offices'
+                )}
                 trigger={['click']} 
                 placement="bottomLeft"
                 align={{ overflow: { adjustX: false, adjustY: false } }}
                 getPopupContainer={() => containerRef.current || document.body}
-                dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
               >
                 <button 
                   type="button"
                   className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
                 >
                   <span className="truncate">
-                    {expandMstcOffice(selectedRegionalOffice) || 'All Regional Offices'}
+                    {getTriggerLabel(selectedRegionalOffices, 'All Regional Offices', expandMstcOfficeMap)}
                   </span>
                   <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
                 </button>
@@ -667,19 +733,23 @@ export function AuctionFilters({
                 Sellers
               </h3>
               <Dropdown 
-                menu={customSellerMenu} 
+                popupRender={() => renderMultiSelectMenu(
+                  customSellerOptions,
+                  selectedMstcSellers,
+                  setSelectedMstcSellers,
+                  'All Sellers'
+                )}
                 trigger={['click']} 
                 placement="bottomLeft"
                 align={{ overflow: { adjustX: false, adjustY: false } }}
                 getPopupContainer={() => containerRef.current || document.body}
-                dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
               >
                 <button 
                   type="button"
                   className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
                 >
                   <span className="truncate">
-                    {selectedMstcSeller || 'All Sellers'}
+                    {getTriggerLabel(selectedMstcSellers, 'All Sellers')}
                   </span>
                   <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
                 </button>
@@ -692,19 +762,23 @@ export function AuctionFilters({
               Regional Office
             </h3>
             <Dropdown 
-              menu={regionalOfficeMenu} 
+              popupRender={() => renderMultiSelectMenu(
+                regionalOfficeOptions,
+                selectedRegionalOffices,
+                setSelectedRegionalOffices,
+                'All Regional Offices'
+              )}
               trigger={['click']} 
               placement="bottomLeft"
               align={{ overflow: { adjustX: false, adjustY: false } }}
               getPopupContainer={() => containerRef.current || document.body}
-              dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
             >
               <button 
                 type="button"
                 className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
               >
                 <span className="truncate">
-                  {selectedRegionalOffice || 'All Regional Offices'}
+                  {getTriggerLabel(selectedRegionalOffices, 'All Regional Offices')}
                 </span>
                 <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
               </button>
@@ -716,19 +790,23 @@ export function AuctionFilters({
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Location</h3>
           <Dropdown 
-            menu={locationMenu} 
+            popupRender={() => renderMultiSelectMenu(
+              locationOptions,
+              selectedLocations,
+              setSelectedLocations,
+              'All Locations'
+            )}
             trigger={['click']} 
             placement="bottomLeft"
             align={{ overflow: { adjustX: false, adjustY: false } }}
             getPopupContainer={() => containerRef.current || document.body}
-            dropdownRender={(menu) => <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">{menu}</div>}
           >
             <button 
               type="button"
               className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
             >
               <span className="truncate">
-                {selectedLocation || 'All Locations'}
+                {getTriggerLabel(selectedLocations, 'All Locations')}
               </span>
               <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
             </button>
@@ -782,11 +860,11 @@ export function AuctionFilters({
               </button>
             </PopoverTrigger>
             <PopoverContent 
-              className="w-auto overflow-hidden p-0 rounded-2xl border border-slate-200 shadow-lg" 
+              className="w-fit overflow-hidden p-0 rounded-2xl border border-slate-200 shadow-lg" 
               align="start" 
               sideOffset={4}
               side="bottom"
-              avoidCollisions={false}
+              avoidCollisions={true}
               container={containerRef.current}
             >
               <Calendar
@@ -833,13 +911,13 @@ export function AuctionFilters({
         <div className="flex gap-4">
           <button
             onClick={handleReset}
-            className="w-full px-4 py-2.5 border border-slate-250 text-sm font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/25 transition-all cursor-pointer"
+            className="w-full px-4 py-2.5 border border-slate-250 text-sm font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-350 transition-all duration-200 cursor-pointer"
           >
             Reset
           </button>
           <button
             onClick={handleApply}
-            className="w-full px-4 py-2.5 border border-transparent text-sm font-semibold rounded-xl text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/25 transition-all cursor-pointer"
+            className="w-full px-4 py-2.5 text-sm font-semibold rounded-lg text-white bg-[#1c4973] hover:bg-primary hover:shadow-sm transition-all duration-200 cursor-pointer"
           >
             Apply
           </button>

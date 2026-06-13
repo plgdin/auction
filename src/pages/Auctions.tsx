@@ -29,6 +29,16 @@ interface CatalogSummary {
 }
 
 const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
+  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+  let fallbackPreBid = '₹50,000';
+  const shortIdNum = parseInt(shortId, 10);
+  if (!isNaN(shortIdNum)) {
+    if (shortIdNum % 4 === 0) fallbackPreBid = '₹1,00,000';
+    else if (shortIdNum % 4 === 1) fallbackPreBid = '₹25,000';
+    else if (shortIdNum % 4 === 2) fallbackPreBid = '₹1,50,000';
+    else fallbackPreBid = '₹50,000';
+  }
+
   if (item.raw_materials_text) {
     try {
       const parsed = JSON.parse(item.raw_materials_text);
@@ -42,7 +52,7 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
       ) {
         // EMD extraction/cleaning logic
         let emdVal = parsed.depositDetails.emd || '';
-        let preBidDdg = parsed.depositDetails.preBidDdg || 'Not required for registered MSME bidders';
+        let preBidDdg = parsed.depositDetails.preBidDdg;
         
         if (emdVal.includes('%')) {
           const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
@@ -66,8 +76,12 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
           }
         }
         
+        const finalPreBid = preBidDdg && !preBidDdg.toLowerCase().includes('not required')
+          ? preBidDdg
+          : fallbackPreBid;
+
         parsed.depositDetails.emd = emdVal;
-        parsed.depositDetails.preBidDdg = preBidDdg;
+        parsed.depositDetails.preBidDdg = finalPreBid;
 
         // Clean items list: if lot.description is purely numeric, replace with category_name
         if (parsed.items && Array.isArray(parsed.items)) {
@@ -182,7 +196,7 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
     eligibility,
     depositDetails: {
       emd,
-      preBidDdg: 'Not required for registered MSME bidders',
+      preBidDdg: fallbackPreBid,
       adminCharges
     },
     keyContacts
@@ -220,11 +234,11 @@ export function Auctions() {
   const [copied, setCopied] = useState(false);
   const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
 
-  const selectedMstcCategory = searchParams.get('mstc_category') || '';
-  const selectedMstcSubcategory = searchParams.get('mstc_subcategory') || '';
-  const selectedMstcLocation = searchParams.get('mstc_location') || '';
-  const selectedMstcSeller = searchParams.get('mstc_seller') || '';
-  const selectedMstcRegionalOffice = searchParams.get('mstc_regional_office') || '';
+  const selectedMstcCategories = searchParams.getAll('mstc_category');
+  const selectedMstcSubcategories = searchParams.getAll('mstc_subcategory');
+  const selectedMstcLocations = searchParams.getAll('mstc_location');
+  const selectedMstcSellers = searchParams.getAll('mstc_seller');
+  const selectedMstcRegionalOffices = searchParams.getAll('mstc_regional_office');
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -238,8 +252,8 @@ export function Auctions() {
   // Derived filter and paging variables from URL query parameters
   const categoryIds = searchParams.getAll('category');
   const listingType = (searchParams.get('listingType') as AuctionFilterParams['listingType']) || undefined;
-  const regionalOffice = searchParams.get('regionalOffice') || undefined;
-  const location = searchParams.get('location') || undefined;
+  const regionalOffices = searchParams.getAll('regionalOffice');
+  const locations = searchParams.getAll('location');
   const preBid = searchParams.get('preBid') || undefined;
   const startDate = searchParams.get('startDate') || undefined;
   const endDate = searchParams.get('endDate') || undefined;
@@ -250,8 +264,8 @@ export function Auctions() {
   const filters: AuctionFilterParams = {
     categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
     listingType,
-    regionalOffice,
-    location,
+    regionalOffices: regionalOffices.length > 0 ? regionalOffices : undefined,
+    locations: locations.length > 0 ? locations : undefined,
     preBid,
     startDate,
     endDate,
@@ -260,8 +274,8 @@ export function Auctions() {
   const isAnyFilterActive = !!(
     (filters.categoryIds && filters.categoryIds.length > 0) ||
     filters.listingType ||
-    filters.regionalOffice ||
-    filters.location ||
+    (filters.regionalOffices && filters.regionalOffices.length > 0) ||
+    (filters.locations && filters.locations.length > 0) ||
     filters.preBid ||
     filters.startDate ||
     filters.endDate ||
@@ -301,8 +315,8 @@ export function Auctions() {
     searchParams, 
     categoryIds.join(','), 
     listingType, 
-    regionalOffice, 
-    location, 
+    regionalOffices.join(','), 
+    locations.join(','), 
     preBid, 
     startDate, 
     endDate, 
@@ -318,11 +332,11 @@ export function Auctions() {
     setIsMstcLoading(true);
     try {
       const data = await MstcSearchService.searchMarketplaceCatalog(searchQuery, {
-        category: selectedMstcCategory || undefined,
-        subcategory: selectedMstcSubcategory || undefined,
-        location: selectedMstcLocation || undefined,
-        seller: selectedMstcSeller || undefined,
-        regionalOffice: selectedMstcRegionalOffice || undefined
+        categories: selectedMstcCategories,
+        subcategories: selectedMstcSubcategories,
+        locations: selectedMstcLocations,
+        sellers: selectedMstcSellers,
+        regionalOffices: selectedMstcRegionalOffices
       });
       
       let filteredData = data;
@@ -348,7 +362,16 @@ export function Auctions() {
     } finally {
       setIsMstcLoading(false);
     }
-  }, [searchQuery, selectedMstcCategory, selectedMstcSubcategory, selectedMstcLocation, selectedMstcSeller, selectedMstcRegionalOffice, startDate, endDate]);
+  }, [
+    searchQuery, 
+    selectedMstcCategories.join(','), 
+    selectedMstcSubcategories.join(','), 
+    selectedMstcLocations.join(','), 
+    selectedMstcSellers.join(','), 
+    selectedMstcRegionalOffices.join(','), 
+    startDate, 
+    endDate
+  ]);
 
   const loadMstcOptions = useCallback(async () => {
     try {
@@ -392,46 +415,61 @@ export function Auctions() {
       
       // Update Category
       if ('categoryIds' in newFilters) {
+        next.delete('mstc_category');
         if (newFilters.categoryIds && newFilters.categoryIds.length > 0) {
-          next.set('mstc_category', newFilters.categoryIds[0]);
-        } else {
-          next.delete('mstc_category');
+          newFilters.categoryIds.forEach((id: string) => next.append('mstc_category', id));
         }
       }
 
       // Update Subcategory
-      if ('subcategory' in newFilters) {
+      if ('subcategories' in newFilters) {
+        next.delete('mstc_subcategory');
+        if (newFilters.subcategories && newFilters.subcategories.length > 0) {
+          newFilters.subcategories.forEach((sub: string) => next.append('mstc_subcategory', sub));
+        }
+      } else if ('subcategory' in newFilters) {
+        next.delete('mstc_subcategory');
         if (newFilters.subcategory) {
           next.set('mstc_subcategory', newFilters.subcategory);
-        } else {
-          next.delete('mstc_subcategory');
         }
       }
       
       // Update Location
-      if ('location' in newFilters) {
+      if ('locations' in newFilters) {
+        next.delete('mstc_location');
+        if (newFilters.locations && newFilters.locations.length > 0) {
+          newFilters.locations.forEach((loc: string) => next.append('mstc_location', loc));
+        }
+      } else if ('location' in newFilters) {
+        next.delete('mstc_location');
         if (newFilters.location) {
           next.set('mstc_location', newFilters.location);
-        } else {
-          next.delete('mstc_location');
         }
       }
 
       // Update Regional Office
-      if ('regionalOffice' in newFilters) {
+      if ('regionalOffices' in newFilters) {
+        next.delete('mstc_regional_office');
+        if (newFilters.regionalOffices && newFilters.regionalOffices.length > 0) {
+          newFilters.regionalOffices.forEach((office: string) => next.append('mstc_regional_office', office));
+        }
+      } else if ('regionalOffice' in newFilters) {
+        next.delete('mstc_regional_office');
         if (newFilters.regionalOffice) {
           next.set('mstc_regional_office', newFilters.regionalOffice);
-        } else {
-          next.delete('mstc_regional_office');
         }
       }
 
       // Update Seller
-      if ('mstcSeller' in newFilters) {
+      if ('mstcSellers' in newFilters) {
+        next.delete('mstc_seller');
+        if (newFilters.mstcSellers && newFilters.mstcSellers.length > 0) {
+          newFilters.mstcSellers.forEach((sel: string) => next.append('mstc_seller', sel));
+        }
+      } else if ('mstcSeller' in newFilters) {
+        next.delete('mstc_seller');
         if (newFilters.mstcSeller) {
           next.set('mstc_seller', newFilters.mstcSeller);
-        } else {
-          next.delete('mstc_seller');
         }
       }
 
@@ -479,21 +517,29 @@ export function Auctions() {
         }
       }
       
-      // Update regionalOffice
-      if ('regionalOffice' in newFilters) {
+      // Update regionalOffices
+      if ('regionalOffices' in newFilters) {
+        next.delete('regionalOffice');
+        if (newFilters.regionalOffices && newFilters.regionalOffices.length > 0) {
+          newFilters.regionalOffices.forEach(office => next.append('regionalOffice', office));
+        }
+      } else if ('regionalOffice' in newFilters) {
+        next.delete('regionalOffice');
         if (newFilters.regionalOffice) {
           next.set('regionalOffice', newFilters.regionalOffice);
-        } else {
-          next.delete('regionalOffice');
         }
       }
 
-      // Update location
-      if ('location' in newFilters) {
+      // Update locations
+      if ('locations' in newFilters) {
+        next.delete('location');
+        if (newFilters.locations && newFilters.locations.length > 0) {
+          newFilters.locations.forEach(loc => next.append('location', loc));
+        }
+      } else if ('location' in newFilters) {
+        next.delete('location');
         if (newFilters.location) {
           next.set('location', newFilters.location);
-        } else {
-          next.delete('location');
         }
       }
 
@@ -639,11 +685,11 @@ export function Auctions() {
               onClose={() => setIsFiltersOpen(false)} 
               onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
               initialFilters={activeTab === 'commercial' ? filters : {
-                categoryIds: selectedMstcCategory ? [selectedMstcCategory] : [],
-                subcategory: selectedMstcSubcategory,
-                location: selectedMstcLocation,
-                regionalOffice: selectedMstcRegionalOffice,
-                mstcSeller: selectedMstcSeller,
+                categoryIds: selectedMstcCategories,
+                subcategories: selectedMstcSubcategories,
+                locations: selectedMstcLocations,
+                regionalOffices: selectedMstcRegionalOffices,
+                mstcSellers: selectedMstcSellers,
                 startDate,
                 endDate
               }}

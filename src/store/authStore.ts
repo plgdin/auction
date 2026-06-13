@@ -25,10 +25,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isInitialized: false,
 
   setSession: (session) => {
+    const isMock = !!localStorage.getItem('mock_session');
     set({
       session,
       user: session?.user || null,
       isAuthenticated: !!session,
+      profile: isMock && session?.user ? {
+        id: session.user.id,
+        first_name: session.user.email === 'test@mail.com' ? 'Test' : 'Temp',
+        last_name: 'User',
+        role: 'buyer',
+        is_active: true
+      } as any : (session ? get().profile : null)
     });
   },
 
@@ -44,7 +52,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         session, 
         user: session.user, 
         isAuthenticated: true, 
-        profile: { id: session.user.id, first_name: 'Temp', last_name: 'User', role: 'buyer', is_active: true } as any, 
+        profile: { 
+          id: session.user.id, 
+          first_name: session.user.email === 'test@mail.com' ? 'Test' : 'Temp', 
+          last_name: 'User', 
+          role: 'buyer', 
+          is_active: true 
+        } as any, 
         isLoading: false, 
         isInitialized: true 
       });

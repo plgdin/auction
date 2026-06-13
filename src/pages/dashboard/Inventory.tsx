@@ -300,8 +300,14 @@ export function Inventory() {
                         </button>
 
                         <div>
-                          <p className={`text-sm font-bold text-slate-800 leading-normal ${item.checked ? 'line-through text-slate-400 font-medium' : ''}`}>
-                            {item.description}
+                          <p className={`text-sm font-bold text-slate-800 leading-normal transition-colors duration-500 ${item.checked ? 'text-slate-400 font-medium' : ''}`}>
+                            <span className="relative inline-block">
+                              {item.description}
+                              <span 
+                                className="absolute left-0 top-[55%] h-[2px] bg-slate-400/80 transition-all duration-500 ease-out origin-left rounded"
+                                style={{ width: item.checked ? '100%' : '0%' }}
+                              />
+                            </span>
                           </p>
                           <p className="text-xs font-semibold text-slate-500 mt-1">
                             Quantity: {item.qty} {item.unit}

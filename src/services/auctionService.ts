@@ -160,11 +160,15 @@ export const auctionService = {
       });
     }
 
-    if (params.regionalOffice) {
+    if (params.regionalOffices && params.regionalOffices.length > 0) {
+      enriched = enriched.filter(item => params.regionalOffices.includes(item.regional_office));
+    } else if (params.regionalOffice) {
       enriched = enriched.filter(item => item.regional_office === params.regionalOffice);
     }
 
-    if (params.location) {
+    if (params.locations && params.locations.length > 0) {
+      enriched = enriched.filter(item => params.locations.includes(item.location));
+    } else if (params.location) {
       enriched = enriched.filter(item => item.location === params.location);
     }
 
@@ -335,16 +339,21 @@ export const auctionService = {
 
   async getWonAuctions(userId: string): Promise<Auction[]> {
     const { data, error } = await supabase
-      .from('auctions')
-      .select('*')
-      .eq('winner_id', userId)
-      .order('end_time', { ascending: false });
+      .from('bids')
+      .select(`
+        *,
+        auction:auctions(*)
+      `)
+      .eq('bidder_id', userId)
+      .eq('status', 'winning');
 
     if (error) {
       console.error('Error fetching won auctions:', error);
       return [];
     }
-    return data;
+    return (data || [])
+      .map((bid: any) => bid.auction)
+      .filter((auction): auction is Auction => !!auction);
   },
 
   // Realtime Bidding Logic

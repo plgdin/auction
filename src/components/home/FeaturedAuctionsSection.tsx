@@ -101,9 +101,9 @@ export function FeaturedAuctionsSection() {
               <div className="absolute inset-0 flex items-center justify-center z-10 px-4 bg-white/30 backdrop-blur-xs rounded-2xl">
                 <div className="max-w-md w-full bg-slate-900 text-white p-8 rounded-3xl shadow-2xl text-center border border-slate-800 relative overflow-hidden">
                   {/* Decorative Glowing Circle */}
-                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary-500/10 rounded-full blur-2xl pointer-events-none" />
+                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
                   
-                  <div className="w-16 h-16 bg-primary-600/20 text-primary-400 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <div className="w-16 h-16 bg-primary/20 text-primary rounded-2xl flex items-center justify-center mx-auto mb-6">
                     <Lock className="w-8 h-8" />
                   </div>
                   
@@ -114,14 +114,14 @@ export function FeaturedAuctionsSection() {
                   
                   <div className="flex flex-col gap-4">
                     <Link
-                      to="/register"
-                      className="w-full py-3 px-6 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl shadow-md transition-colors text-center"
+                      to="/auth/register"
+                      className="w-full py-3 px-6 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-md transition-all duration-200 text-center"
                     >
                       Sign Up Now
                     </Link>
                     <div className="text-sm text-slate-400">
                       Already have an account?{' '}
-                      <Link to="/login" className="text-primary-400 hover:text-primary-300 font-semibold underline">
+                      <Link to="/auth/login" className="text-primary-400 hover:text-primary-300 font-semibold underline">
                         Log In
                       </Link>
                     </div>
