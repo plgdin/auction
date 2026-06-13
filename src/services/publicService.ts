@@ -865,9 +865,10 @@ export const MstcSearchService = {
       });
 
       if (filters?.categories && filters.categories.length > 0) {
+        const cats = filters.categories;
         mapped = mapped.filter(item => {
           const parts = item.category_name.split(' | ');
-          return filters.categories.includes(parts[0]);
+          return cats.includes(parts[0]);
         });
       } else if (filters?.category) {
         mapped = mapped.filter(item => {
@@ -877,9 +878,10 @@ export const MstcSearchService = {
       }
 
       if (filters?.subcategories && filters.subcategories.length > 0) {
+        const subcats = filters.subcategories;
         mapped = mapped.filter(item => {
           const parts = item.category_name.split(' | ');
-          return filters.subcategories.includes(parts[1]);
+          return subcats.includes(parts[1]);
         });
       } else if (filters?.subcategory) {
         mapped = mapped.filter(item => {
