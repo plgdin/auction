@@ -51,8 +51,8 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
         parsed.keyContacts
       ) {
         // EMD extraction/cleaning logic
-        let emdVal = parsed.depositDetails.emd || '';
-        let preBidDdg = parsed.depositDetails.preBidDdg;
+        let emdVal = parsed.depositDetails.emd || "";
+        let preBidDdg = parsed.depositDetails.preBidDdg || "Not required for registered MSME bidders";
         
         if (emdVal.includes('%')) {
           const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
@@ -196,8 +196,8 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
     eligibility,
     depositDetails: {
       emd,
-      preBidDdg: fallbackPreBid,
-      adminCharges
+      preBidDdg: "Refer to PDF Catalog",
+      adminCharges,
     },
     keyContacts
   };

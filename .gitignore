@@ -24,3 +24,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch & Temporary files
+cookies.txt
+debug_page.html
+lint_report.txt
+scratch_pdf_*.txt
+scratch_pdf_text.txt
