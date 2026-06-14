@@ -1,16 +1,8 @@
-import {
-  Eye,
-  Download,
-  MapPin,
-  Building2,
-  Calendar,
-  Clock,
-  ShieldCheck,
-  Landmark,
-} from "lucide-react";
-import { expandMstcOffice } from "../../services/publicService";
-import type { MstcSanitizedAuction } from "../../services/publicService";
-import clsx from "clsx";
+import { useState } from 'react';
+import { Eye, Download, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check } from 'lucide-react';
+import { expandMstcOffice } from '../../services/publicService';
+import type { MstcSanitizedAuction } from '../../services/publicService';
+import clsx from 'clsx';
 
 interface MstcCardProps {
   item: MstcSanitizedAuction;
@@ -116,6 +108,12 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
   const shortId =
     item.mstc_auction_number.split("/").pop() || item.id.substring(0, 8);
   const summary = generateCatalogSummary(item, shortId);
+  const hasOtherMedia = summary.extracted_images && summary.extracted_images.length > 0;
+  const extraMediaText = hasOtherMedia
+    ? summary.extracted_images?.some(url => url.toLowerCase().includes('.pdf'))
+      ? 'documents available'
+      : 'images available'
+    : '';
 
   const parts = item.mstc_auction_number.split("/");
   const rawOffice =
@@ -159,11 +157,45 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
     </span>
   );
 
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(item.mstc_auction_number);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const cardHeader = (
-    <div className="flex justify-between items-center gap-4 mb-3">
-      <span className="text-xs font-semibold text-slate-500 font-mono bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg">
-        Ref ID: {shortId}
-      </span>
+    <div className="flex justify-between items-start gap-4 mb-3">
+      <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+        <span className="text-xs font-semibold text-slate-500 font-mono">
+          Ref ID: {shortId}
+        </span>
+        <button
+          onClick={handleCopy}
+          className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+          title="Copy full reference number to clipboard"
+        >
+          {copied ? (
+            <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+        </button>
+      </div>
+      <div className="flex flex-col items-end gap-1.5">
+        {(item.sanitized_document_path || (summary.extracted_images && summary.extracted_images.some(url => url.toLowerCase().includes('.pdf')))) && (
+          <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+            Asset documents available
+          </span>
+        )}
+        {hasOtherMedia && (
+          <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+            images available
+          </span>
+        )}
+      </div>
     </div>
   );
 
@@ -179,10 +211,10 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
 
           return displayImage ? (
             <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
-              <img
-                src={displayImage}
-                alt="Catalog Image"
-                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+              <img 
+                src={displayImage} 
+                alt="Catalog Image" 
+                className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
               />
             </div>
           ) : (
@@ -219,21 +251,13 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
                 <div className="mb-3">
                   {subCat ? (
                     <>
-                      <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">
-                        {mainCat}
-                      </div>
-                      <h3
-                        className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2"
-                        title={item.category_name}
-                      >
+                      <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCat}</div>
+                      <h3 className="text-lg font-bold text-slate-955 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
                         {subCat}
                       </h3>
                     </>
                   ) : (
-                    <h3
-                      className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2"
-                      title={item.category_name}
-                    >
+                    <h3 className="text-lg font-bold text-slate-955 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
                       {mainCat}
                     </h3>
                   )}
@@ -356,7 +380,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full p-5 justify-between">
       <div>
-        <div className="h-[140px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
+        <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
           {(() => {
             const displayImage =
               summary.extracted_images && summary.extracted_images.length > 0
@@ -364,11 +388,18 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
                 : summary.preview_image_url;
 
             return displayImage ? (
-              <img
-                src={displayImage}
-                alt="Catalog Image"
-                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-              />
+              <>
+                <img 
+                  src={displayImage} 
+                  alt="Catalog Image" 
+                  className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
+                />
+                {hasOtherMedia && (
+                  <div className="absolute top-2 left-2 right-2 bg-slate-900/85 backdrop-blur-xs text-white text-[9.5px] font-bold px-2 py-1.5 rounded-md text-center border border-white/10 shadow-xs z-10 pointer-events-none select-none uppercase tracking-wider">
+                    {extraMediaText}
+                  </div>
+                )}
+              </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
                 <svg
@@ -423,42 +454,28 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
           );
         })()}
 
-        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4 space-y-2 text-xs">
-          <div className="flex items-center text-slate-655 justify-between">
-            <span className="text-slate-400">Regional Office:</span>
-            <span
-              className="truncate font-semibold text-slate-705 max-w-[200px]"
-              title={regionalOfficeName}
-            >
+        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs">
+          <div className="flex flex-col min-w-0">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Office</span>
+            <span className="font-bold text-slate-700 truncate" title={regionalOfficeName}>
               {regionalOfficeName}
             </span>
           </div>
-          {item.location && (
-            <div className="flex items-center text-slate-655 justify-between">
-              <span className="text-slate-400">Location:</span>
-              <span
-                className="truncate font-semibold text-slate-705 max-w-[200px]"
-                title={locationName}
-              >
-                {locationName}
-              </span>
-            </div>
-          )}
-          <div className="flex items-center text-slate-655 justify-between">
-            <span className="text-slate-400">EMD Required:</span>
-            <span
-              className="font-semibold text-slate-705 truncate max-w-[200px]"
-              title={summary.depositDetails.emd}
-            >
+          <div className="flex flex-col min-w-0">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Location</span>
+            <span className="font-bold text-slate-700 truncate" title={locationName || 'N/A'}>
+              {locationName || 'N/A'}
+            </span>
+          </div>
+          <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">EMD Required</span>
+            <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.emd}>
               {summary.depositDetails.emd}
             </span>
           </div>
-          <div className="flex items-center text-slate-655 justify-between">
-            <span className="text-slate-400">Pre-bid EMD:</span>
-            <span
-              className="font-semibold text-slate-705 truncate max-w-[200px]"
-              title={summary.depositDetails.preBidDdg}
-            >
+          <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
+            <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.preBidDdg}>
               {summary.depositDetails.preBidDdg}
             </span>
           </div>
