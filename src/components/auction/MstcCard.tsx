@@ -96,22 +96,9 @@ const generateCatalogSummary = (
     }
   }
 
-  const cat = (item.category_name || "").toUpperCase();
-  let overview = `This auction is conducted by MSTC on behalf of ${item.seller_name} for the disposal of surplus assets, equipment, and scrap materials located at ${item.location || "various sites"}.`;
-  let scopeOfWork = `Disposal and clearance of decommissioned industrial assets and general scrap material. All materials are offered strictly on an "As-Is-Where-Is" basis.`;
-  let emd = "10% of total bid value";
-
-  if (cat.includes("ROADWAYS") || cat.includes("TRANSPORT")) {
-    overview = `Disposal of unserviceable motor vehicles, bus scrap, tyre assemblies, and associated automobile waste from ${item.seller_name} depots.`;
-    scopeOfWork = `Complete dismantling, lifting, and clearing of designated transport assets from premises.`;
-  } else if (
-    cat.includes("COPPER") ||
-    cat.includes("CABLE") ||
-    cat.includes("ELECTRICAL")
-  ) {
-    overview = `Disposal of obsolete electrical transformers, high-tension copper cables, stator coils, and copper scrap windings.`;
-    scopeOfWork = `Lifting of copper and electrical scrap material strictly under supervision of site engineer.`;
-  }
+  const overview = `This auction is conducted by MSTC on behalf of ${item.seller_name} for the disposal of materials located at ${item.location || "designated site areas"}.`;
+  const scopeOfWork = `Lifting, clearing, and disposal of materials in accordance with MSTC Special Terms & Conditions (STC). All items are offered strictly on an "As-Is-Where-Is" basis.`;
+  const emd = "Refer to PDF Catalog / Special Terms";
 
   return {
     overview,

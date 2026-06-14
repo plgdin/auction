@@ -125,219 +125,34 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
     }
   }
 
-  const cat = (item.category_name || "").toUpperCase();
-  const seller = (item.seller_name || "").toUpperCase();
+  const overview = `This auction is conducted by MSTC on behalf of ${item.seller_name} for the disposal of materials located at ${item.location || "designated site areas"}.`;
+  const scopeOfWork = `Lifting, clearing, and disposal of materials in accordance with MSTC Special Terms & Conditions (STC). All items are offered strictly on an "As-Is-Where-Is" basis.`;
 
-  let overview = `This auction is conducted by MSTC on behalf of ${item.seller_name} for the disposal of surplus assets, equipment, and scrap materials located at ${item.location || "various sites"}.`;
-  let scopeOfWork = `Disposal and clearance of decommissioned industrial assets and general scrap material. All materials are offered strictly on an "As-Is-Where-Is" basis.`;
-
-  let items = [
+  const items = [
     {
       sr: 1,
-      description: "Mixed Ferrous Scrap (MS Pipes, Angle, Channels)",
-      qty: "12.5",
-      unit: "MT",
-      taxRate: "18% GST",
-    },
-    {
-      sr: 2,
-      description: "Non-Ferrous Scrap (Aluminum cables & Copper windings)",
-      qty: "1,850",
-      unit: "Kgs",
-      taxRate: "18% GST",
-    },
-    {
-      sr: 3,
-      description: "Unserviceable Batteries & Used Lubricating Oil",
-      qty: "45",
-      unit: "Nos",
-      taxRate: "18% GST + TCS",
-    },
-    {
-      sr: 4,
-      description: "Obsolete Machinery Parts & Hand Tools",
-      qty: "1",
-      unit: "Lot",
-      taxRate: "18% GST",
+      description: item.category_name || "Auction Lot Items",
+      qty: "Refer to PDF Catalog",
+      unit: "",
+      taxRate: "As Applicable",
     },
   ];
 
-  let eligibility = [
+  const eligibility = [
     "Valid MSTC Buyer Registration.",
     "GSTIN Registration Certificate matching buyer profile.",
-    "Hazardous waste buyers must possess active State Pollution Control Board (SPCB) authorization.",
   ];
 
-  let keyContacts = [
+  const keyContacts = [
     {
       role: "Auction Officer (MSTC)",
-      name: "S. K. Mukherjee",
-      email: "skmukherjee@mstcindia.co.in",
-    },
-    {
-      role: "Site In-Charge",
-      name: "R. K. Sharma (Superintending Engineer)",
-      email: "rksharma@site-authority.org",
+      name: "Refer to PDF Catalog",
+      email: "support@mstcindia.co.in",
     },
   ];
 
-  let emd = "10% of total bid value to be submitted via pre-bid EMD link";
-  let adminCharges = "₹11,800 (incl. GST) non-refundable service provider fees";
-
-  // Customize based on Category/Seller
-  if (cat.includes("ROADWAYS") || cat.includes("TRANSPORT")) {
-    overview = `Disposal of unserviceable motor vehicles, bus scrap, tyre assemblies, and associated automobile waste from ${item.seller_name} depots.`;
-    scopeOfWork = `Complete dismantling, lifting, and clearing of designated scrap transport assets from the depot premises within the specified deadline.`;
-    items = [
-      {
-        sr: 1,
-        description: "Scrap Condemned Buses (without tyres & batteries)",
-        qty: "8",
-        unit: "Units",
-        taxRate: "18% GST",
-      },
-      {
-        sr: 2,
-        description: "Used Automobile Tyres (Various sizes, worn out)",
-        qty: "120",
-        unit: "Nos",
-        taxRate: "18% GST",
-      },
-      {
-        sr: 3,
-        description: "Lead Acid Batteries (Unserviceable)",
-        qty: "35",
-        unit: "Nos",
-        taxRate: "18% GST",
-      },
-      {
-        sr: 4,
-        description: "Waste Gear & Lubricating Oil (in drums)",
-        qty: "1,200",
-        unit: "Liters",
-        taxRate: "18% GST + 1% TCS",
-      },
-    ];
-    eligibility.push(
-      "Automobile recycler license / lead smelter certificate required for Lot 3.",
-    );
-  } else if (
-    cat.includes("TELECOM") ||
-    cat.includes("BSNL") ||
-    cat.includes("COMMUNICATION")
-  ) {
-    overview = `Sale of telecom infrastructure scrap, office equipment, batteries, and underground cables decommissioned by ${item.seller_name}.`;
-    scopeOfWork = `Safe extraction, lifting, and environment-compliant transport of copper/telecom scrap from exchange storage locations.`;
-    items = [
-      {
-        sr: 1,
-        description: "Decommissioned Copper Cables (Pipes/Wires)",
-        qty: "4.2",
-        unit: "MT",
-        taxRate: "18% GST",
-      },
-      {
-        sr: 2,
-        description: "SMPS Power Plant Panels & Rack Units",
-        qty: "12",
-        unit: "Lots",
-        taxRate: "18% GST",
-      },
-      {
-        sr: 3,
-        description:
-          "Unserviceable Valve Regulated Lead Acid (VRLA) Battery Banks",
-        qty: "18",
-        unit: "Sets",
-        taxRate: "18% GST",
-      },
-      {
-        sr: 4,
-        description: "E-Waste (Telecom switches, cards, & motherboards)",
-        qty: "650",
-        unit: "Kgs",
-        taxRate: "18% GST",
-      },
-    ];
-    eligibility.push(
-      "CPCB/SPCB E-Waste registration required for Lot 3 and Lot 4.",
-    );
-  } else if (
-    seller.includes("INVESTIGATION") ||
-    seller.includes("POLICE") ||
-    seller.includes("COURT")
-  ) {
-    overview = `Auction of seized, confiscated, or unclaimed vehicles and miscellaneous goods under the authority of ${item.seller_name}.`;
-    scopeOfWork = `Lifting of vehicles/goods in "as-is" condition. Registration documents or salvage papers will be issued as per court/department rules.`;
-    items = [
-      {
-        sr: 1,
-        description: "Confiscated Light Motor Vehicles (SUVs, Sedans)",
-        qty: "4",
-        unit: "Units",
-        taxRate: "12% GST",
-      },
-      {
-        sr: 2,
-        description: "Two-Wheelers (Motorcycles, Scooters)",
-        qty: "15",
-        unit: "Units",
-        taxRate: "12% GST",
-      },
-      {
-        sr: 3,
-        description: "Unclaimed Miscellaneous Electronic Items",
-        qty: "1",
-        unit: "Lot",
-        taxRate: "18% GST",
-      },
-    ];
-    eligibility = [
-      "Valid Indian citizenship proof (Aadhaar/PAN).",
-      "No pending criminal record declarations.",
-      "Active MSTC registration.",
-    ];
-  } else if (
-    cat.includes("MECHANICAL") ||
-    cat.includes("DRILLING") ||
-    cat.includes("ENGINEERING")
-  ) {
-    overview = `Disposal of unserviceable drilling rigs, heavy plant machinery, compressor units, and metal boring scrap of ${item.seller_name}.`;
-    scopeOfWork = `Heavy loading, mechanical dismantling, and clearance of rig attachments and scrap iron components from the engineering depot yard.`;
-    items = [
-      {
-        sr: 1,
-        description: "Condemned Compressor Units & Air Dryers",
-        qty: "3",
-        unit: "Units",
-        taxRate: "18% GST",
-      },
-      {
-        sr: 2,
-        description: "Heavy Duty Drilling Rig Parts (Unserviceable)",
-        qty: "9.8",
-        unit: "MT",
-        taxRate: "18% GST",
-      },
-      {
-        sr: 3,
-        description: "Used Lubricants & Engine Oil (drums included)",
-        qty: "800",
-        unit: "Liters",
-        taxRate: "18% GST",
-      },
-      {
-        sr: 4,
-        description: "Turnings, Borings & Miscellaneous Iron Scrap",
-        qty: "14",
-        unit: "MT",
-        taxRate: "18% GST",
-      },
-    ];
-    eligibility.push(
-      "Heavy crane entry permit must be cleared with site security 24 hours prior to lifting.",
-    );
-  }
+  const emd = "Refer to PDF Catalog / Special Terms";
+  const adminCharges = "₹11,800 (incl. GST) non-refundable service provider fees";
 
   return {
     overview,
@@ -346,7 +161,7 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
     eligibility,
     depositDetails: {
       emd,
-      preBidDdg: "Not required for registered MSME bidders",
+      preBidDdg: "Refer to PDF Catalog",
       adminCharges,
     },
     keyContacts,
