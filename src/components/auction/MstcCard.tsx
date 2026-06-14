@@ -1,4 +1,5 @@
-import { Eye, Download, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark } from 'lucide-react';
+import { useState } from 'react';
+import { Eye, Download, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check } from 'lucide-react';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import clsx from 'clsx';
@@ -143,16 +144,45 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
     </span>
   );
 
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(item.mstc_auction_number);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const cardHeader = (
-    <div className="flex justify-between items-center gap-4 mb-3">
-      <span className="text-xs font-semibold text-slate-500 font-mono bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg">
-        Ref ID: {shortId}
-      </span>
-      {hasOtherMedia && (
-        <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide">
-          {extraMediaText}
+    <div className="flex justify-between items-start gap-4 mb-3">
+      <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+        <span className="text-xs font-semibold text-slate-500 font-mono">
+          Ref ID: {shortId}
         </span>
-      )}
+        <button
+          onClick={handleCopy}
+          className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+          title="Copy full reference number to clipboard"
+        >
+          {copied ? (
+            <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+        </button>
+      </div>
+      <div className="flex flex-col items-end gap-1.5">
+        {(item.sanitized_document_path || (summary.extracted_images && summary.extracted_images.some(url => url.toLowerCase().includes('.pdf')))) && (
+          <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+            Asset documents available
+          </span>
+        )}
+        {hasOtherMedia && (
+          <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+            images available
+          </span>
+        )}
+      </div>
     </div>
   );
 

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X } from 'lucide-react';
+import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check } from 'lucide-react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
 import { AuctionFilters } from '../components/auction/AuctionFilters';
@@ -53,7 +53,7 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
         // EMD extraction/cleaning logic
         let emdVal = parsed.depositDetails.emd || '';
         let preBidDdg = parsed.depositDetails.preBidDdg;
-        
+
         if (emdVal.includes('%')) {
           const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
           if (percentMatch) {
@@ -75,7 +75,7 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
             }
           }
         }
-        
+
         const finalPreBid = preBidDdg && !preBidDdg.toLowerCase().includes('not required')
           ? preBidDdg
           : fallbackPreBid;
@@ -90,7 +90,7 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
             if (desc && /^\d+$/.test(desc.trim())) {
               desc = item.category_name || 'Auction Lot Items';
             }
-            
+
             let tax = lot.taxRate || '';
             if (tax) {
               if (tax.includes('%')) {
@@ -100,7 +100,7 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
                 }
               }
             }
-            
+
             return {
               ...lot,
               description: desc,
@@ -118,10 +118,10 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
 
   const cat = (item.category_name || '').toUpperCase();
   const seller = (item.seller_name || '').toUpperCase();
-  
+
   let overview = `This auction is conducted by MSTC on behalf of ${item.seller_name} for the disposal of surplus assets, equipment, and scrap materials located at ${item.location || 'various sites'}.`;
   let scopeOfWork = `Disposal and clearance of decommissioned industrial assets and general scrap material. All materials are offered strictly on an "As-Is-Where-Is" basis.`;
-  
+
   let items = [
     { sr: 1, description: 'Mixed Ferrous Scrap (MS Pipes, Angle, Channels)', qty: '12.5', unit: 'MT', taxRate: '18% GST' },
     { sr: 2, description: 'Non-Ferrous Scrap (Aluminum cables & Copper windings)', qty: '1,850', unit: 'Kgs', taxRate: '18% GST' },
@@ -206,14 +206,14 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
 export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
-  
+
   const activeTab = searchParams.get('tab') === 'commercial' ? 'commercial' : 'mstc';
 
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [watchlistIds, setWatchlistIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
   const [isMstcLoading, setIsMstcLoading] = useState(false);
   const [mstcOptions, setMstcOptions] = useState<{
@@ -232,6 +232,7 @@ export function Auctions() {
 
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<MstcSanitizedAuction | null>(null);
   const [copied, setCopied] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
 
   const selectedMstcCategories = searchParams.getAll('mstc_category');
@@ -289,7 +290,7 @@ export function Auctions() {
       setIsLoading(false);
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const [{ data, count }, wIds] = await Promise.all([
@@ -302,7 +303,7 @@ export function Auctions() {
         }),
         isAuthenticated && user ? auctionService.getUserWatchlistIds(user.id) : Promise.resolve([])
       ]);
-      
+
       setAuctions(data);
       setTotalCount(count);
       setWatchlistIds(wIds);
@@ -312,19 +313,19 @@ export function Auctions() {
       setIsLoading(false);
     }
   }, [
-    searchParams, 
-    categoryIds.join(','), 
-    listingType, 
-    regionalOffices.join(','), 
-    locations.join(','), 
-    preBid, 
-    startDate, 
-    endDate, 
-    sortBy, 
-    page, 
-    limit, 
-    isAuthenticated, 
-    user, 
+    searchParams,
+    categoryIds.join(','),
+    listingType,
+    regionalOffices.join(','),
+    locations.join(','),
+    preBid,
+    startDate,
+    endDate,
+    sortBy,
+    page,
+    limit,
+    isAuthenticated,
+    user,
     isAnyFilterActive
   ]);
 
@@ -338,7 +339,7 @@ export function Auctions() {
         sellers: selectedMstcSellers,
         regionalOffices: selectedMstcRegionalOffices
       });
-      
+
       let filteredData = data;
       if (startDate) {
         const start = new Date(startDate);
@@ -363,13 +364,13 @@ export function Auctions() {
       setIsMstcLoading(false);
     }
   }, [
-    searchQuery, 
-    selectedMstcCategories.join(','), 
-    selectedMstcSubcategories.join(','), 
-    selectedMstcLocations.join(','), 
-    selectedMstcSellers.join(','), 
-    selectedMstcRegionalOffices.join(','), 
-    startDate, 
+    searchQuery,
+    selectedMstcCategories.join(','),
+    selectedMstcSubcategories.join(','),
+    selectedMstcLocations.join(','),
+    selectedMstcSellers.join(','),
+    selectedMstcRegionalOffices.join(','),
+    startDate,
     endDate
   ]);
 
@@ -412,7 +413,7 @@ export function Auctions() {
   const handleMstcFilterChange = (newFilters: any) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      
+
       // Update Category
       if ('categoryIds' in newFilters) {
         next.delete('mstc_category');
@@ -433,7 +434,7 @@ export function Auctions() {
           next.set('mstc_subcategory', newFilters.subcategory);
         }
       }
-      
+
       // Update Location
       if ('locations' in newFilters) {
         next.delete('mstc_location');
@@ -490,7 +491,7 @@ export function Auctions() {
           next.delete('endDate');
         }
       }
-      
+
       next.set('page', '1');
       return next;
     });
@@ -499,7 +500,7 @@ export function Auctions() {
   const handleFilterChange = (newFilters: Partial<AuctionFilterParams>) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      
+
       // Update categories
       if ('categoryIds' in newFilters) {
         next.delete('category');
@@ -507,7 +508,7 @@ export function Auctions() {
           newFilters.categoryIds.forEach(id => next.append('category', id));
         }
       }
-      
+
       // Update listingType
       if ('listingType' in newFilters) {
         if (newFilters.listingType && newFilters.listingType !== 'all') {
@@ -516,7 +517,7 @@ export function Auctions() {
           next.delete('listingType');
         }
       }
-      
+
       // Update regionalOffices
       if ('regionalOffices' in newFilters) {
         next.delete('regionalOffice');
@@ -569,7 +570,7 @@ export function Auctions() {
           next.delete('endDate');
         }
       }
-      
+
       next.set('page', '1');
       return next;
     });
@@ -607,7 +608,7 @@ export function Auctions() {
         <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-white mb-2">Auctions Marketplace</h1>
           <p className="text-slate-400 mb-6">Browse live commercial auctions and official government catalogs.</p>
-          
+
           <div className="flex space-x-6 mb-6 border-b border-slate-800 pb-2">
             <button
               onClick={() => {
@@ -615,8 +616,8 @@ export function Auctions() {
               }}
               className={clsx(
                 "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none cursor-pointer",
-                activeTab === 'mstc' 
-                  ? "border-primary text-white font-bold" 
+                activeTab === 'mstc'
+                  ? "border-primary text-white font-bold"
                   : "border-transparent text-slate-300 hover:text-white"
               )}
             >
@@ -628,8 +629,8 @@ export function Auctions() {
               }}
               className={clsx(
                 "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none cursor-pointer",
-                activeTab === 'commercial' 
-                  ? "border-primary text-white font-bold" 
+                activeTab === 'commercial'
+                  ? "border-primary text-white font-bold"
                   : "border-transparent text-slate-300 hover:text-white"
               )}
             >
@@ -660,10 +661,10 @@ export function Auctions() {
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          
+
           {/* Mobile Filter Toggle */}
           <div className="lg:hidden flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 w-full mb-4">
-            <button 
+            <button
               onClick={() => setIsFiltersOpen(true)}
               className="flex items-center text-slate-700 font-medium cursor-pointer"
             >
@@ -671,7 +672,7 @@ export function Auctions() {
               Filters
             </button>
             <div className="text-sm text-slate-500 font-medium">
-              {activeTab === 'commercial' 
+              {activeTab === 'commercial'
                 ? (!isAnyFilterActive ? '0 results' : `${totalCount} results`)
                 : `${mstcAuctions.length} results`
               }
@@ -680,9 +681,9 @@ export function Auctions() {
 
           {/* Sidebar Filters */}
           <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:overflow-visible z-20">
-            <AuctionFilters 
-              isOpen={isFiltersOpen} 
-              onClose={() => setIsFiltersOpen(false)} 
+            <AuctionFilters
+              isOpen={isFiltersOpen}
+              onClose={() => setIsFiltersOpen(false)}
               onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
               initialFilters={activeTab === 'commercial' ? filters : {
                 categoryIds: selectedMstcCategories,
@@ -702,7 +703,7 @@ export function Auctions() {
             />
             {/* Overlay for mobile filters */}
             {isFiltersOpen && (
-              <div 
+              <div
                 className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden"
                 onClick={() => setIsFiltersOpen(false)}
               />
@@ -711,7 +712,7 @@ export function Auctions() {
 
           {/* Main Content */}
           <div className="flex-grow flex flex-col lg:w-3/4">
-            
+
             {/* Toolbar */}
             {activeTab === 'commercial' ? (
               <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -800,7 +801,7 @@ export function Auctions() {
                   <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
                     <h3 className="text-xl font-bold text-slate-900 mb-2">No auctions found</h3>
                     <p className="text-slate-500 mb-6">Try adjusting your search criteria or filters.</p>
-                    <button 
+                    <button
                       onClick={() => {
                         setSearchParams({});
                       }}
@@ -816,9 +817,9 @@ export function Auctions() {
                       isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
                     )}>
                       {auctions.map(auction => (
-                        <AuctionCard 
-                          key={auction.id} 
-                          auction={auction} 
+                        <AuctionCard
+                          key={auction.id}
+                          auction={auction}
                           isGrid={isGridView}
                           isWatchlistedInitial={watchlistIds.includes(auction.id)}
                         />
@@ -860,7 +861,7 @@ export function Auctions() {
                                 <span className="sr-only">Previous</span>
                                 <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                               </button>
-                              
+
                               {[...Array(totalPages)].map((_, i) => (
                                 <button
                                   key={i + 1}
@@ -905,7 +906,7 @@ export function Auctions() {
                   <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
                     <h3 className="text-xl font-bold text-slate-900 mb-2">No MSTC catalogs found</h3>
                     <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
-                    <button 
+                    <button
                       onClick={() => {
                         setSearchParams({ tab: 'mstc' });
                       }}
@@ -920,9 +921,9 @@ export function Auctions() {
                     isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
                   )}>
                     {mstcAuctions.map(item => (
-                      <MstcCard 
-                        key={item.id} 
-                        item={item} 
+                      <MstcCard
+                        key={item.id}
+                        item={item}
                         isGrid={isGridView}
                         onPreview={setSelectedPreviewItem}
                       />
@@ -939,12 +940,12 @@ export function Auctions() {
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 sm:p-6 md:p-8 animate-fade-in">
-          <div className="relative w-full max-w-4xl h-[90vh] md:h-[80vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
-            
+          <div className="relative w-full max-w-6xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
+
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2.5">
-                <span className="text-sm font-semibold text-slate-400 font-mono">
+                <span className="text-base font-bold text-slate-500 font-mono">
                   Ref: {selectedPreviewItem.mstc_auction_number.split('/').pop()}
                 </span>
               </div>
@@ -959,10 +960,10 @@ export function Auctions() {
             <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
               {/* Left Side: Details Scrollable */}
               <div className="flex-grow overflow-y-auto p-6 space-y-6 bg-slate-50/25">
-                
+
                 {/* Category & Auction Ref Title */}
                 <div>
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
                   {(() => {
                     const parts = selectedPreviewItem.category_name.split(' | ');
                     const mainCat = parts[0];
@@ -971,51 +972,56 @@ export function Auctions() {
                       <div className="flex flex-col gap-0.5">
                         {subCat ? (
                           <>
-                            <span className="text-xs font-semibold text-primary uppercase tracking-wider">{mainCat}</span>
-                            <h3 className="text-2xl font-black text-slate-950 leading-tight">{subCat}</h3>
+                            <span className="text-sm font-bold text-primary uppercase tracking-wider">{mainCat}</span>
+                            <h3 className="text-3xl font-black text-slate-950 leading-tight">{subCat}</h3>
                           </>
                         ) : (
-                          <h3 className="text-2xl font-black text-slate-950 leading-tight">{mainCat}</h3>
+                          <h3 className="text-3xl font-black text-slate-950 leading-tight">{mainCat}</h3>
                         )}
                       </div>
                     );
                   })()}
                 </div>
+                {/* Auction Reference Banner */}
+                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-3xs">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Official Auction Reference Number</span>
+                    <span className="font-mono text-base font-bold text-slate-800 break-all select-all">{selectedPreviewItem.mstc_auction_number}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedPreviewItem.mstc_auction_number);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className={clsx(
+                      "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border font-bold text-xs transition-all shrink-0 cursor-pointer shadow-3xs",
+                      copied
+                        ? "bg-emerald-50 border-emerald-250 text-emerald-700"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary hover:border-primary/30"
+                    )}
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        <span>Reference Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>Copy Ref Number</span>
+                      </>
+                    )}
+                  </button>
+                </div>
 
                 {/* General Parameters Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                  {/* Reference Number */}
-                  <div className="md:col-span-5 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1.5">
-                    <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Ref Number</h5>
-                    <div className="font-mono text-sm text-slate-700 break-all select-all flex justify-between items-center bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                      <span className="mr-2 text-[13px] font-bold leading-snug">{selectedPreviewItem.mstc_auction_number}</span>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(selectedPreviewItem.mstc_auction_number);
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                        }}
-                        className="text-slate-400 hover:text-primary transition-colors shrink-0 cursor-pointer"
-                        title="Copy reference"
-                      >
-                        {copied ? (
-                          <span className="text-[9px] font-bold text-emerald-650 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-150">
-                            Copied!
-                          </span>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
                   {/* Seller & Location Details */}
-                  <div className="md:col-span-4 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2.5">
+                  <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Regional Office</span>
-                      <span className="text-sm font-bold text-slate-800 leading-tight mt-0.5">
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Regional Office</span>
+                      <span className="text-[13.5px] font-bold text-slate-800 leading-snug mt-0.5">
                         {(() => {
                           const parts = selectedPreviewItem.mstc_auction_number.split('/');
                           const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : selectedPreviewItem.seller_name;
@@ -1025,23 +1031,23 @@ export function Auctions() {
                     </div>
                     {selectedPreviewItem.location && (
                       <div className="flex flex-col border-t border-slate-100 pt-2">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Location / State</span>
-                        <span className="text-sm font-bold text-slate-800 mt-0.5">{expandMstcOffice(selectedPreviewItem.location)}</span>
+                        <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Location / State</span>
+                        <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">{expandMstcOffice(selectedPreviewItem.location)}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Dates & Countdown */}
-                  <div className="md:col-span-3 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-slate-400 font-mono uppercase tracking-wider">Auction Date:</span>
-                      <span className="font-semibold text-slate-800">
+                  <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
+                    <div className="flex flex-col">
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Date</span>
+                      <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                         {new Date(selectedPreviewItem.opening_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                       </span>
                     </div>
-                    <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5">
-                      <span className="text-slate-400 font-mono uppercase tracking-wider">Bidding Starts:</span>
-                      <span className="font-semibold text-slate-800">
+                    <div className="flex flex-col border-t border-slate-100 pt-2">
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Bidding Starts</span>
+                      <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                         {(() => {
                           const auctionDate = new Date(selectedPreviewItem.opening_date);
                           const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
@@ -1049,62 +1055,64 @@ export function Auctions() {
                         })()}
                       </span>
                     </div>
-                    <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5 items-center">
-                      <span className="text-slate-400 font-mono uppercase tracking-wider">Status:</span>
-                      {(() => {
-                        const auctionDate = new Date(selectedPreviewItem.opening_date);
-                        const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-                        const now = new Date();
-                        const diffMs = biddingStartDate.getTime() - now.getTime();
-                        if (diffMs <= 0) {
-                          return <span className="font-bold text-xs px-2.5 py-0.5 rounded-md border border-emerald-200 text-emerald-700 bg-emerald-50">Bidding Started</span>;
-                        }
-                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                        const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                        const isUrgent = diffDays < 3;
-                        const isWarning = diffDays < 7;
-                        return (
-                          <span className={clsx(
-                            "font-bold text-xs px-2.5 py-0.5 rounded-md border",
-                            isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
-                            isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
-                            "text-emerald-700 bg-emerald-50 border-emerald-200"
-                          )}>
-                            {diffDays > 0 ? `Starts in ${diffDays}d ${diffHours}h` : `Starts in ${diffHours}h ${diffMins}m`}
-                          </span>
-                        );
-                      })()}
+                    <div className="flex flex-col border-t border-slate-100 pt-2">
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono mb-1">Status</span>
+                      <div>
+                        {(() => {
+                          const auctionDate = new Date(selectedPreviewItem.opening_date);
+                          const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                          const now = new Date();
+                          const diffMs = biddingStartDate.getTime() - now.getTime();
+                          if (diffMs <= 0) {
+                            return <span className="inline-block font-bold text-xs px-2.5 py-1 rounded border border-emerald-250 text-emerald-700 bg-emerald-50">Bidding Started</span>;
+                          }
+                          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                          const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                          const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                          const isUrgent = diffDays < 3;
+                          const isWarning = diffDays < 7;
+                          return (
+                            <span className={clsx(
+                              "inline-block font-bold text-xs px-2.5 py-1 rounded border",
+                              isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
+                              isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
+                              "text-emerald-700 bg-emerald-50 border-emerald-200"
+                            )}>
+                              {diffDays > 0 ? `Starts in ${diffDays}d ${diffHours}h` : `Starts in ${diffHours}h ${diffMins}m`}
+                            </span>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Identified Materials & Lots */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5 flex items-center justify-between">
                     <span>Identified Inventory & Materials</span>
-                    <span className="text-[10px] text-slate-405 font-medium normal-case font-sans">
+                    <span className="text-xs text-slate-500 font-medium normal-case font-sans">
                       {generateCatalogSummary(selectedPreviewItem).items.length} lots identified
                     </span>
                   </h4>
-                  
+
                   <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
-                    <table className="w-full text-left border-collapse text-xs">
+                    <table className="w-full text-left border-collapse text-[13.5px]">
                       <thead>
                         <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
-                          <th className="py-2.5 px-3.5 font-bold w-12 text-center">Lot</th>
-                          <th className="py-2.5 px-3.5 font-bold">Material Description</th>
-                          <th className="py-2.5 px-3.5 font-bold text-right">Quantity</th>
-                          <th className="py-2.5 px-3.5 font-bold text-center">Taxes</th>
+                          <th className="py-3 px-3.5 font-bold w-12 text-center">Lot</th>
+                          <th className="py-3 px-3.5 font-bold">Material Description</th>
+                          <th className="py-3 px-3.5 font-bold text-right">Quantity</th>
+                          <th className="py-3 px-3.5 font-bold text-center">Taxes</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700">
                         {generateCatalogSummary(selectedPreviewItem).items.map((row) => (
                           <tr key={row.sr} className="hover:bg-slate-50/50">
-                            <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                            <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.description}</td>
-                            <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
-                            <td className="py-2.5 px-3.5 text-center font-mono text-[10px] text-slate-500">{row.taxRate}</td>
+                            <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
+                            <td className="py-3 px-3.5 font-bold text-slate-900">{row.description}</td>
+                            <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
+                            <td className="py-3 px-3.5 text-center font-mono text-xs text-slate-500">{row.taxRate}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1116,10 +1124,10 @@ export function Auctions() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Compliance Card */}
                   <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
                       Buyer Eligibility & Compliance
                     </h4>
-                    <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-650">
+                    <ul className="list-disc pl-5 space-y-2 text-[13.5px] text-slate-705">
                       {generateCatalogSummary(selectedPreviewItem).eligibility.map((el, i) => (
                         <li key={i} className="leading-relaxed">{el}</li>
                       ))}
@@ -1128,19 +1136,19 @@ export function Auctions() {
 
                   {/* Financial Charges Card */}
                   <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
                       Financial Terms & Service Fees
                     </h4>
-                    <div className="space-y-2.5 text-xs">
-                      <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-slate-500 font-mono">EMD Details</span>
-                        <span className="font-bold text-slate-800">
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <span className="text-slate-500 text-[11px] uppercase font-mono tracking-wider">EMD Details</span>
+                        <span className="font-bold text-slate-850 text-[13.5px]">
                           {generateCatalogSummary(selectedPreviewItem).depositDetails.emd}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <span className="text-slate-500 font-mono">Pre-bid EMD</span>
-                        <span className="font-bold text-slate-800">
+                      <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <span className="text-slate-500 text-[11px] uppercase font-mono tracking-wider">Pre-bid EMD</span>
+                        <span className="font-bold text-slate-850 text-[13.5px]">
                           {generateCatalogSummary(selectedPreviewItem).depositDetails.preBidDdg}
                         </span>
                       </div>
@@ -1150,15 +1158,15 @@ export function Auctions() {
 
                 {/* Key Contact Personnel */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3.5">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
                     Key Contact Personnel
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {generateCatalogSummary(selectedPreviewItem).keyContacts.map((contact, i) => (
-                      <div key={i} className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl space-y-1">
-                        <span className="text-[9px] font-mono text-primary font-bold uppercase tracking-wider">{contact.role}</span>
-                        <h4 className="text-xs font-black text-slate-900">{contact.name}</h4>
-                        <p className="text-[10px] text-slate-500 font-mono break-all mt-0.5">{contact.email}</p>
+                      <div key={i} className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl space-y-1.5">
+                        <span className="text-[10.5px] font-mono text-primary font-bold uppercase tracking-wider">{contact.role}</span>
+                        <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
+                        <p className="text-xs text-slate-605 font-mono break-all mt-0.5">{contact.email}</p>
                       </div>
                     ))}
                   </div>
@@ -1172,23 +1180,27 @@ export function Auctions() {
                 const hasOtherMedia = summary.extracted_images && summary.extracted_images.length > 0;
                 const extraMediaText = hasOtherMedia
                   ? summary.extracted_images.some(url => url.toLowerCase().includes('.pdf'))
-                    ? 'documents available'
+                    ? 'Asset documents available'
                     : 'images available'
                   : '';
                 const displayImage = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images[0] : null);
 
                 return (
-                  <div className="w-full md:w-[320px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
+                  <div className="w-full md:w-[400px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
                     {displayImage ? (
                       <div className="space-y-3">
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
                           Catalog Document Preview
                         </h4>
                         <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
-                          <a href={displayImage} target="_blank" rel="noreferrer" className="block cursor-zoom-in relative">
-                            <img 
-                              src={displayImage} 
-                              alt="PDF Catalog Preview" 
+                          <button
+                            type="button"
+                            onClick={() => setLightboxImage(displayImage)}
+                            className="block w-full text-left cursor-zoom-in relative focus:outline-none"
+                          >
+                            <img
+                              src={displayImage}
+                              alt="PDF Catalog Preview"
                               className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
                             />
                             {hasOtherMedia && (
@@ -1196,7 +1208,7 @@ export function Auctions() {
                                 {extraMediaText}
                               </div>
                             )}
-                          </a>
+                          </button>
                         </div>
                       </div>
                     ) : (
@@ -1216,7 +1228,7 @@ export function Auctions() {
             <div className="px-6 py-4 border-t border-slate-150 bg-slate-50/50 flex flex-col sm:flex-row gap-3 sm:justify-end items-center">
               <button
                 onClick={() => setSelectedPreviewItem(null)}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-bold text-slate-650 hover:text-slate-850 hover:bg-slate-200 transition-all cursor-pointer text-center"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl text-[15px] font-bold text-slate-650 hover:text-slate-850 hover:bg-slate-200 transition-all cursor-pointer text-center"
               >
                 Close Details
               </button>
@@ -1225,7 +1237,7 @@ export function Auctions() {
                 download
                 target="_blank"
                 rel="noreferrer"
-                className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-6 rounded-xl text-sm font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download PDF Catalog
@@ -1233,6 +1245,27 @@ export function Auctions() {
             </div>
 
           </div>
+        </div>
+      )}
+
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 cursor-zoom-out animate-fade-in"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-10"
+            title="Close image"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={lightboxImage}
+            alt="Large Catalog Preview"
+            className="max-w-full max-h-[90vh] object-contain rounded-lg border border-white/10 shadow-2xl select-none animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
