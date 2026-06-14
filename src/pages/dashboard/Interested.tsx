@@ -6,6 +6,7 @@ import { useAuthStore } from '../../store/authStore';
 import { auctionService } from '../../services/auctionService';
 import { AuctionCard } from '../../components/auction/AuctionCard';
 import type { Auction } from '../../types/database.types';
+import { supabase } from '../../lib/supabase';
 
 export function Interested() {
   const { user } = useAuthStore();
@@ -16,6 +17,7 @@ export function Interested() {
   const [isSubmittingBid, setIsSubmittingBid] = useState(false);
   const [bidError, setBidError] = useState('');
   const [bidSuccess, setBidSuccess] = useState('');
+  const [currentMaxBid, setCurrentMaxBid] = useState(0);
 
   const loadWatchlist = async () => {
     if (!user) return;
@@ -48,8 +50,9 @@ export function Interested() {
       return;
     }
 
-    if (amount <= biddingAuction.starting_price) {
-      setBidError(`Bid must be greater than starting price (₹${biddingAuction.starting_price.toLocaleString()})`);
+    const minBid = currentMaxBid > 0 ? currentMaxBid + biddingAuction.bid_increment : biddingAuction.starting_price;
+    if (amount < minBid) {
+      setBidError(`Bid must be at least ₹${minBid.toLocaleString()}`);
       return;
     }
 
@@ -114,7 +117,21 @@ export function Interested() {
               </div>
               <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-2 shrink-0">
                 <button
-                  onClick={() => setBiddingAuction(auction)}
+                  onClick={async () => {
+                    setBiddingAuction(auction);
+                    setCurrentMaxBid(0);
+                    try {
+                      const { data } = await supabase
+                        .from('bids')
+                        .select('amount')
+                        .eq('auction_id', auction.id)
+                        .order('amount', { ascending: false })
+                        .limit(1);
+                      if (data && data.length > 0) {
+                        setCurrentMaxBid(data[0].amount);
+                      }
+                    } catch (err) {}
+                  }}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/95 shadow transition-colors"
                 >
                   <Gavel className="w-4 h-4" />
@@ -159,12 +176,16 @@ export function Interested() {
 
               <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
                 <div className="flex justify-between text-xs text-slate-500 mb-1">
-                  <span>Starting Price:</span>
-                  <span className="font-semibold text-slate-700">₹{biddingAuction.starting_price.toLocaleString()}</span>
+                  <span>Current Highest Bid:</span>
+                  <span className="font-semibold text-slate-700">
+                    {currentMaxBid > 0 ? `₹${currentMaxBid.toLocaleString()}` : 'No bids yet'}
+                  </span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-500">
                   <span>Min Bid Required:</span>
-                  <span className="font-semibold text-slate-700">₹{(biddingAuction.starting_price + 1).toLocaleString()}</span>
+                  <span className="font-semibold text-slate-700">
+                    ₹{(currentMaxBid > 0 ? currentMaxBid + biddingAuction.bid_increment : biddingAuction.starting_price).toLocaleString()}
+                  </span>
                 </div>
               </div>
 
@@ -179,7 +200,7 @@ export function Interested() {
                   <input
                     type="number"
                     required
-                    min={biddingAuction.starting_price + 1}
+                    min={currentMaxBid > 0 ? currentMaxBid + biddingAuction.bid_increment : biddingAuction.starting_price}
                     value={bidAmount}
                     onChange={(e) => setBidAmount(e.target.value)}
                     className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-slate-900 font-bold"

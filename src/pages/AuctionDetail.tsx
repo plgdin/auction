@@ -250,7 +250,7 @@ function AuctionDetailInner({
                                 <FileText className="w-5 h-5" />
                               </div>
                               <div>
-                                <p className="font-semibold text-slate-900">{doc.document_type}</p>
+                                <p className="font-semibold text-slate-900">{doc.name}</p>
                                 <p className="text-sm text-slate-500">System verified document</p>
                               </div>
                             </div>

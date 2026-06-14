@@ -25,18 +25,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isInitialized: false,
 
   setSession: (session) => {
-    const isMock = !!localStorage.getItem('mock_session');
     set({
       session,
       user: session?.user || null,
       isAuthenticated: !!session,
-      profile: isMock && session?.user ? {
-        id: session.user.id,
-        first_name: session.user.email === 'test@mail.com' ? 'Test' : 'Temp',
-        last_name: 'User',
-        role: 'buyer',
-        is_active: true
-      } as any : (session ? get().profile : null)
+      profile: session ? get().profile : null
     });
   },
 
@@ -44,26 +37,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initializeAuth: () => {
     if (get().isInitialized) return;
-
-    const mockSessionStr = localStorage.getItem('mock_session');
-    if (mockSessionStr) {
-      const session = JSON.parse(mockSessionStr);
-      set({ 
-        session, 
-        user: session.user, 
-        isAuthenticated: true, 
-        profile: { 
-          id: session.user.id, 
-          first_name: session.user.email === 'test@mail.com' ? 'Test' : 'Temp', 
-          last_name: 'User', 
-          role: 'buyer', 
-          is_active: true 
-        } as any, 
-        isLoading: false, 
-        isInitialized: true 
-      });
-      return;
-    }
 
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -79,7 +52,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // Listen to auth changes
     supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (localStorage.getItem('mock_session')) return;
       get().setSession(session);
       
       if (session?.user) {
@@ -93,7 +65,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     set({ isLoading: true });
-    localStorage.removeItem('mock_session');
     try {
       await authService.signOut();
     } catch (e) {

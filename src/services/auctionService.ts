@@ -68,7 +68,11 @@ export const auctionService = {
   },
 
   async getAuctions(params: AuctionFilterParams = {}): Promise<{ data: Auction[], count: number }> {
-    let query = supabase.from('auctions').select('*');
+    let query = supabase
+      .from('auctions')
+      .select('*, seller:organizations(*)', { count: 'exact' })
+      .in('status', ['active', 'published'])
+      .gt('end_time', new Date().toISOString());
 
     const rawCategoryInputs: string[] = [];
     if (params.categoryIds && params.categoryIds.length > 0) {

@@ -41,21 +41,23 @@ export function DocumentVault() {
 
     setIsUploading(true);
     
-    // Upload generic KYC document
-    // In a full implementation, we would insert a record into a 'user_documents' table here.
-    // Since we are mocking the vault fetching via auction/tender tables, we will upload to storage
-    // and manually inject it into the UI state to demonstrate functionality.
-    const url = await storageService.uploadFile(file, 'documents');
+    // Upload to storage
+    const url = await storageService.uploadFile(file, 'auction_documents');
     
     if (url) {
-      setDocuments(prev => [{
-        id: Math.random().toString(),
-        name: file.name,
-        url,
-        createdAt: new Date().toISOString(),
-        source: 'User Vault (KYC)',
-        sourceId: 'N/A'
-      }, ...prev]);
+      // Persist to database
+      const dbDoc = await storageService.saveUserDocument(user.id, file.name, url);
+      
+      if (dbDoc) {
+        setDocuments(prev => [{
+          id: dbDoc.id,
+          name: dbDoc.name,
+          url: dbDoc.file_url,
+          createdAt: dbDoc.created_at,
+          source: 'User Vault (KYC)',
+          sourceId: dbDoc.document_type
+        }, ...prev]);
+      }
     }
     
     setIsUploading(false);

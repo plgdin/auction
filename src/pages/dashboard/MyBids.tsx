@@ -28,7 +28,7 @@ export function MyBids() {
   }, [user]);
 
   const getActiveBids = () => bids.filter(b => b.auction.status === 'active');
-  const getPreviousBids = () => bids.filter(b => b.auction.status === 'ended');
+  const getPreviousBids = () => bids.filter(b => b.auction.status === 'closed' || b.auction.status === 'cancelled');
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

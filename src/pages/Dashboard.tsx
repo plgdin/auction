@@ -11,15 +11,7 @@ import {
 import { useAuthStore } from '../store/authStore';
 import { auctionService } from '../services/auctionService';
 
-// Mock data for the chart
-const chartData = [
-  { name: 'Jan', bids: 4 },
-  { name: 'Feb', bids: 7 },
-  { name: 'Mar', bids: 5 },
-  { name: 'Apr', bids: 12 },
-  { name: 'May', bids: 8 },
-  { name: 'Jun', bids: 15 },
-];
+// Removed static chartData
 
 export function Dashboard() {
   const { user, profile } = useAuthStore();
@@ -29,6 +21,7 @@ export function Dashboard() {
     interestedAuctions: 0
   });
   const [recentBids, setRecentBids] = useState<any[]>([]);
+  const [dynamicChartData, setDynamicChartData] = useState<{name: string, bids: number}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +45,23 @@ export function Dashboard() {
       
       // Top 3 most recent bids
       setRecentBids(bids.slice(0, 3));
+
+      // Process bids for chart data (last 6 months)
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const now = new Date();
+      const newChartData = [];
+      
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthName = months[d.getMonth()];
+        const count = bids.filter(b => {
+          const bd = new Date(b.created_at);
+          return bd.getMonth() === d.getMonth() && bd.getFullYear() === d.getFullYear();
+        }).length;
+        newChartData.push({ name: monthName, bids: count });
+      }
+      setDynamicChartData(newChartData);
+
       setIsLoading(false);
     }
     loadDashboardData();
@@ -134,7 +144,7 @@ export function Dashboard() {
           
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={dynamicChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorBids" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#004ac6" stopOpacity={0.3}/>
