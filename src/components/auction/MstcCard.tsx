@@ -106,6 +106,11 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
   const summary = generateCatalogSummary(item, shortId);
   const hasOtherMedia = summary.extracted_images && summary.extracted_images.length > 0;
+  const extraMediaText = hasOtherMedia
+    ? summary.extracted_images.some(url => url.toLowerCase().includes('.pdf'))
+      ? 'documents available'
+      : 'images available'
+    : '';
 
   const parts = item.mstc_auction_number.split('/');
   const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
@@ -144,8 +149,8 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
         Ref ID: {shortId}
       </span>
       {hasOtherMedia && (
-        <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs">
-          Other documents or other images are available
+        <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide">
+          {extraMediaText}
         </span>
       )}
     </div>
@@ -307,8 +312,8 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
                   className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
                 />
                 {hasOtherMedia && (
-                  <div className="absolute top-2 left-2 right-2 bg-slate-900/85 backdrop-blur-xs text-white text-[9.5px] font-semibold px-2 py-1 rounded-md text-center border border-white/10 shadow-xs z-10 pointer-events-none select-none">
-                    Other documents or other images are available
+                  <div className="absolute top-2 left-2 right-2 bg-slate-900/85 backdrop-blur-xs text-white text-[9.5px] font-bold px-2 py-1.5 rounded-md text-center border border-white/10 shadow-xs z-10 pointer-events-none select-none uppercase tracking-wider">
+                    {extraMediaText}
                   </div>
                 )}
               </>
