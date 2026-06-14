@@ -105,6 +105,7 @@ const generateCatalogSummary = (item: MstcSanitizedAuction, shortId: string): Ca
 export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
   const summary = generateCatalogSummary(item, shortId);
+  const hasOtherMedia = summary.extracted_images && summary.extracted_images.length > 0;
 
   const parts = item.mstc_auction_number.split('/');
   const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
@@ -142,6 +143,11 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
       <span className="text-xs font-semibold text-slate-500 font-mono bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg">
         Ref ID: {shortId}
       </span>
+      {hasOtherMedia && (
+        <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs">
+          Other documents or other images are available
+        </span>
+      )}
     </div>
   );
 
@@ -150,16 +156,18 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/50 transition-all group p-5 flex flex-col sm:flex-row gap-5 justify-between">
         {(() => {
-          const displayImage = (summary.extracted_images && summary.extracted_images.length > 0)
-            ? summary.extracted_images[0]
-            : summary.preview_image_url;
+          const displayImage = summary.preview_image_url
+            ? summary.preview_image_url
+            : (summary.extracted_images && summary.extracted_images.length > 0)
+              ? summary.extracted_images[0]
+              : null;
 
           return displayImage ? (
             <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
               <img 
                 src={displayImage} 
                 alt="Catalog Image" 
-                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
               />
             </div>
           ) : (
@@ -185,12 +193,12 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
                   {subCat ? (
                     <>
                       <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCat}</div>
-                      <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                      <h3 className="text-lg font-bold text-slate-955 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
                         {subCat}
                       </h3>
                     </>
                   ) : (
-                    <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                    <h3 className="text-lg font-bold text-slate-955 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
                       {mainCat}
                     </h3>
                   )}
@@ -283,18 +291,27 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full p-5 justify-between">
       <div>
-        <div className="h-[140px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
+        <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
           {(() => {
-            const displayImage = (summary.extracted_images && summary.extracted_images.length > 0)
-              ? summary.extracted_images[0]
-              : summary.preview_image_url;
+            const displayImage = summary.preview_image_url
+              ? summary.preview_image_url
+              : (summary.extracted_images && summary.extracted_images.length > 0)
+                ? summary.extracted_images[0]
+                : null;
 
             return displayImage ? (
-              <img 
-                src={displayImage} 
-                alt="Catalog Image" 
-                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-              />
+              <>
+                <img 
+                  src={displayImage} 
+                  alt="Catalog Image" 
+                  className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
+                />
+                {hasOtherMedia && (
+                  <div className="absolute top-2 left-2 right-2 bg-slate-900/85 backdrop-blur-xs text-white text-[9.5px] font-semibold px-2 py-1 rounded-md text-center border border-white/10 shadow-xs z-10 pointer-events-none select-none">
+                    Other documents or other images are available
+                  </div>
+                )}
+              </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
                 <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -329,26 +346,30 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
           );
         })()}
 
-        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4 space-y-2 text-xs">
-          <div className="flex items-center text-slate-655 justify-between">
-            <span className="text-slate-400">Regional Office:</span>
-            <span className="truncate font-semibold text-slate-705 max-w-[200px]" title={regionalOfficeName}>
+        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs">
+          <div className="flex flex-col min-w-0">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Office</span>
+            <span className="font-bold text-slate-700 truncate" title={regionalOfficeName}>
               {regionalOfficeName}
             </span>
           </div>
-          {item.location && (
-            <div className="flex items-center text-slate-655 justify-between">
-              <span className="text-slate-400">Location:</span>
-              <span className="truncate font-semibold text-slate-705 max-w-[200px]" title={locationName}>{locationName}</span>
-            </div>
-          )}
-          <div className="flex items-center text-slate-655 justify-between">
-            <span className="text-slate-400">EMD Required:</span>
-            <span className="font-semibold text-slate-705 truncate max-w-[200px]" title={summary.depositDetails.emd}>{summary.depositDetails.emd}</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Location</span>
+            <span className="font-bold text-slate-700 truncate" title={locationName || 'N/A'}>
+              {locationName || 'N/A'}
+            </span>
           </div>
-          <div className="flex items-center text-slate-655 justify-between">
-            <span className="text-slate-400">Pre-bid EMD:</span>
-            <span className="font-semibold text-slate-705 truncate max-w-[200px]" title={summary.depositDetails.preBidDdg}>{summary.depositDetails.preBidDdg}</span>
+          <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">EMD Required</span>
+            <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.emd}>
+              {summary.depositDetails.emd}
+            </span>
+          </div>
+          <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
+            <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.preBidDdg}>
+              {summary.depositDetails.preBidDdg}
+            </span>
           </div>
         </div>
 

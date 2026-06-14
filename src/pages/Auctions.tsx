@@ -1169,51 +1169,37 @@ export function Auctions() {
               {/* Right Side: Image/Preview Panel */}
               {(() => {
                 const summary = generateCatalogSummary(selectedPreviewItem);
+                const hasOtherMedia = summary.extracted_images && summary.extracted_images.length > 0;
+                const displayImage = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images[0] : null);
+
                 return (
                   <div className="w-full md:w-[320px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
-                    {/* Item Photos */}
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
-                        Item Photos
-                      </h4>
-                      {summary.extracted_images && summary.extracted_images.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2">
-                          {summary.extracted_images.map((imgUrl, idx) => (
-                            <a 
-                              key={idx} 
-                              href={imgUrl} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-primary transition-colors cursor-zoom-in flex items-center justify-center"
-                            >
-                              <img src={imgUrl} alt={`Extracted ${idx}`} className="w-full h-full object-cover" />
-                            </a>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="w-full py-8 flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                          <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                          </svg>
-                          <span className="text-[11px] font-medium tracking-wide">No pictures available</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {summary.preview_image_url && (
-                      <div className="space-y-2">
+                    {displayImage ? (
+                      <div className="space-y-3">
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
                           Catalog Document Preview
                         </h4>
-                        <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group">
-                          <a href={summary.preview_image_url} target="_blank" rel="noreferrer" className="block cursor-zoom-in">
+                        <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
+                          <a href={displayImage} target="_blank" rel="noreferrer" className="block cursor-zoom-in relative">
                             <img 
-                              src={summary.preview_image_url} 
-                              alt="PDF First Page Preview" 
-                              className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-250"
+                              src={displayImage} 
+                              alt="PDF Catalog Preview" 
+                              className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
                             />
+                            {hasOtherMedia && (
+                              <div className="absolute bottom-3 left-3 right-3 bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-bold px-3 py-2 rounded-xl text-center border border-white/10 shadow-md">
+                                Other documents or other images are available
+                              </div>
+                            )}
                           </a>
                         </div>
+                      </div>
+                    ) : (
+                      <div className="w-full py-12 flex flex-col items-center justify-center text-slate-400 gap-2 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                        <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <span className="text-xs font-semibold tracking-wide">No preview available</span>
                       </div>
                     )}
                   </div>
