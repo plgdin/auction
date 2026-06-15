@@ -1016,7 +1016,7 @@ export function Auctions() {
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 sm:p-6 md:p-8 animate-fade-in">
-          <div className="relative w-full max-w-6xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
+          <div className="relative w-full max-w-7xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
 
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
@@ -1333,7 +1333,39 @@ export function Auctions() {
                 const displayImage = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images[0] : null);
 
                 return (
-                  <div className="w-full md:w-[400px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
+                  <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
+                    {/* Image Gallery */}
+                    {(() => {
+                      const imageUrls = (summary.extracted_images || []).filter(
+                        (url: string) => !url.toLowerCase().endsWith('.pdf')
+                      );
+                      if (imageUrls.length === 0) return null;
+                      return (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                            <span>Auction Images</span>
+                            <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
+                          </h4>
+                          <div className="grid grid-cols-2 gap-2">
+                            {imageUrls.map((url: string, idx: number) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setLightboxImage(url)}
+                                className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
+                              >
+                                <img
+                                  src={url}
+                                  alt={`Auction image ${idx + 1}`}
+                                  className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {displayImage ? (
                       <div className="space-y-3">
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">

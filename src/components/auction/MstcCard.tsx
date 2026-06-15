@@ -177,7 +177,11 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
             Asset documents available
           </span>
         )}
-
+        {hasOtherMedia && (
+          <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+            Images available
+          </span>
+        )}
       </div>
     </div>
   );
