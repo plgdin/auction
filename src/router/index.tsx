@@ -41,6 +41,7 @@ import { DocumentVault } from '../pages/dashboard/DocumentVault';
 import { Vendors } from '../pages/dashboard/Vendors';
 import { Reminders } from '../pages/dashboard/Reminders';
 import { Inventory } from '../pages/dashboard/Inventory';
+import { QuotePage } from '../pages/dashboard/QuotePage';
 
 export const router = createBrowserRouter([
   {
@@ -58,6 +59,8 @@ export const router = createBrowserRouter([
       { path: 'faq', element: <FAQ /> },
       { path: 'notices', element: <Notices /> },
       { path: 'news', element: <News /> },
+      { path: 'quotes', element: <Navigate to="/dashboard/quotes" replace /> },
+      { path: 'quote', element: <Navigate to="/dashboard/quotes" replace /> },
     ],
   },
   {
@@ -89,6 +92,8 @@ export const router = createBrowserRouter([
       { path: 'vendors', element: <Vendors /> },
       { path: 'reminders', element: <Reminders /> },
       { path: 'inventory', element: <Inventory /> },
+      { path: 'quotes', element: <QuotePage /> },
+      { path: 'quote', element: <Navigate to="/dashboard/quotes" replace /> },
     ],
   },
   {

@@ -14,7 +14,7 @@ dotenv.config({ path: '.env.local' });
 dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('Missing env keys.');
@@ -147,6 +147,25 @@ function parseMstcCatalogText(text: string, categoryName: string, sellerName: st
     eligibility.push('CPCB/SPCB E-Waste recycler registration required for e-waste lots.');
   }
 
+  // 7. Extract inspection and auction dates
+  let inspectionSchedule = '';
+  const inspectionMatch = cleanText.match(/Inspection Schedule\s*:\s*([^\n]+)/i);
+  if (inspectionMatch) {
+    inspectionSchedule = inspectionMatch[1].trim();
+  }
+
+  let auctionStartTime = '';
+  const startMatch = cleanText.match(/Scheduled Auction Start Date\s*and Time\s*:\s*\n*([^\n]+)/i);
+  if (startMatch) {
+    auctionStartTime = startMatch[1].trim();
+  }
+
+  let auctionCloseTime = '';
+  const closeMatch = cleanText.match(/Scheduled Auction Close\s*Date and Time\s*:\s*\n*([^\n]+)/i);
+  if (closeMatch) {
+    auctionCloseTime = closeMatch[1].trim();
+  }
+
   return {
     overview, scopeOfWork, items, eligibility,
     depositDetails: {
@@ -154,7 +173,10 @@ function parseMstcCatalogText(text: string, categoryName: string, sellerName: st
       preBidDdg: 'Not required for registered MSME bidders',
       adminCharges: '₹11,800 (incl. GST) non-refundable service provider fees'
     },
-    keyContacts
+    keyContacts,
+    inspectionSchedule,
+    auctionStartTime,
+    auctionCloseTime
   };
 }
 
@@ -163,7 +185,7 @@ function isValidParsedJson(raw: string | null): boolean {
   if (!raw) return false;
   try {
     const obj = JSON.parse(raw);
-    return obj && typeof obj === 'object' && obj.items && obj.eligibility && obj.depositDetails;
+    return obj && typeof obj === 'object' && obj.items && obj.eligibility && obj.depositDetails && obj.inspectionSchedule;
   } catch {
     return false;
   }
@@ -183,7 +205,7 @@ async function backfillParsing() {
     return;
   }
 
-  // Filter to only records that need parsing
+  // Filter to only records that need parsing (we force re-parse by checking for inspectionSchedule)
   const needsParsing = (records || []).filter(r => !isValidParsedJson(r.raw_materials_text));
 
   console.log(`Total completed records: ${records?.length || 0}`);
@@ -234,13 +256,17 @@ async function backfillParsing() {
 
       const jsonStr = JSON.stringify(summaryObj);
 
-      const { error: updateErr } = await supabase
+      const { data: updatedData, error: updateErr } = await supabase
         .from('mstc_auctions')
         .update({ raw_materials_text: jsonStr })
-        .eq('id', record.id);
+        .eq('id', record.id)
+        .select();
 
       if (updateErr) {
         console.log(`FAIL (db update: ${updateErr.message})`);
+        failed++;
+      } else if (!updatedData || updatedData.length === 0) {
+        console.log(`FAIL (0 rows updated - RLS policy or wrong ID)`);
         failed++;
       } else {
         console.log(`OK (${summaryObj.items.length} lots, ${jsonStr.length} chars)`);

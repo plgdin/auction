@@ -168,6 +168,25 @@ function parseMstcCatalogText(text: string, categoryName: string, sellerName: st
     eligibility.push('CPCB/SPCB E-Waste recycler registration required for e-waste lots.');
   }
 
+  // 7. Extract inspection and auction dates
+  let inspectionSchedule = '';
+  const inspectionMatch = cleanText.match(/Inspection Schedule\s*:\s*([^\n]+)/i);
+  if (inspectionMatch) {
+    inspectionSchedule = inspectionMatch[1].trim();
+  }
+
+  let auctionStartTime = '';
+  const startMatch = cleanText.match(/Scheduled Auction Start Date\s*and Time\s*:\s*\n*([^\n]+)/i);
+  if (startMatch) {
+    auctionStartTime = startMatch[1].trim();
+  }
+
+  let auctionCloseTime = '';
+  const closeMatch = cleanText.match(/Scheduled Auction Close\s*Date and Time\s*:\s*\n*([^\n]+)/i);
+  if (closeMatch) {
+    auctionCloseTime = closeMatch[1].trim();
+  }
+
   return {
     overview,
     scopeOfWork,
@@ -178,7 +197,10 @@ function parseMstcCatalogText(text: string, categoryName: string, sellerName: st
       preBidDdg: 'Not required for registered MSME bidders',
       adminCharges: '₹11,800 (incl. GST) non-refundable service provider fees'
     },
-    keyContacts
+    keyContacts,
+    inspectionSchedule,
+    auctionStartTime,
+    auctionCloseTime
   };
 }
 

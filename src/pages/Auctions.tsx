@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, Heart } from 'lucide-react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
 import { AuctionFilters } from '../components/auction/AuctionFilters';
@@ -12,6 +12,9 @@ import type { Auction } from '../types/database.types';
 import { MstcSearchService, expandMstcOffice } from '../services/publicService';
 import type { MstcSanitizedAuction } from '../services/publicService';
 import clsx from 'clsx';
+import { toast } from 'react-hot-toast';
+import { dashboardService } from '../services/dashboardService';
+import { MstcDetailsModal } from '../components/auction/MstcDetailsModal';
 
 export const getEstimatedMarketPrice = (description: string, categoryName: string = ''): string => {
   const desc = (description || '').toLowerCase();
@@ -280,6 +283,7 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
 
 export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
 
   const activeTab = searchParams.get('tab') === 'commercial' ? 'commercial' : 'mstc';
@@ -290,6 +294,7 @@ export function Auctions() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
+  const [interestedMstcIds, setInterestedMstcIds] = useState<string[]>([]);
   const [isMstcLoading, setIsMstcLoading] = useState(false);
   const [mstcOptions, setMstcOptions] = useState<{
     categories: string[];
@@ -306,10 +311,6 @@ export function Auctions() {
   });
 
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<MstcSanitizedAuction | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [copiedRef, setCopiedRef] = useState(false);
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
-  const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
 
   const selectedMstcCategories = searchParams.getAll('mstc_category');
   const selectedMstcSubcategories = searchParams.getAll('mstc_subcategory');
@@ -325,6 +326,23 @@ export function Auctions() {
   useEffect(() => {
     setSearchQuery(searchParams.get('q') || '');
   }, [searchParams]);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
+    } else {
+      setInterestedMstcIds([]);
+    }
+  }, [isAuthenticated, user]);
+
+  const handleMstcInterestedToggle = (itemId: string) => {
+    if (!isAuthenticated || !user) {
+      navigate('/auth/login', { state: { from: `/auctions?tab=mstc` } });
+      return;
+    }
+    dashboardService.toggleInterestedAuction(user.id, itemId);
+    setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
+  };
 
   // Derived filter and paging variables from URL query parameters
   const categoryIds = searchParams.getAll('category');
@@ -1002,6 +1020,8 @@ export function Auctions() {
                         item={item}
                         isGrid={isGridView}
                         onPreview={setSelectedPreviewItem}
+                        isInterested={interestedMstcIds.includes(item.id)}
+                        onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
                       />
                     ))}
                   </div>
@@ -1009,440 +1029,19 @@ export function Auctions() {
               </>
             )}
 
+          {/* Catalog Details Modal */}
+      {selectedPreviewItem && (
+        <MstcDetailsModal
+          item={selectedPreviewItem}
+          onClose={() => setSelectedPreviewItem(null)}
+          isInterested={interestedMstcIds.includes(selectedPreviewItem.id)}
+          onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
+        />
+      )}
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Catalog Details Modal */}
-      {selectedPreviewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 sm:p-6 md:p-8 animate-fade-in">
-          <div className="relative w-full max-w-7xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
-
-            {/* Modal Header */}
-            <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
-              <div className="flex items-center gap-2.5">
-                <span className="text-base font-bold text-slate-500 font-mono">
-                  Ref: {selectedPreviewItem.mstc_auction_number.split('/').pop()}
-                </span>
-                <button
-                  onClick={() => {
-                    const refId = selectedPreviewItem.mstc_auction_number.split('/').pop() || '';
-                    navigator.clipboard.writeText(refId);
-                    setCopiedRef(true);
-                    setTimeout(() => setCopiedRef(false), 2000);
-                  }}
-                  className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-400 hover:text-slate-700 cursor-pointer flex items-center justify-center"
-                  title="Copy Reference ID"
-                >
-                  {copiedRef ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              </div>
-              <button
-                onClick={() => setSelectedPreviewItem(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
-                title="Close"
-              >
-                <X className="w-5.5 h-5.5" />
-              </button>
-            </div>            {/* Modal Body */}
-            <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
-              {/* Left Side: Details Scrollable */}
-              <div className="flex-grow overflow-y-auto p-6 space-y-6 bg-slate-50/25">
-
-                {/* Category & Auction Ref Title */}
-                <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
-                  {(() => {
-                    const parts = selectedPreviewItem.category_name.split(' | ');
-                    const mainCat = parts[0];
-                    const subCat = parts[1];
-                    return (
-                      <div className="flex flex-col gap-0.5">
-                        {subCat ? (
-                          <>
-                            <span className="text-sm font-bold text-primary uppercase tracking-wider">{mainCat}</span>
-                            <h3 className="text-3xl font-black text-slate-950 leading-tight">{subCat}</h3>
-                          </>
-                        ) : (
-                          <h3 className="text-3xl font-black text-slate-950 leading-tight">{mainCat}</h3>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-                {/* Auction Reference Banner */}
-                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-3xs">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Official Auction Reference Number</span>
-                    <span className="font-mono text-base font-bold text-slate-800 break-all select-all">{selectedPreviewItem.mstc_auction_number}</span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(selectedPreviewItem.mstc_auction_number);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    }}
-                    className={clsx(
-                      "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border font-bold text-xs transition-all shrink-0 cursor-pointer shadow-3xs",
-                      copied
-                        ? "bg-emerald-50 border-emerald-250 text-emerald-700"
-                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary hover:border-primary/30"
-                    )}
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        <span>Reference Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        <span>Copy Ref Number</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* General Parameters Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                  {/* Seller & Location Details */}
-                  <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
-                    <div className="flex flex-col">
-                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Regional Office</span>
-                      <span className="text-[13.5px] font-bold text-slate-800 leading-snug mt-0.5">
-                        {(() => {
-                          const parts = selectedPreviewItem.mstc_auction_number.split('/');
-                          const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : selectedPreviewItem.seller_name;
-                          return expandMstcOffice(rawOffice);
-                        })()}
-                      </span>
-                    </div>
-                    {selectedPreviewItem.location && (
-                      <div className="flex flex-col border-t border-slate-100 pt-2">
-                        <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Location / State</span>
-                        <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">{expandMstcOffice(selectedPreviewItem.location)}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Dates & Countdown */}
-                  <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
-                    <div className="flex flex-col">
-                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Date</span>
-                      <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
-                        {new Date(selectedPreviewItem.opening_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
-                      </span>
-                    </div>
-                    <div className="flex flex-col border-t border-slate-100 pt-2">
-                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Bidding Starts</span>
-                      <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
-                        {(() => {
-                          const auctionDate = new Date(selectedPreviewItem.opening_date);
-                          const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-                          return biddingStartDate.toLocaleDateString(undefined, { dateStyle: 'medium' });
-                        })()}
-                      </span>
-                    </div>
-                    <div className="flex flex-col border-t border-slate-100 pt-2">
-                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono mb-1">Status</span>
-                      <div>
-                        {(() => {
-                          const auctionDate = new Date(selectedPreviewItem.opening_date);
-                          const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-                          const now = new Date();
-                          const diffMs = biddingStartDate.getTime() - now.getTime();
-                          if (diffMs <= 0) {
-                            return <span className="inline-block font-bold text-xs px-2.5 py-1 rounded border border-emerald-250 text-emerald-700 bg-emerald-50">Bidding Started</span>;
-                          }
-                          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                          const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                          const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                          const isUrgent = diffDays < 3;
-                          const isWarning = diffDays < 7;
-                          return (
-                            <span className={clsx(
-                              "inline-block font-bold text-xs px-2.5 py-1 rounded border",
-                              isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
-                              isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
-                              "text-emerald-700 bg-emerald-50 border-emerald-200"
-                            )}>
-                              {diffDays > 0 ? `Starts in ${diffDays}d ${diffHours}h` : `Starts in ${diffHours}h ${diffMins}m`}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Identified Materials & Lots */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5 flex items-center justify-between">
-                    <span>Identified Inventory & Materials</span>
-                    <span className="text-xs text-slate-500 font-medium normal-case font-sans">
-                      {generateCatalogSummary(selectedPreviewItem).items.length} lots identified
-                    </span>
-                  </h4>
-
-                  <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
-                    <table className="w-full text-left border-collapse text-[13.5px]">
-                      <thead>
-                        <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
-                          <th className="py-3 px-3.5 font-bold w-12 text-center">Lot</th>
-                          <th className="py-3 px-3.5 font-bold">Material Description</th>
-                          <th className="py-3 px-3.5 font-bold text-right">Quantity</th>
-                          <th className="py-3 px-3.5 font-bold text-center">Market Price</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 text-slate-700">
-                        {generateCatalogSummary(selectedPreviewItem).items.map((row) => (
-                          <tr key={row.sr} className="hover:bg-slate-50/50">
-                            <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                            <td className="py-3 px-3.5 font-bold text-slate-900">{row.description}</td>
-                            <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
-                            <td className="py-3 px-3.5 text-center font-mono text-xs text-emerald-600 font-bold bg-emerald-50/50">{row.marketPrice}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Eligibility, Compliance & Financial Terms */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Compliance Card */}
-                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
-                      Buyer Eligibility & Compliance
-                    </h4>
-                    <ul className="list-disc pl-5 space-y-2 text-[13.5px] text-slate-705">
-                      {generateCatalogSummary(selectedPreviewItem).eligibility.map((el, i) => (
-                        <li key={i} className="leading-relaxed">{el}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Financial Charges Card */}
-                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
-                      Financial Terms & Service Fees
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <span className="text-slate-500 text-[11px] uppercase font-mono tracking-wider">EMD Details</span>
-                        <span className="font-bold text-slate-850 text-[13.5px]">
-                          {generateCatalogSummary(selectedPreviewItem).depositDetails.emd}
-                        </span>
-                      </div>
-                      <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <span className="text-slate-500 text-[11px] uppercase font-mono tracking-wider">Pre-bid EMD</span>
-                        <span className="font-bold text-slate-850 text-[13.5px]">
-                          {generateCatalogSummary(selectedPreviewItem).depositDetails.preBidDdg}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Market Intelligence & ROI Card */}
-                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5 flex items-center justify-between">
-                      <span>Market Analysis & ROI</span>
-                      <span className="text-[9.5px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2 py-0.5 rounded font-mono">LIVE PRICE</span>
-                    </h4>
-                    {(() => {
-                      const summary = generateCatalogSummary(selectedPreviewItem);
-                      let totalTurnover = 0;
-                      summary.items.forEach(item => {
-                        const qty = getNumericQty(item.qty, item.unit);
-                        const price = getNumericPrice(item.marketPrice || '2500');
-                        totalTurnover += qty * price;
-                      });
-
-                      const predictedClosingBid = totalTurnover * 0.78;
-                      const projectedProfit = totalTurnover - predictedClosingBid;
-                      const roi = predictedClosingBid > 0 ? (projectedProfit / predictedClosingBid) * 100 : 0;
-
-                      return (
-                        <div className="space-y-3 text-[13.5px] text-slate-705">
-                          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                            <span className="text-slate-500 font-semibold">Projected Turnover</span>
-                            <span className="font-bold text-slate-900">
-                              ₹{totalTurnover.toLocaleString('en-IN')}
-                            </span>
-                          </div>
-                          
-                          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                            <span className="text-slate-500 font-semibold">Predicted Closing Bid</span>
-                            <span className="font-bold text-indigo-650">
-                              ₹{predictedClosingBid.toLocaleString('en-IN')}
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                            <span className="text-slate-500 font-semibold">Projected Profit</span>
-                            <span className="font-bold text-emerald-600">
-                              ₹{projectedProfit.toLocaleString('en-IN')}
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between items-center pb-1">
-                            <span className="text-slate-500 font-semibold">Projected ROI</span>
-                            <span className="font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-xs">
-                              +{roi.toFixed(1)}% ROI
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-
-                  </div>
-                </div>
-
-                {/* Key Contact Personnel */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3.5">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
-                    Key Contact Personnel
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {generateCatalogSummary(selectedPreviewItem).keyContacts.map((contact, i) => (
-                      <div key={i} className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl space-y-1.5">
-                        <span className="text-[10.5px] font-mono text-primary font-bold uppercase tracking-wider">{contact.role}</span>
-                        <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
-                        <p className="text-xs text-slate-605 font-mono break-all mt-0.5">{contact.email}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Right Side: Image/Preview Panel */}
-              {(() => {
-                const summary = generateCatalogSummary(selectedPreviewItem);
-                const hasOtherMedia = summary.extracted_images && summary.extracted_images.length > 0;
-                const extraMediaText = hasOtherMedia
-                  ? summary.extracted_images.some(url => url.toLowerCase().includes('.pdf'))
-                    ? 'Asset documents available'
-                    : 'images available'
-                  : '';
-                const displayImage = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images[0] : null);
-
-                return (
-                  <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
-                    {/* Image Gallery */}
-                    {(() => {
-                      const imageUrls = (summary.extracted_images || []).filter(
-                        (url: string) => !url.toLowerCase().endsWith('.pdf')
-                      );
-                      if (imageUrls.length === 0) return null;
-                      return (
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
-                            <span>Auction Images</span>
-                            <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
-                          </h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {imageUrls.map((url: string, idx: number) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => setLightboxImage(url)}
-                                className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
-                              >
-                                <img
-                                  src={url}
-                                  alt={`Auction image ${idx + 1}`}
-                                  className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
-                                />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {displayImage ? (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
-                          Catalog Document Preview
-                        </h4>
-                        <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setLightboxImage(displayImage)}
-                            className="block w-full text-left cursor-zoom-in relative focus:outline-none"
-                          >
-                            <img
-                              src={displayImage}
-                              alt="PDF Catalog Preview"
-                              className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
-                            />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-full py-12 flex flex-col items-center justify-center text-slate-400 gap-2 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                        <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                        </svg>
-                        <span className="text-xs font-semibold tracking-wide">No preview available</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-slate-150 bg-slate-50/50 flex flex-col sm:flex-row gap-3 sm:justify-end items-center">
-              <button
-                onClick={() => setSelectedPreviewItem(null)}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl text-[15px] font-bold text-slate-650 hover:text-slate-850 hover:bg-slate-200 transition-all cursor-pointer text-center"
-              >
-                Close Details
-              </button>
-              <a
-                href={selectedPreviewItem.sanitized_document_path || '#'}
-                download
-                target="_blank"
-                rel="noreferrer"
-                className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download PDF Catalog
-              </a>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {lightboxImage && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 cursor-zoom-out animate-fade-in"
-          onClick={() => setLightboxImage(null)}
-        >
-          <button
-            onClick={() => setLightboxImage(null)}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-10"
-            title="Close image"
-          >
-            <X className="w-6 h-6" />
-          </button>
-          <img
-            src={lightboxImage}
-            alt="Large Catalog Preview"
-            className="max-w-full max-h-[90vh] object-contain rounded-lg border border-white/10 shadow-2xl select-none animate-scale-up"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
-    </div>
   );
 }
 
