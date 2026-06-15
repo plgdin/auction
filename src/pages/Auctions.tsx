@@ -1350,11 +1350,6 @@ export function Auctions() {
                               alt="PDF Catalog Preview"
                               className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
                             />
-                            {hasOtherMedia && (
-                              <div className="absolute bottom-3 left-3 right-3 bg-slate-900/85 backdrop-blur-xs text-white text-[10px] font-bold px-3 py-2 rounded-xl text-center border border-white/10 shadow-md uppercase tracking-wider">
-                                {extraMediaText}
-                              </div>
-                            )}
                           </button>
                         </div>
                       </div>
