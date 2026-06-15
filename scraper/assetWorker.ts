@@ -146,11 +146,11 @@ function matchPageToLots(
     const fillerWords = new Set(["as", "per", "annexure", "attached", "items", "and", "the", "for", "with", "from"]);
     const keywords = desc
       .split(/[^a-zA-Z0-9]/)
-      .map(w => w.trim())
-      .filter(w => w.length >= 3 && !fillerWords.has(w));
+      .map((w: string) => w.trim())
+      .filter((w: string) => w.length >= 3 && !fillerWords.has(w));
 
     if (keywords.length > 0) {
-      const matchedKeywords = keywords.filter(word => normalizedText.includes(word));
+      const matchedKeywords = keywords.filter((word: string) => normalizedText.includes(word));
       // Require matching at least 50% of keywords, with a minimum of 1
       if (matchedKeywords.length >= Math.max(1, Math.ceil(keywords.length * 0.5))) {
         matchedLots.push(item);
@@ -654,7 +654,7 @@ async function runAssetPipelineQueue(): Promise<void> {
 
 // ─── Worker Entry Point ──────────────────────────────────────────────────────
 
-async function startWorker(): Promise<void> {
+export async function startWorker(): Promise<void> {
   log.info(
     { pollIntervalMs: POLL_INTERVAL_MS },
     "Background Worker Service started",
@@ -670,4 +670,14 @@ async function startWorker(): Promise<void> {
   }
 }
 
-startWorker();
+export { runAssetPipelineQueue };
+
+// Run automatically if this is the main entry file
+const isMain = process.argv[1] && (
+  process.argv[1].endsWith('assetWorker.ts') || 
+  process.argv[1].endsWith('assetWorker.js')
+);
+
+if (isMain) {
+  startWorker();
+}

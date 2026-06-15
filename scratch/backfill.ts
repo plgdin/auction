@@ -129,11 +129,19 @@ async function executeBackfill(task: 'parse' | 'images' | 'both') {
       console.error(` - Fatal error processing row: ${err.message}`);
     }
   }
-}
+}export { executeBackfill };
 
-const taskArg = (process.argv[2] || 'both').toLowerCase() as 'parse' | 'images' | 'both';
-if (!['parse', 'images', 'both'].includes(taskArg)) {
-  console.log('Usage: npx tsx scratch/backfill.ts [parse|images|both]');
-  process.exit(0);
+// Run automatically if this is the main entry file
+const isMain = process.argv[1] && (
+  process.argv[1].endsWith('backfill.ts') || 
+  process.argv[1].endsWith('backfill.js')
+);
+
+if (isMain) {
+  const taskArg = (process.argv[2] || 'both').toLowerCase() as 'parse' | 'images' | 'both';
+  if (!['parse', 'images', 'both'].includes(taskArg)) {
+    console.log('Usage: npx tsx scratch/backfill.ts [parse|images|both]');
+    process.exit(0);
+  }
+  executeBackfill(taskArg);
 }
-executeBackfill(taskArg);

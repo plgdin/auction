@@ -9,7 +9,6 @@ const pdf = require('pdf-parse');
 import { parseMstcCatalogText } from '../scraper/parsers/mstcParser.js';
 import { renderPdfFirstPage, extractEmbeddedJpegs } from '../scraper/utils/pdfUtils.js';
 import { uploadToStorage } from '../scraper/utils/storage.js';
-import { logger } from '../scraper/utils/logger.js';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -18,7 +17,6 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL |
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-const MSTC_CATALOG_PDF_ENDPOINT = "https://www.mstcecommerce.com/auctionhome/mstc/auction_detailed_report_pdf.jsp";
 const MSTC_ATTACHMENT_ENDPOINT = "https://www.mstcecommerce.com/auctionhome/mstc/download_doc.jsp";
 const DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
