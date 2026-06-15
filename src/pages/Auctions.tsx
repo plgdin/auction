@@ -23,7 +23,7 @@ interface CatalogSummary {
     preBidDdg: string;
     adminCharges: string;
   };
-  keyContacts: { role: string; name: string; email: string }[];
+  keyContacts: { role: string; name: string; email: string; phone?: string }[];
   preview_image_url?: string | null;
   extracted_images?: string[];
 }
@@ -136,8 +136,8 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
   ];
 
   let keyContacts = [
-    { role: 'Auction Officer (MSTC)', name: 'S. K. Mukherjee', email: 'skmukherjee@mstcindia.co.in' },
-    { role: 'Site In-Charge', name: 'R. K. Sharma (Superintending Engineer)', email: 'rksharma@site-authority.org' }
+    { role: 'Auction Officer (MSTC)', name: 'S. K. Mukherjee', email: 'skmukherjee@mstcindia.co.in', phone: '07969066600' },
+    { role: 'Site In-Charge', name: 'R. K. Sharma (Superintending Engineer)', email: 'rksharma@site-authority.org', phone: 'no contact info available' }
   ];
 
   let emd = '10% of total bid value to be submitted via pre-bid EMD link';
@@ -1159,6 +1159,7 @@ export function Auctions() {
                         <span className="text-[9px] font-mono text-primary font-bold uppercase tracking-wider">{contact.role}</span>
                         <h4 className="text-xs font-black text-slate-900">{contact.name}</h4>
                         <p className="text-[10px] text-slate-500 font-mono break-all mt-0.5">{contact.email}</p>
+                        <p className="text-[10px] text-slate-600 font-medium mt-0.5">Phone: {contact.phone || 'no contact info available'}</p>
                       </div>
                     ))}
                   </div>

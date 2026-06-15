@@ -66,8 +66,8 @@ function parseMstcCatalogText(text: string, categoryName: string, sellerName: st
   if (contactMatch) contactName = contactMatch[1].trim();
   const emailMatch = cleanText.match(/e-Mail\s*:\s*([^\n]+)/i) || cleanText.match(/Seller Email Address\s*([^\n]+)/i);
   if (emailMatch) contactEmail = emailMatch[1].trim();
-  const phoneMatch = cleanText.match(/Mobile\s*:\s*(\d+)/i) || cleanText.match(/Telephone Number\s*(\d+)/i);
-  if (phoneMatch) contactPhone = phoneMatch[1].trim();
+  const phoneMatch = cleanText.match(/Mobile\s*:\s*([^\n]+)/i) || cleanText.match(/Telephone Number\s*([^\n]+)/i);
+  if (phoneMatch) contactPhone = phoneMatch[1].replace(/^[:\s]+/, "").trim();
 
   if (!contactName) {
     const sContact = cleanText.match(/Contact Person([^\n]+)/);
@@ -75,26 +75,57 @@ function parseMstcCatalogText(text: string, categoryName: string, sellerName: st
   }
   if (!contactPhone) {
     const sPhone = cleanText.match(/Telephone Number([^\n]+)/);
-    if (sPhone) contactPhone = sPhone[1].trim();
+    if (sPhone) contactPhone = sPhone[1].replace(/^[:\s]+/, "").trim();
   }
   if (!contactEmail) {
     const sEmail = cleanText.match(/Seller Email Address([^\n]+)/);
     if (sEmail) contactEmail = sEmail[1].trim();
   }
 
-  const officerOneName = cleanText.match(/Officer OneName:\s*([^\n]+)/) || cleanText.match(/Officer OneName\s*([^\n]+)/);
+  // 2. Extract MSTC Officers
+  let officerName = "no contact info available";
+  let officerEmail = "no contact info available";
+  let officerPhone = "no contact info available";
+
+  const docLines = cleanText.split('\n');
+  const officerIdx = docLines.findIndex(l => l.includes("Officer OneName:"));
+  if (officerIdx !== -1) {
+    const nameLine = docLines[officerIdx].replace(/Name\s*&\s*Designation\s*of\s*Officer\s*OneName:\s*/i, "").trim();
+    if (nameLine && !nameLine.toLowerCase().includes("email:") && !nameLine.toLowerCase().includes("phone:")) {
+      officerName = nameLine.replace(/[\[\{\(]\s*[-_.\s]*\s*[\]\}\)]/g, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+    }
+    for (let i = officerIdx + 1; i < Math.min(officerIdx + 5, docLines.length); i++) {
+      const line = docLines[i];
+      if (line.includes("Officer TwoName:")) break;
+      const emailMatch = line.match(/^Email\s*:?\s*([^\n]*)/i);
+      if (emailMatch) {
+        const val = emailMatch[1].replace(/^[:\s]+/, "").trim();
+        if (val) officerEmail = val;
+      }
+      const phoneMatch = line.match(/^Phone\s*:?\s*([^\n]*)/i);
+      if (phoneMatch) {
+        const val = phoneMatch[1].replace(/^[:\s]+/, "").trim();
+        if (val) officerPhone = val;
+      }
+    }
+  }
+
   const keyContacts = [
     {
       role: 'Auction Officer (MSTC)',
-      name: officerOneName ? officerOneName[1].replace(/\[\]|-/g, '').trim() : 'S. K. Mukherjee',
-      email: 'smukherjee@mstcindia.co.in'
+      name: officerName || 'no contact info available',
+      email: officerEmail || 'no contact info available',
+      phone: officerPhone || 'no contact info available'
     }
   ];
+
   if (contactName) {
+    const cleanContactName = contactName.replace(/[\[\{\(]\s*[-_.\s]*\s*[\]\}\)]/g, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
     keyContacts.push({
       role: 'Site Contact / Engineer',
-      name: contactName,
-      email: contactEmail || 'see-catalog@mstc.co.in'
+      name: cleanContactName,
+      email: contactEmail || 'see-catalog@mstc.co.in',
+      phone: contactPhone || 'no contact info available'
     });
   }
 
@@ -200,7 +231,7 @@ async function executeBackfill(task: 'parse' | 'images' | 'both') {
   console.log(`Starting backfill operation (mode: ${task.toUpperCase()})...`);
   const { data: records, error } = await supabase
     .from('mstc_auctions')
-    .select('id, mstc_auction_number, sanitized_document_path, raw_materials_text, category_name, seller_name, location, preview_image_path')
+    .select('id, mstc_auction_number, sanitized_document_path, raw_materials_text, category_name, seller_name, location')
     .eq('asset_status', 'completed')
     .not('sanitized_document_path', 'is', null);
 

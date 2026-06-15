@@ -61,7 +61,7 @@ async function inspectRecord(searchTerm: string) {
   const { data: records, error } = await supabase
     .from('mstc_auctions')
     .select('*')
-    .or(`id.eq.${searchTerm},mstc_auction_number.ilike.%${searchTerm}%`)
+    .ilike('mstc_auction_number', `%${searchTerm}%`)
     .limit(1);
 
   if (error) {
@@ -101,6 +101,8 @@ async function inspectRecord(searchTerm: string) {
 
     const parsedPdf = await pdf(buffer);
     const text = parsedPdf.text;
+    require('fs').writeFileSync('scratch/pdf_text.txt', text);
+    console.log('PDF text written to scratch/pdf_text.txt');
 
     console.log('\n=================== PDF Parsing Diagnostic ===================');
     const diagnostic = parseMstcCatalogText(text);

@@ -51,10 +51,10 @@ function parseMstcCatalogText(
     contactEmail = emailMatch[1].trim();
   }
   const phoneMatch =
-    cleanText.match(/Mobile\s*:\s*(\d+)/i) ||
-    cleanText.match(/Telephone Number\s*(\d+)/i);
+    cleanText.match(/Mobile\s*:\s*([^\n]+)/i) ||
+    cleanText.match(/Telephone Number\s*([^\n]+)/i);
   if (phoneMatch) {
-    contactPhone = phoneMatch[1].trim();
+    contactPhone = phoneMatch[1].replace(/^[:\s]+/, "").trim();
   }
 
   // Fallbacks from Seller Details section
@@ -64,7 +64,7 @@ function parseMstcCatalogText(
   }
   if (!contactPhone) {
     const sPhone = cleanText.match(/Telephone Number([^\n]+)/);
-    if (sPhone) contactPhone = sPhone[1].trim();
+    if (sPhone) contactPhone = sPhone[1].replace(/^[:\s]+/, "").trim();
   }
   if (!contactEmail) {
     const sEmail = cleanText.match(/Seller Email Address([^\n]+)/);
@@ -72,25 +72,49 @@ function parseMstcCatalogText(
   }
 
   // 2. Extract MSTC Officers
-  const officerOneName =
-    cleanText.match(/Officer OneName:\s*([^\n]+)/) ||
-    cleanText.match(/Officer OneName\s*([^\n]+)/);
+  let officerName = "no contact info available";
+  let officerEmail = "no contact info available";
+  let officerPhone = "no contact info available";
+
+  const docLines = cleanText.split('\n');
+  const officerIdx = docLines.findIndex(l => l.includes("Officer OneName:"));
+  if (officerIdx !== -1) {
+    const nameLine = docLines[officerIdx].replace(/Name\s*&\s*Designation\s*of\s*Officer\s*OneName:\s*/i, "").trim();
+    if (nameLine && !nameLine.toLowerCase().includes("email:") && !nameLine.toLowerCase().includes("phone:")) {
+      officerName = nameLine.replace(/[\[\{\(]\s*[-_.\s]*\s*[\]\}\)]/g, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+    }
+    for (let i = officerIdx + 1; i < Math.min(officerIdx + 5, docLines.length); i++) {
+      const line = docLines[i];
+      if (line.includes("Officer TwoName:")) break;
+      const emailMatch = line.match(/^Email\s*:?\s*([^\n]*)/i);
+      if (emailMatch) {
+        const val = emailMatch[1].replace(/^[:\s]+/, "").trim();
+        if (val) officerEmail = val;
+      }
+      const phoneMatch = line.match(/^Phone\s*:?\s*([^\n]*)/i);
+      if (phoneMatch) {
+        const val = phoneMatch[1].replace(/^[:\s]+/, "").trim();
+        if (val) officerPhone = val;
+      }
+    }
+  }
 
   let keyContacts = [
     {
       role: "Auction Officer (MSTC)",
-      name: officerOneName
-        ? officerOneName[1].replace(/\[\]|-/g, "").trim()
-        : "S. K. Mukherjee",
-      email: "smukherjee@mstcindia.co.in",
+      name: officerName || "no contact info available",
+      email: officerEmail || "no contact info available",
+      phone: officerPhone || "no contact info available",
     },
   ];
 
   if (contactName) {
+    const cleanContactName = contactName.replace(/[\[\{\(]\s*[-_.\s]*\s*[\]\}\)]/g, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
     keyContacts.push({
       role: "Site Contact / Engineer",
-      name: contactName,
+      name: cleanContactName,
       email: contactEmail || "see-catalog@mstc.co.in",
+      phone: contactPhone || "no contact info available",
     });
   }
 
