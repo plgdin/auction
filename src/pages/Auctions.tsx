@@ -1666,38 +1666,24 @@ export function Auctions() {
                           <th className="py-2.5 px-3.5 font-bold w-12 text-center">Lot</th>
                           <th className="py-2.5 px-3.5 font-bold">Material Description</th>
                           <th className="py-2.5 px-3.5 font-bold text-right">Quantity</th>
-                          <th className="py-2.5 px-3.5 font-bold text-center">Taxes</th>
-                          <th className="py-2.5 px-3.5 font-bold text-right">Est. Base Value</th>
-                          <th className="py-2.5 px-3.5 font-bold text-right text-emerald-700 bg-emerald-50/40">Est. Value (Incl. Taxes)</th>
+                          <th className="py-2.5 px-3.5 font-bold text-right">Est. Value</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700">
                         {generateCatalogSummary(selectedPreviewItem).items.map((row, idx) => {
                           const valuedItem = valuationData && valuationData.items && valuationData.items[idx];
                           const baseTotalVal = valuedItem ? valuedItem.totalValue : 0;
-                          const taxPct = getTaxPercent(row.taxRate);
-                          const totalValWithTax = Math.round(baseTotalVal * (1 + taxPct / 100));
 
                           return (
                             <tr key={row.sr} className="hover:bg-slate-50/50">
                               <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
                               <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.description}</td>
                               <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
-                              <td className="py-2.5 px-3.5 text-center font-mono text-[10px] text-slate-500">{row.taxRate}</td>
                               <td className="py-2.5 px-3.5 text-right font-mono text-slate-650">
                                 {isValuating ? (
                                   <span className="text-[10px] text-slate-400">Valuating...</span>
                                 ) : baseTotalVal > 0 ? (
                                   `₹${baseTotalVal.toLocaleString('en-IN')}`
-                                ) : (
-                                  <span className="text-slate-400">—</span>
-                                )}
-                              </td>
-                              <td className="py-2.5 px-3.5 text-right font-mono text-emerald-700 bg-emerald-50/10 font-bold">
-                                {isValuating ? (
-                                  <span className="text-[10px] text-slate-400">Valuating...</span>
-                                ) : totalValWithTax > 0 ? (
-                                  `₹${totalValWithTax.toLocaleString('en-IN')}`
                                 ) : (
                                   <span className="text-slate-400">—</span>
                                 )}
