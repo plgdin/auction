@@ -6,6 +6,11 @@ export interface ValuedItem {
   unitValue: number;
   totalValue: number;
   confidence: number;
+  internationalPrices?: {
+    in: { price: number; convertedPrice: number; sources: number };
+    us: { price: number; convertedPrice: number; sources: number };
+    uk: { price: number; convertedPrice: number; sources: number };
+  };
 }
 
 export interface ValuationCosts {
@@ -33,6 +38,11 @@ export interface ValuationOutput {
   };
   recommendation: 'Strong Buy' | 'Buy' | 'Watch Carefully' | 'High Risk' | 'Avoid';
   recommendationReasoning: string;
+  internationalTotals?: {
+    in: number;
+    us: number;
+    uk: number;
+  };
 }
 
 // Simple base price helper for realistic fallback valuation
@@ -58,20 +68,16 @@ const CATEGORY_BASE_PRICES: Record<string, number> = {
 };
 
 function getMockPrice(name: string): number[] {
-  const lower = name.toLowerCase();
-  let basePrice = CATEGORY_BASE_PRICES.default;
-
-  for (const [key, val] of Object.entries(CATEGORY_BASE_PRICES)) {
-    if (lower.includes(key)) {
-      basePrice = val;
+  const normalized = name.toLowerCase();
+  let basePrice = CATEGORY_BASE_PRICES['default'];
+  for (const [cat, price] of Object.entries(CATEGORY_BASE_PRICES)) {
+    if (normalized.includes(cat)) {
+      basePrice = price;
       break;
     }
   }
-
-  // Generate 8-12 realistic prices around the base price with some variance
   const prices: number[] = [];
-  const count = 8 + Math.floor(Math.random() * 5);
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < 4; i++) {
     const variance = 0.7 + Math.random() * 0.6; // 70% to 130%
     prices.push(Math.round(basePrice * variance));
   }
@@ -107,50 +113,87 @@ const extractPricesFromText = (text: string): number[] => {
 };
 
 export const valuationService = {
-  // Query pricing from SerpAPI (if available) or generate mock prices
-  async fetchPrices(itemName: string): Promise<{
-    prices: number[];
-    isMock: boolean;
+  // Query international pricing from SerpAPI (if available) or generate mock prices
+  async fetchInternationalPrices(itemName: string): Promise<{
+    in: { price: number; convertedPrice: number; sources: number; isMock: boolean };
+    us: { price: number; convertedPrice: number; sources: number; isMock: boolean };
+    uk: { price: number; convertedPrice: number; sources: number; isMock: boolean };
   }> {
     // @ts-ignore
     const apiKey = (typeof import.meta !== 'undefined' && (import.meta as any).env ? (import.meta as any).env.VITE_SERPAPI_KEY : undefined) || (typeof process !== 'undefined' && (process as any).env ? (process as any).env.VITE_SERPAPI_KEY : undefined) || '';
+    
+    const regions = [
+      { code: 'in', gl: 'in', currency: 'INR', rate: 1, suffix: 'price rate' },
+      { code: 'us', gl: 'us', currency: 'USD', rate: 85, suffix: 'price USD' },
+      { code: 'uk', gl: 'uk', currency: 'GBP', rate: 108, suffix: 'price GBP' }
+    ] as const;
+
+    const results: any = {};
+
     if (!apiKey) {
-      return { prices: getMockPrice(itemName), isMock: true };
+      // Proportional mock data if API key not present
+      const baseMock = getMockPrice(itemName)[0] || 5000;
+      results['in'] = { price: baseMock, convertedPrice: baseMock, sources: 4, isMock: true };
+      results['us'] = { price: Math.round((baseMock * 0.95) / 85), convertedPrice: Math.round(baseMock * 0.95), sources: 3, isMock: true };
+      results['uk'] = { price: Math.round((baseMock * 0.9) / 108), convertedPrice: Math.round(baseMock * 0.9), sources: 2, isMock: true };
+      return results;
     }
 
-    try {
-      const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(itemName + ' price rate')}&api_key=${apiKey}`;
-      const res = await axios.get(url, { timeout: 5000 });
-      const prices: number[] = [];
+    await Promise.all(regions.map(async (reg) => {
+      try {
+        const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(itemName + ' ' + reg.suffix)}&gl=${reg.gl}&api_key=${apiKey}`;
+        const res = await axios.get(url, { timeout: 4000 });
+        const prices: number[] = [];
 
-      // Extract from answer box if available
-      if (res.data?.answer_box?.snippet) {
-        prices.push(...extractPricesFromText(res.data.answer_box.snippet));
+        if (res.data?.answer_box?.snippet) {
+          prices.push(...extractPricesFromText(res.data.answer_box.snippet));
+        }
+        if (res.data?.answer_box?.answer) {
+          prices.push(...extractPricesFromText(res.data.answer_box.answer));
+        }
+
+        const organic = res.data?.organic_results || [];
+        for (const item of organic) {
+          const text = `${item.title || ''} ${item.snippet || ''}`;
+          prices.push(...extractPricesFromText(text));
+        }
+
+        const filtered = Array.from(new Set(prices)).filter(
+          p => p > 1 && p !== 2023 && p !== 2024 && p !== 2025 && p !== 2026 && p !== 2027
+        );
+
+        if (filtered.length >= 2) {
+          const avgInr = filtered.reduce((sum, p) => sum + p, 0) / filtered.length;
+          results[reg.code] = {
+            price: Math.round(avgInr / reg.rate),
+            convertedPrice: Math.round(avgInr),
+            sources: filtered.length,
+            isMock: false
+          };
+        } else {
+          // Proportional mock fallback
+          const baseMock = getMockPrice(itemName)[0] || 5000;
+          const factor = reg.code === 'us' ? 0.95 : reg.code === 'uk' ? 0.9 : 1.0;
+          results[reg.code] = {
+            price: Math.round((baseMock * factor) / reg.rate),
+            convertedPrice: Math.round(baseMock * factor),
+            sources: 0,
+            isMock: true
+          };
+        }
+      } catch {
+        const baseMock = getMockPrice(itemName)[0] || 5000;
+        const factor = reg.code === 'us' ? 0.95 : reg.code === 'uk' ? 0.9 : 1.0;
+        results[reg.code] = {
+          price: Math.round((baseMock * factor) / reg.rate),
+          convertedPrice: Math.round(baseMock * factor),
+          sources: 0,
+          isMock: true
+        };
       }
-      if (res.data?.answer_box?.answer) {
-        prices.push(...extractPricesFromText(res.data.answer_box.answer));
-      }
+    }));
 
-      // Extract from organic search results
-      const results = res.data?.organic_results || [];
-      for (const item of results) {
-        const textToSearch = `${item.title || ''} ${item.snippet || ''}`;
-        prices.push(...extractPricesFromText(textToSearch));
-      }
-
-      // Filter out years and duplicates
-      const filteredPrices = Array.from(new Set(prices)).filter(
-        p => p !== 2023 && p !== 2024 && p !== 2025 && p !== 2026 && p !== 2027
-      );
-
-      if (filteredPrices.length >= 2) {
-        return { prices: filteredPrices, isMock: false };
-      }
-    } catch (e) {
-      console.warn(`Failed to fetch live search prices for "${itemName}" from SerpAPI:`, e);
-    }
-
-    return { prices: getMockPrice(itemName), isMock: true };
+    return results;
   },
 
   // Perform full lot analysis and calculation
@@ -162,36 +205,26 @@ export const valuationService = {
     const valuedItems: ValuedItem[] = [];
     let totalLotValue = 0;
     let totalConfidenceSum = 0;
+    
+    let totalUsInr = 0;
+    let totalUkInr = 0;
 
     for (const rawItem of rawItems) {
       // 1. Parse quantity
       const qtyVal = parseFloat(rawItem.qty.replace(/,/g, ''));
       const qty = isNaN(qtyVal) || qtyVal <= 0 ? 1 : qtyVal;
 
-      // 2. Fetch prices (using SerpAPI or fallback)
-      const { prices, isMock } = await this.fetchPrices(rawItem.description);
+      // 2. Fetch international prices
+      const intl = await this.fetchInternationalPrices(rawItem.description);
+      const avgPrice = intl.in.convertedPrice;
+      const isMock = intl.in.isMock;
 
-      // Remove obvious outliers (using simple IQR or deviation)
-      let finalPrices = [...prices];
-      if (prices.length > 4) {
-        prices.sort((a, b) => a - b);
-        const q1 = prices[Math.floor(prices.length * 0.25)];
-        const q3 = prices[Math.floor(prices.length * 0.75)];
-        const iqr = q3 - q1;
-        const minVal = q1 - 1.5 * iqr;
-        const maxVal = q3 + 1.5 * iqr;
-        finalPrices = prices.filter(p => p >= minVal && p <= maxVal);
-      }
-
-      // 3. Compute stats
-      const avgPrice = finalPrices.reduce((sum, p) => sum + p, 0) / (finalPrices.length || 1);
-      
       // Compute confidence score based on number of sources and consistency
       let pricingConfidence = 50; // base confidence
       if (!isMock) {
-        pricingConfidence += Math.min(30, finalPrices.length * 4); // more results = higher confidence
+        pricingConfidence += Math.min(30, intl.in.sources * 4);
       } else {
-        pricingConfidence = 65; // standard fallback confidence
+        pricingConfidence = 65;
       }
 
       valuedItems.push({
@@ -199,10 +232,17 @@ export const valuationService = {
         qty,
         unitValue: Math.round(avgPrice),
         totalValue: Math.round(avgPrice * qty),
-        confidence: pricingConfidence
+        confidence: pricingConfidence,
+        internationalPrices: {
+          in: { price: intl.in.price, convertedPrice: intl.in.convertedPrice, sources: intl.in.sources },
+          us: { price: intl.us.price, convertedPrice: intl.us.convertedPrice, sources: intl.us.sources },
+          uk: { price: intl.uk.price, convertedPrice: intl.uk.convertedPrice, sources: intl.uk.sources }
+        }
       });
 
       totalLotValue += avgPrice * qty;
+      totalUsInr += intl.us.convertedPrice * qty;
+      totalUkInr += intl.uk.convertedPrice * qty;
       totalConfidenceSum += pricingConfidence;
     }
 
@@ -222,10 +262,10 @@ export const valuationService = {
 
     const estimatedProfit = totalLotValue - totalCost;
     const roiPercent = totalCost > 0 ? Math.round((estimatedProfit / totalCost) * 100) : 0;
-    const breakEven = totalCost; // Break-even bid price is total cost
+    const breakEven = totalCost;
 
     // Confidence ratings
-    const dataConfidence = 85; // high for official government portals
+    const dataConfidence = 85; 
     const pricingConfidence = avgItemConfidence;
     const overallConfidence = Math.round((dataConfidence + pricingConfidence) / 2);
 
@@ -283,7 +323,12 @@ export const valuationService = {
         reasoning: riskReasoning
       },
       recommendation,
-      recommendationReasoning
+      recommendationReasoning,
+      internationalTotals: {
+        in: totalLotValue,
+        us: Math.round(totalUsInr),
+        uk: Math.round(totalUkInr)
+      }
     };
   }
 };

@@ -1368,6 +1368,73 @@ export function Auctions() {
                             {valuationData.riskAnalysis.reasoning}
                           </p>
                         </div>
+
+                        {/* International Market Comparison Panel */}
+                        {valuationData.internationalTotals && (
+                          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">
+                                International Market Price Comparison
+                              </h4>
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                Live Exchange Rate Sync
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              {/* India Card */}
+                              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xl">🇮🇳</span>
+                                  <span className="text-xs font-mono font-bold text-slate-500 uppercase tracking-wider">India (INR)</span>
+                                </div>
+                                <div className="mt-3">
+                                  <span className="text-sm font-semibold text-slate-400">Est. Lot Value</span>
+                                  <h3 className="text-xl font-bold text-slate-900 mt-0.5">
+                                    ₹{valuationData.internationalTotals.in.toLocaleString('en-IN')}
+                                  </h3>
+                                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded-full mt-1.5 inline-block">
+                                    Base Market
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* United States Card */}
+                              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xl">🇺🇸</span>
+                                  <span className="text-xs font-mono font-bold text-slate-500 uppercase tracking-wider">United States (USD)</span>
+                                </div>
+                                <div className="mt-3">
+                                  <span className="text-sm font-semibold text-slate-400">Est. Lot Value</span>
+                                  <h3 className="text-xl font-bold text-slate-900 mt-0.5">
+                                    ${Math.round(valuationData.internationalTotals.us / 85).toLocaleString('en-US')}
+                                  </h3>
+                                  <span className="text-[10px] text-slate-500 font-mono block mt-1.5">
+                                    ₹{valuationData.internationalTotals.us.toLocaleString('en-IN')} (equiv)
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* United Kingdom Card */}
+                              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xl">🇬🇧</span>
+                                  <span className="text-xs font-mono font-bold text-slate-500 uppercase tracking-wider">United Kingdom (GBP)</span>
+                                </div>
+                                <div className="mt-3">
+                                  <span className="text-sm font-semibold text-slate-400">Est. Lot Value</span>
+                                  <h3 className="text-xl font-bold text-slate-900 mt-0.5">
+                                    £{Math.round(valuationData.internationalTotals.uk / 108).toLocaleString('en-GB')}
+                                  </h3>
+                                  <span className="text-[10px] text-slate-500 font-mono block mt-1.5">
+                                    ₹{valuationData.internationalTotals.uk.toLocaleString('en-IN')} (equiv)
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

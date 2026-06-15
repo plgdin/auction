@@ -261,7 +261,7 @@ function parseAnnexItems(text: string, taxRate: string): any[] {
 async function downloadAttachment(fileName: string, docType: string, headers: Record<string, string>): Promise<Buffer | null> {
   const url = `https://www.mstcecommerce.com/auctionhome/mstc/download_file.jsp?file_name=${fileName}&doc_type=${docType}`;
   try {
-    const res = await fetch(url, { headers, timeout: 10000 });
+    const res = await fetch(url, { headers } as any);
     if (!res.ok) return null;
     const buf = await res.buffer();
     if (buf.toString('utf-8', 0, 4) === '%PDF') return buf;
@@ -301,13 +301,13 @@ async function backfillAllAnnexes() {
       // Find annex filenames
       const cleanedText = mainText.replace(/\r?\n/g, ' ').replace(
         /(Annex_|Photo_)\s*([a-zA-Z0-9_]+)\s*([a-zA-Z0-9_]*)\s*(\.pdf)/gi,
-        (_match, p1, p2, p3, p4) => `${p1}${p2}${p3 || ''}${p4}`
+        (_match: any, p1: any, p2: any, p3: any, p4: any) => `${p1}${p2}${p3 || ''}${p4}`
       );
       const matches = cleanedText.match(/([a-zA-Z0-9_]+\.pdf)/g) || [];
       const uniqueAttachments = Array.from(new Set(matches)).filter(name => {
-        const n = name.toLowerCase();
+        const n = (name as string).toLowerCase();
         return n.startsWith('photo_') || n.startsWith('annex_');
-      });
+      }) as string[];
 
       let annexItems: any[] = [];
       for (const fileName of uniqueAttachments) {
