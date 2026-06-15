@@ -1066,7 +1066,7 @@ export function Auctions() {
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 sm:p-6 md:p-8 animate-fade-in">
-          <div className="relative w-full max-w-6xl h-[90vh] md:h-[80vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
+          <div className="relative w-full max-w-[1400px] h-[95vh] md:h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
             
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
