@@ -18,7 +18,7 @@ interface CatalogSummary {
     preBidDdg: string;
   };
   preview_image_url?: string | null;
-  extracted_images?: string[];
+  extracted_images: string[];
 }
 
 const generateCatalogSummary = (item: MstcSanitizedAuction, shortId: string): CatalogSummary => {
@@ -106,12 +106,7 @@ const generateCatalogSummary = (item: MstcSanitizedAuction, shortId: string): Ca
 export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
   const summary = generateCatalogSummary(item, shortId);
-  const hasOtherMedia = summary.extracted_images && summary.extracted_images.length > 0;
-  const extraMediaText = hasOtherMedia
-    ? summary.extracted_images.some(url => url.toLowerCase().includes('.pdf'))
-      ? 'documents available'
-      : 'images available'
-    : '';
+  const hasOtherMedia = summary.extracted_images.length > 0;
 
   const parts = item.mstc_auction_number.split('/');
   const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;

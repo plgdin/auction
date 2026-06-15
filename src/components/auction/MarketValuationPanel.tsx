@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { 
-  TrendingUp, TrendingDown, DollarSign, Info, BarChart3, Calculator, RefreshCw, Layers, Sparkles
+  TrendingUp, TrendingDown, BarChart3, Calculator, RefreshCw, Sparkles
 } from 'lucide-react';
 import type { Auction } from '../../types/database.types';
 
