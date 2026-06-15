@@ -6,7 +6,6 @@ import { CountdownTimer } from './CountdownTimer';
 import { BidConfirmationModal } from './BidConfirmationModal';
 import { useAuthStore } from '../../store/authStore';
 import { auctionService } from '../../services/auctionService';
-import { paymentService } from '../../services/paymentService';
 import type { Auction } from '../../types/database.types';
 import clsx from 'clsx';
 
@@ -25,18 +24,7 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  const [hasBlockedEmd, setHasBlockedEmd] = useState(false);
-  const [isBlockingEmd, setIsBlockingEmd] = useState(false);
 
-  useEffect(() => {
-    async function checkEmd() {
-      if (user && auction.id) {
-        const blocked = await paymentService.checkEmdStatus(user.id, auction.id);
-        setHasBlockedEmd(blocked);
-      }
-    }
-    checkEmd();
-  }, [user, auction.id]);
 
   const isActive = auction.status === 'active';
   const minimumNextBid = currentMaxBid === 0 ? auction.starting_price : currentMaxBid + auction.bid_increment;
@@ -87,31 +75,7 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
     }
   };
 
-  const handleBlockEmd = async () => {
-    if (!user) {
-      navigate('/auth/login', { state: { from: `/auctions/${auction.id}` } });
-      return;
-    }
-    
-    setIsBlockingEmd(true);
-    setErrorMsg(null);
-    try {
-      const response = await paymentService.blockAuctionEmd(user.id, auction.id, auction.emd_amount);
-      if (response.success) {
-        setHasBlockedEmd(true);
-      } else {
-        if (response.message.includes('Insufficient wallet balance')) {
-          navigate('/dashboard/wallet');
-        } else {
-          setErrorMsg(response.message);
-        }
-      }
-    } catch {
-      setErrorMsg('Failed to block EMD.');
-    } finally {
-      setIsBlockingEmd(false);
-    }
-  };
+
 
   return (
     <>
@@ -187,23 +151,6 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
                 <button disabled className="w-full flex justify-center items-center px-8 py-4 border border-transparent text-lg font-bold rounded-xl text-slate-500 bg-slate-100 cursor-not-allowed">
                   Bidding Closed
                 </button>
-              ) : !hasBlockedEmd ? (
-                <div className="space-y-4">
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
-                    <ShieldAlert className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-bold text-orange-900 mb-1">EMD Required to Bid</p>
-                      <p className="text-xs text-orange-800">You must block ₹{auction.emd_amount.toLocaleString()} from your wallet to participate.</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={handleBlockEmd}
-                    disabled={isBlockingEmd}
-                    className="w-full flex justify-center items-center px-8 py-4 border border-transparent text-lg font-bold rounded-xl text-white bg-slate-900 hover:bg-slate-800 shadow-lg transition-all disabled:opacity-50"
-                  >
-                    {isBlockingEmd ? 'Processing...' : 'Block EMD Now'}
-                  </button>
-                </div>
               ) : (
                 <div className="space-y-3">
                   <div className="relative">

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Gavel, Trophy, Wallet, ShieldAlert, ArrowRight, Activity, 
+  Gavel, Trophy, Heart, ArrowRight, Activity, 
   TrendingUp, IndianRupee
 } from 'lucide-react';
 import { 
@@ -10,27 +10,18 @@ import {
 } from 'recharts';
 import { useAuthStore } from '../store/authStore';
 import { auctionService } from '../services/auctionService';
-import { paymentService } from '../services/paymentService';
 
-// Mock data for the chart
-const chartData = [
-  { name: 'Jan', bids: 4 },
-  { name: 'Feb', bids: 7 },
-  { name: 'Mar', bids: 5 },
-  { name: 'Apr', bids: 12 },
-  { name: 'May', bids: 8 },
-  { name: 'Jun', bids: 15 },
-];
+// Removed static chartData
 
 export function Dashboard() {
   const { user, profile } = useAuthStore();
   const [stats, setStats] = useState({
     activeBids: 0,
     wonAuctions: 0,
-    availableBalance: 0,
-    blockedEmd: 0
+    interestedAuctions: 0
   });
   const [recentBids, setRecentBids] = useState<any[]>([]);
+  const [dynamicChartData, setDynamicChartData] = useState<{name: string, bids: number}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -38,10 +29,10 @@ export function Dashboard() {
       if (!user) return;
       setIsLoading(true);
 
-      const [bids, wonData, walletData] = await Promise.all([
+      const [bids, wonData, watchlistIds] = await Promise.all([
         auctionService.getUserBids(user.id),
         auctionService.getWonAuctions(user.id),
-        paymentService.getWalletBalance(user.id)
+        auctionService.getUserWatchlistIds(user.id)
       ]);
 
       const activeBids = bids.filter(b => b.auction.status === 'active').length;
@@ -49,12 +40,28 @@ export function Dashboard() {
       setStats({
         activeBids,
         wonAuctions: wonData.length,
-        availableBalance: walletData.available,
-        blockedEmd: walletData.blocked
+        interestedAuctions: watchlistIds.length
       });
       
       // Top 3 most recent bids
       setRecentBids(bids.slice(0, 3));
+
+      // Process bids for chart data (last 6 months)
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const now = new Date();
+      const newChartData = [];
+      
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthName = months[d.getMonth()];
+        const count = bids.filter(b => {
+          const bd = new Date(b.created_at);
+          return bd.getMonth() === d.getMonth() && bd.getFullYear() === d.getFullYear();
+        }).length;
+        newChartData.push({ name: monthName, bids: count });
+      }
+      setDynamicChartData(newChartData);
+
       setIsLoading(false);
     }
     loadDashboardData();
@@ -84,7 +91,7 @@ export function Dashboard() {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-4">
             <div className="w-12 h-12 rounded bg-primary/10 text-primary flex items-center justify-center">
@@ -94,7 +101,7 @@ export function Dashboard() {
               <TrendingUp className="w-4 h-4 mr-1" /> +2
             </span>
           </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Active Bids</h3>
+          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Ongoing Bids</h3>
           <p className="text-3xl font-extrabold text-foreground">{stats.activeBids}</p>
         </div>
 
@@ -110,28 +117,12 @@ export function Dashboard() {
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Wallet className="w-6 h-6" />
+            <div className="w-12 h-12 rounded bg-red-50 text-red-650 flex items-center justify-center">
+              <Heart className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Available Balance</h3>
-          <p className="text-3xl font-extrabold text-foreground flex items-center">
-            <IndianRupee className="w-6 h-6 mr-1 text-muted-foreground" />
-            {stats.availableBalance.toLocaleString()}
-          </p>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded bg-orange-50 text-orange-600 flex items-center justify-center">
-              <ShieldAlert className="w-6 h-6" />
-            </div>
-          </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Blocked EMD</h3>
-          <p className="text-3xl font-extrabold text-foreground flex items-center">
-            <IndianRupee className="w-6 h-6 mr-1 text-muted-foreground" />
-            {stats.blockedEmd.toLocaleString()}
-          </p>
+          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Interested Auctions</h3>
+          <p className="text-3xl font-extrabold text-foreground">{stats.interestedAuctions}</p>
         </div>
       </div>
 
@@ -153,7 +144,7 @@ export function Dashboard() {
           
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={dynamicChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorBids" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#004ac6" stopOpacity={0.3}/>

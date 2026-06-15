@@ -12,7 +12,7 @@ export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 function Calendar({
   className,
   classNames,
-  showOutsideDays = true,
+  showOutsideDays = false,
   components: userComponents,
   ...props
 }: CalendarProps) {
@@ -161,7 +161,8 @@ function Calendar({
             trigger={['click']} 
             placement="bottomLeft"
             overlayClassName="calendar-dropdown-overlay"
-            dropdownRender={(menu) => (
+            getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
+            popupRender={(menu) => (
               <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">
                 {menu}
               </div>
@@ -212,7 +213,8 @@ function Calendar({
           trigger={['click']} 
           placement="bottomLeft"
           overlayClassName="calendar-dropdown-overlay"
-          dropdownRender={(menu) => (
+          getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
+          popupRender={(menu) => (
             <div className="max-h-60 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 custom-scrollbar z-50">
               {menu}
             </div>

@@ -55,6 +55,8 @@ export interface Auction {
   regional_office?: string;
   location?: string;
   pre_bid?: boolean;
+  reference_number?: string;   // Added via migration 00005
+  winner_id?: string;          // Added via migration 00005
   created_at: string;
   updated_at: string;
 }
@@ -158,6 +160,7 @@ export interface WalletTransaction {
   user_id: string;
   amount: number;
   transaction_type: string;
+  status: string;       // Added via migration 00005
   reference_id?: string;
   description?: string;
   created_at: string;

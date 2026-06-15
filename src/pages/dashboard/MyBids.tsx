@@ -7,13 +7,12 @@ import { auctionService } from '../../services/auctionService';
 import type { Auction } from '../../types/database.types';
 import clsx from 'clsx';
 
-type TabType = 'active' | 'won' | 'lost';
+type TabType = 'active' | 'previous';
 
 export function MyBids() {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [bids, setBids] = useState<any[]>([]); // Includes bid info + auction
-  const [wonAuctions, setWonAuctions] = useState<Auction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -21,25 +20,15 @@ export function MyBids() {
       if (!user) return;
       setIsLoading(true);
       
-      const [userBids, wonData] = await Promise.all([
-        auctionService.getUserBids(user.id),
-        auctionService.getWonAuctions(user.id)
-      ]);
-      
+      const userBids = await auctionService.getUserBids(user.id);
       setBids(userBids);
-      setWonAuctions(wonData);
       setIsLoading(false);
     }
     loadData();
   }, [user]);
 
-  // Derive data based on tabs
-  // "active": bids on auctions that are still 'active'
-  // "won": auctions where winner_id === user.id
-  // "lost": bids on auctions that are 'ended' but winner_id !== user.id
-  
   const getActiveBids = () => bids.filter(b => b.auction.status === 'active');
-  const getLostBids = () => bids.filter(b => b.auction.status === 'ended' && b.auction.winner_id !== user?.id);
+  const getPreviousBids = () => bids.filter(b => b.auction.status === 'closed' || b.auction.status === 'cancelled');
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -53,7 +42,7 @@ export function MyBids() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         {/* Tabs */}
         <div className="flex border-b border-slate-200 bg-slate-50/50">
-          {(['active', 'won', 'lost'] as const).map((tab) => (
+          {(['active', 'previous'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -64,7 +53,7 @@ export function MyBids() {
                   : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
               )}
             >
-              {tab} Bids
+              {tab === 'active' ? 'Ongoing Bids' : 'Previous Bids'}
             </button>
           ))}
         </div>
@@ -77,7 +66,7 @@ export function MyBids() {
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {/* ACTIVE BIDS */}
+              {/* ONGOING BIDS */}
               {activeTab === 'active' && (
                 getActiveBids().length === 0 ? (
                   <div className="text-center py-16 px-4">
@@ -119,64 +108,41 @@ export function MyBids() {
                 )
               )}
 
-              {/* WON BIDS */}
-              {activeTab === 'won' && (
-                wonAuctions.length === 0 ? (
-                  <div className="text-center py-16 px-4">
-                    <CheckCircle2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-slate-900">No won auctions</h3>
-                    <p className="text-slate-500 mt-1">Auctions you win will appear here.</p>
-                  </div>
-                ) : (
-                  wonAuctions.map((auction) => (
-                    <div key={auction.id} className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6 hover:bg-slate-50 transition-colors">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded uppercase tracking-wide">Won</span>
-                          <span className="text-xs text-slate-500 font-medium">REF: {auction.reference_number}</span>
-                        </div>
-                        <h4 className="text-lg font-bold text-slate-900 mb-2">{auction.title}</h4>
-                        <div className="flex items-center text-sm text-slate-500">
-                          Ended {new Date(auction.end_time).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div className="w-full sm:w-auto text-right">
-                        <Link 
-                          to={`/auctions/${auction.id}`}
-                          className="inline-flex px-4 py-2 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-100 transition-colors"
-                        >
-                          View Details
-                        </Link>
-                      </div>
-                    </div>
-                  ))
-                )
-              )}
-
-              {/* LOST BIDS */}
-              {activeTab === 'lost' && (
-                getLostBids().length === 0 ? (
+              {/* PREVIOUS BIDS */}
+              {activeTab === 'previous' && (
+                getPreviousBids().length === 0 ? (
                   <div className="text-center py-16 px-4">
                     <XCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-slate-900">No lost bids</h3>
-                    <p className="text-slate-500 mt-1">Auctions you bid on but did not win will appear here.</p>
+                    <h3 className="text-lg font-medium text-slate-900">No previous bids</h3>
+                    <p className="text-slate-500 mt-1">Your past bidding history will appear here.</p>
                   </div>
                 ) : (
-                  getLostBids().map((bid) => (
-                    <div key={bid.id} className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6 hover:bg-slate-50 transition-colors opacity-75">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs font-bold rounded uppercase tracking-wide">Ended</span>
-                          <span className="text-xs text-slate-500 font-medium">REF: {bid.auction.reference_number}</span>
+                  getPreviousBids().map((bid) => {
+                    const isWon = bid.auction.winner_id === user?.id;
+                    return (
+                      <div key={bid.id} className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6 hover:bg-slate-50 transition-colors">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={clsx(
+                              "px-2 py-0.5 text-xs font-bold rounded uppercase tracking-wide",
+                              isWon ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-650"
+                            )}>
+                              {isWon ? 'Won' : 'Ended'}
+                            </span>
+                            <span className="text-xs text-slate-500 font-medium">REF: {bid.auction.reference_number}</span>
+                          </div>
+                          <h4 className="text-lg font-bold text-slate-900 mb-2">{bid.auction.title}</h4>
+                          <div className="flex items-center text-sm text-slate-500">
+                            Closed {new Date(bid.auction.end_time).toLocaleDateString()}
+                          </div>
                         </div>
-                        <h4 className="text-lg font-bold text-slate-900 mb-2">{bid.auction.title}</h4>
+                        <div className="w-full sm:w-auto text-right">
+                           <p className="text-xs text-slate-500 uppercase font-bold mb-1">Your Bid</p>
+                           <p className="text-lg font-bold text-slate-700">₹{bid.amount.toLocaleString()}</p>
+                        </div>
                       </div>
-                      <div className="w-full sm:w-auto text-right">
-                         <p className="text-xs text-slate-500 uppercase font-bold mb-1">Your Bid</p>
-                         <p className="text-lg font-bold text-slate-600">₹{bid.amount.toLocaleString()}</p>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )
               )}
             </div>

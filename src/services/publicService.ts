@@ -554,13 +554,273 @@ export const expandMstcOffice = (officeCode: string): string => {
   return MSTC_OFFICE_MAP[upper] || officeCode;
 };
 
+export function mapRawCategory(rawName: string): { category: string; subcategory: string } {
+  if (!rawName) {
+    return { category: 'Miscellaneous', subcategory: 'Others' };
+  }
+
+  // If it already has the clean pattern "Category | Subcategory", preserve it
+  if (rawName.includes(' | ')) {
+    const parts = rawName.split(' | ');
+    return {
+      category: parts[0].trim(),
+      subcategory: parts[1]?.trim() || 'Others'
+    };
+  }
+
+  const lower = rawName.toLowerCase();
+
+  // 1. Metal
+  if (
+    lower.includes('metal') ||
+    lower.includes('iron') ||
+    lower.includes('steel') ||
+    lower.includes('copper') ||
+    lower.includes('brass') ||
+    lower.includes('aluminium') ||
+    lower.includes('lead') ||
+    lower.includes('zinc') ||
+    lower.includes('bronze') ||
+    lower.includes('gold') ||
+    lower.includes('silver') ||
+    lower.includes('alloy') ||
+    lower.includes('scrap')
+  ) {
+    let sub = 'Mixed metal scraps';
+    if (lower.includes('iron') || lower.includes('steel')) sub = 'Iron and steel';
+    else if (lower.includes('aluminium')) sub = 'Aluminium';
+    else if (lower.includes('copper')) sub = 'Copper';
+    else if (lower.includes('brass')) sub = 'Brass';
+    return { category: 'Metal', subcategory: sub };
+  }
+
+  // 2. Transport Vehicles
+  if (
+    lower.includes('vehicle') ||
+    lower.includes('car') ||
+    lower.includes('truck') ||
+    lower.includes('bus') ||
+    lower.includes('auto') ||
+    lower.includes('rickshaw') ||
+    lower.includes('jeep') ||
+    lower.includes('tractor') ||
+    lower.includes('wheel') ||
+    lower.includes('scooter') ||
+    lower.includes('motorcycle') ||
+    lower.includes('cycle') ||
+    lower.includes('ship') ||
+    lower.includes('vessel') ||
+    lower.includes('boat') ||
+    lower.includes('rail') ||
+    lower.includes('wagon') ||
+    lower.includes('locomotive')
+  ) {
+    let sub = 'Car';
+    if (lower.includes('end of life') || lower.includes('elv')) sub = 'End of Life Vehicles';
+    else if (lower.includes('ship') || lower.includes('vessel')) sub = 'Vessels/Ships';
+    else if (lower.includes('special')) sub = 'Special Purpose Vehicle';
+    return { category: 'Transport Vehicles', subcategory: sub };
+  }
+
+  // 3. Immovable Property
+  if (
+    lower.includes('building') ||
+    lower.includes('land') ||
+    lower.includes('plot') ||
+    lower.includes('house') ||
+    lower.includes('flat') ||
+    lower.includes('property') ||
+    lower.includes('residential') ||
+    lower.includes('commercial') ||
+    lower.includes('shed') ||
+    lower.includes('godown') ||
+    lower.includes('warehouse') ||
+    lower.includes('office') ||
+    lower.includes('shop') ||
+    lower.includes('showroom') ||
+    lower.includes('mall')
+  ) {
+    let sub = 'Plot/Land';
+    if (lower.includes('residential') || lower.includes('house') || lower.includes('flat')) sub = 'Residential';
+    else if (lower.includes('commercial') || lower.includes('shop') || lower.includes('office')) sub = 'Commercial';
+    return { category: 'Immovable Property', subcategory: sub };
+  }
+
+  // 4. Electrical Items
+  if (
+    lower.includes('electrical') ||
+    lower.includes('cable') ||
+    lower.includes('wire') ||
+    lower.includes('transformer') ||
+    lower.includes('battery') ||
+    lower.includes('ac ') ||
+    lower.includes('air conditioner') ||
+    lower.includes('generator') ||
+    lower.includes('dg set') ||
+    lower.includes('breaker') ||
+    lower.includes('meter scrap') ||
+    lower.includes('conductors')
+  ) {
+    let sub = 'Others';
+    if (lower.includes('battery')) sub = 'Battery';
+    else if (lower.includes('cable') || lower.includes('wire')) sub = 'Cables';
+    else if (lower.includes('transformer')) sub = 'Transformer';
+    else if (lower.includes('generator') || lower.includes('dg set')) sub = 'DG Sets / Generators';
+    return { category: 'Electrical Items', subcategory: sub };
+  }
+
+  // 5. Electronics Items
+  if (
+    lower.includes('electronics') ||
+    lower.includes('computer') ||
+    lower.includes('laptop') ||
+    lower.includes('mobile') ||
+    lower.includes('phone') ||
+    lower.includes('tablet') ||
+    lower.includes('printer') ||
+    lower.includes('peripheral') ||
+    lower.includes('monitor') ||
+    lower.includes('keyboard') ||
+    lower.includes('mouse') ||
+    lower.includes('server') ||
+    lower.includes('compter')
+  ) {
+    return { category: 'Electronics Items', subcategory: 'Computers / Peripherals' };
+  }
+
+  // 6. Minerals
+  if (
+    lower.includes('mineral') ||
+    lower.includes('ore') ||
+    lower.includes('gypsum') ||
+    lower.includes('stone') ||
+    lower.includes('sand') ||
+    lower.includes('gravel') ||
+    lower.includes('manganese') ||
+    lower.includes('ferro') ||
+    lower.includes('block') ||
+    lower.includes('coal') ||
+    lower.includes('lignite') ||
+    lower.includes('coke')
+  ) {
+    let sub = 'Minerals';
+    if (lower.includes('coal')) sub = 'Coal';
+    else if (lower.includes('sand')) sub = 'Sand block';
+    return { category: 'Minerals', subcategory: sub };
+  }
+
+  // 7. Plant & Machinery
+  if (
+    lower.includes('machinery') ||
+    lower.includes('machine') ||
+    lower.includes('engine') ||
+    lower.includes('compressor') ||
+    lower.includes('pump') ||
+    lower.includes('motor') ||
+    lower.includes('turbine') ||
+    lower.includes('boiler') ||
+    lower.includes('furnace') ||
+    lower.includes('crane') ||
+    lower.includes('dismantling') ||
+    lower.includes('plant')
+  ) {
+    let sub = 'Machinery items';
+    if (lower.includes('engine')) sub = 'Engine Assemblies';
+    else if (lower.includes('dismantling')) sub = 'Dismantling of buildings/plants';
+    return { category: 'Plant/Machineries', subcategory: sub };
+  }
+
+  // 8. Forest Produce
+  if (
+    lower.includes('timber') ||
+    lower.includes('wood') ||
+    lower.includes('log') ||
+    lower.includes('pole') ||
+    lower.includes('billet') ||
+    lower.includes('forest') ||
+    lower.includes('bamboo') ||
+    lower.includes('sandalwood')
+  ) {
+    return { category: 'Forest Produce', subcategory: 'Timber' };
+  }
+
+  // 9. Petroleum Products
+  if (
+    lower.includes('oil') ||
+    lower.includes('petroleum') ||
+    lower.includes('waste oil') ||
+    lower.includes('lubricant') ||
+    lower.includes('fuel')
+  ) {
+    return { category: 'Petroleum Products', subcategory: 'Used / waste oil' };
+  }
+
+  // 10. Container
+  if (
+    lower.includes('barrel') ||
+    lower.includes('drum') ||
+    lower.includes('can') ||
+    lower.includes('tin') ||
+    lower.includes('container')
+  ) {
+    return { category: 'Container', subcategory: 'Barrel/drum' };
+  }
+
+  // 11. Chemicals
+  if (
+    lower.includes('chemical') ||
+    lower.includes('acid') ||
+    lower.includes('solvent') ||
+    lower.includes('paint') ||
+    lower.includes('dye') ||
+    lower.includes('pigment') ||
+    lower.includes('catalyst') ||
+    lower.includes('resin')
+  ) {
+    return { category: 'Chemicals', subcategory: 'Others' };
+  }
+
+  // 12. Agricultural Produce
+  if (
+    lower.includes('agricultural') ||
+    lower.includes('paddy') ||
+    lower.includes('wheat') ||
+    lower.includes('rice') ||
+    lower.includes('maize') ||
+    lower.includes('barley') ||
+    lower.includes('grain') ||
+    lower.includes('pulse') ||
+    lower.includes('cotton') ||
+    lower.includes('seed') ||
+    lower.includes('spice') ||
+    lower.includes('cashew') ||
+    lower.includes('coconut') ||
+    lower.includes('arecanut')
+  ) {
+    return { category: 'Agricultural Produce', subcategory: 'Others' };
+  }
+
+  return { category: 'Miscellaneous', subcategory: 'Others' };
+}
+
 export const MstcSearchService = {
   /**
    * High-speed catalog search engine filtering through clean, deduplicated snapshots
    */
   async searchMarketplaceCatalog(
     query: string,
-    filters?: { category?: string; subcategory?: string; seller?: string; location?: string; regionalOffice?: string }
+    filters?: { 
+      category?: string; 
+      categories?: string[];
+      subcategory?: string; 
+      subcategories?: string[];
+      seller?: string; 
+      sellers?: string[];
+      location?: string; 
+      locations?: string[];
+      regionalOffice?: string;
+      regionalOffices?: string[];
+    }
   ): Promise<MstcSanitizedAuction[]> {
     try {
       let queryBuilder = supabase
@@ -572,30 +832,65 @@ export const MstcSearchService = {
         queryBuilder = queryBuilder.or(`mstc_auction_number.ilike.%${query}%,seller_name.ilike.%${query}%,category_name.ilike.%${query}%`);
       }
       
-      if (filters?.category && filters?.subcategory) {
-        queryBuilder = queryBuilder.eq('category_name', `${filters.category} | ${filters.subcategory}`);
-      } else if (filters?.category) {
-        queryBuilder = queryBuilder.ilike('category_name', `${filters.category} | %`);
-      }
-      
-      if (filters?.seller) {
+      if (filters?.sellers && filters.sellers.length > 0) {
+        queryBuilder = queryBuilder.in('seller_name', filters.sellers);
+      } else if (filters?.seller) {
         queryBuilder = queryBuilder.eq('seller_name', filters.seller);
       }
       
-      if (filters?.location) {
+      if (filters?.locations && filters.locations.length > 0) {
+        queryBuilder = queryBuilder.in('location', filters.locations);
+      } else if (filters?.location) {
         queryBuilder = queryBuilder.eq('location', filters.location);
       }
 
-      if (filters?.regionalOffice) {
+      if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
+        const orConditions = filters.regionalOffices.map(office => `mstc_auction_number.ilike.MSTC/${office}/%`).join(',');
+        queryBuilder = queryBuilder.or(orConditions);
+      } else if (filters?.regionalOffice) {
         queryBuilder = queryBuilder.ilike('mstc_auction_number', `MSTC/${filters.regionalOffice}/%`);
       }
 
       const { data, error } = await queryBuilder
-        .order('opening_date', { ascending: false })
-        .limit(200); // Load up to 200 items for responsive viewing
+        .order('opening_date', { ascending: false });
 
       if (error) throw error;
-      return (data as MstcSanitizedAuction[]) || [];
+      
+      let mapped = ((data as MstcSanitizedAuction[]) || []).map(item => {
+        const { category, subcategory } = mapRawCategory(item.category_name);
+        return {
+          ...item,
+          category_name: `${category} | ${subcategory}`
+        };
+      });
+
+      if (filters?.categories && filters.categories.length > 0) {
+        const cats = filters.categories;
+        mapped = mapped.filter(item => {
+          const parts = item.category_name.split(' | ');
+          return cats.includes(parts[0]);
+        });
+      } else if (filters?.category) {
+        mapped = mapped.filter(item => {
+          const parts = item.category_name.split(' | ');
+          return parts[0] === filters.category;
+        });
+      }
+
+      if (filters?.subcategories && filters.subcategories.length > 0) {
+        const subcats = filters.subcategories;
+        mapped = mapped.filter(item => {
+          const parts = item.category_name.split(' | ');
+          return subcats.includes(parts[1]);
+        });
+      } else if (filters?.subcategory) {
+        mapped = mapped.filter(item => {
+          const parts = item.category_name.split(' | ');
+          return parts[1] === filters.subcategory;
+        });
+      }
+
+      return mapped.slice(0, 200);
     } catch (error) {
       console.error('Failed to fetch filtered MSTC catalogs:', error);
       return [];
@@ -628,16 +923,13 @@ export const MstcSearchService = {
       
       data?.forEach(row => {
         if (row.category_name) {
-          const parts = row.category_name.split(' | ');
-          const cat = parts[0].trim();
-          const sub = parts[1]?.trim();
-          
-          categories.add(cat);
-          if (sub) {
-            if (!subcategoriesMap[cat]) {
-              subcategoriesMap[cat] = new Set<string>();
+          const { category, subcategory } = mapRawCategory(row.category_name);
+          categories.add(category);
+          if (subcategory) {
+            if (!subcategoriesMap[category]) {
+              subcategoriesMap[category] = new Set<string>();
             }
-            subcategoriesMap[cat].add(sub);
+            subcategoriesMap[category].add(subcategory);
           }
         }
         if (row.seller_name) sellers.add(row.seller_name);
@@ -688,7 +980,13 @@ export const MstcSearchService = {
         .limit(limitCount);
 
       if (error) throw error;
-      return (data as MstcSanitizedAuction[]) || [];
+      return ((data as MstcSanitizedAuction[]) || []).map(item => {
+        const { category, subcategory } = mapRawCategory(item.category_name);
+        return {
+          ...item,
+          category_name: `${category} | ${subcategory}`
+        };
+      });
     } catch (error) {
       console.error('Failed processing analytics baseline query maps:', error);
       return [];

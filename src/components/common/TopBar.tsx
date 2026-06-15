@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, Bell, User, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { Menu, Bell, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { useAuthStore } from '../../store/authStore';
@@ -8,7 +8,7 @@ import type { Notification } from '../../types/database.types';
 
 export function TopBar() {
   const { toggleSidebar } = useAppStore();
-  const { logout, user } = useAuthStore();
+  const { user } = useAuthStore();
   
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -18,6 +18,18 @@ export function TopBar() {
       adminService.getNotifications(user.id).then(setNotifications);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!isNotifOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.notification-container')) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [isNotifOpen]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -36,7 +48,7 @@ export function TopBar() {
       </button>
 
       <div className="flex items-center space-x-4 ml-auto">
-        <div className="relative">
+        <div className="relative notification-container">
           <button 
             onClick={() => setIsNotifOpen(!isNotifOpen)}
             className="p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-secondary transition-colors relative"
@@ -94,26 +106,6 @@ export function TopBar() {
               </div>
             </div>
           )}
-        </div>
-        
-        <div className="relative group z-40">
-          <button className="flex items-center space-x-2 p-2 rounded-md hover:bg-secondary transition-colors">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-              <User size={16} />
-            </div>
-            <span className="text-sm font-medium hidden sm:block">{user?.email || 'User'}</span>
-          </button>
-          
-          <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-            <div className="p-2">
-              <button 
-                onClick={logout}
-                className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-secondary rounded-sm transition-colors"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </header>

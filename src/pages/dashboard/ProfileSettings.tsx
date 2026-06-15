@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
+import { supabase } from '../../lib/supabase';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -30,13 +31,44 @@ export function ProfileSettings() {
     push_system: true
   });
 
-  const handleSavePrefs = () => {
+  useEffect(() => {
+    if (user && activeTab === 'notifications') {
+      const loadPrefs = async () => {
+        const { data, error } = await supabase
+          .from('user_notification_preferences')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        if (data && !error) {
+          setPrefs({
+            email_bids: data.email_bids,
+            email_tenders: data.email_tenders,
+            email_marketing: data.email_marketing,
+            push_outbid: data.push_outbid,
+            push_system: data.push_system
+          });
+        }
+      };
+      loadPrefs();
+    }
+  }, [user, activeTab]);
+
+  const handleSavePrefs = async () => {
+    if (!user) return;
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    
+    const { error } = await supabase
+      .from('user_notification_preferences')
+      .upsert({
+        user_id: user.id,
+        ...prefs
+      }, { onConflict: 'user_id' });
+
+    setIsSubmitting(false);
+    if (!error) {
       setSuccessMsg('Notification preferences saved successfully.');
       setTimeout(() => setSuccessMsg(null), 3000);
-    }, 800);
+    }
   };
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ProfileValues>({
@@ -48,7 +80,7 @@ export function ProfileSettings() {
       reset({
         firstName: profile.first_name,
         lastName: profile.last_name,
-        phone: profile.phone_number || '',
+        phone: profile.phone || '',
       });
     }
   }, [profile, reset]);
@@ -61,7 +93,7 @@ export function ProfileSettings() {
       const updatedProfile = await authService.updateProfile(user.id, {
         first_name: data.firstName,
         last_name: data.lastName,
-        phone_number: data.phone,
+        phone: data.phone,
       });
       if (updatedProfile) {
         setProfile(updatedProfile);

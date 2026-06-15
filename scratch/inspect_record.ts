@@ -18,7 +18,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-function parseMstcCatalogText(text: string, categoryName: string, sellerName: string, location: string): any {
+function parseMstcCatalogText(text: string): any {
   const lines = text.split('\n').map(l => l.trim());
   const cleanText = lines.join('\n');
 
@@ -103,7 +103,7 @@ async function inspectRecord(searchTerm: string) {
     const text = parsedPdf.text;
 
     console.log('\n=================== PDF Parsing Diagnostic ===================');
-    const diagnostic = parseMstcCatalogText(text, record.category_name, record.seller_name, record.location);
+    const diagnostic = parseMstcCatalogText(text);
     console.log('Extracted EMD Value:    ', diagnostic.emdValue);
     console.log('Extracted Pre-Bid DDG:  ', diagnostic.preBidDdg);
 
