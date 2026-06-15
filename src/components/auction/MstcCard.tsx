@@ -177,11 +177,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
             Asset documents available
           </span>
         )}
-        {hasOtherMedia && (
-          <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
-            images available
-          </span>
-        )}
+
       </div>
     </div>
   );
@@ -341,11 +337,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
                   alt="Catalog Image" 
                   className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
                 />
-                {hasOtherMedia && (
-                  <div className="absolute top-2 left-2 right-2 bg-slate-900/85 backdrop-blur-xs text-white text-[9.5px] font-bold px-2 py-1.5 rounded-md text-center border border-white/10 shadow-xs z-10 pointer-events-none select-none uppercase tracking-wider">
-                    {extraMediaText}
-                  </div>
-                )}
+
               </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
