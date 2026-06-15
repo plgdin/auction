@@ -34,11 +34,13 @@ import { AuctionForm } from '../pages/seller/AuctionForm';
 
 import { MyBids } from '../pages/dashboard/MyBids';
 import { MyTenders } from '../pages/dashboard/MyTenders';
-import { Watchlist } from '../pages/dashboard/Watchlist';
-import { Wallet } from '../pages/dashboard/Wallet';
+import { Interested } from '../pages/dashboard/Interested';
 import { Notifications } from '../pages/dashboard/Notifications';
 import { ProfileSettings } from '../pages/dashboard/ProfileSettings';
 import { DocumentVault } from '../pages/dashboard/DocumentVault';
+import { Vendors } from '../pages/dashboard/Vendors';
+import { Reminders } from '../pages/dashboard/Reminders';
+import { Inventory } from '../pages/dashboard/Inventory';
 
 export const router = createBrowserRouter([
   {
@@ -80,11 +82,13 @@ export const router = createBrowserRouter([
       { index: true, element: <Dashboard /> },
       { path: 'bids', element: <MyBids /> },
       { path: 'tenders', element: <MyTenders /> },
-      { path: 'watchlist', element: <Watchlist /> },
-      { path: 'wallet', element: <Wallet /> },
+      { path: 'interested', element: <Interested /> },
       { path: 'notifications', element: <Notifications /> },
       { path: 'documents', element: <DocumentVault /> },
       { path: 'profile', element: <ProfileSettings /> },
+      { path: 'vendors', element: <Vendors /> },
+      { path: 'reminders', element: <Reminders /> },
+      { path: 'inventory', element: <Inventory /> },
     ],
   },
   {

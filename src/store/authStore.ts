@@ -29,6 +29,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       session,
       user: session?.user || null,
       isAuthenticated: !!session,
+      profile: session ? get().profile : null
     });
   },
 
@@ -39,9 +40,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
-      get().setSession(session);
-      
-      if (session?.user) {
+      if (session) {
+        get().setSession(session);
         authService.getProfile(session.user.id).then((profile) => {
           set({ profile, isLoading: false, isInitialized: true });
         });
@@ -65,7 +65,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     set({ isLoading: true });
-    await authService.signOut();
+    try {
+      await authService.signOut();
+    } catch (e) {
+      // Ignore auth error on sign out
+    }
     set({ user: null, session: null, profile: null, isAuthenticated: false, isLoading: false });
   },
 }));

@@ -44,12 +44,18 @@ export function ScraperDashboard() {
   // Real-time local API states
   const [scraperRunning, setScraperRunning] = useState(false);
   const [workerRunning, setWorkerRunning] = useState(false);
+  const [clearDbRunning, setClearDbRunning] = useState(false);
+  const [backfillRunning, setBackfillRunning] = useState(false);
   const [liveScraperLogs, setLiveScraperLogs] = useState<string[]>([]);
   const [liveWorkerLogs, setLiveWorkerLogs] = useState<string[]>([]);
+  const [liveClearDbLogs, setLiveClearDbLogs] = useState<string[]>([]);
+  const [liveBackfillLogs, setLiveBackfillLogs] = useState<string[]>([]);
   const [isLocalApiAvailable, setIsLocalApiAvailable] = useState(false);
 
   const scraperTerminalRef = useRef<HTMLDivElement>(null);
   const workerTerminalRef = useRef<HTMLDivElement>(null);
+  const clearDbTerminalRef = useRef<HTMLDivElement>(null);
+  const backfillTerminalRef = useRef<HTMLDivElement>(null);
 
   const loadDashboardData = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -89,8 +95,12 @@ export function ScraperDashboard() {
         const data = await res.json();
         setScraperRunning(data.scraperRunning);
         setWorkerRunning(data.workerRunning);
+        setClearDbRunning(data.clearDbRunning);
+        setBackfillRunning(data.backfillRunning);
         setLiveScraperLogs(data.scraperLogs || []);
         setLiveWorkerLogs(data.workerLogs || []);
+        setLiveClearDbLogs(data.clearDbLogs || []);
+        setLiveBackfillLogs(data.backfillLogs || []);
         setIsLocalApiAvailable(true);
       } catch (err) {
         setIsLocalApiAvailable(false);
@@ -115,6 +125,18 @@ export function ScraperDashboard() {
       workerTerminalRef.current.scrollTop = workerTerminalRef.current.scrollHeight;
     }
   }, [liveWorkerLogs]);
+
+  useEffect(() => {
+    if (clearDbTerminalRef.current) {
+      clearDbTerminalRef.current.scrollTop = clearDbTerminalRef.current.scrollHeight;
+    }
+  }, [liveClearDbLogs]);
+
+  useEffect(() => {
+    if (backfillTerminalRef.current) {
+      backfillTerminalRef.current.scrollTop = backfillTerminalRef.current.scrollHeight;
+    }
+  }, [liveBackfillLogs]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -180,6 +202,56 @@ export function ScraperDashboard() {
       await fetch('/api/scraper/worker/stop', { method: 'POST' });
       toast.success('Worker stop signal sent.');
       setWorkerRunning(false);
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const startClearDb = async () => {
+    try {
+      const res = await fetch('/api/scraper/clear-db/start', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Database and Storage Clear task started!');
+        setClearDbRunning(true);
+      } else {
+        toast.error(data.message || 'Failed to start Clear DB task.');
+      }
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const stopClearDb = async () => {
+    try {
+      await fetch('/api/scraper/clear-db/stop', { method: 'POST' });
+      toast.success('Clear DB task stop signal sent.');
+      setClearDbRunning(false);
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const startBackfill = async () => {
+    try {
+      const res = await fetch('/api/scraper/backfill/start', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Batch backfill task started!');
+        setBackfillRunning(true);
+      } else {
+        toast.error(data.message || 'Failed to start Backfill task.');
+      }
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const stopBackfill = async () => {
+    try {
+      await fetch('/api/scraper/backfill/stop', { method: 'POST' });
+      toast.success('Backfill task stop signal sent.');
+      setBackfillRunning(false);
     } catch (err) {
       toast.error('Could not connect to local API plugin.');
     }
@@ -788,6 +860,134 @@ export function ScraperDashboard() {
                   <p className="text-slate-500 italic">No output logs. Click "Start Worker" to initiate the process.</p>
                 ) : (
                   liveWorkerLogs.map((line, idx) => (
+                    <p key={idx} className="leading-relaxed whitespace-pre-wrap">
+                      <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
+                      {line}
+                    </p>
+                  ))
+                )}
+              </div>
+
+            </div>
+
+            {/* Database Clear Panel */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
+              
+              {/* Header */}
+              <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <Trash2 className="w-5 h-5 text-rose-500" />
+                  <div>
+                    <h3 className="font-bold text-slate-900 leading-tight">Database & Storage Cleaner</h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Wipes database tables & paginates storage deletions</p>
+                  </div>
+                </div>
+                
+                {/* Status indicator */}
+                {clearDbRunning ? (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 mr-1.5 animate-ping" /> Cleaner Active
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                    <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Cleaner Stopped
+                  </span>
+                )}
+              </div>
+
+              {/* Controls */}
+              <div className="p-4 border-b border-slate-100 flex gap-2">
+                <button
+                  onClick={() => {
+                    if (window.confirm("WARNING: Are you sure you want to completely clear the database tables and wipe all files in the Supabase storage buckets? This cannot be undone!")) {
+                      startClearDb();
+                    }
+                  }}
+                  disabled={!isLocalApiAvailable || clearDbRunning}
+                  className="flex items-center px-4 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-all disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5 fill-white" /> Clear DB & Storage
+                </button>
+                <button
+                  onClick={stopClearDb}
+                  disabled={!isLocalApiAvailable || !clearDbRunning}
+                  className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-700 rounded-lg transition-all disabled:opacity-50"
+                >
+                  <Square className="w-3.5 h-3.5 mr-1.5 fill-slate-500 text-slate-500" /> Stop Cleaner
+                </button>
+              </div>
+
+              {/* Console Viewer */}
+              <div 
+                ref={clearDbTerminalRef}
+                className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-96 overflow-y-auto space-y-1 select-text scroll-smooth"
+              >
+                {liveClearDbLogs.length === 0 ? (
+                  <p className="text-slate-500 italic">No output logs. Click "Clear DB & Storage" to wipe resources.</p>
+                ) : (
+                  liveClearDbLogs.map((line, idx) => (
+                    <p key={idx} className="leading-relaxed whitespace-pre-wrap">
+                      <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
+                      {line}
+                    </p>
+                  ))
+                )}
+              </div>
+
+            </div>
+
+            {/* Batch Backfill Panel */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
+              
+              {/* Header */}
+              <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <Database className="w-5 h-5 text-indigo-500" />
+                  <div>
+                    <h3 className="font-bold text-slate-900 leading-tight">Batch PDF & Image Backfiller</h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Reprocesses PDFs, extracts metadata & preview page images</p>
+                  </div>
+                </div>
+                
+                {/* Status indicator */}
+                {backfillRunning ? (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 mr-1.5 animate-ping" /> Backfiller Active
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                    <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Backfiller Stopped
+                  </span>
+                )}
+              </div>
+
+              {/* Controls */}
+              <div className="p-4 border-b border-slate-100 flex gap-2">
+                <button
+                  onClick={startBackfill}
+                  disabled={!isLocalApiAvailable || backfillRunning}
+                  className="flex items-center px-4 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all disabled:opacity-50"
+                >
+                  <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Backfiller
+                </button>
+                <button
+                  onClick={stopBackfill}
+                  disabled={!isLocalApiAvailable || !backfillRunning}
+                  className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50"
+                >
+                  <Square className="w-3.5 h-3.5 mr-1.5 fill-rose-600 text-rose-600" /> Stop Backfiller
+                </button>
+              </div>
+
+              {/* Console Viewer */}
+              <div 
+                ref={backfillTerminalRef}
+                className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-96 overflow-y-auto space-y-1 select-text scroll-smooth"
+              >
+                {liveBackfillLogs.length === 0 ? (
+                  <p className="text-slate-500 italic">No output logs. Click "Start Backfiller" to process database records.</p>
+                ) : (
+                  liveBackfillLogs.map((line, idx) => (
                     <p key={idx} className="leading-relaxed whitespace-pre-wrap">
                       <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
                       {line}

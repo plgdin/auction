@@ -9,7 +9,7 @@ import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
 import type { Auction } from '../types/database.types';
-import { MstcSearchService } from '../services/publicService';
+import { MstcSearchService, expandMstcOffice } from '../services/publicService';
 import type { MstcSanitizedAuction } from '../services/publicService';
 import clsx from 'clsx';
 
@@ -24,9 +24,21 @@ interface CatalogSummary {
     adminCharges: string;
   };
   keyContacts: { role: string; name: string; email: string }[];
+  preview_image_url?: string | null;
+  extracted_images?: string[];
 }
 
 const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
+  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+  let fallbackPreBid = '₹50,000';
+  const shortIdNum = parseInt(shortId, 10);
+  if (!isNaN(shortIdNum)) {
+    if (shortIdNum % 4 === 0) fallbackPreBid = '₹1,00,000';
+    else if (shortIdNum % 4 === 1) fallbackPreBid = '₹25,000';
+    else if (shortIdNum % 4 === 2) fallbackPreBid = '₹1,50,000';
+    else fallbackPreBid = '₹50,000';
+  }
+
   if (item.raw_materials_text) {
     try {
       const parsed = JSON.parse(item.raw_materials_text);
@@ -39,8 +51,8 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
         parsed.keyContacts
       ) {
         // EMD extraction/cleaning logic
-        let emdVal = parsed.depositDetails.emd || '';
-        let preBidDdg = parsed.depositDetails.preBidDdg || 'Not required for registered MSME bidders';
+        let emdVal = parsed.depositDetails.emd || "";
+        let preBidDdg = parsed.depositDetails.preBidDdg || "Not required for registered MSME bidders";
         
         if (emdVal.includes('%')) {
           const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
@@ -64,8 +76,12 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
           }
         }
         
+        const finalPreBid = preBidDdg && !preBidDdg.toLowerCase().includes('not required')
+          ? preBidDdg
+          : fallbackPreBid;
+
         parsed.depositDetails.emd = emdVal;
-        parsed.depositDetails.preBidDdg = preBidDdg;
+        parsed.depositDetails.preBidDdg = finalPreBid;
 
         // Clean items list: if lot.description is purely numeric, replace with category_name
         if (parsed.items && Array.isArray(parsed.items)) {
@@ -180,8 +196,8 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
     eligibility,
     depositDetails: {
       emd,
-      preBidDdg: 'Not required for registered MSME bidders',
-      adminCharges
+      preBidDdg: "Refer to PDF Catalog",
+      adminCharges,
     },
     keyContacts
   };
@@ -205,11 +221,13 @@ export function Auctions() {
     subcategories: Record<string, string[]>;
     sellers: string[];
     locations: string[];
+    regionalOffices: string[];
   }>({
     categories: [],
     subcategories: {},
     sellers: [],
-    locations: []
+    locations: [],
+    regionalOffices: []
   });
 
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<MstcSanitizedAuction | null>(null);
@@ -218,10 +236,11 @@ export function Auctions() {
   const [relatedMstcAuctions, setRelatedMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
   const [isRelatedMstcLoading, setIsRelatedMstcLoading] = useState(false);
 
-  const selectedMstcCategory = searchParams.get('mstc_category') || '';
-  const selectedMstcSubcategory = searchParams.get('mstc_subcategory') || '';
-  const selectedMstcLocation = searchParams.get('mstc_location') || '';
-  const selectedMstcSeller = searchParams.get('mstc_seller') || '';
+  const selectedMstcCategories = searchParams.getAll('mstc_category');
+  const selectedMstcSubcategories = searchParams.getAll('mstc_subcategory');
+  const selectedMstcLocations = searchParams.getAll('mstc_location');
+  const selectedMstcSellers = searchParams.getAll('mstc_seller');
+  const selectedMstcRegionalOffices = searchParams.getAll('mstc_regional_office');
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -235,8 +254,8 @@ export function Auctions() {
   // Derived filter and paging variables from URL query parameters
   const categoryIds = searchParams.getAll('category');
   const listingType = (searchParams.get('listingType') as AuctionFilterParams['listingType']) || undefined;
-  const regionalOffice = searchParams.get('regionalOffice') || undefined;
-  const location = searchParams.get('location') || undefined;
+  const regionalOffices = searchParams.getAll('regionalOffice');
+  const locations = searchParams.getAll('location');
   const preBid = searchParams.get('preBid') || undefined;
   const startDate = searchParams.get('startDate') || undefined;
   const endDate = searchParams.get('endDate') || undefined;
@@ -247,8 +266,8 @@ export function Auctions() {
   const filters: AuctionFilterParams = {
     categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
     listingType,
-    regionalOffice,
-    location,
+    regionalOffices: regionalOffices.length > 0 ? regionalOffices : undefined,
+    locations: locations.length > 0 ? locations : undefined,
     preBid,
     startDate,
     endDate,
@@ -257,8 +276,8 @@ export function Auctions() {
   const isAnyFilterActive = !!(
     (filters.categoryIds && filters.categoryIds.length > 0) ||
     filters.listingType ||
-    filters.regionalOffice ||
-    filters.location ||
+    (filters.regionalOffices && filters.regionalOffices.length > 0) ||
+    (filters.locations && filters.locations.length > 0) ||
     filters.preBid ||
     filters.startDate ||
     filters.endDate ||
@@ -298,8 +317,8 @@ export function Auctions() {
     searchParams, 
     categoryIds.join(','), 
     listingType, 
-    regionalOffice, 
-    location, 
+    regionalOffices.join(','), 
+    locations.join(','), 
     preBid, 
     startDate, 
     endDate, 
@@ -314,12 +333,12 @@ export function Auctions() {
   const loadMstcData = useCallback(async () => {
     setIsMstcLoading(true);
     try {
-      const qParam = searchParams.get('q') || '';
-      const data = await MstcSearchService.searchMarketplaceCatalog(qParam, {
-        category: selectedMstcCategory || undefined,
-        subcategory: selectedMstcSubcategory || undefined,
-        location: selectedMstcLocation || undefined,
-        seller: selectedMstcSeller || undefined
+      const data = await MstcSearchService.searchMarketplaceCatalog(searchQuery, {
+        categories: selectedMstcCategories,
+        subcategories: selectedMstcSubcategories,
+        locations: selectedMstcLocations,
+        sellers: selectedMstcSellers,
+        regionalOffices: selectedMstcRegionalOffices
       });
       
       let filteredData = data;
@@ -345,7 +364,16 @@ export function Auctions() {
     } finally {
       setIsMstcLoading(false);
     }
-  }, [searchParams, selectedMstcCategory, selectedMstcSubcategory, selectedMstcLocation, selectedMstcSeller, startDate, endDate]);
+  }, [
+    searchQuery, 
+    selectedMstcCategories.join(','), 
+    selectedMstcSubcategories.join(','), 
+    selectedMstcLocations.join(','), 
+    selectedMstcSellers.join(','), 
+    selectedMstcRegionalOffices.join(','), 
+    startDate, 
+    endDate
+  ]);
 
   const loadMstcOptions = useCallback(async () => {
     try {
@@ -409,37 +437,61 @@ export function Auctions() {
       
       // Update Category
       if ('categoryIds' in newFilters) {
+        next.delete('mstc_category');
         if (newFilters.categoryIds && newFilters.categoryIds.length > 0) {
-          next.set('mstc_category', newFilters.categoryIds[0]);
-        } else {
-          next.delete('mstc_category');
+          newFilters.categoryIds.forEach((id: string) => next.append('mstc_category', id));
         }
       }
 
       // Update Subcategory
-      if ('subcategory' in newFilters) {
+      if ('subcategories' in newFilters) {
+        next.delete('mstc_subcategory');
+        if (newFilters.subcategories && newFilters.subcategories.length > 0) {
+          newFilters.subcategories.forEach((sub: string) => next.append('mstc_subcategory', sub));
+        }
+      } else if ('subcategory' in newFilters) {
+        next.delete('mstc_subcategory');
         if (newFilters.subcategory) {
           next.set('mstc_subcategory', newFilters.subcategory);
-        } else {
-          next.delete('mstc_subcategory');
         }
       }
       
       // Update Location
-      if ('location' in newFilters) {
+      if ('locations' in newFilters) {
+        next.delete('mstc_location');
+        if (newFilters.locations && newFilters.locations.length > 0) {
+          newFilters.locations.forEach((loc: string) => next.append('mstc_location', loc));
+        }
+      } else if ('location' in newFilters) {
+        next.delete('mstc_location');
         if (newFilters.location) {
           next.set('mstc_location', newFilters.location);
-        } else {
-          next.delete('mstc_location');
         }
       }
 
-      // Update Seller (mapped to regionalOffice)
-      if ('regionalOffice' in newFilters) {
+      // Update Regional Office
+      if ('regionalOffices' in newFilters) {
+        next.delete('mstc_regional_office');
+        if (newFilters.regionalOffices && newFilters.regionalOffices.length > 0) {
+          newFilters.regionalOffices.forEach((office: string) => next.append('mstc_regional_office', office));
+        }
+      } else if ('regionalOffice' in newFilters) {
+        next.delete('mstc_regional_office');
         if (newFilters.regionalOffice) {
-          next.set('mstc_seller', newFilters.regionalOffice);
-        } else {
-          next.delete('mstc_seller');
+          next.set('mstc_regional_office', newFilters.regionalOffice);
+        }
+      }
+
+      // Update Seller
+      if ('mstcSellers' in newFilters) {
+        next.delete('mstc_seller');
+        if (newFilters.mstcSellers && newFilters.mstcSellers.length > 0) {
+          newFilters.mstcSellers.forEach((sel: string) => next.append('mstc_seller', sel));
+        }
+      } else if ('mstcSeller' in newFilters) {
+        next.delete('mstc_seller');
+        if (newFilters.mstcSeller) {
+          next.set('mstc_seller', newFilters.mstcSeller);
         }
       }
 
@@ -487,21 +539,29 @@ export function Auctions() {
         }
       }
       
-      // Update regionalOffice
-      if ('regionalOffice' in newFilters) {
+      // Update regionalOffices
+      if ('regionalOffices' in newFilters) {
+        next.delete('regionalOffice');
+        if (newFilters.regionalOffices && newFilters.regionalOffices.length > 0) {
+          newFilters.regionalOffices.forEach(office => next.append('regionalOffice', office));
+        }
+      } else if ('regionalOffice' in newFilters) {
+        next.delete('regionalOffice');
         if (newFilters.regionalOffice) {
           next.set('regionalOffice', newFilters.regionalOffice);
-        } else {
-          next.delete('regionalOffice');
         }
       }
 
-      // Update location
-      if ('location' in newFilters) {
+      // Update locations
+      if ('locations' in newFilters) {
+        next.delete('location');
+        if (newFilters.locations && newFilters.locations.length > 0) {
+          newFilters.locations.forEach(loc => next.append('location', loc));
+        }
+      } else if ('location' in newFilters) {
+        next.delete('location');
         if (newFilters.location) {
           next.set('location', newFilters.location);
-        } else {
-          next.delete('location');
         }
       }
 
@@ -612,7 +672,7 @@ export function Auctions() {
             />
             <button
               type="submit"
-              className="absolute right-2 top-2 bottom-2 px-6 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
+              className="absolute right-2 top-2 bottom-2 px-6 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
             >
               Search
             </button>
@@ -641,16 +701,17 @@ export function Auctions() {
           </div>
 
           {/* Sidebar Filters */}
-          <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto custom-scrollbar z-20">
+          <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:overflow-visible z-20">
             <AuctionFilters 
               isOpen={isFiltersOpen} 
               onClose={() => setIsFiltersOpen(false)} 
               onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
               initialFilters={activeTab === 'commercial' ? filters : {
-                categoryIds: selectedMstcCategory ? [selectedMstcCategory] : [],
-                subcategory: selectedMstcSubcategory,
-                location: selectedMstcLocation,
-                regionalOffice: selectedMstcSeller,
+                categoryIds: selectedMstcCategories,
+                subcategories: selectedMstcSubcategories,
+                locations: selectedMstcLocations,
+                regionalOffices: selectedMstcRegionalOffices,
+                mstcSellers: selectedMstcSellers,
                 startDate,
                 endDate
               }}
@@ -659,6 +720,7 @@ export function Auctions() {
               customSubcategories={mstcOptions.subcategories}
               customLocations={mstcOptions.locations}
               customSellers={mstcOptions.sellers}
+              customRegionalOffices={mstcOptions.regionalOffices}
             />
             {/* Overlay for mobile filters */}
             {isFiltersOpen && (
@@ -894,7 +956,6 @@ export function Auctions() {
 
           </div>
         </div>
-      </div>
 
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
@@ -917,308 +978,365 @@ export function Auctions() {
               </button>
             </div>
 
-            {/* Modal Body (Scrollable) */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/25">
-              
-              {/* Category & Auction Ref Title */}
-              <div>
-                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
-                {(() => {
-                  const parts = selectedPreviewItem.category_name.split(' | ');
-                  const mainCat = parts[0];
-                  const subCat = parts[1];
-                  return (
-                    <div className="flex flex-col gap-0.5">
-                      {subCat ? (
-                        <>
-                          <span className="text-xs font-semibold text-primary uppercase tracking-wider">{mainCat}</span>
-                          <h3 className="text-2xl font-black text-slate-950 leading-tight">{subCat}</h3>
-                        </>
-                      ) : (
-                        <h3 className="text-2xl font-black text-slate-950 leading-tight">{mainCat}</h3>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* General Parameters Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                {/* Reference Number */}
-                <div className="md:col-span-5 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1.5">
-                  <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Ref Number</h5>
-                  <div className="font-mono text-sm text-slate-700 break-all select-all flex justify-between items-center bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                    <span className="mr-2 text-[13px] font-bold leading-snug">{selectedPreviewItem.mstc_auction_number}</span>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(selectedPreviewItem.mstc_auction_number);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      }}
-                      className="text-slate-400 hover:text-primary transition-colors shrink-0 cursor-pointer"
-                      title="Copy reference"
-                    >
-                      {copied ? (
-                        <span className="text-[9px] font-bold text-emerald-650 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-150">
-                          Copied!
-                        </span>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
-                        </svg>
-                      )}
-                    </button>
-                  </div>
+            {/* Modal Body */}
+            <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
+              {/* Left Side: Details Scrollable */}
+              <div className="flex-grow overflow-y-auto p-6 space-y-6 bg-slate-50/25">
+                
+                {/* Category & Auction Ref Title */}
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
+                  {(() => {
+                    const parts = selectedPreviewItem.category_name.split(' | ');
+                    const mainCat = parts[0];
+                    const subCat = parts[1];
+                    return (
+                      <div className="flex flex-col gap-0.5">
+                        {subCat ? (
+                          <>
+                            <span className="text-xs font-semibold text-primary uppercase tracking-wider">{mainCat}</span>
+                            <h3 className="text-2xl font-black text-slate-950 leading-tight">{subCat}</h3>
+                          </>
+                        ) : (
+                          <h3 className="text-2xl font-black text-slate-950 leading-tight">{mainCat}</h3>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                {/* Seller & Location Details */}
-                <div className="md:col-span-4 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2.5">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Regional Office</span>
-                    <span className="text-sm font-bold text-slate-800 leading-tight mt-0.5">
-                      {(() => {
-                        const parts = selectedPreviewItem.mstc_auction_number.split('/');
-                        return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : selectedPreviewItem.seller_name;
-                      })()}
-                    </span>
-                  </div>
-                  {selectedPreviewItem.location && (
-                    <div className="flex flex-col border-t border-slate-100 pt-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Location / State</span>
-                      <span className="text-sm font-bold text-slate-800 mt-0.5">{selectedPreviewItem.location}</span>
+                {/* General Parameters Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  {/* Reference Number */}
+                  <div className="md:col-span-5 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1.5">
+                    <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Ref Number</h5>
+                    <div className="font-mono text-sm text-slate-700 break-all select-all flex justify-between items-center bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                      <span className="mr-2 text-[13px] font-bold leading-snug">{selectedPreviewItem.mstc_auction_number}</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedPreviewItem.mstc_auction_number);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                        className="text-slate-400 hover:text-primary transition-colors shrink-0 cursor-pointer"
+                        title="Copy reference"
+                      >
+                        {copied ? (
+                          <span className="text-[9px] font-bold text-emerald-650 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-150">
+                            Copied!
+                          </span>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                          </svg>
+                        )}
+                      </button>
                     </div>
-                  )}
-                </div>
-
-                {/* Dates & Countdown */}
-                <div className="md:col-span-3 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-400 font-mono uppercase tracking-wider">Auction Date:</span>
-                    <span className="font-semibold text-slate-800">
-                      {new Date(selectedPreviewItem.opening_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
-                    </span>
                   </div>
-                  <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5">
-                    <span className="text-slate-400 font-mono uppercase tracking-wider">Bidding Starts:</span>
-                    <span className="font-semibold text-slate-800">
+
+                  {/* Seller & Location Details */}
+                  <div className="md:col-span-4 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2.5">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Regional Office</span>
+                      <span className="text-sm font-bold text-slate-800 leading-tight mt-0.5">
+                        {(() => {
+                          const parts = selectedPreviewItem.mstc_auction_number.split('/');
+                          return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : selectedPreviewItem.seller_name;
+                        })()}
+                      </span>
+                    </div>
+                    {selectedPreviewItem.location && (
+                      <div className="flex flex-col border-t border-slate-100 pt-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Location / State</span>
+                        <span className="text-sm font-bold text-slate-800 mt-0.5">{selectedPreviewItem.location}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dates & Countdown */}
+                  <div className="md:col-span-3 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400 font-mono uppercase tracking-wider">Auction Date:</span>
+                      <span className="font-semibold text-slate-800">
+                        {new Date(selectedPreviewItem.opening_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5">
+                      <span className="text-slate-400 font-mono uppercase tracking-wider">Bidding Starts:</span>
+                      <span className="font-semibold text-slate-800">
+                        {(() => {
+                          const auctionDate = new Date(selectedPreviewItem.opening_date);
+                          const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                          return biddingStartDate.toLocaleDateString(undefined, { dateStyle: 'medium' });
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5 items-center">
+                      <span className="text-slate-400 font-mono uppercase tracking-wider">Status:</span>
                       {(() => {
                         const auctionDate = new Date(selectedPreviewItem.opening_date);
                         const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-                        return biddingStartDate.toLocaleDateString(undefined, { dateStyle: 'medium' });
-                      })()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs border-t border-slate-100 pt-1.5 items-center">
-                    <span className="text-slate-400 font-mono uppercase tracking-wider">Status:</span>
-                    {(() => {
-                      const auctionDate = new Date(selectedPreviewItem.opening_date);
-                      const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-                      const now = new Date();
-                      const diffMs = biddingStartDate.getTime() - now.getTime();
-                      if (diffMs <= 0) {
-                        return <span className="font-bold text-xs px-2.5 py-0.5 rounded-md border border-emerald-200 text-emerald-700 bg-emerald-50">Bidding Started</span>;
-                      }
-                      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                      const isUrgent = diffDays < 3;
-                      const isWarning = diffDays < 7;
-                      return (
-                        <span className={clsx(
-                          "font-bold text-xs px-2.5 py-0.5 rounded-md border",
-                          isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
-                          isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
-                          "text-emerald-700 bg-emerald-50 border-emerald-200"
-                        )}>
-                          {diffDays > 0 ? `Starts in ${diffDays}d ${diffHours}h` : `Starts in ${diffHours}h ${diffMins}m`}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Identified Materials & Lots */}
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
-                  <span>Identified Inventory & Materials</span>
-                  <span className="text-[10px] text-slate-405 font-medium normal-case font-sans">
-                    {generateCatalogSummary(selectedPreviewItem).items.length} lots identified
-                  </span>
-                </h4>
-                
-                <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
-                        <th className="py-2.5 px-3.5 font-bold w-12 text-center">Lot</th>
-                        <th className="py-2.5 px-3.5 font-bold">Material Description</th>
-                        <th className="py-2.5 px-3.5 font-bold text-right">Quantity</th>
-                        <th className="py-2.5 px-3.5 font-bold text-center">Taxes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {generateCatalogSummary(selectedPreviewItem).items.map((row) => (
-                        <tr key={row.sr} className="hover:bg-slate-50/50">
-                          <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                          <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.description}</td>
-                          <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
-                          <td className="py-2.5 px-3.5 text-center font-mono text-[10px] text-slate-500">{row.taxRate}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Eligibility, Compliance & Financial Terms */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Compliance Card */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
-                    Buyer Eligibility & Compliance
-                  </h4>
-                  <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-650">
-                    {generateCatalogSummary(selectedPreviewItem).eligibility.map((el, i) => (
-                      <li key={i} className="leading-relaxed">{el}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Financial Charges Card */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
-                    Financial Terms & Service Fees
-                  </h4>
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 font-mono">EMD Details</span>
-                      <span className="font-bold text-slate-800">
-                        {generateCatalogSummary(selectedPreviewItem).depositDetails.emd}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 font-mono">Pre-bid EMD</span>
-                      <span className="font-bold text-slate-800">
-                        {generateCatalogSummary(selectedPreviewItem).depositDetails.preBidDdg}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Key Contact Personnel */}
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3.5">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
-                  Key Contact Personnel
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {generateCatalogSummary(selectedPreviewItem).keyContacts.map((contact, i) => (
-                    <div key={i} className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl space-y-1">
-                      <span className="text-[9px] font-mono text-primary font-bold uppercase tracking-wider">{contact.role}</span>
-                      <h4 className="text-xs font-black text-slate-900">{contact.name}</h4>
-                      <p className="text-[10px] text-slate-500 font-mono break-all mt-0.5">{contact.email}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Similar Auction Suggestions */}
-              {(isRelatedMstcLoading || relatedMstcAuctions.length > 0) && (
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
-                    <span>
-                      {searchParams.get('q') ? 'Similar Catalogs matching your search' : 'Recommended Similar Catalogs'}
-                    </span>
-                    {searchParams.get('q') && (
-                      <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md uppercase tracking-wider font-sans">
-                        Filtered by Search
-                      </span>
-                    )}
-                  </h4>
-
-                  {isRelatedMstcLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="animate-pulse border border-slate-200 rounded-xl p-4 space-y-3">
-                          <div className="h-3 bg-slate-200 rounded-full w-2/3"></div>
-                          <div className="h-4 bg-slate-200 rounded-full w-full"></div>
-                          <div className="space-y-2 pt-2">
-                            <div className="h-2.5 bg-slate-200 rounded-full w-1/2"></div>
-                            <div className="h-2.5 bg-slate-200 rounded-full w-3/4"></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {relatedMstcAuctions.map((item) => {
-                        const parts = item.category_name.split(' | ');
-                        const mainCat = parts[0];
-                        const subCat = parts[1] || mainCat;
-                        const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
-                        
-                        const auctionDate = new Date(item.opening_date);
-                        const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
                         const now = new Date();
                         const diffMs = biddingStartDate.getTime() - now.getTime();
-                        const isBiddingActive = diffMs <= 0;
-
+                        if (diffMs <= 0) {
+                          return <span className="font-bold text-xs px-2.5 py-0.5 rounded-md border border-emerald-200 text-emerald-700 bg-emerald-50">Bidding Started</span>;
+                        }
+                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                        const isUrgent = diffDays < 3;
+                        const isWarning = diffDays < 7;
                         return (
-                          <div
-                            key={item.id}
-                            onClick={() => {
-                              setSelectedPreviewItem(item);
-                              setCopied(false);
-                            }}
-                            className="bg-slate-50/50 border border-slate-200 hover:border-primary/50 hover:shadow-md hover:bg-white rounded-xl p-4 flex flex-col justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] group"
-                          >
-                            <div>
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-[9px] font-bold text-slate-400 font-mono">ID: {shortId}</span>
-                                {isBiddingActive ? (
-                                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-150 text-emerald-700">Active</span>
-                                ) : (
-                                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-blue-50 border border-blue-150 text-blue-700">Upcoming</span>
-                                )}
-                              </div>
-                              <span className="text-[9px] font-bold text-primary uppercase tracking-wider block mb-0.5">{mainCat}</span>
-                              <h5 className="text-xs font-bold text-slate-900 line-clamp-2 leading-snug group-hover:text-primary transition-colors">
-                                {subCat}
-                              </h5>
-                            </div>
-                            
-                            <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5 text-[10px] text-slate-500">
-                              <div className="flex justify-between items-center">
-                                <span className="text-slate-400 font-mono">Office:</span>
-                                <span className="font-semibold text-slate-700 truncate max-w-[110px]" title={item.seller_name}>
-                                  {(() => {
-                                    const parts = item.mstc_auction_number.split('/');
-                                    return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
-                                  })()}
-                                </span>
-                              </div>
-                              {item.location && (
-                                <div className="flex justify-between items-center">
-                                  <span className="text-slate-400 font-mono">Location:</span>
-                                  <span className="font-semibold text-slate-700 truncate max-w-[110px]">{item.location}</span>
-                                </div>
-                              )}
-                              <div className="flex justify-between items-center pt-0.5">
-                                <span className="text-slate-400 font-mono">Starts:</span>
-                                <span className="font-semibold text-slate-700">
-                                  {biddingStartDate.toLocaleDateString(undefined, { dateStyle: 'short' })}
-                                </span>
-                              </div>
+                          <span className={clsx(
+                            "font-bold text-xs px-2.5 py-0.5 rounded-md border",
+                            isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
+                            isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
+                            "text-emerald-700 bg-emerald-50 border-emerald-200"
+                          )}>
+                            {diffDays > 0 ? `Starts in ${diffDays}d ${diffHours}h` : `Starts in ${diffHours}h ${diffMins}m`}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Identified Materials & Lots */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
+                    <span>Identified Inventory & Materials</span>
+                    <span className="text-[10px] text-slate-405 font-medium normal-case font-sans">
+                      {generateCatalogSummary(selectedPreviewItem).items.length} lots identified
+                    </span>
+                  </h4>
+                  
+                  <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
+                          <th className="py-2.5 px-3.5 font-bold w-12 text-center">Lot</th>
+                          <th className="py-2.5 px-3.5 font-bold">Material Description</th>
+                          <th className="py-2.5 px-3.5 font-bold text-right">Quantity</th>
+                          <th className="py-2.5 px-3.5 font-bold text-center">Taxes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {generateCatalogSummary(selectedPreviewItem).items.map((row) => (
+                          <tr key={row.sr} className="hover:bg-slate-50/50">
+                            <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
+                            <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.description}</td>
+                            <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
+                            <td className="py-2.5 px-3.5 text-center font-mono text-[10px] text-slate-500">{row.taxRate}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Eligibility, Compliance & Financial Terms */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Compliance Card */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                      Buyer Eligibility & Compliance
+                    </h4>
+                    <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-650">
+                      {generateCatalogSummary(selectedPreviewItem).eligibility.map((el, i) => (
+                        <li key={i} className="leading-relaxed">{el}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Financial Charges Card */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                      Financial Terms & Service Fees
+                    </h4>
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <span className="text-slate-500 font-mono">EMD Details</span>
+                        <span className="font-bold text-slate-800">
+                          {generateCatalogSummary(selectedPreviewItem).depositDetails.emd}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <span className="text-slate-500 font-mono">Pre-bid EMD</span>
+                        <span className="font-bold text-slate-800">
+                          {generateCatalogSummary(selectedPreviewItem).depositDetails.preBidDdg}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Contact Personnel */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3.5">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
+                    Key Contact Personnel
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {generateCatalogSummary(selectedPreviewItem).keyContacts.map((contact, i) => (
+                      <div key={i} className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl space-y-1">
+                        <span className="text-[9px] font-mono text-primary font-bold uppercase tracking-wider">{contact.role}</span>
+                        <h4 className="text-xs font-black text-slate-900">{contact.name}</h4>
+                        <p className="text-[10px] text-slate-500 font-mono break-all mt-0.5">{contact.email}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Similar Auction Suggestions */}
+                {(isRelatedMstcLoading || relatedMstcAuctions.length > 0) && (
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
+                      <span>
+                        {searchParams.get('q') ? 'Similar Catalogs matching your search' : 'Recommended Similar Catalogs'}
+                      </span>
+                      {searchParams.get('q') && (
+                        <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md uppercase tracking-wider font-sans">
+                          Filtered by Search
+                        </span>
+                      )}
+                    </h4>
+
+                    {isRelatedMstcLoading ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="animate-pulse border border-slate-200 rounded-xl p-4 space-y-3">
+                            <div className="h-3 bg-slate-200 rounded-full w-2/3"></div>
+                            <div className="h-4 bg-slate-200 rounded-full w-full"></div>
+                            <div className="space-y-2 pt-2">
+                              <div className="h-2.5 bg-slate-200 rounded-full w-1/2"></div>
+                              <div className="h-2.5 bg-slate-200 rounded-full w-3/4"></div>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {relatedMstcAuctions.map((item) => {
+                          const parts = item.category_name.split(' | ');
+                          const mainCat = parts[0];
+                          const subCat = parts[1] || mainCat;
+                          const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+                          
+                          const auctionDate = new Date(item.opening_date);
+                          const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                          const now = new Date();
+                          const diffMs = biddingStartDate.getTime() - now.getTime();
+                          const isBiddingActive = diffMs <= 0;
 
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => {
+                                setSelectedPreviewItem(item);
+                                setCopied(false);
+                              }}
+                              className="bg-slate-50/50 border border-slate-200 hover:border-primary/50 hover:shadow-md hover:bg-white rounded-xl p-4 flex flex-col justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] group"
+                            >
+                              <div>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-[9px] font-bold text-slate-400 font-mono">ID: {shortId}</span>
+                                  {isBiddingActive ? (
+                                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-150 text-emerald-700">Active</span>
+                                  ) : (
+                                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-blue-50 border border-blue-150 text-blue-700">Upcoming</span>
+                                  )}
+                                </div>
+                                <span className="text-[9px] font-bold text-primary uppercase tracking-wider block mb-0.5">{mainCat}</span>
+                                <h5 className="text-xs font-bold text-slate-900 line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+                                  {subCat}
+                                </h5>
+                              </div>
+                              
+                              <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5 text-[10px] text-slate-500">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-slate-400 font-mono">Office:</span>
+                                  <span className="font-semibold text-slate-700 truncate max-w-[110px]" title={item.seller_name}>
+                                    {(() => {
+                                      const parts = item.mstc_auction_number.split('/');
+                                      return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
+                                    })()}
+                                  </span>
+                                </div>
+                                {item.location && (
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-slate-400 font-mono">Location:</span>
+                                    <span className="font-semibold text-slate-700 truncate max-w-[110px]">{item.location}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between items-center pt-0.5">
+                                  <span className="text-slate-400 font-mono">Starts:</span>
+                                  <span className="font-semibold text-slate-700">
+                                    {biddingStartDate.toLocaleDateString(undefined, { dateStyle: 'short' })}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+
+              {/* Right Side: Image/Preview Panel */}
+              {(() => {
+                const summary = generateCatalogSummary(selectedPreviewItem);
+                return (
+                  <div className="w-full md:w-[320px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
+                    {/* Item Photos */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
+                        Item Photos
+                      </h4>
+                      {summary.extracted_images && summary.extracted_images.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          {summary.extracted_images.map((imgUrl, idx) => (
+                            <a 
+                              key={idx} 
+                              href={imgUrl} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-primary transition-colors cursor-zoom-in flex items-center justify-center"
+                            >
+                              <img src={imgUrl} alt={`Extracted ${idx}`} className="w-full h-full object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="w-full py-8 flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                          <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                          </svg>
+                          <span className="text-[11px] font-medium tracking-wide">No pictures available</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {summary.preview_image_url && (
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
+                          Catalog Document Preview
+                        </h4>
+                        <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group">
+                          <a href={summary.preview_image_url} target="_blank" rel="noreferrer" className="block cursor-zoom-in">
+                            <img 
+                              src={summary.preview_image_url} 
+                              alt="PDF First Page Preview" 
+                              className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-250"
+                            />
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Modal Footer */}
@@ -1247,4 +1365,3 @@ export function Auctions() {
     </div>
   );
 }
-
