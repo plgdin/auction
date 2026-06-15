@@ -339,6 +339,28 @@ function parseMstcCatalogText(
     );
   }
 
+  // 7. Extract Inspection details
+  let inspectionTime = "From publication date to 1 day prior to bidding (10:00 AM - 4:00 PM on working days)";
+  let inspectionContact = "Site In-Charge / Contact Person listed in catalog";
+
+  const insTimeMatch = cleanText.match(/(?:Inspection\s*(?:Date\s*&?\s*Time|Period|From|Allowed)?\s*[:\-]|Inspection\s*Date\s*[:\-]?)\s*([^\n]+)/i);
+  if (insTimeMatch) {
+    const val = insTimeMatch[1].trim();
+    if (val && val.length > 5 && val.length < 250) {
+      inspectionTime = val.replace(/[\[\{\(]\s*[-_.\s]*\s*[\]\}\)]/g, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+    }
+  }
+
+  const insContMatch = cleanText.match(/(?:Contact\s*Person\s*for\s*Inspection|Inspection\s*Contact|Contact\s*Person\s*)\s*[:\-]?\s*([^\n]+)/i);
+  if (insContMatch) {
+    const val = insContMatch[1].trim();
+    if (val && val.length > 3 && val.length < 150) {
+      inspectionContact = val.replace(/[\[\{\(]\s*[-_.\s]*\s*[\]\}\)]/g, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+    }
+  } else if (contactName) {
+    inspectionContact = `${contactName} (${contactPhone || "phone listed in catalog"})`;
+  }
+
   return {
     overview,
     scopeOfWork,
@@ -350,6 +372,10 @@ function parseMstcCatalogText(
       adminCharges: "₹11,800 (incl. GST) non-refundable service provider fees",
     },
     keyContacts,
+    inspectionDetails: {
+      time: inspectionTime,
+      contact: inspectionContact
+    }
   };
 }
 

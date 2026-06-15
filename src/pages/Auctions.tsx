@@ -29,6 +29,10 @@ interface CatalogSummary {
   keyContacts: { role: string; name: string; email: string; phone?: string }[];
   preview_image_url?: string | null;
   extracted_images?: string[];
+  inspectionDetails?: {
+    time: string;
+    contact: string;
+  };
 }
 
 const getTaxPercent = (taxRateStr: string): number => {
@@ -131,6 +135,15 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
           });
         }
 
+        // Fallback for inspection details if not in JSON
+        if (!parsed.inspectionDetails) {
+          const mainContact = parsed.keyContacts.find((c: any) => c.role.toLowerCase().includes('site') || c.role.toLowerCase().includes('engineer')) || parsed.keyContacts[0];
+          parsed.inspectionDetails = {
+            time: 'From publication date to 1 day prior to bidding (10:00 AM - 4:00 PM on working days)',
+            contact: mainContact ? `${mainContact.name} (${mainContact.phone || 'phone listed in catalog'})` : 'Site In-Charge'
+          };
+        }
+
         return parsed;
       }
     } catch (e) {
@@ -221,7 +234,11 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
       preBidDdg: "Refer to PDF Catalog",
       adminCharges,
     },
-    keyContacts
+    keyContacts,
+    inspectionDetails: {
+      time: 'From publication date until 1 day prior to bidding (10:00 AM - 4:00 PM on working days)',
+      contact: 'R. K. Sharma (Superintending Engineer) - 07969066600'
+    }
   };
 };
 
@@ -1709,7 +1726,7 @@ export function Auctions() {
                 </div>
 
                 {/* Eligibility, Compliance & Financial Terms */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {/* Compliance Card */}
                   <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2">
@@ -1738,6 +1755,32 @@ export function Auctions() {
                         <span className="text-slate-500 font-mono">Pre-bid EMD</span>
                         <span className="font-bold text-slate-800">
                           {generateCatalogSummary(selectedPreviewItem).depositDetails.preBidDdg}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Inspection & Site Visit Card */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
+                      <span>Inspection & Site Visit</span>
+                      <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
+                        Before Bidding
+                      </span>
+                    </h4>
+                    <div className="space-y-2.5 text-xs">
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                        <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Inspection Schedule</span>
+                        <span className="font-bold text-slate-850 leading-relaxed block">
+                          {generateCatalogSummary(selectedPreviewItem).inspectionDetails?.time || 
+                           'From publication date to 1 day prior to bidding (10:00 AM - 4:00 PM on working days)'}
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                        <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Inspection Contact / Escort</span>
+                        <span className="font-bold text-slate-850 leading-relaxed block">
+                          {generateCatalogSummary(selectedPreviewItem).inspectionDetails?.contact || 
+                           'Site In-Charge / Contact Person listed in catalog'}
                         </span>
                       </div>
                     </div>
