@@ -40,6 +40,8 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --color-lochmara: #007ec7;
+
   /* Specific color shades for general component compatibility */
   --color-primary-50: #eff6ff;
   --color-primary-100: #dbeafe;
