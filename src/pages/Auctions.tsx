@@ -215,6 +215,8 @@ export function Auctions() {
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<MstcSanitizedAuction | null>(null);
   const [copied, setCopied] = useState(false);
   const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
+  const [relatedMstcAuctions, setRelatedMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
+  const [isRelatedMstcLoading, setIsRelatedMstcLoading] = useState(false);
 
   const selectedMstcCategory = searchParams.get('mstc_category') || '';
   const selectedMstcSubcategory = searchParams.get('mstc_subcategory') || '';
@@ -366,6 +368,26 @@ export function Auctions() {
     // Load options when tab is active OR initially on mount
     loadMstcOptions();
   }, [loadMstcOptions]);
+
+  useEffect(() => {
+    async function fetchRelated() {
+      if (!selectedPreviewItem) {
+        setRelatedMstcAuctions([]);
+        return;
+      }
+      setIsRelatedMstcLoading(true);
+      try {
+        const qParam = searchParams.get('q') || '';
+        const related = await MstcSearchService.getRelatedMstcAuctions(selectedPreviewItem, qParam, 3);
+        setRelatedMstcAuctions(related);
+      } catch (error) {
+        console.error('Error fetching related MSTC auctions:', error);
+      } finally {
+        setIsRelatedMstcLoading(false);
+      }
+    }
+    fetchRelated();
+  }, [selectedPreviewItem, searchParams]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1100,6 +1122,102 @@ export function Auctions() {
                   ))}
                 </div>
               </div>
+
+              {/* Similar Auction Suggestions */}
+              {(isRelatedMstcLoading || relatedMstcAuctions.length > 0) && (
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
+                    <span>
+                      {searchParams.get('q') ? 'Similar Catalogs matching your search' : 'Recommended Similar Catalogs'}
+                    </span>
+                    {searchParams.get('q') && (
+                      <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md uppercase tracking-wider font-sans">
+                        Filtered by Search
+                      </span>
+                    )}
+                  </h4>
+
+                  {isRelatedMstcLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="animate-pulse border border-slate-200 rounded-xl p-4 space-y-3">
+                          <div className="h-3 bg-slate-200 rounded-full w-2/3"></div>
+                          <div className="h-4 bg-slate-200 rounded-full w-full"></div>
+                          <div className="space-y-2 pt-2">
+                            <div className="h-2.5 bg-slate-200 rounded-full w-1/2"></div>
+                            <div className="h-2.5 bg-slate-200 rounded-full w-3/4"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {relatedMstcAuctions.map((item) => {
+                        const parts = item.category_name.split(' | ');
+                        const mainCat = parts[0];
+                        const subCat = parts[1] || mainCat;
+                        const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+                        
+                        const auctionDate = new Date(item.opening_date);
+                        const biddingStartDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+                        const now = new Date();
+                        const diffMs = biddingStartDate.getTime() - now.getTime();
+                        const isBiddingActive = diffMs <= 0;
+
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => {
+                              setSelectedPreviewItem(item);
+                              setCopied(false);
+                            }}
+                            className="bg-slate-50/50 border border-slate-200 hover:border-primary/50 hover:shadow-md hover:bg-white rounded-xl p-4 flex flex-col justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] group"
+                          >
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-[9px] font-bold text-slate-400 font-mono">ID: {shortId}</span>
+                                {isBiddingActive ? (
+                                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-150 text-emerald-700">Active</span>
+                                ) : (
+                                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-blue-50 border border-blue-150 text-blue-700">Upcoming</span>
+                                )}
+                              </div>
+                              <span className="text-[9px] font-bold text-primary uppercase tracking-wider block mb-0.5">{mainCat}</span>
+                              <h5 className="text-xs font-bold text-slate-900 line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+                                {subCat}
+                              </h5>
+                            </div>
+                            
+                            <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5 text-[10px] text-slate-500">
+                              <div className="flex justify-between items-center">
+                                <span className="text-slate-400 font-mono">Office:</span>
+                                <span className="font-semibold text-slate-700 truncate max-w-[110px]" title={item.seller_name}>
+                                  {(() => {
+                                    const parts = item.mstc_auction_number.split('/');
+                                    return parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
+                                  })()}
+                                </span>
+                              </div>
+                              {item.location && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-slate-400 font-mono">Location:</span>
+                                  <span className="font-semibold text-slate-700 truncate max-w-[110px]">{item.location}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between items-center pt-0.5">
+                                <span className="text-slate-400 font-mono">Starts:</span>
+                                <span className="font-semibold text-slate-700">
+                                  {biddingStartDate.toLocaleDateString(undefined, { dateStyle: 'short' })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
             </div>
 

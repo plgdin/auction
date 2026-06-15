@@ -612,16 +612,127 @@ export const MstcSearchService = {
   },
 
   /**
+   * Fetches similar/related MSTC auctions.
+   * If there is an active search query, it pulls candidates from the search results.
+   * If there is no active search query, it falls back to category matching.
+   * Results are ranked by category, seller, location, and item keywords.
+   */
+  async getRelatedMstcAuctions(
+    currentItem: MstcSanitizedAuction,
+    searchQuery: string = '',
+    limit: number = 4
+  ): Promise<MstcSanitizedAuction[]> {
+    try {
+      let relatedItems: MstcSanitizedAuction[] = [];
+      
+      if (searchQuery) {
+        // If there is an active search query, get matching items
+        const results = await this.searchMarketplaceCatalog(searchQuery);
+        relatedItems = results.filter(item => item.id !== currentItem.id);
+      } else {
+        // If no search query, match by category/subcategory
+        const categoryParts = (currentItem.category_name || '').split(' | ');
+        const mainCategory = categoryParts[0]?.trim();
+        const subcategory = categoryParts[1]?.trim();
+        
+        const results = await this.searchMarketplaceCatalog('', {
+          category: mainCategory || undefined,
+          subcategory: subcategory || undefined
+        });
+        
+        relatedItems = results.filter(item => item.id !== currentItem.id);
+        
+        // Relax subcategory if we have fewer items
+        if (relatedItems.length < limit && mainCategory) {
+          const mainResults = await this.searchMarketplaceCatalog('', {
+            category: mainCategory || undefined
+          });
+          const extraItems = mainResults.filter(
+            item => item.id !== currentItem.id && !relatedItems.some(r => r.id === item.id)
+          );
+          relatedItems = [...relatedItems, ...extraItems];
+        }
+      }
+      
+      // Compute similarity scores
+      const currentKeywords = new Set<string>();
+      if (currentItem.raw_materials_text) {
+        try {
+          const parsed = JSON.parse(currentItem.raw_materials_text);
+          if (parsed && Array.isArray(parsed.items)) {
+            parsed.items.forEach((row: any) => {
+              const tokens = extractTokens(row.description || '');
+              tokens.forEach(t => currentKeywords.add(t));
+            });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+      
+      if (currentKeywords.size === 0 && currentItem.category_name) {
+        extractTokens(currentItem.category_name).forEach(t => currentKeywords.add(t));
+      }
+      
+      const currentCategoryParts = (currentItem.category_name || '').split(' | ');
+      const currentMain = currentCategoryParts[0]?.trim() || '';
+      const currentSub = currentCategoryParts[1]?.trim() || '';
+      
+      const scoredItems = relatedItems.map(item => {
+        let score = 0;
+        const parts = (item.category_name || '').split(' | ');
+        const main = parts[0]?.trim() || '';
+        const sub = parts[1]?.trim() || '';
+        
+        if (sub && sub === currentSub) score += 50;
+        else if (main && main === currentMain) score += 20;
+        
+        if (item.seller_name === currentItem.seller_name) score += 30;
+        if (item.location === currentItem.location) score += 20;
+        
+        if (currentKeywords.size > 0 && item.raw_materials_text) {
+          try {
+            const parsed = JSON.parse(item.raw_materials_text);
+            if (parsed && Array.isArray(parsed.items)) {
+              parsed.items.forEach((row: any) => {
+                const desc = (row.description || '').toLowerCase();
+                currentKeywords.forEach(keyword => {
+                  if (matchWholeWord(desc, keyword)) {
+                    score += 10;
+                  }
+                });
+              });
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+        
+        return { item, score };
+      });
+      
+      scoredItems.sort(
+        (a, b) => b.score - a.score || new Date(b.item.opening_date).getTime() - new Date(a.item.opening_date).getTime()
+      );
+      
+      return scoredItems.map(si => si.item).slice(0, limit);
+    } catch (error) {
+      console.error('Error getting related MSTC auctions:', error);
+      return [];
+    }
+  },
+
+  /**
    * Fetches verified, fully processed feeds for consultant analytics modules
    */
   async fetchVerifiedConsultantFeed(limitCount: number = 15): Promise<MstcSanitizedAuction[]> {
     try {
       const { data, error } = await supabase
-        .from('mstc_auctions')
-        .select('*')
-        .eq('asset_status', 'completed') // Guarantees consultants only view rows with ready, uncorrupted local files
-        .order('opening_date', { ascending: false })
-        .limit(limitCount);
+          .from('mstc_auctions')
+          .select('*')
+          .eq('asset_status', 'completed') // Guarantees consultants only view rows with ready, uncorrupted local files
+          .order('opening_date', { ascending: false })
+          .limit(limitCount);
 
       if (error) throw error;
       return (data as MstcSanitizedAuction[]) || [];
@@ -631,3 +742,4 @@ export const MstcSearchService = {
     }
   }
 };
+
