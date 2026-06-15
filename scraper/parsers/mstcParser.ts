@@ -345,7 +345,7 @@ export function parseMstcCatalogText(
       // --- Extract lot name ---
       let lotName = "";
       const nameMatch = block.match(
-        /Lot Name\s*-\s*([\s\S]*?)(?=Product Type)/i,
+        /Lot Name\s*-\s*([\s\S]*?)(?=Product Type|Lot Location|State|Lot State|GST|TCS|Bid Valid|$)/i,
       );
       if (nameMatch) {
         lotName = nameMatch[1].replace(/\r?\n/g, " ").trim();
@@ -355,7 +355,7 @@ export function parseMstcCatalogText(
       let qty = "1";
       let unit = "Lot";
 
-      const qtyRegex = /QTY:\s*(?:\r?\n)?\s*([\d\.,]+)\s*([A-Za-z]+)?/gi;
+      const qtyRegex = /QTY\s*[:.-]?\s*(?:\r?\n)?\s*([\d\.,]+)\s*([A-Za-z]+)?/gi;
       const matches = Array.from(block.matchAll(qtyRegex));
 
       if (matches.length > 0) {
@@ -398,7 +398,7 @@ export function parseMstcCatalogText(
       // --- Extract GST ---
       let gst = "As Applicable";
       const gstMatch = block.match(
-        /GST\s*\(%\)\s*-\s*([\s\S]*?)(?=Lot Location|State|Lot State|TCS|Bid Valid|$)/i,
+        /GST\s*(?:\(%\))?\s*-\s*([\s\S]*?)(?=Lot Location|State|Lot State|TCS|Bid Valid|$)/i,
       );
       if (gstMatch) {
         gst = gstMatch[1].replace(/\r?\n/g, " ").trim();
@@ -407,7 +407,7 @@ export function parseMstcCatalogText(
       // --- Extract TCS ---
       let tcs = "0.0";
       const tcsMatch = block.match(
-        /TCS\s*\(%\)\s*-\s*([\s\S]*?)(?=GST|Lot Location|State|Lot State|Bid Valid|$)/i,
+        /TCS\s*(?:\(%\))?\s*-\s*([\s\S]*?)(?=GST|Lot Location|State|Lot State|Bid Valid|$)/i,
       );
       if (tcsMatch) {
         tcs = tcsMatch[1].replace(/\r?\n/g, " ").trim();
@@ -452,9 +452,21 @@ export function parseMstcCatalogText(
   }
 
   // 5. Build Overview & Scope
-  const itemNames = items.map((it) => it.description.toLowerCase()).join(", ");
-  const overview = `This auction is conducted by MSTC on behalf of ${sellerName} for the disposal of ${itemNames} located at ${location || "designated site areas"}.`;
-  const scopeOfWork = `Lifting, clearing, and disposal of designated lots of ${itemNames} in accordance with MSTC Special Terms & Conditions (STC). All items are sold on an "As-Is-Where-Is" basis.`;
+  const uniqueItemNames = Array.from(new Set(
+    items.map((it) => it.description.trim())
+  )).filter(Boolean);
+  
+  let itemNamesSummary = "";
+  if (uniqueItemNames.length === 0) {
+    itemNamesSummary = "designated materials";
+  } else if (uniqueItemNames.length <= 3) {
+    itemNamesSummary = uniqueItemNames.join(", ").toLowerCase();
+  } else {
+    itemNamesSummary = `${uniqueItemNames.slice(0, 3).join(", ").toLowerCase()} and other materials`;
+  }
+
+  const overview = `This auction is conducted by MSTC on behalf of ${sellerName} for the disposal of ${itemNamesSummary} located at ${location || "designated site areas"}.`;
+  const scopeOfWork = `Lifting, clearing, and disposal of designated lots of ${itemNamesSummary} in accordance with MSTC Special Terms & Conditions (STC). All items are sold on an "As-Is-Where-Is" basis.`;
 
   // 6. Eligibility
   const eligibility: string[] = [
