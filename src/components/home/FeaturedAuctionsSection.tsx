@@ -114,15 +114,15 @@ export function FeaturedAuctionsSection() {
                   
                   <div className="flex flex-col gap-4">
                     <Link
-                      to="/auth/register"
+                      to="/auth/login"
                       className="w-full py-3 px-6 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-md transition-all duration-200 text-center"
                     >
-                      Sign Up Now
+                      Sign In Now
                     </Link>
                     <div className="text-sm text-slate-400">
-                      Already have an account?{' '}
-                      <Link to="/auth/login" className="text-primary-400 hover:text-primary-300 font-semibold underline">
-                        Log In
+                      New to the platform?{' '}
+                      <Link to="/auth/register" className="text-primary-400 hover:text-primary-300 font-semibold underline">
+                        Create an account
                       </Link>
                     </div>
                   </div>
