@@ -89,6 +89,26 @@ export function parseMstcCatalogText(
     return true;
   };
 
+  const extractPhoneNumber = (line: string): string | null => {
+    // Try pattern with prefix
+    const prefixMatch = line.match(/(?:mobile|phone|telephone|tele|no|num|contact)[\s:.-]+([+0-9\s.-]{8,25})/i);
+    if (prefixMatch) {
+      const cleaned = prefixMatch[1].replace(/[^\d]/g, "");
+      if (cleaned.length >= 8 && cleaned.length <= 15) {
+        return prefixMatch[1].trim();
+      }
+    }
+    // Try pattern without prefix (10-12 digits potentially separated by spaces/dashes)
+    const noPrefixMatch = line.match(/(?:^|[^0-9])((?:\d[\s.-]*){10,12})(?:$|[^0-9])/);
+    if (noPrefixMatch) {
+      const cleaned = noPrefixMatch[1].replace(/[^\d]/g, "");
+      if (cleaned.length >= 10 && cleaned.length <= 12) {
+        return noPrefixMatch[1].trim();
+      }
+    }
+    return null;
+  };
+
   const keyContacts: KeyContact[] = [];
   const processedNames = new Set<string>();
 
@@ -136,10 +156,9 @@ export function parseMstcCatalogText(
           const targetLine = lines[targetIdx];
           
           if (!phone) {
-            const m1 = targetLine.match(/(?:mobile|phone|telephone|tele|no|num|contact)[\s:.-]*(\d{10,12})/i) ||
-                       targetLine.match(/(\d{10})/);
-            if (m1) {
-              phone = m1[1];
+            const extractedPhone = extractPhoneNumber(targetLine);
+            if (extractedPhone) {
+              phone = extractedPhone;
             }
           }
           if (!email) {
@@ -174,8 +193,8 @@ export function parseMstcCatalogText(
         if (line.includes("Officer TwoName")) break;
         const emailM = line.match(/Email\s*:?\s*([^\s\n]+)/i);
         if (emailM) offEmail = emailM[1].trim();
-        const phoneM = line.match(/Phone\s*:?\s*(\d+)/i) || line.match(/Mobile\s*:?\s*(\d+)/i);
-        if (phoneM) offPhone = phoneM[1].trim();
+        const extractedPhone = extractPhoneNumber(line);
+        if (extractedPhone) offPhone = extractedPhone;
       }
     }
     
@@ -202,8 +221,8 @@ export function parseMstcCatalogText(
         const line = lines[i];
         const emailM = line.match(/Email\s*:?\s*([^\s\n]+)/i);
         if (emailM) offEmail = emailM[1].trim();
-        const phoneM = line.match(/Phone\s*:?\s*(\d+)/i) || line.match(/Mobile\s*:?\s*(\d+)/i);
-        if (phoneM) offPhone = phoneM[1].trim();
+        const extractedPhone = extractPhoneNumber(line);
+        if (extractedPhone) offPhone = extractedPhone;
       }
     }
     
