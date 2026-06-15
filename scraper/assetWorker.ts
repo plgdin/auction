@@ -27,6 +27,7 @@ import { supabase, uploadToStorage } from "./utils/storage.js";
 import { renderPdfFirstPage, extractEmbeddedJpegs, renderAndExtractPdfPages } from "./utils/pdfUtils.js";
 import { parseMstcCatalogText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
+import { performOcr } from "./utils/ocrUtils.js";
 
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
@@ -166,6 +167,95 @@ function matchPageToLots(
  * download each, extract/render images, and upload them to storage.
  * Maps images to specific lots if text matches are found.
  */
+/**
+ * Robustly extract quantities and units from text content.
+ * Matches both prefixed patterns (e.g. Qty: 17 nos) and count suffix-only patterns (e.g. 55 Nos).
+ */
+function extractQuantitiesDetailed(text: string): { qty: string; unit: string } {
+  const matches: { value: number; unit: string; index: number }[] = [];
+  
+  // 1. Match "QTY: 21,172NOS", "QTY: 296.800KGS", "(Qty: 17 nos.)"
+  const qtyRegex = /(?:qty|quantity|quantities)\s*[:.-]?\s*([\d\.,]+)\s*([A-Za-z]+)?/gi;
+  let match;
+  while ((match = qtyRegex.exec(text)) !== null) {
+    const val = parseFloat(match[1].replace(/,/g, ''));
+    if (!isNaN(val)) {
+      matches.push({
+        value: val,
+        unit: (match[2] || 'NOS').toUpperCase().trim(),
+        index: match.index
+      });
+    }
+  }
+
+  // 2. Match suffix-only units for count types only (e.g. "55 Nos", "10 Pcs")
+  // Weight/volume/dimensions must be explicitly prefixed with QTY: to avoid matching capacities (e.g. "50 Kg bags")
+  const countUnitRegex = /\b([\d\.,]+)\s*(nos|pcs|units|sets|pc|items|item)\b/gi;
+  while ((match = countUnitRegex.exec(text)) !== null) {
+    const val = parseFloat(match[1].replace(/,/g, ''));
+    if (!isNaN(val)) {
+      matches.push({
+        value: val,
+        unit: match[2].toUpperCase().trim(),
+        index: match.index
+      });
+    }
+  }
+
+  if (matches.length === 0) {
+    return { qty: '1', unit: 'Lot' };
+  }
+
+  // Deduplicate overlapping matches within 15 characters
+  matches.sort((a, b) => a.index - b.index);
+  const uniqueMatches: typeof matches = [];
+  for (const m of matches) {
+    const isOverlapping = uniqueMatches.some(
+      (um) => Math.abs(um.index - m.index) < 15
+    );
+    if (!isOverlapping) {
+      uniqueMatches.push(m);
+    }
+  }
+
+  // Group and sum by standardized unit
+  const groups: { [unit: string]: number } = {};
+  for (const m of uniqueMatches) {
+    let u = m.unit;
+    if (u === 'KG') u = 'KGS';
+    if (u === 'MT') u = 'MTS';
+    if (u === 'PC') u = 'PCS';
+    if (u === 'LTR') u = 'LTRS';
+    if (u === 'TON') u = 'TONS';
+    if (u === 'ITEM') u = 'ITEMS';
+    
+    groups[u] = (groups[u] || 0) + m.value;
+  }
+
+  const groupEntries = Object.entries(groups);
+  if (groupEntries.length === 0) {
+    return { qty: '1', unit: 'Lot' };
+  }
+
+  if (groupEntries.length === 1) {
+    const [u, totalVal] = groupEntries[0];
+    const qty = Number.isInteger(totalVal)
+      ? totalVal.toLocaleString('en-IN')
+      : totalVal.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+    return { qty, unit: u };
+  } else {
+    const qty = groupEntries
+      .map(([u, totalVal]) => {
+        const formattedVal = Number.isInteger(totalVal)
+          ? totalVal.toLocaleString('en-IN')
+          : totalVal.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+        return `${formattedVal} ${u}`;
+      })
+      .join(' + ');
+    return { qty, unit: '' };
+  }
+}
+
 async function extractAndProcessLotDocuments(
   catalogText: string,
   sanitizedAuctionNum: string,
@@ -175,6 +265,7 @@ async function extractAndProcessLotDocuments(
   imageUrls: string[];
   attachmentMap: Record<string, string[]>;
   lotSpecificImagesMap: Record<string, string[]>;
+  eligibilityNotes: string[];
 }> {
   // Reconstruct filename if there are newlines or spaces
   const cleanedText = catalogText
@@ -195,9 +286,10 @@ async function extractAndProcessLotDocuments(
   const imageUrls: string[] = [];
   const attachmentMap: Record<string, string[]> = {};
   const lotSpecificImagesMap: Record<string, string[]> = {};
+  const eligibilityNotes: string[] = [];
 
   if (uniqueAttachments.length === 0) {
-    return { imageUrls, attachmentMap, lotSpecificImagesMap };
+    return { imageUrls, attachmentMap, lotSpecificImagesMap, eligibilityNotes };
   }
 
   log.info(
@@ -237,7 +329,7 @@ async function extractAndProcessLotDocuments(
     if (renderedPages.length > 0) {
       log.info(
         { fileName, pageCount: renderedPages.length },
-        "Rendered attachment pages, executing text matching",
+        "Rendered attachment pages, executing text matching with OCR",
       );
 
       const pageUrls: string[] = [];
@@ -257,8 +349,12 @@ async function extractAndProcessLotDocuments(
           lotImageUrls.push(publicUrl);
           pageUrls.push(publicUrl);
 
-          // Find matches for this page
-          const matched = matchPageToLots(page.text, items, fileName);
+          // Perform OCR to extract text from scans/photos on this page
+          const ocrText = await performOcr(page.imageBuffer);
+          const combinedText = `${page.text || ""}\n${ocrText}`;
+
+          // Find matches for this page using both the selectable and OCR text
+          const matched = matchPageToLots(combinedText, items, fileName);
           pageToLots.push(matched);
 
           if (matched.length > 0) {
@@ -266,12 +362,37 @@ async function extractAndProcessLotDocuments(
               { pageNumber: page.pageNumber, matchedLots: matched.map(m => m.sr) },
               "Mapped rendered page specifically to lot(s)",
             );
+            
+            // Extract quantities from the combined text
+            const extracted = extractQuantitiesDetailed(combinedText);
+
             for (const lot of matched) {
               const srStr = String(lot.sr);
               if (!lotSpecificImagesMap[srStr]) {
                 lotSpecificImagesMap[srStr] = [];
               }
               lotSpecificImagesMap[srStr].push(publicUrl);
+
+              // Update lot quantity and unit if more specific quantity is found in photo text
+              if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
+                const currentQtyLower = (lot.qty || "").toLowerCase().trim();
+                const currentUnitLower = (lot.unit || "").toLowerCase().trim();
+                const isCurrentGeneric = 
+                  currentQtyLower === "1" || 
+                  currentQtyLower === "1.0" || 
+                  currentUnitLower === "lot" || 
+                  currentUnitLower === "lots";
+
+                if (isCurrentGeneric || (extracted.unit && extracted.unit !== "LOT")) {
+                  log.info(
+                    { lotSr: lot.sr, oldQty: lot.qty, oldUnit: lot.unit, newQty: extracted.qty, newUnit: extracted.unit },
+                    "Updating lot quantity from OCR/scanned text"
+                  );
+                  lot.qty = extracted.qty;
+                  lot.unit = extracted.unit;
+                  eligibilityNotes.push(`Review photo/annexure attachments (${fileName}) for Lot ${lot.sr} quantity details.`);
+                }
+              }
             }
           }
         } catch (uploadErr: any) {
@@ -292,11 +413,41 @@ async function extractAndProcessLotDocuments(
           "No specific page matches found, mapping pages sequentially to lots",
         );
         for (let pIdx = 0; pIdx < pageUrls.length; pIdx++) {
-          const srStr = String(items[pIdx].sr);
+          const item = items[pIdx];
+          const srStr = String(item.sr);
           if (!lotSpecificImagesMap[srStr]) {
             lotSpecificImagesMap[srStr] = [];
           }
           lotSpecificImagesMap[srStr].push(pageUrls[pIdx]);
+
+          // Run OCR and extract quantities for sequential matching as well
+          const page = renderedPages[pIdx];
+          try {
+            const ocrText = await performOcr(page.imageBuffer);
+            const combinedText = `${page.text || ""}\n${ocrText}`;
+            const extracted = extractQuantitiesDetailed(combinedText);
+            if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
+              const currentQtyLower = (item.qty || "").toLowerCase().trim();
+              const currentUnitLower = (item.unit || "").toLowerCase().trim();
+              const isCurrentGeneric = 
+                currentQtyLower === "1" || 
+                currentQtyLower === "1.0" || 
+                currentUnitLower === "lot" || 
+                currentUnitLower === "lots";
+
+              if (isCurrentGeneric || (extracted.unit && extracted.unit !== "LOT")) {
+                log.info(
+                  { lotSr: item.sr, oldQty: item.qty, newQty: extracted.qty },
+                  "Updating sequential lot quantity from OCR/scanned text"
+                );
+                item.qty = extracted.qty;
+                item.unit = extracted.unit;
+                eligibilityNotes.push(`Review photo/annexure attachments (${fileName}) for Lot ${item.sr} quantity details.`);
+              }
+            }
+          } catch (ocrErr: any) {
+            log.warn({ errorMessage: ocrErr.message }, "OCR failed during sequential fallback");
+          }
         }
       }
     } else {
@@ -309,14 +460,51 @@ async function extractAndProcessLotDocuments(
         );
         for (let j = 0; j < embeddedJpegs.length; j++) {
           try {
+            const imgBuffer = embeddedJpegs[j];
             const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_lot_doc_${i}_img_${j}.jpg`;
             const publicUrl = await uploadToStorage(
               imgPath,
-              embeddedJpegs[j],
+              imgBuffer,
               "image/jpeg",
             );
             imageUrls.push(publicUrl);
             lotImageUrls.push(publicUrl);
+
+            // Run OCR on the embedded image to match lots and extract quantities
+            const ocrText = await performOcr(imgBuffer);
+            if (ocrText) {
+              const matched = matchPageToLots(ocrText, items, fileName);
+              if (matched.length > 0) {
+                const extracted = extractQuantitiesDetailed(ocrText);
+                for (const lot of matched) {
+                  const srStr = String(lot.sr);
+                  if (!lotSpecificImagesMap[srStr]) {
+                    lotSpecificImagesMap[srStr] = [];
+                  }
+                  lotSpecificImagesMap[srStr].push(publicUrl);
+
+                  if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
+                    const currentQtyLower = (lot.qty || "").toLowerCase().trim();
+                    const currentUnitLower = (lot.unit || "").toLowerCase().trim();
+                    const isCurrentGeneric = 
+                      currentQtyLower === "1" || 
+                      currentQtyLower === "1.0" || 
+                      currentUnitLower === "lot" || 
+                      currentUnitLower === "lots";
+
+                    if (isCurrentGeneric || (extracted.unit && extracted.unit !== "LOT")) {
+                      log.info(
+                        { lotSr: lot.sr, oldQty: lot.qty, newQty: extracted.qty },
+                        "Updating fallback lot quantity from OCR/scanned text"
+                      );
+                      lot.qty = extracted.qty;
+                      lot.unit = extracted.unit;
+                      eligibilityNotes.push(`Review photo/annexure attachments (${fileName}) for Lot ${lot.sr} quantity details.`);
+                    }
+                  }
+                }
+              }
+            }
           } catch (uploadErr: any) {
             log.warn(
               { errorMessage: uploadErr.message },
@@ -330,7 +518,12 @@ async function extractAndProcessLotDocuments(
     attachmentMap[fileName] = lotImageUrls;
   }
 
-  return { imageUrls, attachmentMap, lotSpecificImagesMap };
+  return { 
+    imageUrls, 
+    attachmentMap, 
+    lotSpecificImagesMap, 
+    eligibilityNotes: Array.from(new Set(eligibilityNotes)) 
+  };
 }
 
 // ─── Queue Pipeline ──────────────────────────────────────────────────────────
@@ -482,7 +675,15 @@ async function processRecord(record: QueueRecord): Promise<void> {
     jobLog.info({}, "Parsing PDF text content");
     const parsedPdf = await pdf(fileBuffer);
     if (parsedPdf?.text) {
-      // Extract attachment images from the parsed PDF text
+      // First, parse the main catalog text to get structured items
+      const summaryObj: CatalogSummary = parseMstcCatalogText(
+        parsedPdf.text,
+        record.category_name || "",
+        record.seller_name || "",
+        record.location || "",
+      );
+
+      // Now extract attachment images and run OCR using the parsed items list
       let attachmentImageUrls: string[] = [];
       let attachmentMap: Record<string, string[]> = {};
       try {
@@ -490,6 +691,7 @@ async function processRecord(record: QueueRecord): Promise<void> {
           parsedPdf.text,
           sanitizedAuctionNum,
           headers,
+          summaryObj.items || [],
         );
         attachmentImageUrls = result.imageUrls;
         attachmentMap = result.attachmentMap;
@@ -497,8 +699,18 @@ async function processRecord(record: QueueRecord): Promise<void> {
           extractedImageUrls.push(...attachmentImageUrls);
           jobLog.info(
             { attachmentImageCount: attachmentImageUrls.length },
-            "Extracted and uploaded lot attachment images",
+            "Extracted and uploaded lot attachment images with OCR",
           );
+        }
+        if (result.eligibilityNotes && result.eligibilityNotes.length > 0) {
+          if (!summaryObj.eligibility) {
+            summaryObj.eligibility = [];
+          }
+          for (const note of result.eligibilityNotes) {
+            if (!summaryObj.eligibility.includes(note)) {
+              summaryObj.eligibility.push(note);
+            }
+          }
         }
       } catch (attErr: any) {
         jobLog.warn(
@@ -506,13 +718,6 @@ async function processRecord(record: QueueRecord): Promise<void> {
           "Failed to process lot attachments",
         );
       }
-
-      const summaryObj: CatalogSummary = parseMstcCatalogText(
-        parsedPdf.text,
-        record.category_name || "",
-        record.seller_name || "",
-        record.location || "",
-      );
 
       // Map lot-specific images from the attachment map to the lot item objects
       if (summaryObj.items && Array.isArray(summaryObj.items)) {

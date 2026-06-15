@@ -11,7 +11,6 @@ import { ProtectedRoute } from '../components/common/ProtectedRoute';
 // Pages
 import { Home } from '../pages/Home';
 import { Auctions } from '../pages/Auctions';
-import { Tenders } from '../pages/Tenders';
 import { Login } from '../pages/Login';
 import { Register } from '../pages/Register';
 import { ForgotPassword } from '../pages/ForgotPassword';
@@ -26,14 +25,12 @@ import { FAQ } from '../pages/FAQ';
 import { Notices } from '../pages/Notices';
 import { News } from '../pages/News';
 import { AuctionDetail } from '../pages/AuctionDetail';
-import { TenderDetail } from '../pages/TenderDetail';
 
 import { SellerDashboard } from '../pages/seller/SellerDashboard';
 import { ManageAuctions } from '../pages/seller/ManageAuctions';
 import { AuctionForm } from '../pages/seller/AuctionForm';
 
 import { MyBids } from '../pages/dashboard/MyBids';
-import { MyTenders } from '../pages/dashboard/MyTenders';
 import { Interested } from '../pages/dashboard/Interested';
 import { Notifications } from '../pages/dashboard/Notifications';
 import { ProfileSettings } from '../pages/dashboard/ProfileSettings';
@@ -51,8 +48,6 @@ export const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: 'auctions', element: <Auctions /> },
       { path: 'auctions/:id', element: <AuctionDetail /> },
-      { path: 'tenders', element: <Tenders /> },
-      { path: 'tenders/:id', element: <TenderDetail /> },
       { path: 'contact', element: <Contact /> },
       { path: 'about', element: <About /> },
       { path: 'faq', element: <FAQ /> },
@@ -81,7 +76,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       { path: 'bids', element: <MyBids /> },
-      { path: 'tenders', element: <MyTenders /> },
       { path: 'interested', element: <Interested /> },
       { path: 'notifications', element: <Notifications /> },
       { path: 'documents', element: <DocumentVault /> },
