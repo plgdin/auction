@@ -45,42 +45,116 @@ export interface ValuationOutput {
 }
 
 // Simple base price helper for realistic fallback valuation
-const CATEGORY_BASE_PRICES: Record<string, number> = {
-  'sand': 1500, // per unit
-  'block': 12000,
-  'metal': 45000, // per ton
-  'iron': 38000,
-  'steel': 42000,
-  'copper': 650000,
-  'brass': 420000,
-  'aluminium': 180000,
-  'cable': 250,
-  'wire': 80,
-  'transformer': 150000,
-  'battery': 4500,
-  'generator': 85000,
-  'computer': 15000,
-  'laptop': 22000,
-  'obsolete': 1500,
-  'scrap': 25000,
-  'default': 5000
-};
+interface CommodityDef {
+  name: string;
+  keywords: string[];
+  basePricePerKg?: number;
+  basePricePerUnit?: number;
+  minPrice: number;
+  maxPrice: number;
+  queryKeyword: string;
+}
 
-function getMockPrice(name: string): number[] {
-  const normalized = name.toLowerCase();
-  let basePrice = CATEGORY_BASE_PRICES['default'];
-  for (const [cat, price] of Object.entries(CATEGORY_BASE_PRICES)) {
-    if (normalized.includes(cat)) {
-      basePrice = price;
-      break;
+const COMMODITIES: CommodityDef[] = [
+  {
+    name: 'heavy_vehicle_machinery',
+    keywords: ['bus', 'buses', 'truck', 'rig', 'compressor', 'machinery'],
+    basePricePerUnit: 180000,
+    minPrice: 80000,
+    maxPrice: 400000,
+    queryKeyword: 'scrap bus truck heavy machinery price India'
+  },
+  {
+    name: 'vehicle',
+    keywords: ['car', 'jeep', 'armada', 'motorcycle', 'scooter', 'wheeler', 'vehicle'],
+    basePricePerUnit: 45000,
+    minPrice: 5000,
+    maxPrice: 150000,
+    queryKeyword: 'scrap car vehicle price India'
+  },
+  {
+    name: 'transformer',
+    keywords: ['transformer'],
+    basePricePerUnit: 90000,
+    minPrice: 40000,
+    maxPrice: 250000,
+    queryKeyword: 'scrap transformer price India'
+  },
+  {
+    name: 'copper',
+    keywords: ['copper', 'cu'],
+    basePricePerKg: 650,
+    minPrice: 450,
+    maxPrice: 900,
+    queryKeyword: 'copper scrap price per kg India'
+  },
+  {
+    name: 'brass',
+    keywords: ['brass'],
+    basePricePerKg: 420,
+    minPrice: 300,
+    maxPrice: 600,
+    queryKeyword: 'brass scrap price per kg India'
+  },
+  {
+    name: 'aluminium',
+    keywords: ['aluminium', 'aluminum', 'al'],
+    basePricePerKg: 180,
+    minPrice: 120,
+    maxPrice: 280,
+    queryKeyword: 'aluminium scrap price per kg India'
+  },
+  {
+    name: 'steel_iron_ferrous',
+    keywords: ['steel', 'iron', 'ferrous', 'pipe', 'angle', 'channel', 'structure', 'railway', 'ms scrap'],
+    basePricePerKg: 42,
+    minPrice: 30,
+    maxPrice: 65,
+    queryKeyword: 'ms scrap price per kg India'
+  },
+  {
+    name: 'battery',
+    keywords: ['battery', 'batteries', 'vrla', 'lead acid'],
+    basePricePerUnit: 1200,
+    minPrice: 800,
+    maxPrice: 4000,
+    queryKeyword: 'scrap lead acid battery price India'
+  },
+  {
+    name: 'lubricant_oil',
+    keywords: ['oil', 'lubricant', 'lubricating', 'waste oil'],
+    basePricePerUnit: 35,
+    minPrice: 20,
+    maxPrice: 80,
+    queryKeyword: 'waste engine oil price per liter India'
+  },
+  {
+    name: 'e_waste',
+    keywords: ['e-waste', 'telecom', 'computer', 'laptop', 'switch', 'motherboard', 'electronic', 'smps', 'panel'],
+    basePricePerKg: 100,
+    minPrice: 50,
+    maxPrice: 300,
+    queryKeyword: 'e-waste scrap price per kg India'
+  }
+];
+
+function matchCommodity(description: string): CommodityDef {
+  const normalized = description.toLowerCase();
+  for (const comm of COMMODITIES) {
+    for (const kw of comm.keywords) {
+      if (normalized.includes(kw)) {
+        return comm;
+      }
     }
   }
-  const prices: number[] = [];
-  for (let i = 0; i < 4; i++) {
-    const variance = 0.7 + Math.random() * 0.6; // 70% to 130%
-    prices.push(Math.round(basePrice * variance));
-  }
-  return prices;
+  return {
+    name: 'default',
+    keywords: [],
+    basePricePerKg: 50,
+    minPrice: 10,
+    maxPrice: 500,
+    queryKeyword: 'scrap metal price India'
+  };
 }
 
 const extractPricesFromText = (text: string): number[] => {
@@ -98,13 +172,23 @@ const extractPricesFromText = (text: string): number[] => {
     }
   }
 
-  // Pattern 2: USD or $ (converted to INR at 85)
+  // Pattern 2: USD or $
   const usPattern = /(?:\$|USD)\s*([\d,]+(?:\.\d+)?)/gi;
   while ((match = usPattern.exec(text)) !== null) {
     const rawVal = match[1].replace(/,/g, '');
     const val = parseFloat(rawVal);
     if (!isNaN(val) && val > 1 && val < 1000000) {
       foundPrices.push(Math.round(val * 85));
+    }
+  }
+
+  // Pattern 3: GBP or £
+  const ukPattern = /(?:£|GBP)\s*([\d,]+(?:\.\d+)?)/gi;
+  while ((match = ukPattern.exec(text)) !== null) {
+    const rawVal = match[1].replace(/,/g, '');
+    const val = parseFloat(rawVal);
+    if (!isNaN(val) && val > 1 && val < 1000000) {
+      foundPrices.push(Math.round(val * 108));
     }
   }
 
@@ -120,18 +204,21 @@ export const valuationService = {
   }> {
     // @ts-ignore
     const apiKey = (typeof import.meta !== 'undefined' && (import.meta as any).env ? (import.meta as any).env.VITE_SERPAPI_KEY : undefined) || (typeof process !== 'undefined' && (process as any).env ? (process as any).env.VITE_SERPAPI_KEY : undefined) || '';
-    
+    const comm = matchCommodity(itemName);
+    const isPerKg = comm.basePricePerKg !== undefined;
+    const baseVal = comm.basePricePerKg || comm.basePricePerUnit || 50;
+
     const regions = [
-      { code: 'in', gl: 'in', currency: 'INR', rate: 1, suffix: 'price rate' },
-      { code: 'us', gl: 'us', currency: 'USD', rate: 85, suffix: 'price USD' },
-      { code: 'uk', gl: 'uk', currency: 'GBP', rate: 108, suffix: 'price GBP' }
+      { code: 'in', name: 'India', rate: 1, suffix: 'price India' },
+      { code: 'us', name: 'USA', rate: 85, suffix: 'price USA' },
+      { code: 'uk', name: 'UK', rate: 108, suffix: 'price UK' }
     ] as const;
 
     const results: any = {};
 
     if (!apiKey) {
       // Proportional mock data if API key not present
-      const baseMock = getMockPrice(itemName)[0] || 5000;
+      const baseMock = baseVal;
       results['in'] = { price: baseMock, convertedPrice: baseMock, sources: 4, isMock: true };
       results['us'] = { price: Math.round((baseMock * 0.95) / 85), convertedPrice: Math.round(baseMock * 0.95), sources: 3, isMock: true };
       results['uk'] = { price: Math.round((baseMock * 0.9) / 108), convertedPrice: Math.round(baseMock * 0.9), sources: 2, isMock: true };
@@ -140,7 +227,14 @@ export const valuationService = {
 
     await Promise.all(regions.map(async (reg) => {
       try {
-        const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(itemName + ' ' + reg.suffix)}&gl=${reg.gl}&api_key=${apiKey}`;
+        let query = comm.queryKeyword;
+        if (reg.code === 'us') {
+          query = query.replace('India', 'USA');
+        } else if (reg.code === 'uk') {
+          query = query.replace('India', 'UK');
+        }
+        
+        const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&gl=${reg.code}&api_key=${apiKey}`;
         const res = await axios.get(url, { timeout: 4000 });
         const prices: number[] = [];
 
@@ -157,11 +251,14 @@ export const valuationService = {
           prices.push(...extractPricesFromText(text));
         }
 
-        const filtered = Array.from(new Set(prices)).filter(
-          p => p > 1 && p !== 2023 && p !== 2024 && p !== 2025 && p !== 2026 && p !== 2027
-        );
+        const filtered = Array.from(new Set(prices)).map(p => {
+          if (isPerKg && p >= comm.minPrice * 1000 && p <= comm.maxPrice * 1000) {
+            return p / 1000;
+          }
+          return p;
+        }).filter(p => p >= comm.minPrice && p <= comm.maxPrice);
 
-        if (filtered.length >= 2) {
+        if (filtered.length >= 1) {
           const avgInr = filtered.reduce((sum, p) => sum + p, 0) / filtered.length;
           results[reg.code] = {
             price: Math.round(avgInr / reg.rate),
@@ -170,22 +267,20 @@ export const valuationService = {
             isMock: false
           };
         } else {
-          // Proportional mock fallback
-          const baseMock = getMockPrice(itemName)[0] || 5000;
+          // Proportional fallback
           const factor = reg.code === 'us' ? 0.95 : reg.code === 'uk' ? 0.9 : 1.0;
           results[reg.code] = {
-            price: Math.round((baseMock * factor) / reg.rate),
-            convertedPrice: Math.round(baseMock * factor),
+            price: Math.round((baseVal * factor) / reg.rate),
+            convertedPrice: Math.round(baseVal * factor),
             sources: 0,
             isMock: true
           };
         }
       } catch {
-        const baseMock = getMockPrice(itemName)[0] || 5000;
         const factor = reg.code === 'us' ? 0.95 : reg.code === 'uk' ? 0.9 : 1.0;
         results[reg.code] = {
-          price: Math.round((baseMock * factor) / reg.rate),
-          convertedPrice: Math.round(baseMock * factor),
+          price: Math.round((baseVal * factor) / reg.rate),
+          convertedPrice: Math.round(baseVal * factor),
           sources: 0,
           isMock: true
         };
@@ -226,22 +321,48 @@ export const valuationService = {
         pricingConfidence = 65;
       }
 
+      const comm = matchCommodity(rawItem.description);
+      const isPerKg = comm.basePricePerKg !== undefined;
+      const normalizedUnit = rawItem.unit.toLowerCase();
+
+      let baseQty = qty;
+      if (isPerKg) {
+        if (normalizedUnit.includes('mt') || normalizedUnit.includes('ton') || normalizedUnit.includes('tonne')) {
+          baseQty = qty * 1000;
+        }
+      }
+
+      const itemTotalValue = Math.round(avgPrice * baseQty);
+      const itemUnitValue = Math.round(avgPrice * (baseQty / qty));
+
       valuedItems.push({
         name: rawItem.description,
         qty,
-        unitValue: Math.round(avgPrice),
-        totalValue: Math.round(avgPrice * qty),
+        unitValue: itemUnitValue,
+        totalValue: itemTotalValue,
         confidence: pricingConfidence,
         internationalPrices: {
-          in: { price: intl.in.price, convertedPrice: intl.in.convertedPrice, sources: intl.in.sources },
-          us: { price: intl.us.price, convertedPrice: intl.us.convertedPrice, sources: intl.us.sources },
-          uk: { price: intl.uk.price, convertedPrice: intl.uk.convertedPrice, sources: intl.uk.sources }
+          in: { 
+            price: itemUnitValue, 
+            convertedPrice: itemTotalValue, 
+            sources: intl.in.sources 
+          },
+          us: { 
+            price: Math.round((itemUnitValue * 0.95) / 85), 
+            convertedPrice: Math.round(itemTotalValue * 0.95), 
+            sources: intl.us.sources 
+          },
+          uk: { 
+            price: Math.round((itemUnitValue * 0.9) / 108), 
+            convertedPrice: Math.round(itemTotalValue * 0.9), 
+            sources: intl.uk.sources 
+          }
         }
       });
 
-      totalLotValue += avgPrice * qty;
-      totalUsInr += intl.us.convertedPrice * qty;
-      totalUkInr += intl.uk.convertedPrice * qty;
+      totalLotValue += itemTotalValue;
+      totalUsInr += itemTotalValue * 0.95;
+      totalUkInr += itemTotalValue * 0.90;
       totalConfidenceSum += pricingConfidence;
     }
 
