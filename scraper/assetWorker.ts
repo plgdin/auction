@@ -32,6 +32,18 @@ function parseMstcCatalogText(
   sellerName: string,
   location: string,
 ): any {
+  const cleanName = (name: string): string => {
+    if (!name) return "";
+    return name
+      .replace(/\[[^\]]*\]/g, "")
+      .replace(/\([^\)]*\)/g, "")
+      .replace(/[\{\}]/g, "")
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/[;:\-\s]+$/, "")
+      .trim();
+  };
+
   const lines = text.split("\n").map((l) => l.trim());
   const cleanText = lines.join("\n");
 
@@ -42,7 +54,7 @@ function parseMstcCatalogText(
 
   const contactMatch = cleanText.match(/Contact Person:\s*([^\n]+)/);
   if (contactMatch) {
-    contactName = contactMatch[1].trim();
+    contactName = cleanName(contactMatch[1]);
   }
   const emailMatch =
     cleanText.match(/e-Mail\s*:\s*([^\n]+)/i) ||
@@ -60,7 +72,7 @@ function parseMstcCatalogText(
   // Fallbacks from Seller Details section
   if (!contactName) {
     const sContact = cleanText.match(/Contact Person([^\n]+)/);
-    if (sContact) contactName = sContact[1].trim();
+    if (sContact) contactName = cleanName(sContact[1]);
   }
   if (!contactPhone) {
     const sPhone = cleanText.match(/Telephone Number([^\n]+)/);
@@ -81,7 +93,7 @@ function parseMstcCatalogText(
   if (officerIdx !== -1) {
     const nameLine = docLines[officerIdx].replace(/Name\s*&\s*Designation\s*of\s*Officer\s*OneName:\s*/i, "").trim();
     if (nameLine && !nameLine.toLowerCase().includes("email:") && !nameLine.toLowerCase().includes("phone:")) {
-      officerName = nameLine.replace(/[\[\{\(]\s*[-_.\s]*\s*[\]\}\)]/g, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+      officerName = cleanName(nameLine);
     }
     for (let i = officerIdx + 1; i < Math.min(officerIdx + 5, docLines.length); i++) {
       const line = docLines[i];
@@ -109,10 +121,9 @@ function parseMstcCatalogText(
   ];
 
   if (contactName) {
-    const cleanContactName = contactName.replace(/[\[\{\(]\s*[-_.\s]*\s*[\]\}\)]/g, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
     keyContacts.push({
       role: "Site Contact / Engineer",
-      name: cleanContactName,
+      name: contactName,
       email: contactEmail || "see-catalog@mstc.co.in",
       phone: contactPhone || "no contact info available",
     });
