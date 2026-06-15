@@ -14,6 +14,162 @@ import {
   matchWholeWord
 } from './nlpSearchUtils';
 
+// ─── India Location Lookup ────────────────────────────────────────────────────
+// Maps canonical state/city → all known aliases (names, abbreviations, spellings).
+// Add new cities/states here — the search engine picks them up automatically.
+const INDIA_LOCATIONS: Record<string, string[]> = {
+  'kerala': ['kerala', 'kl', 'kochi', 'cochin', 'thiruvananthapuram', 'trivandrum', 'tvm', 'kozhikode', 'calicut', 'thrissur', 'kollam', 'alappuzha', 'ernakulam', 'kannur', 'kasaragod', 'wayanad', 'idukki', 'palakkad', 'malappuram', 'pathanamthitta', 'kottayam'],
+  'tamil nadu': ['tamil nadu', 'tamilnadu', 'tn', 'chennai', 'madras', 'coimbatore', 'cbe', 'madurai', 'trichy', 'salem', 'tiruppur', 'erode', 'vellore', 'tirunelveli', 'thoothukudi', 'dindigul', 'nagercoil', 'thanjavur', 'kanchipuram'],
+  'karnataka': ['karnataka', 'ka', 'bengaluru', 'bangalore', 'blr', 'mysore', 'mysuru', 'mangaluru', 'mangalore', 'hubli', 'dharwad', 'belagavi', 'belgaum', 'gulbarga', 'kalaburagi', 'ballari', 'bellary', 'davanagere', 'shimoga', 'tumkur', 'udupi'],
+  'andhra pradesh': ['andhra pradesh', 'andhra', 'ap', 'visakhapatnam', 'vizag', 'vijayawada', 'guntur', 'nellore', 'kurnool', 'rajahmundry', 'kakinada', 'tirupati', 'kadapa', 'anantapur', 'eluru'],
+  'telangana': ['telangana', 'ts', 'hyderabad', 'hyd', 'secunderabad', 'warangal', 'nizamabad', 'karimnagar', 'khammam'],
+  'maharashtra': ['maharashtra', 'mh', 'mumbai', 'bombay', 'pune', 'poona', 'nagpur', 'nashik', 'aurangabad', 'solapur', 'kolhapur', 'thane', 'navi mumbai', 'amravati'],
+  'gujarat': ['gujarat', 'gj', 'ahmedabad', 'amd', 'surat', 'vadodara', 'baroda', 'rajkot', 'gandhinagar', 'bhavnagar', 'jamnagar', 'junagadh'],
+  'rajasthan': ['rajasthan', 'rj', 'jaipur', 'jodhpur', 'kota', 'bikaner', 'udaipur', 'ajmer', 'bhilwara', 'alwar', 'sikar'],
+  'madhya pradesh': ['madhya pradesh', 'mp', 'bhopal', 'indore', 'jabalpur', 'gwalior', 'ujjain', 'sagar', 'rewa', 'satna'],
+  'uttar pradesh': ['uttar pradesh', 'up', 'lucknow', 'kanpur', 'agra', 'varanasi', 'prayagraj', 'allahabad', 'meerut', 'ghaziabad', 'noida', 'mathura', 'aligarh', 'bareilly', 'moradabad', 'saharanpur', 'gorakhpur', 'firozabad'],
+  'delhi': ['delhi', 'new delhi', 'ncr'],
+  'west bengal': ['west bengal', 'wb', 'bengal', 'kolkata', 'calcutta', 'howrah', 'durgapur', 'asansol', 'siliguri'],
+  'odisha': ['odisha', 'orissa', 'or', 'bhubaneswar', 'cuttack', 'rourkela', 'sambalpur', 'puri', 'balasore'],
+  'jharkhand': ['jharkhand', 'jh', 'ranchi', 'jamshedpur', 'dhanbad', 'bokaro', 'hazaribagh'],
+  'bihar': ['bihar', 'br', 'patna', 'gaya', 'bhagalpur', 'muzaffarpur', 'darbhanga', 'purnia'],
+  'chhattisgarh': ['chhattisgarh', 'cg', 'raipur', 'bilaspur', 'durg', 'korba', 'rajnandgaon'],
+  'punjab': ['punjab', 'pb', 'ludhiana', 'amritsar', 'jalandhar', 'patiala', 'bathinda', 'mohali'],
+  'haryana': ['haryana', 'hr', 'faridabad', 'gurugram', 'gurgaon', 'hisar', 'rohtak', 'panipat', 'karnal', 'ambala', 'sonipat'],
+  'chandigarh': ['chandigarh'],
+  'uttarakhand': ['uttarakhand', 'uk', 'dehradun', 'haridwar', 'roorkee', 'rishikesh', 'haldwani', 'nainital'],
+  'himachal pradesh': ['himachal pradesh', 'hp', 'shimla', 'dharamsala', 'mandi', 'solan'],
+  'assam': ['assam', 'as', 'guwahati', 'dibrugarh', 'silchar', 'jorhat'],
+  'goa': ['goa', 'panaji', 'margao', 'vasco'],
+  'manipur': ['manipur', 'mn', 'imphal'],
+  'meghalaya': ['meghalaya', 'ml', 'shillong'],
+  'mizoram': ['mizoram', 'mz', 'aizawl'],
+  'nagaland': ['nagaland', 'nl', 'kohima'],
+  'tripura': ['tripura', 'tr', 'agartala'],
+  'sikkim': ['sikkim', 'sk', 'gangtok'],
+  'arunachal pradesh': ['arunachal pradesh', 'arunachal', 'itanagar'],
+  'jammu and kashmir': ['jammu and kashmir', 'jammu', 'kashmir', 'jk', 'srinagar'],
+  'ladakh': ['ladakh', 'leh'],
+};
+
+/**
+ * Extract a location mentioned in the query (e.g. "in Kerala", "at Mumbai", "from UP", bare "Kerala").
+ * Returns the canonical location key and the query with the location phrase stripped.
+ */
+function extractLocationFromQuery(query: string): { canonical: string | null; remainingQuery: string } {
+  if (!query) return { canonical: null, remainingQuery: query };
+  const lower = query.toLowerCase();
+
+  // Build alias list sorted longest-first to avoid partial matches
+  const entries: { canonical: string; alias: string }[] = [];
+  for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
+    for (const alias of aliases) {
+      entries.push({ canonical, alias });
+    }
+  }
+  entries.sort((a, b) => b.alias.length - a.alias.length);
+
+  const preps = ['located in', 'located at', 'in', 'at', 'from', 'near', 'around', 'within'];
+
+  for (const { canonical, alias } of entries) {
+    // Try with preposition
+    for (const prep of preps) {
+      const pattern = `${prep} ${alias}`;
+      if (lower.includes(pattern)) {
+        const remaining = lower.replace(pattern, ' ').replace(/\s+/g, ' ').trim();
+        return { canonical, remainingQuery: remaining };
+      }
+    }
+    // Try bare word boundary match
+    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    if (regex.test(lower)) {
+      const remaining = lower.replace(regex, ' ').replace(/\s+/g, ' ').trim();
+      return { canonical, remainingQuery: remaining };
+    }
+  }
+
+  return { canonical: null, remainingQuery: query };
+}
+
+/**
+ * Returns true if the DB location string contains any alias for the given canonical location.
+ * Handles "Kochi, Kerala" matching both "kerala" and "kochi".
+ */
+function dbLocationMatchesCanonical(dbLocation: string, canonical: string): boolean {
+  if (!dbLocation || !canonical) return false;
+  const loc = dbLocation.toLowerCase();
+  const aliases = INDIA_LOCATIONS[canonical] || [];
+  for (const alias of aliases) {
+    if (loc.includes(alias.toLowerCase())) return true;
+  }
+  return false;
+}
+
+// ─── Subcategory Precision Map ────────────────────────────────────────────────
+// When the user's query matches a phrase here, ONLY that specific subcategory is returned.
+// Future-proof: add new entries as subcategories are added to the system.
+const SUBCATEGORY_EXACT_MAP: Array<{ phrase: string; subcategory: string }> = [
+  // Metal subcategories
+  { phrase: 'iron and steel', subcategory: 'Iron and steel' },
+  { phrase: 'iron & steel', subcategory: 'Iron and steel' },
+  { phrase: 'iron steel', subcategory: 'Iron and steel' },
+  { phrase: 'ms scrap', subcategory: 'Iron and steel' },
+  { phrase: 'mild steel', subcategory: 'Iron and steel' },
+  { phrase: 'aluminium', subcategory: 'Aluminium' },
+  { phrase: 'aluminum', subcategory: 'Aluminium' },
+  { phrase: 'copper', subcategory: 'Copper' },
+  { phrase: 'brass', subcategory: 'Brass' },
+  { phrase: 'zinc', subcategory: 'Zinc' },
+  { phrase: 'nickel', subcategory: 'Nickle' },
+  { phrase: 'nickle', subcategory: 'Nickle' },
+  { phrase: 'bronze', subcategory: 'Gun metal/bronze' },
+  { phrase: 'gun metal', subcategory: 'Gun metal/bronze' },
+  { phrase: 'mixed metal', subcategory: 'Mixed metal scraps' },
+  { phrase: 'mixed scrap', subcategory: 'Mixed metal scraps' },
+  // Electrical subcategories
+  { phrase: 'battery', subcategory: 'Battery' },
+  { phrase: 'transformer', subcategory: 'Transformer' },
+  { phrase: 'dg set', subcategory: 'Dg sets/generators' },
+  { phrase: 'generator', subcategory: 'Dg sets/generators' },
+  { phrase: 'air conditioner', subcategory: 'Air conditioner/ac plant' },
+  // Electronics subcategories
+  { phrase: 'computer', subcategory: 'Compters/peripherals' },
+  { phrase: 'computers', subcategory: 'Compters/peripherals' },
+  { phrase: 'laptop', subcategory: 'Compters/peripherals' },
+  { phrase: 'mobile', subcategory: 'Mobile/tablet' },
+  { phrase: 'tablet', subcategory: 'Mobile/tablet' },
+  // Forest Produce
+  { phrase: 'teak timber', subcategory: 'Timber - teak' },
+  { phrase: 'rosewood', subcategory: 'Timber - rosewood' },
+  { phrase: 'firewood', subcategory: 'Firewood' },
+  { phrase: 'sandalwood', subcategory: 'Sandal wood' },
+  { phrase: 'sandal wood', subcategory: 'Sandal wood' },
+  // Ash
+  { phrase: 'fly ash', subcategory: 'Fly ash' },
+  { phrase: 'pond ash', subcategory: 'Pond ash' },
+  { phrase: 'bottom ash', subcategory: 'Bottom ash' },
+  // Chemicals
+  { phrase: 'spent catalyst', subcategory: 'Spent catalyst' },
+  // Coal
+  { phrase: 'coal linkage', subcategory: 'Coal linkage' },
+  { phrase: 'lignite', subcategory: 'Lignite' },
+  // Property
+  { phrase: 'godown', subcategory: 'Godowns' },
+  { phrase: 'warehouse', subcategory: 'Warehouse' },
+];
+
+/** Returns the exact subcategory name if the query precisely matches a known phrase. */
+function detectPrecisionSubcategory(query: string): string | null {
+  if (!query) return null;
+  const lower = query.toLowerCase();
+  const sorted = [...SUBCATEGORY_EXACT_MAP].sort((a, b) => b.phrase.length - a.phrase.length);
+  for (const { phrase, subcategory } of sorted) {
+    if (lower.includes(phrase)) return subcategory;
+  }
+  return null;
+}
+
 export const publicService = {
   async submitContactMessage(messageData: Partial<ContactMessage>): Promise<boolean> {
     const { error } = await supabase
@@ -1053,16 +1209,58 @@ export const MstcSearchService = {
         return mapped.slice(0, 200);
       }
 
-      // Extract price constraint and clean query first
+      // ── Extract price constraint
       const priceConstraint = parsePriceConstraint(query);
-      const cleanedQuery = cleanQueryFromPriceConstraint(query);
+      let workingQuery = cleanQueryFromPriceConstraint(query);
 
-      // Tokenize and normalize query (including compound expressions)
-      const extractedTokensList = extractTokens(cleanedQuery);
+      // ── HARD FILTER 1: Location ───────────────────────────────────────────
+      // If user typed a location ("in Kerala", "at Mumbai", "UP" etc.),
+      // ONLY items from that location are returned. No other results shown.
+      const { canonical: locationCanonical, remainingQuery } = extractLocationFromQuery(workingQuery);
+      workingQuery = remainingQuery;
+
+      if (locationCanonical) {
+        mapped = mapped.filter(item =>
+          dbLocationMatchesCanonical(item.location || '', locationCanonical)
+        );
+        // Nothing matches → return empty instead of showing wrong-location results
+        if (mapped.length === 0) return [];
+      }
+
+      // ── HARD FILTER 2: Subcategory precision ─────────────────────────────
+      // If user typed "iron and steel", "computer", "fly ash" etc.,
+      // ONLY that specific subcategory is returned.
+      const precisionSubcategory = detectPrecisionSubcategory(workingQuery);
+      if (precisionSubcategory) {
+        const subFiltered = mapped.filter(item => {
+          const sub = (item.category_name || '').split(' | ')[1] || '';
+          return sub.toLowerCase() === precisionSubcategory.toLowerCase();
+        });
+        // Only apply if we actually get matches; else fall back to category-level scope
+        if (subFiltered.length > 0) {
+          mapped = subFiltered;
+        }
+      }
+
+      // ── Tokenize remaining query terms
+      const extractedTokensList = extractTokens(workingQuery);
       const rawTokens = filterCompoundComponents(extractedTokensList);
 
       if (rawTokens.length === 0) {
-        return mapped.slice(0, 200);
+        // Apply price hard-filter if present, then return
+        if (priceConstraint) {
+          mapped = mapped.filter(item => {
+            const { preBid, totalValue } = estimateAuctionValues(item);
+            const val = priceConstraint.field === 'pre_bid' ? preBid : totalValue;
+            if (val <= 0) return true;
+            if (priceConstraint.operator === 'less') return val <= priceConstraint.value;
+            if (priceConstraint.operator === 'greater') return val >= priceConstraint.value;
+            return val === priceConstraint.value;
+          });
+        }
+        return mapped
+          .sort((a, b) => new Date(b.opening_date).getTime() - new Date(a.opening_date).getTime())
+          .slice(0, 200);
       }
 
       // 1. Build Taxonomy dynamically from search data
