@@ -41,7 +41,7 @@ export function ReceiptModal({ isOpen, onClose, transaction, type }: ReceiptModa
           <div className="flex justify-between items-start mb-8">
             <div>
               <div className="w-10 h-10 bg-slate-900 text-white rounded flex items-center justify-center font-bold text-xl mb-2">M</div>
-              <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Auction e-Procurement</h2>
+              <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Lelam e-Procurement</h2>
               <p className="text-sm text-slate-500">Official System Generated Receipt</p>
             </div>
             <div className="text-right">
@@ -98,7 +98,7 @@ export function ReceiptModal({ isOpen, onClose, transaction, type }: ReceiptModa
 
           <div className="text-center text-xs text-slate-400 mt-12 pt-6 border-t border-slate-100">
             <p>This is a computer-generated receipt and does not require a physical signature.</p>
-            <p>For support, contact billing@auction-platform.com</p>
+            <p>For support, contact billing@lelam.com</p>
           </div>
         </div>
       </div>

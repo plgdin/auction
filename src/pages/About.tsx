@@ -7,7 +7,7 @@ export function About() {
       <div className="bg-slate-900 py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-900/50 to-slate-900 z-0"></div>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-6">About Auction e-Procurement</h1>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-6">About Lelam e-Procurement</h1>
           <p className="text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
             Revolutionizing enterprise asset disposal and public procurement through transparent, highly secure, and globally accessible forward and reverse auction technologies.
           </p>

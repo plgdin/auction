@@ -12,8 +12,8 @@ export const emailTemplateService = {
     return `
       <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc; border-radius: 12px;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h2 style="color: #0f172a; margin: 0; font-size: 24px; font-weight: 800;">Auction Central</h2>
-          <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Enterprise e-Auction Platform</p>
+          <h2 style="color: #0f172a; margin: 0; font-size: 24px; font-weight: 800;">Lelam</h2>
+          <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Enterprise Lelam Platform</p>
         </div>
         
         <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -34,7 +34,7 @@ export const emailTemplateService = {
         
         <div style="text-align: center; margin-top: 30px; color: #94a3b8; font-size: 12px;">
           <p>This is an automated message. Please do not reply directly to this email.</p>
-          <p>© ${new Date().getFullYear()} Auction Central Procurement.</p>
+          <p>© ${new Date().getFullYear()} Lelam Procurement.</p>
         </div>
       </div>
     `;

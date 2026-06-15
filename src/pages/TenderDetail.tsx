@@ -237,7 +237,7 @@ export function TenderDetail() {
             <div className="bg-slate-900 text-white rounded-2xl shadow-sm p-6 relative overflow-hidden">
               <Building className="absolute -right-6 -bottom-6 w-32 h-32 text-white/5" />
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 relative z-10">Issuing Authority</h3>
-              <p className="text-lg font-bold mb-1 relative z-10">Auction Central Procurement</p>
+              <p className="text-lg font-bold mb-1 relative z-10">Lelam Procurement</p>
               <p className="text-sm text-slate-300 mb-4 relative z-10">Ministry of Enterprise Affairs</p>
               <Link to="/contact" className="text-primary-300 text-sm font-bold hover:underline relative z-10 flex items-center">
                 Contact Support <ArrowRight className="w-4 h-4 ml-1" />

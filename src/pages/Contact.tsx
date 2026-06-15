@@ -91,8 +91,8 @@ export function Contact() {
                 <div>
                   <h3 className="text-lg font-bold text-slate-900 mb-2">Email</h3>
                   <p className="text-slate-600 leading-relaxed">
-                    support@auction-platform.com<br />
-                    bidding@auction-platform.com
+                    support@lelam.com<br />
+                    bidding@lelam.com
                   </p>
                 </div>
               </div>

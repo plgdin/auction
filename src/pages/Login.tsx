@@ -12,7 +12,7 @@ export function Login() {
           </div>
           <div className="relative flex justify-center text-sm">
             <span className="px-2 bg-white text-slate-500">
-              New to Auction e-Auction?
+              New to Lelam?
             </span>
           </div>
         </div>

@@ -28,7 +28,7 @@ export function Header() {
             <Link to="/" className="flex items-center gap-2">
               <img src="/logo.png" alt="Logo" className="w-20 h-20 object-contain" />
               <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                Auction e-Procurement
+                Lelam e-Procurement
               </span>
             </Link>
           </div>
