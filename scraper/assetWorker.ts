@@ -40,93 +40,164 @@ function parseMstcCatalogText(
       .replace(/[\{\}]/g, "")
       .replace(/[-_]+/g, " ")
       .replace(/\s+/g, " ")
-      .replace(/[;:\-\s]+$/, "")
+      .replace(/[;:\-\s\+]+$/, "")
       .trim();
   };
 
+  const isValidContactName = (name: string): boolean => {
+    if (!name || name.length < 3 || name.length > 40) return false;
+    const lower = name.toLowerCase();
+    const invalidKeywords = [
+      'specified', 'location', 'prior', 'permission', 'escort', 'bidding', 
+      'day', 'working', 'date', 'time', 'mstc', 'tender', 'bidder', 
+      'download', 'catalog', 'available', 'office', 'details', 'helpdesk',
+      'click', 'here', 'refer', 'annexure', 'lot', 'description', 'parameters',
+      'annex', 'photograph', 'photo', 'attached', 'email', 'phone', 'contact'
+    ];
+    for (const kw of invalidKeywords) {
+      if (lower.includes(kw)) return false;
+    }
+    return true;
+  };
+
   const lines = text.split("\n").map((l) => l.trim());
-  const cleanText = lines.join("\n");
+  const keyContacts: any[] = [];
+  const processedNames = new Set<string>();
 
-  // 1. Extract Seller / Site Contact Details
-  let contactName = "";
-  let contactEmail = "";
-  let contactPhone = "";
+  // 1. Extract Site Contacts (Contact Person)
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
+    if (line.toLowerCase().includes('contact person')) {
+      let namePart = line.replace(/Contact Person\s*:?\s*/i, '').trim();
+      let nameLineIdx = idx;
+      
+      if (!namePart) {
+        if (idx + 1 < lines.length) {
+          namePart = lines[idx + 1];
+          nameLineIdx = idx + 1;
+        }
+      }
+      
+      const boundaryKeywords = [
+        'telephone', 'mobile', 'email', 'phone', 'tele', 'fax', 
+        'address', 'manager', 'officer', 'designation', ':', '-'
+      ];
+      let truncateIdx = namePart.length;
+      const lowerNamePart = namePart.toLowerCase();
+      for (const kw of boundaryKeywords) {
+        const kwIdx = lowerNamePart.indexOf(kw);
+        if (kwIdx !== -1 && kwIdx < truncateIdx) {
+          truncateIdx = kwIdx;
+        }
+      }
+      
+      const digitMatch = namePart.match(/\d/);
+      if (digitMatch && digitMatch.index !== undefined && digitMatch.index < truncateIdx) {
+        truncateIdx = digitMatch.index;
+      }
+      
+      const cleanedName = cleanName(namePart.substring(0, truncateIdx));
+      if (isValidContactName(cleanedName) && !processedNames.has(cleanedName.toLowerCase())) {
+        processedNames.add(cleanedName.toLowerCase());
 
-  const contactMatch = cleanText.match(/Contact Person:\s*([^\n]+)/);
-  if (contactMatch) {
-    contactName = cleanName(contactMatch[1]);
-  }
-  const emailMatch =
-    cleanText.match(/e-Mail\s*:\s*([^\n]+)/i) ||
-    cleanText.match(/Seller Email Address\s*([^\n]+)/i);
-  if (emailMatch) {
-    contactEmail = emailMatch[1].trim();
-  }
-  const phoneMatch =
-    cleanText.match(/Mobile\s*:\s*([^\n]+)/i) ||
-    cleanText.match(/Telephone Number\s*([^\n]+)/i);
-  if (phoneMatch) {
-    contactPhone = phoneMatch[1].replace(/^[:\s]+/, "").trim();
-  }
+        let phone = "";
+        let email = "";
+        for (let offset = 0; offset <= 4; offset++) {
+          const targetIdx = nameLineIdx + offset;
+          if (targetIdx >= lines.length) break;
+          const targetLine = lines[targetIdx];
+          
+          if (!phone) {
+            const m1 = targetLine.match(/(?:mobile|phone|telephone|tele|no|num|contact)[\s:.-]*(\d{10,12})/i) ||
+                       targetLine.match(/(\d{10})/);
+            if (m1) {
+              phone = m1[1];
+            }
+          }
+          if (!email) {
+            const m2 = targetLine.match(/([a-zA-Z0-9\._-]+@[a-zA-Z0-9\._-]+)/);
+            if (m2) {
+              email = m2[1];
+            }
+          }
+        }
 
-  // Fallbacks from Seller Details section
-  if (!contactName) {
-    const sContact = cleanText.match(/Contact Person([^\n]+)/);
-    if (sContact) contactName = cleanName(sContact[1]);
-  }
-  if (!contactPhone) {
-    const sPhone = cleanText.match(/Telephone Number([^\n]+)/);
-    if (sPhone) contactPhone = sPhone[1].replace(/^[:\s]+/, "").trim();
-  }
-  if (!contactEmail) {
-    const sEmail = cleanText.match(/Seller Email Address([^\n]+)/);
-    if (sEmail) contactEmail = sEmail[1].trim();
+        keyContacts.push({
+          role: "Site Contact / Engineer",
+          name: cleanedName,
+          email: email || "see-catalog@mstc.co.in",
+          phone: phone || "no contact info available"
+        });
+      }
+    }
   }
 
   // 2. Extract MSTC Officers
-  let officerName = "no contact info available";
-  let officerEmail = "no contact info available";
-  let officerPhone = "no contact info available";
-
-  const docLines = cleanText.split('\n');
-  const officerIdx = docLines.findIndex(l => l.includes("Officer OneName:"));
-  if (officerIdx !== -1) {
-    const nameLine = docLines[officerIdx].replace(/Name\s*&\s*Designation\s*of\s*Officer\s*OneName:\s*/i, "").trim();
-    if (nameLine && !nameLine.toLowerCase().includes("email:") && !nameLine.toLowerCase().includes("phone:")) {
-      officerName = cleanName(nameLine);
+  const officerOneMatch = text.match(/Officer OneName:\s*([^\n]+)/i) || text.match(/Officer OneName\s*([^\n]+)/i);
+  if (officerOneMatch) {
+    let offName = cleanName(officerOneMatch[1]);
+    let offEmail = "";
+    let offPhone = "";
+    
+    const idx = lines.findIndex(l => l.includes("Officer OneName"));
+    if (idx !== -1) {
+      for (let i = idx + 1; i < Math.min(idx + 5, lines.length); i++) {
+        const line = lines[i];
+        if (line.includes("Officer TwoName")) break;
+        const emailM = line.match(/Email\s*:?\s*([^\s\n]+)/i);
+        if (emailM) offEmail = emailM[1].trim();
+        const phoneM = line.match(/Phone\s*:?\s*(\d+)/i) || line.match(/Mobile\s*:?\s*(\d+)/i);
+        if (phoneM) offPhone = phoneM[1].trim();
+      }
     }
-    for (let i = officerIdx + 1; i < Math.min(officerIdx + 5, docLines.length); i++) {
-      const line = docLines[i];
-      if (line.includes("Officer TwoName:")) break;
-      const emailMatch = line.match(/^Email\s*:?\s*([^\n]*)/i);
-      if (emailMatch) {
-        const val = emailMatch[1].replace(/^[:\s]+/, "").trim();
-        if (val) officerEmail = val;
-      }
-      const phoneMatch = line.match(/^Phone\s*:?\s*([^\n]*)/i);
-      if (phoneMatch) {
-        const val = phoneMatch[1].replace(/^[:\s]+/, "").trim();
-        if (val) officerPhone = val;
-      }
+    
+    if (offName && isValidContactName(offName) && !processedNames.has(offName.toLowerCase())) {
+      processedNames.add(offName.toLowerCase());
+      keyContacts.unshift({
+        role: "Auction Officer (MSTC)",
+        name: offName,
+        email: offEmail || "info@mstcindia.co.in",
+        phone: offPhone || "no contact info available"
+      });
     }
   }
 
-  let keyContacts = [
-    {
-      role: "Auction Officer (MSTC)",
-      name: officerName || "no contact info available",
-      email: officerEmail || "no contact info available",
-      phone: officerPhone || "no contact info available",
-    },
-  ];
-
-  if (contactName) {
-    keyContacts.push({
-      role: "Site Contact / Engineer",
-      name: contactName,
-      email: contactEmail || "see-catalog@mstc.co.in",
-      phone: contactPhone || "no contact info available",
-    });
+  const officerTwoMatch = text.match(/Officer TwoName:\s*([^\n]+)/i) || text.match(/Officer TwoName\s*([^\n]+)/i);
+  if (officerTwoMatch) {
+    let offName = cleanName(officerTwoMatch[1]);
+    let offEmail = "";
+    let offPhone = "";
+    
+    const idx = lines.findIndex(l => l.includes("Officer TwoName"));
+    if (idx !== -1) {
+      for (let i = idx + 1; i < Math.min(idx + 5, lines.length); i++) {
+        const line = lines[i];
+        const emailM = line.match(/Email\s*:?\s*([^\s\n]+)/i);
+        if (emailM) offEmail = emailM[1].trim();
+        const phoneM = line.match(/Phone\s*:?\s*(\d+)/i) || line.match(/Mobile\s*:?\s*(\d+)/i);
+        if (phoneM) offPhone = phoneM[1].trim();
+      }
+    }
+    
+    if (offName && isValidContactName(offName) && !processedNames.has(offName.toLowerCase())) {
+      processedNames.add(offName.toLowerCase());
+      const insertIdx = keyContacts.findIndex(c => c.role.includes("Site Contact"));
+      if (insertIdx !== -1) {
+        keyContacts.splice(insertIdx, 0, {
+          role: "Auction Officer (MSTC)",
+          name: offName,
+          email: offEmail || "info@mstcindia.co.in",
+          phone: offPhone || "no contact info available"
+        });
+      } else {
+        keyContacts.push({
+          role: "Auction Officer (MSTC)",
+          name: offName,
+          email: offEmail || "info@mstcindia.co.in",
+          phone: offPhone || "no contact info available"
+        });
+      }
+    }
   }
 
   // 3. Extract EMD Details
