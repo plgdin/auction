@@ -107,4 +107,14 @@ async function clearAll() {
   }
 }
 
-clearAll();
+export { clearAll };
+
+// Run automatically if this is the main entry file
+const isMain = process.argv[1] && (
+  process.argv[1].endsWith('clear_db.ts') || 
+  process.argv[1].endsWith('clear_db.js')
+);
+
+if (isMain) {
+  clearAll();
+}

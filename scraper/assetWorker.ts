@@ -1,587 +1,72 @@
-import { createClient } from "@supabase/supabase-js";
+/**
+ * Background Asset Worker
+ *
+ * Polls the `mstc_auctions` table for pending/failed records, downloads
+ * their catalog PDFs, extracts images and structured metadata, then
+ * updates the database with the results.
+ *
+ * This file is the queue coordinator only — all domain logic lives in
+ * dedicated modules under `parsers/` and `utils/`.
+ */
 import fetch from "node-fetch";
-import * as dotenv from "dotenv";
 import * as fs from "fs";
-import puppeteer from "puppeteer";
 import { createRequire } from "module";
+
+import {
+  MAX_RETRY_COUNT,
+  QUEUE_BATCH_SIZE,
+  POLL_INTERVAL_MS,
+  ATTACHMENT_DOWNLOAD_TIMEOUT_MS,
+  MSTC_CATALOG_PDF_ENDPOINT,
+  MSTC_ATTACHMENT_ENDPOINT,
+  DEFAULT_USER_AGENT,
+  CATALOG_DOWNLOAD_TIMEOUT_MS,
+} from "./config.js";
+import { logger } from "./utils/logger.js";
+import { supabase, uploadToStorage } from "./utils/storage.js";
+import { renderPdfFirstPage, extractEmbeddedJpegs, renderAndExtractPdfPages } from "./utils/pdfUtils.js";
+import { parseMstcCatalogText } from "./parsers/mstcParser.js";
+import type { CatalogSummary } from "./parsers/mstcParser.js";
+import { performOcr } from "./utils/ocrUtils.js";
+
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 
-dotenv.config({ path: ".env.local" });
-dotenv.config();
+const log = logger.child({ module: "assetWorker" });
 
-const SUPABASE_URL =
-  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const FAILSAFE_RETRIES_CEILING = 3;
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error(
-    "CRITICAL EXCEPTION: Background worker is missing database environment keys.",
-  );
-  process.exit(1);
+interface QueueRecord {
+  id: string;
+  mstc_auction_number: string;
+  source_pdf_url: string;
+  retry_count: number;
+  category_name: string | null;
+  seller_name: string | null;
+  location: string | null;
+  raw_materials_text: string | null;
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false },
-});
+// ─── Attachment Processing ───────────────────────────────────────────────────
 
-function parseMstcCatalogText(
-  text: string,
-  categoryName: string,
-  sellerName: string,
-  location: string,
-): any {
-  const cleanName = (name: string): string => {
-    if (!name) return "";
-    return name
-      .replace(/\[[^\]]*\]/g, "")
-      .replace(/\([^\)]*\)/g, "")
-      .replace(/[\{\}]/g, "")
-      .replace(/[-_]+/g, " ")
-      .replace(/\s+/g, " ")
-      .replace(/[;:\-\s\+]+$/, "")
-      .trim();
-  };
-
-  const isValidContactName = (name: string): boolean => {
-    if (!name || name.length < 3 || name.length > 40) return false;
-    const lower = name.toLowerCase();
-    const invalidKeywords = [
-      'specified', 'location', 'prior', 'permission', 'escort', 'bidding', 
-      'day', 'working', 'date', 'time', 'mstc', 'tender', 'bidder', 
-      'download', 'catalog', 'available', 'office', 'details', 'helpdesk',
-      'click', 'here', 'refer', 'annexure', 'lot', 'description', 'parameters',
-      'annex', 'photograph', 'photo', 'attached', 'email', 'phone', 'contact'
-    ];
-    for (const kw of invalidKeywords) {
-      if (lower.includes(kw)) return false;
-    }
-    return true;
-  };
-
-  const lines = text.split("\n").map((l) => l.trim());
-  const keyContacts: any[] = [];
-  const processedNames = new Set<string>();
-
-  // 1. Extract Site Contacts (Contact Person)
-  for (let idx = 0; idx < lines.length; idx++) {
-    const line = lines[idx];
-    if (line.toLowerCase().includes('contact person')) {
-      let namePart = line.replace(/Contact Person\s*:?\s*/i, '').trim();
-      let nameLineIdx = idx;
-      
-      if (!namePart) {
-        if (idx + 1 < lines.length) {
-          namePart = lines[idx + 1];
-          nameLineIdx = idx + 1;
-        }
-      }
-      
-      const boundaryKeywords = [
-        'telephone', 'mobile', 'email', 'phone', 'tele', 'fax', 
-        'address', 'manager', 'officer', 'designation', ':', '-'
-      ];
-      let truncateIdx = namePart.length;
-      const lowerNamePart = namePart.toLowerCase();
-      for (const kw of boundaryKeywords) {
-        const kwIdx = lowerNamePart.indexOf(kw);
-        if (kwIdx !== -1 && kwIdx < truncateIdx) {
-          truncateIdx = kwIdx;
-        }
-      }
-      
-      const digitMatch = namePart.match(/\d/);
-      if (digitMatch && digitMatch.index !== undefined && digitMatch.index < truncateIdx) {
-        truncateIdx = digitMatch.index;
-      }
-      
-      const cleanedName = cleanName(namePart.substring(0, truncateIdx));
-      if (isValidContactName(cleanedName) && !processedNames.has(cleanedName.toLowerCase())) {
-        processedNames.add(cleanedName.toLowerCase());
-
-        let phone = "";
-        let email = "";
-        for (let offset = 0; offset <= 4; offset++) {
-          const targetIdx = nameLineIdx + offset;
-          if (targetIdx >= lines.length) break;
-          const targetLine = lines[targetIdx];
-          
-          if (!phone) {
-            const m1 = targetLine.match(/(?:mobile|phone|telephone|tele|no|num|contact)[\s:.-]*(\d{10,12})/i) ||
-                       targetLine.match(/(\d{10})/);
-            if (m1) {
-              phone = m1[1];
-            }
-          }
-          if (!email) {
-            const m2 = targetLine.match(/([a-zA-Z0-9\._-]+@[a-zA-Z0-9\._-]+)/);
-            if (m2) {
-              email = m2[1];
-            }
-          }
-        }
-
-        keyContacts.push({
-          role: "Site Contact / Engineer",
-          name: cleanedName,
-          email: email || "see-catalog@mstc.co.in",
-          phone: phone || "no contact info available"
-        });
-      }
-    }
-  }
-
-  // 2. Extract MSTC Officers
-  const officerOneMatch = text.match(/Officer OneName:\s*([^\n]+)/i) || text.match(/Officer OneName\s*([^\n]+)/i);
-  if (officerOneMatch) {
-    let offName = cleanName(officerOneMatch[1]);
-    let offEmail = "";
-    let offPhone = "";
-    
-    const idx = lines.findIndex(l => l.includes("Officer OneName"));
-    if (idx !== -1) {
-      for (let i = idx + 1; i < Math.min(idx + 5, lines.length); i++) {
-        const line = lines[i];
-        if (line.includes("Officer TwoName")) break;
-        const emailM = line.match(/Email\s*:?\s*([^\s\n]+)/i);
-        if (emailM) offEmail = emailM[1].trim();
-        const phoneM = line.match(/Phone\s*:?\s*(\d+)/i) || line.match(/Mobile\s*:?\s*(\d+)/i);
-        if (phoneM) offPhone = phoneM[1].trim();
-      }
-    }
-    
-    if (offName && isValidContactName(offName) && !processedNames.has(offName.toLowerCase())) {
-      processedNames.add(offName.toLowerCase());
-      keyContacts.unshift({
-        role: "Auction Officer (MSTC)",
-        name: offName,
-        email: offEmail || "info@mstcindia.co.in",
-        phone: offPhone || "no contact info available"
-      });
-    }
-  }
-
-  const officerTwoMatch = text.match(/Officer TwoName:\s*([^\n]+)/i) || text.match(/Officer TwoName\s*([^\n]+)/i);
-  if (officerTwoMatch) {
-    let offName = cleanName(officerTwoMatch[1]);
-    let offEmail = "";
-    let offPhone = "";
-    
-    const idx = lines.findIndex(l => l.includes("Officer TwoName"));
-    if (idx !== -1) {
-      for (let i = idx + 1; i < Math.min(idx + 5, lines.length); i++) {
-        const line = lines[i];
-        const emailM = line.match(/Email\s*:?\s*([^\s\n]+)/i);
-        if (emailM) offEmail = emailM[1].trim();
-        const phoneM = line.match(/Phone\s*:?\s*(\d+)/i) || line.match(/Mobile\s*:?\s*(\d+)/i);
-        if (phoneM) offPhone = phoneM[1].trim();
-      }
-    }
-    
-    if (offName && isValidContactName(offName) && !processedNames.has(offName.toLowerCase())) {
-      processedNames.add(offName.toLowerCase());
-      const insertIdx = keyContacts.findIndex(c => c.role.includes("Site Contact"));
-      if (insertIdx !== -1) {
-        keyContacts.splice(insertIdx, 0, {
-          role: "Auction Officer (MSTC)",
-          name: offName,
-          email: offEmail || "info@mstcindia.co.in",
-          phone: offPhone || "no contact info available"
-        });
-      } else {
-        keyContacts.push({
-          role: "Auction Officer (MSTC)",
-          name: offName,
-          email: offEmail || "info@mstcindia.co.in",
-          phone: offPhone || "no contact info available"
-        });
-      }
-    }
-  }
-
-  // 3. Extract EMD Details
-  let emdValue = "10% of total bid value";
-  let preBidDdg = "Not required for registered MSME bidders";
-
-  // Try to find Post-Bid EMD percentage (e.g. "Post Bid EMD % - 25.0")
-  const emdPercentMatch =
-    cleanText.match(/Post\s*Bid\s*EMD\s*%\s*-\s*\n*([\d\.]+)/i) ||
-    cleanText.match(/Post\s*Bid\s*EMD\s*%\s*-\s*([\d\.]+)/i);
-  if (emdPercentMatch) {
-    emdValue = `${emdPercentMatch[1]}% of total bid value (Post-Bid EMD)`;
-  } else {
-    // If no percentage is specified, look for general/Pre-Bid EMD
-    const preBidMatch = cleanText.match(/Pre-Bid EMD:\s*([^\n]+)/);
-    if (preBidMatch) {
-      const matchVal = preBidMatch[1].trim();
-      if (
-        !matchVal.toLowerCase().includes("not a auto") &&
-        !matchVal.toLowerCase().includes("item wise")
-      ) {
-        const numOnly = matchVal.replace(/[^\d]/g, "");
-        if (numOnly && parseInt(numOnly, 10) > 100) {
-          preBidDdg = `₹${parseInt(numOnly, 10).toLocaleString("en-IN")}`;
-          emdValue = "10% of total bid value";
-        } else {
-          emdValue = matchVal;
-        }
-      }
-    }
-  }
-
-  // Extract explicit Pre-Bid EMD Amount (which could be in the lot details or elsewhere)
-  const explicitPreBidMatch = cleanText.match(
-    /(?:Pre-Bid\s*(?:EMD\s*)?Amount|Pre-Bid\s*Amount)[\s\S]{0,50}?(?:Rs\.?|₹)?\s*([\d,]{4,10})/i,
-  );
-  if (explicitPreBidMatch) {
-    const val = explicitPreBidMatch[1].replace(/,/g, "");
-    const num = parseInt(val, 10);
-    if (!isNaN(num) && num > 100) {
-      preBidDdg = `₹${num.toLocaleString("en-IN")}`;
-    }
-  }
-
-  // 4. Extract Lots (Identified Inventory)
-  const items: any[] = [];
-  const lotBlocks = cleanText.split(/Lot No\s*-\s*/);
-
-  if (lotBlocks.length > 1) {
-    for (let i = 1; i < lotBlocks.length; i++) {
-      const block = lotBlocks[i];
-      const linesBlock = block.split("\n");
-
-      const lotNo = parseInt(linesBlock[0].trim());
-      if (isNaN(lotNo)) continue;
-
-      let lotName = "";
-      const nameMatch = block.match(
-        /Lot Name\s*-\s*([\s\S]*?)(?=Product Type)/i,
-      );
-      if (nameMatch) {
-        lotName = nameMatch[1].replace(/\r?\n/g, " ").trim();
-      }
-
-      let qty = "1";
-      let unit = "Lot";
-      const qtyMatch = block.match(/Quantity\s*-\s*([\d\.,]+)\s*([A-Za-z]+)?/i);
-      if (qtyMatch) {
-        qty = qtyMatch[1].trim();
-        unit = (qtyMatch[2] || "Lot").trim();
-      }
-
-      let gst = "As Applicable";
-      const gstMatch = block.match(
-        /GST\s*\(%\)\s*-\s*([\s\S]*?)(?=Lot Location|State|Lot State|TCS|Bid Valid|$)/i,
-      );
-      if (gstMatch) {
-        gst = gstMatch[1].replace(/\r?\n/g, " ").trim();
-      }
-
-      let tcs = "0.0";
-      const tcsMatch = block.match(
-        /TCS\s*\(%\)\s*-\s*([\s\S]*?)(?=GST|Lot Location|State|Lot State|Bid Valid|$)/i,
-      );
-      if (tcsMatch) {
-        tcs = tcsMatch[1].replace(/\r?\n/g, " ").trim();
-      }
-
-      let taxRate = `${gst} GST${tcs && tcs !== "0.0" && tcs !== "0" ? " + " + tcs + "% TCS" : ""}`;
-
-      // Search for sub-items within the lot description
-      const subItems: any[] = [];
-      const blockLines = block.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-      for (let j = 0; j < blockLines.length; j++) {
-        const line = blockLines[j];
-        if (line.toLowerCase().startsWith('quantity -')) continue;
-
-        let subQty = '';
-        let subUnit = '';
-        
-        const directMatch = line.match(/(?:QTY|Quantity)\s*[:\-]\s*([\d,.]+)\s*([A-Za-z]+)?/i);
-        if (directMatch) {
-          subQty = directMatch[1];
-          subUnit = directMatch[2] || '';
-        } else if (/^(?:QTY|Quantity)\s*[:\-]?$/i.test(line) && j + 1 < blockLines.length) {
-          const nextLine = blockLines[j + 1];
-          const nextMatch = nextLine.match(/^([\d,.]+)\s*([A-Za-z]+)?/i);
-          if (nextMatch) {
-            subQty = nextMatch[1];
-            subUnit = nextMatch[2] || '';
-          }
-        }
-
-        if (subQty) {
-          // Find description by looking upwards
-          let desc = '';
-          for (let k = j - 1; k >= 0; k--) {
-            const prevLine = blockLines[k];
-            if (
-              prevLine.includes('Lot No -') ||
-              prevLine.includes('Lot Name -') ||
-              prevLine.includes('Product Type -') ||
-              prevLine.includes('Category -') ||
-              prevLine.toLowerCase().startsWith('qty') ||
-              prevLine.toLowerCase().includes('(approx') ||
-              prevLine === '(approx.)'
-            ) {
-              break;
-            }
-            
-            const cleanPrev = prevLine.trim();
-            if (desc === '') {
-              desc = cleanPrev;
-            } else {
-              desc = cleanPrev + ' ' + desc;
-            }
-            
-            // If it seems to be the main starting line of the item, we can stop
-            if (
-              cleanPrev.toLowerCase().includes('poly bag') ||
-              cleanPrev.toLowerCase().includes('rags') ||
-              cleanPrev.toLowerCase().includes('cfc') ||
-              cleanPrev.toLowerCase().includes('tin') ||
-              cleanPrev.toLowerCase().includes('brl') ||
-              cleanPrev.toLowerCase().includes('jerrican') ||
-              cleanPrev.toLowerCase().includes('grease drum') ||
-              cleanPrev.toLowerCase().includes('iron scrap') ||
-              cleanPrev.toLowerCase().includes('bag 1 md') ||
-              cleanPrev.length > 15
-            ) {
-              break;
-            }
-          }
-          
-          if (desc) {
-            subItems.push({
-              sr: lotNo,
-              description: desc.trim(),
-              qty: subQty.replace(/,/g, ''),
-              unit: subUnit.trim() || 'Nos',
-              taxRate
-            });
-          }
-        }
-      }
-
-      if (subItems.length > 0) {
-        items.push(...subItems);
-      } else {
-        items.push({
-          sr: lotNo,
-          description: lotName || categoryName || "Auction Lot Items",
-          qty,
-          unit,
-          taxRate,
-        });
-      }
-    }
-  }
-
-  // Fallback if no lots parsed
-  if (items.length === 0) {
-    items.push({
-      sr: 1,
-      description: categoryName || "Auction Lot Items",
-      qty: "1",
-      unit: "Lot",
-      taxRate: "18% GST",
-    });
-  }
-
-  // 5. Build Overview & Scope
-  const itemNames = items.map((it) => it.description.toLowerCase()).join(", ");
-  const overview = `This auction is conducted by MSTC on behalf of ${sellerName} for the disposal of ${itemNames} located at ${location || "designated site areas"}.`;
-  const scopeOfWork = `Lifting, clearing, and disposal of designated lots of ${itemNames} in accordance with MSTC Special Terms & Conditions (STC). All items are sold on an "As-Is-Where-Is" basis.`;
-
-  // 6. Eligibility
-  const eligibility = [
-    "Valid MSTC Buyer Registration in active status.",
-    "GSTIN Registration Certificate matching the buyer profile.",
-  ];
-
-  const textLower = text.toLowerCase();
-  if (
-    textLower.includes("hazardous") ||
-    textLower.includes("waste") ||
-    textLower.includes("battery") ||
-    textLower.includes("oil")
-  ) {
-    eligibility.push(
-      "Hazardous waste/smelter authorization from State Pollution Control Board (SPCB) is mandatory.",
-    );
-  }
-  if (
-    textLower.includes("telecom") ||
-    textLower.includes("cable") ||
-    textLower.includes("e-waste")
-  ) {
-    eligibility.push(
-      "CPCB/SPCB E-Waste recycler registration required for e-waste lots.",
-    );
-  }
-
-  // 7. Extract Inspection details
-  let inspectionTime = "From publication date to 1 day prior to bidding (10:00 AM - 4:00 PM on working days)";
-  let inspectionContact = "Site In-Charge / Contact Person listed in catalog";
-
-  const insTimeMatch = cleanText.match(/(?:Inspection\s*(?:Date\s*&?\s*Time|Period|From|Allowed)?\s*[:\-]|Inspection\s*Date\s*[:\-]?)\s*([^\n]+)/i);
-  if (insTimeMatch) {
-    const val = insTimeMatch[1].trim();
-    if (val && val.length > 5 && val.length < 250) {
-      inspectionTime = val.replace(/[\[\{\(]\s*[-_.\s]*\s*[\]\}\)]/g, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
-    }
-  }
-
-  const insContMatch = cleanText.match(/(?:Contact\s*Person\s*for\s*Inspection|Inspection\s*Contact|Contact\s*Person\s*)\s*[:\-]?\s*([^\n]+)/i);
-  if (insContMatch) {
-    const val = insContMatch[1].trim();
-    if (val && val.length > 3 && val.length < 150) {
-      inspectionContact = val.replace(/[\[\{\(]\s*[-_.\s]*\s*[\]\}\)]/g, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
-    }
-  } else if (contactName) {
-    inspectionContact = `${contactName} (${contactPhone || "phone listed in catalog"})`;
-  }
-
-  return {
-    overview,
-    scopeOfWork,
-    items,
-    eligibility,
-    depositDetails: {
-      emd: emdValue,
-      preBidDdg,
-      adminCharges: "₹11,800 (incl. GST) non-refundable service provider fees",
-    },
-    keyContacts,
-    inspectionDetails: {
-      time: inspectionTime,
-      contact: inspectionContact
-    }
-  };
-}
-
-async function renderPdfFirstPage(fileBuffer: Buffer): Promise<Buffer | null> {
-  let browser = null;
-  try {
-    const pdfBase64 = fileBuffer.toString("base64");
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1200, height: 1600 });
-
-    await page.setContent(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-        <script>
-          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        </script>
-      </head>
-      <body>
-        <canvas id="pdf-canvas"></canvas>
-      </body>
-      </html>
-    `);
-
-    const dataUrl = await page.evaluate(async (base64Data) => {
-      const binaryString = atob(base64Data);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const loadingTask = (window as any).pdfjsLib.getDocument({ data: bytes });
-      const pdfDoc = await loadingTask.promise;
-      const pdfPage = await pdfDoc.getPage(1);
-      const viewport = pdfPage.getViewport({ scale: 1.5 });
-      const canvas = document.getElementById("pdf-canvas") as HTMLCanvasElement;
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const canvasContext = canvas.getContext("2d");
-      if (!canvasContext) throw new Error("Failed to get 2d context");
-      await pdfPage.render({ canvasContext, viewport }).promise;
-      return canvas.toDataURL("image/jpeg", 0.85);
-    }, pdfBase64);
-
-    const base64Image = dataUrl.replace(/^data:image\/jpeg;base64,/, "");
-    return Buffer.from(base64Image, "base64");
-  } catch (err: any) {
-    console.error(
-      "[PDF Preview Render Error] Failed to render PDF page to image:",
-      err.message,
-    );
-    return null;
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
-}
-
-function extractEmbeddedJpegs(pdfBuffer: Buffer): Buffer[] {
-  const jpegs: Buffer[] = [];
-  let pos = 0;
-  const maxImages = 5;
-
-  while (pos < pdfBuffer.length && jpegs.length < maxImages) {
-    const streamIdx = pdfBuffer.indexOf("stream", pos);
-    if (streamIdx === -1) break;
-
-    const dictStart = pdfBuffer.lastIndexOf("<<", streamIdx);
-    if (dictStart !== -1) {
-      const dictBuffer = pdfBuffer.slice(dictStart, streamIdx);
-      const dictStr = dictBuffer.toString("ascii");
-
-      if (
-        dictStr.includes("/Subtype /Image") &&
-        dictStr.includes("/Filter /DCTDecode")
-      ) {
-        const endstreamIdx = pdfBuffer.indexOf("endstream", streamIdx);
-        if (endstreamIdx !== -1) {
-          let start = streamIdx + 6;
-          while (
-            start < endstreamIdx &&
-            (pdfBuffer[start] === 10 || pdfBuffer[start] === 13)
-          ) {
-            start++;
-          }
-          let end = endstreamIdx;
-          while (
-            end > start &&
-            (pdfBuffer[end - 1] === 10 || pdfBuffer[end - 1] === 13)
-          ) {
-            end--;
-          }
-
-          const streamData = pdfBuffer.slice(start, end);
-          if (streamData.length > 5000) {
-            jpegs.push(streamData);
-          }
-        }
-      }
-    }
-    pos = streamIdx + 6;
-  }
-
-  return jpegs;
-}
-
+/**
+ * Download a single PDF attachment from the MSTC server.
+ */
 async function downloadAttachment(
   fileName: string,
   docType: string,
   headers: Record<string, string>,
 ): Promise<Buffer | null> {
-  const fileUrl = `https://www.mstcecommerce.com/auctionhome/mstc/admin/upload/downAttachedFiles.jsp?FILE_ID=${fileName}&doc_type=${docType}`;
-  console.log(
-    `[Lot Attachments] Downloading ${fileName} (doc_type: ${docType}) from: ${fileUrl}`,
-  );
+  const fileUrl = `${MSTC_ATTACHMENT_ENDPOINT}?FILE_ID=${fileName}&doc_type=${docType}`;
+
+  const jobLog = log.child({ fileName, docType });
+  jobLog.info({}, "Downloading attachment");
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    ATTACHMENT_DOWNLOAD_TIMEOUT_MS,
+  );
 
   try {
     const response = await fetch(fileUrl, {
@@ -591,8 +76,9 @@ async function downloadAttachment(
     });
 
     if (!response.ok) {
-      console.warn(
-        `[Lot Attachments] Failed to download ${fileName} with type ${docType}: status ${response.status}`,
+      jobLog.warn(
+        { status: response.status },
+        "Attachment download returned non-OK status",
       );
       return null;
     }
@@ -602,82 +88,185 @@ async function downloadAttachment(
       return docBuffer;
     }
   } catch (e: any) {
-    console.warn(
-      `[Lot Attachments] Network error downloading ${fileName} with type ${docType}:`,
-      e.message,
-    );
+    jobLog.warn({ errorMessage: e.message }, "Network error downloading attachment");
   } finally {
     clearTimeout(timeoutId);
   }
   return null;
 }
 
-function parseAnnexItems(text: string, taxRate: string): any[] {
-  const items: any[] = [];
-  const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-  
-  // Try to find matching pattern: Sr/Sl/No + description + qty + unit
-  // e.g. "1 Poly Bag 50 Kg 4643 Nos" or "1. LT PANEL 1 LOT"
-  const itemPattern = /^(\d+)\.?\s+([A-Za-z0-9_\-\s,\(\)\/\.]{3,70})\s+([\d,.]+)\s*([A-Za-z]{2,10})/i;
-  
-  let currentSr = 1;
-  for (const line of lines) {
+/**
+ * Extract attachment file references from the parsed catalog text,
+ * download each, extract/render images, and upload them to storage.
+ */
+/**
+ * Helper to match a rendered PDF page to specific lot items by analyzing text content.
+ */
+function matchPageToLots(
+  pageText: string,
+  items: any[],
+  attachmentName: string
+): any[] {
+  const matchedLots: any[] = [];
+  const normalizedText = pageText.toLowerCase().replace(/\s+/g, " ");
+  const filenameLower = attachmentName.toLowerCase();
+
+  // 1. Check if the filename itself targets a specific lot
+  for (const item of items) {
+    const srStr = String(item.sr).toLowerCase().trim();
     if (
-      line.toLowerCase().includes("page") ||
-      line.toLowerCase().includes("tender") ||
-      line.toLowerCase().includes("mstc") ||
-      line.toLowerCase().includes("quantity") ||
-      line.toLowerCase().includes("description")
+      filenameLower.includes(`_${srStr}.pdf`) ||
+      filenameLower.includes(`_lot_${srStr}`) ||
+      filenameLower.includes(`_${srStr}_`)
     ) {
-      continue;
+      matchedLots.push(item);
     }
-    
-    const match = line.match(itemPattern);
-    if (match) {
-      const parsedSr = parseInt(match[1], 10);
-      const desc = match[2].trim();
-      const qtyStr = match[3].replace(/,/g, '');
-      const unit = match[4].trim();
-      
-      const qtyVal = parseFloat(qtyStr);
-      if (!isNaN(qtyVal) && qtyVal > 0 && desc.length > 2) {
-        items.push({
-          sr: parsedSr || currentSr,
-          description: desc,
-          qty: qtyStr,
-          unit: unit || 'Nos',
-          taxRate
-        });
-        currentSr++;
-      }
-    } else {
-      const qtyMatch = line.match(/([A-Za-z0-9_\-\s,\(\)\/\.]{3,50})\s+(?:Qty|Quantity|Nos)\s*[:\-]?\s*([\d,.]+)\s*([A-Za-z]{2,10})?/i);
-      if (qtyMatch) {
-        const desc = qtyMatch[1].trim();
-        const qtyStr = qtyMatch[2].replace(/,/g, '');
-        const unit = qtyMatch[3] || 'Nos';
-        const qtyVal = parseFloat(qtyStr);
-        if (!isNaN(qtyVal) && qtyVal > 0 && desc.length > 2) {
-          items.push({
-            sr: currentSr,
-            description: desc,
-            qty: qtyStr,
-            unit: unit.trim(),
-            taxRate
-          });
-          currentSr++;
-        }
+  }
+  if (matchedLots.length > 0) {
+    return matchedLots;
+  }
+
+  // 2. Scan page text for explicit lot serial number, e.g. "lot no. 1", "lot - A-1"
+  for (const item of items) {
+    const srStr = String(item.sr).toLowerCase().trim();
+    const lotPatterns = [
+      new RegExp(`\\blot\\s*(?:no|num|number)?\\s*[-.:]?\\s*${srStr}\\b`, "i"),
+      new RegExp(`\\bsr\\.?\\s*(?:no|num|number)?\\s*[-.:]?\\s*${srStr}\\b`, "i")
+    ];
+    if (lotPatterns.some(p => p.test(normalizedText))) {
+      matchedLots.push(item);
+    }
+  }
+  if (matchedLots.length > 0) {
+    return matchedLots;
+  }
+
+  // 3. Scan page text for description keyword matches
+  for (const item of items) {
+    const desc = (item.description || "").toLowerCase();
+    const fillerWords = new Set(["as", "per", "annexure", "attached", "items", "and", "the", "for", "with", "from"]);
+    const keywords = desc
+      .split(/[^a-zA-Z0-9]/)
+      .map((w: string) => w.trim())
+      .filter((w: string) => w.length >= 3 && !fillerWords.has(w));
+
+    if (keywords.length > 0) {
+      const matchedKeywords = keywords.filter((word: string) => normalizedText.includes(word));
+      // Require matching at least 50% of keywords, with a minimum of 1
+      if (matchedKeywords.length >= Math.max(1, Math.ceil(keywords.length * 0.5))) {
+        matchedLots.push(item);
       }
     }
   }
-  return items;
+
+  return matchedLots;
+}
+
+/**
+ * Extract attachment file references from the parsed catalog text,
+ * download each, extract/render images, and upload them to storage.
+ * Maps images to specific lots if text matches are found.
+ */
+/**
+ * Robustly extract quantities and units from text content.
+ * Matches both prefixed patterns (e.g. Qty: 17 nos) and count suffix-only patterns (e.g. 55 Nos).
+ */
+function extractQuantitiesDetailed(text: string): { qty: string; unit: string } {
+  const matches: { value: number; unit: string; index: number }[] = [];
+  
+  // 1. Match "QTY: 21,172NOS", "QTY: 296.800KGS", "(Qty: 17 nos.)"
+  const qtyRegex = /(?:qty|quantity|quantities)\s*[:.-]?\s*([\d\.,]+)\s*([A-Za-z]+)?/gi;
+  let match;
+  while ((match = qtyRegex.exec(text)) !== null) {
+    const val = parseFloat(match[1].replace(/,/g, ''));
+    if (!isNaN(val)) {
+      matches.push({
+        value: val,
+        unit: (match[2] || 'NOS').toUpperCase().trim(),
+        index: match.index
+      });
+    }
+  }
+
+  // 2. Match suffix-only units for count types only (e.g. "55 Nos", "10 Pcs")
+  // Weight/volume/dimensions must be explicitly prefixed with QTY: to avoid matching capacities (e.g. "50 Kg bags")
+  const countUnitRegex = /\b([\d\.,]+)\s*(nos|pcs|units|sets|pc|items|item)\b/gi;
+  while ((match = countUnitRegex.exec(text)) !== null) {
+    const val = parseFloat(match[1].replace(/,/g, ''));
+    if (!isNaN(val)) {
+      matches.push({
+        value: val,
+        unit: match[2].toUpperCase().trim(),
+        index: match.index
+      });
+    }
+  }
+
+  if (matches.length === 0) {
+    return { qty: '1', unit: 'Lot' };
+  }
+
+  // Deduplicate overlapping matches within 15 characters
+  matches.sort((a, b) => a.index - b.index);
+  const uniqueMatches: typeof matches = [];
+  for (const m of matches) {
+    const isOverlapping = uniqueMatches.some(
+      (um) => Math.abs(um.index - m.index) < 15
+    );
+    if (!isOverlapping) {
+      uniqueMatches.push(m);
+    }
+  }
+
+  // Group and sum by standardized unit
+  const groups: { [unit: string]: number } = {};
+  for (const m of uniqueMatches) {
+    let u = m.unit;
+    if (u === 'KG') u = 'KGS';
+    if (u === 'MT') u = 'MTS';
+    if (u === 'PC') u = 'PCS';
+    if (u === 'LTR') u = 'LTRS';
+    if (u === 'TON') u = 'TONS';
+    if (u === 'ITEM') u = 'ITEMS';
+    
+    groups[u] = (groups[u] || 0) + m.value;
+  }
+
+  const groupEntries = Object.entries(groups);
+  if (groupEntries.length === 0) {
+    return { qty: '1', unit: 'Lot' };
+  }
+
+  if (groupEntries.length === 1) {
+    const [u, totalVal] = groupEntries[0];
+    const qty = Number.isInteger(totalVal)
+      ? totalVal.toLocaleString('en-IN')
+      : totalVal.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+    return { qty, unit: u };
+  } else {
+    const qty = groupEntries
+      .map(([u, totalVal]) => {
+        const formattedVal = Number.isInteger(totalVal)
+          ? totalVal.toLocaleString('en-IN')
+          : totalVal.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+        return `${formattedVal} ${u}`;
+      })
+      .join(' + ');
+    return { qty, unit: '' };
+  }
 }
 
 async function extractAndProcessLotDocuments(
   catalogText: string,
   sanitizedAuctionNum: string,
   headers: Record<string, string>,
-): Promise<{ imageUrls: string[]; extractedItems: any[] }> {
+  items: any[] = [],
+): Promise<{
+  imageUrls: string[];
+  attachmentMap: Record<string, string[]>;
+  lotSpecificImagesMap: Record<string, string[]>;
+  eligibilityNotes: string[];
+}> {
   // Reconstruct filename if there are newlines or spaces
   const cleanedText = catalogText
     .replace(/\r?\n/g, " ")
@@ -694,18 +283,23 @@ async function extractAndProcessLotDocuments(
     return n.startsWith("photo_") || n.startsWith("annex_");
   });
 
+  const imageUrls: string[] = [];
+  const attachmentMap: Record<string, string[]> = {};
+  const lotSpecificImagesMap: Record<string, string[]> = {};
+  const eligibilityNotes: string[] = [];
+
   if (uniqueAttachments.length === 0) {
-    return { imageUrls: [], extractedItems: [] };
+    return { imageUrls, attachmentMap, lotSpecificImagesMap, eligibilityNotes };
   }
 
-  console.log(
-    `[Lot Attachments] Found ${uniqueAttachments.length} attachments: ${uniqueAttachments.join(", ")}`,
+  log.info(
+    { count: uniqueAttachments.length, auctionNumber: sanitizedAuctionNum },
+    "Found lot attachments to process",
   );
-  const imageUrls: string[] = [];
-  const extractedItems: any[] = [];
 
   for (let i = 0; i < uniqueAttachments.length; i++) {
     const fileName = uniqueAttachments[i];
+    const lotImageUrls: string[] = [];
 
     // Determine initial doc_type
     const primaryType = fileName.toLowerCase().startsWith("photo_")
@@ -716,117 +310,493 @@ async function extractAndProcessLotDocuments(
 
     let docBuffer = await downloadAttachment(fileName, primaryType, headers);
     if (!docBuffer) {
-      console.log(
-        `[Lot Attachments] Trying fallback doc_type: ${fallbackType}`,
-      );
+      log.info({ fileName, fallbackType }, "Trying fallback doc_type");
       docBuffer = await downloadAttachment(fileName, fallbackType, headers);
     }
 
     if (!docBuffer) {
-      console.warn(
-        `[Lot Attachments Warning] Could not retrieve valid PDF for attachment ${fileName}`,
-      );
+      log.warn({ fileName }, "Could not retrieve valid PDF for attachment");
       continue;
     }
 
-    console.log(
-      `[Lot Attachments] Successfully retrieved attachment ${fileName} (${docBuffer.length} bytes). Processing...`,
+    log.info(
+      { fileName, sizeBytes: docBuffer.length },
+      "Attachment retrieved, processing images",
     );
 
-    // Try to parse text from the PDF attachment
-    try {
-      const parsedDoc = await pdf(docBuffer);
-      if (parsedDoc && parsedDoc.text) {
-        console.log(`[Lot Attachments] Extracted text from ${fileName} (${parsedDoc.text.length} chars). Parsing items...`);
-        let parsedItems: any[] = [];
-        if (parsedDoc.text.includes("Lot No -")) {
-          const tempSummary = parseMstcCatalogText(parsedDoc.text, "", "", "");
-          if (tempSummary && tempSummary.items && tempSummary.items.length > 0) {
-            parsedItems = tempSummary.items;
+    // 1. Try to render all pages of the attachment and match them page-by-page
+    const renderedPages = await renderAndExtractPdfPages(docBuffer, 20);
+    if (renderedPages.length > 0) {
+      log.info(
+        { fileName, pageCount: renderedPages.length },
+        "Rendered attachment pages, executing text matching with OCR",
+      );
+
+      const pageUrls: string[] = [];
+      const pageToLots: any[][] = [];
+
+      for (let pIdx = 0; pIdx < renderedPages.length; pIdx++) {
+        const page = renderedPages[pIdx];
+        try {
+          const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_lot_doc_${i}_page_${page.pageNumber}.jpg`;
+          const publicUrl = await uploadToStorage(
+            imgPath,
+            page.imageBuffer,
+            "image/jpeg",
+          );
+          
+          imageUrls.push(publicUrl);
+          lotImageUrls.push(publicUrl);
+          pageUrls.push(publicUrl);
+
+          // Perform OCR to extract text from scans/photos on this page
+          const ocrText = await performOcr(page.imageBuffer);
+          const combinedText = `${page.text || ""}\n${ocrText}`;
+
+          // Find matches for this page using both the selectable and OCR text
+          const matched = matchPageToLots(combinedText, items, fileName);
+          pageToLots.push(matched);
+
+          if (matched.length > 0) {
+            log.info(
+              { pageNumber: page.pageNumber, matchedLots: matched.map(m => m.sr) },
+              "Mapped rendered page specifically to lot(s)",
+            );
+            
+            // Extract quantities from the combined text
+            const extracted = extractQuantitiesDetailed(combinedText);
+
+            for (const lot of matched) {
+              const srStr = String(lot.sr);
+              if (!lotSpecificImagesMap[srStr]) {
+                lotSpecificImagesMap[srStr] = [];
+              }
+              lotSpecificImagesMap[srStr].push(publicUrl);
+
+              // Update lot quantity and unit if more specific quantity is found in photo text
+              if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
+                const currentQtyLower = (lot.qty || "").toLowerCase().trim();
+                const currentUnitLower = (lot.unit || "").toLowerCase().trim();
+                const isCurrentGeneric = 
+                  currentQtyLower === "1" || 
+                  currentQtyLower === "1.0" || 
+                  currentUnitLower === "lot" || 
+                  currentUnitLower === "lots";
+
+                if (isCurrentGeneric || (extracted.unit && extracted.unit !== "LOT")) {
+                  log.info(
+                    { lotSr: lot.sr, oldQty: lot.qty, oldUnit: lot.unit, newQty: extracted.qty, newUnit: extracted.unit },
+                    "Updating lot quantity from OCR/scanned text"
+                  );
+                  lot.qty = extracted.qty;
+                  lot.unit = extracted.unit;
+                  eligibilityNotes.push(`Review photo/annexure attachments (${fileName}) for Lot ${lot.sr} quantity details.`);
+                }
+              }
+            }
           }
-        } else {
-          parsedItems = parseAnnexItems(parsedDoc.text, "As Applicable GST");
-        }
-        if (parsedItems.length > 0) {
-          console.log(`[Lot Attachments] Found ${parsedItems.length} items in ${fileName}.`);
-          extractedItems.push(...parsedItems);
+        } catch (uploadErr: any) {
+          log.warn(
+            { errorMessage: uploadErr.message, pageNumber: page.pageNumber },
+            "Failed to process rendered page image",
+          );
         }
       }
-    } catch (parseErr: any) {
-      console.warn(`[Lot Attachments Text Parse Warning] Failed to parse PDF text for ${fileName}:`, parseErr.message);
-    }
 
-    // 1. Try to extract embedded JPEGs first (high-res original)
-    const embeddedJpegs = extractEmbeddedJpegs(docBuffer);
-    if (embeddedJpegs.length > 0) {
-      console.log(
-        `[Lot Attachments] Extracted ${embeddedJpegs.length} embedded images from ${fileName}. Uploading...`,
-      );
-      for (let j = 0; j < embeddedJpegs.length; j++) {
-        const imgBuffer = embeddedJpegs[j];
-        const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_lot_doc_${i}_img_${j}.jpg`;
-        const { error: uploadError } = await supabase.storage
-          .from("auction_documents")
-          .upload(imgPath, imgBuffer, {
-            contentType: "image/jpeg",
-            upsert: true,
-          });
+      // Check if ANY specific matches were made for this attachment
+      const hasSpecificMatches = pageToLots.some(m => m.length > 0);
+      
+      // Fallback 1: Sequential matching if pages count matches items count
+      if (!hasSpecificMatches && renderedPages.length === items.length && items.length > 0) {
+        log.info(
+          { fileName, pageCount: renderedPages.length, itemsCount: items.length },
+          "No specific page matches found, mapping pages sequentially to lots",
+        );
+        for (let pIdx = 0; pIdx < pageUrls.length; pIdx++) {
+          const item = items[pIdx];
+          const srStr = String(item.sr);
+          if (!lotSpecificImagesMap[srStr]) {
+            lotSpecificImagesMap[srStr] = [];
+          }
+          lotSpecificImagesMap[srStr].push(pageUrls[pIdx]);
 
-        if (!uploadError) {
-          const { data: publicMeta } = supabase.storage
-            .from("auction_documents")
-            .getPublicUrl(imgPath);
-          imageUrls.push(publicMeta.publicUrl);
-        } else {
-          console.warn(
-            `[Lot Attachments Warning] Failed to upload extracted image: ${uploadError.message}`,
-          );
+          // Run OCR and extract quantities for sequential matching as well
+          const page = renderedPages[pIdx];
+          try {
+            const ocrText = await performOcr(page.imageBuffer);
+            const combinedText = `${page.text || ""}\n${ocrText}`;
+            const extracted = extractQuantitiesDetailed(combinedText);
+            if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
+              const currentQtyLower = (item.qty || "").toLowerCase().trim();
+              const currentUnitLower = (item.unit || "").toLowerCase().trim();
+              const isCurrentGeneric = 
+                currentQtyLower === "1" || 
+                currentQtyLower === "1.0" || 
+                currentUnitLower === "lot" || 
+                currentUnitLower === "lots";
+
+              if (isCurrentGeneric || (extracted.unit && extracted.unit !== "LOT")) {
+                log.info(
+                  { lotSr: item.sr, oldQty: item.qty, newQty: extracted.qty },
+                  "Updating sequential lot quantity from OCR/scanned text"
+                );
+                item.qty = extracted.qty;
+                item.unit = extracted.unit;
+                eligibilityNotes.push(`Review photo/annexure attachments (${fileName}) for Lot ${item.sr} quantity details.`);
+              }
+            }
+          } catch (ocrErr: any) {
+            log.warn({ errorMessage: ocrErr.message }, "OCR failed during sequential fallback");
+          }
         }
       }
     } else {
-      // 2. If no embedded JPEGs, render the first page of the PDF to image
-      console.log(
-        `[Lot Attachments] No embedded JPEGs found in ${fileName}. Rendering page to image...`,
-      );
-      const renderBuffer = await renderPdfFirstPage(docBuffer);
-      if (renderBuffer) {
-        const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_lot_doc_${i}_page.jpg`;
-        const { error: uploadError } = await supabase.storage
-          .from("auction_documents")
-          .upload(imgPath, renderBuffer, {
-            contentType: "image/jpeg",
-            upsert: true,
-          });
+      // 2. Fallback to extracting embedded JPEGs if page rendering yielded nothing
+      const embeddedJpegs = extractEmbeddedJpegs(docBuffer);
+      if (embeddedJpegs.length > 0) {
+        log.info(
+          { fileName, imageCount: embeddedJpegs.length },
+          "Extracted embedded images from attachment (fallback)",
+        );
+        for (let j = 0; j < embeddedJpegs.length; j++) {
+          try {
+            const imgBuffer = embeddedJpegs[j];
+            const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_lot_doc_${i}_img_${j}.jpg`;
+            const publicUrl = await uploadToStorage(
+              imgPath,
+              imgBuffer,
+              "image/jpeg",
+            );
+            imageUrls.push(publicUrl);
+            lotImageUrls.push(publicUrl);
 
-        if (!uploadError) {
-          const { data: publicMeta } = supabase.storage
-            .from("auction_documents")
-            .getPublicUrl(imgPath);
-          imageUrls.push(publicMeta.publicUrl);
-        } else {
-          console.warn(
-            `[Lot Attachments Warning] Failed to upload rendered image: ${uploadError.message}`,
-          );
+            // Run OCR on the embedded image to match lots and extract quantities
+            const ocrText = await performOcr(imgBuffer);
+            if (ocrText) {
+              const matched = matchPageToLots(ocrText, items, fileName);
+              if (matched.length > 0) {
+                const extracted = extractQuantitiesDetailed(ocrText);
+                for (const lot of matched) {
+                  const srStr = String(lot.sr);
+                  if (!lotSpecificImagesMap[srStr]) {
+                    lotSpecificImagesMap[srStr] = [];
+                  }
+                  lotSpecificImagesMap[srStr].push(publicUrl);
+
+                  if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
+                    const currentQtyLower = (lot.qty || "").toLowerCase().trim();
+                    const currentUnitLower = (lot.unit || "").toLowerCase().trim();
+                    const isCurrentGeneric = 
+                      currentQtyLower === "1" || 
+                      currentQtyLower === "1.0" || 
+                      currentUnitLower === "lot" || 
+                      currentUnitLower === "lots";
+
+                    if (isCurrentGeneric || (extracted.unit && extracted.unit !== "LOT")) {
+                      log.info(
+                        { lotSr: lot.sr, oldQty: lot.qty, newQty: extracted.qty },
+                        "Updating fallback lot quantity from OCR/scanned text"
+                      );
+                      lot.qty = extracted.qty;
+                      lot.unit = extracted.unit;
+                      eligibilityNotes.push(`Review photo/annexure attachments (${fileName}) for Lot ${lot.sr} quantity details.`);
+                    }
+                  }
+                }
+              }
+            }
+          } catch (uploadErr: any) {
+            log.warn(
+              { errorMessage: uploadErr.message },
+              "Failed to upload extracted attachment image",
+            );
+          }
         }
+      }
+    }
+
+    attachmentMap[fileName] = lotImageUrls;
+  }
+
+  return { 
+    imageUrls, 
+    attachmentMap, 
+    lotSpecificImagesMap, 
+    eligibilityNotes: Array.from(new Set(eligibilityNotes)) 
+  };
+}
+
+// ─── Queue Pipeline ──────────────────────────────────────────────────────────
+
+/**
+ * Read session cookies from disk (if available) for MSTC authentication.
+ */
+function loadSessionCookies(): string | null {
+  try {
+    if (fs.existsSync("cookies.txt")) {
+      const cookieString = fs.readFileSync("cookies.txt", "utf-8");
+      if (cookieString.trim()) {
+        return cookieString.trim();
+      }
+    }
+  } catch (cookieErr: any) {
+    log.warn({ errorMessage: cookieErr.message }, "Failed to read cookies.txt");
+  }
+  return null;
+}
+
+/**
+ * Build HTTP headers for MSTC requests, including session cookies when available.
+ */
+function buildMstcHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    "User-Agent": DEFAULT_USER_AGENT,
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+
+  const cookies = loadSessionCookies();
+  if (cookies) {
+    headers["Cookie"] = cookies;
+  }
+
+  return headers;
+}
+
+/**
+ * Process a single queue record: download, parse, extract, and update.
+ */
+async function processRecord(record: QueueRecord): Promise<void> {
+  const jobLog = log.child({ auctionNumber: record.mstc_auction_number });
+
+  jobLog.info({}, "Starting document processing");
+
+  const url = new URL(record.source_pdf_url);
+  const aucId = url.searchParams.get("auc") || "";
+
+  const formData = new URLSearchParams();
+  formData.append("auc", aucId);
+  formData.append("cat", "0");
+  formData.append("sell", "0");
+
+  const headers = buildMstcHeaders();
+
+  const payloadResponse = await fetch(MSTC_CATALOG_PDF_ENDPOINT, {
+    method: "POST",
+    body: formData,
+    headers,
+    timeout: CATALOG_DOWNLOAD_TIMEOUT_MS,
+  } as any);
+
+  if (!payloadResponse.ok) {
+    throw new Error(
+      `Catalog download failed with status ${payloadResponse.status}`,
+    );
+  }
+
+  const fileBuffer = await payloadResponse.buffer();
+
+  // Validate PDF structure
+  if (fileBuffer.toString("utf-8", 0, 4) !== "%PDF") {
+    const preview = fileBuffer.toString("utf-8", 0, 200);
+    if (
+      preview.includes("session") ||
+      preview.includes("timeout") ||
+      preview.includes("login")
+    ) {
+      throw new Error(
+        "Session expired or invalid. Please run the scraper again to renew cookies.",
+      );
+    }
+    throw new Error("Downloaded file is not a valid PDF.");
+  }
+
+  const sanitizedAuctionNum = record.mstc_auction_number.replace(
+    /[\/\\:*?"<>|]/g,
+    "_",
+  );
+
+  // Upload catalog PDF
+  const catalogUrl = await uploadToStorage(
+    `mstc-catalogs/${sanitizedAuctionNum}.pdf`,
+    fileBuffer,
+    "application/pdf",
+  );
+
+  // 1. Render First Page Preview
+  jobLog.info({}, "Rendering PDF first page preview");
+  let previewImageUrl: string | null = null;
+  const previewBuffer = await renderPdfFirstPage(fileBuffer);
+  if (previewBuffer) {
+    try {
+      previewImageUrl = await uploadToStorage(
+        `mstc-previews/${sanitizedAuctionNum}.jpg`,
+        previewBuffer,
+        "image/jpeg",
+      );
+      jobLog.info({ previewImageUrl }, "Uploaded first page preview");
+    } catch (previewErr: any) {
+      jobLog.warn(
+        { errorMessage: previewErr.message },
+        "Failed to upload preview image",
+      );
+    }
+  }
+
+  // 2. Extract Embedded Images from main catalog
+  jobLog.info({}, "Checking for embedded images in catalog PDF");
+  const embeddedImages = extractEmbeddedJpegs(fileBuffer);
+  const extractedImageUrls: string[] = [];
+
+  if (embeddedImages.length > 0) {
+    jobLog.info(
+      { imageCount: embeddedImages.length },
+      "Found embedded images, uploading",
+    );
+    for (let i = 0; i < embeddedImages.length; i++) {
+      try {
+        const publicUrl = await uploadToStorage(
+          `mstc-extracted-images/${sanitizedAuctionNum}_img_${i}.jpg`,
+          embeddedImages[i],
+          "image/jpeg",
+        );
+        extractedImageUrls.push(publicUrl);
+      } catch (imgErr: any) {
+        jobLog.warn(
+          { imageIndex: i, errorMessage: imgErr.message },
+          "Failed to upload extracted catalog image",
+        );
       }
     }
   }
 
-  return { imageUrls, extractedItems };
+  // 3. Parse PDF text and generate structured catalog summary
+  let rawMaterialsText = record.raw_materials_text;
+  try {
+    jobLog.info({}, "Parsing PDF text content");
+    const parsedPdf = await pdf(fileBuffer);
+    if (parsedPdf?.text) {
+      // First, parse the main catalog text to get structured items
+      const summaryObj: CatalogSummary = parseMstcCatalogText(
+        parsedPdf.text,
+        record.category_name || "",
+        record.seller_name || "",
+        record.location || "",
+      );
+
+      // Now extract attachment images and run OCR using the parsed items list
+      let attachmentImageUrls: string[] = [];
+      let attachmentMap: Record<string, string[]> = {};
+      try {
+        const result = await extractAndProcessLotDocuments(
+          parsedPdf.text,
+          sanitizedAuctionNum,
+          headers,
+          summaryObj.items || [],
+        );
+        attachmentImageUrls = result.imageUrls;
+        attachmentMap = result.attachmentMap;
+        if (attachmentImageUrls.length > 0) {
+          extractedImageUrls.push(...attachmentImageUrls);
+          jobLog.info(
+            { attachmentImageCount: attachmentImageUrls.length },
+            "Extracted and uploaded lot attachment images with OCR",
+          );
+        }
+        if (result.eligibilityNotes && result.eligibilityNotes.length > 0) {
+          if (!summaryObj.eligibility) {
+            summaryObj.eligibility = [];
+          }
+          for (const note of result.eligibilityNotes) {
+            if (!summaryObj.eligibility.includes(note)) {
+              summaryObj.eligibility.push(note);
+            }
+          }
+        }
+      } catch (attErr: any) {
+        jobLog.warn(
+          { errorMessage: attErr.message },
+          "Failed to process lot attachments",
+        );
+      }
+
+      // Map lot-specific images from the attachment map to the lot item objects
+      if (summaryObj.items && Array.isArray(summaryObj.items)) {
+        for (const item of summaryObj.items) {
+          if (item.attachments && Array.isArray(item.attachments)) {
+            const itemImages: string[] = [];
+            for (const attName of item.attachments) {
+              const urls = attachmentMap[attName];
+              if (urls && urls.length > 0) {
+                itemImages.push(...urls);
+              }
+            }
+            if (itemImages.length > 0) {
+              item.images = itemImages;
+            }
+          }
+        }
+      }
+
+      // Inject preview and extracted images into the summary
+      summaryObj.preview_image_url = previewImageUrl;
+      summaryObj.extracted_images = extractedImageUrls;
+
+      rawMaterialsText = JSON.stringify(summaryObj);
+      jobLog.info(
+        { summaryLength: rawMaterialsText.length },
+        "PDF parsed successfully",
+      );
+    }
+  } catch (parseErr: any) {
+    jobLog.warn(
+      { errorMessage: parseErr.message },
+      "Failed to parse PDF text",
+    );
+  }
+
+  // Update record as completed
+  await supabase
+    .from("mstc_auctions")
+    .update({
+      asset_status: "completed",
+      sanitized_document_path: catalogUrl,
+      raw_materials_text: rawMaterialsText,
+      error_log: null,
+    })
+    .eq("id", record.id);
+
+  // Log download event to audit logs
+  await supabase.from("audit_logs").insert({
+    action: "mstc_auction_downloaded",
+    entity_type: "mstc_auction",
+    entity_id: record.id,
+    details: {
+      mstc_auction_number: record.mstc_auction_number,
+      sanitized_document_path: catalogUrl,
+    },
+  });
+
+  jobLog.info({}, "Document processing completed successfully");
 }
 
-async function runAssetPipelineQueue() {
+/**
+ * Poll the queue for pending records and process them.
+ */
+async function runAssetPipelineQueue(): Promise<void> {
   const { data: executableQueue, error: queryError } = await supabase
     .from("mstc_auctions")
     .select(
       "id, mstc_auction_number, source_pdf_url, retry_count, category_name, seller_name, location, raw_materials_text",
     )
     .or("asset_status.eq.pending,asset_status.eq.failed")
-    .lt("retry_count", FAILSAFE_RETRIES_CEILING)
-    .limit(10); // Throttle downloads to avoid triggering IP blocking
+    .lt("retry_count", MAX_RETRY_COUNT)
+    .limit(QUEUE_BATCH_SIZE);
 
   if (queryError) {
-    console.error("Queue state querying engine failed:", queryError.message);
+    log.error(
+      { errorMessage: queryError.message },
+      "Queue query failed",
+    );
     return;
   }
 
@@ -834,276 +804,40 @@ async function runAssetPipelineQueue() {
     return;
   }
 
-  console.log(
-    `Processing queue batch: Found ${executableQueue.length} pending catalogs.`,
+  log.info(
+    { batchSize: executableQueue.length },
+    "Processing queue batch",
   );
 
-  for (const record of executableQueue) {
-    // Row-Lock: Set state to processing immediately so concurrent instances don't pull the same task
+  for (const record of executableQueue as QueueRecord[]) {
+    // Row-Lock: Set state to processing immediately
     await supabase
       .from("mstc_auctions")
       .update({ asset_status: "processing" })
       .eq("id", record.id);
 
     try {
-      console.log(
-        `Downloading document for index key: ${record.mstc_auction_number}`,
-      );
+      await processRecord(record);
+    } catch (jobError: any) {
+      const nextRetryCount = record.retry_count + 1;
+      const reachedMaxRetries = nextRetryCount >= MAX_RETRY_COUNT;
 
-      const url = new URL(record.source_pdf_url);
-      const aucId = url.searchParams.get("auc") || "";
-
-      const formData = new URLSearchParams();
-      formData.append("auc", aucId);
-      formData.append("cat", "0");
-      formData.append("sell", "0");
-
-      const headers: Record<string, string> = {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Content-Type": "application/x-www-form-urlencoded",
-      };
-
-      try {
-        if (fs.existsSync("cookies.txt")) {
-          const cookieString = fs.readFileSync("cookies.txt", "utf-8");
-          if (cookieString.trim()) {
-            headers["Cookie"] = cookieString.trim();
-          }
-        }
-      } catch (cookieErr: any) {
-        console.warn("Warning reading cookies.txt:", cookieErr.message);
-      }
-
-      const payloadResponse = await fetch(
-        "https://www.mstcecommerce.com/auctionhome/mstc/auction_detailed_report_pdf.jsp",
+      log.error(
         {
-          method: "POST",
-          body: formData,
-          headers,
-          timeout: 45000,
-        } as any,
-      );
-
-      if (!payloadResponse.ok) {
-        throw new Error(
-          `External file target thrown bad response: status ${payloadResponse.status}`,
-        );
-      }
-
-      // Node-fetch body payload casting to buffer
-      const fileBuffer = await payloadResponse.buffer();
-
-      // Corrupt payload guard: ensure the file data is an actual valid PDF structure
-      if (fileBuffer.toString("utf-8", 0, 4) !== "%PDF") {
-        const preview = fileBuffer.toString("utf-8", 0, 200);
-        if (
-          preview.includes("session") ||
-          preview.includes("timeout") ||
-          preview.includes("login")
-        ) {
-          throw new Error(
-            "Verification failed: session is expired or invalid. Please run the scraper again to renew cookies.",
-          );
-        }
-        throw new Error(
-          "Asset payload content failed structural binary layout verification.",
-        );
-      }
-
-      const sanitizedAuctionNum = record.mstc_auction_number.replace(
-        /[\/\\:*?"<>|]/g,
-        "_",
-      );
-      const cloudStorageLocation = `mstc-catalogs/${sanitizedAuctionNum}.pdf`;
-
-      // Upload payload buffer. Upsert: true replaces files in place, avoiding storage bloat.
-      const { error: storageWriteError } = await supabase.storage
-        .from("auction_documents")
-        .upload(cloudStorageLocation, fileBuffer, {
-          contentType: "application/pdf",
-          upsert: true,
-        });
-
-      if (storageWriteError) throw storageWriteError;
-
-      const { data: structuralPublicMeta } = supabase.storage
-        .from("auction_documents")
-        .getPublicUrl(cloudStorageLocation);
-
-      // 1. Render First Page Preview
-      console.log(
-        `Rendering PDF first page preview for: ${record.mstc_auction_number}`,
-      );
-      let previewImageUrl: string | null = null;
-      const previewBuffer = await renderPdfFirstPage(fileBuffer);
-      if (previewBuffer) {
-        const previewStoragePath = `mstc-previews/${sanitizedAuctionNum}.jpg`;
-        const { error: previewUploadError } = await supabase.storage
-          .from("auction_documents")
-          .upload(previewStoragePath, previewBuffer, {
-            contentType: "image/jpeg",
-            upsert: true,
-          });
-
-        if (!previewUploadError) {
-          const { data: previewPublicMeta } = supabase.storage
-            .from("auction_documents")
-            .getPublicUrl(previewStoragePath);
-          previewImageUrl = previewPublicMeta.publicUrl;
-          console.log(`Uploaded first page preview: ${previewImageUrl}`);
-        } else {
-          console.warn(
-            `[PDF Preview Warning] Failed to upload preview to storage:`,
-            previewUploadError.message,
-          );
-        }
-      }
-
-      // 2. Extract Embedded Images
-      console.log(
-        `Checking for embedded images in: ${record.mstc_auction_number}`,
-      );
-      const embeddedImages = extractEmbeddedJpegs(fileBuffer);
-      const extractedImageUrls: string[] = [];
-      if (embeddedImages.length > 0) {
-        console.log(
-          `Found ${embeddedImages.length} embedded images. Uploading...`,
-        );
-        for (let i = 0; i < embeddedImages.length; i++) {
-          const imgBuffer = embeddedImages[i];
-          const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_img_${i}.jpg`;
-          const { error: imgUploadError } = await supabase.storage
-            .from("auction_documents")
-            .upload(imgPath, imgBuffer, {
-              contentType: "image/jpeg",
-              upsert: true,
-            });
-
-          if (!imgUploadError) {
-            const { data: imgPublicMeta } = supabase.storage
-              .from("auction_documents")
-              .getPublicUrl(imgPath);
-            extractedImageUrls.push(imgPublicMeta.publicUrl);
-          } else {
-            console.warn(
-              `[PDF Extraction Warning] Failed to upload extracted image ${i} to storage:`,
-              imgUploadError.message,
-            );
-          }
-        }
-      }
-
-      // 3. Extract PDF content and generate structured catalog summary
-      let raw_materials_text = record.raw_materials_text;
-      try {
-        console.log(`Parsing PDF text for: ${record.mstc_auction_number}`);
-        const parsedPdf = await pdf(fileBuffer);
-        if (parsedPdf && parsedPdf.text) {
-          let annexItems: any[] = [];
-          // Extract attachments images and text from the parsed PDF text
-          try {
-            const { imageUrls, extractedItems } = await extractAndProcessLotDocuments(
-              parsedPdf.text,
-              sanitizedAuctionNum,
-              headers,
-            );
-            if (imageUrls.length > 0) {
-              extractedImageUrls.push(...imageUrls);
-              console.log(
-                `[Lot Attachments] Successfully extracted and added ${imageUrls.length} image URLs to results.`,
-              );
-            }
-            if (extractedItems.length > 0) {
-              annexItems = extractedItems;
-              console.log(
-                `[Lot Attachments] Successfully extracted ${extractedItems.length} items from attachments.`,
-              );
-            }
-          } catch (attErr: any) {
-            console.warn(
-              `[Lot Attachments Processing Error] Failed to process attachments:`,
-              attErr.message,
-            );
-          }
-
-          const summaryObj = parseMstcCatalogText(
-            parsedPdf.text,
-            record.category_name || "",
-            record.seller_name || "",
-            record.location || "",
-          );
-
-          if (annexItems.length > 0) {
-            // If main catalog items are generic (like '1 LOT'), replace with details
-            const mainItemsAreGeneric = summaryObj.items.every((it: any) => 
-              it.qty === '1' && it.unit.toLowerCase() === 'lot'
-            );
-            if (mainItemsAreGeneric) {
-              console.log(`[Lot Attachments] Replacing generic main catalog items with detailed annex items.`);
-              summaryObj.items = annexItems;
-            } else {
-              console.log(`[Lot Attachments] Appending detailed annex items to main catalog items.`);
-              summaryObj.items = [...summaryObj.items, ...annexItems];
-            }
-          }
-
-          // Inject preview image and extracted images into the summary object
-          summaryObj.preview_image_url = previewImageUrl;
-          summaryObj.extracted_images = extractedImageUrls;
-
-          raw_materials_text = JSON.stringify(summaryObj);
-          console.log(
-            `Successfully parsed PDF. Extracted summary length: ${raw_materials_text.length}`,
-          );
-        }
-      } catch (parseErr: any) {
-        console.warn(
-          `[PDF Parse Warning] Failed to parse PDF text for ${record.mstc_auction_number}:`,
-          parseErr.message,
-        );
-      }
-
-      // Successfully processed: update row data with our secure public path link
-      await supabase
-        .from("mstc_auctions")
-        .update({
-          asset_status: "completed",
-          sanitized_document_path: structuralPublicMeta.publicUrl,
-          raw_materials_text,
-          error_log: null,
-        })
-        .eq("id", record.id);
-
-      // Log download event to audit logs
-      await supabase.from("audit_logs").insert({
-        action: "mstc_auction_downloaded",
-        entity_type: "mstc_auction",
-        entity_id: record.id,
-        details: {
-          mstc_auction_number: record.mstc_auction_number,
-          sanitized_document_path: structuralPublicMeta.publicUrl,
+          auctionNumber: record.mstc_auction_number,
+          retryCount: nextRetryCount,
+          reachedMaxRetries,
+          errorMessage: jobError.message,
         },
-      });
-
-      console.log(
-        `Document processing successfully finalized for: ${record.mstc_auction_number}`,
-      );
-    } catch (jobExecutionFault: any) {
-      const scaledRetryTracker = record.retry_count + 1;
-      const reachedMaxLimit = scaledRetryTracker >= FAILSAFE_RETRIES_CEILING;
-
-      console.error(
-        `Asset Sync processing error caught on item ${record.mstc_auction_number}:`,
-        jobExecutionFault.message,
+        "Record processing failed",
       );
 
       await supabase
         .from("mstc_auctions")
         .update({
-          asset_status: reachedMaxLimit ? "failed" : "pending",
-          retry_count: scaledRetryTracker,
-          error_log: `[Error State Cycle ${scaledRetryTracker}] ${jobExecutionFault.message}`,
+          asset_status: reachedMaxRetries ? "failed" : "pending",
+          retry_count: nextRetryCount,
+          error_log: `[Retry ${nextRetryCount}] ${jobError.message}`,
         })
         .eq("id", record.id);
 
@@ -1114,27 +848,41 @@ async function runAssetPipelineQueue() {
         entity_id: record.id,
         details: {
           mstc_auction_number: record.mstc_auction_number,
-          retry_count: scaledRetryTracker,
-          reached_max_limit: reachedMaxLimit,
-          error: jobExecutionFault.message,
+          retry_count: nextRetryCount,
+          reached_max_limit: reachedMaxRetries,
+          error: jobError.message,
         },
       });
     }
   }
 }
 
-async function startWorker() {
-  console.log(
-    "Background Worker Service Started. Scanning for pending uploads every 15 seconds...",
+// ─── Worker Entry Point ──────────────────────────────────────────────────────
+
+export async function startWorker(): Promise<void> {
+  log.info(
+    { pollIntervalMs: POLL_INTERVAL_MS },
+    "Background Worker Service started",
   );
+
   while (true) {
     try {
       await runAssetPipelineQueue();
     } catch (err: any) {
-      console.error("Worker loop iteration failed:", err.message);
+      log.error({ errorMessage: err.message }, "Worker loop iteration failed");
     }
-    await new Promise((resolve) => setTimeout(resolve, 15000));
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
 }
 
-startWorker();
+export { runAssetPipelineQueue };
+
+// Run automatically if this is the main entry file
+const isMain = process.argv[1] && (
+  process.argv[1].endsWith('assetWorker.ts') || 
+  process.argv[1].endsWith('assetWorker.js')
+);
+
+if (isMain) {
+  startWorker();
+}

@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import fetch from 'node-fetch';
 import { createRequire } from 'module';
+import { parseMstcCatalogText } from '../scraper/parsers/mstcParser.js';
+
 const require = createRequire(import.meta.url);
 const pdf = require('pdf-parse');
 
@@ -18,51 +20,14 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-function parseMstcCatalogText(text: string): any {
-  const lines = text.split('\n').map(l => l.trim());
-  const cleanText = lines.join('\n');
-
-  let emdValue = '10% of total bid value';
-  let preBidDdg = 'Not required for registered MSME bidders';
-
-  const emdPercentMatch = cleanText.match(/Post\s*Bid\s*EMD\s*%\s*-\s*\n*([\d\.]+)/i) || cleanText.match(/Post\s*Bid\s*EMD\s*%\s*-\s*([\d\.]+)/i);
-  if (emdPercentMatch) {
-    emdValue = `${emdPercentMatch[1]}% of total bid value (Post-Bid EMD)`;
-  } else {
-    const preBidMatch = cleanText.match(/Pre-Bid EMD:\s*([^\n]+)/);
-    if (preBidMatch) {
-      const matchVal = preBidMatch[1].trim();
-      if (!matchVal.toLowerCase().includes('not a auto') && !matchVal.toLowerCase().includes('item wise')) {
-        const numOnly = matchVal.replace(/[^\d]/g, '');
-        if (numOnly && parseInt(numOnly, 10) > 100) {
-          preBidDdg = `₹${parseInt(numOnly, 10).toLocaleString('en-IN')}`;
-          emdValue = '10% of total bid value';
-        } else {
-          emdValue = matchVal;
-        }
-      }
-    }
-  }
-
-  const explicitPreBidMatch = cleanText.match(/(?:Pre-Bid\s*(?:EMD\s*)?Amount|Pre-Bid\s*Amount)[\s\S]{0,50}?(?:Rs\.?|₹)?\s*([\d,]{4,10})/i);
-  if (explicitPreBidMatch) {
-    const val = explicitPreBidMatch[1].replace(/,/g, '');
-    const num = parseInt(val, 10);
-    if (!isNaN(num) && num > 100) {
-      preBidDdg = `₹${num.toLocaleString('en-IN')}`;
-    }
-  }
-
-  return { emdValue, preBidDdg };
-}
-
 async function inspectRecord(searchTerm: string) {
   console.log(`Searching for record matching "${searchTerm}"...`);
-  const { data: records, error } = await supabase
-    .from('mstc_auctions')
-    .select('*')
-    .ilike('mstc_auction_number', `%${searchTerm}%`)
-    .limit(1);
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm);
+  const query = supabase.from('mstc_auctions').select('*');
+  const { data: records, error } = await (isUuid 
+    ? query.or(`id.eq.${searchTerm},mstc_auction_number.ilike.%${searchTerm}%`)
+    : query.ilike('mstc_auction_number', `%${searchTerm}%`)
+  ).limit(1);
 
   if (error) {
     console.error('Database query error:', error.message);
@@ -105,9 +70,14 @@ async function inspectRecord(searchTerm: string) {
     console.log('PDF text written to scratch/pdf_text.txt');
 
     console.log('\n=================== PDF Parsing Diagnostic ===================');
-    const diagnostic = parseMstcCatalogText(text);
-    console.log('Extracted EMD Value:    ', diagnostic.emdValue);
-    console.log('Extracted Pre-Bid DDG:  ', diagnostic.preBidDdg);
+    const diagnostic = parseMstcCatalogText(
+      text,
+      record.category_name || '',
+      record.seller_name || '',
+      record.location || ''
+    );
+    console.log('Extracted EMD Value:    ', diagnostic.depositDetails?.emd);
+    console.log('Extracted Pre-Bid DDG:  ', diagnostic.depositDetails?.preBidDdg);
 
     console.log('\n--- Related PDF Context Lines ---');
     const lines = text.split('\n');

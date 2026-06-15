@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X } from 'lucide-react';
+import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check } from 'lucide-react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
 import { AuctionFilters } from '../components/auction/AuctionFilters';
@@ -16,10 +16,88 @@ import { valuationService } from '../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../services/valuationService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+export const getEstimatedMarketPrice = (description: string, categoryName: string = ''): string => {
+  const desc = (description || '').toLowerCase();
+  const cat = (categoryName || '').toLowerCase();
+
+  if (desc.includes('copper') || cat.includes('copper')) {
+    return '₹780 / kg';
+  }
+  if (desc.includes('aluminum') || desc.includes('aluminium') || cat.includes('aluminum') || cat.includes('aluminium')) {
+    return '₹235 / kg';
+  }
+  if (desc.includes('battery') || desc.includes('batteries') || cat.includes('battery') || cat.includes('batteries')) {
+    return '₹120 / kg';
+  }
+  if (desc.includes('lead') || cat.includes('lead')) {
+    return '₹185 / kg';
+  }
+  if (desc.includes('brass') || cat.includes('brass')) {
+    return '₹480 / kg';
+  }
+  if (desc.includes('zinc') || cat.includes('zinc')) {
+    return '₹220 / kg';
+  }
+  if (desc.includes('iron') || desc.includes('steel') || desc.includes('ferrous') || cat.includes('iron') || cat.includes('steel') || cat.includes('ferrous')) {
+    return '₹38,500 / Ton';
+  }
+  if (desc.includes('oil') || desc.includes('lubricating') || desc.includes('petroleum') || cat.includes('oil') || cat.includes('petroleum')) {
+    return '₹85 / Liter';
+  }
+  if (desc.includes('wheat') || cat.includes('wheat')) {
+    return '₹2,450 / Quintal';
+  }
+  if (desc.includes('rice') || desc.includes('paddy') || cat.includes('rice') || cat.includes('paddy')) {
+    return '₹2,200 / Quintal';
+  }
+  if (desc.includes('coal') || desc.includes('lignite') || cat.includes('coal') || cat.includes('lignite')) {
+    return '₹8,400 / Ton';
+  }
+  if (desc.includes('sand') || desc.includes('mine') || desc.includes('stone') || desc.includes('block') || cat.includes('sand') || cat.includes('mine') || cat.includes('stone') || cat.includes('block')) {
+    return '₹4,500 / Ton';
+  }
+  if (desc.includes('cable') || desc.includes('wire') || cat.includes('cable') || cat.includes('wire')) {
+    return '₹340 / kg';
+  }
+  if (desc.includes('computer') || desc.includes('laptop') || desc.includes('it equipment') || cat.includes('computer') || cat.includes('laptop')) {
+    return '₹14,500 / Unit';
+  }
+  if (desc.includes('vehicle') || desc.includes('car') || desc.includes('bus') || desc.includes('truck') || cat.includes('vehicle') || cat.includes('car')) {
+    return '₹3,50,000 / Unit';
+  }
+  return '₹2,500 / Ton';
+};
+
+const getNumericQty = (qtyStr: string, unitStr: string = ''): number => {
+  const clean = (qtyStr || '').replace(/,/g, '').trim();
+  let num = parseFloat(clean);
+  if (isNaN(num)) num = 1;
+  const unitUpper = (unitStr || '').toUpperCase().trim();
+  if (unitUpper === 'MT' || unitUpper === 'M.T.' || unitUpper === 'M.T') {
+    return num * 1000000;
+  }
+  return num;
+};
+
+const getNumericPrice = (priceStr: string): number => {
+  const clean = (priceStr || '').replace(/[^\d]/g, '');
+  const num = parseInt(clean, 10);
+  return isNaN(num) ? 0 : num;
+};
+
 interface CatalogSummary {
   overview: string;
   scopeOfWork: string;
-  items: { sr: number; description: string; qty: string; unit: string; taxRate: string }[];
+  items: {
+    sr: number | string;
+    description: string;
+    qty: string;
+    unit: string;
+    taxRate: string;
+    marketPrice: string;
+    attachments?: string[];
+    images?: string[];
+  }[];
   eligibility: string[];
   depositDetails: {
     emd: string;
@@ -130,7 +208,8 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
             return {
               ...lot,
               description: desc,
-              taxRate: tax
+              taxRate: tax,
+              marketPrice: getEstimatedMarketPrice(desc, item.category_name)
             };
           });
         }
@@ -224,10 +303,15 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
     eligibility.push('Heavy crane entry permit must be cleared with site security 24 hours prior to lifting.');
   }
 
+  const enrichedItems = items.map(lot => ({
+    ...lot,
+    marketPrice: getEstimatedMarketPrice(lot.description, item.category_name)
+  }));
+
   return {
     overview,
     scopeOfWork,
-    items,
+    items: enrichedItems,
     eligibility,
     depositDetails: {
       emd,
@@ -271,6 +355,8 @@ export function Auctions() {
 
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<MstcSanitizedAuction | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedRef, setCopiedRef] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
 
   // Valuation states
@@ -373,6 +459,20 @@ export function Auctions() {
   useEffect(() => {
     setSearchQuery(searchParams.get('q') || '');
   }, [searchParams]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLightboxImage(null);
+      }
+    };
+    if (lightboxImage) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [lightboxImage]);
 
   // Derived filter and paging variables from URL query parameters
   const categoryIds = searchParams.getAll('category');
@@ -1065,13 +1165,28 @@ export function Auctions() {
       {selectedPreviewItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 sm:p-6 md:p-8 animate-fade-in">
           <div className="relative w-full max-w-[1400px] h-[95vh] md:h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
-            
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2.5">
                 <span className="text-sm font-semibold text-slate-400 font-mono">
                   Ref: {selectedPreviewItem.mstc_auction_number.split('/').pop()}
                 </span>
+                <button
+                  onClick={() => {
+                    const refId = selectedPreviewItem.mstc_auction_number.split('/').pop() || '';
+                    navigator.clipboard.writeText(refId);
+                    setCopiedRef(true);
+                    setTimeout(() => setCopiedRef(false), 2000);
+                  }}
+                  className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-400 hover:text-slate-700 cursor-pointer flex items-center justify-center"
+                  title="Copy Reference ID"
+                >
+                  {copiedRef ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
               </div>
               <button
                 onClick={() => setSelectedPreviewItem(null)}
@@ -1646,7 +1761,29 @@ export function Auctions() {
                           return (
                             <tr key={row.sr} className="hover:bg-slate-50/50">
                               <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                              <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.description}</td>
+                              <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                                <div>{row.description}</div>
+                                {row.images && row.images.length > 0 && (
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {row.images.map((imgUrl, imgIdx) => (
+                                      <button
+                                        key={imgIdx}
+                                        type="button"
+                                        onClick={() => setLightboxImage(imgUrl)}
+                                        className="relative group w-14 h-14 rounded-lg overflow-hidden border border-slate-200 hover:border-emerald-500 transition-colors shrink-0 bg-slate-50 flex items-center justify-center cursor-zoom-in"
+                                        title="Click to view image"
+                                      >
+                                        <img
+                                          src={imgUrl}
+                                          alt={`${row.description} image ${imgIdx + 1}`}
+                                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-255"
+                                        />
+                                        <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
                               <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
                               <td className="py-2.5 px-3.5 text-right font-mono text-slate-650">
                                 {isValuating ? (
@@ -1690,7 +1827,7 @@ export function Auctions() {
                         <span className="font-bold text-slate-800">
                           {generateCatalogSummary(selectedPreviewItem).depositDetails.emd}
                         </span>
-                      </div>
+</div>
                       <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                         <span className="text-slate-500 font-mono">Pre-bid EMD</span>
                         <span className="font-bold text-slate-800">
@@ -1750,52 +1887,59 @@ export function Auctions() {
               {(() => {
                 const summary = generateCatalogSummary(selectedPreviewItem);
                 return (
-                  <div className="w-full md:w-[320px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
-                    {/* Item Photos */}
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
-                        Item Photos
-                      </h4>
-                      {summary.extracted_images && summary.extracted_images.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2">
-                          {summary.extracted_images.map((imgUrl, idx) => (
-                            <a 
-                              key={idx} 
-                              href={imgUrl} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-primary transition-colors cursor-zoom-in flex items-center justify-center"
-                            >
-                              <img src={imgUrl} alt={`Extracted ${idx}`} className="w-full h-full object-cover" />
-                            </a>
-                          ))}
+                  <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
+                    {/* Image Gallery */}
+                    {(() => {
+                      const imageUrls = (summary.extracted_images || []).filter(
+                        (url: string) => !url.toLowerCase().endsWith('.pdf')
+                      );
+                      if (imageUrls.length === 0) return null;
+                      return (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                            <span>Auction Images</span>
+                            <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
+                          </h4>
+                          <div className="grid grid-cols-2 gap-2">
+                            {imageUrls.map((url: string, idx: number) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setLightboxImage(url)}
+                                className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
+                              >
+                                <img
+                                  src={url}
+                                  alt={`Auction image ${idx + 1}`}
+                                  className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                                />
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      ) : (
-                        <div className="w-full py-8 flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                          <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                          </svg>
-                          <span className="text-[11px] font-medium tracking-wide">No pictures available</span>
-                        </div>
-                      )}
-                    </div>
+                      );
+                    })()}
 
-                    {summary.preview_image_url && (
-                      <div className="space-y-2">
+                    {summary.preview_image_url ? (
+                      <div className="space-y-3">
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
                           Catalog Document Preview
                         </h4>
                         <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group">
-                          <a href={summary.preview_image_url} target="_blank" rel="noreferrer" className="block cursor-zoom-in">
+                          <button
+                            type="button"
+                            onClick={() => setLightboxImage(summary.preview_image_url || null)}
+                            className="w-full block text-left cursor-zoom-in"
+                          >
                             <img 
                               src={summary.preview_image_url} 
                               alt="PDF First Page Preview" 
                               className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-250"
                             />
-                          </a>
+                          </button>
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 );
               })()}
@@ -1821,6 +1965,33 @@ export function Auctions() {
               </a>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Modal */}
+      {lightboxImage && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md transition-all duration-300"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 z-50 bg-white/10 hover:bg-white/20 hover:scale-105 active:scale-95 text-white p-2.5 rounded-full cursor-pointer transition-all duration-200 shadow-lg border border-white/10"
+            title="Close image"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div 
+            className="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={lightboxImage}
+              alt="Expanded view"
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10 select-none animate-scale-up duration-200"
+            />
           </div>
         </div>
       )}

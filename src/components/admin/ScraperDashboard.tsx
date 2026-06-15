@@ -17,7 +17,8 @@ import {
   Square,
   Terminal,
   Cpu,
-  CornerDownLeft
+  CornerDownLeft,
+  Server
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import type { AuditLog } from '../../types/database.types';
@@ -51,6 +52,7 @@ export function ScraperDashboard() {
   const [liveClearDbLogs, setLiveClearDbLogs] = useState<string[]>([]);
   const [liveBackfillLogs, setLiveBackfillLogs] = useState<string[]>([]);
   const [isLocalApiAvailable, setIsLocalApiAvailable] = useState(false);
+  const [isServerless, setIsServerless] = useState(false);
 
   const scraperTerminalRef = useRef<HTMLDivElement>(null);
   const workerTerminalRef = useRef<HTMLDivElement>(null);
@@ -102,8 +104,10 @@ export function ScraperDashboard() {
         setLiveClearDbLogs(data.clearDbLogs || []);
         setLiveBackfillLogs(data.backfillLogs || []);
         setIsLocalApiAvailable(true);
+        setIsServerless(!!data.isServerless);
       } catch (err) {
         setIsLocalApiAvailable(false);
+        setIsServerless(false);
       }
     };
 
@@ -729,6 +733,20 @@ export function ScraperDashboard() {
                 <p className="text-xs md:text-sm text-rose-700 mt-1 leading-relaxed">
                   Realtime terminal outputs and daemon management endpoints are only accessible while running the development environment.
                   Ensure you launched the site using <code className="bg-rose-100 px-1 py-0.5 rounded text-xs font-mono font-bold">npm run dev</code> on your local workstation.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Vercel Serverless Mode Alert */}
+          {isLocalApiAvailable && isServerless && (
+            <div className="bg-indigo-50 border border-indigo-200 text-indigo-900 p-5 rounded-2xl flex items-start gap-3.5 shadow-xs">
+              <Server className="w-6 h-6 text-indigo-500 shrink-0 mt-0.5 animate-pulse" />
+              <div>
+                <p className="font-extrabold text-sm md:text-base">Serverless Mode Active (Vercel)</p>
+                <p className="text-xs md:text-sm text-indigo-700 mt-1 leading-relaxed">
+                  The dashboard is communicating with Vercel Serverless Functions. You can execute the <strong className="font-bold text-indigo-900">Asset Worker</strong>, <strong className="font-bold text-indigo-900">Cleaner</strong>, and <strong className="font-bold text-indigo-900">Backfiller</strong> tasks serverlessly on demand.
+                  Note: The <strong className="font-bold text-indigo-900">MSTC Portal Scraper</strong> is disabled here as it requires manual CAPTCHA solving via a browser GUI, which is only possible running locally with <code className="bg-indigo-100 px-1.5 py-0.5 rounded text-xs font-mono font-bold text-indigo-900">npm run dev</code>.
                 </p>
               </div>
             </div>

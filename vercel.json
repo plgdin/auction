@@ -2,6 +2,10 @@
   "version": 2,
   "rewrites": [
     {
+      "source": "/api/scraper/(.*)",
+      "destination": "/api/scraper.ts"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

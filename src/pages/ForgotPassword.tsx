@@ -3,22 +3,26 @@ import { ForgotPasswordForm } from '../components/forms/ForgotPasswordForm';
 
 export function ForgotPassword() {
   return (
-    <>
-      <div className="mb-6 text-center">
-        <h3 className="text-lg font-medium text-slate-900">Reset your password</h3>
-        <p className="mt-2 text-sm text-slate-600">
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <h2 className="text-3xl font-bold text-slate-900 tracking-tight">
+          Reset password
+        </h2>
+        <p className="text-sm text-slate-500">
           Enter your email address and we will send you a link to reset your password.
         </p>
       </div>
+
       <ForgotPasswordForm />
-      <div className="mt-6 text-center">
+
+      <div className="pt-2 text-center">
         <Link
           to="/auth/login"
-          className="font-medium text-primary hover:text-primary-700 text-sm"
+          className="font-semibold text-primary hover:underline text-sm transition-all duration-200"
         >
           Return to sign in
         </Link>
       </div>
-    </>
+    </div>
   );
 }

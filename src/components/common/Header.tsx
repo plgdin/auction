@@ -60,10 +60,10 @@ export function Header() {
                 </Link>
               ) : (
                 <Link
-                  to="/auth/register"
+                  to="/auth/login"
                   className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary/90 transition-colors"
                 >
-                  Sign Up
+                  Sign In
                 </Link>
               )}
             </div>
@@ -118,11 +118,11 @@ export function Header() {
               ) : (
                 <div className="space-y-3">
                   <Link
-                    to="/auth/register"
+                    to="/auth/login"
                     className="block w-full text-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary/90"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Sign Up
+                    Sign In
                   </Link>
                 </div>
               )}

@@ -18,7 +18,7 @@ interface CatalogSummary {
     preBidDdg: string;
   };
   preview_image_url?: string | null;
-  extracted_images?: string[];
+  extracted_images: string[];
 }
 
 const generateCatalogSummary = (
@@ -109,11 +109,6 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
     item.mstc_auction_number.split("/").pop() || item.id.substring(0, 8);
   const summary = generateCatalogSummary(item, shortId);
   const hasOtherMedia = summary.extracted_images && summary.extracted_images.length > 0;
-  const extraMediaText = hasOtherMedia
-    ? summary.extracted_images?.some(url => url.toLowerCase().includes('.pdf'))
-      ? 'documents available'
-      : 'images available'
-    : '';
 
   const parts = item.mstc_auction_number.split("/");
   const rawOffice =
@@ -192,7 +187,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
         )}
         {hasOtherMedia && (
           <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
-            images available
+            Images available
           </span>
         )}
       </div>
@@ -394,11 +389,7 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
                   alt="Catalog Image" 
                   className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
                 />
-                {hasOtherMedia && (
-                  <div className="absolute top-2 left-2 right-2 bg-slate-900/85 backdrop-blur-xs text-white text-[9.5px] font-bold px-2 py-1.5 rounded-md text-center border border-white/10 shadow-xs z-10 pointer-events-none select-none uppercase tracking-wider">
-                    {extraMediaText}
-                  </div>
-                )}
+
               </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
