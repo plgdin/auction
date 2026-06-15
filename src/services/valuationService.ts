@@ -57,20 +57,36 @@ interface CommodityDef {
 
 const COMMODITIES: CommodityDef[] = [
   {
+    name: 'immovable_property',
+    keywords: ['flat', 'plot', 'land', 'building', 'office space', 'shop', 'showroom', 'immovable', 'residential', 'commercial space'],
+    basePricePerUnit: 5000000,
+    minPrice: 1000000,
+    maxPrice: 200000000,
+    queryKeyword: 'property flat price India'
+  },
+  {
     name: 'heavy_vehicle_machinery',
-    keywords: ['bus', 'buses', 'truck', 'rig', 'compressor', 'machinery'],
-    basePricePerUnit: 180000,
+    keywords: ['bus', 'buses', 'truck', 'rig', 'compressor', 'machinery', 'lorry', 'coach', 'forklift', 'dumper', 'tractor', 'loader', 'excavator'],
+    basePricePerUnit: 350000,
     minPrice: 80000,
-    maxPrice: 400000,
+    maxPrice: 1000000,
     queryKeyword: 'scrap bus truck heavy machinery price India'
   },
   {
     name: 'vehicle',
-    keywords: ['car', 'jeep', 'armada', 'motorcycle', 'scooter', 'wheeler', 'vehicle'],
-    basePricePerUnit: 45000,
-    minPrice: 5000,
-    maxPrice: 150000,
+    keywords: ['car', 'jeep', 'armada', 'vehicle', 'ambulance', 'sumo', 'indigo', 'bolero', 'gypsy', 'omni', 'tempo', 'tonner'],
+    basePricePerUnit: 150000,
+    minPrice: 30000,
+    maxPrice: 400000,
     queryKeyword: 'scrap car vehicle price India'
+  },
+  {
+    name: 'motorcycle',
+    keywords: ['motorcycle', 'scooter', 'wheeler', 'enfield', 'bullet', 'bike'],
+    basePricePerUnit: 45000,
+    minPrice: 10000,
+    maxPrice: 100000,
+    queryKeyword: 'scrap motorcycle bike price India'
   },
   {
     name: 'transformer',
@@ -83,66 +99,98 @@ const COMMODITIES: CommodityDef[] = [
   {
     name: 'copper',
     keywords: ['copper', 'cu'],
-    basePricePerKg: 650,
-    minPrice: 450,
-    maxPrice: 900,
+    basePricePerKg: 780,
+    minPrice: 500,
+    maxPrice: 1000,
     queryKeyword: 'copper scrap price per kg India'
   },
   {
     name: 'brass',
     keywords: ['brass'],
-    basePricePerKg: 420,
+    basePricePerKg: 480,
     minPrice: 300,
-    maxPrice: 600,
+    maxPrice: 700,
     queryKeyword: 'brass scrap price per kg India'
   },
   {
     name: 'aluminium',
     keywords: ['aluminium', 'aluminum', 'al'],
-    basePricePerKg: 180,
-    minPrice: 120,
-    maxPrice: 280,
+    basePricePerKg: 235,
+    minPrice: 150,
+    maxPrice: 350,
     queryKeyword: 'aluminium scrap price per kg India'
   },
   {
     name: 'steel_iron_ferrous',
     keywords: ['steel', 'iron', 'ferrous', 'pipe', 'angle', 'channel', 'structure', 'railway', 'ms scrap'],
-    basePricePerKg: 42,
-    minPrice: 30,
-    maxPrice: 65,
+    basePricePerKg: 38.5,
+    minPrice: 25,
+    maxPrice: 60,
     queryKeyword: 'ms scrap price per kg India'
   },
   {
     name: 'battery',
     keywords: ['battery', 'batteries', 'vrla', 'lead acid'],
-    basePricePerUnit: 1200,
-    minPrice: 800,
-    maxPrice: 4000,
+    basePricePerKg: 120,
+    minPrice: 80,
+    maxPrice: 180,
     queryKeyword: 'scrap lead acid battery price India'
   },
   {
     name: 'lubricant_oil',
-    keywords: ['oil', 'lubricant', 'lubricating', 'waste oil'],
-    basePricePerUnit: 35,
-    minPrice: 20,
-    maxPrice: 80,
+    keywords: ['oil', 'lubricant', 'lubricating', 'waste oil', 'petroleum'],
+    basePricePerUnit: 85,
+    minPrice: 50,
+    maxPrice: 150,
     queryKeyword: 'waste engine oil price per liter India'
   },
   {
     name: 'e_waste',
-    keywords: ['e-waste', 'telecom', 'computer', 'laptop', 'switch', 'motherboard', 'electronic', 'smps', 'panel'],
-    basePricePerKg: 100,
-    minPrice: 50,
-    maxPrice: 300,
+    keywords: ['e-waste', 'telecom', 'computer', 'laptop', 'switch', 'motherboard', 'electronic', 'smps', 'panel', 'it equipment'],
+    basePricePerUnit: 14500,
+    minPrice: 5000,
+    maxPrice: 30000,
     queryKeyword: 'e-waste scrap price per kg India'
+  },
+  {
+    name: 'cable_wire',
+    keywords: ['cable', 'wire'],
+    basePricePerKg: 340,
+    minPrice: 200,
+    maxPrice: 500,
+    queryKeyword: 'copper cable scrap price India'
+  },
+  {
+    name: 'lead',
+    keywords: ['lead'],
+    basePricePerKg: 185,
+    minPrice: 120,
+    maxPrice: 250,
+    queryKeyword: 'lead scrap price India'
+  },
+  {
+    name: 'zinc',
+    keywords: ['zinc'],
+    basePricePerKg: 220,
+    minPrice: 150,
+    maxPrice: 300,
+    queryKeyword: 'zinc scrap price India'
   }
 ];
+
+function hasWord(text: string, kw: string): boolean {
+  if (kw.includes(' ')) {
+    return text.includes(kw);
+  }
+  const regex = new RegExp(`\\b${kw}(?:s|es)?\\b`, 'i');
+  return regex.test(text);
+}
 
 function matchCommodity(description: string): CommodityDef {
   const normalized = description.toLowerCase();
   for (const comm of COMMODITIES) {
     for (const kw of comm.keywords) {
-      if (normalized.includes(kw)) {
+      if (hasWord(normalized, kw)) {
         return comm;
       }
     }
@@ -150,9 +198,9 @@ function matchCommodity(description: string): CommodityDef {
   return {
     name: 'default',
     keywords: [],
-    basePricePerKg: 50,
-    minPrice: 10,
-    maxPrice: 500,
+    basePricePerUnit: 2500,
+    minPrice: 500,
+    maxPrice: 10000,
     queryKeyword: 'scrap metal price India'
   };
 }
@@ -302,15 +350,49 @@ export const valuationService = {
     
     let totalUsInr = 0;
     let totalUkInr = 0;
-
     for (const rawItem of rawItems) {
       // 1. Parse quantity
-      const qtyVal = parseFloat(rawItem.qty.replace(/,/g, ''));
-      const qty = isNaN(qtyVal) || qtyVal <= 0 ? 1 : qtyVal;
+      const qtyStr = rawItem.qty || '1';
+      const parts = qtyStr.split('+');
+      let totalQty = 0;
+      let totalBaseQty = 0;
 
-      // 2. Fetch international prices
+      const comm = matchCommodity(rawItem.description);
+      const isPerKg = comm.basePricePerKg !== undefined;
+
+      for (const part of parts) {
+        const cleanPart = part.replace(/,/g, '').trim();
+        const partQty = parseFloat(cleanPart);
+        if (isNaN(partQty) || partQty <= 0) continue;
+
+        totalQty += partQty;
+
+        const unitMatch = cleanPart.match(/[\d\.]+\s*([a-zA-Z\.]+)/);
+        const partUnit = (unitMatch ? unitMatch[1] : rawItem.unit || '').toLowerCase().trim();
+
+        let partBaseQty = partQty;
+        if (isPerKg) {
+          if (partUnit.includes('mt') || partUnit.includes('ton') || partUnit.includes('tonne')) {
+            partBaseQty = partQty * 1000;
+          }
+        }
+        totalBaseQty += partBaseQty;
+      }
+
+      const qty = totalQty > 0 ? totalQty : 1;
+      const baseQty = totalBaseQty > 0 ? totalBaseQty : 1;
+
+      // 2. Fetch international prices or use pre-extracted marketPrice
       const intl = await this.fetchInternationalPrices(rawItem.description);
-      const avgPrice = intl.in.convertedPrice;
+      let avgPrice = intl.in.convertedPrice;
+      const customPriceStr = (rawItem as any).marketPrice;
+      if (customPriceStr) {
+        const cleanPrice = customPriceStr.replace(/,/g, '');
+        const priceMatch = cleanPrice.match(/₹\s*(\d+)/);
+        if (priceMatch) {
+          avgPrice = parseInt(priceMatch[1], 10);
+        }
+      }
       const isMock = intl.in.isMock;
 
       // Compute confidence score based on number of sources and consistency
@@ -319,17 +401,6 @@ export const valuationService = {
         pricingConfidence += Math.min(30, intl.in.sources * 4);
       } else {
         pricingConfidence = 65;
-      }
-
-      const comm = matchCommodity(rawItem.description);
-      const isPerKg = comm.basePricePerKg !== undefined;
-      const normalizedUnit = rawItem.unit.toLowerCase();
-
-      let baseQty = qty;
-      if (isPerKg) {
-        if (normalizedUnit.includes('mt') || normalizedUnit.includes('ton') || normalizedUnit.includes('tonne')) {
-          baseQty = qty * 1000;
-        }
       }
 
       const itemTotalValue = Math.round(avgPrice * baseQty);

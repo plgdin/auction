@@ -28,6 +28,7 @@ import { renderPdfFirstPage, extractEmbeddedJpegs, renderAndExtractPdfPages } fr
 import { parseMstcCatalogText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
 import { performOcr } from "./utils/ocrUtils.js";
+import { getEstimatedMarketPrice, calculateTotalMarketValue } from "../src/utils/valuationUtils.js";
 
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
@@ -562,6 +563,9 @@ function buildMstcHeaders(): Record<string, string> {
   return headers;
 }
 
+
+
+
 /**
  * Process a single queue record: download, parse, extract, and update.
  */
@@ -740,6 +744,15 @@ async function processRecord(record: QueueRecord): Promise<void> {
       // Inject preview and extracted images into the summary
       summaryObj.preview_image_url = previewImageUrl;
       summaryObj.extracted_images = extractedImageUrls;
+
+      // Calculate total market price valuation
+      try {
+        const totalMarketValue = calculateTotalMarketValue(summaryObj.items || [], record.category_name || "");
+        summaryObj.totalMarketValue = totalMarketValue;
+        jobLog.info({ totalMarketValue }, "Calculated total market value for catalog");
+      } catch (valErr: any) {
+        jobLog.warn({ errorMessage: valErr.message }, "Failed to calculate total market value");
+      }
 
       rawMaterialsText = JSON.stringify(summaryObj);
       jobLog.info(

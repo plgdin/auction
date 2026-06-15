@@ -16,74 +16,8 @@ import { valuationService } from '../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../services/valuationService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-export const getEstimatedMarketPrice = (description: string, categoryName: string = ''): string => {
-  const desc = (description || '').toLowerCase();
-  const cat = (categoryName || '').toLowerCase();
+import { getEstimatedMarketPrice } from '../utils/valuationUtils';
 
-  if (desc.includes('copper') || cat.includes('copper')) {
-    return '₹780 / kg';
-  }
-  if (desc.includes('aluminum') || desc.includes('aluminium') || cat.includes('aluminum') || cat.includes('aluminium')) {
-    return '₹235 / kg';
-  }
-  if (desc.includes('battery') || desc.includes('batteries') || cat.includes('battery') || cat.includes('batteries')) {
-    return '₹120 / kg';
-  }
-  if (desc.includes('lead') || cat.includes('lead')) {
-    return '₹185 / kg';
-  }
-  if (desc.includes('brass') || cat.includes('brass')) {
-    return '₹480 / kg';
-  }
-  if (desc.includes('zinc') || cat.includes('zinc')) {
-    return '₹220 / kg';
-  }
-  if (desc.includes('iron') || desc.includes('steel') || desc.includes('ferrous') || cat.includes('iron') || cat.includes('steel') || cat.includes('ferrous')) {
-    return '₹38,500 / Ton';
-  }
-  if (desc.includes('oil') || desc.includes('lubricating') || desc.includes('petroleum') || cat.includes('oil') || cat.includes('petroleum')) {
-    return '₹85 / Liter';
-  }
-  if (desc.includes('wheat') || cat.includes('wheat')) {
-    return '₹2,450 / Quintal';
-  }
-  if (desc.includes('rice') || desc.includes('paddy') || cat.includes('rice') || cat.includes('paddy')) {
-    return '₹2,200 / Quintal';
-  }
-  if (desc.includes('coal') || desc.includes('lignite') || cat.includes('coal') || cat.includes('lignite')) {
-    return '₹8,400 / Ton';
-  }
-  if (desc.includes('sand') || desc.includes('mine') || desc.includes('stone') || desc.includes('block') || cat.includes('sand') || cat.includes('mine') || cat.includes('stone') || cat.includes('block')) {
-    return '₹4,500 / Ton';
-  }
-  if (desc.includes('cable') || desc.includes('wire') || cat.includes('cable') || cat.includes('wire')) {
-    return '₹340 / kg';
-  }
-  if (desc.includes('computer') || desc.includes('laptop') || desc.includes('it equipment') || cat.includes('computer') || cat.includes('laptop')) {
-    return '₹14,500 / Unit';
-  }
-  if (desc.includes('vehicle') || desc.includes('car') || desc.includes('bus') || desc.includes('truck') || cat.includes('vehicle') || cat.includes('car')) {
-    return '₹3,50,000 / Unit';
-  }
-  return '₹2,500 / Ton';
-};
-
-const getNumericQty = (qtyStr: string, unitStr: string = ''): number => {
-  const clean = (qtyStr || '').replace(/,/g, '').trim();
-  let num = parseFloat(clean);
-  if (isNaN(num)) num = 1;
-  const unitUpper = (unitStr || '').toUpperCase().trim();
-  if (unitUpper === 'MT' || unitUpper === 'M.T.' || unitUpper === 'M.T') {
-    return num * 1000000;
-  }
-  return num;
-};
-
-const getNumericPrice = (priceStr: string): number => {
-  const clean = (priceStr || '').replace(/[^\d]/g, '');
-  const num = parseInt(clean, 10);
-  return isNaN(num) ? 0 : num;
-};
 
 interface CatalogSummary {
   overview: string;
@@ -111,6 +45,7 @@ interface CatalogSummary {
     time: string;
     contact: string;
   };
+  totalMarketValue?: number;
 }
 
 const getTaxPercent = (taxRateStr: string): number => {
@@ -209,7 +144,7 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
               ...lot,
               description: desc,
               taxRate: tax,
-              marketPrice: getEstimatedMarketPrice(desc, item.category_name)
+              marketPrice: lot.marketPrice || getEstimatedMarketPrice(desc, item.category_name)
             };
           });
         }
@@ -396,11 +331,17 @@ export function Auctions() {
   useEffect(() => {
     if (selectedPreviewItem) {
       const summary = generateCatalogSummary(selectedPreviewItem);
-      const rawPreBid = summary.depositDetails?.preBidDdg || '';
-      const preBidVal = rawPreBid.replace(/[^\d]/g, '');
-      const parsedVal = parseInt(preBidVal, 10);
+      
+      let defaultBid = summary.totalMarketValue || 0;
+      if (defaultBid <= 0) {
+        const rawPreBid = summary.depositDetails?.preBidDdg || '';
+        const preBidVal = rawPreBid.replace(/[^\d]/g, '');
+        const parsedVal = parseInt(preBidVal, 10);
+        defaultBid = isNaN(parsedVal) || parsedVal <= 0 ? 50000 : parsedVal;
+      }
+
       setCustomCosts({
-        currentBid: isNaN(parsedVal) || parsedVal <= 0 ? 50000 : parsedVal,
+        currentBid: defaultBid,
         transportation: 5000,
         loadingUnloading: 2000,
         refurbishment: 0,
@@ -426,6 +367,7 @@ export function Auctions() {
           description: it.description || '',
           qty: String(it.qty || '1'),
           unit: it.unit || 'Nos',
+          marketPrice: it.marketPrice || '',
         }));
         const result = await valuationService.calculateValuation(rawItems, customCosts, hasImages);
         if (isMounted) {

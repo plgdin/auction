@@ -20,6 +20,7 @@ export interface CatalogItem {
   taxRate: string;
   attachments?: string[];
   images?: string[];
+  marketPrice?: string;
 }
 
 export interface KeyContact {
@@ -44,6 +45,7 @@ export interface CatalogSummary {
   keyContacts: KeyContact[];
   preview_image_url?: string | null;
   extracted_images?: string[];
+  totalMarketValue?: number;
 }
 
 // ─── Parser ──────────────────────────────────────────────────────────────────
@@ -413,6 +415,36 @@ export function parseMstcCatalogText(
         tcs = tcsMatch[1].replace(/\r?\n/g, " ").trim();
       }
 
+      // --- Extract Start Price / Market Price ---
+      let lotMarketPrice: string | undefined = undefined;
+
+      const startPriceInrMatch = block.match(/Start\s*Price\s*in\s*INR\s*-\s*([\d\.]+)/i);
+      const startPriceCrMatch = block.match(/Start\s*Price\s*\(in\s*INR\s*Cr\.\)\s*:\s*([\d\.]+)/i);
+      const generalStartPriceMatch = block.match(/Start\s*Price\s*(?:in\s*INR|in\s*Cr\.?)?[\s\(\)]*[:.-]?\s*([\d,]+)/i);
+
+      let parsedStartPriceNum: number | null = null;
+      if (startPriceInrMatch) {
+        parsedStartPriceNum = parseFloat(startPriceInrMatch[1]);
+      } else if (startPriceCrMatch) {
+        parsedStartPriceNum = parseFloat(startPriceCrMatch[1]) * 10000000;
+      } else if (generalStartPriceMatch) {
+        const cleanVal = generalStartPriceMatch[1].replace(/,/g, '');
+        const parsedVal = parseFloat(cleanVal);
+        if (!isNaN(parsedVal)) {
+          if (block.toLowerCase().includes('cr.') && parsedVal < 10000) {
+            parsedStartPriceNum = parsedVal * 10000000;
+          } else {
+            parsedStartPriceNum = parsedVal;
+          }
+        }
+      }
+
+      if (parsedStartPriceNum !== null && !isNaN(parsedStartPriceNum) && parsedStartPriceNum > 0) {
+        const formattedPrice = parsedStartPriceNum.toLocaleString('en-IN');
+        const priceUnit = (unit || 'Lot');
+        lotMarketPrice = `₹${formattedPrice} / ${priceUnit}`;
+      }
+
       // --- Extract block attachments ---
       const cleanedBlockText = block
         .replace(/\r?\n/g, " ")
@@ -436,6 +468,7 @@ export function parseMstcCatalogText(
         unit,
         taxRate: `${gst} GST${tcs && tcs !== "0.0" && tcs !== "0" ? " + " + tcs + "% TCS" : ""}`,
         attachments: attachments.length > 0 ? attachments : undefined,
+        marketPrice: lotMarketPrice,
       });
     }
   }
