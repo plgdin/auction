@@ -15,7 +15,6 @@ export interface ValuedItem {
 
 export interface ValuationCosts {
   currentBid: number;
-  gstTaxesPercent: number;
   transportation: number;
   loadingUnloading: number;
   refurbishment: number;
@@ -250,10 +249,8 @@ export const valuationService = {
     const avgItemConfidence = Math.round(totalConfidenceSum / (valuedItems.length || 1));
 
     // Calculate Costs and Profit
-    const taxCost = costs.currentBid * (costs.gstTaxesPercent / 100);
     const totalCost = Math.round(
       costs.currentBid +
-      taxCost +
       costs.transportation +
       costs.loadingUnloading +
       costs.refurbishment +

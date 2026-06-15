@@ -277,7 +277,6 @@ export function Auctions() {
   const [modalTab, setModalTab] = useState<'catalog' | 'valuation'>('catalog');
   const [customCosts, setCustomCosts] = useState<ValuationCosts>({
     currentBid: 0,
-    gstTaxesPercent: 18,
     transportation: 5000,
     loadingUnloading: 2000,
     refurbishment: 0,
@@ -316,7 +315,6 @@ export function Auctions() {
       const parsedVal = parseInt(preBidVal, 10);
       setCustomCosts({
         currentBid: isNaN(parsedVal) || parsedVal <= 0 ? 50000 : parsedVal,
-        gstTaxesPercent: 18,
         transportation: 5000,
         loadingUnloading: 2000,
         refurbishment: 0,
@@ -1153,20 +1151,7 @@ export function Auctions() {
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">GST & Taxes (%)</label>
-                          <div className="relative rounded-xl shadow-2xs">
-                            <input
-                              type="number"
-                              value={customCosts.gstTaxesPercent}
-                              onChange={(e) => setCustomCosts(prev => ({ ...prev, gstTaxesPercent: Math.max(0, parseFloat(e.target.value) || 0) }))}
-                              className="block w-full px-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
-                            />
-                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                              <span className="text-slate-400 text-xs font-semibold">%</span>
-                            </div>
-                          </div>
-                        </div>
+
 
                         <div>
                           <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Transportation Cost (₹)</label>
@@ -1274,7 +1259,7 @@ export function Auctions() {
                           <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
                             <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Total Lot Cost</h5>
                             <div className="text-lg font-black text-slate-900">₹{valuationData.totalCost.toLocaleString('en-IN')}</div>
-                            <p className="text-[10px] text-slate-400 font-medium">Bid + taxes + logistics</p>
+                            <p className="text-[10px] text-slate-400 font-medium">Bid + logistics</p>
                           </div>
 
                           <div className={clsx(
@@ -1293,7 +1278,7 @@ export function Auctions() {
                           <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
                             <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Break-Even Bid</h5>
                             <div className="text-lg font-black text-slate-900">₹{valuationData.breakEven.toLocaleString('en-IN')}</div>
-                            <p className="text-[10px] text-slate-400 font-medium">Includes tax & handling</p>
+                            <p className="text-[10px] text-slate-400 font-medium">Includes handling</p>
                           </div>
                         </div>
 
