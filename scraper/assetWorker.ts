@@ -24,7 +24,7 @@ import {
 } from "./config.js";
 import { logger } from "./utils/logger.js";
 import { supabase, uploadToStorage } from "./utils/storage.js";
-import { renderPdfFirstPage, extractEmbeddedJpegs } from "./utils/pdfUtils.js";
+import { renderPdfFirstPage, extractEmbeddedJpegs, renderAndExtractPdfPages } from "./utils/pdfUtils.js";
 import { parseMstcCatalogText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
 
@@ -98,11 +98,84 @@ async function downloadAttachment(
  * Extract attachment file references from the parsed catalog text,
  * download each, extract/render images, and upload them to storage.
  */
+/**
+ * Helper to match a rendered PDF page to specific lot items by analyzing text content.
+ */
+function matchPageToLots(
+  pageText: string,
+  items: any[],
+  attachmentName: string
+): any[] {
+  const matchedLots: any[] = [];
+  const normalizedText = pageText.toLowerCase().replace(/\s+/g, " ");
+  const filenameLower = attachmentName.toLowerCase();
+
+  // 1. Check if the filename itself targets a specific lot
+  for (const item of items) {
+    const srStr = String(item.sr).toLowerCase().trim();
+    if (
+      filenameLower.includes(`_${srStr}.pdf`) ||
+      filenameLower.includes(`_lot_${srStr}`) ||
+      filenameLower.includes(`_${srStr}_`)
+    ) {
+      matchedLots.push(item);
+    }
+  }
+  if (matchedLots.length > 0) {
+    return matchedLots;
+  }
+
+  // 2. Scan page text for explicit lot serial number, e.g. "lot no. 1", "lot - A-1"
+  for (const item of items) {
+    const srStr = String(item.sr).toLowerCase().trim();
+    const lotPatterns = [
+      new RegExp(`\\blot\\s*(?:no|num|number)?\\s*[-.:]?\\s*${srStr}\\b`, "i"),
+      new RegExp(`\\bsr\\.?\\s*(?:no|num|number)?\\s*[-.:]?\\s*${srStr}\\b`, "i")
+    ];
+    if (lotPatterns.some(p => p.test(normalizedText))) {
+      matchedLots.push(item);
+    }
+  }
+  if (matchedLots.length > 0) {
+    return matchedLots;
+  }
+
+  // 3. Scan page text for description keyword matches
+  for (const item of items) {
+    const desc = (item.description || "").toLowerCase();
+    const fillerWords = new Set(["as", "per", "annexure", "attached", "items", "and", "the", "for", "with", "from"]);
+    const keywords = desc
+      .split(/[^a-zA-Z0-9]/)
+      .map(w => w.trim())
+      .filter(w => w.length >= 3 && !fillerWords.has(w));
+
+    if (keywords.length > 0) {
+      const matchedKeywords = keywords.filter(word => normalizedText.includes(word));
+      // Require matching at least 50% of keywords, with a minimum of 1
+      if (matchedKeywords.length >= Math.max(1, Math.ceil(keywords.length * 0.5))) {
+        matchedLots.push(item);
+      }
+    }
+  }
+
+  return matchedLots;
+}
+
+/**
+ * Extract attachment file references from the parsed catalog text,
+ * download each, extract/render images, and upload them to storage.
+ * Maps images to specific lots if text matches are found.
+ */
 async function extractAndProcessLotDocuments(
   catalogText: string,
   sanitizedAuctionNum: string,
   headers: Record<string, string>,
-): Promise<string[]> {
+  items: any[] = [],
+): Promise<{
+  imageUrls: string[];
+  attachmentMap: Record<string, string[]>;
+  lotSpecificImagesMap: Record<string, string[]>;
+}> {
   // Reconstruct filename if there are newlines or spaces
   const cleanedText = catalogText
     .replace(/\r?\n/g, " ")
@@ -119,8 +192,12 @@ async function extractAndProcessLotDocuments(
     return n.startsWith("photo_") || n.startsWith("annex_");
   });
 
+  const imageUrls: string[] = [];
+  const attachmentMap: Record<string, string[]> = {};
+  const lotSpecificImagesMap: Record<string, string[]> = {};
+
   if (uniqueAttachments.length === 0) {
-    return [];
+    return { imageUrls, attachmentMap, lotSpecificImagesMap };
   }
 
   log.info(
@@ -128,10 +205,9 @@ async function extractAndProcessLotDocuments(
     "Found lot attachments to process",
   );
 
-  const imageUrls: string[] = [];
-
   for (let i = 0; i < uniqueAttachments.length; i++) {
     const fileName = uniqueAttachments[i];
+    const lotImageUrls: string[] = [];
 
     // Determine initial doc_type
     const primaryType = fileName.toLowerCase().startsWith("photo_")
@@ -156,56 +232,105 @@ async function extractAndProcessLotDocuments(
       "Attachment retrieved, processing images",
     );
 
-    // 1. Try to extract embedded JPEGs first (high-res original)
-    const embeddedJpegs = extractEmbeddedJpegs(docBuffer);
-    if (embeddedJpegs.length > 0) {
+    // 1. Try to render all pages of the attachment and match them page-by-page
+    const renderedPages = await renderAndExtractPdfPages(docBuffer, 20);
+    if (renderedPages.length > 0) {
       log.info(
-        { fileName, imageCount: embeddedJpegs.length },
-        "Extracted embedded images from attachment",
+        { fileName, pageCount: renderedPages.length },
+        "Rendered attachment pages, executing text matching",
       );
-      for (let j = 0; j < embeddedJpegs.length; j++) {
+
+      const pageUrls: string[] = [];
+      const pageToLots: any[][] = [];
+
+      for (let pIdx = 0; pIdx < renderedPages.length; pIdx++) {
+        const page = renderedPages[pIdx];
         try {
-          const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_lot_doc_${i}_img_${j}.jpg`;
+          const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_lot_doc_${i}_page_${page.pageNumber}.jpg`;
           const publicUrl = await uploadToStorage(
             imgPath,
-            embeddedJpegs[j],
+            page.imageBuffer,
             "image/jpeg",
           );
+          
           imageUrls.push(publicUrl);
+          lotImageUrls.push(publicUrl);
+          pageUrls.push(publicUrl);
+
+          // Find matches for this page
+          const matched = matchPageToLots(page.text, items, fileName);
+          pageToLots.push(matched);
+
+          if (matched.length > 0) {
+            log.info(
+              { pageNumber: page.pageNumber, matchedLots: matched.map(m => m.sr) },
+              "Mapped rendered page specifically to lot(s)",
+            );
+            for (const lot of matched) {
+              const srStr = String(lot.sr);
+              if (!lotSpecificImagesMap[srStr]) {
+                lotSpecificImagesMap[srStr] = [];
+              }
+              lotSpecificImagesMap[srStr].push(publicUrl);
+            }
+          }
         } catch (uploadErr: any) {
           log.warn(
-            { errorMessage: uploadErr.message },
-            "Failed to upload extracted attachment image",
+            { errorMessage: uploadErr.message, pageNumber: page.pageNumber },
+            "Failed to process rendered page image",
           );
+        }
+      }
+
+      // Check if ANY specific matches were made for this attachment
+      const hasSpecificMatches = pageToLots.some(m => m.length > 0);
+      
+      // Fallback 1: Sequential matching if pages count matches items count
+      if (!hasSpecificMatches && renderedPages.length === items.length && items.length > 0) {
+        log.info(
+          { fileName, pageCount: renderedPages.length, itemsCount: items.length },
+          "No specific page matches found, mapping pages sequentially to lots",
+        );
+        for (let pIdx = 0; pIdx < pageUrls.length; pIdx++) {
+          const srStr = String(items[pIdx].sr);
+          if (!lotSpecificImagesMap[srStr]) {
+            lotSpecificImagesMap[srStr] = [];
+          }
+          lotSpecificImagesMap[srStr].push(pageUrls[pIdx]);
         }
       }
     } else {
-      // 2. If no embedded JPEGs, render the first page of the PDF to image
-      log.info(
-        { fileName },
-        "No embedded JPEGs, rendering attachment page to image",
-      );
-      const renderBuffer = await renderPdfFirstPage(docBuffer);
-      if (renderBuffer) {
-        try {
-          const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_lot_doc_${i}_page.jpg`;
-          const publicUrl = await uploadToStorage(
-            imgPath,
-            renderBuffer,
-            "image/jpeg",
-          );
-          imageUrls.push(publicUrl);
-        } catch (uploadErr: any) {
-          log.warn(
-            { errorMessage: uploadErr.message },
-            "Failed to upload rendered attachment image",
-          );
+      // 2. Fallback to extracting embedded JPEGs if page rendering yielded nothing
+      const embeddedJpegs = extractEmbeddedJpegs(docBuffer);
+      if (embeddedJpegs.length > 0) {
+        log.info(
+          { fileName, imageCount: embeddedJpegs.length },
+          "Extracted embedded images from attachment (fallback)",
+        );
+        for (let j = 0; j < embeddedJpegs.length; j++) {
+          try {
+            const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_lot_doc_${i}_img_${j}.jpg`;
+            const publicUrl = await uploadToStorage(
+              imgPath,
+              embeddedJpegs[j],
+              "image/jpeg",
+            );
+            imageUrls.push(publicUrl);
+            lotImageUrls.push(publicUrl);
+          } catch (uploadErr: any) {
+            log.warn(
+              { errorMessage: uploadErr.message },
+              "Failed to upload extracted attachment image",
+            );
+          }
         }
       }
     }
+
+    attachmentMap[fileName] = lotImageUrls;
   }
 
-  return imageUrls;
+  return { imageUrls, attachmentMap, lotSpecificImagesMap };
 }
 
 // ─── Queue Pipeline ──────────────────────────────────────────────────────────
@@ -358,12 +483,16 @@ async function processRecord(record: QueueRecord): Promise<void> {
     const parsedPdf = await pdf(fileBuffer);
     if (parsedPdf?.text) {
       // Extract attachment images from the parsed PDF text
+      let attachmentImageUrls: string[] = [];
+      let attachmentMap: Record<string, string[]> = {};
       try {
-        const attachmentImageUrls = await extractAndProcessLotDocuments(
+        const result = await extractAndProcessLotDocuments(
           parsedPdf.text,
           sanitizedAuctionNum,
           headers,
         );
+        attachmentImageUrls = result.imageUrls;
+        attachmentMap = result.attachmentMap;
         if (attachmentImageUrls.length > 0) {
           extractedImageUrls.push(...attachmentImageUrls);
           jobLog.info(
@@ -384,6 +513,24 @@ async function processRecord(record: QueueRecord): Promise<void> {
         record.seller_name || "",
         record.location || "",
       );
+
+      // Map lot-specific images from the attachment map to the lot item objects
+      if (summaryObj.items && Array.isArray(summaryObj.items)) {
+        for (const item of summaryObj.items) {
+          if (item.attachments && Array.isArray(item.attachments)) {
+            const itemImages: string[] = [];
+            for (const attName of item.attachments) {
+              const urls = attachmentMap[attName];
+              if (urls && urls.length > 0) {
+                itemImages.push(...urls);
+              }
+            }
+            if (itemImages.length > 0) {
+              item.images = itemImages;
+            }
+          }
+        }
+      }
 
       // Inject preview and extracted images into the summary
       summaryObj.preview_image_url = previewImageUrl;

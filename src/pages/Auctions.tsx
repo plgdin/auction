@@ -16,7 +16,15 @@ import clsx from 'clsx';
 interface CatalogSummary {
   overview: string;
   scopeOfWork: string;
-  items: { sr: number; description: string; qty: string; unit: string; taxRate: string }[];
+  items: {
+    sr: number | string;
+    description: string;
+    qty: string;
+    unit: string;
+    taxRate: string;
+    attachments?: string[];
+    images?: string[];
+  }[];
   eligibility: string[];
   depositDetails: {
     emd: string;
@@ -1102,7 +1110,30 @@ export function Auctions() {
                         {generateCatalogSummary(selectedPreviewItem).items.map((row) => (
                           <tr key={row.sr} className="hover:bg-slate-50/50">
                             <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                            <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.description}</td>
+                            <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                              <div>{row.description}</div>
+                              {row.images && row.images.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {row.images.map((imgUrl, imgIdx) => (
+                                    <a
+                                      key={imgIdx}
+                                      href={imgUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="relative group w-14 h-14 rounded-lg overflow-hidden border border-slate-200 hover:border-emerald-500 transition-colors shrink-0 bg-slate-50 flex items-center justify-center cursor-zoom-in"
+                                      title="Click to view image"
+                                    >
+                                      <img
+                                        src={imgUrl}
+                                        alt={`${row.description} image ${imgIdx + 1}`}
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-255"
+                                      />
+                                      <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
                             <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
                             <td className="py-2.5 px-3.5 text-center font-mono text-[10px] text-slate-500">{row.taxRate}</td>
                           </tr>

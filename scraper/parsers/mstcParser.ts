@@ -13,11 +13,13 @@ import {
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface CatalogItem {
-  sr: number;
+  sr: number | string;
   description: string;
   qty: string;
   unit: string;
   taxRate: string;
+  attachments?: string[];
+  images?: string[];
 }
 
 export interface KeyContact {
@@ -159,17 +161,49 @@ export function parseMstcCatalogText(
   }
 
   // 4. Extract Lots (Identified Inventory)
+  //
+  // Lot identifiers from MSTC can be:
+  //   - Numeric:       "1", "2", "3"
+  //   - Alphanumeric:  "A-1", "DHL-2025-A01-002", "JMN_01/2026-27"
+  //   - Single letter: "A", "B"
+  //   - Multi-line:    "DHL-2025-" + "\n" + "A01-002"
+  //
+  // The split on "Lot No - " yields blocks where the lot identifier is everything
+  // before the "Lot Name" marker. We join multi-line fragments and accept any
+  // non-empty string as a valid identifier.
   const items: CatalogItem[] = [];
   const lotBlocks = cleanText.split(/Lot No\s*-\s*/);
 
   if (lotBlocks.length > 1) {
     for (let i = 1; i < lotBlocks.length; i++) {
       const block = lotBlocks[i];
-      const linesBlock = block.split("\n");
 
-      const lotNo = parseInt(linesBlock[0].trim());
-      if (isNaN(lotNo)) continue;
+      // --- Extract lot identifier ---
+      // Everything before "Lot Name" is the lot ID (may span multiple lines)
+      const lotNameIdx = block.search(/Lot Name\s*-/i);
+      let lotId: string;
+      if (lotNameIdx > 0) {
+        lotId = block
+          .slice(0, lotNameIdx)
+          .replace(/\r?\n/g, "")
+          .trim();
+      } else {
+        // Fallback: take the first non-empty line
+        const firstLines = block.split("\n").map((l) => l.trim());
+        lotId = firstLines.find((l) => l.length > 0) || "";
+      }
 
+      // Skip blocks that look like boilerplate (e.g. terms & conditions)
+      if (!lotId || lotId.length > 80) continue;
+
+      // Convert to numeric sr if possible, otherwise keep as string
+      const numericLot = parseInt(lotId, 10);
+      const sr: number | string =
+        !isNaN(numericLot) && String(numericLot) === lotId
+          ? numericLot
+          : lotId;
+
+      // --- Extract lot name ---
       let lotName = "";
       const nameMatch = block.match(
         /Lot Name\s*-\s*([\s\S]*?)(?=Product Type)/i,
@@ -178,6 +212,7 @@ export function parseMstcCatalogText(
         lotName = nameMatch[1].replace(/\r?\n/g, " ").trim();
       }
 
+      // --- Extract quantity & unit ---
       let qty = "1";
       let unit = "Lot";
       const qtyMatch = block.match(/Quantity\s*-\s*([\d\.,]+)\s*([A-Za-z]+)?/i);
@@ -186,6 +221,7 @@ export function parseMstcCatalogText(
         unit = (qtyMatch[2] || "Lot").trim();
       }
 
+      // --- Extract GST ---
       let gst = "As Applicable";
       const gstMatch = block.match(
         /GST\s*\(%\)\s*-\s*([\s\S]*?)(?=Lot Location|State|Lot State|TCS|Bid Valid|$)/i,
@@ -194,6 +230,7 @@ export function parseMstcCatalogText(
         gst = gstMatch[1].replace(/\r?\n/g, " ").trim();
       }
 
+      // --- Extract TCS ---
       let tcs = "0.0";
       const tcsMatch = block.match(
         /TCS\s*\(%\)\s*-\s*([\s\S]*?)(?=GST|Lot Location|State|Lot State|Bid Valid|$)/i,
@@ -202,12 +239,29 @@ export function parseMstcCatalogText(
         tcs = tcsMatch[1].replace(/\r?\n/g, " ").trim();
       }
 
+      // --- Extract block attachments ---
+      const cleanedBlockText = block
+        .replace(/\r?\n/g, " ")
+        .replace(
+          /(Annex_|Photo_)\s*([a-zA-Z0-9_]+)\s*([a-zA-Z0-9_]*)\s*(\.pdf)/gi,
+          (_match, p1, p2, p3, p4) => {
+            return `${p1}${p2}${p3 || ""}${p4}`;
+          },
+        );
+
+      const blockMatches = cleanedBlockText.match(/([a-zA-Z0-9_]+\.pdf)/g) || [];
+      const attachments = Array.from(new Set(blockMatches)).filter((name) => {
+        const n = name.toLowerCase();
+        return n.startsWith("photo_") || n.startsWith("annex_");
+      });
+
       items.push({
-        sr: lotNo,
+        sr,
         description: lotName || categoryName || "Auction Lot Items",
         qty,
         unit,
         taxRate: `${gst} GST${tcs && tcs !== "0.0" && tcs !== "0" ? " + " + tcs + "% TCS" : ""}`,
+        attachments: attachments.length > 0 ? attachments : undefined,
       });
     }
   }

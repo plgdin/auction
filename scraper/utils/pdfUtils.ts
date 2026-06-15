@@ -134,3 +134,113 @@ export function extractEmbeddedJpegs(pdfBuffer: Buffer): Buffer[] {
 
   return jpegs;
 }
+
+export interface RenderedPage {
+  pageNumber: number;
+  text: string;
+  imageBuffer: Buffer;
+}
+
+/**
+ * Render multiple pages of a PDF and extract text per page.
+ *
+ * @param fileBuffer - Raw PDF file buffer.
+ * @param maxPages - Maximum number of pages to process.
+ * @returns Array of RenderedPage objects.
+ */
+export async function renderAndExtractPdfPages(
+  fileBuffer: Buffer,
+  maxPages = 20,
+): Promise<RenderedPage[]> {
+  let browser = null;
+  try {
+    const pdfBase64 = fileBuffer.toString("base64");
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1200, height: 1600 });
+
+    await page.setContent(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+        <script>
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        </script>
+      </head>
+      <body>
+        <canvas id="pdf-canvas"></canvas>
+      </body>
+      </html>
+    `);
+
+    const pagesResult = await page.evaluate(async (base64Data, maxP) => {
+      const binaryString = atob(base64Data);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const loadingTask = (window as any).pdfjsLib.getDocument({ data: bytes });
+      const pdfDoc = await loadingTask.promise;
+      const numPages = pdfDoc.numPages;
+      const limit = Math.min(numPages, maxP);
+      const results = [];
+
+      const canvas = document.getElementById("pdf-canvas") as HTMLCanvasElement;
+      const canvasContext = canvas.getContext("2d");
+      if (!canvasContext) throw new Error("Failed to get 2d context");
+
+      for (let pNum = 1; pNum <= limit; pNum++) {
+        const pdfPage = await pdfDoc.getPage(pNum);
+        
+        // 1. Extract text content
+        const textContent = await pdfPage.getTextContent();
+        const pageText = textContent.items.map((item: any) => item.str).join(" ");
+        
+        // 2. Render to canvas and get data URL
+        const viewport = pdfPage.getViewport({ scale: 1.5 });
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        // Clear canvas context
+        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+        
+        await pdfPage.render({ canvasContext, viewport }).promise;
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        
+        results.push({
+          pageNumber: pNum,
+          text: pageText,
+          dataUrl,
+        });
+      }
+      return results;
+    }, pdfBase64, maxPages);
+
+    const renderedPages: RenderedPage[] = [];
+    for (const res of pagesResult) {
+      const base64Image = res.dataUrl.replace(/^data:image\/jpeg;base64,/, "");
+      renderedPages.push({
+        pageNumber: res.pageNumber,
+        text: res.text,
+        imageBuffer: Buffer.from(base64Image, "base64"),
+      });
+    }
+    return renderedPages;
+  } catch (err: any) {
+    log.error(
+      { errorMessage: err.message },
+      "Failed to render and extract PDF pages",
+    );
+    return [];
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+}
+
