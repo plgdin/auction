@@ -12,6 +12,8 @@ import type { Auction } from '../types/database.types';
 import { MstcSearchService, expandMstcOffice } from '../services/publicService';
 import type { MstcSanitizedAuction } from '../services/publicService';
 import clsx from 'clsx';
+import { valuationService } from '../services/valuationService';
+import type { ValuationCosts, ValuationOutput } from '../services/valuationService';
 
 interface CatalogSummary {
   overview: string;
@@ -27,6 +29,25 @@ interface CatalogSummary {
   preview_image_url?: string | null;
   extracted_images?: string[];
 }
+
+const getTaxPercent = (taxRateStr: string): number => {
+  if (!taxRateStr) return 0;
+  const matches = taxRateStr.match(/([\d\.]+)\s*%/g);
+  if (matches && matches.length > 0) {
+    let totalPercent = 0;
+    for (const m of matches) {
+      const num = parseFloat(m);
+      if (!isNaN(num)) {
+        totalPercent += num;
+      }
+    }
+    return totalPercent;
+  }
+  if (taxRateStr.toLowerCase().includes('gst')) {
+    return 18;
+  }
+  return 0;
+};
 
 const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
@@ -233,6 +254,71 @@ export function Auctions() {
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<MstcSanitizedAuction | null>(null);
   const [copied, setCopied] = useState(false);
   const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
+
+  // Valuation states
+  const [modalTab, setModalTab] = useState<'catalog' | 'valuation'>('catalog');
+  const [customCosts, setCustomCosts] = useState<ValuationCosts>({
+    currentBid: 0,
+    gstTaxesPercent: 18,
+    transportation: 5000,
+    loadingUnloading: 2000,
+    refurbishment: 0,
+    otherFees: 1000,
+  });
+  const [valuationData, setValuationData] = useState<ValuationOutput | null>(null);
+  const [isValuating, setIsValuating] = useState(false);
+
+  useEffect(() => {
+    if (selectedPreviewItem) {
+      const summary = generateCatalogSummary(selectedPreviewItem);
+      const rawPreBid = summary.depositDetails?.preBidDdg || '';
+      const preBidVal = rawPreBid.replace(/[^\d]/g, '');
+      const parsedVal = parseInt(preBidVal, 10);
+      setCustomCosts({
+        currentBid: isNaN(parsedVal) || parsedVal <= 0 ? 50000 : parsedVal,
+        gstTaxesPercent: 18,
+        transportation: 5000,
+        loadingUnloading: 2000,
+        refurbishment: 0,
+        otherFees: 1000,
+      });
+      setModalTab('catalog');
+    } else {
+      setValuationData(null);
+    }
+  }, [selectedPreviewItem]);
+
+  useEffect(() => {
+    if (!selectedPreviewItem) return;
+    let isMounted = true;
+    const runValuation = async () => {
+      setIsValuating(true);
+      try {
+        const summary = generateCatalogSummary(selectedPreviewItem);
+        const hasImages = !!(summary.extracted_images && summary.extracted_images.length > 0);
+        const rawItems = (summary.items || []).map((it: any) => ({
+          sr: it.sr,
+          description: it.description || '',
+          qty: String(it.qty || '1'),
+          unit: it.unit || 'Nos',
+        }));
+        const result = await valuationService.calculateValuation(rawItems, customCosts, hasImages);
+        if (isMounted) {
+          setValuationData(result);
+        }
+      } catch (err) {
+        console.error('Valuation engine calculation failed:', err);
+      } finally {
+        if (isMounted) {
+          setIsValuating(false);
+        }
+      }
+    };
+    runValuation();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedPreviewItem, customCosts]);
 
   const selectedMstcCategories = searchParams.getAll('mstc_category');
   const selectedMstcSubcategories = searchParams.getAll('mstc_subcategory');
@@ -955,12 +1041,339 @@ export function Auctions() {
               >
                 <X className="w-5.5 h-5.5" />
               </button>
-            </div>            {/* Modal Body */}
+            </div>
+            
+            {/* Tab Navigation */}
+            <div className="flex border-b border-slate-200 px-6 bg-white shrink-0">
+              <button
+                onClick={() => setModalTab('catalog')}
+                className={clsx(
+                  "py-3 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer uppercase tracking-wider",
+                  modalTab === 'catalog'
+                    ? "border-primary text-primary"
+                    : "border-transparent text-slate-400 hover:text-slate-700"
+                )}
+              >
+                Catalog Details
+              </button>
+              <button
+                onClick={() => setModalTab('valuation')}
+                className={clsx(
+                  "py-3 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer uppercase tracking-wider flex items-center gap-2",
+                  modalTab === 'valuation'
+                    ? "border-primary text-primary"
+                    : "border-transparent text-slate-400 hover:text-slate-700"
+                )}
+              >
+                <span>Valuation & ROI Engine</span>
+                {valuationData && (
+                  <span className={clsx(
+                    "text-[9px] px-1.5 py-0.5 rounded font-mono font-bold tracking-normal uppercase",
+                    valuationData.recommendation === 'Strong Buy' ? "bg-emerald-100 text-emerald-800" :
+                    valuationData.recommendation === 'Buy' ? "bg-emerald-50 text-emerald-700" :
+                    valuationData.recommendation === 'Watch Carefully' ? "bg-amber-100 text-amber-800" :
+                    "bg-rose-100 text-rose-800"
+                  )}>
+                    {valuationData.recommendation}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Modal Body */}
             <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
               {/* Left Side: Details Scrollable */}
               <div className="flex-grow overflow-y-auto p-6 space-y-6 bg-slate-50/25">
-                
-                {/* Category & Auction Ref Title */}
+                {modalTab === 'valuation' ? (
+                  <div className="space-y-6">
+                    {/* Cost Input Form Card */}
+                    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-mono flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+                          Interactive Bid & Cost Estimator
+                        </h4>
+                        <span className="text-[10px] text-slate-400 font-mono">Real-time ROI Calculation</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Current Bid Amount (₹)</label>
+                          <div className="relative rounded-xl shadow-2xs">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <span className="text-slate-400 text-xs font-semibold">₹</span>
+                            </div>
+                            <input
+                              type="number"
+                              value={customCosts.currentBid}
+                              onChange={(e) => setCustomCosts(prev => ({ ...prev, currentBid: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                              className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">GST & Taxes (%)</label>
+                          <div className="relative rounded-xl shadow-2xs">
+                            <input
+                              type="number"
+                              value={customCosts.gstTaxesPercent}
+                              onChange={(e) => setCustomCosts(prev => ({ ...prev, gstTaxesPercent: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                              className="block w-full px-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                            />
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                              <span className="text-slate-400 text-xs font-semibold">%</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Transportation Cost (₹)</label>
+                          <div className="relative rounded-xl shadow-2xs">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <span className="text-slate-400 text-xs font-semibold">₹</span>
+                            </div>
+                            <input
+                              type="number"
+                              value={customCosts.transportation}
+                              onChange={(e) => setCustomCosts(prev => ({ ...prev, transportation: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                              className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Loading & Unloading (₹)</label>
+                          <div className="relative rounded-xl shadow-2xs">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <span className="text-slate-400 text-xs font-semibold">₹</span>
+                            </div>
+                            <input
+                              type="number"
+                              value={customCosts.loadingUnloading}
+                              onChange={(e) => setCustomCosts(prev => ({ ...prev, loadingUnloading: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                              className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Refurbishment Costs (₹)</label>
+                          <div className="relative rounded-xl shadow-2xs">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <span className="text-slate-400 text-xs font-semibold">₹</span>
+                            </div>
+                            <input
+                              type="number"
+                              value={customCosts.refurbishment}
+                              onChange={(e) => setCustomCosts(prev => ({ ...prev, refurbishment: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                              className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Other Service Charges (₹)</label>
+                          <div className="relative rounded-xl shadow-2xs">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <span className="text-slate-400 text-xs font-semibold">₹</span>
+                            </div>
+                            <input
+                              type="number"
+                              value={customCosts.otherFees}
+                              onChange={(e) => setCustomCosts(prev => ({ ...prev, otherFees: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                              className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isValuating || !valuationData ? (
+                      <div className="bg-white rounded-3xl p-12 border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-800">Recalculating Valuation...</h4>
+                          <p className="text-xs text-slate-400 mt-1 max-w-xs font-medium">Querying SerpAPI live market pricing and simulating category valuations.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Recommendation Banner */}
+                        <div className={clsx(
+                          "rounded-3xl p-6 text-white shadow-md transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border",
+                          valuationData.recommendation === 'Strong Buy' ? "bg-gradient-to-r from-emerald-600 to-teal-700 border-emerald-500" :
+                          valuationData.recommendation === 'Buy' ? "bg-gradient-to-r from-teal-500 to-emerald-600 border-teal-400" :
+                          valuationData.recommendation === 'Watch Carefully' ? "bg-gradient-to-r from-amber-500 to-orange-600 border-amber-400" :
+                          "bg-gradient-to-r from-rose-500 to-red-600 border-rose-400"
+                        )}>
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full font-mono">
+                              Bidding Recommendation
+                            </span>
+                            <h3 className="text-2xl font-black tracking-tight">{valuationData.recommendation}</h3>
+                            <p className="text-xs text-white/90 leading-relaxed font-medium mt-1.5 max-w-2xl">
+                              {valuationData.recommendationReasoning}
+                            </p>
+                          </div>
+                          <div className="shrink-0 bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 flex flex-col items-center justify-center font-mono">
+                            <span className="text-[9px] font-bold uppercase opacity-80">ROI</span>
+                            <span className="text-xl font-black">{valuationData.roiPercent}%</span>
+                          </div>
+                        </div>
+
+                        {/* Investment & ROI metrics grid */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
+                            <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Estimated Lot Value</h5>
+                            <div className="text-lg font-black text-slate-900">₹{valuationData.totalLotValue.toLocaleString('en-IN')}</div>
+                            <p className="text-[10px] text-slate-400 font-medium">Market value of items</p>
+                          </div>
+                          
+                          <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
+                            <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Total Lot Cost</h5>
+                            <div className="text-lg font-black text-slate-900">₹{valuationData.totalCost.toLocaleString('en-IN')}</div>
+                            <p className="text-[10px] text-slate-400 font-medium">Bid + taxes + logistics</p>
+                          </div>
+
+                          <div className={clsx(
+                            "rounded-2xl p-4.5 border shadow-2xs space-y-1",
+                            valuationData.estimatedProfit >= 0 
+                              ? "bg-emerald-50/50 border-emerald-150 text-emerald-950" 
+                              : "bg-rose-50/50 border-rose-150 text-rose-950"
+                          )}>
+                            <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest font-mono">Projected Profit</h5>
+                            <div className="text-lg font-black">
+                              {valuationData.estimatedProfit >= 0 ? '+' : ''}₹{valuationData.estimatedProfit.toLocaleString('en-IN')}
+                            </div>
+                            <p className="text-[10px] opacity-70 font-medium">Net profit estimate</p>
+                          </div>
+
+                          <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
+                            <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Break-Even Bid</h5>
+                            <div className="text-lg font-black text-slate-900">₹{valuationData.breakEven.toLocaleString('en-IN')}</div>
+                            <p className="text-[10px] text-slate-400 font-medium">Includes tax & handling</p>
+                          </div>
+                        </div>
+
+                        {/* Valuation Breakdown Table */}
+                        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
+                            <span>Valuation Details per Item</span>
+                            <span className="text-[10px] text-slate-400 font-medium normal-case font-sans">
+                              Valued using live pricing analysis
+                            </span>
+                          </h4>
+                          <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
+                                  <th className="py-2.5 px-3.5 font-bold">Item Description</th>
+                                  <th className="py-2.5 px-3.5 font-bold text-right w-20">Quantity</th>
+                                  <th className="py-2.5 px-3.5 font-bold text-right w-32">Unit Est. Value</th>
+                                  <th className="py-2.5 px-3.5 font-bold text-right w-36">Total Est. Value</th>
+                                  <th className="py-2.5 px-3.5 font-bold text-center w-24">Confidence</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 text-slate-700">
+                                {valuationData.items.map((row, idx) => (
+                                  <tr key={idx} className="hover:bg-slate-50/50">
+                                    <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.name}</td>
+                                    <td className="py-2.5 px-3.5 text-right font-mono text-slate-650">{row.qty}</td>
+                                    <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">₹{row.unitValue.toLocaleString('en-IN')}</td>
+                                    <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">₹{row.totalValue.toLocaleString('en-IN')}</td>
+                                    <td className="py-2.5 px-3.5 text-center font-mono">
+                                      <span className={clsx(
+                                        "text-[10px] font-bold px-2 py-0.5 rounded",
+                                        row.confidence >= 75 ? "bg-emerald-50 text-emerald-700" :
+                                        row.confidence >= 55 ? "bg-amber-50 text-amber-700" :
+                                        "bg-rose-50 text-rose-700"
+                                      )}>
+                                        {row.confidence}%
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* Risk & Confidence Assessment Panel */}
+                        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">
+                              Risk & Confidence Assessment
+                            </h4>
+                            <span className={clsx(
+                              "text-xs font-bold px-3 py-1 rounded-full",
+                              valuationData.riskAnalysis.riskLevel === 'Low Risk' ? "bg-emerald-50 text-emerald-700 border border-emerald-150" :
+                              valuationData.riskAnalysis.riskLevel === 'Medium Risk' ? "bg-amber-50 text-amber-700 border border-amber-150" :
+                              "bg-rose-50 text-rose-700 border border-rose-150"
+                            )}>
+                              {valuationData.riskAnalysis.riskLevel}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                                <span>Data Quality</span>
+                                <span className="text-slate-700">{valuationData.riskAnalysis.dataConfidence}%</span>
+                              </div>
+                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-slate-800 rounded-full transition-all duration-500" 
+                                  style={{ width: `${valuationData.riskAnalysis.dataConfidence}%` }} 
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                                <span>Pricing Consistency</span>
+                                <span className="text-slate-700">{valuationData.riskAnalysis.pricingConfidence}%</span>
+                              </div>
+                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div 
+                                  className={clsx(
+                                    "h-full rounded-full transition-all duration-500",
+                                    valuationData.riskAnalysis.pricingConfidence >= 70 ? "bg-emerald-500" :
+                                    valuationData.riskAnalysis.pricingConfidence >= 40 ? "bg-amber-500" : "bg-rose-500"
+                                  )}
+                                  style={{ width: `${valuationData.riskAnalysis.pricingConfidence}%` }} 
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                                <span>Overall Confidence</span>
+                                <span className="text-slate-700 font-bold">{valuationData.riskAnalysis.overallConfidence}%</span>
+                              </div>
+                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div 
+                                  className={clsx(
+                                    "h-full rounded-full transition-all duration-500",
+                                    valuationData.riskAnalysis.overallConfidence >= 70 ? "bg-emerald-600" :
+                                    valuationData.riskAnalysis.overallConfidence >= 45 ? "bg-amber-600" : "bg-rose-600"
+                                  )}
+                                  style={{ width: `${valuationData.riskAnalysis.overallConfidence}%` }} 
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-2xl border border-slate-100 font-medium">
+                            {valuationData.riskAnalysis.reasoning}
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {/* Category & Auction Ref Title */}
                 <div>
                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
                   {(() => {
@@ -1096,17 +1509,44 @@ export function Auctions() {
                           <th className="py-2.5 px-3.5 font-bold">Material Description</th>
                           <th className="py-2.5 px-3.5 font-bold text-right">Quantity</th>
                           <th className="py-2.5 px-3.5 font-bold text-center">Taxes</th>
+                          <th className="py-2.5 px-3.5 font-bold text-right">Est. Base Value</th>
+                          <th className="py-2.5 px-3.5 font-bold text-right text-emerald-700 bg-emerald-50/40">Est. Value (Incl. Taxes)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700">
-                        {generateCatalogSummary(selectedPreviewItem).items.map((row) => (
-                          <tr key={row.sr} className="hover:bg-slate-50/50">
-                            <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                            <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.description}</td>
-                            <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
-                            <td className="py-2.5 px-3.5 text-center font-mono text-[10px] text-slate-500">{row.taxRate}</td>
-                          </tr>
-                        ))}
+                        {generateCatalogSummary(selectedPreviewItem).items.map((row, idx) => {
+                          const valuedItem = valuationData && valuationData.items && valuationData.items[idx];
+                          const baseTotalVal = valuedItem ? valuedItem.totalValue : 0;
+                          const taxPct = getTaxPercent(row.taxRate);
+                          const totalValWithTax = Math.round(baseTotalVal * (1 + taxPct / 100));
+
+                          return (
+                            <tr key={row.sr} className="hover:bg-slate-50/50">
+                              <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
+                              <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.description}</td>
+                              <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
+                              <td className="py-2.5 px-3.5 text-center font-mono text-[10px] text-slate-500">{row.taxRate}</td>
+                              <td className="py-2.5 px-3.5 text-right font-mono text-slate-650">
+                                {isValuating ? (
+                                  <span className="text-[10px] text-slate-400">Valuating...</span>
+                                ) : baseTotalVal > 0 ? (
+                                  `₹${baseTotalVal.toLocaleString('en-IN')}`
+                                ) : (
+                                  <span className="text-slate-400">—</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3.5 text-right font-mono text-emerald-700 bg-emerald-50/10 font-bold">
+                                {isValuating ? (
+                                  <span className="text-[10px] text-slate-400">Valuating...</span>
+                                ) : totalValWithTax > 0 ? (
+                                  `₹${totalValWithTax.toLocaleString('en-IN')}`
+                                ) : (
+                                  <span className="text-slate-400">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1164,8 +1604,8 @@ export function Auctions() {
                     ))}
                   </div>
                 </div>
-
-              </div>
+              </>)}
+            </div>
 
               {/* Right Side: Image/Preview Panel */}
               {(() => {

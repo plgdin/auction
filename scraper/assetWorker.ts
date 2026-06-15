@@ -204,13 +204,95 @@ function parseMstcCatalogText(
         tcs = tcsMatch[1].replace(/\r?\n/g, " ").trim();
       }
 
-      items.push({
-        sr: lotNo,
-        description: lotName || categoryName || "Auction Lot Items",
-        qty,
-        unit,
-        taxRate: `${gst} GST${tcs && tcs !== "0.0" && tcs !== "0" ? " + " + tcs + "% TCS" : ""}`,
-      });
+      let taxRate = `${gst} GST${tcs && tcs !== "0.0" && tcs !== "0" ? " + " + tcs + "% TCS" : ""}`;
+
+      // Search for sub-items within the lot description
+      const subItems: any[] = [];
+      const blockLines = block.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      for (let j = 0; j < blockLines.length; j++) {
+        const line = blockLines[j];
+        if (line.toLowerCase().startsWith('quantity -')) continue;
+
+        let subQty = '';
+        let subUnit = '';
+        
+        const directMatch = line.match(/(?:QTY|Quantity)\s*[:\-]\s*([\d,.]+)\s*([A-Za-z]+)?/i);
+        if (directMatch) {
+          subQty = directMatch[1];
+          subUnit = directMatch[2] || '';
+        } else if (/^(?:QTY|Quantity)\s*[:\-]?$/i.test(line) && j + 1 < blockLines.length) {
+          const nextLine = blockLines[j + 1];
+          const nextMatch = nextLine.match(/^([\d,.]+)\s*([A-Za-z]+)?/i);
+          if (nextMatch) {
+            subQty = nextMatch[1];
+            subUnit = nextMatch[2] || '';
+          }
+        }
+
+        if (subQty) {
+          // Find description by looking upwards
+          let desc = '';
+          for (let k = j - 1; k >= 0; k--) {
+            const prevLine = blockLines[k];
+            if (
+              prevLine.includes('Lot No -') ||
+              prevLine.includes('Lot Name -') ||
+              prevLine.includes('Product Type -') ||
+              prevLine.includes('Category -') ||
+              prevLine.toLowerCase().startsWith('qty') ||
+              prevLine.toLowerCase().includes('(approx') ||
+              prevLine === '(approx.)'
+            ) {
+              break;
+            }
+            
+            const cleanPrev = prevLine.trim();
+            if (desc === '') {
+              desc = cleanPrev;
+            } else {
+              desc = cleanPrev + ' ' + desc;
+            }
+            
+            // If it seems to be the main starting line of the item, we can stop
+            if (
+              cleanPrev.toLowerCase().includes('poly bag') ||
+              cleanPrev.toLowerCase().includes('rags') ||
+              cleanPrev.toLowerCase().includes('cfc') ||
+              cleanPrev.toLowerCase().includes('tin') ||
+              cleanPrev.toLowerCase().includes('brl') ||
+              cleanPrev.toLowerCase().includes('jerrican') ||
+              cleanPrev.toLowerCase().includes('grease drum') ||
+              cleanPrev.toLowerCase().includes('iron scrap') ||
+              cleanPrev.toLowerCase().includes('bag 1 md') ||
+              cleanPrev.length > 15
+            ) {
+              break;
+            }
+          }
+          
+          if (desc) {
+            subItems.push({
+              sr: lotNo,
+              description: desc.trim(),
+              qty: subQty.replace(/,/g, ''),
+              unit: subUnit.trim() || 'Nos',
+              taxRate
+            });
+          }
+        }
+      }
+
+      if (subItems.length > 0) {
+        items.push(...subItems);
+      } else {
+        items.push({
+          sr: lotNo,
+          description: lotName || categoryName || "Auction Lot Items",
+          qty,
+          unit,
+          taxRate,
+        });
+      }
     }
   }
 
@@ -422,11 +504,72 @@ async function downloadAttachment(
   return null;
 }
 
+function parseAnnexItems(text: string, taxRate: string): any[] {
+  const items: any[] = [];
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  
+  // Try to find matching pattern: Sr/Sl/No + description + qty + unit
+  // e.g. "1 Poly Bag 50 Kg 4643 Nos" or "1. LT PANEL 1 LOT"
+  const itemPattern = /^(\d+)\.?\s+([A-Za-z0-9_\-\s,\(\)\/\.]{3,70})\s+([\d,.]+)\s*([A-Za-z]{2,10})/i;
+  
+  let currentSr = 1;
+  for (const line of lines) {
+    if (
+      line.toLowerCase().includes("page") ||
+      line.toLowerCase().includes("tender") ||
+      line.toLowerCase().includes("mstc") ||
+      line.toLowerCase().includes("quantity") ||
+      line.toLowerCase().includes("description")
+    ) {
+      continue;
+    }
+    
+    const match = line.match(itemPattern);
+    if (match) {
+      const parsedSr = parseInt(match[1], 10);
+      const desc = match[2].trim();
+      const qtyStr = match[3].replace(/,/g, '');
+      const unit = match[4].trim();
+      
+      const qtyVal = parseFloat(qtyStr);
+      if (!isNaN(qtyVal) && qtyVal > 0 && desc.length > 2) {
+        items.push({
+          sr: parsedSr || currentSr,
+          description: desc,
+          qty: qtyStr,
+          unit: unit || 'Nos',
+          taxRate
+        });
+        currentSr++;
+      }
+    } else {
+      const qtyMatch = line.match(/([A-Za-z0-9_\-\s,\(\)\/\.]{3,50})\s+(?:Qty|Quantity|Nos)\s*[:\-]?\s*([\d,.]+)\s*([A-Za-z]{2,10})?/i);
+      if (qtyMatch) {
+        const desc = qtyMatch[1].trim();
+        const qtyStr = qtyMatch[2].replace(/,/g, '');
+        const unit = qtyMatch[3] || 'Nos';
+        const qtyVal = parseFloat(qtyStr);
+        if (!isNaN(qtyVal) && qtyVal > 0 && desc.length > 2) {
+          items.push({
+            sr: currentSr,
+            description: desc,
+            qty: qtyStr,
+            unit: unit.trim(),
+            taxRate
+          });
+          currentSr++;
+        }
+      }
+    }
+  }
+  return items;
+}
+
 async function extractAndProcessLotDocuments(
   catalogText: string,
   sanitizedAuctionNum: string,
   headers: Record<string, string>,
-): Promise<string[]> {
+): Promise<{ imageUrls: string[]; extractedItems: any[] }> {
   // Reconstruct filename if there are newlines or spaces
   const cleanedText = catalogText
     .replace(/\r?\n/g, " ")
@@ -444,13 +587,14 @@ async function extractAndProcessLotDocuments(
   });
 
   if (uniqueAttachments.length === 0) {
-    return [];
+    return { imageUrls: [], extractedItems: [] };
   }
 
   console.log(
     `[Lot Attachments] Found ${uniqueAttachments.length} attachments: ${uniqueAttachments.join(", ")}`,
   );
   const imageUrls: string[] = [];
+  const extractedItems: any[] = [];
 
   for (let i = 0; i < uniqueAttachments.length; i++) {
     const fileName = uniqueAttachments[i];
@@ -480,6 +624,29 @@ async function extractAndProcessLotDocuments(
     console.log(
       `[Lot Attachments] Successfully retrieved attachment ${fileName} (${docBuffer.length} bytes). Processing...`,
     );
+
+    // Try to parse text from the PDF attachment
+    try {
+      const parsedDoc = await pdf(docBuffer);
+      if (parsedDoc && parsedDoc.text) {
+        console.log(`[Lot Attachments] Extracted text from ${fileName} (${parsedDoc.text.length} chars). Parsing items...`);
+        let parsedItems: any[] = [];
+        if (parsedDoc.text.includes("Lot No -")) {
+          const tempSummary = parseMstcCatalogText(parsedDoc.text, "", "", "");
+          if (tempSummary && tempSummary.items && tempSummary.items.length > 0) {
+            parsedItems = tempSummary.items;
+          }
+        } else {
+          parsedItems = parseAnnexItems(parsedDoc.text, "As Applicable GST");
+        }
+        if (parsedItems.length > 0) {
+          console.log(`[Lot Attachments] Found ${parsedItems.length} items in ${fileName}.`);
+          extractedItems.push(...parsedItems);
+        }
+      }
+    } catch (parseErr: any) {
+      console.warn(`[Lot Attachments Text Parse Warning] Failed to parse PDF text for ${fileName}:`, parseErr.message);
+    }
 
     // 1. Try to extract embedded JPEGs first (high-res original)
     const embeddedJpegs = extractEmbeddedJpegs(docBuffer);
@@ -537,7 +704,7 @@ async function extractAndProcessLotDocuments(
     }
   }
 
-  return imageUrls;
+  return { imageUrls, extractedItems };
 }
 
 async function runAssetPipelineQueue() {
@@ -725,17 +892,24 @@ async function runAssetPipelineQueue() {
         console.log(`Parsing PDF text for: ${record.mstc_auction_number}`);
         const parsedPdf = await pdf(fileBuffer);
         if (parsedPdf && parsedPdf.text) {
-          // Extract attachments images from the parsed PDF text
+          let annexItems: any[] = [];
+          // Extract attachments images and text from the parsed PDF text
           try {
-            const attachmentImageUrls = await extractAndProcessLotDocuments(
+            const { imageUrls, extractedItems } = await extractAndProcessLotDocuments(
               parsedPdf.text,
               sanitizedAuctionNum,
               headers,
             );
-            if (attachmentImageUrls.length > 0) {
-              extractedImageUrls.push(...attachmentImageUrls);
+            if (imageUrls.length > 0) {
+              extractedImageUrls.push(...imageUrls);
               console.log(
-                `[Lot Attachments] Successfully extracted and added ${attachmentImageUrls.length} image URLs to results.`,
+                `[Lot Attachments] Successfully extracted and added ${imageUrls.length} image URLs to results.`,
+              );
+            }
+            if (extractedItems.length > 0) {
+              annexItems = extractedItems;
+              console.log(
+                `[Lot Attachments] Successfully extracted ${extractedItems.length} items from attachments.`,
               );
             }
           } catch (attErr: any) {
@@ -751,6 +925,20 @@ async function runAssetPipelineQueue() {
             record.seller_name || "",
             record.location || "",
           );
+
+          if (annexItems.length > 0) {
+            // If main catalog items are generic (like '1 LOT'), replace with details
+            const mainItemsAreGeneric = summaryObj.items.every((it: any) => 
+              it.qty === '1' && it.unit.toLowerCase() === 'lot'
+            );
+            if (mainItemsAreGeneric) {
+              console.log(`[Lot Attachments] Replacing generic main catalog items with detailed annex items.`);
+              summaryObj.items = annexItems;
+            } else {
+              console.log(`[Lot Attachments] Appending detailed annex items to main catalog items.`);
+              summaryObj.items = [...summaryObj.items, ...annexItems];
+            }
+          }
 
           // Inject preview image and extracted images into the summary object
           summaryObj.preview_image_url = previewImageUrl;
