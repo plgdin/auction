@@ -296,17 +296,24 @@ export const auctionService = {
 
         // 1. Strict Price/Pre-Bid Constraint Filtering
         if (priceConstraint) {
-          const compareVal = priceConstraint.field === 'pre_bid' ? (item.emd_amount || 0) : (item.starting_price || 0);
-          if (compareVal > 0) {
-            if (priceConstraint.operator === 'less' && compareVal > priceConstraint.value) {
-              return { item, score: 0 };
-            }
-            if (priceConstraint.operator === 'greater' && compareVal < priceConstraint.value) {
-              return { item, score: 0 };
-            }
-            if (priceConstraint.operator === 'equal' && compareVal !== priceConstraint.value) {
-              return { item, score: 0 };
-            }
+          const emd = item.emd_amount || 0;
+          const startingPrice = item.starting_price || 0;
+          
+          const matchValue = (val: number) => {
+            if (val <= 0) return true;
+            if (priceConstraint.operator === 'less') return val <= priceConstraint.value;
+            if (priceConstraint.operator === 'greater') return val >= priceConstraint.value;
+            return val === priceConstraint.value;
+          };
+
+          const isMatch = priceConstraint.field === 'pre_bid'
+            ? matchValue(emd)
+            : (priceConstraint.field === 'total_value'
+                ? matchValue(startingPrice)
+                : (matchValue(emd) || matchValue(startingPrice)));
+
+          if (!isMatch) {
+            return { item, score: 0 };
           }
         }
 

@@ -1,7 +1,7 @@
 // @ts-nocheck
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X } from 'lucide-react';
+import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, MapPin, Tag, CornerDownLeft, FileText } from 'lucide-react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
 import { AuctionFilters } from '../components/auction/AuctionFilters';
@@ -10,8 +10,9 @@ import type { AuctionFilterParams } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
 import type { Auction } from '../types/database.types';
 import { MstcSearchService } from '../services/publicService';
-import type { MstcSanitizedAuction } from '../services/publicService';
+import type { MstcSanitizedAuction, SearchSuggestion } from '../services/publicService';
 import clsx from 'clsx';
+
 
 interface CatalogSummary {
   overview: string;
@@ -186,6 +187,24 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
     keyContacts
   };
 };
+const renderSuggestionText = (text: string, query: string) => {
+  if (!query) return <span>{text}</span>;
+  const cleanQuery = query.trim().toLowerCase();
+  const index = text.toLowerCase().indexOf(cleanQuery);
+  if (index === -1) return <span>{text}</span>;
+
+  const before = text.slice(0, index);
+  const match = text.slice(index, index + cleanQuery.length);
+  const after = text.slice(index + cleanQuery.length);
+
+  return (
+    <span>
+      {before}
+      <span className="font-normal text-slate-400">{match}</span>
+      <span className="font-bold text-slate-800">{after}</span>
+    </span>
+  );
+};
 
 export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -229,6 +248,96 @@ export function Auctions() {
   useEffect(() => {
     setSearchQuery(searchParams.get('q') || '');
   }, [searchParams]);
+
+  // Autocomplete search suggestions states & refs
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isDeletingRef = useRef(false);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Fetch suggestions as-you-type (debounced)
+  useEffect(() => {
+    if (activeTab !== 'mstc') {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const list = await MstcSearchService.getMstcSearchSuggestions(searchQuery);
+      setSuggestions(list);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeTab]);
+
+  const selectSuggestion = (suggestion: SearchSuggestion) => {
+    let queryText = suggestion.text;
+    if (suggestion.type === 'location' && queryText.startsWith('Auctions in ')) {
+      queryText = queryText.replace('Auctions in ', '');
+    }
+    setSearchQuery(queryText);
+    setShowSuggestions(false);
+    setHighlightedIndex(-1);
+
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('q', queryText);
+      next.set('page', '1');
+      return next;
+    });
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setShowSuggestions(true);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      isDeletingRef.current = true;
+    } else {
+      isDeletingRef.current = false;
+    }
+
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
+    } else if (e.key === 'Enter') {
+      if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+        e.preventDefault();
+        selectSuggestion(suggestions[highlightedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  };
+
 
   // Derived filter and paging variables from URL query parameters
   const categoryIds = searchParams.getAll('category');
@@ -369,6 +478,7 @@ export function Auctions() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowSuggestions(false);
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       if (searchQuery) {
@@ -537,14 +647,14 @@ export function Auctions() {
   return (
     <div className="bg-slate-50 min-h-screen">
       {/* Header Banner */}
-      <div className="relative bg-slate-900 overflow-hidden py-12">
+      <div className="relative bg-slate-900 py-12">
         {/* Background decoration */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
           <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-800/20 to-transparent" />
         </div>
 
-        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-white mb-2">Auctions Marketplace</h1>
           <p className="text-slate-400 mb-6">Browse live commercial auctions and official government catalogs.</p>
 
@@ -577,16 +687,19 @@ export function Auctions() {
             </button>
           </div>
 
-          <form onSubmit={handleSearch} className="max-w-3xl relative">
+          <form onSubmit={handleSearch} className="max-w-3xl relative" onKeyDown={handleKeyDown}>
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-slate-400" />
             </div>
             <input
+              ref={inputRef}
               type="text"
               className="block w-full pl-11 pr-24 py-4 border-0 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary sm:text-lg shadow-lg text-slate-900"
               placeholder={activeTab === 'commercial' ? "Search by title, reference number, or keywords..." : "Search MSTC catalog numbers, categories, or sellers..."}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleInputChange}
+              onFocus={() => setShowSuggestions(true)}
+              autoComplete="off"
             />
             <button
               type="submit"
@@ -594,6 +707,61 @@ export function Auctions() {
             >
               Search
             </button>
+
+            {/* Gemini-style real-time autocomplete suggestions dropdown */}
+            {activeTab === 'mstc' && showSuggestions && suggestions.length > 0 && (
+              <div
+                ref={dropdownRef}
+                className="absolute left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50 py-2 text-slate-700 max-h-[380px] overflow-y-auto"
+              >
+                <div className="px-4 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-left">
+                  Suggested Searches
+                </div>
+                {suggestions.map((suggestion, index) => {
+                  const isHighlighted = highlightedIndex === index;
+                  return (
+                    <div
+                      key={index}
+                      onClick={() => selectSuggestion(suggestion)}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                      className={clsx(
+                        "px-4 py-3 flex items-center justify-between cursor-pointer transition-colors border-l-4",
+                        isHighlighted
+                          ? "bg-slate-50 border-primary-500 text-slate-900 font-medium"
+                          : "border-transparent hover:bg-slate-50 text-slate-700"
+                      )}
+                    >
+                      <div className="flex items-center space-x-3">
+                        {suggestion.type === 'location' && (
+                          <MapPin className="h-4.5 w-4.5 text-rose-500 shrink-0" />
+                        )}
+                        {suggestion.type === 'category' && (
+                          <Tag className="h-4.5 w-4.5 text-primary-500 shrink-0" />
+                        )}
+                        {suggestion.type === 'subcategory' && (
+                          <Tag className="h-4.5 w-4.5 text-teal-500 shrink-0" />
+                        )}
+                        {suggestion.type === 'auction' && (
+                          <FileText className="h-4.5 w-4.5 text-indigo-500 shrink-0" />
+                        )}
+                        {suggestion.type === 'query' && (
+                          <Search className="h-4.5 w-4.5 text-slate-400 shrink-0" />
+                        )}
+                        <div className="flex flex-col text-left">
+                          <span className="text-sm font-medium">{renderSuggestionText(suggestion.text, searchQuery)}</span>
+                          {suggestion.subtext && (
+                            <span className="text-xs text-slate-400">{suggestion.subtext}</span>
+                          )}
+                        </div>
+                      </div>
+                      {isHighlighted && (
+                        <CornerDownLeft className="h-4 w-4 text-slate-400 shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </form>
         </div>
       </div>

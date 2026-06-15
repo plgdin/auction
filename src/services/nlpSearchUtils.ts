@@ -75,7 +75,8 @@ export const STOP_WORDS = new Set([
   'too', 'very', 's', 't', 'can', 'will', 'just', 'should', 'now', 'need', 'wants',
   'want', 'show', 'me', 'find', 'get', 'search', 'buy', 'purchase', 'looking', 'look',
   'please', 'give', 'list', 'display', 'auctions', 'auction', 'scrap', 'scraps', 'government',
-  'mstc', 'price', 'range', 'lakh', 'lakhs', 'crore', 'crores', 'rs', 'rupees', 'value'
+  'mstc', 'price', 'range', 'lakh', 'lakhs', 'crore', 'crores', 'rs', 'rupees', 'value',
+  'emd', 'bid', 'bids', 'biud', 'deposit', 'deposits', 'required', 'requireds'
 ]);
 
 export const GENERIC_KEYWORDS = new Set([
@@ -199,15 +200,47 @@ export function findClosestKeyword(token: string, knownKeywords: Set<string>): s
   return null;
 }
 
+export function cleanQueryPriceTypos(query: string): string {
+  if (!query) return '';
+  let q = query.toLowerCase();
+
+  // Unified EMD/Bid terms
+  q = q.replace(/\bpre\s*biud\b/g, 'pre bid');
+  q = q.replace(/\bpre-biud\b/g, 'pre-bid');
+  q = q.replace(/\bbiud\b/g, 'bid');
+  q = q.replace(/\bprebid\b/g, 'pre bid');
+  q = q.replace(/\bpre-bid\b/g, 'pre bid');
+  q = q.replace(/\brequried\b/g, 'required');
+
+  // Operators swap if operator comes before the field, e.g. "under prebid of 25000" -> "prebid under 25000"
+  q = q.replace(/\b(under|below|above|over|less\s+than|more\s+than)\s+(pre\s*bid|pre-bid|prebid|emd|deposit|price|value)\s*(?:of|is|at|\=)?\s*/g, '$2 $1 ');
+
+  // Standardize double prepositions, e.g. "of under", "of below", "of less than" -> "under"
+  q = q.replace(/\bof\s+(under|below|less\s+than)\b/g, 'under');
+  q = q.replace(/\bof\s+(above|over|more\s+than)\b/g, 'above');
+
+  // Unified Multipliers
+  q = q.replace(/\blaksh\b/g, 'lakh');
+
+  return q;
+}
+
 export interface PriceConstraint {
-  field: 'total_value' | 'pre_bid';
+  field: 'total_value' | 'pre_bid' | 'either';
   operator: 'less' | 'greater' | 'equal';
   value: number;
 }
 
 export function parsePriceConstraint(query: string): PriceConstraint | null {
-  const normalizedQuery = query.toLowerCase();
-  const pattern = /(?:(pre\s*bid|pre-bid|emd|deposit|price|value)\s+(?:(below|under|less\s+than|above|over|more\s+than|equal\s+to|is|of|\=)\s+)?)₹?\s*([\d\.,]+)\s*(lakh|lakhs|crore|crores|thousand|k)?|(?:(below|under|less\s+than|above|over|more\s+than|equal\s+to|is|of|\=)\s+)₹?\s*([\d\.,]+)\s*(lakh|lakhs|crore|crores|thousand|k)?/i;
+  const cleaned = cleanQueryPriceTypos(query);
+  const normalizedQuery = cleaned.toLowerCase();
+  
+  // Expanded pattern:
+  // Group 1-4: Field + Operator (opt) + Number + Multiplier (opt)
+  // Group 5-7: Operator + Number + Multiplier (opt)
+  // Group 8-9: Number + Multiplier (req)
+  const pattern = /(?:(pre\s*bid|pre-bid|emd|deposit|price|value)\s+(?:(below|under|less\s+than|above|over|more\s+than|equal\s+to|is|of|\=)\s+)?)₹?\s*([\d\.,]+)\s*(lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?|(?:(below|under|less\s+than|above|over|more\s+than|equal\s+to|is|of|\=)\s+)₹?\s*([\d\.,]+)\s*(lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?|₹?\s*([\d\.,]+)\s*(lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)/i;
+  
   const match = normalizedQuery.match(pattern);
   if (!match) return null;
   
@@ -221,27 +254,35 @@ export function parsePriceConstraint(query: string): PriceConstraint | null {
     opWord = match[2] ? match[2].toLowerCase() : '';
     numStr = match[3].replace(/,/g, '');
     multiplierWord = match[4] ? match[4].toLowerCase() : '';
-  } else {
+  } else if (match[6] !== undefined) {
     opWord = match[5] ? match[5].toLowerCase() : '';
     numStr = match[6].replace(/,/g, '');
     multiplierWord = match[7] ? match[7].toLowerCase() : '';
+  } else {
+    numStr = match[8].replace(/,/g, '');
+    multiplierWord = match[9] ? match[9].toLowerCase() : '';
   }
   
   let value = parseFloat(numStr);
   if (isNaN(value)) return null;
   
-  if (multiplierWord.startsWith('lakh')) {
+  const m = multiplierWord.toLowerCase().trim();
+  if (m.startsWith('lakh') || m.startsWith('lac') || m.startsWith('laks') || m.startsWith('laksh') || m === 'l' || m === 'ls') {
     value *= 100000;
-  } else if (multiplierWord.startsWith('crore')) {
+  } else if (m.startsWith('crore') || m.startsWith('cr')) {
     value *= 10000000;
-  } else if (multiplierWord === 'thousand' || multiplierWord === 'k') {
+  } else if (m.startsWith('thousand') || m === 'k') {
     value *= 1000;
   }
   
-  let field: 'total_value' | 'pre_bid' = 'total_value';
-  if (fieldWord.includes('pre') || fieldWord.includes('emd') || fieldWord.includes('deposit')) {
-    field = 'pre_bid';
-  } else if (value < 200000 && !normalizedQuery.includes('lakh') && !normalizedQuery.includes('crore')) {
+  let field: 'total_value' | 'pre_bid' | 'either' = 'either';
+  if (fieldWord) {
+    if (fieldWord.includes('pre') || fieldWord.includes('emd') || fieldWord.includes('deposit')) {
+      field = 'pre_bid';
+    } else {
+      field = 'total_value';
+    }
+  } else if (value < 200000 && !normalizedQuery.includes('lakh') && !normalizedQuery.includes('lac') && !normalizedQuery.includes('crore') && !normalizedQuery.includes(' l') && !normalizedQuery.includes(' cr')) {
     field = 'pre_bid';
   }
 
@@ -250,13 +291,17 @@ export function parsePriceConstraint(query: string): PriceConstraint | null {
     operator = 'less';
   } else if (opWord.includes('above') || opWord.includes('over') || opWord.includes('more')) {
     operator = 'greater';
+  } else if (!opWord && multiplierWord) {
+    // Default to 'less' (under/below) when a multiplier is given without an operator, e.g. "50 lakhs" -> under 50 lakhs
+    operator = 'less';
   }
   return { field, operator, value };
 }
 
 export function cleanQueryFromPriceConstraint(query: string): string {
-  const pattern = /(?:(pre\s*bid|pre-bid|emd|deposit|price|value)\s+(?:(below|under|less\s+than|above|over|more\s+than|equal\s+to|is|of|\=)\s+)?)₹?\s*([\d\.,]+)\s*(lakh|lakhs|crore|crores|thousand|k)?|(?:(below|under|less\s+than|above|over|more\s+than|equal\s+to|is|of|\=)\s+)₹?\s*([\d\.,]+)\s*(lakh|lakhs|crore|crores|thousand|k)?/gi;
-  return query.replace(pattern, ' ').trim();
+  const cleaned = cleanQueryPriceTypos(query);
+  const pattern = /(?:(pre\s*bid|pre-bid|emd|deposit|price|value)\s+(?:(below|under|less\s+than|above|over|more\s+than|equal\s+to|is|of|\=)\s+)?)₹?\s*([\d\.,]+)\s*(lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?|(?:(below|under|less\s+than|above|over|more\s+than|equal\s+to|is|of|\=)\s+)₹?\s*([\d\.,]+)\s*(lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?|₹?\s*([\d\.,]+)\s*(lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)/gi;
+  return cleaned.replace(pattern, ' ').trim();
 }
 
 export function filterCompoundComponents(tokens: string[]): string[] {
