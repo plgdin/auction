@@ -1208,4 +1208,5 @@ export function Auctions() {
       )}
   );
 }
+    </div>
 
