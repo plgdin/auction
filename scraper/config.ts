@@ -81,7 +81,7 @@ export const ADMIN_CHARGES =
 
 /** Maximum number of embedded JPEG images to extract per PDF. */
 export const MAX_EMBEDDED_IMAGES = parseInt(
-  process.env.MAX_EMBEDDED_IMAGES || "5",
+  process.env.MAX_EMBEDDED_IMAGES || "50",
   10,
 );
 

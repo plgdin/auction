@@ -24,11 +24,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 
+
 async function executeBackfill(task: 'parse' | 'images' | 'both') {
   console.log(`Starting backfill operation (mode: ${task.toUpperCase()})...`);
   const { data: records, error } = await supabase
     .from('mstc_auctions')
-    .select('id, mstc_auction_number, sanitized_document_path, raw_materials_text, category_name, seller_name, location, preview_image_path')
+    .select('id, mstc_auction_number, sanitized_document_path, raw_materials_text, category_name, seller_name, location')
     .eq('asset_status', 'completed')
     .not('sanitized_document_path', 'is', null);
 

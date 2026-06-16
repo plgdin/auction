@@ -20,12 +20,14 @@ export interface CatalogItem {
   taxRate: string;
   attachments?: string[];
   images?: string[];
+  marketPrice?: string;
 }
 
 export interface KeyContact {
   role: string;
   name: string;
   email: string;
+  phone?: string;
 }
 
 export interface DepositDetails {
@@ -43,6 +45,7 @@ export interface CatalogSummary {
   keyContacts: KeyContact[];
   preview_image_url?: string | null;
   extracted_images?: string[];
+  totalMarketValue?: number;
 }
 
 // ─── Parser ──────────────────────────────────────────────────────────────────
@@ -59,62 +62,200 @@ export function parseMstcCatalogText(
   const lines = text.split("\n").map((l) => l.trim());
   const cleanText = lines.join("\n");
 
-  // 1. Extract Seller / Site Contact Details
-  let contactName = "";
-  let contactEmail = "";
-  let contactPhone = "";
+  // 1. Extract Site Contacts and Officers
+  const cleanName = (name: string): string => {
+    if (!name) return "";
+    return name
+      .replace(/\[[^\]]*\]/g, "")
+      .replace(/\([^\)]*\)/g, "")
+      .replace(/[\{\}]/g, "")
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/[;:\-\s\+]+$/, "")
+      .trim();
+  };
 
-  const contactMatch = cleanText.match(/Contact Person:\s*([^\n]+)/);
-  if (contactMatch) {
-    contactName = contactMatch[1].trim();
-  }
-  const emailMatch =
-    cleanText.match(/e-Mail\s*:\s*([^\n]+)/i) ||
-    cleanText.match(/Seller Email Address\s*([^\n]+)/i);
-  if (emailMatch) {
-    contactEmail = emailMatch[1].trim();
-  }
-  const phoneMatch =
-    cleanText.match(/Mobile\s*:\s*(\d+)/i) ||
-    cleanText.match(/Telephone Number\s*(\d+)/i);
-  if (phoneMatch) {
-    contactPhone = phoneMatch[1].trim();
-  }
+  const isValidContactName = (name: string): boolean => {
+    if (!name || name.length < 3 || name.length > 40) return false;
+    const lower = name.toLowerCase();
+    const invalidKeywords = [
+      'specified', 'location', 'prior', 'permission', 'escort', 'bidding', 
+      'day', 'working', 'date', 'time', 'mstc', 'tender', 'bidder', 
+      'download', 'catalog', 'available', 'office', 'details', 'helpdesk',
+      'click', 'here', 'refer', 'annexure', 'lot', 'description', 'parameters',
+      'annex', 'photograph', 'photo', 'attached', 'email', 'phone', 'contact'
+    ];
+    for (const kw of invalidKeywords) {
+      if (lower.includes(kw)) return false;
+    }
+    return true;
+  };
 
-  // Fallbacks from Seller Details section
-  if (!contactName) {
-    const sContact = cleanText.match(/Contact Person([^\n]+)/);
-    if (sContact) contactName = sContact[1].trim();
-  }
-  if (!contactPhone) {
-    const sPhone = cleanText.match(/Telephone Number([^\n]+)/);
-    if (sPhone) contactPhone = sPhone[1].trim();
-  }
-  if (!contactEmail) {
-    const sEmail = cleanText.match(/Seller Email Address([^\n]+)/);
-    if (sEmail) contactEmail = sEmail[1].trim();
+  const extractPhoneNumber = (line: string): string | null => {
+    // Try pattern with prefix
+    const prefixMatch = line.match(/(?:mobile|phone|telephone|tele|no|num|contact)[\s:.-]+([+0-9\s.-]{8,25})/i);
+    if (prefixMatch) {
+      const cleaned = prefixMatch[1].replace(/[^\d]/g, "");
+      if (cleaned.length >= 8 && cleaned.length <= 15) {
+        return prefixMatch[1].trim();
+      }
+    }
+    // Try pattern without prefix (10-12 digits potentially separated by spaces/dashes)
+    const noPrefixMatch = line.match(/(?:^|[^0-9])((?:\d[\s.-]*){10,12})(?:$|[^0-9])/);
+    if (noPrefixMatch) {
+      const cleaned = noPrefixMatch[1].replace(/[^\d]/g, "");
+      if (cleaned.length >= 10 && cleaned.length <= 12) {
+        return noPrefixMatch[1].trim();
+      }
+    }
+    return null;
+  };
+
+  const keyContacts: KeyContact[] = [];
+  const processedNames = new Set<string>();
+
+  // 1. Extract Site Contacts (Contact Person)
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
+    if (line.toLowerCase().includes('contact person')) {
+      let namePart = line.replace(/Contact Person\s*:?\s*/i, '').trim();
+      let nameLineIdx = idx;
+      
+      if (!namePart) {
+        if (idx + 1 < lines.length) {
+          namePart = lines[idx + 1];
+          nameLineIdx = idx + 1;
+        }
+      }
+      
+      const boundaryKeywords = [
+        'telephone', 'mobile', 'email', 'phone', 'tele', 'fax', 
+        'address', 'manager', 'officer', 'designation', ':', '-'
+      ];
+      let truncateIdx = namePart.length;
+      const lowerNamePart = namePart.toLowerCase();
+      for (const kw of boundaryKeywords) {
+        const kwIdx = lowerNamePart.indexOf(kw);
+        if (kwIdx !== -1 && kwIdx < truncateIdx) {
+          truncateIdx = kwIdx;
+        }
+      }
+      
+      const digitMatch = namePart.match(/\d/);
+      if (digitMatch && digitMatch.index !== undefined && digitMatch.index < truncateIdx) {
+        truncateIdx = digitMatch.index;
+      }
+      
+      const cleanedName = cleanName(namePart.substring(0, truncateIdx));
+      if (isValidContactName(cleanedName) && !processedNames.has(cleanedName.toLowerCase())) {
+        processedNames.add(cleanedName.toLowerCase());
+
+        let phone = "";
+        let email = "";
+        for (let offset = 0; offset <= 4; offset++) {
+          const targetIdx = nameLineIdx + offset;
+          if (targetIdx >= lines.length) break;
+          const targetLine = lines[targetIdx];
+          
+          if (!phone) {
+            const extractedPhone = extractPhoneNumber(targetLine);
+            if (extractedPhone) {
+              phone = extractedPhone;
+            }
+          }
+          if (!email) {
+            const m2 = targetLine.match(/([a-zA-Z0-9\._-]+@[a-zA-Z0-9\._-]+)/);
+            if (m2) {
+              email = m2[1];
+            }
+          }
+        }
+
+        keyContacts.push({
+          role: "Site Contact / Engineer",
+          name: cleanedName,
+          email: email || DEFAULT_CONTACT_EMAIL,
+          phone: phone || "no contact info available"
+        });
+      }
+    }
   }
 
   // 2. Extract MSTC Officers
-  const officerOneName =
-    cleanText.match(/Officer OneName:\s*([^\n]+)/) ||
-    cleanText.match(/Officer OneName\s*([^\n]+)/);
+  const officerOneMatch = text.match(/Officer OneName:\s*([^\n]+)/i) || text.match(/Officer OneName\s*([^\n]+)/i);
+  if (officerOneMatch) {
+    let offName = cleanName(officerOneMatch[1]);
+    let offEmail = "";
+    let offPhone = "";
+    
+    const idx = lines.findIndex(l => l.includes("Officer OneName"));
+    if (idx !== -1) {
+      for (let i = idx + 1; i < Math.min(idx + 5, lines.length); i++) {
+        const line = lines[i];
+        if (line.includes("Officer TwoName")) break;
+        const emailM = line.match(/Email\s*:?\s*([^\s\n]+)/i);
+        if (emailM) offEmail = emailM[1].trim();
+        const extractedPhone = extractPhoneNumber(line);
+        if (extractedPhone) offPhone = extractedPhone;
+      }
+    }
+    
+    if (offName && isValidContactName(offName) && !processedNames.has(offName.toLowerCase())) {
+      processedNames.add(offName.toLowerCase());
+      keyContacts.unshift({
+        role: "Auction Officer (MSTC)",
+        name: offName,
+        email: offEmail || DEFAULT_MSTC_OFFICER.email,
+        phone: offPhone || "no contact info available"
+      });
+    }
+  }
 
-  const keyContacts: KeyContact[] = [
-    {
-      role: "Auction Officer (MSTC)",
-      name: officerOneName
-        ? officerOneName[1].replace(/\[\]|-/g, "").trim()
-        : DEFAULT_MSTC_OFFICER.name,
-      email: DEFAULT_MSTC_OFFICER.email,
-    },
-  ];
+  const officerTwoMatch = text.match(/Officer TwoName:\s*([^\n]+)/i) || text.match(/Officer TwoName\s*([^\n]+)/i);
+  if (officerTwoMatch) {
+    let offName = cleanName(officerTwoMatch[1]);
+    let offEmail = "";
+    let offPhone = "";
+    
+    const idx = lines.findIndex(l => l.includes("Officer TwoName"));
+    if (idx !== -1) {
+      for (let i = idx + 1; i < Math.min(idx + 5, lines.length); i++) {
+        const line = lines[i];
+        const emailM = line.match(/Email\s*:?\s*([^\s\n]+)/i);
+        if (emailM) offEmail = emailM[1].trim();
+        const extractedPhone = extractPhoneNumber(line);
+        if (extractedPhone) offPhone = extractedPhone;
+      }
+    }
+    
+    if (offName && isValidContactName(offName) && !processedNames.has(offName.toLowerCase())) {
+      processedNames.add(offName.toLowerCase());
+      const insertIdx = keyContacts.findIndex(c => c.role.includes("Site Contact"));
+      if (insertIdx !== -1) {
+        keyContacts.splice(insertIdx, 0, {
+          role: "Auction Officer (MSTC)",
+          name: offName,
+          email: offEmail || DEFAULT_MSTC_OFFICER.email,
+          phone: offPhone || "no contact info available"
+        });
+      } else {
+        keyContacts.push({
+          role: "Auction Officer (MSTC)",
+          name: offName,
+          email: offEmail || DEFAULT_MSTC_OFFICER.email,
+          phone: offPhone || "no contact info available"
+        });
+      }
+    }
+  }
 
-  if (contactName) {
+  // Fallback if no contacts found
+  if (keyContacts.length === 0) {
     keyContacts.push({
-      role: "Site Contact / Engineer",
-      name: contactName,
-      email: contactEmail || DEFAULT_CONTACT_EMAIL,
+      role: "Auction Officer (MSTC)",
+      name: DEFAULT_MSTC_OFFICER.name,
+      email: DEFAULT_MSTC_OFFICER.email,
+      phone: "no contact info available"
     });
   }
 
@@ -274,6 +415,36 @@ export function parseMstcCatalogText(
         tcs = tcsMatch[1].replace(/\r?\n/g, " ").trim();
       }
 
+      // --- Extract Start Price / Market Price ---
+      let lotMarketPrice: string | undefined = undefined;
+
+      const startPriceInrMatch = block.match(/Start\s*Price\s*in\s*INR\s*-\s*([\d\.]+)/i);
+      const startPriceCrMatch = block.match(/Start\s*Price\s*\(in\s*INR\s*Cr\.\)\s*:\s*([\d\.]+)/i);
+      const generalStartPriceMatch = block.match(/Start\s*Price\s*(?:in\s*INR|in\s*Cr\.?)?[\s\(\)]*[:.-]?\s*([\d,]+)/i);
+
+      let parsedStartPriceNum: number | null = null;
+      if (startPriceInrMatch) {
+        parsedStartPriceNum = parseFloat(startPriceInrMatch[1]);
+      } else if (startPriceCrMatch) {
+        parsedStartPriceNum = parseFloat(startPriceCrMatch[1]) * 10000000;
+      } else if (generalStartPriceMatch) {
+        const cleanVal = generalStartPriceMatch[1].replace(/,/g, '');
+        const parsedVal = parseFloat(cleanVal);
+        if (!isNaN(parsedVal)) {
+          if (block.toLowerCase().includes('cr.') && parsedVal < 10000) {
+            parsedStartPriceNum = parsedVal * 10000000;
+          } else {
+            parsedStartPriceNum = parsedVal;
+          }
+        }
+      }
+
+      if (parsedStartPriceNum !== null && !isNaN(parsedStartPriceNum) && parsedStartPriceNum > 0) {
+        const formattedPrice = parsedStartPriceNum.toLocaleString('en-IN');
+        const priceUnit = (unit || 'Lot');
+        lotMarketPrice = `₹${formattedPrice} / ${priceUnit}`;
+      }
+
       // --- Extract block attachments ---
       const cleanedBlockText = block
         .replace(/\r?\n/g, " ")
@@ -297,6 +468,7 @@ export function parseMstcCatalogText(
         unit,
         taxRate: `${gst} GST${tcs && tcs !== "0.0" && tcs !== "0" ? " + " + tcs + "% TCS" : ""}`,
         attachments: attachments.length > 0 ? attachments : undefined,
+        marketPrice: lotMarketPrice,
       });
     }
   }

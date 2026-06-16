@@ -66,6 +66,8 @@ async function inspectRecord(searchTerm: string) {
 
     const parsedPdf = await pdf(buffer);
     const text = parsedPdf.text;
+    require('fs').writeFileSync('scratch/pdf_text.txt', text);
+    console.log('PDF text written to scratch/pdf_text.txt');
 
     console.log('\n=================== PDF Parsing Diagnostic ===================');
     const diagnostic = parseMstcCatalogText(

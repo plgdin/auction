@@ -28,6 +28,7 @@ import { renderPdfFirstPage, extractEmbeddedJpegs, renderAndExtractPdfPages } fr
 import { parseMstcCatalogText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
 import { performOcr } from "./utils/ocrUtils.js";
+import { calculateTotalMarketValue } from "../src/utils/valuationUtils.js";
 
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
@@ -562,6 +563,9 @@ function buildMstcHeaders(): Record<string, string> {
   return headers;
 }
 
+
+
+
 /**
  * Process a single queue record: download, parse, extract, and update.
  */
@@ -683,6 +687,82 @@ async function processRecord(record: QueueRecord): Promise<void> {
         record.location || "",
       );
 
+      // Initialize item.images as an empty array
+      if (summaryObj.items && Array.isArray(summaryObj.items)) {
+        for (const item of summaryObj.items) {
+          item.images = [];
+        }
+      }
+
+      // Render and match all pages of the main catalog PDF to individual lots
+      try {
+        jobLog.info({}, "Rendering all pages of main catalog PDF for page-specific matching");
+        const catalogPages = await renderAndExtractPdfPages(fileBuffer, 20);
+        if (catalogPages.length > 0) {
+          jobLog.info(
+            { pageCount: catalogPages.length },
+            "Rendered main catalog pages, executing text matching",
+          );
+
+          for (const page of catalogPages) {
+            try {
+              let publicUrl = "";
+              if (page.pageNumber === 1 && previewImageUrl) {
+                publicUrl = previewImageUrl;
+              } else {
+                const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_catalog_page_${page.pageNumber}.jpg`;
+                publicUrl = await uploadToStorage(
+                  imgPath,
+                  page.imageBuffer,
+                  "image/jpeg",
+                );
+              }
+
+              // Add to extractedImageUrls so it shows in general gallery
+              if (!extractedImageUrls.includes(publicUrl)) {
+                extractedImageUrls.push(publicUrl);
+              }
+
+              // Match page to lots using selectable text first
+              let combinedText = page.text || "";
+              let matched = matchPageToLots(combinedText, summaryObj.items || [], "catalog");
+
+              // If no match and text is empty/short, try OCR
+              if (matched.length === 0 && (!combinedText || combinedText.trim().length < 50)) {
+                const ocrText = await performOcr(page.imageBuffer);
+                combinedText = `${combinedText}\n${ocrText}`;
+                matched = matchPageToLots(combinedText, summaryObj.items || [], "catalog");
+              }
+
+              if (matched.length > 0) {
+                jobLog.info(
+                  { pageNumber: page.pageNumber, matchedLots: matched.map(m => m.sr) },
+                  "Mapped main catalog page specifically to lot(s)",
+                );
+                for (const lot of matched) {
+                  if (!lot.images) {
+                    lot.images = [];
+                  }
+                  if (!lot.images.includes(publicUrl)) {
+                    lot.images.push(publicUrl);
+                  }
+                }
+              }
+            } catch (pageErr: any) {
+              jobLog.warn(
+                { pageNumber: page.pageNumber, errorMessage: pageErr.message },
+                "Failed to process main catalog page image",
+              );
+            }
+          }
+        }
+      } catch (catRenderErr: any) {
+        jobLog.warn(
+          { errorMessage: catRenderErr.message },
+          "Failed to render main catalog pages",
+        );
+      }
+
       // Now extract attachment images and run OCR using the parsed items list
       let attachmentImageUrls: string[] = [];
       let attachmentMap: Record<string, string[]> = {};
@@ -722,6 +802,9 @@ async function processRecord(record: QueueRecord): Promise<void> {
       // Map lot-specific images from the attachment map to the lot item objects
       if (summaryObj.items && Array.isArray(summaryObj.items)) {
         for (const item of summaryObj.items) {
+          if (!item.images) {
+            item.images = [];
+          }
           if (item.attachments && Array.isArray(item.attachments)) {
             const itemImages: string[] = [];
             for (const attName of item.attachments) {
@@ -730,8 +813,11 @@ async function processRecord(record: QueueRecord): Promise<void> {
                 itemImages.push(...urls);
               }
             }
-            if (itemImages.length > 0) {
-              item.images = itemImages;
+            // Add any newly found attachment images, checking for duplicates
+            for (const imgUrl of itemImages) {
+              if (!item.images.includes(imgUrl)) {
+                item.images.push(imgUrl);
+              }
             }
           }
         }
@@ -740,6 +826,15 @@ async function processRecord(record: QueueRecord): Promise<void> {
       // Inject preview and extracted images into the summary
       summaryObj.preview_image_url = previewImageUrl;
       summaryObj.extracted_images = extractedImageUrls;
+
+      // Calculate total market price valuation
+      try {
+        const totalMarketValue = calculateTotalMarketValue(summaryObj.items || [], record.category_name || "");
+        summaryObj.totalMarketValue = totalMarketValue;
+        jobLog.info({ totalMarketValue }, "Calculated total market value for catalog");
+      } catch (valErr: any) {
+        jobLog.warn({ errorMessage: valErr.message }, "Failed to calculate total market value");
+      }
 
       rawMaterialsText = JSON.stringify(summaryObj);
       jobLog.info(

@@ -1,5 +1,5 @@
 import Tesseract from 'tesseract.js';
-import * as fs from 'fs';
+
 
 async function test() {
   console.log('Tesseract loaded successfully');
