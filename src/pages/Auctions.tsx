@@ -335,7 +335,9 @@ function SkeletonGrid({ isGrid, count = 6, classes }: { isGrid: boolean; count?:
       {[...Array(count)].map((_, i) => (
         <AuctionCardSkeleton key={i} isGrid={isGrid} />
       ))}
-
+    </div>
+  );
+}
 
 export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
