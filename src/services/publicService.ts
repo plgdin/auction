@@ -375,10 +375,18 @@ function matchSubcategory(itemSub: string, targetSub: string): boolean {
   const target = targetSub.toLowerCase().trim();
   if (item === target) return true;
 
-  // Equivalences
-  if (target === 'car' || target === 'end of life vehicles') {
-    return item === 'car' || item === 'end of life vehicles';
+  const itemNorm = item.replace(/[^a-z0-9]/g, '');
+  const targetNorm = target.replace(/[^a-z0-9]/g, '');
+  if (itemNorm === targetNorm) return true;
+
+  // Check if one contains the other as a substring (e.g. 'timber' matching 'timber - rosewood')
+  if (itemNorm.includes(targetNorm) || targetNorm.includes(itemNorm)) return true;
+
+  // Equivalences / Synonyms
+  if (targetNorm === 'car' || targetNorm === 'endoflifevehicles') {
+    return itemNorm === 'car' || itemNorm === 'endoflifevehicles' || itemNorm.includes('vehicle') || itemNorm.includes('car');
   }
+
   return false;
 }
 
@@ -531,7 +539,7 @@ function buildTaxonomy(data: MstcSanitizedAuction[]): {
   return { categoryKeywords, subcategoryKeywords };
 }
 
-function estimateAuctionValues(item: MstcSanitizedAuction): { preBid: number; totalValue: number } {
+export function estimateAuctionValues(item: MstcSanitizedAuction): { preBid: number; totalValue: number } {
   let preBid = 50000; // default fallback
   let totalValue = 500000; // default fallback (preBid * 10)
   
@@ -1956,7 +1964,7 @@ export const MstcSearchService = {
    */
   async getMstcSearchSuggestions(query: string): Promise<SearchSuggestion[]> {
     try {
-      const lower = query.trim().toLowerCase();
+      const trimmedQuery = query.trim();
       const suggestions: SearchSuggestion[] = [];
       const seen = new Set<string>();
 
@@ -1968,7 +1976,7 @@ export const MstcSearchService = {
         }
       };
 
-      if (!lower) {
+      if (!trimmedQuery) {
         // Return default popular queries
         const defaults = [
           { type: 'query', text: 'iron and steel', subtext: 'Metal' },
@@ -1983,100 +1991,129 @@ export const MstcSearchService = {
         return suggestions;
       }
 
-      // Fetch actual matching completed auctions
-      const matchingAuctions = await MstcSearchService.searchClientSide(query);
+      // Split query into category part and location part
+      let categoryPart = trimmedQuery;
+      let locationPart = '';
+
+      const prepRegex = /\b(located\s+in|located\s+at|in|at|from|near|around|within)\b\s*(.*)$/i;
+      const prepMatch = trimmedQuery.match(prepRegex);
+      if (prepMatch) {
+        const matchIndex = trimmedQuery.toLowerCase().lastIndexOf(prepMatch[1].toLowerCase());
+        if (matchIndex !== -1) {
+          categoryPart = trimmedQuery.substring(0, matchIndex).trim();
+          locationPart = trimmedQuery.substring(matchIndex + prepMatch[1].length).trim();
+        }
+      }
+
+      const priceConstraint = parsePriceConstraint(categoryPart);
+      categoryPart = cleanQueryFromPriceConstraint(categoryPart).trim();
+
+      const lowerCategory = categoryPart.toLowerCase();
+      const lowerLocation = locationPart.toLowerCase();
+
+      // Fetch actual matching completed auctions using category part
+      const matchingAuctions = await MstcSearchService.searchClientSide(categoryPart);
 
       const matchedCategories = new Set<string>();
       const matchedSubcategories = new Set<string>();
       const matchedLocations = new Set<string>();
 
-      // Extract unique categories, subcategories, and locations from the matching results
+      // Extract unique categories, subcategories from matching results
       matchingAuctions.forEach(item => {
         if (item.category_name) {
           const parts = item.category_name.split(' | ');
           const mainCat = parts[0]?.trim();
           const subCat = parts[1]?.trim();
           
-          if (mainCat && (mainCat.toLowerCase().startsWith(lower) || mainCat.toLowerCase().includes(lower))) {
+          if (mainCat && (mainCat.toLowerCase().startsWith(lowerCategory) || mainCat.toLowerCase().includes(lowerCategory))) {
             matchedCategories.add(mainCat);
           }
-          if (subCat && (subCat.toLowerCase().startsWith(lower) || subCat.toLowerCase().includes(lower))) {
+          if (subCat && (subCat.toLowerCase().startsWith(lowerCategory) || subCat.toLowerCase().includes(lowerCategory))) {
             matchedSubcategories.add(subCat);
           }
         }
-        
-        if (item.location && (item.location.toLowerCase().startsWith(lower) || item.location.toLowerCase().includes(lower))) {
-          // Normalize city to capital casing
-          const normalizedLoc = item.location.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          matchedLocations.add(normalizedLoc);
-        }
       });
 
-      // Match locations from static INDIA_LOCATIONS map
-      for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
-        const canonicalDisplay = canonical.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-        if (canonical.startsWith(lower) || canonical.includes(lower)) {
-          matchedLocations.add(canonicalDisplay);
-        } else {
-          for (const alias of aliases) {
-            if (alias.toLowerCase().startsWith(lower) || alias.toLowerCase().includes(lower)) {
-              const aliasDisplay = alias.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-              matchedLocations.add(aliasDisplay);
-              break;
-            }
+      // Match locations
+      const isLocationMatch = (canonical: string, aliases: string[], queryStr: string): boolean => {
+        const q = queryStr.trim().toLowerCase();
+        if (!q) return false;
+        const matchesString = (str: string) => {
+          const s = str.toLowerCase();
+          if (s.startsWith(q)) return true;
+          const words = s.split(/\s+/);
+          return words.some(w => w.startsWith(q));
+        };
+        if (matchesString(canonical)) return true;
+        return aliases.some(alias => matchesString(alias));
+      };
+
+      if (locationPart.length > 0) {
+        for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
+          const canonicalDisplay = canonical.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          if (isLocationMatch(canonical, aliases, lowerLocation)) {
+            matchedLocations.add(canonicalDisplay);
+          }
+        }
+      } else if (lowerCategory.length > 0) {
+        // Fallback matching locations from static INDIA_LOCATIONS map using lowerCategory
+        for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
+          const canonicalDisplay = canonical.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          if (isLocationMatch(canonical, aliases, lowerCategory)) {
+            matchedLocations.add(canonicalDisplay);
           }
         }
       }
 
       // Fallback matching from static SUBCATEGORY_EXACT_MAP if no active DB items matched
-      if (matchedSubcategories.size === 0) {
+      if (matchedSubcategories.size === 0 && lowerCategory.length > 0) {
         for (const item of SUBCATEGORY_EXACT_MAP) {
-          if (item.phrase.startsWith(lower) || item.phrase.includes(lower)) {
+          if (item.phrase.startsWith(lowerCategory) || item.phrase.includes(lowerCategory)) {
             matchedSubcategories.add(item.subcategory);
           }
         }
       }
 
       // Fallback matching from static categories
-      if (matchedCategories.size === 0) {
+      if (matchedCategories.size === 0 && lowerCategory.length > 0) {
         for (const cat of MAIN_CATEGORIES) {
-          if (cat.toLowerCase().startsWith(lower) || cat.toLowerCase().includes(lower)) {
+          if (cat.toLowerCase().startsWith(lowerCategory) || cat.toLowerCase().includes(lowerCategory)) {
             matchedCategories.add(cat);
           }
         }
       }
 
-      // 1. Add direct category matches
-      matchedCategories.forEach(cat => {
-        addSuggestion({
-          type: 'category',
-          text: cat,
-          subtext: 'Category'
+      // 1. Add direct category, subcategory and location matches if locationPart is empty
+      if (locationPart.length === 0) {
+        matchedCategories.forEach(cat => {
+          addSuggestion({
+            type: 'category',
+            text: cat,
+            subtext: 'Category'
+          });
         });
-      });
 
-      // 2. Add direct subcategory matches
-      matchedSubcategories.forEach(sub => {
-        addSuggestion({
-          type: 'subcategory',
-          text: sub,
-          subtext: 'Subcategory'
+        matchedSubcategories.forEach(sub => {
+          addSuggestion({
+            type: 'subcategory',
+            text: sub,
+            subtext: 'Subcategory'
+          });
         });
-      });
 
-      // 3. Add direct location matches
-      matchedLocations.forEach(loc => {
-        addSuggestion({
-          type: 'location',
-          text: `Auctions in ${loc}`,
-          subtext: 'Location Search'
+        matchedLocations.forEach(loc => {
+          addSuggestion({
+            type: 'location',
+            text: `Auctions in ${loc}`,
+            subtext: 'Location Search'
+          });
         });
-      });
+      }
 
-      // 4. Suggest actual matching catalog/auction numbers (up to 4) - strictly check if auction number contains query
-      if (matchingAuctions.length > 0) {
+      // 2. Suggest actual matching catalog/auction numbers (up to 4)
+      if (matchingAuctions.length > 0 && locationPart.length === 0) {
         matchingAuctions
-          .filter(item => item.mstc_auction_number.toLowerCase().includes(lower))
+          .filter(item => item.mstc_auction_number.toLowerCase().includes(lowerCategory))
           .slice(0, 4)
           .forEach(item => {
             const subText = `${item.seller_name} | ${item.location}`;
@@ -2088,40 +2125,68 @@ export const MstcSearchService = {
           });
       }
 
-      // 5. Generate Compound Suggestions
+      // 3. Generate Compound Suggestions
       const popularLocations = ['Uttar Pradesh', 'Kerala', 'Maharashtra', 'Karnataka', 'Delhi', 'Tamil Nadu'];
-      const popularSubcategories = ['iron and steel', 'computers', 'battery', 'transformer', 'fly ash'];
 
-      matchedSubcategories.forEach(sub => {
-        popularLocations.forEach(loc => {
+      const locationsToUse = matchedLocations.size > 0 
+        ? Array.from(matchedLocations) 
+        : (locationPart.length === 0 ? popularLocations : []);
+
+      const priceSuffix = priceConstraint 
+        ? ` ${priceConstraint.operator === 'less' ? 'under' : (priceConstraint.operator === 'greater' ? 'above' : 'of')} ${priceConstraint.value >= 100000 ? (priceConstraint.value / 100000) + ' lakh' : priceConstraint.value}`
+        : '';
+
+      const itemsToCombine = matchedSubcategories.size > 0 
+        ? Array.from(matchedSubcategories) 
+        : Array.from(matchedCategories);
+
+      itemsToCombine.forEach(item => {
+        locationsToUse.forEach(loc => {
           addSuggestion({
             type: 'query',
-            text: `${sub.toLowerCase()} in ${loc}`,
-            subtext: `Find ${sub.toLowerCase()} in ${loc}`
+            text: `${item.toLowerCase()} in ${loc}${priceSuffix}`,
+            subtext: `Find ${item.toLowerCase()} in ${loc}`
           });
         });
       });
 
-      matchedLocations.forEach(loc => {
-        popularSubcategories.forEach(sub => {
-          const text = `${sub} in ${loc}`;
-          if (text.toLowerCase().includes(lower)) {
-            addSuggestion({
-              type: 'query',
-              text: text,
-              subtext: `Find ${sub} in ${loc}`
-            });
-          }
-        });
-      });
-
-      // Final strict filter: make sure ALL returned suggestions contain the search query prefix/substring to avoid random noise
+      // Final strict filter: make sure all returned suggestions contain lowerCategory and respect location constraints
       const filteredSuggestions = suggestions.filter(s => {
-        let checkText = s.text.toLowerCase();
-        if (s.type === 'location' && checkText.startsWith('auctions in ')) {
-          checkText = checkText.replace('auctions in ', '');
+        const textLower = s.text.toLowerCase();
+        
+        if (s.type === 'category' || s.type === 'subcategory') {
+          return textLower.includes(lowerCategory);
         }
-        return checkText.includes(lower);
+        
+        if (s.type === 'location') {
+          let locName = textLower;
+          if (locName.startsWith('auctions in ')) {
+            locName = locName.replace('auctions in ', '');
+          }
+          if (locationPart.length > 0) {
+            return isLocationMatch(locName, INDIA_LOCATIONS[locName.toLowerCase()] || [], lowerLocation);
+          } else {
+            return isLocationMatch(locName, INDIA_LOCATIONS[locName.toLowerCase()] || [], lowerCategory);
+          }
+        }
+        
+        if (s.type === 'auction') {
+          return textLower.includes(lowerCategory);
+        }
+        
+        if (s.type === 'query') {
+          const hasCategory = textLower.includes(lowerCategory);
+          if (!hasCategory) return false;
+          
+          if (locationPart.length > 0) {
+            return Array.from(matchedLocations).some(loc => 
+              textLower.includes(loc.toLowerCase())
+            );
+          }
+          return true;
+        }
+        
+        return false;
       });
 
       return filteredSuggestions.slice(0, 10);
