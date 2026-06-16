@@ -621,7 +621,7 @@ export function Auctions() {
     } finally {
       setIsMstcLoading(false);
     }
-  }, [searchParams, selectedMstcCategories, selectedMstcSubcategories, selectedMstcLocations, selectedMstcSellers, selectedMstcRegionalOffices, startDate, endDate]);
+  }, [searchParams.toString(), startDate, endDate]);
 
   const loadMstcOptions = useCallback(async () => {
     try {
