@@ -5,6 +5,7 @@ import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight,
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
 import { AuctionFilters } from '../components/auction/AuctionFilters';
+import { MstcDetailsModal } from '../components/auction/MstcDetailsModal';
 import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
@@ -1209,3 +1210,4 @@ export function Auctions() {
     </div>
   );
 }
+
