@@ -15,271 +15,71 @@ import clsx from 'clsx';
 import { toast } from 'react-hot-toast';
 import { dashboardService } from '../services/dashboardService';
 import { MstcDetailsModal } from '../components/auction/MstcDetailsModal';
+import { 
+  getEstimatedMarketPrice, 
+  getNumericQty, 
+  getNumericPrice, 
+  generateCatalogSummary 
+} from '../utils/mstcHelpers';
 
-export const getEstimatedMarketPrice = (description: string, categoryName: string = ''): string => {
-  const desc = (description || '').toLowerCase();
-  const cat = (categoryName || '').toLowerCase();
-
-  if (desc.includes('copper') || cat.includes('copper')) {
-    return '₹780 / kg';
+function AuctionCardSkeleton({ isGrid }: { isGrid: boolean }) {
+  if (isGrid) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col h-full animate-pulse shadow-sm p-4 md:p-5">
+        <div className="h-40 bg-slate-100 rounded-xl mb-4 shrink-0" />
+        <div className="flex-grow flex flex-col space-y-3">
+          <div className="h-3 bg-slate-200 rounded w-1/4" />
+          <div className="space-y-2 flex-grow">
+            <div className="h-5 bg-slate-200 rounded w-3/4" />
+            <div className="h-5 bg-slate-200 rounded w-1/2" />
+          </div>
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 space-y-2 text-xs">
+            <div className="h-3 bg-slate-200 rounded w-2/3" />
+            <div className="h-3 bg-slate-200 rounded w-1/2" />
+          </div>
+          <div className="pt-4 border-t border-slate-100 flex justify-between items-end mt-auto">
+            <div className="space-y-1.5">
+              <div className="h-2.5 bg-slate-200 rounded w-16" />
+              <div className="h-5 bg-slate-200 rounded w-24" />
+            </div>
+            <div className="h-8 bg-slate-200 rounded w-20" />
+          </div>
+        </div>
+      </div>
+    );
   }
-  if (desc.includes('aluminum') || desc.includes('aluminium') || cat.includes('aluminum') || cat.includes('aluminium')) {
-    return '₹235 / kg';
-  }
-  if (desc.includes('battery') || desc.includes('batteries') || cat.includes('battery') || cat.includes('batteries')) {
-    return '₹120 / kg';
-  }
-  if (desc.includes('lead') || cat.includes('lead')) {
-    return '₹185 / kg';
-  }
-  if (desc.includes('brass') || cat.includes('brass')) {
-    return '₹480 / kg';
-  }
-  if (desc.includes('zinc') || cat.includes('zinc')) {
-    return '₹220 / kg';
-  }
-  if (desc.includes('iron') || desc.includes('steel') || desc.includes('ferrous') || cat.includes('iron') || cat.includes('steel') || cat.includes('ferrous')) {
-    return '₹38,500 / Ton';
-  }
-  if (desc.includes('oil') || desc.includes('lubricating') || desc.includes('petroleum') || cat.includes('oil') || cat.includes('petroleum')) {
-    return '₹85 / Liter';
-  }
-  if (desc.includes('wheat') || cat.includes('wheat')) {
-    return '₹2,450 / Quintal';
-  }
-  if (desc.includes('rice') || desc.includes('paddy') || cat.includes('rice') || cat.includes('paddy')) {
-    return '₹2,200 / Quintal';
-  }
-  if (desc.includes('coal') || desc.includes('lignite') || cat.includes('coal') || cat.includes('lignite')) {
-    return '₹8,400 / Ton';
-  }
-  if (desc.includes('sand') || desc.includes('mine') || desc.includes('stone') || desc.includes('block') || cat.includes('sand') || cat.includes('mine') || cat.includes('stone') || cat.includes('block')) {
-    return '₹4,500 / Ton';
-  }
-  if (desc.includes('cable') || desc.includes('wire') || cat.includes('cable') || cat.includes('wire')) {
-    return '₹340 / kg';
-  }
-  if (desc.includes('computer') || desc.includes('laptop') || desc.includes('it equipment') || cat.includes('computer') || cat.includes('laptop')) {
-    return '₹14,500 / Unit';
-  }
-  if (desc.includes('vehicle') || desc.includes('car') || desc.includes('bus') || desc.includes('truck') || cat.includes('vehicle') || cat.includes('car')) {
-    return '₹3,50,000 / Unit';
-  }
-  return '₹2,500 / Ton';
-};
-
-const getNumericQty = (qtyStr: string, unitStr: string = ''): number => {
-  const clean = (qtyStr || '').replace(/,/g, '').trim();
-  let num = parseFloat(clean);
-  if (isNaN(num)) num = 1;
-  const unitUpper = (unitStr || '').toUpperCase().trim();
-  if (unitUpper === 'MT' || unitUpper === 'M.T.' || unitUpper === 'M.T') {
-    return num * 1000000;
-  }
-  return num;
-};
-
-const getNumericPrice = (priceStr: string): number => {
-  const clean = (priceStr || '').replace(/[^\d]/g, '');
-  const num = parseInt(clean, 10);
-  return isNaN(num) ? 0 : num;
-};
-
-interface CatalogSummary {
-  overview: string;
-  scopeOfWork: string;
-  items: { sr: number; description: string; qty: string; unit: string; taxRate: string; marketPrice: string }[];
-  eligibility: string[];
-  depositDetails: {
-    emd: string;
-    preBidDdg: string;
-    adminCharges: string;
-  };
-  keyContacts: { role: string; name: string; email: string }[];
-  preview_image_url?: string | null;
-  extracted_images?: string[];
+  return (
+    <div className="flex flex-col sm:flex-row bg-white rounded-xl border border-slate-200 overflow-hidden animate-pulse p-5 gap-5 shadow-sm">
+      <div className="w-full sm:w-64 h-40 bg-slate-150 rounded-lg shrink-0" />
+      <div className="flex-grow flex flex-col space-y-4 justify-between">
+        <div className="space-y-2">
+          <div className="h-3 bg-slate-200 rounded w-1/4" />
+          <div className="h-5 bg-slate-250 rounded w-1/2" />
+          <div className="h-4 bg-slate-200 rounded w-full" />
+        </div>
+        <div className="flex gap-4 pt-2">
+          <div className="h-3 bg-slate-200 rounded w-1/4" />
+          <div className="h-3 bg-slate-200 rounded w-1/4" />
+          <div className="h-3 bg-slate-200 rounded w-1/4" />
+        </div>
+        <div className="pt-4 border-t border-slate-100 flex justify-between items-center mt-auto">
+          <div className="h-6 bg-slate-200 rounded w-28" />
+          <div className="h-9 bg-slate-200 rounded w-28" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
-const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
-  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
-  let fallbackPreBid = '₹50,000';
-  const shortIdNum = parseInt(shortId, 10);
-  if (!isNaN(shortIdNum)) {
-    if (shortIdNum % 4 === 0) fallbackPreBid = '₹1,00,000';
-    else if (shortIdNum % 4 === 1) fallbackPreBid = '₹25,000';
-    else if (shortIdNum % 4 === 2) fallbackPreBid = '₹1,50,000';
-    else fallbackPreBid = '₹50,000';
-  }
-
-  if (item.raw_materials_text) {
-    try {
-      const parsed = JSON.parse(item.raw_materials_text);
-      if (
-        parsed &&
-        typeof parsed === 'object' &&
-        parsed.items &&
-        parsed.eligibility &&
-        parsed.depositDetails &&
-        parsed.keyContacts
-      ) {
-        // EMD extraction/cleaning logic
-        let emdVal = parsed.depositDetails.emd || '';
-        let preBidDdg = parsed.depositDetails.preBidDdg;
-
-        if (emdVal.includes('%')) {
-          const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
-          if (percentMatch) {
-            const percentVal = parseFloat(percentMatch[1]);
-            if (percentVal > 100) {
-              // Parse error / invalid percent, reset
-              emdVal = '10% of total bid value';
-              preBidDdg = 'Not required for registered MSME bidders';
-            }
-          }
-        } else {
-          const numMatch = emdVal.match(/([\d\.]+)/);
-          if (numMatch) {
-            const val = parseFloat(numMatch[1]);
-            if (val > 100) {
-              // Value is a large number (e.g. 7600000), make it pre-bid value
-              preBidDdg = `₹${val.toLocaleString('en-IN')}`;
-              emdVal = '10% of total bid value';
-            }
-          }
-        }
-
-        const finalPreBid = preBidDdg && !preBidDdg.toLowerCase().includes('not required')
-          ? preBidDdg
-          : fallbackPreBid;
-
-        parsed.depositDetails.emd = emdVal;
-        parsed.depositDetails.preBidDdg = finalPreBid;
-
-        // Clean items list: if lot.description is purely numeric, replace with category_name
-        if (parsed.items && Array.isArray(parsed.items)) {
-          parsed.items = parsed.items.map(lot => {
-            let desc = lot.description || '';
-            if (desc && /^\d+$/.test(desc.trim())) {
-              desc = item.category_name || 'Auction Lot Items';
-            }
-
-            let tax = lot.taxRate || '';
-            if (tax) {
-              if (tax.includes('%')) {
-                const taxMatch = tax.match(/([\d\.]+)\s*%/);
-                if (taxMatch && parseFloat(taxMatch[1]) > 100) {
-                  tax = 'As Applicable GST';
-                }
-              }
-            }
-
-            return {
-              ...lot,
-              description: desc,
-              taxRate: tax,
-              marketPrice: getEstimatedMarketPrice(desc, item.category_name)
-            };
-          });
-        }
-
-        return parsed;
-      }
-    } catch (e) {
-      console.warn('Failed to parse raw_materials_text as JSON, falling back to mock generator:', e);
-    }
-  }
-
-  const cat = (item.category_name || '').toUpperCase();
-  const seller = (item.seller_name || '').toUpperCase();
-
-  let overview = `This auction is conducted by MSTC on behalf of ${item.seller_name} for the disposal of surplus assets, equipment, and scrap materials located at ${item.location || 'various sites'}.`;
-  let scopeOfWork = `Disposal and clearance of decommissioned industrial assets and general scrap material. All materials are offered strictly on an "As-Is-Where-Is" basis.`;
-
-  let items = [
-    { sr: 1, description: 'Mixed Ferrous Scrap (MS Pipes, Angle, Channels)', qty: '12.5', unit: 'MT', taxRate: '18% GST' },
-    { sr: 2, description: 'Non-Ferrous Scrap (Aluminum cables & Copper windings)', qty: '1,850', unit: 'Kgs', taxRate: '18% GST' },
-    { sr: 3, description: 'Unserviceable Batteries & Used Lubricating Oil', qty: '45', unit: 'Nos', taxRate: '18% GST + TCS' },
-    { sr: 4, description: 'Obsolete Machinery Parts & Hand Tools', qty: '1', unit: 'Lot', taxRate: '18% GST' }
-  ];
-
-  let eligibility = [
-    'Valid MSTC Buyer Registration.',
-    'GSTIN Registration Certificate matching buyer profile.',
-    'Hazardous waste buyers must possess active State Pollution Control Board (SPCB) authorization.'
-  ];
-
-  let keyContacts = [
-    { role: 'Auction Officer (MSTC)', name: 'S. K. Mukherjee', email: 'skmukherjee@mstcindia.co.in' },
-    { role: 'Site In-Charge', name: 'R. K. Sharma (Superintending Engineer)', email: 'rksharma@site-authority.org' }
-  ];
-
-  let emd = '10% of total bid value to be submitted via pre-bid EMD link';
-  let adminCharges = '₹11,800 (incl. GST) non-refundable service provider fees';
-
-  // Customize based on Category/Seller
-  if (cat.includes('ROADWAYS') || cat.includes('TRANSPORT')) {
-    overview = `Disposal of unserviceable motor vehicles, bus scrap, tyre assemblies, and associated automobile waste from ${item.seller_name} depots.`;
-    scopeOfWork = `Complete dismantling, lifting, and clearing of designated scrap transport assets from the depot premises within the specified deadline.`;
-    items = [
-      { sr: 1, description: 'Scrap Condemned Buses (without tyres & batteries)', qty: '8', unit: 'Units', taxRate: '18% GST' },
-      { sr: 2, description: 'Used Automobile Tyres (Various sizes, worn out)', qty: '120', unit: 'Nos', taxRate: '18% GST' },
-      { sr: 3, description: 'Lead Acid Batteries (Unserviceable)', qty: '35', unit: 'Nos', taxRate: '18% GST' },
-      { sr: 4, description: 'Waste Gear & Lubricating Oil (in drums)', qty: '1,200', unit: 'Liters', taxRate: '18% GST + 1% TCS' }
-    ];
-    eligibility.push('Automobile recycler license / lead smelter certificate required for Lot 3.');
-  } else if (cat.includes('TELECOM') || cat.includes('BSNL') || cat.includes('COMMUNICATION')) {
-    overview = `Sale of telecom infrastructure scrap, office equipment, batteries, and underground cables decommissioned by ${item.seller_name}.`;
-    scopeOfWork = `Safe extraction, lifting, and environment-compliant transport of copper/telecom scrap from exchange storage locations.`;
-    items = [
-      { sr: 1, description: 'Decommissioned Copper Cables (Pipes/Wires)', qty: '4.2', unit: 'MT', taxRate: '18% GST' },
-      { sr: 2, description: 'SMPS Power Plant Panels & Rack Units', qty: '12', unit: 'Lots', taxRate: '18% GST' },
-      { sr: 3, description: 'Unserviceable Valve Regulated Lead Acid (VRLA) Battery Banks', qty: '18', unit: 'Sets', taxRate: '18% GST' },
-      { sr: 4, description: 'E-Waste (Telecom switches, cards, & motherboards)', qty: '650', unit: 'Kgs', taxRate: '18% GST' }
-    ];
-    eligibility.push('CPCB/SPCB E-Waste registration required for Lot 3 and Lot 4.');
-  } else if (seller.includes('INVESTIGATION') || seller.includes('POLICE') || seller.includes('COURT')) {
-    overview = `Auction of seized, confiscated, or unclaimed vehicles and miscellaneous goods under the authority of ${item.seller_name}.`;
-    scopeOfWork = `Lifting of vehicles/goods in "as-is" condition. Registration documents or salvage papers will be issued as per court/department rules.`;
-    items = [
-      { sr: 1, description: 'Confiscated Light Motor Vehicles (SUVs, Sedans)', qty: '4', unit: 'Units', taxRate: '12% GST' },
-      { sr: 2, description: 'Two-Wheelers (Motorcycles, Scooters)', qty: '15', unit: 'Units', taxRate: '12% GST' },
-      { sr: 3, description: 'Unclaimed Miscellaneous Electronic Items', qty: '1', unit: 'Lot', taxRate: '18% GST' }
-    ];
-    eligibility = [
-      'Valid Indian citizenship proof (Aadhaar/PAN).',
-      'No pending criminal record declarations.',
-      'Active MSTC registration.'
-    ];
-  } else if (cat.includes('MECHANICAL') || cat.includes('DRILLING') || cat.includes('ENGINEERING')) {
-    overview = `Disposal of unserviceable drilling rigs, heavy plant machinery, compressor units, and metal boring scrap of ${item.seller_name}.`;
-    scopeOfWork = `Heavy loading, mechanical dismantling, and clearance of rig attachments and scrap iron components from the engineering depot yard.`;
-    items = [
-      { sr: 1, description: 'Condemned Compressor Units & Air Dryers', qty: '3', unit: 'Units', taxRate: '18% GST' },
-      { sr: 2, description: 'Heavy Duty Drilling Rig Parts (Unserviceable)', qty: '9.8', unit: 'MT', taxRate: '18% GST' },
-      { sr: 3, description: 'Used Lubricants & Engine Oil (drums included)', qty: '800', unit: 'Liters', taxRate: '18% GST' },
-      { sr: 4, description: 'Turnings, Borings & Miscellaneous Iron Scrap', qty: '14', unit: 'MT', taxRate: '18% GST' }
-    ];
-    eligibility.push('Heavy crane entry permit must be cleared with site security 24 hours prior to lifting.');
-  }
-
-  const enrichedItems = items.map(lot => ({
-    ...lot,
-    marketPrice: getEstimatedMarketPrice(lot.description, item.category_name)
-  }));
-
-  return {
-    overview,
-    scopeOfWork,
-    items: enrichedItems,
-    eligibility,
-    depositDetails: {
-      emd,
-      preBidDdg: fallbackPreBid,
-      adminCharges
-    },
-    keyContacts
-  };
-};
+function SkeletonGrid({ isGrid, count = 6, classes }: { isGrid: boolean; count?: number; classes?: string }) {
+  return (
+    <div className={classes}>
+      {[...Array(count)].map((_, i) => (
+        <AuctionCardSkeleton key={i} isGrid={isGrid} />
+      ))}
+    </div>
+  );
+}
 
 export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -888,9 +688,14 @@ export function Auctions() {
             {activeTab === 'commercial' && (
               <>
                 {isLoading ? (
-                  <div className="flex justify-center py-20 flex-grow">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                  </div>
+                  <SkeletonGrid
+                    isGrid={isGridView}
+                    count={6}
+                    classes={clsx(
+                      "gap-6 flex-grow",
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                    )}
+                  />
                 ) : auctions.length === 0 ? (
                   <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
                     <h3 className="text-xl font-bold text-slate-900 mb-2">No auctions found</h3>
@@ -993,9 +798,14 @@ export function Auctions() {
             {activeTab === 'mstc' && (
               <>
                 {isMstcLoading ? (
-                  <div className="flex justify-center py-20 flex-grow">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                  </div>
+                  <SkeletonGrid
+                    isGrid={isGridView}
+                    count={4}
+                    classes={clsx(
+                      "gap-6 flex-grow",
+                      isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
+                    )}
+                  />
                 ) : mstcAuctions.length === 0 ? (
                   <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
                     <h3 className="text-xl font-bold text-slate-900 mb-2">No MSTC catalogs found</h3>

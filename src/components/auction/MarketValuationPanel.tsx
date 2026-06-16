@@ -1,8 +1,18 @@
 import { useState, useEffect } from 'react';
 import { 
-  TrendingUp, TrendingDown, BarChart3, Calculator, RefreshCw, Sparkles
+  TrendingUp, TrendingDown, BarChart3, Calculator, RefreshCw, Sparkles,
+  Cpu, ChevronDown, ChevronUp, Info, HelpCircle
 } from 'lucide-react';
 import type { Auction } from '../../types/database.types';
+import { 
+  METALLIC_MODELS, 
+  DEFAULT_MACRO_INPUTS, 
+  predictPrice, 
+  detectModelId, 
+  detectGrade, 
+  detectRegion
+} from '../../utils/metalValuationModels';
+import type { MacroInputs } from '../../utils/metalValuationModels';
 
 interface MarketValuationPanelProps {
   auction: Auction;
@@ -10,6 +20,23 @@ interface MarketValuationPanelProps {
 }
 
 export function MarketValuationPanel({ auction, currentBid }: MarketValuationPanelProps) {
+  // Check if this is a metal-related product
+  const titleLower = auction.title.toLowerCase();
+  const isMetal = 
+    titleLower.includes('scrap') || 
+    titleLower.includes('steel') || 
+    titleLower.includes('iron') || 
+    titleLower.includes('copper') || 
+    titleLower.includes('aluminium') || 
+    titleLower.includes('aluminum') || 
+    titleLower.includes('metal') || 
+    titleLower.includes('vehicle') || 
+    titleLower.includes('car') || 
+    titleLower.includes('truck') || 
+    titleLower.includes('bus') || 
+    titleLower.includes('transport') || 
+    titleLower.includes('auto');
+
   // Parse initial quantity and unit
   const parseQuantityAndUnit = (title: string) => {
     const cleanTitle = title.replace(/,/g, '');
@@ -31,9 +58,17 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
   const initialParsed = parseQuantityAndUnit(auction.title);
 
   // States for interactive calculator
+  const [activeTab, setActiveTab] = useState<'market' | 'regression'>(isMetal ? 'regression' : 'market');
   const [simulatedBid, setSimulatedBid] = useState<number>(currentBid || auction.starting_price);
   const [quantity, setQuantity] = useState<number>(initialParsed.qty);
   const [showTaxes, setShowTaxes] = useState<boolean>(true);
+
+  // AI Regression States
+  const [selectedModelId, setSelectedModelId] = useState<string>(detectModelId(auction.title));
+  const [selectedGrade, setSelectedGrade] = useState<string>(detectGrade(auction.title, selectedModelId));
+  const [selectedRegion, setSelectedRegion] = useState<string>(detectRegion(auction.location || '', auction.title));
+  const [macroInputs, setMacroInputs] = useState<MacroInputs>(DEFAULT_MACRO_INPUTS);
+  const [showMacroSettings, setShowMacroSettings] = useState<boolean>(false);
 
   // Sync simulated bid if current bid changes (e.g. real-time updates)
   useEffect(() => {
@@ -41,6 +76,15 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
       setSimulatedBid(currentBid);
     }
   }, [currentBid]);
+
+  // Sync grade when model changes
+  const handleModelChange = (modelId: string) => {
+    setSelectedModelId(modelId);
+    const model = METALLIC_MODELS[modelId];
+    if (model) {
+      setSelectedGrade(model.grades[0]);
+    }
+  };
 
   // Determine market rate based on title/category
   const getMarketData = (title: string, basePrice: number) => {
@@ -202,12 +246,22 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
 
   const marketData = getMarketData(auction.title, auction.starting_price);
 
+  // Check if we are using the Regression model or the basic market indexing
+  const isRegression = isMetal && activeTab === 'regression';
+  const selectedModel = METALLIC_MODELS[selectedModelId] || METALLIC_MODELS.scrap_steel;
+
+  // Calculate predicted price
+  const predictedPrice = isMetal
+    ? predictPrice(selectedModelId, selectedGrade, selectedRegion, macroInputs)
+    : 0;
+
   // Financial calculations
   const unitBidPrice = simulatedBid;
-  const unitMarketPrice = marketData.avgPrice;
+  const unitMarketPrice = isRegression ? predictedPrice : marketData.avgPrice;
+  const displayUnit = isRegression ? selectedModel.targetUnit : marketData.unit;
 
-  // Check if unit is MT (Million Tonnes)
-  const isMT = (initialParsed.unit || '').toUpperCase().trim() === 'MT';
+  // Quantity calculations (Regression units match price directly, e.g. price per Ton and quantity in Tons)
+  const isMT = !isRegression && (initialParsed.unit || '').toUpperCase().trim() === 'MT';
   const qtyMultiplier = isMT ? 1000000 : 1;
   const computedQty = quantity * qtyMultiplier;
 
@@ -224,6 +278,14 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
   const netProfit = totalTurnover - totalCost;
   const profitabilityPercent = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
   const discountRate = unitMarketPrice > 0 ? ((unitMarketPrice - unitBidPrice) / unitMarketPrice) * 100 : 0;
+
+  // Helper to update individual macro variables
+  const updateMacro = (key: keyof MacroInputs, value: number) => {
+    setMacroInputs(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
 
   // Generate SVG chart path dynamically
   const generateSparkline = (points: number[]) => {
@@ -261,65 +323,294 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
         </span>
       </div>
 
-      <div className="p-6 flex-1 flex flex-col justify-between gap-6">
-        {/* API Sourced Commodity Comparison Column */}
-        <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-850/50">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-primary-400">Live Valuation Feed</span>
-              <h4 className="font-bold text-slate-100 text-sm leading-tight mt-0.5">{marketData.name}</h4>
-            </div>
-            
-            <span className="text-[9px] font-bold text-slate-500 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded">
-              {marketData.source}
-            </span>
-          </div>
-
-          <div className="flex items-end justify-between mt-4">
-            <div>
-              <span className="text-[10px] text-slate-500 font-medium block">Avg Market Price</span>
-              <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-xl font-black text-white">₹{unitMarketPrice.toLocaleString()}</span>
-                <span className="text-xs text-slate-400">/ {marketData.unit}</span>
-              </div>
-            </div>
-
-            {/* Sparkline chart and trend */}
-            <div className="flex flex-col items-end gap-1.5">
-              <svg className="w-24 h-10 overflow-visible" viewBox="0 0 120 40">
-                <path
-                  d={generateSparkline(marketData.history)}
-                  fill="none"
-                  stroke={marketData.trend === 'up' ? '#10b981' : marketData.trend === 'down' ? '#ef4444' : '#64748b'}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              
-              <div className="flex items-center gap-1 text-[10px] font-bold">
-                {marketData.trend === 'up' ? (
-                  <span className="text-green-400 flex items-center gap-0.5">
-                    <TrendingUp className="w-3 h-3" /> +4.2% MoM
-                  </span>
-                ) : marketData.trend === 'down' ? (
-                  <span className="text-red-400 flex items-center gap-0.5">
-                    <TrendingDown className="w-3 h-3" /> -1.8% MoM
-                  </span>
-                ) : (
-                  <span className="text-slate-400">Stable Index</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-900 flex justify-between items-center text-xs">
-            <span className="text-slate-400">Acquisition Discount</span>
-            <span className="font-extrabold text-green-400">
-              {discountRate > 0 ? `${discountRate.toFixed(1)}% below market` : '0%'}
-            </span>
-          </div>
+      {/* Tabs for Metal products */}
+      {isMetal && (
+        <div className="flex border-b border-slate-800 bg-slate-950/20 p-1">
+          <button
+            onClick={() => setActiveTab('regression')}
+            className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'regression'
+                ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20 shadow-sm'
+                : 'text-slate-400 hover:text-slate-205 border border-transparent'
+            }`}
+          >
+            <Cpu className="w-3.5 h-3.5" /> AI ML Forecast
+          </button>
+          <button
+            onClick={() => setActiveTab('market')}
+            className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'market'
+                ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20 shadow-sm'
+                : 'text-slate-400 hover:text-slate-205 border border-transparent'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" /> Standard index
+          </button>
         </div>
+      )}
+
+      <div className="p-6 flex-1 flex flex-col justify-between gap-6">
+        {/* Tab 1: AI ML Prediction panel */}
+        {isRegression ? (
+          <div className="bg-slate-955/40 p-4 rounded-xl border border-slate-850/50 space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-primary-400 flex items-center gap-1">
+                  <Cpu className="w-3.5 h-3.5 text-primary-400 animate-pulse" /> Advanced ML Forecast
+                </span>
+                <h4 className="font-bold text-slate-100 text-sm leading-tight mt-0.5">{selectedModel.name}</h4>
+              </div>
+              
+              {selectedModel.isPlaceholder && (
+                <span className="text-[9px] font-bold text-amber-400 bg-amber-950/30 border border-amber-900/40 px-2 py-0.5 rounded">
+                  Baseline Draft
+                </span>
+              )}
+            </div>
+
+            {/* Model and Grade Selectors */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Active Model</label>
+                <select
+                  value={selectedModelId}
+                  onChange={(e) => handleModelChange(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg px-2.5 py-1.5 font-medium focus:outline-none focus:border-primary-500/50 cursor-pointer"
+                >
+                  {Object.values(METALLIC_MODELS).map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Target Grade</label>
+                <select
+                  value={selectedGrade}
+                  onChange={(e) => setSelectedGrade(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg px-2.5 py-1.5 font-medium focus:outline-none focus:border-primary-500/50 cursor-pointer"
+                >
+                  {selectedModel.grades.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Region Selector */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Market Region</label>
+                <select
+                  value={selectedRegion}
+                  onChange={(e) => setSelectedRegion(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg px-2.5 py-1.5 font-medium focus:outline-none focus:border-primary-500/50 cursor-pointer"
+                >
+                  {selectedModel.regions.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Model Target Unit</label>
+                <div className="w-full bg-slate-950/40 border border-slate-850/50 text-slate-400 rounded-lg px-2.5 py-1.5 font-bold">
+                  Per {selectedModel.targetUnit}
+                </div>
+              </div>
+            </div>
+
+            {/* Macroeconomic Drivers Toggle */}
+            <div className="border-t border-slate-800/80 pt-3">
+              <button
+                onClick={() => setShowMacroSettings(!showMacroSettings)}
+                className="text-[11px] font-bold text-slate-400 hover:text-primary-400 flex items-center justify-between w-full transition-colors"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Calculator className="w-3.5 h-3.5 text-slate-550" /> MACROECONOMIC PRICE DRIVERS
+                </span>
+                {showMacroSettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {showMacroSettings && (
+                <div className="mt-3 space-y-3 bg-slate-950/40 p-3 rounded-lg border border-slate-850/60 text-[11px] max-h-56 overflow-y-auto custom-scrollbar">
+                  {/* LME Steel Scrap USD */}
+                  <div>
+                    <div className="flex justify-between text-slate-400 mb-1">
+                      <span>LME Steel Scrap:</span>
+                      <span className="font-bold text-slate-200">${macroInputs.LME_Steel_Scrap_USD.toFixed(1)}/Ton</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={200}
+                      max={600}
+                      step={5}
+                      value={macroInputs.LME_Steel_Scrap_USD}
+                      onChange={(e) => updateMacro('LME_Steel_Scrap_USD', parseFloat(e.target.value))}
+                      className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                    />
+                  </div>
+
+                  {/* USD INR Rate */}
+                  <div>
+                    <div className="flex justify-between text-slate-400 mb-1">
+                      <span>USD/INR Exchange Rate:</span>
+                      <span className="font-bold text-slate-200">₹{macroInputs.USD_INR.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={75}
+                      max={90}
+                      step={0.05}
+                      value={macroInputs.USD_INR}
+                      onChange={(e) => updateMacro('USD_INR', parseFloat(e.target.value))}
+                      className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                    />
+                  </div>
+
+                  {/* Domestic Iron Ore INR */}
+                  <div>
+                    <div className="flex justify-between text-slate-400 mb-1">
+                      <span>Domestic Iron Ore:</span>
+                      <span className="font-bold text-slate-200">₹{macroInputs.Domestic_Iron_Ore_INR.toFixed(0)}/Ton</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={3000}
+                      max={8000}
+                      step={50}
+                      value={macroInputs.Domestic_Iron_Ore_INR}
+                      onChange={(e) => updateMacro('Domestic_Iron_Ore_INR', parseFloat(e.target.value))}
+                      className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                    />
+                  </div>
+
+                  {/* Domestic Coal INR */}
+                  <div>
+                    <div className="flex justify-between text-slate-400 mb-1">
+                      <span>Domestic Coal:</span>
+                      <span className="font-bold text-slate-200">₹{macroInputs.Domestic_Coal_INR.toFixed(0)}/Ton</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={5000}
+                      max={15000}
+                      step={100}
+                      value={macroInputs.Domestic_Coal_INR}
+                      onChange={(e) => updateMacro('Domestic_Coal_INR', parseFloat(e.target.value))}
+                      className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                    />
+                  </div>
+
+                  {/* Construction Index */}
+                  <div>
+                    <div className="flex justify-between text-slate-400 mb-1">
+                      <span>Construction Health Index:</span>
+                      <span className="font-bold text-slate-200">{macroInputs.Construction_Index.toFixed(1)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={80}
+                      max={140}
+                      step={0.5}
+                      value={macroInputs.Construction_Index}
+                      onChange={(e) => updateMacro('Construction_Index', parseFloat(e.target.value))}
+                      className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                    />
+                  </div>
+
+                  {/* Monsoon season active */}
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-900">
+                    <span className="text-slate-400">Monsoon Season Active:</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={macroInputs.Monsoon_Season === 1}
+                        onChange={(e) => updateMacro('Monsoon_Season', e.target.checked ? 1 : 0)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-350 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary-500 peer-checked:after:bg-white"></div>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-900 flex justify-between items-center text-xs">
+              <div>
+                <span className="text-slate-500 font-medium block">AI Forecast Rate</span>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-lg font-black text-sky-400">₹{Math.round(unitMarketPrice).toLocaleString()}</span>
+                  <span className="text-[10px] text-slate-400">/ {selectedModel.targetUnit}</span>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[10px] text-slate-500 font-medium block">Acquisition Discount</span>
+                <span className={`font-extrabold ${discountRate > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {discountRate > 0 ? `${discountRate.toFixed(1)}% below forecast` : '0%'}
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Tab 2: Standard Index comparison column */
+          <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-850/50">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-primary-400">Live Valuation Feed</span>
+                <h4 className="font-bold text-slate-100 text-sm leading-tight mt-0.5">{marketData.name}</h4>
+              </div>
+              
+              <span className="text-[9px] font-bold text-slate-500 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded">
+                {marketData.source}
+              </span>
+            </div>
+
+            <div className="flex items-end justify-between mt-4">
+              <div>
+                <span className="text-[10px] text-slate-500 font-medium block">Avg Market Price</span>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-xl font-black text-white">₹{unitMarketPrice.toLocaleString()}</span>
+                  <span className="text-xs text-slate-400">/ {marketData.unit}</span>
+                </div>
+              </div>
+
+              {/* Sparkline chart and trend */}
+              <div className="flex flex-col items-end gap-1.5">
+                <svg className="w-24 h-10 overflow-visible" viewBox="0 0 120 40">
+                  <path
+                    d={generateSparkline(marketData.history)}
+                    fill="none"
+                    stroke={marketData.trend === 'up' ? '#10b981' : marketData.trend === 'down' ? '#ef4444' : '#64748b'}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                
+                <div className="flex items-center gap-1 text-[10px] font-bold">
+                  {marketData.trend === 'up' ? (
+                    <span className="text-green-400 flex items-center gap-0.5">
+                      <TrendingUp className="w-3 h-3" /> +4.2% MoM
+                    </span>
+                  ) : marketData.trend === 'down' ? (
+                    <span className="text-red-400 flex items-center gap-0.5">
+                      <TrendingDown className="w-3 h-3" /> -1.8% MoM
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">Stable Index</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-900 flex justify-between items-center text-xs">
+              <span className="text-slate-400">Acquisition Discount</span>
+              <span className="font-extrabold text-green-400">
+                {discountRate > 0 ? `${discountRate.toFixed(1)}% below market` : '0%'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Profitability projections */}
         <div className="space-y-4">
@@ -361,7 +652,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
 
             <div>
               <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-slate-400">Quantity ({marketData.unit})</span>
+                <span className="text-slate-400">Quantity ({displayUnit})</span>
                 <span className="font-extrabold text-primary-400">{quantity}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -377,7 +668,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
                   type="number"
                   value={quantity}
                   onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
-                  className="w-14 bg-slate-900 border border-slate-800 text-white rounded text-center text-xs font-bold py-0.5"
+                  className="w-14 bg-slate-900 border border-slate-800 text-white rounded text-center text-xs font-bold py-0.5 font-mono"
                 />
               </div>
             </div>
@@ -399,26 +690,26 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
           <div className="grid grid-cols-2 gap-4">
             <div>
               <span className="text-[10px] text-slate-500 font-medium block">Total Cost</span>
-              <span className="text-sm font-black text-slate-300">₹{Math.round(totalCost).toLocaleString()}</span>
+              <span className="text-sm font-black text-slate-300 font-mono">₹{Math.round(totalCost).toLocaleString()}</span>
             </div>
             
             <div>
               <span className="text-[10px] text-slate-500 font-medium block">Total Turnover</span>
-              <span className="text-sm font-black text-white">₹{Math.round(totalTurnover).toLocaleString()}</span>
+              <span className="text-sm font-black text-white font-mono">₹{Math.round(totalTurnover).toLocaleString()}</span>
             </div>
           </div>
 
           <div className="border-t border-slate-900 pt-3 flex justify-between items-center">
             <div>
               <span className="text-[10px] text-slate-500 font-medium block">Net Profitability</span>
-              <span className={`text-lg font-black ${netProfit > 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <span className={`text-lg font-black font-mono ${netProfit > 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {netProfit > 0 ? '+' : ''}₹{Math.round(netProfit).toLocaleString()}
               </span>
             </div>
 
             <div className="text-right">
               <span className="text-[10px] text-slate-500 font-medium block">Projected ROI</span>
-              <span className={`text-sm font-black inline-flex items-center px-2 py-0.5 rounded ${netProfit > 0 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+              <span className={`text-sm font-black inline-flex items-center px-2 py-0.5 rounded font-mono ${netProfit > 0 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
                 {profitabilityPercent > 0 ? '+' : ''}{profitabilityPercent.toFixed(1)}%
               </span>
             </div>

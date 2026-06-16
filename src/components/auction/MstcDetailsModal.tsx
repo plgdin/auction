@@ -385,21 +385,21 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Projected Turnover</span>
                           <span className="font-bold text-slate-900">
-                            ₹{totalTurnover.toLocaleString('en-IN')}
+                            ₹{totalTurnover.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Predicted Closing Bid</span>
                           <span className="font-bold text-indigo-650">
-                            ₹{predictedClosingBid.toLocaleString('en-IN')}
+                            ₹{predictedClosingBid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Projected Profit</span>
                           <span className="font-bold text-emerald-605">
-                            ₹{projectedProfit.toLocaleString('en-IN')}
+                            ₹{projectedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
 

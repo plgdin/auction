@@ -9,6 +9,28 @@ import clsx from 'clsx';
 
 type TabType = 'active' | 'previous';
 
+function BidItemSkeleton() {
+  return (
+    <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6 animate-pulse">
+      <div className="flex-1 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <div className="h-4 bg-slate-200 rounded w-12" />
+          <div className="h-3.5 bg-slate-200 rounded w-24" />
+        </div>
+        <div className="h-5 bg-slate-250 rounded w-1/2" />
+        <div className="h-3.5 bg-slate-200 rounded w-32" />
+      </div>
+      <div className="w-full sm:w-auto flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3">
+        <div className="space-y-1.5 text-right">
+          <div className="h-2.5 bg-slate-200 rounded w-20" />
+          <div className="h-6 bg-slate-200 rounded w-28" />
+        </div>
+        <div className="h-9 bg-slate-200 rounded w-28" />
+      </div>
+    </div>
+  );
+}
+
 export function MyBids() {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>('active');
@@ -61,8 +83,10 @@ export function MyBids() {
         {/* Content */}
         <div className="p-0">
           {isLoading ? (
-            <div className="flex justify-center py-20">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="divide-y divide-slate-100">
+              {[...Array(3)].map((_, i) => (
+                <BidItemSkeleton key={i} />
+              ))}
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
