@@ -1205,6 +1205,8 @@ export function Auctions() {
                         item={item}
                         isGrid={isGridView}
                         onPreview={setSelectedPreviewItem}
+                        isInterested={interestedMstcIds.includes(item.id)}
+                        onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
                       />
                     ))}
                   </div>
