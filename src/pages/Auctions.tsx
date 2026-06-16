@@ -9,6 +9,7 @@ import { MstcDetailsModal } from '../components/auction/MstcDetailsModal';
 import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
+import { dashboardService } from '../services/dashboardService';
 import type { Auction } from '../types/database.types';
 import { MstcSearchService, expandMstcOffice } from '../services/publicService';
 import type { MstcSanitizedAuction, SearchSuggestion } from '../services/publicService';
