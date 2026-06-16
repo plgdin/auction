@@ -339,6 +339,40 @@ function SkeletonGrid({ isGrid, count = 6, classes }: { isGrid: boolean; count?:
   );
 }
 
+function getPageNumbers(currentPage: number, totalPages: number): (number | string)[] {
+  const pages: (number | string)[] = [];
+  
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
+    }
+  } else {
+    if (currentPage <= 4) {
+      for (let i = 1; i <= 5; i++) {
+        pages.push(i);
+      }
+      pages.push('...');
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 3) {
+      pages.push(1);
+      pages.push('...');
+      for (let i = totalPages - 4; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      pages.push('...');
+      pages.push(currentPage - 1);
+      pages.push(currentPage);
+      pages.push(currentPage + 1);
+      pages.push('...');
+      pages.push(totalPages);
+    }
+  }
+  
+  return pages;
+}
+
 export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
@@ -903,7 +937,12 @@ export function Auctions() {
     });
   };
 
-  const totalPages = Math.ceil(totalCount / limit);
+  const totalPages = activeTab === 'commercial'
+    ? Math.ceil(totalCount / limit)
+    : Math.ceil(mstcAuctions.length / limit);
+
+  const startIndex = (page - 1) * limit;
+  const paginatedMstcAuctions = mstcAuctions.slice(startIndex, startIndex + limit);
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -1226,7 +1265,7 @@ export function Auctions() {
                           <div>
                             <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                               <button
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                onClick={() => handlePageChange(Math.max(1, page - 1))}
                                 disabled={page === 1}
                                 className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
                               >
@@ -1234,23 +1273,35 @@ export function Auctions() {
                                 <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                               </button>
 
-                              {[...Array(totalPages)].map((_, i) => (
-                                <button
-                                  key={i + 1}
-                                  onClick={() => setPage(i + 1)}
-                                  className={clsx(
-                                    "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset",
-                                    page === i + 1
-                                      ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
-                                      : "text-slate-900 ring-slate-300 hover:bg-slate-50"
-                                  )}
-                                >
-                                  {i + 1}
-                                </button>
-                              ))}
+                              {getPageNumbers(page, totalPages).map((p, i) => {
+                                if (p === '...') {
+                                  return (
+                                    <span
+                                      key={`dots-comm-${i}`}
+                                      className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-300 focus:outline-none"
+                                    >
+                                      ...
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    key={p}
+                                    onClick={() => handlePageChange(p as number)}
+                                    className={clsx(
+                                      "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset cursor-pointer",
+                                      page === p
+                                        ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
+                                        : "text-slate-900 ring-slate-300 hover:bg-slate-50"
+                                    )}
+                                  >
+                                    {p}
+                                  </button>
+                                );
+                              })}
 
                               <button
-                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
                                 disabled={page === totalPages}
                                 className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
                               >
@@ -1293,21 +1344,100 @@ export function Auctions() {
                     </button>
                   </div>
                 ) : (
-                  <div className={clsx(
-                    "gap-6",
-                    isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
-                  )}>
-                    {mstcAuctions.map(item => (
-                      <MstcCard
-                        key={item.id}
-                        item={item}
-                        isGrid={isGridView}
-                        onPreview={setSelectedPreviewItem}
-                        isInterested={interestedMstcIds.includes(item.id)}
-                        onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className={clsx(
+                      "gap-6",
+                      isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
+                    )}>
+                      {paginatedMstcAuctions.map(item => (
+                        <MstcCard
+                          key={item.id}
+                          item={item}
+                          isGrid={isGridView}
+                          onPreview={setSelectedPreviewItem}
+                          isInterested={interestedMstcIds.includes(item.id)}
+                          onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="mt-10 flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 rounded-xl shadow-sm">
+                        <div className="flex flex-1 justify-between sm:hidden">
+                          <button
+                            onClick={() => handlePageChange(Math.max(1, page - 1))}
+                            disabled={page === 1}
+                            className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            Previous
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                            disabled={page === totalPages}
+                            className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            Next
+                          </button>
+                        </div>
+                        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm text-slate-700">
+                              Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, mstcAuctions.length)}</span> of <span className="font-medium">{mstcAuctions.length}</span> results
+                            </p>
+                          </div>
+                          <div>
+                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                              <button
+                                onClick={() => handlePageChange(Math.max(1, page - 1))}
+                                disabled={page === 1}
+                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
+                              >
+                                <span className="sr-only">Previous</span>
+                                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                              </button>
+
+                              {getPageNumbers(page, totalPages).map((p, i) => {
+                                if (p === '...') {
+                                  return (
+                                    <span
+                                      key={`dots-mstc-${i}`}
+                                      className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-300 focus:outline-none"
+                                    >
+                                      ...
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    key={p}
+                                    onClick={() => handlePageChange(p as number)}
+                                    className={clsx(
+                                      "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset cursor-pointer",
+                                      page === p
+                                        ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
+                                        : "text-slate-900 ring-slate-300 hover:bg-slate-50"
+                                    )}
+                                  >
+                                    {p}
+                                  </button>
+                                );
+                              })}
+
+                              <button
+                                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                                disabled={page === totalPages}
+                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
+                              >
+                                <span className="sr-only">Next</span>
+                                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                              </button>
+                            </nav>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

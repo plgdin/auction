@@ -1438,7 +1438,7 @@ export const MstcSearchService = {
       const cleanedQuery = cleanQueryPriceTypos(query);
 
       if (!cleanedQuery) {
-        return mapped.slice(0, 200);
+        return mapped;
       }
 
       // ── Extract price constraint
@@ -1492,8 +1492,7 @@ export const MstcSearchService = {
           });
         }
         return mapped
-          .sort((a, b) => new Date(b.opening_date).getTime() - new Date(a.opening_date).getTime())
-          .slice(0, 200);
+          .sort((a, b) => new Date(b.opening_date).getTime() - new Date(a.opening_date).getTime());
       }
 
       // 1. Build Taxonomy dynamically from search data
@@ -1717,8 +1716,7 @@ export const MstcSearchService = {
       return scoredData
         .filter(d => d.score > 0)
         .sort((a, b) => b.score - a.score || new Date(b.item.opening_date).getTime() - new Date(a.item.opening_date).getTime())
-        .map(d => d.item)
-        .slice(0, 200) as MstcSanitizedAuction[];
+        .map(d => d.item) as MstcSanitizedAuction[];
 
     } catch (error) {
       console.error('Client-side layman search failed:', error);

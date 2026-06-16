@@ -203,7 +203,7 @@ export const adminService = {
     const { data, error } = await supabase
       .from('mstc_auctions')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('scraped_at', { ascending: false })
       .limit(limit);
 
     if (error) {
