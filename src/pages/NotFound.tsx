@@ -12,9 +12,9 @@ export function NotFound() {
       >
         Go back home
       </Link>
-      {error && (
+      {!!error && (
         <pre className="mt-8 p-4 bg-red-50 text-red-600 rounded-md max-w-2xl overflow-auto text-sm">
-          {error instanceof Error ? error.stack : JSON.stringify(error, null, 2)}
+          {error instanceof Error ? error.stack : (typeof error === 'string' ? error : JSON.stringify(error, null, 2))}
         </pre>
       )}
     </div>
