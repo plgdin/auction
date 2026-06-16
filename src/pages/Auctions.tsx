@@ -807,7 +807,6 @@ export function Auctions() {
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
           <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-800/20 to-transparent" />
-        </div>
 
         <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-white mb-2">Auctions Marketplace</h1>
@@ -840,12 +839,10 @@ export function Auctions() {
             >
               Commercial Auctions
             </button>
-          </div>
 
           <form onSubmit={handleSearch} className="max-w-3xl relative" onKeyDown={handleKeyDown}>
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-slate-400" />
-            </div>
             <input
               ref={inputRef}
               type="text"
@@ -871,7 +868,6 @@ export function Auctions() {
               >
                 <div className="px-4 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-left">
                   Suggested Searches
-                </div>
                 {suggestions.map((suggestion, index) => {
                   const isHighlighted = highlightedIndex === index;
                   return (
@@ -907,19 +903,13 @@ export function Auctions() {
                           {suggestion.subtext && (
                             <span className="text-xs text-slate-400">{suggestion.subtext}</span>
                           )}
-                        </div>
-                      </div>
                       {isHighlighted && (
                         <CornerDownLeft className="h-4 w-4 text-slate-400 shrink-0" />
                       )}
-                    </div>
                   );
                 })}
-              </div>
             )}
           </form>
-        </div>
-      </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
@@ -938,8 +928,6 @@ export function Auctions() {
                 ? (!isAnyFilterActive ? '0 results' : `${totalCount} results`)
                 : `${mstcAuctions.length} results`
               }
-            </div>
-          </div>
 
           {/* Sidebar Filters */}
           <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto custom-scrollbar z-20">
@@ -969,7 +957,6 @@ export function Auctions() {
                 onClick={() => setIsFiltersOpen(false)}
               />
             )}
-          </div>
 
           {/* Main Content */}
           <div className="flex-grow flex flex-col lg:w-3/4">
@@ -983,7 +970,6 @@ export function Auctions() {
                   ) : (
                     <span>Showing {auctions.length > 0 ? (page - 1) * limit + 1 : 0} - {Math.min(page * limit, totalCount)} of {totalCount} auctions</span>
                   )}
-                </div>
 
                 <div className="flex items-center gap-4 w-full sm:w-auto">
                   <select
@@ -1018,14 +1004,10 @@ export function Auctions() {
                     >
                       <List className="w-5 h-5" />
                     </button>
-                  </div>
-                </div>
-              </div>
             ) : (
               <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="text-sm text-slate-650 font-semibold flex items-center gap-2">
                   <span>Showing {mstcAuctions.length} Government Catalogs</span>
-                </div>
                 <div className="flex items-center gap-4 w-full sm:w-auto">
                   <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
                     <button
@@ -1046,9 +1028,6 @@ export function Auctions() {
                     >
                       <List className="w-5 h-5" />
                     </button>
-                  </div>
-                </div>
-              </div>
             )}
 
             {/* Auction Grid/List for Commercial Tab */}
@@ -1056,8 +1035,6 @@ export function Auctions() {
               <>
                 {isLoading ? (
                   <div className="flex justify-center py-20 flex-grow">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                  </div>
                 ) : auctions.length === 0 ? (
                   <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
                     <h3 className="text-xl font-bold text-slate-900 mb-2">No auctions found</h3>
@@ -1070,7 +1047,6 @@ export function Auctions() {
                     >
                       Clear all filters
                     </button>
-                  </div>
                 ) : (
                   <>
                     <div className={clsx(
@@ -1085,7 +1061,6 @@ export function Auctions() {
                           isWatchlistedInitial={watchlistIds.includes(auction.id)}
                         />
                       ))}
-                    </div>
 
                     {/* Pagination */}
                     {totalPages > 1 && (
@@ -1105,13 +1080,11 @@ export function Auctions() {
                           >
                             Next
                           </button>
-                        </div>
                         <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                           <div>
                             <p className="text-sm text-slate-700">
                               Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, totalCount)}</span> of <span className="font-medium">{totalCount}</span> results
                             </p>
-                          </div>
                           <div>
                             <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                               <button
@@ -1147,9 +1120,6 @@ export function Auctions() {
                                 <ChevronRight className="h-5 w-5" aria-hidden="true" />
                               </button>
                             </nav>
-                          </div>
-                        </div>
-                      </div>
                     )}
                   </>
                 )}
@@ -1161,8 +1131,6 @@ export function Auctions() {
               <>
                 {isMstcLoading ? (
                   <div className="flex justify-center py-20 flex-grow">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                  </div>
                 ) : mstcAuctions.length === 0 ? (
                   <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
                     <h3 className="text-xl font-bold text-slate-900 mb-2">No MSTC catalogs found</h3>
@@ -1175,7 +1143,6 @@ export function Auctions() {
                     >
                       Clear search & filters
                     </button>
-                  </div>
                 ) : (
                   <div className={clsx(
                     "gap-6",
@@ -1189,14 +1156,10 @@ export function Auctions() {
                         onPreview={setSelectedPreviewItem}
                       />
                     ))}
-                  </div>
                 )}
               </>
             )}
 
-          </div>
-        </div>
-      </div>
 
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
@@ -1206,7 +1169,6 @@ export function Auctions() {
           isInterested={false}
         />
       )}
+    </div>
   );
 }
-    </div>
-
