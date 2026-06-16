@@ -297,6 +297,22 @@ export function Auctions() {
   const [copiedRef, setCopiedRef] = useState(false);
   const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
 
+  const [interestedMstcIds, setInterestedMstcIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
+    } else {
+      setInterestedMstcIds([]);
+    }
+  }, [user]);
+
+  const handleMstcInterestedToggle = (itemId: string) => {
+    if (!user) return;
+    dashboardService.toggleInterestedAuction(user.id, itemId);
+    setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
+  };
+
   // Valuation states
   const [modalTab, setModalTab] = useState<'catalog' | 'valuation'>('catalog');
   const [customCosts, setCustomCosts] = useState<ValuationCosts>({
@@ -1205,7 +1221,8 @@ export function Auctions() {
         <MstcDetailsModal
           item={selectedPreviewItem}
           onClose={() => setSelectedPreviewItem(null)}
-          isInterested={false}
+          isInterested={interestedMstcIds.includes(selectedPreviewItem.id)}
+          onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
         />
       )}
     </div>
