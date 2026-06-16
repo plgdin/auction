@@ -74,7 +74,7 @@ const COMMODITIES: CommodityDef[] = [
   },
   {
     name: 'vehicle',
-    keywords: ['car', 'jeep', 'armada', 'vehicle', 'ambulance', 'sumo', 'indigo', 'bolero', 'gypsy', 'omni', 'tempo', 'tonner'],
+    keywords: ['car', 'jeep', 'armada', 'vehicle', 'ambulance', 'sumo', 'indigo', 'bolero', 'gypsy', 'omni', 'tempo', 'tonner', 'qualis', 'etios', 'sunny', 'four-wheeler', 'four wheeler'],
     basePricePerUnit: 150000,
     minPrice: 30000,
     maxPrice: 400000,
@@ -82,7 +82,7 @@ const COMMODITIES: CommodityDef[] = [
   },
   {
     name: 'motorcycle',
-    keywords: ['motorcycle', 'scooter', 'wheeler', 'enfield', 'bullet', 'bike'],
+    keywords: ['motorcycle', 'scooter', 'wheeler', 'enfield', 'bullet', 'bike', 'splendor', 'ct 100', 'discover', 'solo', 'jupiter', 'activa', 'boxer', 'two-wheeler', 'two wheeler', 'hero', 'tvs', 'bajaj', 'motocorp'],
     basePricePerUnit: 45000,
     minPrice: 10000,
     maxPrice: 100000,
@@ -367,7 +367,7 @@ export const valuationService = {
 
         totalQty += partQty;
 
-        const unitMatch = cleanPart.match(/[\d\.]+\s*([a-zA-Z\.]+)/);
+        const unitMatch = cleanPart.match(/[\d\.]+\s*([a-zA-Z][a-zA-Z\.]*)/);
         const partUnit = (unitMatch ? unitMatch[1] : rawItem.unit || '').toLowerCase().trim();
 
         let partBaseQty = partQty;
@@ -390,7 +390,10 @@ export const valuationService = {
         const cleanPrice = customPriceStr.replace(/,/g, '');
         const priceMatch = cleanPrice.match(/₹\s*(\d+)/);
         if (priceMatch) {
-          avgPrice = parseInt(priceMatch[1], 10);
+          const parsedPrice = parseInt(priceMatch[1], 10);
+          if (parsedPrice > 1) {
+            avgPrice = parsedPrice;
+          }
         }
       }
       const isMock = intl.in.isMock;
