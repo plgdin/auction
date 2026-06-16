@@ -37,7 +37,7 @@ const log = logger.child({ module: "assetWorker" });
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface QueueRecord {
+export interface QueueRecord {
   id: string;
   mstc_auction_number: string;
   source_pdf_url: string;
@@ -384,14 +384,13 @@ async function extractAndProcessLotDocuments(
                   currentUnitLower === "lot" || 
                   currentUnitLower === "lots";
 
-                if (isCurrentGeneric || (extracted.unit && extracted.unit !== "LOT")) {
+                if (isCurrentGeneric) {
                   log.info(
                     { lotSr: lot.sr, oldQty: lot.qty, oldUnit: lot.unit, newQty: extracted.qty, newUnit: extracted.unit },
                     "Updating lot quantity from OCR/scanned text"
                   );
                   lot.qty = extracted.qty;
                   lot.unit = extracted.unit;
-                  eligibilityNotes.push(`Review photo/annexure attachments (${fileName}) for Lot ${lot.sr} quantity details.`);
                 }
               }
             }
@@ -436,15 +435,14 @@ async function extractAndProcessLotDocuments(
                 currentUnitLower === "lot" || 
                 currentUnitLower === "lots";
 
-              if (isCurrentGeneric || (extracted.unit && extracted.unit !== "LOT")) {
-                log.info(
-                  { lotSr: item.sr, oldQty: item.qty, newQty: extracted.qty },
-                  "Updating sequential lot quantity from OCR/scanned text"
-                );
-                item.qty = extracted.qty;
-                item.unit = extracted.unit;
-                eligibilityNotes.push(`Review photo/annexure attachments (${fileName}) for Lot ${item.sr} quantity details.`);
-              }
+                if (isCurrentGeneric) {
+                  log.info(
+                    { lotSr: item.sr, oldQty: item.qty, newQty: extracted.qty },
+                    "Updating sequential lot quantity from OCR/scanned text"
+                  );
+                  item.qty = extracted.qty;
+                  item.unit = extracted.unit;
+                }
             }
           } catch (ocrErr: any) {
             log.warn({ errorMessage: ocrErr.message }, "OCR failed during sequential fallback");
@@ -493,14 +491,13 @@ async function extractAndProcessLotDocuments(
                       currentUnitLower === "lot" || 
                       currentUnitLower === "lots";
 
-                    if (isCurrentGeneric || (extracted.unit && extracted.unit !== "LOT")) {
+                    if (isCurrentGeneric) {
                       log.info(
                         { lotSr: lot.sr, oldQty: lot.qty, newQty: extracted.qty },
                         "Updating fallback lot quantity from OCR/scanned text"
                       );
                       lot.qty = extracted.qty;
                       lot.unit = extracted.unit;
-                      eligibilityNotes.push(`Review photo/annexure attachments (${fileName}) for Lot ${lot.sr} quantity details.`);
                     }
                   }
                 }
@@ -569,7 +566,7 @@ function buildMstcHeaders(): Record<string, string> {
 /**
  * Process a single queue record: download, parse, extract, and update.
  */
-async function processRecord(record: QueueRecord): Promise<void> {
+export async function processRecord(record: QueueRecord): Promise<void> {
   const jobLog = log.child({ auctionNumber: record.mstc_auction_number });
 
   jobLog.info({}, "Starting document processing");

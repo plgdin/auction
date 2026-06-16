@@ -73,8 +73,8 @@ export const getEstimatedMarketPrice = (description: string, categoryName: strin
   if (matches(['bus', 'buses', 'truck', 'rig', 'compressor', 'machinery', 'lorry', 'coach', 'forklift', 'dumper', 'tractor', 'loader', 'excavator'])) {
     return '₹3,50,000 / Unit';
   }
-  if (matches(['car', 'jeep', 'armada', 'motorcycle', 'scooter', 'wheeler', 'vehicle', 'ambulance', 'sumo', 'indigo', 'bolero', 'gypsy', 'omni', 'enfield', 'bullet', 'bike', 'tempo', 'tonner'])) {
-    if (desc.includes('enfield') || desc.includes('bullet') || desc.includes('motorcycle') || desc.includes('bike') || desc.includes('scooter')) {
+  if (matches(['car', 'jeep', 'armada', 'motorcycle', 'scooter', 'wheeler', 'vehicle', 'ambulance', 'sumo', 'indigo', 'bolero', 'gypsy', 'omni', 'enfield', 'bullet', 'bike', 'tempo', 'tonner', 'splendor', 'ct 100', 'discover', 'solo', 'jupiter', 'activa', 'boxer', 'qualis', 'etios', 'sunny', 'two-wheeler', 'two wheeler', 'four-wheeler', 'four wheeler', 'hero', 'tvs', 'bajaj', 'motocorp'])) {
+    if (desc.includes('enfield') || desc.includes('bullet') || desc.includes('motorcycle') || desc.includes('bike') || desc.includes('scooter') || desc.includes('splendor') || desc.includes('ct 100') || desc.includes('discover') || desc.includes('solo') || desc.includes('jupiter') || desc.includes('activa') || desc.includes('boxer') || desc.includes('two-wheeler') || desc.includes('two wheeler') || desc.includes('hero') || desc.includes('tvs') || desc.includes('bajaj') || desc.includes('motocorp')) {
       return '₹45,000 / Unit';
     }
     return '₹1,50,000 / Unit';
@@ -89,10 +89,20 @@ export const calculateTotalMarketValue = (items: any[], categoryName: string = '
   if (!items || !Array.isArray(items)) return 0;
   let total = 0;
   for (const lot of items) {
-    const priceStr = lot.marketPrice || getEstimatedMarketPrice(lot.description || '', categoryName);
-    const cleanPrice = priceStr.replace(/,/g, '');
-    const priceMatch = cleanPrice.match(/₹\s*(\d+)/);
-    const price = priceMatch ? parseInt(priceMatch[1], 10) : 0;
+    let priceStr = lot.marketPrice || '';
+    let price = 0;
+    let cleanPrice = '';
+    if (priceStr) {
+      cleanPrice = priceStr.replace(/,/g, '');
+      const priceMatch = cleanPrice.match(/₹\s*(\d+)/);
+      price = priceMatch ? parseInt(priceMatch[1], 10) : 0;
+    }
+    if (price <= 1) {
+      priceStr = getEstimatedMarketPrice(lot.description || '', categoryName);
+      cleanPrice = priceStr.replace(/,/g, '');
+      const priceMatch = cleanPrice.match(/₹\s*(\d+)/);
+      price = priceMatch ? parseInt(priceMatch[1], 10) : 0;
+    }
 
     if (price <= 0) continue;
 
@@ -104,7 +114,7 @@ export const calculateTotalMarketValue = (items: any[], categoryName: string = '
       const partQty = parseFloat(cleanPart);
       if (isNaN(partQty) || partQty <= 0) continue;
 
-      const unitMatch = cleanPart.match(/[\d\.]+\s*([a-zA-Z\.]+)/);
+      const unitMatch = cleanPart.match(/[\d\.]+\s*([a-zA-Z][a-zA-Z\.]*)/);
       const partUnit = (unitMatch ? unitMatch[1] : lot.unit || '').toLowerCase().trim();
 
       let factor = 1;

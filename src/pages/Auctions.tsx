@@ -158,6 +158,17 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
           };
         }
 
+        // Clean eligibility notes from any 'Review photo/annexure attachments' noise
+        if (parsed.eligibility && Array.isArray(parsed.eligibility)) {
+          parsed.eligibility = parsed.eligibility.filter((el: any) => {
+            if (typeof el !== 'string') return true;
+            const lower = el.toLowerCase();
+            return !(lower.includes('review photo') && lower.includes('quantity details')) &&
+                   !(lower.includes('annexure attachments') && lower.includes('quantity details')) &&
+                   !/review\s+photo\/annexure/i.test(lower);
+          });
+        }
+
         return parsed;
       }
     } catch (e) {

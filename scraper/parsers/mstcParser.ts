@@ -46,6 +46,10 @@ export interface CatalogSummary {
   preview_image_url?: string | null;
   extracted_images?: string[];
   totalMarketValue?: number;
+  inspectionDetails?: {
+    time: string;
+    contact: string;
+  };
 }
 
 // ─── Parser ──────────────────────────────────────────────────────────────────
@@ -65,14 +69,19 @@ export function parseMstcCatalogText(
   // 1. Extract Site Contacts and Officers
   const cleanName = (name: string): string => {
     if (!name) return "";
-    return name
+    let cleaned = name
       .replace(/\[[^\]]*\]/g, "")
       .replace(/\([^\)]*\)/g, "")
       .replace(/[\{\}]/g, "")
       .replace(/[-_]+/g, " ")
+      .replace(/[#*@~]+/g, " ")
       .replace(/\s+/g, " ")
-      .replace(/[;:\-\s\+]+$/, "")
       .trim();
+    // Strip trailing special/non-word characters (like - or + or other symbols)
+    cleaned = cleaned.replace(/[^a-zA-Z0-9\s.]+$/, "").trim();
+    // Remove any leftover brackets completely
+    cleaned = cleaned.replace(/[\[\]\(\)\{\}]/g, "").trim();
+    return cleaned;
   };
 
   const isValidContactName = (name: string): boolean => {
@@ -92,22 +101,34 @@ export function parseMstcCatalogText(
   };
 
   const extractPhoneNumber = (line: string): string | null => {
+    const lowerLine = line.toLowerCase();
+    if (lowerLine.includes("download") || lowerLine.includes("date") || lowerLine.includes("valid till")) {
+      return null;
+    }
+    
+    // Clean up dates from the line to prevent matching date digits
+    let cleanedLine = line;
+    const datePattern = /\d{2,4}[-/.]\d{2}[-/.]\d{2,4}/g;
+    cleanedLine = cleanedLine.replace(datePattern, "");
+
     // Try pattern with prefix
-    const prefixMatch = line.match(/(?:mobile|phone|telephone|tele|no|num|contact)[\s:.-]+([+0-9\s.-]{8,25})/i);
+    const prefixMatch = cleanedLine.match(/(?:mobile|phone|telephone|tele|no|num|contact)[\s:.-]*([+0-9\s.,/-]{8,40})/i);
     if (prefixMatch) {
       const cleaned = prefixMatch[1].replace(/[^\d]/g, "");
-      if (cleaned.length >= 8 && cleaned.length <= 15) {
+      if (cleaned.length >= 8 && cleaned.length <= 25) {
         return prefixMatch[1].trim();
       }
     }
-    // Try pattern without prefix (10-12 digits potentially separated by spaces/dashes)
-    const noPrefixMatch = line.match(/(?:^|[^0-9])((?:\d[\s.-]*){10,12})(?:$|[^0-9])/);
-    if (noPrefixMatch) {
-      const cleaned = noPrefixMatch[1].replace(/[^\d]/g, "");
-      if (cleaned.length >= 10 && cleaned.length <= 12) {
-        return noPrefixMatch[1].trim();
+
+    // Try matching any sequence of digits, spaces, dashes, commas, slashes that has at least 8 digits
+    const generalMatch = cleanedLine.match(/(?:^|[^0-9])([+0-9\s.,/-]{8,40})(?:$|[^0-9])/);
+    if (generalMatch) {
+      const cleaned = generalMatch[1].replace(/[^\d]/g, "");
+      if (cleaned.length >= 8 && cleaned.length <= 25) {
+        return generalMatch[1].trim();
       }
     }
+
     return null;
   };
 
@@ -152,9 +173,9 @@ export function parseMstcCatalogText(
 
         let phone = "";
         let email = "";
-        for (let offset = 0; offset <= 4; offset++) {
+        for (let offset = -2; offset <= 4; offset++) {
           const targetIdx = nameLineIdx + offset;
-          if (targetIdx >= lines.length) break;
+          if (targetIdx < 0 || targetIdx >= lines.length) continue;
           const targetLine = lines[targetIdx];
           
           if (!phone) {
@@ -166,7 +187,7 @@ export function parseMstcCatalogText(
           if (!email) {
             const m2 = targetLine.match(/([a-zA-Z0-9\._-]+@[a-zA-Z0-9\._-]+)/);
             if (m2) {
-              email = m2[1];
+              email = m2[1].replace(/^(?:email|address|seller|officer|contact|person|details)+/i, "");
             }
           }
         }
@@ -182,7 +203,7 @@ export function parseMstcCatalogText(
   }
 
   // 2. Extract MSTC Officers
-  const officerOneMatch = text.match(/Officer OneName:\s*([^\n]+)/i) || text.match(/Officer OneName\s*([^\n]+)/i);
+  const officerOneMatch = text.match(/Officer OneName:[ \t]*([^\n\r]+)/i) || text.match(/Officer OneName[ \t]+([^\n\r]+)/i);
   if (officerOneMatch) {
     let offName = cleanName(officerOneMatch[1]);
     let offEmail = "";
@@ -196,7 +217,7 @@ export function parseMstcCatalogText(
         const emailM = line.match(/Email\s*:?\s*([^\s\n]+)/i);
         if (emailM) offEmail = emailM[1].trim();
         const extractedPhone = extractPhoneNumber(line);
-        if (extractedPhone) offPhone = extractedPhone;
+        if (extractedPhone && !offPhone) offPhone = extractedPhone;
       }
     }
     
@@ -211,7 +232,7 @@ export function parseMstcCatalogText(
     }
   }
 
-  const officerTwoMatch = text.match(/Officer TwoName:\s*([^\n]+)/i) || text.match(/Officer TwoName\s*([^\n]+)/i);
+  const officerTwoMatch = text.match(/Officer TwoName:[ \t]*([^\n\r]+)/i) || text.match(/Officer TwoName[ \t]+([^\n\r]+)/i);
   if (officerTwoMatch) {
     let offName = cleanName(officerTwoMatch[1]);
     let offEmail = "";
@@ -224,7 +245,7 @@ export function parseMstcCatalogText(
         const emailM = line.match(/Email\s*:?\s*([^\s\n]+)/i);
         if (emailM) offEmail = emailM[1].trim();
         const extractedPhone = extractPhoneNumber(line);
-        if (extractedPhone) offPhone = extractedPhone;
+        if (extractedPhone && !offPhone) offPhone = extractedPhone;
       }
     }
     
@@ -528,6 +549,45 @@ export function parseMstcCatalogText(
     );
   }
 
+  // 7. Extract Inspection Details
+  let inspectionTime = "From publication date to 1 day prior to bidding (10:00 AM - 4:00 PM on working days)";
+  
+  // Try pattern: "Inspection Schedule:09-06-26 to 16-06-26" or similar
+  const scheduleMatch = text.match(/Inspection Schedule\s*:\s*([^\n\r]+)/i) || 
+                        text.match(/Inspection window\s*:\s*([^\n\r]+)/i);
+  
+  if (scheduleMatch) {
+    let matchedTime = scheduleMatch[1].trim();
+    // Clean trailing characters or download info
+    const downloadIdx = matchedTime.toLowerCase().indexOf("date/time of download");
+    if (downloadIdx !== -1) {
+      matchedTime = matchedTime.substring(0, downloadIdx).trim();
+    }
+    const boundaryKeywords = ["Scheduled", "Auction", "MSTC", "Lot Details", "Lot No"];
+    for (const kw of boundaryKeywords) {
+      const kwIdx = matchedTime.indexOf(kw);
+      if (kwIdx !== -1) {
+        matchedTime = matchedTime.substring(0, kwIdx).trim();
+      }
+    }
+    if (matchedTime && matchedTime.length > 5 && matchedTime.length < 150) {
+      inspectionTime = matchedTime;
+    }
+  } else {
+    // Try matching proposed schedule, e.g. "Inspection window: 09.06.2026 to 16.06.2026 (except Saturday and Sunday)"
+    const inlineMatch = text.match(/Inspection window\s*[:.-]\s*([^\n\r.]+)/i) || 
+                        text.match(/Inspection Schedule\s*[:.-]\s*([^\n\r.]+)/i);
+    if (inlineMatch) {
+      let matchedTime = inlineMatch[1].trim();
+      if (matchedTime && matchedTime.length > 5 && matchedTime.length < 150) {
+        inspectionTime = matchedTime;
+      }
+    }
+  }
+
+  const mainContact = keyContacts.find(c => c.role.toLowerCase().includes('site') || c.role.toLowerCase().includes('engineer')) || keyContacts[0];
+  const inspectionContact = mainContact ? `${mainContact.name} (${mainContact.phone || 'phone listed in catalog'})` : 'Site In-Charge';
+
   return {
     overview,
     scopeOfWork,
@@ -539,5 +599,9 @@ export function parseMstcCatalogText(
       adminCharges: ADMIN_CHARGES,
     },
     keyContacts,
+    inspectionDetails: {
+      time: inspectionTime,
+      contact: inspectionContact
+    }
   };
 }
