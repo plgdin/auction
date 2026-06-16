@@ -280,6 +280,63 @@ const renderSuggestionText = (text: string, query: string) => {
   );
 };
 
+function AuctionCardSkeleton({ isGrid }: { isGrid: boolean }) {
+  if (isGrid) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col h-full animate-pulse shadow-sm p-4 md:p-5">
+        <div className="h-40 bg-slate-100 rounded-xl mb-4 shrink-0" />
+        <div className="flex-grow flex flex-col space-y-3">
+          <div className="h-3 bg-slate-200 rounded w-1/4" />
+          <div className="space-y-2 flex-grow">
+            <div className="h-5 bg-slate-200 rounded w-3/4" />
+            <div className="h-5 bg-slate-200 rounded w-1/2" />
+          </div>
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 space-y-2 text-xs">
+            <div className="h-3 bg-slate-200 rounded w-2/3" />
+            <div className="h-3 bg-slate-200 rounded w-1/2" />
+          </div>
+          <div className="pt-4 border-t border-slate-100 flex justify-between items-end mt-auto">
+            <div className="space-y-1.5">
+              <div className="h-2.5 bg-slate-200 rounded w-16" />
+              <div className="h-5 bg-slate-200 rounded w-24" />
+            </div>
+            <div className="h-8 bg-slate-200 rounded w-20" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col sm:flex-row bg-white rounded-xl border border-slate-200 overflow-hidden animate-pulse p-5 gap-5 shadow-sm">
+      <div className="w-full sm:w-64 h-40 bg-slate-150 rounded-lg shrink-0" />
+      <div className="flex-grow flex flex-col space-y-4 justify-between">
+        <div className="space-y-2">
+          <div className="h-3 bg-slate-200 rounded w-1/4" />
+          <div className="h-5 bg-slate-250 rounded w-1/2" />
+          <div className="h-4 bg-slate-200 rounded w-full" />
+        </div>
+        <div className="flex gap-4 pt-2">
+          <div className="h-3 bg-slate-200 rounded w-1/4" />
+          <div className="h-3 bg-slate-200 rounded w-1/4" />
+          <div className="h-3 bg-slate-200 rounded w-1/4" />
+        </div>
+        <div className="pt-4 border-t border-slate-100 flex justify-between items-center mt-auto">
+          <div className="h-6 bg-slate-200 rounded w-28" />
+          <div className="h-9 bg-slate-200 rounded w-28" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SkeletonGrid({ isGrid, count = 6, classes }: { isGrid: boolean; count?: number; classes?: string }) {
+  return (
+    <div className={classes}>
+      {[...Array(count)].map((_, i) => (
+        <AuctionCardSkeleton key={i} isGrid={isGrid} />
+      ))}
+
+
 export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
@@ -1102,9 +1159,14 @@ export function Auctions() {
             {activeTab === 'commercial' && (
               <>
                 {isLoading ? (
-                  <div className="flex justify-center py-20 flex-grow">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                  </div>
+                  <SkeletonGrid
+                    isGrid={isGridView}
+                    count={6}
+                    classes={clsx(
+                      "gap-6 flex-grow",
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                    )}
+                  />
                 ) : auctions.length === 0 ? (
                   <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
                     <h3 className="text-xl font-bold text-slate-900 mb-2">No auctions found</h3>
@@ -1207,9 +1269,14 @@ export function Auctions() {
             {activeTab === 'mstc' && (
               <>
                 {isMstcLoading ? (
-                  <div className="flex justify-center py-20 flex-grow">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                  </div>
+                  <SkeletonGrid
+                    isGrid={isGridView}
+                    count={4}
+                    classes={clsx(
+                      "gap-6 flex-grow",
+                      isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
+                    )}
+                  />
                 ) : mstcAuctions.length === 0 ? (
                   <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
                     <h3 className="text-xl font-bold text-slate-900 mb-2">No MSTC catalogs found</h3>
@@ -1249,7 +1316,7 @@ export function Auctions() {
 
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 sm:p-6 md:p-8 animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 sm:p-6 md:p-8 animate-fade-in">
           <div className="relative w-full max-w-[1400px] h-[95vh] md:h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">

@@ -5,6 +5,38 @@ import { tenderService } from '../services/tenderService';
 import type { Tender } from '../types/database.types';
 import clsx from 'clsx';
 
+function TenderCardSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col animate-pulse h-full shadow-sm">
+      <div className="p-6 border-b border-slate-100 flex-grow space-y-4">
+        <div className="flex justify-between items-start">
+          <div className="h-4 bg-slate-200 rounded w-1/4" />
+          <div className="h-4 bg-slate-200 rounded w-16" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-5 bg-slate-250 rounded w-3/4" />
+          <div className="h-5 bg-slate-200 rounded w-1/2" />
+        </div>
+        <div className="h-4 bg-slate-200 rounded w-full" />
+        <div className="grid grid-cols-2 gap-4 pt-2">
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2">
+            <div className="h-3 bg-slate-200 rounded w-1/3" />
+            <div className="h-4 bg-slate-200 rounded w-2/3" />
+          </div>
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2">
+            <div className="h-3 bg-slate-200 rounded w-1/3" />
+            <div className="h-4 bg-slate-200 rounded w-2/3" />
+          </div>
+        </div>
+      </div>
+      <div className="p-4 bg-slate-50 flex items-center justify-between">
+        <div className="h-4 bg-slate-200 rounded w-1/3" />
+        <div className="h-8 bg-slate-200 rounded w-28" />
+      </div>
+    </div>
+  );
+}
+
 export function Tenders() {
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,8 +108,10 @@ export function Tenders() {
 
         {/* Results Grid */}
         {isLoading ? (
-          <div className="flex justify-center items-center min-h-[40vh]">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <TenderCardSkeleton key={i} />
+            ))}
           </div>
         ) : tenders.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-slate-200">
