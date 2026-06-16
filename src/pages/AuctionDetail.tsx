@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
-  Heart, Share2, Tag, MapPin, FileText, CheckCircle2, ChevronRight, Copy
+  Heart, Share2, Tag, MapPin, FileText, CheckCircle2, ChevronRight, Copy, FilePlus
 } from 'lucide-react';
 import { auctionService } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
@@ -12,6 +12,8 @@ import { MarketValuationPanel } from '../components/auction/MarketValuationPanel
 import { useAuctionRealtime } from '../hooks/useAuctionRealtime';
 import type { Auction, AuctionImage, AuctionDocument } from '../types/database.types';
 import clsx from 'clsx';
+import { useQuoteStore } from '../store/quoteStore';
+import { toast } from 'react-hot-toast';
 
 export function AuctionDetail() {
   const { id } = useParams<{ id: string }>();
@@ -133,6 +135,19 @@ function AuctionDetailInner({
   const [activeTab, setActiveTab] = useState<'details' | 'terms' | 'documents'>('details');
   const [copiedRefNum, setCopiedRefNum] = useState(false);
 
+  const addItemToActiveQuote = useQuoteStore(state => state.addItemToActiveQuote);
+
+  const handleAddToQuote = () => {
+    addItemToActiveQuote({
+      description: auction.title,
+      qty: 1,
+      unit: 'Lot',
+      price: auction.starting_bid || 0,
+      taxRate: 18,
+    });
+    toast.success(`Added "${auction.title}" to quote`);
+  };
+
   const isActive = auction.status === 'active';
 
   return (
@@ -190,6 +205,13 @@ function AuctionDetailInner({
           </div>
           
           <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={handleAddToQuote}
+              className="flex items-center justify-center w-12 h-12 bg-white border border-slate-200 rounded-full shadow-sm text-slate-600 hover:text-primary hover:border-primary/50 transition-colors"
+              title="Add to Quote"
+            >
+              <FilePlus className="w-5 h-5" />
+            </button>
             <button
               onClick={handleShare}
               className="flex items-center justify-center w-12 h-12 bg-white border border-slate-200 rounded-full shadow-sm text-slate-600 hover:text-primary hover:border-primary/50 transition-colors"

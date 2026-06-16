@@ -1745,6 +1745,31 @@ export const MstcSearchService = {
   },
 
   /**
+   * Fetches a single MSTC auction by its UUID/ID, mapping raw categories appropriately.
+   */
+  async getMstcAuctionById(id: string): Promise<MstcSanitizedAuction | null> {
+    try {
+      const { data, error } = await supabase
+        .from('mstc_auctions')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) return null;
+
+      const { category, subcategory } = mapRawCategory(data.category_name);
+      return {
+        ...data,
+        category_name: `${category} | ${subcategory}`
+      };
+    } catch (error) {
+      console.error('Failed to fetch MSTC auction by ID:', error);
+      return null;
+    }
+  },
+
+  /**
    * Fetches unique filter options (State/Location, Category, Seller, Regional Office) from the database
    */
   async getMstcFilterOptions(): Promise<{

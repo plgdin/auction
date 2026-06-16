@@ -202,3 +202,86 @@
   overflow-y: auto;
 }
 
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@media print {
+  /* Strict hiding of layout blocks, headers, controls, and print-hidden elements */
+  aside,
+  header,
+  footer,
+  nav,
+  [class*="Sidebar"],
+  [class*="TopBar"],
+  [class*="AnnouncementBanner"],
+  .print\:hidden,
+  .print-hidden,
+  .lg\:col-span-5 {
+    display: none !important;
+  }
+
+  /* Reset body and html for seamless print boundaries */
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Specific structure overrides to ensure descendants flow blocks naturally */
+  #root,
+  #root > div,
+  #root > div > div,
+  #root > div > div > div,
+  main,
+  .max-w-7xl,
+  .grid,
+  .lg\:col-span-7,
+  .bg-slate-100 {
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Style the quote print sheet to fit exactly onto the printable page area with margins */
+  #quote-print-sheet {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    padding: 16mm 20mm !important; /* Safe margins for A4 printing */
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    position: relative !important;
+  }
+
+  /* Prevent table headers from repeating on subsequent pages */
+  #quote-print-sheet thead {
+    display: table-row-group !important;
+  }
+
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}

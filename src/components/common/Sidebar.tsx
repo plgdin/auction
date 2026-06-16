@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Gavel, Heart, Bell, 
   Settings, Building2, LogOut, FolderLock, Users, Calendar, ClipboardCheck,
-  ArrowLeft
+  ArrowLeft, FileText
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import clsx from 'clsx';
@@ -15,6 +15,7 @@ export function Sidebar() {
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { name: 'My Bids', path: '/dashboard/bids', icon: Gavel },
     { name: 'Interested', path: '/dashboard/interested', icon: Heart },
+    { name: 'Quote Builder', path: '/dashboard/quotes', icon: FileText },
     { name: 'Document Vault', path: '/dashboard/documents', icon: FolderLock },
     { name: 'Calendar & Alerts', path: '/dashboard/reminders', icon: Calendar },
     { name: 'Personal Vendors', path: '/dashboard/vendors', icon: Users },

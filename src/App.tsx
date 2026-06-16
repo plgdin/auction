@@ -26,7 +26,44 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <RouterProvider router={router} />
-        <Toaster position="top-right" />
+        <Toaster 
+          position="top-right" 
+          toastOptions={{
+            duration: 3000,
+            success: {
+              iconTheme: {
+                primary: '#0284c7', // Matches primary theme color
+                secondary: '#ffffff',
+              },
+              style: {
+                borderRadius: '16px',
+                background: '#ffffff',
+                color: '#1e293b',
+                fontWeight: '600',
+                fontSize: '13px',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                border: '1px solid #e2e8f0',
+                padding: '12px 16px',
+              }
+            },
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#ffffff',
+              },
+              style: {
+                borderRadius: '16px',
+                background: '#ffffff',
+                color: '#1e293b',
+                fontWeight: '600',
+                fontSize: '13px',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                border: '1px solid #fca5a5',
+                padding: '12px 16px',
+              }
+            }
+          }}
+        />
       </ErrorBoundary>
     </QueryClientProvider>
   );
