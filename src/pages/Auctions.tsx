@@ -50,7 +50,9 @@ const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
             if (percentVal > 100) {
               // Parse error / invalid percent, reset
               emdVal = '10% of total bid value';
-              preBidDdg = 'Not required for registered MSME bidders';
+              if (!parsed.depositDetails.preBidDdg) {
+                preBidDdg = 'Not required for registered MSME bidders';
+              }
             }
           }
         } else {

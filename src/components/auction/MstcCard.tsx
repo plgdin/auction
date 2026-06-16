@@ -47,7 +47,9 @@ const generateCatalogSummary = (
             const percentVal = parseFloat(percentMatch[1]);
             if (percentVal > 100) {
               emdVal = "10% of total bid value";
-              preBidDdg = "Not required for registered MSME bidders";
+              if (!preBidDdg) {
+                preBidDdg = "Not required for registered MSME bidders";
+              }
             } else {
               emdVal = `${percentVal}%`;
             }

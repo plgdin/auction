@@ -1,9 +1,9 @@
 import * as dotenv from 'dotenv';
-dotenv.config();
-
-import { MstcSearchService } from '../src/services/publicService';
+import { resolve } from 'path';
+dotenv.config({ path: resolve('.env') });
 
 async function runTests() {
+  const { MstcSearchService } = await import('../src/services/publicService');
   console.log('============================================================');
   console.log('RUNNING SEARCH SUGGESTIONS & FILTER VERIFICATION TESTS');
   console.log('============================================================\n');
