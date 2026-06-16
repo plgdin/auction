@@ -309,6 +309,7 @@ export function Auctions() {
   const [copied, setCopied] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const [interestedMstcIds, setInterestedMstcIds] = useState<string[]>([]);
 
