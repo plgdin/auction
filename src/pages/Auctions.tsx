@@ -9,14 +9,14 @@ import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
 import type { Auction } from '../types/database.types';
-import { MstcSearchService } from '../services/publicService';
+import { MstcSearchService, expandMstcOffice } from '../services/publicService';
 import type { MstcSanitizedAuction, SearchSuggestion } from '../services/publicService';
 import clsx from 'clsx';
 import { valuationService } from '../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../services/valuationService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-import { getEstimatedMarketPrice } from '../utils/valuationUtils';
+import { getEstimatedMarketPrice, getNumericQty, getNumericPrice } from '../utils/valuationUtils';
 
 
 interface CatalogSummary {

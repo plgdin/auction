@@ -12,6 +12,13 @@ export const getNumericQty = (qtyStr: string): number => {
   return total > 0 ? total : 1;
 };
 
+export const getNumericPrice = (priceStr: string): number => {
+  if (!priceStr) return 0;
+  const cleanStr = priceStr.replace(/,/g, '');
+  const match = cleanStr.match(/₹?\s*(\d+(\.\d+)?)/);
+  return match ? parseFloat(match[1]) : 0;
+};
+
 const hasWord = (text: string, kw: string): boolean => {
   if (kw.includes(' ')) {
     return text.includes(kw);
