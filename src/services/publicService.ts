@@ -1,5 +1,388 @@
 import { supabase } from '../lib/supabase';
 import type { ContactMessage, FaqItem, Announcement, NewsUpdate } from '../types/database.types';
+import {
+  INVERTED_SYNONYM_MAP,
+  CONCEPT_MAP,
+  STOP_WORDS,
+  GENERIC_KEYWORDS,
+  getInflections,
+  extractTokens,
+  findClosestKeyword,
+  parsePriceConstraint,
+  cleanQueryFromPriceConstraint,
+  filterCompoundComponents,
+  matchWholeWord,
+  getLevenshteinDistance,
+  cleanQueryPriceTypos
+} from './nlpSearchUtils';
+
+// ─── India Location Lookup ────────────────────────────────────────────────────
+// Maps canonical state/city → all known aliases (names, abbreviations, spellings).
+// Add new cities/states here — the search engine picks them up automatically.
+const INDIA_LOCATIONS: Record<string, string[]> = {
+  'kerala': ['kerala', 'kerela', 'kl', 'kochi', 'cochin', 'thiruvananthapuram', 'trivandrum', 'tvm', 'kozhikode', 'calicut', 'thrissur', 'kollam', 'alappuzha', 'ernakulam', 'kannur', 'kasaragod', 'wayanad', 'idukki', 'palakkad', 'malappuram', 'pathanamthitta', 'kottayam'],
+  'tamil nadu': ['tamil nadu', 'tamilnadu', 'tn', 'chennai', 'madras', 'coimbatore', 'cbe', 'madurai', 'trichy', 'salem', 'tiruppur', 'erode', 'vellore', 'tirunelveli', 'thoothukudi', 'dindigul', 'nagercoil', 'thanjavur', 'kanchipuram'],
+  'karnataka': ['karnataka', 'ka', 'bengaluru', 'bangalore', 'blr', 'mysore', 'mysuru', 'mangaluru', 'mangalore', 'hubli', 'dharwad', 'belagavi', 'belgaum', 'gulbarga', 'kalaburagi', 'ballari', 'bellary', 'davanagere', 'shimoga', 'tumkur', 'udupi'],
+  'andhra pradesh': ['andhra pradesh', 'andhra', 'ap', 'visakhapatnam', 'vizag', 'vijayawada', 'guntur', 'nellore', 'kurnool', 'rajahmundry', 'kakinada', 'tirupati', 'kadapa', 'anantapur', 'eluru'],
+  'telangana': ['telangana', 'ts', 'hyderabad', 'hyd', 'secunderabad', 'warangal', 'nizamabad', 'karimnagar', 'khammam'],
+  'maharashtra': ['maharashtra', 'mh', 'mumbai', 'bombay', 'pune', 'poona', 'nagpur', 'nashik', 'aurangabad', 'solapur', 'kolhapur', 'thane', 'navi mumbai', 'amravati'],
+  'gujarat': ['gujarat', 'gj', 'ahmedabad', 'amd', 'surat', 'vadodara', 'baroda', 'rajkot', 'gandhinagar', 'bhavnagar', 'jamnagar', 'junagadh'],
+  'rajasthan': ['rajasthan', 'rj', 'jaipur', 'jodhpur', 'kota', 'bikaner', 'udaipur', 'ajmer', 'bhilwara', 'alwar', 'sikar'],
+  'madhya pradesh': ['madhya pradesh', 'mp', 'bhopal', 'indore', 'jabalpur', 'gwalior', 'ujjain', 'sagar', 'rewa', 'satna'],
+  'uttar pradesh': ['uttar pradesh', 'up', 'lucknow', 'kanpur', 'agra', 'varanasi', 'prayagraj', 'allahabad', 'meerut', 'ghaziabad', 'noida', 'mathura', 'aligarh', 'bareilly', 'moradabad', 'saharanpur', 'gorakhpur', 'firozabad'],
+  'delhi': ['delhi', 'new delhi', 'ncr'],
+  'west bengal': ['west bengal', 'wb', 'bengal', 'kolkata', 'calcutta', 'howrah', 'durgapur', 'asansol', 'siliguri'],
+  'odisha': ['odisha', 'orissa', 'or', 'bhubaneswar', 'cuttack', 'rourkela', 'sambalpur', 'puri', 'balasore'],
+  'jharkhand': ['jharkhand', 'jh', 'ranchi', 'jamshedpur', 'dhanbad', 'bokaro', 'hazaribagh'],
+  'bihar': ['bihar', 'br', 'patna', 'gaya', 'bhagalpur', 'muzaffarpur', 'darbhanga', 'purnia'],
+  'chhattisgarh': ['chhattisgarh', 'cg', 'raipur', 'bilaspur', 'durg', 'korba', 'rajnandgaon'],
+  'punjab': ['punjab', 'pb', 'ludhiana', 'amritsar', 'jalandhar', 'patiala', 'bathinda', 'mohali'],
+  'haryana': ['haryana', 'hr', 'faridabad', 'gurugram', 'gurgaon', 'hisar', 'rohtak', 'panipat', 'karnal', 'ambala', 'sonipat'],
+  'chandigarh': ['chandigarh'],
+  'uttarakhand': ['uttarakhand', 'uk', 'dehradun', 'haridwar', 'roorkee', 'rishikesh', 'haldwani', 'nainital'],
+  'himachal pradesh': ['himachal pradesh', 'hp', 'shimla', 'dharamsala', 'mandi', 'solan'],
+  'assam': ['assam', 'as', 'guwahati', 'dibrugarh', 'silchar', 'jorhat'],
+  'goa': ['goa', 'panaji', 'margao', 'vasco'],
+  'manipur': ['manipur', 'mn', 'imphal'],
+  'meghalaya': ['meghalaya', 'ml', 'shillong'],
+  'mizoram': ['mizoram', 'mz', 'aizawl'],
+  'nagaland': ['nagaland', 'nl', 'kohima'],
+  'tripura': ['tripura', 'tr', 'agartala'],
+  'sikkim': ['sikkim', 'sk', 'gangtok'],
+  'arunachal pradesh': ['arunachal pradesh', 'arunachal', 'itanagar'],
+  'jammu and kashmir': ['jammu and kashmir', 'jammu', 'kashmir', 'jk', 'srinagar'],
+  'ladakh': ['ladakh', 'leh'],
+};
+
+/**
+ * Extract a location mentioned in the query (e.g. "in Kerala", "at Mumbai", "from UP", bare "Kerala").
+ * Returns the canonical location key and the query with the location phrase stripped.
+ */
+function findLocationMatch(candidate: string): string | null {
+  const c = candidate.trim().toLowerCase();
+  if (!c || c.length <= 1) return null;
+  if (STOP_WORDS.has(c)) return null;
+
+  // Exact check first
+  for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
+    if (canonical.toLowerCase() === c) return canonical;
+    for (const alias of aliases) {
+      if (alias.toLowerCase() === c) return canonical;
+    }
+  }
+
+  // Fuzzy check - only for candidates with length >= 4 to avoid short-word collisions (e.g. "me" matching "mh")
+  if (c.length <= 3) return null;
+
+  let bestCanonical: string | null = null;
+  let minDistance = Infinity;
+
+  const isAllowedFuzzy = (dist: number, target: string) => {
+    if (dist === 0) return true;
+    if (dist === 1 && target.length >= 3) return true;
+    if (dist === 2 && target.length >= 7 && c.length >= 7) return true;
+    return false;
+  };
+
+  for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
+    // Check canonical
+    const distCanonical = getLevenshteinDistance(c, canonical.toLowerCase());
+    if (isAllowedFuzzy(distCanonical, canonical) && distCanonical < minDistance) {
+      minDistance = distCanonical;
+      bestCanonical = canonical;
+    }
+
+    // Check aliases
+    for (const alias of aliases) {
+      const distAlias = getLevenshteinDistance(c, alias.toLowerCase());
+      if (isAllowedFuzzy(distAlias, alias) && distAlias < minDistance) {
+        minDistance = distAlias;
+        bestCanonical = canonical;
+      }
+    }
+  }
+
+  return bestCanonical;
+}
+
+function extractLocationFromQuery(query: string): { canonical: string | null; remainingQuery: string } {
+  if (!query) return { canonical: null, remainingQuery: query };
+  const lower = query.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const words = lower.split(' ');
+
+  // 1. First try with prepositions to be highly accurate
+  const preps = ['located in', 'located at', 'in', 'at', 'from', 'near', 'around', 'within'];
+  for (const prep of preps) {
+    const prepWords = prep.split(' ');
+    // Find index of prep sequence
+    let prepIndex = -1;
+    for (let i = 0; i <= words.length - prepWords.length; i++) {
+      let match = true;
+      for (let j = 0; j < prepWords.length; j++) {
+        if (words[i + j] !== prepWords[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        prepIndex = i;
+        break;
+      }
+    }
+
+    if (prepIndex !== -1) {
+      // Look at sequences of length 1, 2, 3 following the preposition
+      const startIndex = prepIndex + prepWords.length;
+      for (let len = 3; len >= 1; len--) {
+        if (startIndex + len <= words.length) {
+          const candidate = words.slice(startIndex, startIndex + len).join(' ');
+          const matched = findLocationMatch(candidate);
+          if (matched) {
+            // Strip preposition and candidate from the query
+            const remainingWords = [...words];
+            remainingWords.splice(prepIndex, prepWords.length + len);
+            return { canonical: matched, remainingQuery: remainingWords.join(' ') };
+          }
+        }
+      }
+    }
+  }
+
+  // 2. If no preposition matches, search all word sequences in the query
+  for (let len = 3; len >= 1; len--) {
+    for (let i = 0; i <= words.length - len; i++) {
+      const candidate = words.slice(i, i + len).join(' ');
+      const matched = findLocationMatch(candidate);
+      if (matched) {
+        const remainingWords = [...words];
+        remainingWords.splice(i, len);
+        return { canonical: matched, remainingQuery: remainingWords.join(' ') };
+      }
+    }
+  }
+
+  return { canonical: null, remainingQuery: query };
+}
+
+/**
+ * Returns true if the DB location string contains any alias for the given canonical location.
+ * Handles "Kochi, Kerala" matching both "kerala" and "kochi".
+ */
+function dbLocationMatchesCanonical(dbLocation: string, canonical: string): boolean {
+  if (!dbLocation || !canonical) return false;
+  const loc = dbLocation.toLowerCase();
+  const aliases = INDIA_LOCATIONS[canonical] || [];
+  for (const alias of aliases) {
+    if (loc.includes(alias.toLowerCase())) return true;
+  }
+  return false;
+}
+
+// ─── Subcategory Precision Map ────────────────────────────────────────────────
+// When the user's query matches a phrase here, ONLY that specific subcategory is returned.
+// Future-proof: add new entries as subcategories are added to the system.
+const SUBCATEGORY_EXACT_MAP: Array<{ phrase: string; subcategory: string }> = [
+  // Metal subcategories
+  { phrase: 'iron and steel', subcategory: 'Iron and steel' },
+  { phrase: 'iron & steel', subcategory: 'Iron and steel' },
+  { phrase: 'iron steel', subcategory: 'Iron and steel' },
+  { phrase: 'ms scrap', subcategory: 'Iron and steel' },
+  { phrase: 'mild steel', subcategory: 'Iron and steel' },
+  { phrase: 'iron', subcategory: 'Iron and steel' },
+  { phrase: 'steel', subcategory: 'Iron and steel' },
+  { phrase: 'aluminium', subcategory: 'Aluminium' },
+  { phrase: 'aluminum', subcategory: 'Aluminium' },
+  { phrase: 'copper', subcategory: 'Copper' },
+  { phrase: 'brass', subcategory: 'Brass' },
+  { phrase: 'zinc', subcategory: 'Zinc' },
+  { phrase: 'nickel', subcategory: 'Nickle' },
+  { phrase: 'nickle', subcategory: 'Nickle' },
+  { phrase: 'bronze', subcategory: 'Gun metal/bronze' },
+  { phrase: 'gun metal', subcategory: 'Gun metal/bronze' },
+  { phrase: 'mixed metal', subcategory: 'Mixed metal scraps' },
+  { phrase: 'mixed scrap', subcategory: 'Mixed metal scraps' },
+  { phrase: 'metal', subcategory: 'Mixed metal scraps' },
+  { phrase: 'metals', subcategory: 'Mixed metal scraps' },
+  { phrase: 'scrap', subcategory: 'Mixed metal scraps' },
+  { phrase: 'scraps', subcategory: 'Mixed metal scraps' },
+  // Electrical subcategories
+  { phrase: 'battery', subcategory: 'Battery' },
+  { phrase: 'batteries', subcategory: 'Battery' },
+  { phrase: 'transformer', subcategory: 'Transformer' },
+  { phrase: 'transformers', subcategory: 'Transformer' },
+  { phrase: 'dg set', subcategory: 'DG Sets / Generators' },
+  { phrase: 'dg sets', subcategory: 'DG Sets / Generators' },
+  { phrase: 'generator', subcategory: 'DG Sets / Generators' },
+  { phrase: 'generators', subcategory: 'DG Sets / Generators' },
+  { phrase: 'genset', subcategory: 'DG Sets / Generators' },
+  { phrase: 'gensets', subcategory: 'DG Sets / Generators' },
+  { phrase: 'air conditioner', subcategory: 'Others' },
+  { phrase: 'cable', subcategory: 'Cables' },
+  { phrase: 'cables', subcategory: 'Cables' },
+  { phrase: 'wire', subcategory: 'Cables' },
+  { phrase: 'wires', subcategory: 'Cables' },
+  // Vehicle subcategories
+  { phrase: 'car', subcategory: 'Car' },
+  { phrase: 'cars', subcategory: 'Car' },
+  { phrase: 'vehicle', subcategory: 'Car' },
+  { phrase: 'vehicles', subcategory: 'Car' },
+  { phrase: 'automobiles', subcategory: 'Car' },
+  { phrase: 'automobile', subcategory: 'Car' },
+  { phrase: 'automotive', subcategory: 'Car' },
+  { phrase: 'vechicle', subcategory: 'Car' },
+  { phrase: 'vechicles', subcategory: 'Car' },
+  { phrase: 'truck', subcategory: 'Car' },
+  { phrase: 'trucks', subcategory: 'Car' },
+  { phrase: 'jeep', subcategory: 'Car' },
+  { phrase: 'jeeps', subcategory: 'Car' },
+  { phrase: 'bus', subcategory: 'Car' },
+  { phrase: 'buses', subcategory: 'Car' },
+  { phrase: 'scooter', subcategory: 'Car' },
+  { phrase: 'scooters', subcategory: 'Car' },
+  { phrase: 'bike', subcategory: 'Car' },
+  { phrase: 'bikes', subcategory: 'Car' },
+  { phrase: 'motorcycle', subcategory: 'Car' },
+  { phrase: 'motorcycles', subcategory: 'Car' },
+  { phrase: 'dumper', subcategory: 'Car' },
+  { phrase: 'dumpers', subcategory: 'Car' },
+  { phrase: 'tipper', subcategory: 'Car' },
+  { phrase: 'tippers', subcategory: 'Car' },
+  { phrase: 'tractor', subcategory: 'Car' },
+  { phrase: 'tractors', subcategory: 'Car' },
+  { phrase: 'elv', subcategory: 'Car' },
+  { phrase: 'elvs', subcategory: 'Car' },
+  { phrase: 'van', subcategory: 'Car' },
+  { phrase: 'vans', subcategory: 'Car' },
+  // Electronics subcategories
+  { phrase: 'computer', subcategory: 'Computers / Peripherals' },
+  { phrase: 'computers', subcategory: 'Computers / Peripherals' },
+  { phrase: 'laptop', subcategory: 'Computers / Peripherals' },
+  { phrase: 'laptops', subcategory: 'Computers / Peripherals' },
+  { phrase: 'pc', subcategory: 'Computers / Peripherals' },
+  { phrase: 'pcs', subcategory: 'Computers / Peripherals' },
+  { phrase: 'desktop', subcategory: 'Computers / Peripherals' },
+  { phrase: 'desktops', subcategory: 'Computers / Peripherals' },
+  { phrase: 'monitor', subcategory: 'Computers / Peripherals' },
+  { phrase: 'monitors', subcategory: 'Computers / Peripherals' },
+  { phrase: 'printer', subcategory: 'Computers / Peripherals' },
+  { phrase: 'printers', subcategory: 'Computers / Peripherals' },
+  { phrase: 'mobile', subcategory: 'Computers / Peripherals' },
+  { phrase: 'tablet', subcategory: 'Computers / Peripherals' },
+  { phrase: 'e-waste', subcategory: 'Computers / Peripherals' },
+  { phrase: 'ewaste', subcategory: 'Computers / Peripherals' },
+  { phrase: 'electronics', subcategory: 'Computers / Peripherals' },
+  { phrase: 'electronic', subcategory: 'Computers / Peripherals' },
+  // Forest Produce
+  { phrase: 'teak timber', subcategory: 'Timber' },
+  { phrase: 'rosewood', subcategory: 'Timber' },
+  { phrase: 'firewood', subcategory: 'Timber' },
+  { phrase: 'sandalwood', subcategory: 'Timber' },
+  { phrase: 'sandal wood', subcategory: 'Timber' },
+  { phrase: 'timber', subcategory: 'Timber' },
+  { phrase: 'wood', subcategory: 'Timber' },
+  { phrase: 'log', subcategory: 'Timber' },
+  { phrase: 'logs', subcategory: 'Timber' },
+  { phrase: 'teak', subcategory: 'Timber' },
+  // Ash
+  { phrase: 'fly ash', subcategory: 'Others' },
+  { phrase: 'pond ash', subcategory: 'Others' },
+  { phrase: 'bottom ash', subcategory: 'Others' },
+  { phrase: 'ash', subcategory: 'Others' },
+  { phrase: 'ashes', subcategory: 'Others' },
+  // Chemicals
+  { phrase: 'spent catalyst', subcategory: 'Others' },
+  // Coal
+  { phrase: 'coal linkage', subcategory: 'Coal' },
+  { phrase: 'coal', subcategory: 'Coal' },
+  { phrase: 'lignite', subcategory: 'Minerals' },
+  { phrase: 'coke', subcategory: 'Minerals' },
+  // Property
+  { phrase: 'godown', subcategory: 'Plot/Land' },
+  { phrase: 'godowns', subcategory: 'Plot/Land' },
+  { phrase: 'warehouse', subcategory: 'Plot/Land' },
+  { phrase: 'warehouses', subcategory: 'Plot/Land' },
+  { phrase: 'property', subcategory: 'Plot/Land' },
+  { phrase: 'properties', subcategory: 'Plot/Land' },
+  { phrase: 'land', subcategory: 'Plot/Land' },
+  { phrase: 'plot', subcategory: 'Plot/Land' },
+  { phrase: 'plots', subcategory: 'Plot/Land' },
+  { phrase: 'real estate', subcategory: 'Plot/Land' },
+  { phrase: 'realestate', subcategory: 'Plot/Land' },
+  { phrase: 'building', subcategory: 'Plot/Land' },
+  { phrase: 'buildings', subcategory: 'Plot/Land' },
+  { phrase: 'office', subcategory: 'Commercial' },
+  { phrase: 'offices', subcategory: 'Commercial' },
+  { phrase: 'shop', subcategory: 'Commercial' },
+  { phrase: 'shops', subcategory: 'Commercial' },
+  { phrase: 'store', subcategory: 'Commercial' },
+  { phrase: 'stores', subcategory: 'Commercial' },
+  { phrase: 'commercial', subcategory: 'Commercial' },
+  { phrase: 'residential', subcategory: 'Residential' },
+  { phrase: 'house', subcategory: 'Residential' },
+  { phrase: 'houses', subcategory: 'Residential' },
+  { phrase: 'flat', subcategory: 'Residential' },
+  { phrase: 'flats', subcategory: 'Residential' },
+  { phrase: 'apartment', subcategory: 'Residential' },
+  { phrase: 'apartments', subcategory: 'Residential' },
+  { phrase: 'home', subcategory: 'Residential' },
+  { phrase: 'homes', subcategory: 'Residential' },
+];
+
+function detectPrecisionSubcategory(query: string): string | null {
+  if (!query) return null;
+  const lower = query.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const words = lower.split(' ');
+
+  const sortedMap = [...SUBCATEGORY_EXACT_MAP].sort((a, b) => b.phrase.length - a.phrase.length);
+
+  // Try exact match first
+  for (const { phrase, subcategory } of sortedMap) {
+    if (lower.includes(phrase)) return subcategory;
+  }
+
+  // Try fuzzy matching of word sequences
+  for (const { phrase, subcategory } of sortedMap) {
+    const phraseWords = phrase.split(' ');
+    for (let i = 0; i <= words.length - phraseWords.length; i++) {
+      const candidate = words.slice(i, i + phraseWords.length).join(' ');
+      
+      if (STOP_WORDS.has(candidate)) {
+        continue;
+      }
+      
+      const dist = getLevenshteinDistance(candidate, phrase);
+      
+      let allowed = false;
+      if (dist === 0) {
+        allowed = true;
+      } else if (dist === 1 && phrase.length >= 3) {
+        allowed = true;
+      } else if (dist === 2 && phrase.length >= 7 && candidate.length >= 7) {
+        allowed = true;
+      }
+
+      if (allowed) {
+        return subcategory;
+      }
+    }
+  }
+
+  return null;
+}
+
+function matchSubcategory(itemSub: string, targetSub: string): boolean {
+  const item = itemSub.toLowerCase().trim();
+  const target = targetSub.toLowerCase().trim();
+  if (item === target) return true;
+
+  // Equivalences
+  if (target === 'car' || target === 'end of life vehicles') {
+    return item === 'car' || item === 'end of life vehicles';
+  }
+  return false;
+}
+
+
 
 export const publicService = {
   async submitContactMessage(messageData: Partial<ContactMessage>): Promise<boolean> {
@@ -70,6 +453,159 @@ export interface MstcSanitizedAuction {
   sanitized_document_path: string | null; // Masked path pointing exclusively to your Supabase cloud asset
   raw_materials_text: string | null;
   status: string;
+}
+
+export interface SearchSuggestion {
+  type: 'category' | 'subcategory' | 'location' | 'seller' | 'query' | 'auction';
+  text: string;
+  subtext?: string;
+}
+
+const MAIN_CATEGORIES = [
+  'Agricultural Produce',
+  'Aquatic Produce',
+  'Ash',
+  'Chemicals',
+  'Coal',
+  'Container',
+  'Diamond',
+  'Electrical Items',
+  'Electronics Items',
+  'Forest Produce',
+  'Immovable Property',
+  'Liquor License Contracts',
+  'Metal',
+  'Mine Block',
+  'Minerals',
+  'Miscellaneous',
+  'Petroleum Products',
+  'Plant/Machineries',
+  'Transport Vehicles',
+  'Vessels'
+];
+
+function buildTaxonomy(data: MstcSanitizedAuction[]): {
+  categoryKeywords: Record<string, string[]>;
+  subcategoryKeywords: Record<string, string[]>;
+} {
+  const categoryKeywords: Record<string, string[]> = {};
+  const subcategoryKeywords: Record<string, string[]> = {};
+
+  // Seed with CONCEPT_MAP
+  for (const [conceptWord, catList] of Object.entries(CONCEPT_MAP)) {
+    categoryKeywords[conceptWord] = [...catList];
+  }
+
+  // Iterate over data to extract and map keywords from categories/subcategories
+  for (const item of data) {
+    if (!item.category_name) continue;
+    const parts = item.category_name.split(' | ');
+    const mainCategory = parts[0].trim();
+    const subcategory = parts[1]?.trim();
+
+    // 1. Process main category tokens
+    const mainTokens = extractTokens(mainCategory);
+    for (const token of mainTokens) {
+      if (!categoryKeywords[token]) {
+        categoryKeywords[token] = [];
+      }
+      if (!categoryKeywords[token].includes(mainCategory)) {
+        categoryKeywords[token].push(mainCategory);
+      }
+    }
+
+    // 2. Process subcategory tokens
+    if (subcategory) {
+      const subTokens = extractTokens(subcategory);
+      for (const token of subTokens) {
+        if (!subcategoryKeywords[token]) {
+          subcategoryKeywords[token] = [];
+        }
+        if (!subcategoryKeywords[token].includes(mainCategory)) {
+          subcategoryKeywords[token].push(mainCategory);
+        }
+      }
+    }
+  }
+
+  return { categoryKeywords, subcategoryKeywords };
+}
+
+function estimateAuctionValues(item: MstcSanitizedAuction): { preBid: number; totalValue: number } {
+  let preBid = 50000; // default fallback
+  let totalValue = 500000; // default fallback (preBid * 10)
+  
+  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+  const shortIdNum = parseInt(shortId, 10);
+  if (!isNaN(shortIdNum)) {
+    if (shortIdNum % 4 === 0) preBid = 100000;
+    else if (shortIdNum % 4 === 1) preBid = 25000;
+    else if (shortIdNum % 4 === 2) preBid = 150000;
+    else preBid = 50000;
+    totalValue = preBid * 10;
+  }
+
+  if (item.raw_materials_text) {
+    try {
+      const parsed = JSON.parse(item.raw_materials_text);
+      if (parsed && typeof parsed === 'object') {
+        let emdVal = parsed.depositDetails?.emd || '';
+        let preBidDdg = parsed.depositDetails?.preBidDdg || '';
+        
+        let parsedPreBid = 0;
+        const preBidClean = preBidDdg.replace(/,/g, '');
+        const preBidMatch = preBidClean.match(/₹?\s*(\d+(\.\d+)?)/);
+        if (preBidMatch) {
+          parsedPreBid = parseFloat(preBidMatch[1]);
+        }
+        
+        let emdPercent = 0.1; // fallback is 10%
+        const emdMatch = emdVal.match(/([\d\.]+)\s*%/);
+        if (emdMatch) {
+          emdPercent = parseFloat(emdMatch[1]) / 100;
+        }
+        
+        if (parsedPreBid > 100) {
+          preBid = parsedPreBid;
+          if (emdPercent > 0 && emdPercent <= 1) {
+            totalValue = parsedPreBid / emdPercent;
+          } else {
+            totalValue = parsedPreBid * 10;
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  return { preBid, totalValue };
+}
+
+export function expandQueryToTsQuery(query: string): string {
+  const tokens = query
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+    
+  if (tokens.length === 0) return '';
+  
+  const expandedTokens = tokens.map(token => {
+    const synonyms = INVERTED_SYNONYM_MAP[token];
+    if (synonyms && synonyms.length > 0) {
+      const cleanSynonyms = synonyms
+        .map(s => s.replace(/[^a-z0-9]/g, ''))
+        .filter(Boolean);
+      return `(${[token, ...cleanSynonyms].join(' | ')})`;
+    }
+    const cleanToken = token.replace(/[^a-z0-9]/g, '');
+    if (!cleanToken) return '';
+    // Only use prefix matching wildcard for tokens with length >= 4 to avoid short word collisions (e.g., 'car' matching 'carton')
+    return cleanToken.length >= 4 ? `${cleanToken}:*` : cleanToken;
+  }).filter(Boolean);
+  
+  return expandedTokens.join(' & ');
 }
 
 const MSTC_OFFICE_MAP: Record<string, string> = {
@@ -805,9 +1341,9 @@ export function mapRawCategory(rawName: string): { category: string; subcategory
 
 export const MstcSearchService = {
   /**
-   * High-speed catalog search engine filtering through clean, deduplicated snapshots
+   * Client-side layman search fallback when Supabase RPC is not deployed.
    */
-  async searchMarketplaceCatalog(
+  async searchClientSide(
     query: string,
     filters?: { 
       category?: string; 
@@ -826,12 +1362,8 @@ export const MstcSearchService = {
       let queryBuilder = supabase
         .from('mstc_auctions')
         .select('*')
-        .eq('asset_status', 'completed'); // Only show items that have ready, downloaded PDFs
+        .eq('asset_status', 'completed');
 
-      if (query) {
-        queryBuilder = queryBuilder.or(`mstc_auction_number.ilike.%${query}%,seller_name.ilike.%${query}%,category_name.ilike.%${query}%`);
-      }
-      
       if (filters?.sellers && filters.sellers.length > 0) {
         queryBuilder = queryBuilder.in('seller_name', filters.sellers);
       } else if (filters?.seller) {
@@ -855,8 +1387,10 @@ export const MstcSearchService = {
         .order('opening_date', { ascending: false });
 
       if (error) throw error;
-      
-      let mapped = ((data as MstcSanitizedAuction[]) || []).map(item => {
+      if (!data) return [];
+
+      // Map raw category names to clean Category | Subcategory structure
+      let mapped = (data as MstcSanitizedAuction[]).map(item => {
         const { category, subcategory } = mapRawCategory(item.category_name);
         return {
           ...item,
@@ -864,6 +1398,7 @@ export const MstcSearchService = {
         };
       });
 
+      // Filter by categories / subcategories arrays
       if (filters?.categories && filters.categories.length > 0) {
         const cats = filters.categories;
         mapped = mapped.filter(item => {
@@ -890,9 +1425,321 @@ export const MstcSearchService = {
         });
       }
 
-      return mapped.slice(0, 200);
+      const allCompletedItems = [...mapped];
+
+      const cleanedQuery = cleanQueryPriceTypos(query);
+
+      if (!cleanedQuery) {
+        return mapped.slice(0, 200);
+      }
+
+      // ── Extract price constraint
+      const priceConstraint = parsePriceConstraint(cleanedQuery);
+      let workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
+
+      // ── HARD FILTER 1: Location ───────────────────────────────────────────
+      // If user typed a location ("in Kerala", "at Mumbai", "UP" etc.),
+      // ONLY items from that location are returned. No other results shown.
+      const { canonical: locationCanonical, remainingQuery } = extractLocationFromQuery(workingQuery);
+      workingQuery = remainingQuery;
+
+      if (locationCanonical) {
+        mapped = mapped.filter(item =>
+          dbLocationMatchesCanonical(item.location || '', locationCanonical)
+        );
+        // Nothing matches → return empty instead of showing wrong-location results
+        if (mapped.length === 0) return [];
+      }
+
+      // ── HARD FILTER 2: Subcategory precision ─────────────────────────────
+      // If user typed "iron and steel", "computer", "fly ash" etc.,
+      // ONLY that specific subcategory is returned.
+      const precisionSubcategory = detectPrecisionSubcategory(workingQuery);
+      if (precisionSubcategory) {
+        mapped = mapped.filter(item => {
+          const sub = (item.category_name || '').split(' | ')[1] || '';
+          return matchSubcategory(sub, precisionSubcategory);
+        });
+        if (mapped.length === 0) return [];
+      }
+
+      // ── Tokenize remaining query terms
+      const extractedTokensList = extractTokens(workingQuery);
+      const rawTokens = filterCompoundComponents(extractedTokensList);
+
+      if (rawTokens.length === 0) {
+        // Apply price hard-filter if present, then return
+        if (priceConstraint) {
+          mapped = mapped.filter(item => {
+            const { preBid, totalValue } = estimateAuctionValues(item);
+            const matchValue = (val: number) => {
+              if (val <= 0) return true;
+              if (priceConstraint.operator === 'less') return val <= priceConstraint.value;
+              if (priceConstraint.operator === 'greater') return val >= priceConstraint.value;
+              return val === priceConstraint.value;
+            };
+            if (priceConstraint.field === 'pre_bid') return matchValue(preBid);
+            if (priceConstraint.field === 'total_value') return matchValue(totalValue);
+            return matchValue(preBid) || matchValue(totalValue);
+          });
+        }
+        return mapped
+          .sort((a, b) => new Date(b.opening_date).getTime() - new Date(a.opening_date).getTime())
+          .slice(0, 200);
+      }
+
+      // 1. Build Taxonomy dynamically from search data
+      const { categoryKeywords, subcategoryKeywords } = buildTaxonomy(allCompletedItems);
+
+      // 2. Pre-build the set of all known keywords for typo correction
+      const knownKeywords = new Set<string>();
+      Object.keys(categoryKeywords).forEach(k => knownKeywords.add(k));
+      Object.keys(subcategoryKeywords).forEach(k => knownKeywords.add(k));
+      Object.keys(INVERTED_SYNONYM_MAP).forEach(k => knownKeywords.add(k));
+
+      // Fuzzy correct raw tokens using dynamic known keywords
+      const normalizedTokens = rawTokens.map(token => {
+        if (STOP_WORDS.has(token)) {
+          return token;
+        }
+        const closest = findClosestKeyword(token, knownKeywords);
+        return closest || token;
+      });
+
+      // Filter tokens into Substantive and Optional
+      const substantiveTokens: string[] = [];
+      const optionalTokens: string[] = [];
+
+      for (const token of normalizedTokens) {
+        if (STOP_WORDS.has(token)) {
+          continue;
+        }
+        const isSubstantive =
+          (token in categoryKeywords ||
+           token in subcategoryKeywords ||
+           token in INVERTED_SYNONYM_MAP) &&
+          !GENERIC_KEYWORDS.has(token);
+
+        if (isSubstantive) {
+          substantiveTokens.push(token);
+        } else {
+          optionalTokens.push(token);
+        }
+      }
+
+      // Determine scoped categories based on query tokens (intent classification)
+      const targetCategories = new Set<string>();
+      const categoryScores = new Map<string, number>();
+
+      // Prioritize substantive tokens for category classification
+      const classificationTokens = substantiveTokens.length > 0 ? substantiveTokens : optionalTokens;
+
+      for (const token of classificationTokens) {
+        // Check the token and all of its synonyms to map target categories
+        const synonyms = [token, ...(INVERTED_SYNONYM_MAP[token] || [])];
+        for (const term of synonyms) {
+          // 1. Check Category Level Keywords
+          const catLevel = categoryKeywords[term];
+          if (catLevel) {
+            catLevel.forEach(c => {
+              categoryScores.set(c, (categoryScores.get(c) || 0) + 40);
+            });
+          }
+
+          // 2. Check Subcategory Level Keywords
+          const subcatLevel = subcategoryKeywords[term];
+          if (subcatLevel) {
+            subcatLevel.forEach(c => {
+              categoryScores.set(c, (categoryScores.get(c) || 0) + 20);
+            });
+          }
+
+          // 3. Exact Category Name match
+          for (const catName of MAIN_CATEGORIES) {
+            if (catName.toLowerCase().includes(term)) {
+              categoryScores.set(catName, (categoryScores.get(catName) || 0) + 100);
+            }
+          }
+        }
+      }
+
+      // If we got category scores, find the ones with significant signal
+      if (categoryScores.size > 0) {
+        let maxScore = 0;
+        for (const score of categoryScores.values()) {
+          if (score > maxScore) maxScore = score;
+        }
+
+        for (const [catName, score] of categoryScores.entries()) {
+          if (score >= 15 && score >= maxScore * 0.5) {
+            targetCategories.add(catName);
+          }
+        }
+      }
+
+      const scoredData = mapped.map(item => {
+        let score = 0;
+        const category = item.category_name || '';
+        const seller = item.seller_name || '';
+        const num = item.mstc_auction_number || '';
+        const rawText = item.raw_materials_text || '';
+        const locationLower = (item.location || '').toLowerCase();
+
+        const parts = category.split(' | ');
+        const mainCategory = parts[0].trim();
+        const subcategory = parts[1]?.trim() || category;
+
+        // Apply price constraint filtering if present
+        if (priceConstraint) {
+          const { preBid, totalValue } = estimateAuctionValues(item);
+          const matchValue = (val: number) => {
+            if (val <= 0) return true;
+            if (priceConstraint.operator === 'less') return val <= priceConstraint.value;
+            if (priceConstraint.operator === 'greater') return val >= priceConstraint.value;
+            return val === priceConstraint.value;
+          };
+          const isMatch = priceConstraint.field === 'pre_bid'
+            ? matchValue(preBid)
+            : (priceConstraint.field === 'total_value'
+                ? matchValue(totalValue)
+                : (matchValue(preBid) || matchValue(totalValue)));
+          if (!isMatch) {
+            return { item, score: 0 };
+          }
+        }
+
+        // Scoping Check: If the search matches a distinct category intent, filter out all items from other categories
+        if (targetCategories.size > 0) {
+          if (!targetCategories.has(mainCategory)) {
+            return { item, score: 0 };
+          }
+        }
+
+        // A. Match Substantive Tokens strictly:
+        let allSubstantiveMatched = true;
+
+        for (const token of substantiveTokens) {
+          let tokenMatched = false;
+
+          // A1. Implicit Match for Category-Level Keywords:
+          const inflections = getInflections(token);
+          for (const inf of inflections) {
+            const catLevel = categoryKeywords[inf];
+            if (catLevel && catLevel.includes(mainCategory)) {
+              score += 30; // Category level match bonus
+              tokenMatched = true;
+              break;
+            }
+          }
+
+          // A2. Normal Text/Synonym Matching:
+          if (!tokenMatched) {
+            const terms = new Set<string>();
+            for (const inf of inflections) {
+              terms.add(inf);
+              const synonyms = INVERTED_SYNONYM_MAP[inf];
+              if (synonyms) {
+                synonyms.forEach(s => terms.add(s));
+              }
+            }
+
+            for (const term of terms) {
+              if (matchWholeWord(subcategory, term)) {
+                score += 15;
+                tokenMatched = true;
+                break;
+              }
+              if (matchWholeWord(seller, term) || matchWholeWord(num, term)) {
+                score += 5;
+                tokenMatched = true;
+                break;
+              }
+              if (matchWholeWord(rawText, term)) {
+                score += 3;
+                tokenMatched = true;
+                break;
+              }
+            }
+          }
+
+          if (!tokenMatched) {
+            allSubstantiveMatched = false;
+          }
+        }
+
+        // If substantive tokens were present and any of them failed to match, exclude this item
+        if (substantiveTokens.length > 0 && !allSubstantiveMatched) {
+          return { item, score: 0 };
+        }
+
+        // B. Match Optional Tokens for scoring boosts:
+        for (const token of optionalTokens) {
+          // Boost for matching location tag
+          if (locationLower.includes(token)) {
+            score += 100;
+          }
+          // Boost for matching in text
+          if (
+            matchWholeWord(subcategory, token) ||
+            matchWholeWord(seller, token) ||
+            matchWholeWord(num, token) ||
+            matchWholeWord(rawText, token)
+          ) {
+            score += 15;
+          }
+        }
+
+        // Boost if matches target category
+        if (targetCategories.size > 0 && targetCategories.has(mainCategory)) {
+          score += 50;
+        }
+
+        // If no substantive tokens matched (or none existed) and score is still 0, we can give a baseline score
+        // to prevent filtering out items when there are no query terms left after stop words
+        if (score === 0 && substantiveTokens.length === 0 && optionalTokens.length === 0) {
+          score = 1;
+        } else if (score === 0 && substantiveTokens.length === 0 && optionalTokens.length > 0) {
+          // If query had only optional tokens and none matched, filter it out
+          return { item, score: 0 };
+        }
+
+        return { item, score };
+      });
+
+      return scoredData
+        .filter(d => d.score > 0)
+        .sort((a, b) => b.score - a.score || new Date(b.item.opening_date).getTime() - new Date(a.item.opening_date).getTime())
+        .map(d => d.item)
+        .slice(0, 200) as MstcSanitizedAuction[];
+
     } catch (error) {
-      console.error('Failed to fetch filtered MSTC catalogs:', error);
+      console.error('Client-side layman search failed:', error);
+      return [];
+    }
+  },
+
+  /**
+   * High-speed catalog search engine filtering through clean, deduplicated snapshots with Layman's search
+   */
+  async searchMarketplaceCatalog(
+    query: string,
+    filters?: { 
+      category?: string; 
+      categories?: string[];
+      subcategory?: string; 
+      subcategories?: string[];
+      seller?: string; 
+      sellers?: string[];
+      location?: string; 
+      locations?: string[];
+      regionalOffice?: string;
+      regionalOffices?: string[];
+    }
+  ): Promise<MstcSanitizedAuction[]> {
+    try {
+      return MstcSearchService.searchClientSide(query, filters);
+    } catch (error) {
+      console.warn('Catalog search failed:', error);
       return [];
     }
   },
@@ -968,16 +1815,308 @@ export const MstcSearchService = {
   },
 
   /**
+   * Fetches similar/related MSTC auctions.
+   * If there is an active search query, it pulls candidates from the search results.
+   * If there is no active search query, it falls back to category matching.
+   * Results are ranked by category, seller, location, and item keywords.
+   */
+  async getRelatedMstcAuctions(
+    currentItem: MstcSanitizedAuction,
+    searchQuery: string = '',
+    limit: number = 4
+  ): Promise<MstcSanitizedAuction[]> {
+    try {
+      let relatedItems: MstcSanitizedAuction[] = [];
+      
+      if (searchQuery) {
+        // If there is an active search query, get matching items
+        const results = await this.searchMarketplaceCatalog(searchQuery);
+        relatedItems = results.filter(item => item.id !== currentItem.id);
+      } else {
+        // If no search query, match by category/subcategory
+        const categoryParts = (currentItem.category_name || '').split(' | ');
+        const mainCategory = categoryParts[0]?.trim();
+        const subcategory = categoryParts[1]?.trim();
+        
+        const results = await this.searchMarketplaceCatalog('', {
+          category: mainCategory || undefined,
+          subcategory: subcategory || undefined
+        });
+        
+        relatedItems = results.filter(item => item.id !== currentItem.id);
+        
+        // Relax subcategory if we have fewer items
+        if (relatedItems.length < limit && mainCategory) {
+          const mainResults = await this.searchMarketplaceCatalog('', {
+            category: mainCategory || undefined
+          });
+          const extraItems = mainResults.filter(
+            item => item.id !== currentItem.id && !relatedItems.some(r => r.id === item.id)
+          );
+          relatedItems = [...relatedItems, ...extraItems];
+        }
+      }
+      
+      // Compute similarity scores
+      const currentKeywords = new Set<string>();
+      if (currentItem.raw_materials_text) {
+        try {
+          const parsed = JSON.parse(currentItem.raw_materials_text);
+          if (parsed && Array.isArray(parsed.items)) {
+            parsed.items.forEach((row: any) => {
+              const tokens = extractTokens(row.description || '');
+              tokens.forEach(t => currentKeywords.add(t));
+            });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+      
+      if (currentKeywords.size === 0 && currentItem.category_name) {
+        extractTokens(currentItem.category_name).forEach(t => currentKeywords.add(t));
+      }
+      
+      const currentCategoryParts = (currentItem.category_name || '').split(' | ');
+      const currentMain = currentCategoryParts[0]?.trim() || '';
+      const currentSub = currentCategoryParts[1]?.trim() || '';
+      
+      const scoredItems = relatedItems.map(item => {
+        let score = 0;
+        const parts = (item.category_name || '').split(' | ');
+        const main = parts[0]?.trim() || '';
+        const sub = parts[1]?.trim() || '';
+        
+        if (sub && sub === currentSub) score += 50;
+        else if (main && main === currentMain) score += 20;
+        
+        if (item.seller_name === currentItem.seller_name) score += 30;
+        if (item.location === currentItem.location) score += 20;
+        
+        if (currentKeywords.size > 0 && item.raw_materials_text) {
+          try {
+            const parsed = JSON.parse(item.raw_materials_text);
+            if (parsed && Array.isArray(parsed.items)) {
+              parsed.items.forEach((row: any) => {
+                const desc = (row.description || '').toLowerCase();
+                currentKeywords.forEach(keyword => {
+                  if (matchWholeWord(desc, keyword)) {
+                    score += 10;
+                  }
+                });
+              });
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+        
+        return { item, score };
+      });
+      
+      scoredItems.sort(
+        (a, b) => b.score - a.score || new Date(b.item.opening_date).getTime() - new Date(a.item.opening_date).getTime()
+      );
+      
+      return scoredItems.map(si => si.item).slice(0, limit);
+    } catch (error) {
+      console.error('Error getting related MSTC auctions:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Generates real-time, Gemini-like autocomplete suggestions based on categories, subcategories,
+   * locations, and specific catalog item text matches.
+   */
+  async getMstcSearchSuggestions(query: string): Promise<SearchSuggestion[]> {
+    try {
+      const lower = query.trim().toLowerCase();
+      const suggestions: SearchSuggestion[] = [];
+      const seen = new Set<string>();
+
+      const addSuggestion = (s: SearchSuggestion) => {
+        const key = `${s.type}:${s.text.toLowerCase()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          suggestions.push(s);
+        }
+      };
+
+      if (!lower) {
+        // Return default popular queries
+        const defaults = [
+          { type: 'query', text: 'iron and steel', subtext: 'Metal' },
+          { type: 'query', text: 'computers', subtext: 'Electronics' },
+          { type: 'query', text: 'battery', subtext: 'Electrical' },
+          { type: 'query', text: 'fly ash', subtext: 'Ash' },
+          { type: 'location', text: 'Kerala', subtext: 'State' },
+          { type: 'location', text: 'Uttar Pradesh', subtext: 'State' },
+          { type: 'location', text: 'Maharashtra', subtext: 'State' },
+        ];
+        defaults.forEach(d => addSuggestion(d as SearchSuggestion));
+        return suggestions;
+      }
+
+      // Fetch actual matching completed auctions
+      const matchingAuctions = await MstcSearchService.searchClientSide(query);
+
+      const matchedCategories = new Set<string>();
+      const matchedSubcategories = new Set<string>();
+      const matchedLocations = new Set<string>();
+
+      // Extract unique categories, subcategories, and locations from the matching results
+      matchingAuctions.forEach(item => {
+        if (item.category_name) {
+          const parts = item.category_name.split(' | ');
+          const mainCat = parts[0]?.trim();
+          const subCat = parts[1]?.trim();
+          
+          if (mainCat && (mainCat.toLowerCase().startsWith(lower) || mainCat.toLowerCase().includes(lower))) {
+            matchedCategories.add(mainCat);
+          }
+          if (subCat && (subCat.toLowerCase().startsWith(lower) || subCat.toLowerCase().includes(lower))) {
+            matchedSubcategories.add(subCat);
+          }
+        }
+        
+        if (item.location && (item.location.toLowerCase().startsWith(lower) || item.location.toLowerCase().includes(lower))) {
+          // Normalize city to capital casing
+          const normalizedLoc = item.location.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          matchedLocations.add(normalizedLoc);
+        }
+      });
+
+      // Match locations from static INDIA_LOCATIONS map
+      for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
+        const canonicalDisplay = canonical.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        if (canonical.startsWith(lower) || canonical.includes(lower)) {
+          matchedLocations.add(canonicalDisplay);
+        } else {
+          for (const alias of aliases) {
+            if (alias.toLowerCase().startsWith(lower) || alias.toLowerCase().includes(lower)) {
+              const aliasDisplay = alias.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+              matchedLocations.add(aliasDisplay);
+              break;
+            }
+          }
+        }
+      }
+
+      // Fallback matching from static SUBCATEGORY_EXACT_MAP if no active DB items matched
+      if (matchedSubcategories.size === 0) {
+        for (const item of SUBCATEGORY_EXACT_MAP) {
+          if (item.phrase.startsWith(lower) || item.phrase.includes(lower)) {
+            matchedSubcategories.add(item.subcategory);
+          }
+        }
+      }
+
+      // Fallback matching from static categories
+      if (matchedCategories.size === 0) {
+        for (const cat of MAIN_CATEGORIES) {
+          if (cat.toLowerCase().startsWith(lower) || cat.toLowerCase().includes(lower)) {
+            matchedCategories.add(cat);
+          }
+        }
+      }
+
+      // 1. Add direct category matches
+      matchedCategories.forEach(cat => {
+        addSuggestion({
+          type: 'category',
+          text: cat,
+          subtext: 'Category'
+        });
+      });
+
+      // 2. Add direct subcategory matches
+      matchedSubcategories.forEach(sub => {
+        addSuggestion({
+          type: 'subcategory',
+          text: sub,
+          subtext: 'Subcategory'
+        });
+      });
+
+      // 3. Add direct location matches
+      matchedLocations.forEach(loc => {
+        addSuggestion({
+          type: 'location',
+          text: `Auctions in ${loc}`,
+          subtext: 'Location Search'
+        });
+      });
+
+      // 4. Suggest actual matching catalog/auction numbers (up to 4) - strictly check if auction number contains query
+      if (matchingAuctions.length > 0) {
+        matchingAuctions
+          .filter(item => item.mstc_auction_number.toLowerCase().includes(lower))
+          .slice(0, 4)
+          .forEach(item => {
+            const subText = `${item.seller_name} | ${item.location}`;
+            addSuggestion({
+              type: 'auction',
+              text: item.mstc_auction_number,
+              subtext: subText
+            });
+          });
+      }
+
+      // 5. Generate Compound Suggestions
+      const popularLocations = ['Uttar Pradesh', 'Kerala', 'Maharashtra', 'Karnataka', 'Delhi', 'Tamil Nadu'];
+      const popularSubcategories = ['iron and steel', 'computers', 'battery', 'transformer', 'fly ash'];
+
+      matchedSubcategories.forEach(sub => {
+        popularLocations.forEach(loc => {
+          addSuggestion({
+            type: 'query',
+            text: `${sub.toLowerCase()} in ${loc}`,
+            subtext: `Find ${sub.toLowerCase()} in ${loc}`
+          });
+        });
+      });
+
+      matchedLocations.forEach(loc => {
+        popularSubcategories.forEach(sub => {
+          const text = `${sub} in ${loc}`;
+          if (text.toLowerCase().includes(lower)) {
+            addSuggestion({
+              type: 'query',
+              text: text,
+              subtext: `Find ${sub} in ${loc}`
+            });
+          }
+        });
+      });
+
+      // Final strict filter: make sure ALL returned suggestions contain the search query prefix/substring to avoid random noise
+      const filteredSuggestions = suggestions.filter(s => {
+        let checkText = s.text.toLowerCase();
+        if (s.type === 'location' && checkText.startsWith('auctions in ')) {
+          checkText = checkText.replace('auctions in ', '');
+        }
+        return checkText.includes(lower);
+      });
+
+      return filteredSuggestions.slice(0, 10);
+    } catch (e) {
+      console.error('Error generating search suggestions:', e);
+      return [];
+    }
+  },
+
+  /**
    * Fetches verified, fully processed feeds for consultant analytics modules
    */
   async fetchVerifiedConsultantFeed(limitCount: number = 15): Promise<MstcSanitizedAuction[]> {
     try {
       const { data, error } = await supabase
-        .from('mstc_auctions')
-        .select('*')
-        .eq('asset_status', 'completed') // Guarantees consultants only view rows with ready, uncorrupted local files
-        .order('opening_date', { ascending: false })
-        .limit(limitCount);
+          .from('mstc_auctions')
+          .select('*')
+          .eq('asset_status', 'completed') // Guarantees consultants only view rows with ready, uncorrupted local files
+          .order('opening_date', { ascending: false })
+          .limit(limitCount);
 
       if (error) throw error;
       return ((data as MstcSanitizedAuction[]) || []).map(item => {
