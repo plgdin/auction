@@ -9,6 +9,8 @@ interface MstcCardProps {
   item: MstcSanitizedAuction;
   isGrid?: boolean;
   onPreview: (item: MstcSanitizedAuction) => void;
+  isInterested?: boolean;
+  onInterestedToggle?: () => void;
 }
 
 interface CatalogItem {
@@ -152,7 +154,7 @@ const generateCatalogSummary = (
   };
 };
 
-export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
+export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInterestedToggle }: MstcCardProps) {
   const shortId =
     item.mstc_auction_number.split("/").pop() || item.id.substring(0, 8);
   const summary = generateCatalogSummary(item, shortId);
@@ -590,31 +592,34 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
 
         <div className="flex gap-2 w-full mt-1">
           {item.sanitized_document_path ? (
-            <>
-              <button
-                onClick={() => onPreview(item)}
-                className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                View Details
-              </button>
-              <a
-                href={item.sanitized_document_path}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-250 text-slate-655 hover:bg-slate-50 hover:border-slate-350 hover:text-slate-900 transition-colors cursor-pointer"
-                title="Download PDF Catalog"
-              >
-                <Download className="w-4 h-4" />
-              </a>
-            </>
+            <button
+              onClick={() => onPreview(item)}
+              className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              View Details
+            </button>
           ) : (
             <button
               disabled
-              className="w-full inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
+              className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
             >
               <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
               PDF Processing...
+            </button>
+          )}
+
+          {onInterestedToggle && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onInterestedToggle();
+              }}
+              className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
+              title={isInterested ? "Remove from interested list" : "Add to interested list"}
+            >
+              <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
             </button>
           )}
         </div>
