@@ -404,7 +404,7 @@ export function Auctions() {
     setSearchQuery(searchParams.get('q') || '');
   }, [searchParams]);
 
-  useEffect(() => {
+
   // Autocomplete search suggestions states & refs
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
