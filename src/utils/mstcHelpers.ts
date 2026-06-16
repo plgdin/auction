@@ -7,6 +7,35 @@ import {
   detectGrade 
 } from './metalValuationModels';
 
+export const expandAbbreviations = (text: string): string => {
+  if (!text) return '';
+  let result = text;
+  
+  const replacements: { pattern: RegExp; replacement: string }[] = [
+    { pattern: /\bGL\b/g, replacement: 'Galvalume' },
+    { pattern: /\bG\.L\.\b/g, replacement: 'Galvalume' },
+    { pattern: /\bGI\b/g, replacement: 'Galvanized Iron' },
+    { pattern: /\bG\.I\.\b/g, replacement: 'Galvanized Iron' },
+    { pattern: /\bMS\b/g, replacement: 'Mild Steel' },
+    { pattern: /\bM\.S\.\b/g, replacement: 'Mild Steel' },
+    { pattern: /\bSS\b/g, replacement: 'Stainless Steel' },
+    { pattern: /\bS\.S\.\b/g, replacement: 'Stainless Steel' },
+    { pattern: /\bAL\b/g, replacement: 'Aluminum' },
+    { pattern: /\bA\.L\.\b/g, replacement: 'Aluminum' },
+    { pattern: /\bZN\b/g, replacement: 'Zinc Alloy' },
+    { pattern: /\bZ\.N\.\b/g, replacement: 'Zinc Alloy' },
+    { pattern: /\bT\/F\b/g, replacement: 'Transformer' },
+    { pattern: /\bTF\b/g, replacement: 'Transformer' }
+  ];
+
+  for (const rep of replacements) {
+    result = result.replace(rep.pattern, rep.replacement);
+  }
+
+  // Also handle specific technical/grade terms that might need neat expansion
+  return result;
+};
+
 export const getEstimatedMarketPrice = (description: string, categoryName: string = ''): string => {
   const desc = (description || '').toLowerCase();
   const cat = (categoryName || '').toLowerCase();
@@ -62,7 +91,8 @@ export const getEstimatedMarketPrice = (description: string, categoryName: strin
   if (desc.includes('sand') || desc.includes('mine') || desc.includes('stone') || desc.includes('block') || cat.includes('sand') || cat.includes('mine') || cat.includes('stone') || cat.includes('block')) {
     return '₹4,500 / Ton';
   }
-  if (desc.includes('cable') || desc.includes('wire') || cat.includes('cable') || cat.includes('wire')) {
+  if ((desc.includes('cable') || desc.includes('wire') || cat.includes('cable') || cat.includes('wire')) &&
+      !desc.includes('drum') && !desc.includes('reel')) {
     return '₹340 / kg';
   }
   if (desc.includes('computer') || desc.includes('laptop') || desc.includes('it equipment') || cat.includes('computer') || cat.includes('laptop')) {
@@ -75,6 +105,9 @@ export const getNumericQty = (qtyStr: string, unitStr: string = ''): number => {
   const clean = (qtyStr || '').replace(/,/g, '').trim();
   let num = parseFloat(clean);
   if (isNaN(num)) num = 1;
+  if ((unitStr || '').toUpperCase().trim() === 'MT') {
+    num = num * 1000;
+  }
   return num;
 };
 
@@ -196,6 +229,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
             if (desc && /^\d+$/.test(desc.trim())) {
               desc = item.category_name || 'Auction Lot Items';
             }
+            desc = expandAbbreviations(desc);
 
             let tax = lot.taxRate || '';
             if (tax) {
@@ -207,11 +241,23 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
               }
             }
 
+            // Correctly parse and preserve db market price if it's not a placeholder
+            let mPrice = lot.marketPrice || '';
+            let parsedPrice = 0;
+            if (mPrice) {
+              const cleanP = mPrice.replace(/,/g, '');
+              const match = cleanP.match(/₹\s*(\d+)/);
+              parsedPrice = match ? parseInt(match[1], 10) : 0;
+            }
+            if (parsedPrice <= 1) {
+              mPrice = getEstimatedMarketPrice(desc, item.category_name);
+            }
+
             return {
               ...lot,
               description: desc,
               taxRate: tax,
-              marketPrice: getEstimatedMarketPrice(desc, item.category_name)
+              marketPrice: mPrice
             };
           });
         }
@@ -371,4 +417,32 @@ export function formatInspectionSchedule(schedule: string | undefined): string {
     return formatDateToOrdinal(dates[0]);
   }
   return schedule;
+}
+
+export function formatDateOrdinal(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return '';
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return typeof dateInput === 'string' ? dateInput : '';
+
+  const day = date.getDate();
+  const monthName = MONTHS[date.getMonth()];
+  const year = date.getFullYear();
+
+  return `${getOrdinalSuffix(day)} ${monthName} ${year}`;
+}
+
+export function formatDateTimeOrdinal(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return '';
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return typeof dateInput === 'string' ? dateInput : '';
+
+  const datePart = formatDateOrdinal(date);
+  
+  let hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  
+  return `${datePart}, ${hours}:${minutes} ${ampm}`;
 }

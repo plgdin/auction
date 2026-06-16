@@ -12,6 +12,8 @@ import { dashboardService } from '../../services/dashboardService';
 import { generateCatalogSummary } from '../../utils/mstcHelpers';
 import { toast } from 'react-hot-toast';
 import clsx from 'clsx';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 
 interface CustomDropdownProps {
   value: any;
@@ -124,6 +126,7 @@ export function QuotePage() {
 
   // Interested Auctions Importing State
   const { user } = useAuthStore();
+  const { currency } = useAppStore();
   const [interestedAuctions, setInterestedAuctions] = useState<any[]>([]);
   const [selectedAuctionId, setSelectedAuctionId] = useState<string>('');
   const [selectedAuctionDetails, setSelectedAuctionDetails] = useState<any | null>(null);
@@ -402,7 +405,7 @@ export function QuotePage() {
                         </td>
                         <td className="p-4">{new Date(q.date).toLocaleDateString()}</td>
                         <td className="p-4">{q.items.length} items</td>
-                        <td className="p-4 text-right font-bold text-slate-950">₹{qTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="p-4 text-right font-bold text-slate-950">{formatPrice(qTotal, currency)}</td>
                         <td className="p-4 text-center space-x-2">
                           <button
                             onClick={() => {
@@ -1194,11 +1197,11 @@ export function QuotePage() {
                                     <span className="line-clamp-2 print:line-clamp-none">{item.description || <span className="text-slate-350 italic font-normal">No description</span>}</span>
                                   </td>
                                   <td className="py-3 text-right font-mono font-medium whitespace-nowrap text-xs">{item.qty} {item.unit}</td>
-                                  <td className="py-3 text-right font-mono font-medium whitespace-nowrap text-xs">₹{item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                  <td className="py-3 text-right font-mono font-medium whitespace-nowrap text-xs">{formatPrice(item.price, currency)}</td>
                                   {activeQuote.gstEnabled && <td className="py-3 text-right font-mono whitespace-nowrap text-xs">{item.taxRate}%</td>}
                                   <td className="py-3 text-right">
                                     <span className="font-mono font-bold text-slate-900 whitespace-nowrap text-xs">
-                                      ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                      {formatPrice(amount, currency)}
                                     </span>
                                   </td>
                                 </tr>
@@ -1307,7 +1310,7 @@ export function QuotePage() {
                       <div className="flex justify-between items-center text-slate-550 font-semibold">
                         <span>Items Subtotal:</span>
                         <span className="font-mono font-bold text-slate-800">
-                          ₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          {formatPrice(subtotal, currency)}
                         </span>
                       </div>
 
@@ -1318,13 +1321,13 @@ export function QuotePage() {
                               <div className="flex justify-between items-center text-[11px] text-slate-450 border-t border-slate-50 pt-1 leading-snug">
                                 <span>Central Tax (CGST) @{t.rate / 2}%:</span>
                                 <span className="font-mono">
-                                  ₹{(t.amount / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  {formatPrice(t.amount / 2, currency)}
                                 </span>
                               </div>
                               <div className="flex justify-between items-center text-[11px] text-slate-450 leading-snug">
                                 <span>State Tax (SGST) @{t.rate / 2}%:</span>
                                 <span className="font-mono">
-                                  ₹{(t.amount / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  {formatPrice(t.amount / 2, currency)}
                                 </span>
                               </div>
                             </React.Fragment>
@@ -1338,7 +1341,7 @@ export function QuotePage() {
                             <div key={t.rate} className="flex justify-between items-center text-[11px] text-slate-450 border-t border-slate-50 pt-1 leading-snug">
                               <span>Integrated Tax (IGST) @{t.rate}%:</span>
                               <span className="font-mono">
-                                ₹{t.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                {formatPrice(t.amount, currency)}
                               </span>
                             </div>
                           ))}
@@ -1349,15 +1352,15 @@ export function QuotePage() {
                         <div className="flex justify-between items-center text-slate-550 border-t border-slate-100 pt-1.5 font-semibold">
                           <span>Total GST Tax:</span>
                           <span className="font-mono font-bold text-slate-800">
-                            ₹{totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            {formatPrice(totalTax, currency)}
                           </span>
                         </div>
                       )}
 
                       <div className="flex justify-between items-center border-t border-slate-200 pt-3 text-sm">
-                        <span className="font-black text-slate-850">Proposal Total (INR):</span>
+                        <span className="font-black text-slate-850">Proposal Total ({currency}):</span>
                         <span className="font-mono font-black text-[16px]" style={{ color: activeQuote.colorTheme }}>
-                          ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          {formatPrice(grandTotal, currency)}
                         </span>
                       </div>
                     </div>

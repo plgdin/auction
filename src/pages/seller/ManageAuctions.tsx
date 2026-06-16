@@ -1,7 +1,9 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Plus, ArrowRight, Clock, IndianRupee, Eye, Users } from 'lucide-react';
+import { FileText, Plus, ArrowRight, Clock, Eye, Users } from 'lucide-react';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 import { useAuthStore } from '../../store/authStore';
 import { auctionService } from '../../services/auctionService';
 import type { Auction } from '../../types/database.types';
@@ -9,6 +11,7 @@ import clsx from 'clsx';
 
 export function ManageAuctions() {
   const { user } = useAuthStore();
+  const { currency } = useAppStore();
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -86,9 +89,8 @@ export function ManageAuctions() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center font-bold text-slate-900">
-                        <IndianRupee className="w-4 h-4 mr-0.5 text-slate-400" />
-                        {auction.starting_price.toLocaleString()}
+                      <div className="flex items-center font-bold text-slate-900 font-mono">
+                        {formatPrice(auction.starting_price, currency)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

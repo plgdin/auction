@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Gavel, ArrowRight, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 import { auctionService } from '../../services/auctionService';
 import type { Auction } from '../../types/database.types';
 import clsx from 'clsx';
@@ -33,6 +35,7 @@ function BidItemSkeleton() {
 
 export function MyBids() {
   const { user } = useAuthStore();
+  const { currency } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [bids, setBids] = useState<any[]>([]); // Includes bid info + auction
   const [isLoading, setIsLoading] = useState(true);
@@ -118,7 +121,7 @@ export function MyBids() {
                       <div className="w-full sm:w-auto bg-slate-50 sm:bg-transparent p-4 sm:p-0 rounded-lg sm:rounded-none flex flex-row sm:flex-col justify-between sm:justify-center items-center sm:items-end sm:text-right border sm:border-none border-slate-200">
                         <div>
                           <p className="text-xs text-slate-500 uppercase font-bold mb-1">Your Highest Bid</p>
-                          <p className="text-xl font-bold text-primary">₹{bid.amount.toLocaleString()}</p>
+                          <p className="text-xl font-bold text-primary font-mono">{formatPrice(bid.amount, currency)}</p>
                         </div>
                         <Link 
                           to={`/auctions/${bid.auction.id}`}
@@ -162,7 +165,7 @@ export function MyBids() {
                         </div>
                         <div className="w-full sm:w-auto text-right">
                            <p className="text-xs text-slate-500 uppercase font-bold mb-1">Your Bid</p>
-                           <p className="text-lg font-bold text-slate-700">₹{bid.amount.toLocaleString()}</p>
+                           <p className="text-lg font-bold text-slate-700 font-mono">{formatPrice(bid.amount, currency)}</p>
                         </div>
                       </div>
                     );

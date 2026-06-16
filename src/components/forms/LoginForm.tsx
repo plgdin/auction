@@ -92,12 +92,23 @@ export function LoginForm() {
       </div>
 
       <div className="flex items-center">
-        <input
-          id="remember-me"
-          name="remember-me"
-          type="checkbox"
-          className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded-lg cursor-pointer"
-        />
+        <div className="relative flex items-center justify-center">
+          <input
+            id="remember-me"
+            name="remember-me"
+            type="checkbox"
+            className="peer h-5 w-5 rounded-full border border-slate-300 text-primary bg-white focus:outline-none checked:bg-primary checked:border-primary cursor-pointer appearance-none transition-all duration-200 shadow-2xs"
+          />
+          <svg
+            className="absolute h-3 w-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity duration-200"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth="3.5"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
         <label htmlFor="remember-me" className="ml-2.5 block text-sm text-slate-650 select-none cursor-pointer">
           Keep me signed in for 30 days
         </label>

@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { useAppStore } from '../store/appStore';
+import { formatPrice } from '../utils/currency';
 
 export interface ValuedItem {
   name: string;
@@ -35,7 +37,7 @@ export interface ValuationOutput {
     riskLevel: 'Low Risk' | 'Medium Risk' | 'High Risk';
     reasoning: string;
   };
-  recommendation: 'Strong Buy' | 'Buy' | 'Watch Carefully' | 'High Risk' | 'Avoid';
+  recommendation: 'Strong Buy' | 'Buy' | 'Watch Carefully' | 'High Risk';
   recommendationReasoning: string;
   internationalTotals?: {
     in: number;
@@ -390,8 +392,11 @@ export const valuationService = {
         const cleanPrice = customPriceStr.replace(/,/g, '');
         const priceMatch = cleanPrice.match(/₹\s*(\d+)/);
         if (priceMatch) {
-          const parsedPrice = parseInt(priceMatch[1], 10);
+          let parsedPrice = parseInt(priceMatch[1], 10);
           if (parsedPrice > 1) {
+            if (isPerKg && cleanPrice.toLowerCase().includes('/ ton')) {
+              parsedPrice = parsedPrice / 1000;
+            }
             avgPrice = parsedPrice;
           }
         }
@@ -488,16 +493,16 @@ export const valuationService = {
       recommendationReasoning = `Excellent bidding opportunity with a high projected ROI of ${roiPercent}%. Data verification is strong.`;
     } else if (roiPercent >= 20 && riskLevel !== 'High Risk') {
       recommendation = 'Buy';
-      recommendationReasoning = `Solid potential returns (${roiPercent}% ROI) with manageable risk levels. Recommended to place bids up to ₹${Math.round(totalLotValue * 0.75).toLocaleString('en-IN')}.`;
+      recommendationReasoning = `Solid potential returns (${roiPercent}% ROI) with manageable risk levels. Recommended to place bids up to ${formatPrice(Math.round(totalLotValue * 0.75), useAppStore.getState().currency)}.`;
     } else if (riskLevel === 'High Risk' || roiPercent < 0) {
-      recommendation = 'Avoid';
+      recommendation = 'High Risk';
       recommendationReasoning = `Not recommended. The projected ROI is negative or extremely low (${roiPercent}%), making it likely unprofitable.`;
     } else if (roiPercent < 15) {
       recommendation = 'High Risk';
       recommendationReasoning = `Bidding margin is tight. Proceed only if loading/refurbishment costs can be optimized.`;
     } else {
       recommendation = 'Watch Carefully';
-      recommendationReasoning = `Decent margins but confidence is moderate. Monitor bidding action closely and do not exceed the break-even value of ₹${breakEven.toLocaleString('en-IN')}.`;
+      recommendationReasoning = `Decent margins but confidence is moderate. Monitor bidding action closely and do not exceed the break-even value of ${formatPrice(breakEven, useAppStore.getState().currency)}.`;
     }
 
     return {

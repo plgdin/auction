@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { tenderService } from '../services/tenderService';
 import { useAuthStore } from '../store/authStore';
+import { useAppStore } from '../store/appStore';
+import { formatPrice } from '../utils/currency';
 import { TenderSubmissionModal } from '../components/tender/TenderSubmissionModal';
 import type { Tender, TenderDocument } from '../types/database.types';
 import clsx from 'clsx';
@@ -14,6 +16,7 @@ import clsx from 'clsx';
 export function TenderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { currency } = useAppStore();
   const { isAuthenticated } = useAuthStore();
   
   const [tender, setTender] = useState<Tender | null>(null);
@@ -125,11 +128,11 @@ export function TenderDetail() {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">EMD Amount</p>
-              <p className="text-sm font-bold text-slate-900">₹{tender.emd_amount.toLocaleString()}</p>
+              <p className="text-sm font-bold text-slate-900 font-mono">{formatPrice(tender.emd_amount, currency)}</p>
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Document Fee</p>
-              <p className="text-sm font-bold text-slate-900">₹{tender.document_fee.toLocaleString()}</p>
+              <p className="text-sm font-bold text-slate-900 font-mono">{formatPrice(tender.document_fee, currency)}</p>
             </div>
           </div>
         </div>
@@ -237,7 +240,7 @@ export function TenderDetail() {
             <div className="bg-slate-900 text-white rounded-2xl shadow-sm p-6 relative overflow-hidden">
               <Building className="absolute -right-6 -bottom-6 w-32 h-32 text-white/5" />
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 relative z-10">Issuing Authority</h3>
-              <p className="text-lg font-bold mb-1 relative z-10">Auction Central Procurement</p>
+              <p className="text-lg font-bold mb-1 relative z-10">Lelam Procurement</p>
               <p className="text-sm text-slate-300 mb-4 relative z-10">Ministry of Enterprise Affairs</p>
               <Link to="/contact" className="text-primary-300 text-sm font-bold hover:underline relative z-10 flex items-center">
                 Contact Support <ArrowRight className="w-4 h-4 ml-1" />

@@ -16,251 +16,11 @@ import clsx from 'clsx';
 import { valuationService } from '../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../services/valuationService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
+import { useAppStore } from '../store/appStore';
+import { formatPrice, CURRENCIES } from '../utils/currency';
 import { getEstimatedMarketPrice, getNumericQty, getNumericPrice } from '../utils/valuationUtils';
+import { formatInspectionSchedule, generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
 
-
-interface CatalogSummary {
-  overview: string;
-  scopeOfWork: string;
-  items: {
-    sr: number | string;
-    description: string;
-    qty: string;
-    unit: string;
-    taxRate: string;
-    marketPrice: string;
-    attachments?: string[];
-    images?: string[];
-  }[];
-  eligibility: string[];
-  depositDetails: {
-    emd: string;
-    preBidDdg: string;
-    adminCharges: string;
-  };
-  keyContacts: { role: string; name: string; email: string; phone?: string }[];
-  preview_image_url?: string | null;
-  extracted_images?: string[];
-  inspectionDetails?: {
-    time: string;
-    contact: string;
-  };
-  totalMarketValue?: number;
-}
-
-const getTaxPercent = (taxRateStr: string): number => {
-  if (!taxRateStr) return 0;
-  const matches = taxRateStr.match(/([\d\.]+)\s*%/g);
-  if (matches && matches.length > 0) {
-    let totalPercent = 0;
-    for (const m of matches) {
-      const num = parseFloat(m);
-      if (!isNaN(num)) {
-        totalPercent += num;
-      }
-    }
-    return totalPercent;
-  }
-  if (taxRateStr.toLowerCase().includes('gst')) {
-    return 18;
-  }
-  return 0;
-};
-
-const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
-  if (item.raw_materials_text) {
-    try {
-      const parsed = JSON.parse(item.raw_materials_text);
-      if (
-        parsed &&
-        typeof parsed === 'object' &&
-        parsed.items &&
-        parsed.eligibility &&
-        parsed.depositDetails &&
-        parsed.keyContacts
-      ) {
-        // EMD extraction/cleaning logic
-        let emdVal = parsed.depositDetails.emd || '';
-        let preBidDdg = parsed.depositDetails.preBidDdg || 'Not required for registered MSME bidders';
-
-        if (emdVal.includes('%')) {
-          const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
-          if (percentMatch) {
-            const percentVal = parseFloat(percentMatch[1]);
-            if (percentVal > 100) {
-              // Parse error / invalid percent, reset
-              emdVal = '10% of total bid value';
-              if (!parsed.depositDetails.preBidDdg) {
-                preBidDdg = 'Not required for registered MSME bidders';
-              }
-            }
-          }
-        } else {
-          const numMatch = emdVal.match(/([\d\.]+)/);
-          if (numMatch) {
-            const val = parseFloat(numMatch[1]);
-            if (val > 100) {
-              // Value is a large number (e.g. 7600000), make it pre-bid value
-              preBidDdg = `₹${val.toLocaleString('en-IN')}`;
-              emdVal = '10% of total bid value';
-            }
-          }
-        }
-
-
-        parsed.depositDetails.emd = emdVal;
-        parsed.depositDetails.preBidDdg = preBidDdg;
-
-        // Clean items list: if lot.description is purely numeric, replace with category_name
-        if (parsed.items && Array.isArray(parsed.items)) {
-          parsed.items = parsed.items.map(lot => {
-            let desc = lot.description || '';
-            if (desc && /^\d+$/.test(desc.trim())) {
-              desc = item.category_name || 'Auction Lot Items';
-            }
-
-            let tax = lot.taxRate || '';
-            if (tax) {
-              if (tax.includes('%')) {
-                const taxMatch = tax.match(/([\d\.]+)\s*%/);
-                if (taxMatch && parseFloat(taxMatch[1]) > 100) {
-                  tax = 'As Applicable GST';
-                }
-              }
-            }
-
-            return {
-              ...lot,
-              description: desc,
-              taxRate: tax,
-              marketPrice: lot.marketPrice || getEstimatedMarketPrice(desc, item.category_name)
-            };
-          });
-        }
-
-        // Fallback for inspection details if not in JSON
-        if (!parsed.inspectionDetails) {
-          const mainContact = parsed.keyContacts.find((c: any) => c.role.toLowerCase().includes('site') || c.role.toLowerCase().includes('engineer')) || parsed.keyContacts[0];
-          parsed.inspectionDetails = {
-            time: 'From publication date to 1 day prior to bidding (10:00 AM - 4:00 PM on working days)',
-            contact: mainContact ? `${mainContact.name} (${mainContact.phone || 'phone listed in catalog'})` : 'Site In-Charge'
-          };
-        }
-
-        // Clean eligibility notes from any 'Review photo/annexure attachments' noise
-        if (parsed.eligibility && Array.isArray(parsed.eligibility)) {
-          parsed.eligibility = parsed.eligibility.filter((el: any) => {
-            if (typeof el !== 'string') return true;
-            const lower = el.toLowerCase();
-            return !(lower.includes('review photo') && lower.includes('quantity details')) &&
-              !(lower.includes('annexure attachments') && lower.includes('quantity details')) &&
-              !/review\s+photo\/annexure/i.test(lower);
-          });
-        }
-
-        return parsed;
-      }
-    } catch (e) {
-      console.warn('Failed to parse raw_materials_text as JSON, falling back to mock generator:', e);
-    }
-  }
-
-  const cat = (item.category_name || '').toUpperCase();
-  const seller = (item.seller_name || '').toUpperCase();
-
-  let overview = `This auction is conducted by MSTC on behalf of ${item.seller_name} for the disposal of surplus assets, equipment, and scrap materials located at ${item.location || 'various sites'}.`;
-  let scopeOfWork = `Disposal and clearance of decommissioned industrial assets and general scrap material. All materials are offered strictly on an "As-Is-Where-Is" basis.`;
-
-  let items = [
-    { sr: 1, description: 'Mixed Ferrous Scrap (MS Pipes, Angle, Channels)', qty: '12.5', unit: 'MT', taxRate: '18% GST' },
-    { sr: 2, description: 'Non-Ferrous Scrap (Aluminum cables & Copper windings)', qty: '1,850', unit: 'Kgs', taxRate: '18% GST' },
-    { sr: 3, description: 'Unserviceable Batteries & Used Lubricating Oil', qty: '45', unit: 'Nos', taxRate: '18% GST + TCS' },
-    { sr: 4, description: 'Obsolete Machinery Parts & Hand Tools', qty: '1', unit: 'Lot', taxRate: '18% GST' }
-  ];
-
-  let eligibility = [
-    'Valid MSTC Buyer Registration.',
-    'GSTIN Registration Certificate matching buyer profile.',
-    'Hazardous waste buyers must possess active State Pollution Control Board (SPCB) authorization.'
-  ];
-
-  let keyContacts = [
-    { role: 'Auction Officer (MSTC)', name: 'S. K. Mukherjee', email: 'skmukherjee@mstcindia.co.in', phone: '07969066600' },
-    { role: 'Site In-Charge', name: 'R. K. Sharma (Superintending Engineer)', email: 'rksharma@site-authority.org', phone: 'no contact info available' }
-  ];
-
-  let emd = '10% of total bid value to be submitted via pre-bid EMD link';
-  let adminCharges = '₹11,800 (incl. GST) non-refundable service provider fees';
-
-  // Customize based on Category/Seller
-  if (cat.includes('ROADWAYS') || cat.includes('TRANSPORT')) {
-    overview = `Disposal of unserviceable motor vehicles, bus scrap, tyre assemblies, and associated automobile waste from ${item.seller_name} depots.`;
-    scopeOfWork = `Complete dismantling, lifting, and clearing of designated scrap transport assets from the depot premises within the specified deadline.`;
-    items = [
-      { sr: 1, description: 'Scrap Condemned Buses (without tyres & batteries)', qty: '8', unit: 'Units', taxRate: '18% GST' },
-      { sr: 2, description: 'Used Automobile Tyres (Various sizes, worn out)', qty: '120', unit: 'Nos', taxRate: '18% GST' },
-      { sr: 3, description: 'Lead Acid Batteries (Unserviceable)', qty: '35', unit: 'Nos', taxRate: '18% GST' },
-      { sr: 4, description: 'Waste Gear & Lubricating Oil (in drums)', qty: '1,200', unit: 'Liters', taxRate: '18% GST + 1% TCS' }
-    ];
-    eligibility.push('Automobile recycler license / lead smelter certificate required for Lot 3.');
-  } else if (cat.includes('TELECOM') || cat.includes('BSNL') || cat.includes('COMMUNICATION')) {
-    overview = `Sale of telecom infrastructure scrap, office equipment, batteries, and underground cables decommissioned by ${item.seller_name}.`;
-    scopeOfWork = `Safe extraction, lifting, and environment-compliant transport of copper/telecom scrap from exchange storage locations.`;
-    items = [
-      { sr: 1, description: 'Decommissioned Copper Cables (Pipes/Wires)', qty: '4.2', unit: 'MT', taxRate: '18% GST' },
-      { sr: 2, description: 'SMPS Power Plant Panels & Rack Units', qty: '12', unit: 'Lots', taxRate: '18% GST' },
-      { sr: 3, description: 'Unserviceable Valve Regulated Lead Acid (VRLA) Battery Banks', qty: '18', unit: 'Sets', taxRate: '18% GST' },
-      { sr: 4, description: 'E-Waste (Telecom switches, cards, & motherboards)', qty: '650', unit: 'Kgs', taxRate: '18% GST' }
-    ];
-    eligibility.push('CPCB/SPCB E-Waste registration required for Lot 3 and Lot 4.');
-  } else if (seller.includes('INVESTIGATION') || seller.includes('POLICE') || seller.includes('COURT')) {
-    overview = `Auction of seized, confiscated, or unclaimed vehicles and miscellaneous goods under the authority of ${item.seller_name}.`;
-    scopeOfWork = `Lifting of vehicles/goods in "as-is" condition. Registration documents or salvage papers will be issued as per court/department rules.`;
-    items = [
-      { sr: 1, description: 'Confiscated Light Motor Vehicles (SUVs, Sedans)', qty: '4', unit: 'Units', taxRate: '12% GST' },
-      { sr: 2, description: 'Two-Wheelers (Motorcycles, Scooters)', qty: '15', unit: 'Units', taxRate: '12% GST' },
-      { sr: 3, description: 'Unclaimed Miscellaneous Electronic Items', qty: '1', unit: 'Lot', taxRate: '18% GST' }
-    ];
-    eligibility = [
-      'Valid Indian citizenship proof (Aadhaar/PAN).',
-      'No pending criminal record declarations.',
-      'Active MSTC registration.'
-    ];
-  } else if (cat.includes('MECHANICAL') || cat.includes('DRILLING') || cat.includes('ENGINEERING')) {
-    overview = `Disposal of unserviceable drilling rigs, heavy plant machinery, compressor units, and metal boring scrap of ${item.seller_name}.`;
-    scopeOfWork = `Heavy loading, mechanical dismantling, and clearance of rig attachments and scrap iron components from the engineering depot yard.`;
-    items = [
-      { sr: 1, description: 'Condemned Compressor Units & Air Dryers', qty: '3', unit: 'Units', taxRate: '18% GST' },
-      { sr: 2, description: 'Heavy Duty Drilling Rig Parts (Unserviceable)', qty: '9.8', unit: 'MT', taxRate: '18% GST' },
-      { sr: 3, description: 'Used Lubricants & Engine Oil (drums included)', qty: '800', unit: 'Liters', taxRate: '18% GST' },
-      { sr: 4, description: 'Turnings, Borings & Miscellaneous Iron Scrap', qty: '14', unit: 'MT', taxRate: '18% GST' }
-    ];
-    eligibility.push('Heavy crane entry permit must be cleared with site security 24 hours prior to lifting.');
-  }
-
-  const enrichedItems = items.map(lot => ({
-    ...lot,
-    marketPrice: getEstimatedMarketPrice(lot.description, item.category_name)
-  }));
-
-  return {
-    overview,
-    scopeOfWork,
-    items: enrichedItems,
-    eligibility,
-    depositDetails: {
-      emd,
-      preBidDdg: 'Not required for registered MSME bidders',
-      adminCharges
-    },
-    keyContacts,
-    inspectionDetails: {
-      time: 'From publication date until 1 day prior to bidding (10:00 AM - 4:00 PM on working days)',
-      contact: 'R. K. Sharma (Superintending Engineer) - 07969066600'
-    }
-  };
-};
 const renderSuggestionText = (text: string, query: string) => {
   if (!query) return <span>{text}</span>;
   const cleanQuery = query.trim().toLowerCase();
@@ -342,6 +102,8 @@ function SkeletonGrid({ isGrid, count = 6, classes }: { isGrid: boolean; count?:
 export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
+  const { currency } = useAppStore();
+  const currencySymbol = CURRENCIES[currency]?.symbol || '₹';
 
   const activeTab = searchParams.get('tab') === 'commercial' ? 'commercial' : 'mstc';
 
@@ -484,6 +246,8 @@ export function Auctions() {
   const selectedMstcLocations = searchParams.getAll('mstc_location');
   const selectedMstcSellers = searchParams.getAll('mstc_seller');
   const selectedMstcRegionalOffices = searchParams.getAll('mstc_regional_office');
+  const mstcHasAssetDocuments = searchParams.get('has_docs') === 'true';
+  const mstcHasImages = searchParams.get('has_images') === 'true';
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -692,6 +456,34 @@ export function Auctions() {
           return openDate <= end;
         });
       }
+
+      // Filter by asset attachments
+      if (mstcHasAssetDocuments) {
+        filteredData = filteredData.filter(item => {
+          if (!item.raw_materials_text) return false;
+          try {
+            const parsed = JSON.parse(item.raw_materials_text);
+            const images = parsed?.extracted_images || [];
+            // Asset documents are PDFs or document-type files (not actual photos)
+            return images.some((url: string) => url.toLowerCase().endsWith('.pdf'));
+          } catch { return false; }
+        });
+      }
+      if (mstcHasImages) {
+        filteredData = filteredData.filter(item => {
+          if (!item.raw_materials_text) return false;
+          try {
+            const parsed = JSON.parse(item.raw_materials_text);
+            const images = parsed?.extracted_images || [];
+            // Photos are non-PDF visual files
+            return images.some((url: string) => {
+              const lower = url.toLowerCase();
+              return !lower.endsWith('.pdf') && /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
+            });
+          } catch { return false; }
+        });
+      }
+
       setMstcAuctions(filteredData);
     } catch (error) {
       console.error('Error loading MSTC catalogs:', error);
@@ -706,7 +498,9 @@ export function Auctions() {
     selectedMstcSellers.join(','),
     selectedMstcRegionalOffices.join(','),
     startDate,
-    endDate
+    endDate,
+    mstcHasAssetDocuments,
+    mstcHasImages
   ]);
 
   const loadMstcOptions = useCallback(async () => {
@@ -801,6 +595,22 @@ export function Auctions() {
           next.set('endDate', newFilters.endDate);
         } else {
           next.delete('endDate');
+        }
+      }
+
+      // Update asset attachment filters
+      if ('hasAssetDocuments' in newFilters) {
+        if (newFilters.hasAssetDocuments) {
+          next.set('has_docs', 'true');
+        } else {
+          next.delete('has_docs');
+        }
+      }
+      if ('hasImages' in newFilters) {
+        if (newFilters.hasImages) {
+          next.set('has_images', 'true');
+        } else {
+          next.delete('has_images');
         }
       }
 
@@ -1060,7 +870,9 @@ export function Auctions() {
                 regionalOffices: selectedMstcRegionalOffices,
                 mstcSellers: selectedMstcSellers,
                 startDate,
-                endDate
+                endDate,
+                hasAssetDocuments: mstcHasAssetDocuments,
+                hasImages: mstcHasImages
               }}
               activeTab={activeTab}
               customCategories={mstcOptions.categories}
@@ -1071,7 +883,7 @@ export function Auctions() {
             {/* Overlay for mobile filters */}
             {isFiltersOpen && (
               <div
-                className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden"
+                className="fixed inset-0 bg-white/45 backdrop-blur-md z-30 lg:hidden"
                 onClick={() => setIsFiltersOpen(false)}
               />
             )}
@@ -1318,7 +1130,7 @@ export function Auctions() {
 
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 sm:p-6 md:p-8 animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-md p-4 sm:p-6 md:p-8 animate-fade-in">
           <div className="relative w-full max-w-[1400px] h-[95vh] md:h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
@@ -1375,17 +1187,6 @@ export function Auctions() {
                 )}
               >
                 <span>Valuation & ROI Engine</span>
-                {valuationData && (
-                  <span className={clsx(
-                    "text-[9px] px-1.5 py-0.5 rounded font-mono font-bold tracking-normal uppercase",
-                    valuationData.recommendation === 'Strong Buy' ? "bg-emerald-100 text-emerald-800" :
-                      valuationData.recommendation === 'Buy' ? "bg-emerald-50 text-emerald-700" :
-                        valuationData.recommendation === 'Watch Carefully' ? "bg-amber-100 text-amber-800" :
-                          "bg-rose-100 text-rose-800"
-                  )}>
-                    {valuationData.recommendation}
-                  </span>
-                )}
               </button>
             </div>
 
@@ -1407,10 +1208,10 @@ export function Auctions() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Current Bid Amount (₹)</label>
+                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Current Bid Amount ({currency})</label>
                           <div className="relative rounded-xl shadow-2xs">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <span className="text-slate-400 text-xs font-semibold">₹</span>
+                              <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                             </div>
                             <input
                               type="number"
@@ -1421,13 +1222,11 @@ export function Auctions() {
                           </div>
                         </div>
 
-
-
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Transportation Cost (₹)</label>
+                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Transportation Cost ({currency})</label>
                           <div className="relative rounded-xl shadow-2xs">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <span className="text-slate-400 text-xs font-semibold">₹</span>
+                              <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                             </div>
                             <input
                               type="number"
@@ -1439,10 +1238,10 @@ export function Auctions() {
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Loading & Unloading (₹)</label>
+                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Loading & Unloading ({currency})</label>
                           <div className="relative rounded-xl shadow-2xs">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <span className="text-slate-400 text-xs font-semibold">₹</span>
+                              <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                             </div>
                             <input
                               type="number"
@@ -1454,10 +1253,10 @@ export function Auctions() {
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Refurbishment Costs (₹)</label>
+                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Refurbishment Costs ({currency})</label>
                           <div className="relative rounded-xl shadow-2xs">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <span className="text-slate-400 text-xs font-semibold">₹</span>
+                              <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                             </div>
                             <input
                               type="number"
@@ -1469,10 +1268,10 @@ export function Auctions() {
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Other Service Charges (₹)</label>
+                          <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Other Service Charges ({currency})</label>
                           <div className="relative rounded-xl shadow-2xs">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <span className="text-slate-400 text-xs font-semibold">₹</span>
+                              <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                             </div>
                             <input
                               type="number"
@@ -1495,40 +1294,18 @@ export function Auctions() {
                       </div>
                     ) : (
                       <>
-                        {/* Recommendation Banner */}
-                        <div className={clsx(
-                          "rounded-3xl p-6 text-white shadow-md transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border",
-                          valuationData.recommendation === 'Strong Buy' ? "bg-gradient-to-r from-emerald-600 to-teal-700 border-emerald-500" :
-                            valuationData.recommendation === 'Buy' ? "bg-gradient-to-r from-teal-500 to-emerald-600 border-teal-400" :
-                              valuationData.recommendation === 'Watch Carefully' ? "bg-gradient-to-r from-amber-500 to-orange-600 border-amber-400" :
-                                "bg-gradient-to-r from-rose-500 to-red-600 border-rose-400"
-                        )}>
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full font-mono">
-                              Bidding Recommendation
-                            </span>
-                            <h3 className="text-2xl font-black tracking-tight">{valuationData.recommendation}</h3>
-                            <p className="text-xs text-white/90 leading-relaxed font-medium mt-1.5 max-w-2xl">
-                              {valuationData.recommendationReasoning}
-                            </p>
-                          </div>
-                          <div className="shrink-0 bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10 flex flex-col items-center justify-center font-mono">
-                            <span className="text-[9px] font-bold uppercase opacity-80">ROI</span>
-                            <span className="text-xl font-black">{valuationData.roiPercent}%</span>
-                          </div>
-                        </div>
 
                         {/* Investment & ROI metrics grid */}
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                           <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
                             <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Estimated Lot Value</h5>
-                            <div className="text-lg font-black text-slate-900">₹{valuationData.totalLotValue.toLocaleString('en-IN')}</div>
+                            <div className="text-lg font-black text-slate-900 font-mono">{formatPrice(valuationData.totalLotValue, currency)}</div>
                             <p className="text-[10px] text-slate-400 font-medium">Market value of items</p>
                           </div>
 
                           <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
                             <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Total Lot Cost</h5>
-                            <div className="text-lg font-black text-slate-900">₹{valuationData.totalCost.toLocaleString('en-IN')}</div>
+                            <div className="text-lg font-black text-slate-900 font-mono">{formatPrice(valuationData.totalCost, currency)}</div>
                             <p className="text-[10px] text-slate-400 font-medium">Bid + logistics</p>
                           </div>
 
@@ -1539,15 +1316,15 @@ export function Auctions() {
                               : "bg-rose-50/50 border-rose-150 text-rose-950"
                           )}>
                             <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest font-mono">Projected Profit</h5>
-                            <div className="text-lg font-black">
-                              {valuationData.estimatedProfit >= 0 ? '+' : ''}₹{valuationData.estimatedProfit.toLocaleString('en-IN')}
+                            <div className="text-lg font-black font-mono">
+                              {valuationData.estimatedProfit >= 0 ? '+' : ''}{formatPrice(valuationData.estimatedProfit, currency)}
                             </div>
                             <p className="text-[10px] opacity-70 font-medium">Net profit estimate</p>
                           </div>
 
                           <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
                             <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Break-Even Bid</h5>
-                            <div className="text-lg font-black text-slate-900">₹{valuationData.breakEven.toLocaleString('en-IN')}</div>
+                            <div className="text-lg font-black text-slate-900 font-mono">{formatPrice(valuationData.breakEven, currency)}</div>
                             <p className="text-[10px] text-slate-400 font-medium">Includes handling</p>
                           </div>
                         </div>
@@ -1576,8 +1353,8 @@ export function Auctions() {
                                   <tr key={idx} className="hover:bg-slate-50/50">
                                     <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.name}</td>
                                     <td className="py-2.5 px-3.5 text-right font-mono text-slate-650">{row.qty}</td>
-                                    <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">₹{row.unitValue.toLocaleString('en-IN')}</td>
-                                    <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">₹{row.totalValue.toLocaleString('en-IN')}</td>
+                                    <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{formatPrice(row.unitValue, currency)}</td>
+                                    <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{formatPrice(row.totalValue, currency)}</td>
                                     <td className="py-2.5 px-3.5 text-center font-mono">
                                       <span className={clsx(
                                         "text-[10px] font-bold px-2 py-0.5 rounded",
@@ -2004,7 +1781,7 @@ export function Auctions() {
                           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
                             <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Inspection Schedule</span>
                             <span className="font-bold text-slate-850 leading-relaxed block">
-                              {generateCatalogSummary(selectedPreviewItem).inspectionDetails?.time ||
+                              {formatInspectionSchedule(generateCatalogSummary(selectedPreviewItem).inspectionDetails?.time) ||
                                 'From publication date to 1 day prior to bidding (10:00 AM - 4:00 PM on working days)'}
                             </span>
                           </div>
@@ -2041,40 +1818,79 @@ export function Auctions() {
               {/* Right Side: Image/Preview Panel */}
               {(() => {
                 const summary = generateCatalogSummary(selectedPreviewItem);
+                const allMedia = summary.extracted_images || [];
+                const photoUrls = allMedia.filter((url: string) => {
+                  const lower = url.toLowerCase();
+                  return !lower.endsWith('.pdf') && /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
+                });
+                const docUrls = allMedia.filter((url: string) => url.toLowerCase().endsWith('.pdf'));
+
                 return (
                   <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
-                    {/* Image Gallery */}
-                    {(() => {
-                      const imageUrls = (summary.extracted_images || []).filter(
-                        (url: string) => !url.toLowerCase().endsWith('.pdf')
-                      );
-                      if (imageUrls.length === 0) return null;
-                      return (
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
-                            <span>Auction Images</span>
-                            <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
-                          </h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {imageUrls.map((url: string, idx: number) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => setLightboxImage(url)}
-                                className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
-                              >
-                                <img
-                                  src={url}
-                                  alt={`Auction image ${idx + 1}`}
-                                  className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
-                                />
-                              </button>
-                            ))}
-                          </div>
+                    {/* Actual Photo Gallery */}
+                    {photoUrls.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                          <span>Auction Photos</span>
+                          <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{photoUrls.length} Photos</span>
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {photoUrls.map((url: string, idx: number) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setLightboxImage(url)}
+                              className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
+                            >
+                              <img
+                                src={url}
+                                alt={`Auction photo ${idx + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                              />
+                            </button>
+                          ))}
                         </div>
-                      );
-                    })()}
+                      </div>
+                    )}
 
+                    {/* Asset Documents (PDFs) */}
+                    {docUrls.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                          <span>Asset Documents</span>
+                          <span className="text-[9.5px] bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2 py-0.5 rounded font-mono">{docUrls.length} {docUrls.length === 1 ? 'File' : 'Files'}</span>
+                        </h4>
+                        <div className="space-y-2">
+                          {docUrls.map((url: string, idx: number) => {
+                            const fileName = decodeURIComponent(url.split('/').pop() || `Document ${idx + 1}`);
+                            return (
+                              <a
+                                key={idx}
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 shadow-2xs hover:border-primary/40 hover:bg-primary-50/20 transition-all group"
+                              >
+                                <div className="w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
+                                  <svg className="w-4.5 h-4.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                  </svg>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-slate-800 truncate group-hover:text-primary transition-colors">{fileName}</p>
+                                  <p className="text-[10px] text-slate-400 font-mono">PDF Document</p>
+                                </div>
+                                <svg className="w-4 h-4 text-slate-350 group-hover:text-primary transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Catalog Document Preview */}
                     {summary.preview_image_url ? (
                       <div className="space-y-3">
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
@@ -2127,13 +1943,13 @@ export function Auctions() {
       {/* Image Lightbox Modal */}
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md transition-all duration-300"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-white/85 backdrop-blur-md transition-all duration-300"
           onClick={() => setLightboxImage(null)}
         >
           <button
             type="button"
             onClick={() => setLightboxImage(null)}
-            className="absolute top-4 right-4 z-50 bg-white/10 hover:bg-white/20 hover:scale-105 active:scale-95 text-white p-2.5 rounded-full cursor-pointer transition-all duration-200 shadow-lg border border-white/10"
+            className="absolute top-4 right-4 z-50 bg-slate-100 hover:bg-slate-200 hover:scale-105 active:scale-95 text-slate-800 p-2.5 rounded-full cursor-pointer transition-all duration-200 shadow-md border border-slate-200"
             title="Close image"
           >
             <X className="w-6 h-6" />

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { 
   TrendingUp, TrendingDown, BarChart3, Calculator, RefreshCw, Sparkles,
-  Cpu, ChevronDown, ChevronUp, Info, HelpCircle
+  Cpu, ChevronDown, ChevronUp
 } from 'lucide-react';
 import type { Auction } from '../../types/database.types';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 import { 
   METALLIC_MODELS, 
-  DEFAULT_MACRO_INPUTS, 
+  DEFAULT_MACRO_INPUTS,  
   predictPrice, 
   detectModelId, 
   detectGrade, 
@@ -20,6 +22,7 @@ interface MarketValuationPanelProps {
 }
 
 export function MarketValuationPanel({ auction, currentBid }: MarketValuationPanelProps) {
+  const { currency } = useAppStore();
   // Check if this is a metal-related product
   const titleLower = auction.title.toLowerCase();
   const isMetal = 
@@ -255,15 +258,30 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
     ? predictPrice(selectedModelId, selectedGrade, selectedRegion, macroInputs)
     : 0;
 
-  // Financial calculations
-  const unitBidPrice = simulatedBid;
-  const unitMarketPrice = isRegression ? predictedPrice : marketData.avgPrice;
-  const displayUnit = isRegression ? selectedModel.targetUnit : marketData.unit;
+  // Generate regression history points based on variation in LME or USD_INR
+  const getRegressionHistory = () => {
+    const points: number[] = [];
+    const baseLME = macroInputs.LME_Steel_Scrap_USD;
+    for (let i = -3; i <= 2; i++) {
+      const tempInputs = {
+        ...macroInputs,
+        LME_Steel_Scrap_USD: baseLME + i * 15
+      };
+      points.push(predictPrice(selectedModelId, selectedGrade, selectedRegion, tempInputs));
+    }
+    return points;
+  };
+  const regressionHistory = getRegressionHistory();
 
   // Quantity calculations (Regression units match price directly, e.g. price per Ton and quantity in Tons)
   const isMT = !isRegression && (initialParsed.unit || '').toUpperCase().trim() === 'MT';
   const qtyMultiplier = isMT ? 1000000 : 1;
   const computedQty = quantity * qtyMultiplier;
+
+  // Financial calculations
+  const unitBidPrice = simulatedBid;
+  const unitMarketPrice = isRegression ? predictedPrice : marketData.avgPrice;
+  const displayUnit = isRegression ? selectedModel.targetUnit : (isMT ? 'Mega Tons' : marketData.unit);
 
   // Acquisition Cost calculations
   const rawAcquisitionCost = unitBidPrice * computedQty;
@@ -538,9 +556,24 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
               <div>
                 <span className="text-slate-500 font-medium block">AI Forecast Rate</span>
                 <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="text-lg font-black text-sky-400">₹{Math.round(unitMarketPrice).toLocaleString()}</span>
+                  <span className="text-lg font-black text-sky-400">{formatPrice(unitMarketPrice, currency)}</span>
                   <span className="text-[10px] text-slate-400">/ {selectedModel.targetUnit}</span>
                 </div>
+              </div>
+
+              {/* Sparkline chart for regression model */}
+              <div className="flex flex-col items-center gap-1">
+                <svg className="w-24 h-8 overflow-visible" viewBox="0 0 120 40">
+                  <path
+                    d={generateSparkline(regressionHistory)}
+                    fill="none"
+                    stroke="#0ea5e9"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="text-[9px] font-bold text-sky-400 tracking-wider">AI Trend</span>
               </div>
 
               <div className="text-right">
@@ -569,7 +602,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
               <div>
                 <span className="text-[10px] text-slate-500 font-medium block">Avg Market Price</span>
                 <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="text-xl font-black text-white">₹{unitMarketPrice.toLocaleString()}</span>
+                  <span className="text-xl font-black text-white">{formatPrice(unitMarketPrice, currency)}</span>
                   <span className="text-xs text-slate-400">/ {marketData.unit}</span>
                 </div>
               </div>
@@ -636,8 +669,8 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
           <div className="space-y-3 bg-slate-950/20 p-3.5 rounded-xl border border-slate-850/40">
             <div>
               <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-slate-400">Simulate Bid Amount (₹)</span>
-                <span className="font-extrabold text-primary-400">₹{simulatedBid.toLocaleString()}</span>
+                <span className="text-slate-400">Simulate Bid Amount ({currency})</span>
+                <span className="font-extrabold text-primary-400 font-mono">{formatPrice(simulatedBid, currency)}</span>
               </div>
               <input
                 type="range"
@@ -690,12 +723,12 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
           <div className="grid grid-cols-2 gap-4">
             <div>
               <span className="text-[10px] text-slate-500 font-medium block">Total Cost</span>
-              <span className="text-sm font-black text-slate-300 font-mono">₹{Math.round(totalCost).toLocaleString()}</span>
+              <span className="text-sm font-black text-slate-300 font-mono">{formatPrice(totalCost, currency)}</span>
             </div>
             
             <div>
               <span className="text-[10px] text-slate-500 font-medium block">Total Turnover</span>
-              <span className="text-sm font-black text-white font-mono">₹{Math.round(totalTurnover).toLocaleString()}</span>
+              <span className="text-sm font-black text-white font-mono">{formatPrice(totalTurnover, currency)}</span>
             </div>
           </div>
 
@@ -703,7 +736,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
             <div>
               <span className="text-[10px] text-slate-500 font-medium block">Net Profitability</span>
               <span className={`text-lg font-black font-mono ${netProfit > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {netProfit > 0 ? '+' : ''}₹{Math.round(netProfit).toLocaleString()}
+                {netProfit > 0 ? '+' : ''}{formatPrice(netProfit, currency)}
               </span>
             </div>
 

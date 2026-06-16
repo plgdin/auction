@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { Wallet as WalletIcon, Lock, Coins, Plus, Receipt, FileText, Calendar, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 import { paymentService } from '../../services/paymentService';
 import { PaymentModal } from '../../components/payment/PaymentModal';
 import { ReceiptModal } from '../../components/payment/ReceiptModal';
@@ -9,6 +11,7 @@ import clsx from 'clsx';
 
 export function Wallet() {
   const { user } = useAuthStore();
+  const { currency } = useAppStore();
   const [balance, setBalance] = useState({ available: 0, blocked: 0 });
   const [walletTx, setWalletTx] = useState([]);
   const [emdTx, setEmdTx] = useState([]);
@@ -84,7 +87,7 @@ export function Wallet() {
             </div>
             <h3 className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Available Balance</h3>
           </div>
-          <p className="text-3xl font-extrabold text-slate-950">₹{balance.available.toLocaleString()}</p>
+          <p className="text-3xl font-extrabold text-slate-950 font-mono">{formatPrice(balance.available, currency)}</p>
           <p className="text-xs text-emerald-600 font-medium mt-2">Ready for bidding & payments</p>
         </div>
 
@@ -99,7 +102,7 @@ export function Wallet() {
             </div>
             <h3 className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Blocked EMD Holds</h3>
           </div>
-          <p className="text-3xl font-extrabold text-slate-950">₹{balance.blocked.toLocaleString()}</p>
+          <p className="text-3xl font-extrabold text-slate-950 font-mono">{formatPrice(balance.blocked, currency)}</p>
           <p className="text-xs text-amber-600 font-medium mt-2">Held as guarantee for active bids</p>
         </div>
 
@@ -114,7 +117,7 @@ export function Wallet() {
             </div>
             <h3 className="text-slate-300 text-sm font-semibold uppercase tracking-wider">Total Ledger Assets</h3>
           </div>
-          <p className="text-3xl font-extrabold">₹{(balance.available + balance.blocked).toLocaleString()}</p>
+          <p className="text-3xl font-extrabold font-mono">{formatPrice(balance.available + balance.blocked, currency)}</p>
           <p className="text-xs text-slate-400 font-medium mt-2">Overall platform value</p>
         </div>
       </div>
@@ -201,7 +204,7 @@ export function Wallet() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-extrabold text-slate-900">₹{tx.amount.toLocaleString()}</span>
+                          <span className="text-sm font-extrabold text-slate-900 font-mono">{formatPrice(tx.amount, currency)}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={clsx(
@@ -263,7 +266,7 @@ export function Wallet() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-extrabold text-slate-900">₹{tx.amount.toLocaleString()}</span>
+                          <span className="text-sm font-extrabold text-slate-900 font-mono">{formatPrice(tx.amount, currency)}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={clsx(

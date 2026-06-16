@@ -1,5 +1,7 @@
-import { X, AlertTriangle, IndianRupee } from 'lucide-react';
+import { X, AlertTriangle } from 'lucide-react';
 import type { Auction } from '../../types/database.types';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 
 interface BidConfirmationModalProps {
   isOpen: boolean;
@@ -11,13 +13,15 @@ interface BidConfirmationModalProps {
 }
 
 export function BidConfirmationModal({ isOpen, onClose, onConfirm, auction, bidAmount, isSubmitting }: BidConfirmationModalProps) {
+  const { currency } = useAppStore();
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-white/70 backdrop-blur-sm transition-opacity"
         onClick={!isSubmitting ? onClose : undefined}
       />
       
@@ -52,9 +56,8 @@ export function BidConfirmationModal({ isOpen, onClose, onConfirm, auction, bidA
             
             <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
               <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Your Bid Amount</p>
-              <p className="text-2xl font-extrabold text-primary flex items-center">
-                <IndianRupee className="w-5 h-5 mr-1" />
-                {bidAmount.toLocaleString()}
+              <p className="text-2xl font-extrabold text-primary font-mono">
+                {formatPrice(bidAmount, currency)}
               </p>
             </div>
           </div>

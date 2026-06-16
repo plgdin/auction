@@ -3,7 +3,9 @@ import { Eye, Download, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmar
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import clsx from 'clsx';
-import { getEstimatedMarketPrice, calculateTotalMarketValue } from '../../utils/valuationUtils';
+import { useAppStore } from '../../store/appStore';
+import { formatPriceString } from '../../utils/currency';
+import { generateCatalogSummary, formatDateOrdinal } from '../../utils/mstcHelpers';
 
 interface MstcCardProps {
   item: MstcSanitizedAuction;
@@ -13,158 +15,20 @@ interface MstcCardProps {
   onInterestedToggle?: () => void;
 }
 
-interface CatalogItem {
-  sr: number | string;
-  description: string;
-  qty: string;
-  unit: string;
-  taxRate: string;
-  marketPrice?: string;
-}
-
-interface CatalogSummary {
-  overview: string;
-  scopeOfWork: string;
-  depositDetails: {
-    emd: string;
-    preBidDdg: string;
-  };
-  preview_image_url?: string | null;
-  extracted_images: string[];
-  items?: CatalogItem[];
-  totalMarketValue?: number;
-}
-const generateCatalogSummary = (
-  item: MstcSanitizedAuction,
-  shortId: string,
-): CatalogSummary => {
-  let fallbackPreBid = "₹50,000";
-  const shortIdNum = parseInt(shortId, 10);
-  if (!isNaN(shortIdNum)) {
-    if (shortIdNum % 4 === 0) fallbackPreBid = "₹1,00,000";
-    else if (shortIdNum % 4 === 1) fallbackPreBid = "₹25,000";
-    else if (shortIdNum % 4 === 2) fallbackPreBid = "₹1,50,000";
-    else fallbackPreBid = "₹50,000";
-  }
-
-  if (item.raw_materials_text) {
-    try {
-      const parsed = JSON.parse(item.raw_materials_text);
-      if (parsed && typeof parsed === "object") {
-        let emdVal = parsed.depositDetails?.emd || "10% of total bid value";
-        let preBidDdg = parsed.depositDetails?.preBidDdg;
-
-        if (emdVal.includes("%")) {
-          const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
-          if (percentMatch) {
-            const percentVal = parseFloat(percentMatch[1]);
-            if (percentVal > 100) {
-              emdVal = "10% of total bid value";
-              if (!preBidDdg) {
-                preBidDdg = "Not required for registered MSME bidders";
-              }
-            } else {
-              emdVal = `${percentVal}%`;
-            }
-          }
-        } else {
-          const numMatch = emdVal.match(/([\d\.]+)/);
-          if (numMatch) {
-            const val = parseFloat(numMatch[1]);
-            if (val > 100) {
-              preBidDdg = `₹${val.toLocaleString("en-IN")}`;
-              emdVal = "10% of total bid value";
-            }
-          }
-        }
-
-        const finalPreBid =
-          preBidDdg && !preBidDdg.toLowerCase().includes("not required")
-            ? preBidDdg
-            : fallbackPreBid;
-
-        let itemsList = parsed.items || [];
-        if (Array.isArray(itemsList)) {
-          itemsList = itemsList.map((lot: any) => {
-            let desc = lot.description || '';
-            if (desc && /^\d+$/.test(desc.trim())) {
-              desc = item.category_name || 'Auction Lot Items';
-            }
-            
-            let tax = lot.taxRate || '';
-            if (tax) {
-              if (tax.includes('%')) {
-                const taxMatch = tax.match(/([\d\.]+)\s*%/);
-                if (taxMatch && parseFloat(taxMatch[1]) > 100) {
-                  tax = 'As Applicable GST';
-                }
-              }
-            }
-            
-            return {
-              ...lot,
-              description: desc,
-              taxRate: tax,
-              marketPrice: lot.marketPrice || getEstimatedMarketPrice(desc, item.category_name)
-            };
-          });
-        }
-
-        return {
-          overview:
-            parsed.overview ||
-            `Disposal of materials from ${item.seller_name} located at ${item.location || "various sites"}.`,
-          scopeOfWork:
-            parsed.scopeOfWork ||
-            `Assets and scrap materials offered strictly on an "As-Is-Where-Is" basis.`,
-          depositDetails: {
-            emd: emdVal,
-            preBidDdg: finalPreBid,
-          },
-          preview_image_url: parsed.preview_image_url || null,
-          extracted_images: parsed.extracted_images || [],
-          items: itemsList,
-          totalMarketValue: parsed.totalMarketValue,
-        };
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  const overview = `This auction is conducted by MSTC on behalf of ${item.seller_name} for the disposal of materials located at ${item.location || "designated site areas"}.`;
-  const scopeOfWork = `Lifting, clearing, and disposal of materials in accordance with MSTC Special Terms & Conditions (STC). All items are offered strictly on an "As-Is-Where-Is" basis.`;
-  const emd = "Refer to PDF Catalog / Special Terms";
-
-  const fallbackItems = [
-    { sr: 1, description: 'Mixed Ferrous Scrap (MS Pipes, Angle, Channels)', qty: '12.5', unit: 'MT', taxRate: '18% GST', marketPrice: getEstimatedMarketPrice('Mixed Ferrous Scrap (MS Pipes, Angle, Channels)', item.category_name) },
-    { sr: 2, description: 'Non-Ferrous Scrap (Aluminum cables & Copper windings)', qty: '1,850', unit: 'Kgs', taxRate: '18% GST', marketPrice: getEstimatedMarketPrice('Non-Ferrous Scrap (Aluminum cables & Copper windings)', item.category_name) },
-    { sr: 3, description: 'Unserviceable Batteries & Used Lubricating Oil', qty: '45', unit: 'Nos', taxRate: '18% GST + TCS', marketPrice: getEstimatedMarketPrice('Unserviceable Batteries & Used Lubricating Oil', item.category_name) },
-    { sr: 4, description: 'Obsolete Machinery Parts & Hand Tools', qty: '1', unit: 'Lot', taxRate: '18% GST', marketPrice: getEstimatedMarketPrice('Obsolete Machinery Parts & Hand Tools', item.category_name) }
-  ];
-
-  return {
-    overview,
-    scopeOfWork,
-    depositDetails: {
-      emd,
-      preBidDdg: fallbackPreBid,
-    },
-    preview_image_url: null,
-    extracted_images: [],
-    items: fallbackItems,
-  };
-};
-
 export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInterestedToggle }: MstcCardProps) {
+  const { currency } = useAppStore();
   const shortId =
     item.mstc_auction_number.split("/").pop() || item.id.substring(0, 8);
-  const summary = generateCatalogSummary(item, shortId);
-  const hasOtherMedia = summary.extracted_images && summary.extracted_images.length > 0;
+  const summary = generateCatalogSummary(item);
+  const photoUrls = (summary.extracted_images || []).filter((url: string) => {
+    const lower = url.toLowerCase();
+    return !lower.endsWith('.pdf') && /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
+  });
+  const docUrls = (summary.extracted_images || []).filter((url: string) => url.toLowerCase().endsWith('.pdf'));
 
-  const totalMarketValue = summary.totalMarketValue !== undefined
-    ? summary.totalMarketValue
-    : calculateTotalMarketValue(summary.items || [], item.category_name);
+  const hasPhotos = photoUrls.length > 0;
+  const hasDocAssets = docUrls.length > 0;
+
 
   const parts = item.mstc_auction_number.split("/");
   const rawOffice =
@@ -236,12 +100,12 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
         </button>
       </div>
       <div className="flex flex-col items-end gap-1.5">
-        {(item.sanitized_document_path || (summary.extracted_images && summary.extracted_images.some(url => url.toLowerCase().includes('.pdf')))) && (
+        {hasDocAssets && (
           <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
             Asset documents available
           </span>
         )}
-        {hasOtherMedia && (
+        {hasPhotos && (
           <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
             Images available
           </span>
@@ -316,7 +180,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
               );
             })()}
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="space-y-2 text-xs">
                 <div
                   className="flex items-center text-slate-600"
@@ -346,7 +210,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
                   <span>
                     EMD:{" "}
                     <strong className="text-slate-700 font-semibold">
-                      {summary.depositDetails.emd}
+                      {formatPriceString(summary.depositDetails.emd, currency)}
                     </strong>
                   </span>
                 </div>
@@ -355,7 +219,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
                   <span>
                     Pre-bid:{" "}
                     <strong className="text-slate-700 font-semibold">
-                      {summary.depositDetails.preBidDdg}
+                      {formatPriceString(summary.depositDetails.preBidDdg, currency)}
                     </strong>
                   </span>
                 </div>
@@ -367,9 +231,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
                   <span>
                     Date:{" "}
                     <strong className="text-slate-700 font-semibold">
-                      {auctionDate.toLocaleDateString(undefined, {
-                        dateStyle: "medium",
-                      })}
+                      {formatDateOrdinal(item.opening_date)}
                     </strong>
                   </span>
                 </div>
@@ -378,25 +240,10 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
                   <span>
                     Starts:{" "}
                     <strong className="text-slate-700 font-semibold">
-                      {biddingCloseDate.toLocaleDateString(undefined, {
-                        dateStyle: "medium",
-                      })}
+                      {formatDateOrdinal(biddingCloseDate)}
                     </strong>
                   </span>
                 </div>
-              </div>
-
-              <div className="space-y-2 text-xs border-l border-slate-150 pl-4 flex flex-col justify-center bg-emerald-55/10 rounded-lg p-2 border border-emerald-100/40">
-                <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Market Price Est.</span>
-                <span className="font-extrabold text-slate-800 text-[10px] block leading-none mb-1">
-                  Est. Catalog Value
-                </span>
-                <span className="text-emerald-700 text-sm font-black block leading-none">
-                  ₹{totalMarketValue.toLocaleString('en-IN')}
-                </span>
-                <span className="text-[9px] text-emerald-600 font-medium mt-0.5">
-                  Verified Market Rate
-                </span>
               </div>
             </div>
           </div>
@@ -529,56 +376,30 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
             <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">EMD Required</span>
-            <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.emd}>
-              {summary.depositDetails.emd}
+            <span className="font-bold text-slate-700 truncate" title={formatPriceString(summary.depositDetails.emd, currency)}>
+              {formatPriceString(summary.depositDetails.emd, currency)}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
             <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
-            <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.preBidDdg}>
-              {summary.depositDetails.preBidDdg}
+            <span className="font-bold text-slate-700 truncate" title={formatPriceString(summary.depositDetails.preBidDdg, currency)}>
+              {formatPriceString(summary.depositDetails.preBidDdg, currency)}
             </span>
           </div>
         </div>
 
-        {/* Market Price Evaluation Section */}
-        <div className="bg-emerald-50/40 border border-emerald-100/50 rounded-xl p-3 mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-lg shrink-0">
-              <Landmark className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <span className="text-slate-400 font-mono text-[8px] uppercase tracking-wider block leading-tight">Market Price Evaluation</span>
-              <span className="text-[10px] font-bold text-slate-800 leading-tight block mt-0.5">
-                Est. Catalog Value
-              </span>
-            </div>
-          </div>
-          <div className="text-right">
-            <span className="text-emerald-700 text-sm font-black block leading-none">
-              ₹{totalMarketValue.toLocaleString('en-IN')}
-            </span>
-            <span className="text-[9px] text-emerald-600 font-medium">
-              Verified Market Rate
-            </span>
-          </div>
-        </div>
 
         <div className="space-y-1.5 mb-4 text-xs text-slate-500 border-t border-slate-50 pt-3">
           <div className="flex justify-between">
             <span>Auction Date:</span>
             <span className="font-semibold text-slate-700">
-              {auctionDate.toLocaleDateString(undefined, {
-                dateStyle: "medium",
-              })}
+              {formatDateOrdinal(item.opening_date)}
             </span>
           </div>
           <div className="flex justify-between">
             <span>Bidding Starts:</span>
             <span className="font-semibold text-slate-700">
-              {biddingCloseDate.toLocaleDateString(undefined, {
-                dateStyle: "medium",
-              })}
+              {formatDateOrdinal(biddingCloseDate)}
             </span>
           </div>
         </div>

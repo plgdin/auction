@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { X, Copy, Check, Download, Heart, FilePlus } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice } from '../../services/publicService';
-import { generateCatalogSummary, getNumericQty, getNumericPrice, parsePdfDateTime } from '../../utils/mstcHelpers';
+import { generateCatalogSummary, getNumericQty, getNumericPrice, parsePdfDateTime, formatDateOrdinal, formatDateTimeOrdinal } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
 import { useQuoteStore } from '../../store/quoteStore';
 import { toast } from 'react-hot-toast';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice, formatPriceString } from '../../utils/currency';
 
 interface MstcDetailsModalProps {
   item: MstcSanitizedAuction;
@@ -20,6 +22,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   isInterested = false,
   onInterestedToggle
 }) => {
+  const { currency } = useAppStore();
   const [copied, setCopied] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -106,7 +109,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs p-4 sm:p-6 md:p-8 animate-fade-in">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/75 backdrop-blur-md p-4 sm:p-6 md:p-8 animate-fade-in">
         <div className="relative w-full max-w-7xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-205 animate-scale-up animate-duration-200">
           
           {/* Modal Header */}
@@ -237,7 +240,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   <div className="flex flex-col">
                     <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Date</span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
-                      {parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                      {parsedStartDate ? formatDateTimeOrdinal(item.opening_date) : formatDateOrdinal(item.opening_date)}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
@@ -308,8 +311,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         <tr key={row.sr} className="hover:bg-slate-50/50">
                           <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
                           <td className="py-3 px-3.5 font-bold text-slate-900">{row.description}</td>
-                          <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
-                          <td className="py-3 px-3.5 text-center font-mono text-xs text-emerald-600 font-bold bg-emerald-50/50">{row.marketPrice}</td>
+                          <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit?.toUpperCase() === 'MT' ? 'Mega Tons' : row.unit}</td>
+                          <td className="py-3 px-3.5 text-center font-mono text-xs text-emerald-600 font-bold bg-emerald-50/50">{formatPriceString(row.marketPrice, currency)}</td>
                           <td className="py-2.5 px-3.5 text-center">
                             <button
                               onClick={() => handleAddItemToQuote(row)}
@@ -350,13 +353,13 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
                       <span className="text-slate-500 text-[11px] uppercase font-mono tracking-wider">EMD Details</span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
-                        {summary.depositDetails.emd}
+                        {formatPriceString(summary.depositDetails.emd, currency)}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
                       <span className="text-slate-500 text-[11px] uppercase font-mono tracking-wider">Pre-bid EMD</span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
-                        {summary.depositDetails.preBidDdg}
+                        {formatPriceString(summary.depositDetails.preBidDdg, currency)}
                       </span>
                     </div>
                   </div>
@@ -385,21 +388,21 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Projected Turnover</span>
                           <span className="font-bold text-slate-900">
-                            ₹{totalTurnover.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatPrice(totalTurnover, currency)}
                           </span>
                         </div>
                         
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Predicted Closing Bid</span>
                           <span className="font-bold text-indigo-650">
-                            ₹{predictedClosingBid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatPrice(predictedClosingBid, currency)}
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Projected Profit</span>
                           <span className="font-bold text-emerald-605">
-                            ₹{projectedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatPrice(projectedProfit, currency)}
                           </span>
                         </div>
 
@@ -435,43 +438,92 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
             {/* Right Side: Image/Preview Panel */}
             {(() => {
-              const hasOtherMedia = item.raw_materials_text && summary.extracted_images && summary.extracted_images.length > 0;
-              const displayImage = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images![0] : null);
+              const allMedia = summary.extracted_images || [];
+              const photoUrls = allMedia.filter((url: string) => {
+                const lower = url.toLowerCase();
+                return !lower.endsWith('.pdf') && /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
+              });
+              const docUrls = allMedia.filter((url: string) => {
+                const lower = url.toLowerCase();
+                if (!lower.endsWith('.pdf')) return false;
+                if (item.sanitized_document_path && lower.includes(item.sanitized_document_path.toLowerCase())) {
+                  return false;
+                }
+                const urlFilename = lower.split('/').pop();
+                const mainFilename = item.sanitized_document_path?.split('/').pop()?.toLowerCase();
+                if (urlFilename && mainFilename && urlFilename === mainFilename) {
+                  return false;
+                }
+                return true;
+              });
+              const displayImage = photoUrls.length === 0 ? (summary.preview_image_url || (allMedia.length > 0 ? allMedia[0] : null)) : null;
 
               return (
                 <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
-                  {/* Image Gallery */}
-                  {(() => {
-                    const imageUrls = (summary.extracted_images || []).filter(
-                      (url: string) => !url.toLowerCase().endsWith('.pdf')
-                    );
-                    if (imageUrls.length === 0) return null;
-                    return (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
-                          <span>Auction Images</span>
-                          <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
-                        </h4>
-                        <div className="grid grid-cols-2 gap-2">
-                          {imageUrls.map((url: string, idx: number) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setLightboxImage(url)}
-                              className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
-                            >
-                              <img
-                                src={url}
-                                alt={`Auction image ${idx + 1}`}
-                                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
-                              />
-                            </button>
-                          ))}
-                        </div>
+                  {/* Actual Photo Gallery */}
+                  {photoUrls.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                        <span>Auction Photos</span>
+                        <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{photoUrls.length} Photos</span>
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {photoUrls.map((url: string, idx: number) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setLightboxImage(url)}
+                            className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
+                          >
+                            <img
+                              src={url}
+                              alt={`Auction photo ${idx + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                            />
+                          </button>
+                        ))}
                       </div>
-                    );
-                  })()}
+                    </div>
+                  )}
 
+                  {/* Asset Documents (PDFs) */}
+                  {docUrls.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                        <span>Asset Documents</span>
+                        <span className="text-[9.5px] bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2 py-0.5 rounded font-mono">{docUrls.length} {docUrls.length === 1 ? 'File' : 'Files'}</span>
+                      </h4>
+                      <div className="space-y-2">
+                        {docUrls.map((url: string, idx: number) => {
+                          const fileName = decodeURIComponent(url.split('/').pop() || `Document ${idx + 1}`);
+                          return (
+                            <a
+                              key={idx}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 shadow-2xs hover:border-primary/40 hover:bg-primary-50/20 transition-all group"
+                            >
+                              <div className="w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4.5 h-4.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-slate-800 truncate group-hover:text-primary transition-colors">{fileName}</p>
+                                <p className="text-[10px] text-slate-400 font-mono">PDF Document</p>
+                              </div>
+                              <svg className="w-4 h-4 text-slate-350 group-hover:text-primary transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Catalog Document Preview (first-page image of the main PDF) */}
                   {displayImage ? (
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
@@ -491,14 +543,14 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </button>
                       </div>
                     </div>
-                  ) : (
+                  ) : photoUrls.length === 0 && docUrls.length === 0 ? (
                     <div className="w-full py-12 flex flex-col items-center justify-center text-slate-400 gap-2 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
                       <svg className="w-10 h-10 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                       </svg>
                       <span className="text-xs font-semibold tracking-wide">No preview available</span>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               );
             })()}
@@ -529,12 +581,12 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/90 backdrop-blur-md p-4 cursor-zoom-out animate-fade-in"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-white/85 backdrop-blur-md p-4 cursor-zoom-out animate-fade-in"
           onClick={() => setLightboxImage(null)}
         >
           <button
             onClick={() => setLightboxImage(null)}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-10"
+            className="absolute top-4 right-4 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 transition-all cursor-pointer z-10 border border-slate-200 shadow-md"
             title="Close image"
           >
             <X className="w-6 h-6" />

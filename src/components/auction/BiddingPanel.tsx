@@ -1,10 +1,12 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IndianRupee, Clock, ShieldAlert, ArrowUpRight, CheckCircle2, History, AlertTriangle } from 'lucide-react';
+import { Clock, ShieldAlert, ArrowUpRight, CheckCircle2, History, AlertTriangle } from 'lucide-react';
 import { CountdownTimer } from './CountdownTimer';
 import { BidConfirmationModal } from './BidConfirmationModal';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice, CURRENCIES } from '../../utils/currency';
 import { auctionService } from '../../services/auctionService';
 import type { Auction } from '../../types/database.types';
 import clsx from 'clsx';
@@ -17,6 +19,7 @@ interface BiddingPanelProps {
 
 export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps) {
   const { user, isAuthenticated } = useAuthStore();
+  const { currency } = useAppStore();
   const navigate = useNavigate();
   
   const [bidInput, setBidInput] = useState<string>('');
@@ -46,7 +49,7 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
     }
 
     if (amount < minimumNextBid) {
-      setErrorMsg(`Bid must be at least ₹${minimumNextBid.toLocaleString()}`);
+      setErrorMsg(`Bid must be at least ${formatPrice(minimumNextBid, currency)}`);
       return;
     }
 
@@ -120,9 +123,8 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
               <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">
                 {currentMaxBid === 0 ? 'Starting Price' : 'Current Highest Bid'}
               </p>
-              <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 flex items-center tracking-tight">
-                <IndianRupee className="w-7 h-7 sm:w-8 sm:h-8 mr-1 text-slate-400" />
-                {(currentMaxBid === 0 ? auction.starting_price : currentMaxBid).toLocaleString()}
+              <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 flex items-center tracking-tight font-mono">
+                {formatPrice(currentMaxBid === 0 ? auction.starting_price : currentMaxBid, currency)}
               </div>
             </div>
 
@@ -131,16 +133,14 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
                 <p className="text-xs font-bold text-slate-500 uppercase mb-1 flex items-center">
                   <ShieldAlert className="w-3 h-3 mr-1" /> EMD Amount
                 </p>
-                <p className="text-lg font-bold text-slate-900 flex items-center">
-                  <IndianRupee className="w-4 h-4 mr-0.5 text-slate-400" />
-                  {auction.emd_amount.toLocaleString()}
+                <p className="text-lg font-bold text-slate-900 flex items-center font-mono">
+                  {formatPrice(auction.emd_amount, currency)}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-500 uppercase mb-1">Bid Increment</p>
-                <p className="text-lg font-bold text-slate-900 flex items-center">
-                  <IndianRupee className="w-4 h-4 mr-0.5 text-slate-400" />
-                  {auction.bid_increment.toLocaleString()}
+                <p className="text-lg font-bold text-slate-900 flex items-center font-mono">
+                  {formatPrice(auction.bid_increment, currency)}
                 </p>
               </div>
             </div>
@@ -155,13 +155,13 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
                 <div className="space-y-3">
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <IndianRupee className="h-5 w-5 text-slate-400" />
+                      <span className="text-slate-400 font-bold">{CURRENCIES[currency]?.symbol || '₹'}</span>
                     </div>
                     <input
                       type="number"
                       value={bidInput}
                       onChange={(e) => setBidInput(e.target.value)}
-                      placeholder={`Min: ₹${minimumNextBid.toLocaleString()}`}
+                      placeholder={`Min: ${formatPrice(minimumNextBid, currency)}`}
                       className="block w-full pl-11 pr-4 py-4 border border-slate-300 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary font-bold text-lg text-slate-900"
                     />
                   </div>
@@ -174,21 +174,21 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
                   <div className="flex gap-2">
                     <button 
                       onClick={() => setBidInput(minimumNextBid.toString())}
-                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition-colors"
+                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] sm:text-xs font-semibold rounded-lg transition-colors font-mono"
                     >
-                      +₹{auction.bid_increment.toLocaleString()}
+                      +{formatPrice(auction.bid_increment, currency)}
                     </button>
                     <button 
                       onClick={() => setBidInput((minimumNextBid + auction.bid_increment).toString())}
-                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition-colors"
+                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] sm:text-xs font-semibold rounded-lg transition-colors font-mono"
                     >
-                      +₹{(auction.bid_increment * 2).toLocaleString()}
+                      +{formatPrice(auction.bid_increment * 2, currency)}
                     </button>
                     <button 
                       onClick={() => setBidInput((minimumNextBid + (auction.bid_increment * 4)).toString())}
-                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition-colors"
+                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] sm:text-xs font-semibold rounded-lg transition-colors font-mono"
                     >
-                      +₹{(auction.bid_increment * 5).toLocaleString()}
+                      +{formatPrice(auction.bid_increment * 5, currency)}
                     </button>
                   </div>
                 </div>
@@ -246,7 +246,7 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
                       "font-bold font-mono",
                       index === 0 ? "text-lg text-primary" : "text-slate-600"
                     )}>
-                      ₹{bid.amount.toLocaleString()}
+                      {formatPrice(bid.amount, currency)}
                     </div>
                   </li>
                 );

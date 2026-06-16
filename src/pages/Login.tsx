@@ -17,7 +17,7 @@ export function Login() {
       
       <div className="pt-2 text-center">
         <p className="text-sm text-slate-500">
-          New to Auction e-Auction?{' '}
+          New to Lelam?{' '}
           <Link
             to="/auth/register"
             className="font-semibold text-primary hover:underline transition-all duration-200"

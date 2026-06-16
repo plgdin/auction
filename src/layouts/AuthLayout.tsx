@@ -23,7 +23,7 @@ export function AuthLayout() {
             </div>
             
             <h1 className="text-4xl font-black text-white tracking-tight mb-4">
-              Auction e-Auction
+              Lelam
             </h1>
             
             <p className="text-2xl font-bold text-primary-400 max-w-md leading-relaxed">
@@ -49,7 +49,7 @@ export function AuthLayout() {
             <div className="md:hidden flex flex-col items-center mb-8">
               <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain filter drop-shadow-md" />
               <span className="text-2xl font-black text-slate-900 tracking-tight mt-2">
-                Auction e-Auction
+                Lelam
               </span>
             </div>
             
@@ -61,7 +61,7 @@ export function AuthLayout() {
       {/* Main Footer */}
       <footer className="bg-slate-950 text-slate-500 py-5 px-6 md:px-16 flex flex-col md:flex-row justify-between items-center text-xs border-t border-slate-900 gap-4">
         <div>
-          &copy; {new Date().getFullYear()} Auction e-Auction. All rights reserved.
+          &copy; {new Date().getFullYear()} Lelam. All rights reserved.
         </div>
         <div className="flex gap-6 font-medium">
           <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
