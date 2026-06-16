@@ -591,10 +591,11 @@ export function Auctions() {
     try {
       const qParam = searchParams.get('q') || '';
       const data = await MstcSearchService.searchMarketplaceCatalog(qParam, {
-        category: selectedMstcCategory || undefined,
-        subcategory: selectedMstcSubcategory || undefined,
-        location: selectedMstcLocation || undefined,
-        seller: selectedMstcSeller || undefined
+        categories: selectedMstcCategories.length > 0 ? selectedMstcCategories : undefined,
+        subcategories: selectedMstcSubcategories.length > 0 ? selectedMstcSubcategories : undefined,
+        locations: selectedMstcLocations.length > 0 ? selectedMstcLocations : undefined,
+        sellers: selectedMstcSellers.length > 0 ? selectedMstcSellers : undefined,
+        regionalOffices: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined
       });
 
       let filteredData = data;
@@ -620,7 +621,7 @@ export function Auctions() {
     } finally {
       setIsMstcLoading(false);
     }
-  }, [searchParams, selectedMstcCategory, selectedMstcSubcategory, selectedMstcLocation, selectedMstcSeller, startDate, endDate]);
+  }, [searchParams, selectedMstcCategories, selectedMstcSubcategories, selectedMstcLocations, selectedMstcSellers, selectedMstcRegionalOffices, startDate, endDate]);
 
   const loadMstcOptions = useCallback(async () => {
     try {
@@ -961,10 +962,11 @@ export function Auctions() {
               onClose={() => setIsFiltersOpen(false)}
               onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
               initialFilters={activeTab === 'commercial' ? filters : {
-                categoryIds: selectedMstcCategory ? [selectedMstcCategory] : [],
-                subcategory: selectedMstcSubcategory,
-                location: selectedMstcLocation,
-                regionalOffice: selectedMstcSeller,
+                categoryIds: selectedMstcCategories,
+                subcategories: selectedMstcSubcategories,
+                locations: selectedMstcLocations,
+                regionalOffices: selectedMstcRegionalOffices,
+                mstcSellers: selectedMstcSellers,
                 startDate,
                 endDate
               }}
