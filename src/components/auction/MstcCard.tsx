@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Eye, Download, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart } from 'lucide-react';
+﻿import { useState } from 'react';
+import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart } from 'lucide-react';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
+import { generateCatalogSummary, parsePdfDateTime } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
-import { getEstimatedMarketPrice, calculateTotalMarketValue } from '../../utils/valuationUtils';
 
 interface MstcCardProps {
   item: MstcSanitizedAuction;
@@ -13,196 +13,47 @@ interface MstcCardProps {
   onInterestedToggle?: () => void;
 }
 
-interface CatalogItem {
-  sr: number | string;
-  description: string;
-  qty: string;
-  unit: string;
-  taxRate: string;
-  marketPrice?: string;
-}
+export function MstcCard({ item, isGrid = true, onPreview, isInterested = false, onInterestedToggle }: MstcCardProps) {
+  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+  const summary = generateCatalogSummary(item);
+  const hasOtherMedia = (summary.extracted_images || []).length > 0;
 
-interface CatalogSummary {
-  overview: string;
-  scopeOfWork: string;
-  depositDetails: {
-    emd: string;
-    preBidDdg: string;
-  };
-  preview_image_url?: string | null;
-  extracted_images: string[];
-  items?: CatalogItem[];
-  totalMarketValue?: number;
-}
-const generateCatalogSummary = (
-  item: MstcSanitizedAuction,
-  shortId: string,
-): CatalogSummary => {
-  let fallbackPreBid = "₹50,000";
-  const shortIdNum = parseInt(shortId, 10);
-  if (!isNaN(shortIdNum)) {
-    if (shortIdNum % 4 === 0) fallbackPreBid = "₹1,00,000";
-    else if (shortIdNum % 4 === 1) fallbackPreBid = "₹25,000";
-    else if (shortIdNum % 4 === 2) fallbackPreBid = "₹1,50,000";
-    else fallbackPreBid = "₹50,000";
-  }
-
-  if (item.raw_materials_text) {
-    try {
-      const parsed = JSON.parse(item.raw_materials_text);
-      if (parsed && typeof parsed === "object") {
-        let emdVal = parsed.depositDetails?.emd || "10% of total bid value";
-        let preBidDdg = parsed.depositDetails?.preBidDdg;
-
-        if (emdVal.includes("%")) {
-          const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
-          if (percentMatch) {
-            const percentVal = parseFloat(percentMatch[1]);
-            if (percentVal > 100) {
-              emdVal = "10% of total bid value";
-              if (!preBidDdg) {
-                preBidDdg = "Not required for registered MSME bidders";
-              }
-            } else {
-              emdVal = `${percentVal}%`;
-            }
-          }
-        } else {
-          const numMatch = emdVal.match(/([\d\.]+)/);
-          if (numMatch) {
-            const val = parseFloat(numMatch[1]);
-            if (val > 100) {
-              preBidDdg = `₹${val.toLocaleString("en-IN")}`;
-              emdVal = "10% of total bid value";
-            }
-          }
-        }
-
-        const finalPreBid =
-          preBidDdg && !preBidDdg.toLowerCase().includes("not required")
-            ? preBidDdg
-            : fallbackPreBid;
-
-        let itemsList = parsed.items || [];
-        if (Array.isArray(itemsList)) {
-          itemsList = itemsList.map((lot: any) => {
-            let desc = lot.description || '';
-            if (desc && /^\d+$/.test(desc.trim())) {
-              desc = item.category_name || 'Auction Lot Items';
-            }
-            
-            let tax = lot.taxRate || '';
-            if (tax) {
-              if (tax.includes('%')) {
-                const taxMatch = tax.match(/([\d\.]+)\s*%/);
-                if (taxMatch && parseFloat(taxMatch[1]) > 100) {
-                  tax = 'As Applicable GST';
-                }
-              }
-            }
-            
-            return {
-              ...lot,
-              description: desc,
-              taxRate: tax,
-              marketPrice: lot.marketPrice || getEstimatedMarketPrice(desc, item.category_name)
-            };
-          });
-        }
-
-        return {
-          overview:
-            parsed.overview ||
-            `Disposal of materials from ${item.seller_name} located at ${item.location || "various sites"}.`,
-          scopeOfWork:
-            parsed.scopeOfWork ||
-            `Assets and scrap materials offered strictly on an "As-Is-Where-Is" basis.`,
-          depositDetails: {
-            emd: emdVal,
-            preBidDdg: finalPreBid,
-          },
-          preview_image_url: parsed.preview_image_url || null,
-          extracted_images: parsed.extracted_images || [],
-          items: itemsList,
-          totalMarketValue: parsed.totalMarketValue,
-        };
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  const overview = `This auction is conducted by MSTC on behalf of ${item.seller_name} for the disposal of materials located at ${item.location || "designated site areas"}.`;
-  const scopeOfWork = `Lifting, clearing, and disposal of materials in accordance with MSTC Special Terms & Conditions (STC). All items are offered strictly on an "As-Is-Where-Is" basis.`;
-  const emd = "Refer to PDF Catalog / Special Terms";
-
-  const fallbackItems = [
-    { sr: 1, description: 'Mixed Ferrous Scrap (MS Pipes, Angle, Channels)', qty: '12.5', unit: 'MT', taxRate: '18% GST', marketPrice: getEstimatedMarketPrice('Mixed Ferrous Scrap (MS Pipes, Angle, Channels)', item.category_name) },
-    { sr: 2, description: 'Non-Ferrous Scrap (Aluminum cables & Copper windings)', qty: '1,850', unit: 'Kgs', taxRate: '18% GST', marketPrice: getEstimatedMarketPrice('Non-Ferrous Scrap (Aluminum cables & Copper windings)', item.category_name) },
-    { sr: 3, description: 'Unserviceable Batteries & Used Lubricating Oil', qty: '45', unit: 'Nos', taxRate: '18% GST + TCS', marketPrice: getEstimatedMarketPrice('Unserviceable Batteries & Used Lubricating Oil', item.category_name) },
-    { sr: 4, description: 'Obsolete Machinery Parts & Hand Tools', qty: '1', unit: 'Lot', taxRate: '18% GST', marketPrice: getEstimatedMarketPrice('Obsolete Machinery Parts & Hand Tools', item.category_name) }
-  ];
-
-  return {
-    overview,
-    scopeOfWork,
-    depositDetails: {
-      emd,
-      preBidDdg: fallbackPreBid,
-    },
-    preview_image_url: null,
-    extracted_images: [],
-    items: fallbackItems,
-  };
-};
-
-export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInterestedToggle }: MstcCardProps) {
-  const shortId =
-    item.mstc_auction_number.split("/").pop() || item.id.substring(0, 8);
-  const summary = generateCatalogSummary(item, shortId);
-  const hasOtherMedia = summary.extracted_images && summary.extracted_images.length > 0;
-
-  const totalMarketValue = summary.totalMarketValue !== undefined
-    ? summary.totalMarketValue
-    : calculateTotalMarketValue(summary.items || [], item.category_name);
-
-  const parts = item.mstc_auction_number.split("/");
-  const rawOffice =
-    parts.length > 1 && parts[0].toUpperCase() === "MSTC"
-      ? parts[1]
-      : item.seller_name;
+  const parts = item.mstc_auction_number.split('/');
+  const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
   const regionalOfficeName = expandMstcOffice(rawOffice);
   const locationName = expandMstcOffice(item.location);
 
-  const auctionDate = new Date(item.opening_date);
-  const biddingCloseDate = new Date(
-    auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000,
-  );
+  // Parse start and close dates
+  const parsedStartDate = summary.auctionStartTime ? parsePdfDateTime(summary.auctionStartTime) : null;
+  const auctionDate = parsedStartDate || new Date(item.opening_date);
+  
+  const parsedCloseDate = summary.auctionCloseTime ? parsePdfDateTime(summary.auctionCloseTime) : null;
+  
   const now = new Date();
-  const diffMs = biddingCloseDate.getTime() - now.getTime();
-  const isClosed = diffMs <= 0;
+  const diffMs = auctionDate.getTime() - now.getTime();
+  const isStarted = diffMs <= 0;
+  const isClosed = parsedCloseDate ? (now.getTime() > parsedCloseDate.getTime()) : false;
+  
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor(
-    (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
-  );
+  const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const isUrgent = diffDays < 3;
   const isWarning = diffDays < 7;
 
   const timeLeftBadge = isClosed ? (
+    <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-slate-200 text-slate-500 bg-slate-50">
+      Bidding Closed
+    </span>
+  ) : isStarted ? (
     <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-rose-200 text-rose-700 bg-rose-50">
       Bidding Started
     </span>
   ) : (
-    <span
-      className={clsx(
-        "font-bold text-xs px-2.5 py-1 rounded-md border flex items-center gap-1",
-        isUrgent
-          ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse"
-          : isWarning
-            ? "text-amber-700 bg-amber-50 border-amber-200"
-            : "text-emerald-700 bg-emerald-50 border-emerald-200",
-      )}
-    >
+    <span className={clsx(
+      "font-bold text-xs px-2.5 py-1 rounded-md border flex items-center gap-1",
+      isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
+      isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
+      "text-emerald-700 bg-emerald-50 border-emerald-200"
+    )}>
       <Clock className="w-3.5 h-3.5" />
       Starts in {diffDays}d {diffHours}h
     </span>
@@ -219,21 +70,23 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
 
   const cardHeader = (
     <div className="flex justify-between items-start gap-4 mb-3">
-      <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
-        <span className="text-xs font-semibold text-slate-500 font-mono">
-          Ref ID: {shortId}
-        </span>
-        <button
-          onClick={handleCopy}
-          className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
-          title="Copy full reference number to clipboard"
-        >
-          {copied ? (
-            <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
-          ) : (
-            <Copy className="w-3.5 h-3.5" />
-          )}
-        </button>
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+          <span className="text-xs font-semibold text-slate-500 font-mono">
+            Ref ID: {shortId}
+          </span>
+          <button
+            onClick={handleCopy}
+            className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+            title="Copy full reference number to clipboard"
+          >
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+          </button>
+        </div>
       </div>
       <div className="flex flex-col items-end gap-1.5">
         {(item.sanitized_document_path || (summary.extracted_images && summary.extracted_images.some(url => url.toLowerCase().includes('.pdf')))) && (
@@ -255,10 +108,11 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
     return (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/50 transition-all group p-5 flex flex-col sm:flex-row gap-5 justify-between">
         {(() => {
-          const displayImage =
-            summary.extracted_images && summary.extracted_images.length > 0
+          const displayImage = summary.preview_image_url
+            ? summary.preview_image_url
+            : (summary.extracted_images && summary.extracted_images.length > 0)
               ? summary.extracted_images[0]
-              : summary.preview_image_url;
+              : null;
 
           return displayImage ? (
             <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
@@ -270,22 +124,10 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
             </div>
           ) : (
             <div className="w-[120px] h-[120px] rounded-xl border border-slate-200 shrink-0 bg-slate-50 flex flex-col items-center justify-center text-slate-400 select-none hidden sm:flex gap-1.5">
-              <svg
-                className="w-6 h-6 text-slate-355"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.5"
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                ></path>
+              <svg className="w-6 h-6 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
               </svg>
-              <span className="text-[9px] font-medium tracking-wide text-slate-400 text-center px-1.5 leading-tight">
-                No pictures available
-              </span>
+              <span className="text-[9px] font-medium tracking-wide text-slate-400 text-center px-1.5 leading-tight">No pictures available</span>
             </div>
           );
         })()}
@@ -293,9 +135,9 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
         <div className="flex-1 flex flex-col justify-between">
           <div>
             {cardHeader}
-
+            
             {(() => {
-              const parts = item.category_name.split(" | ");
+              const parts = item.category_name.split(' | ');
               const mainCat = parts[0];
               const subCat = parts[1];
               return (
@@ -316,26 +158,18 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
               );
             })()}
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="space-y-2 text-xs">
-                <div
-                  className="flex items-center text-slate-600"
-                  title={regionalOfficeName}
-                >
+                <div className="flex items-center text-slate-600" title={regionalOfficeName}>
                   <Building2 className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                   <span className="font-semibold text-slate-700 truncate">
                     Office: {regionalOfficeName}
                   </span>
                 </div>
                 {item.location && (
-                  <div
-                    className="flex items-center text-slate-600"
-                    title={locationName}
-                  >
+                  <div className="flex items-center text-slate-600" title={locationName}>
                     <MapPin className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                    <span className="font-semibold text-slate-700 truncate">
-                      {locationName}
-                    </span>
+                    <span className="font-semibold text-slate-700 truncate">{locationName}</span>
                   </div>
                 )}
               </div>
@@ -343,94 +177,62 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
               <div className="space-y-2 text-xs border-l border-slate-100 pl-4">
                 <div className="flex items-center text-slate-655">
                   <Landmark className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>
-                    EMD:{" "}
-                    <strong className="text-slate-700 font-semibold">
-                      {summary.depositDetails.emd}
-                    </strong>
-                  </span>
+                  <span>EMD: <strong className="text-slate-700 font-semibold">{summary.depositDetails.emd}</strong></span>
                 </div>
                 <div className="flex items-center text-slate-655">
                   <ShieldCheck className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>
-                    Pre-bid:{" "}
-                    <strong className="text-slate-700 font-semibold">
-                      {summary.depositDetails.preBidDdg}
-                    </strong>
-                  </span>
+                  <span>Pre-bid: <strong className="text-slate-700 font-semibold">{summary.depositDetails.preBidDdg}</strong></span>
                 </div>
               </div>
 
               <div className="space-y-2 text-xs border-l border-slate-100 pl-4">
                 <div className="flex items-center text-slate-655">
                   <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>
-                    Date:{" "}
-                    <strong className="text-slate-700 font-semibold">
-                      {auctionDate.toLocaleDateString(undefined, {
-                        dateStyle: "medium",
-                      })}
-                    </strong>
-                  </span>
+                  <span>Date: <strong className="text-slate-700 font-semibold">{parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
                 </div>
                 <div className="flex items-center text-slate-655">
-                  <Clock className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>
-                    Starts:{" "}
-                    <strong className="text-slate-700 font-semibold">
-                      {biddingCloseDate.toLocaleDateString(undefined, {
-                        dateStyle: "medium",
-                      })}
-                    </strong>
-                  </span>
+                  <Eye className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                  <span>Inspection: <strong className="text-slate-700 font-semibold">{summary.inspectionSchedule || 'N/A'}</strong></span>
                 </div>
-              </div>
-
-              <div className="space-y-2 text-xs border-l border-slate-150 pl-4 flex flex-col justify-center bg-emerald-55/10 rounded-lg p-2 border border-emerald-100/40">
-                <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Market Price Est.</span>
-                <span className="font-extrabold text-slate-800 text-[10px] block leading-none mb-1">
-                  Est. Catalog Value
-                </span>
-                <span className="text-emerald-700 text-sm font-black block leading-none">
-                  ₹{totalMarketValue.toLocaleString('en-IN')}
-                </span>
-                <span className="text-[9px] text-emerald-600 font-medium mt-0.5">
-                  Verified Market Rate
-                </span>
               </div>
             </div>
           </div>
 
           <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 mt-auto">
-            <div>{timeLeftBadge}</div>
+            <div>
+              {timeLeftBadge}
+            </div>
 
             <div className="flex gap-2 w-full sm:w-auto">
               {item.sanitized_document_path ? (
-                <>
-                  <button
-                    onClick={() => onPreview(item)}
-                    className="flex-grow sm:flex-none inline-flex justify-center items-center py-2 px-5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    View Details
-                  </button>
-                  <a
-                    href={item.sanitized_document_path}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-250 text-slate-655 hover:bg-slate-50 hover:border-slate-350 hover:text-slate-900 transition-colors cursor-pointer"
-                    title="Download PDF Catalog"
-                  >
-                    <Download className="w-4 h-4" />
-                  </a>
-                </>
+                <button
+                  onClick={() => onPreview(item)}
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center py-2 px-5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View Details
+                </button>
               ) : (
                 <button
                   disabled
-                  className="w-full inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
                 >
                   <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
                   PDF Processing...
+                </button>
+              )}
+
+              {onInterestedToggle && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onInterestedToggle();
+                  }}
+                  className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
+                  title={isInterested ? "Remove from interested list" : "Add to interested list"}
+                >
+                  <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
                 </button>
               )}
             </div>
@@ -446,10 +248,11 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
       <div>
         <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
           {(() => {
-            const displayImage =
-              summary.extracted_images && summary.extracted_images.length > 0
+            const displayImage = summary.preview_image_url
+              ? summary.preview_image_url
+              : (summary.extracted_images && summary.extracted_images.length > 0)
                 ? summary.extracted_images[0]
-                : summary.preview_image_url;
+                : null;
 
             return displayImage ? (
               <>
@@ -462,22 +265,10 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
               </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
-                <svg
-                  className="w-8 h-8 text-slate-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.5"
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  ></path>
+                <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                 </svg>
-                <span className="text-[11px] font-medium tracking-wide">
-                  No pictures available
-                </span>
+                <span className="text-[11px] font-medium tracking-wide">No pictures available</span>
               </div>
             );
           })()}
@@ -485,28 +276,20 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
         {cardHeader}
 
         {(() => {
-          const parts = item.category_name.split(" | ");
+          const parts = item.category_name.split(' | ');
           const mainCat = parts[0];
           const subCat = parts[1];
           return (
             <div className="mb-3">
               {subCat ? (
                 <>
-                  <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">
-                    {mainCat}
-                  </div>
-                  <h3
-                    className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2"
-                    title={item.category_name}
-                  >
+                  <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCat}</div>
+                  <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
                     {subCat}
                   </h3>
                 </>
               ) : (
-                <h3
-                  className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2"
-                  title={item.category_name}
-                >
+                <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
                   {mainCat}
                 </h3>
               )}
@@ -541,54 +324,23 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested, onInter
           </div>
         </div>
 
-        {/* Market Price Evaluation Section */}
-        <div className="bg-emerald-50/40 border border-emerald-100/50 rounded-xl p-3 mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-lg shrink-0">
-              <Landmark className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <span className="text-slate-400 font-mono text-[8px] uppercase tracking-wider block leading-tight">Market Price Evaluation</span>
-              <span className="text-[10px] font-bold text-slate-800 leading-tight block mt-0.5">
-                Est. Catalog Value
-              </span>
-            </div>
-          </div>
-          <div className="text-right">
-            <span className="text-emerald-700 text-sm font-black block leading-none">
-              ₹{totalMarketValue.toLocaleString('en-IN')}
-            </span>
-            <span className="text-[9px] text-emerald-600 font-medium">
-              Verified Market Rate
-            </span>
-          </div>
-        </div>
-
         <div className="space-y-1.5 mb-4 text-xs text-slate-500 border-t border-slate-50 pt-3">
           <div className="flex justify-between">
             <span>Auction Date:</span>
             <span className="font-semibold text-slate-700">
-              {auctionDate.toLocaleDateString(undefined, {
-                dateStyle: "medium",
-              })}
+              {parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}
             </span>
           </div>
           <div className="flex justify-between">
-            <span>Bidding Starts:</span>
-            <span className="font-semibold text-slate-700">
-              {biddingCloseDate.toLocaleDateString(undefined, {
-                dateStyle: "medium",
-              })}
-            </span>
+            <span>Inspection:</span>
+            <span className="font-semibold text-slate-700">{summary.inspectionSchedule || 'N/A'}</span>
           </div>
         </div>
       </div>
 
       <div className="pt-4 border-t border-slate-100 flex flex-col gap-3 mt-auto">
         <div className="flex justify-between items-center">
-          <span className="text-xs text-slate-400 font-medium">
-            Bidding Window
-          </span>
+          <span className="text-xs text-slate-400 font-medium">Bidding Window</span>
           {timeLeftBadge}
         </div>
 

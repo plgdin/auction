@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Gavel, Trophy, Heart, ArrowRight, Activity, 
-  TrendingUp, IndianRupee
+  TrendingUp
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { useAuthStore } from '../store/authStore';
+import { useAppStore } from '../store/appStore';
+import { formatPrice } from '../utils/currency';
 import { auctionService } from '../services/auctionService';
 import { dashboardService } from '../services/dashboardService';
 
@@ -16,6 +18,7 @@ import { dashboardService } from '../services/dashboardService';
 
 export function Dashboard() {
   const { user, profile } = useAuthStore();
+  const { currency } = useAppStore();
   const [stats, setStats] = useState({
     activeBids: 0,
     wonAuctions: 0,
@@ -192,7 +195,7 @@ export function Dashboard() {
                   <li key={bid.id} className="py-4">
                     <div className="flex justify-between items-start mb-1">
                       <h4 className="text-sm font-bold text-foreground line-clamp-1 mr-4">{bid.auction.title}</h4>
-                      <span className="text-sm font-bold text-primary shrink-0">₹{bid.amount.toLocaleString()}</span>
+                      <span className="text-sm font-bold text-primary shrink-0 font-mono">{formatPrice(bid.amount, currency)}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-muted-foreground">REF: {bid.auction.reference_number}</span>

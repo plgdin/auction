@@ -1,8 +1,10 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Calendar, IndianRupee, ArrowRight } from 'lucide-react';
+import { FileText, Calendar, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 import { tenderService } from '../../services/tenderService';
 import clsx from 'clsx';
 
@@ -32,6 +34,7 @@ function TenderRowSkeleton() {
 
 export function MyTenders() {
   const { user } = useAuthStore();
+  const { currency } = useAppStore();
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -121,9 +124,8 @@ export function MyTenders() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center font-bold text-slate-900">
-                        <IndianRupee className="w-4 h-4 mr-0.5 text-slate-400" />
-                        {sub.financial_bid ? sub.financial_bid.toLocaleString() : 'N/A'}
+                      <div className="flex items-center font-bold text-slate-900 font-mono">
+                        {sub.financial_bid ? formatPrice(sub.financial_bid, currency) : 'N/A'}
                       </div>
                       <span className="text-xs text-slate-500 uppercase">Financial</span>
                     </td>

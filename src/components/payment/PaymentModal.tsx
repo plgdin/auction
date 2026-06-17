@@ -50,7 +50,7 @@ export function PaymentModal({ isOpen, onClose, onSuccess }: PaymentModalProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={!isProcessing ? onClose : undefined} />
+      <div className="fixed inset-0 bg-white/70 backdrop-blur-sm" onClick={!isProcessing ? onClose : undefined} />
       
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">

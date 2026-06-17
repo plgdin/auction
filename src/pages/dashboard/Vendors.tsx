@@ -163,7 +163,7 @@ export function Vendors() {
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/45 backdrop-blur-md">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-200 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
             <div className="px-6 py-4 border-b border-slate-150 flex justify-between items-center bg-slate-55/30">
               <h3 className="font-bold text-slate-900 text-lg">

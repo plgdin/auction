@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { auctionService } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
+import { useAppStore } from '../store/appStore';
+import { formatPrice } from '../utils/currency';
 import { ImageGallery } from '../components/auction/ImageGallery';
 import { BiddingPanel } from '../components/auction/BiddingPanel';
 import { MarketValuationPanel } from '../components/auction/MarketValuationPanel';
@@ -18,6 +20,7 @@ import { toast } from 'react-hot-toast';
 export function AuctionDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { currency } = useAppStore();
   const { user, isAuthenticated } = useAuthStore();
   
   const [initialAuction, setInitialAuction] = useState<Auction | null>(null);
@@ -347,8 +350,8 @@ function AuctionDetailInner({
                       {rel.title}
                     </h3>
                     <div className="mt-auto pt-3 border-t border-slate-50 flex justify-between items-center">
-                      <p className="text-sm font-bold text-slate-900 flex items-center">
-                        ₹{rel.starting_price.toLocaleString()}
+                      <p className="text-sm font-bold text-slate-900 flex items-center font-mono">
+                        {formatPrice(rel.starting_price, currency)}
                       </p>
                       <span className="text-xs font-bold text-slate-500">View</span>
                     </div>

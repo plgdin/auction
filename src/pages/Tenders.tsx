@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Calendar, FileText, ArrowRight, IndianRupee, Clock } from 'lucide-react';
+import { Search, Filter, Calendar, FileText, ArrowRight, Clock } from 'lucide-react';
+import { useAppStore } from '../store/appStore';
+import { formatPrice } from '../utils/currency';
 import { tenderService } from '../services/tenderService';
 import type { Tender } from '../types/database.types';
 import clsx from 'clsx';
@@ -38,6 +40,7 @@ function TenderCardSkeleton() {
 }
 
 export function Tenders() {
+  const { currency } = useAppStore();
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -156,11 +159,11 @@ export function Tenders() {
                       </p>
                     </div>
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                      <p className="text-xs font-bold text-slate-400 uppercase mb-1 flex items-center">
-                        <IndianRupee className="w-3 h-3 mr-1" /> EMD Amount
+                      <p className="text-xs font-bold text-slate-400 uppercase mb-1">
+                        EMD Amount
                       </p>
-                      <p className="text-sm font-bold text-slate-900">
-                        ₹{tender.emd_amount.toLocaleString()}
+                      <p className="text-sm font-black text-slate-900 font-mono">
+                        {formatPrice(tender.emd_amount, currency)}
                       </p>
                     </div>
                   </div>
