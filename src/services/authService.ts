@@ -22,22 +22,6 @@ export const authService = {
   },
 
   async signIn(email: string, password: string) {
-    if ((email === 'temp@mail.com' && password === 'temp123') || (email === 'test@mail.com' && password === 'test123')) {
-      const mockSession = {
-        user: {
-          id: 'da75b8e0-1cfa-4d1a-8cfa-a006be1350a4',
-          email: email,
-          user_metadata: {
-            first_name: email === 'test@mail.com' ? 'Test' : 'Temp',
-            last_name: 'User'
-          }
-        },
-        access_token: 'mock-token'
-      };
-      localStorage.setItem('mock_session', JSON.stringify(mockSession));
-      return { session: mockSession };
-    }
-
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,

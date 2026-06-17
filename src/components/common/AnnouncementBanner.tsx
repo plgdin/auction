@@ -47,7 +47,7 @@ export function AnnouncementBanner() {
 
   return (
     <div className={clsx(
-      "relative px-4 py-3 text-white flex items-center justify-center sm:px-6 lg:px-8",
+      "relative px-4 py-3 text-white flex items-center justify-center sm:px-6 lg:px-8 print:hidden",
       isUrgent ? "bg-red-600" : isWarning ? "bg-orange-600" : "bg-primary-600"
     )}>
       <div className="flex items-center gap-2 text-sm font-medium pr-8 max-w-7xl mx-auto w-full text-center">

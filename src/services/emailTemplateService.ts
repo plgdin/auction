@@ -1,3 +1,6 @@
+import { useAppStore } from '../store/appStore';
+import { formatPrice } from '../utils/currency';
+
 /**
  * Mock Email Template Service
  * 
@@ -13,7 +16,7 @@ export const emailTemplateService = {
       <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc; border-radius: 12px;">
         <div style="text-align: center; margin-bottom: 30px;">
           <h2 style="color: #0f172a; margin: 0; font-size: 24px; font-weight: 800;">Lelam</h2>
-          <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Enterprise Lelam Platform</p>
+          <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Enterprise Procurement Platform</p>
         </div>
         
         <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -34,20 +37,22 @@ export const emailTemplateService = {
         
         <div style="text-align: center; margin-top: 30px; color: #94a3b8; font-size: 12px;">
           <p>This is an automated message. Please do not reply directly to this email.</p>
-          <p>© ${new Date().getFullYear()} Lelam Procurement.</p>
+          <p>© ${new Date().getFullYear()} Lelam.</p>
         </div>
       </div>
     `;
   },
 
   sendBidConfirmation(email: string, auctionTitle: string, bidAmount: number, auctionUrl: string) {
+    const currency = useAppStore.getState().currency;
+    const formattedBid = formatPrice(bidAmount, currency);
     const html = this._buildBaseTemplate(
       'Bid Successfully Placed',
       `
         <p>Your bid has been successfully recorded in our ledger.</p>
         <div style="background-color: #f1f5f9; padding: 15px; border-radius: 6px; margin: 20px 0;">
           <p style="margin: 0 0 10px 0;"><strong>Auction:</strong> ${auctionTitle}</p>
-          <p style="margin: 0; color: #10b981; font-weight: bold; font-size: 18px;">Bid Amount: ₹${bidAmount.toLocaleString()}</p>
+          <p style="margin: 0; color: #10b981; font-weight: bold; font-size: 18px;">Bid Amount: ${formattedBid}</p>
         </div>
         <p>You will be notified immediately if you are outbid.</p>
       `,
@@ -76,6 +81,8 @@ export const emailTemplateService = {
   },
 
   sendEmdReceipt(email: string, amount: number, referenceId: string, walletUrl: string) {
+    const currency = useAppStore.getState().currency;
+    const formattedAmount = formatPrice(amount, currency);
     const html = this._buildBaseTemplate(
       'Deposit Receipt',
       `
@@ -91,7 +98,7 @@ export const emailTemplateService = {
           </tr>
           <tr>
             <td style="padding: 10px 0; font-weight: bold;">Amount Deposited</td>
-            <td style="padding: 10px 0; font-weight: bold; color: #10b981; text-align: right;">₹${amount.toLocaleString()}</td>
+            <td style="padding: 10px 0; font-weight: bold; color: #10b981; text-align: right;">${formattedAmount}</td>
           </tr>
         </table>
         <p>These funds are now available in your ledger to block EMDs for active auctions.</p>
@@ -100,7 +107,7 @@ export const emailTemplateService = {
       'View Wallet Balance'
     );
     
-    console.log(`[EMAIL DISPATCH] To: ${email} | Subject: Receipt - Deposit of ₹${amount.toLocaleString()}`);
+    console.log(`[EMAIL DISPATCH] To: ${email} | Subject: Receipt - Deposit of ${formattedAmount}`);
     console.log(html);
   }
 };

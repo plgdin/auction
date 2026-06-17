@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { X, Printer } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 
 interface ReceiptModalProps {
   isOpen: boolean;
@@ -11,6 +13,7 @@ interface ReceiptModalProps {
 
 export function ReceiptModal({ isOpen, onClose, transaction, type }: ReceiptModalProps) {
   const { profile } = useAuthStore();
+  const { currency } = useAppStore();
 
   if (!isOpen || !transaction) return null;
 
@@ -20,7 +23,7 @@ export function ReceiptModal({ isOpen, onClose, transaction, type }: ReceiptModa
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 print:p-0">
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm print:hidden" onClick={onClose} />
+      <div className="fixed inset-0 bg-white/45 backdrop-blur-md print:hidden" onClick={onClose} />
       
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden print:shadow-none print:max-w-none print:rounded-none">
         {/* Modal Header - Hidden on Print */}
@@ -40,8 +43,8 @@ export function ReceiptModal({ isOpen, onClose, transaction, type }: ReceiptModa
         <div className="p-8 print:p-0 bg-white">
           <div className="flex justify-between items-start mb-8">
             <div>
-              <div className="w-10 h-10 bg-slate-900 text-white rounded flex items-center justify-center font-bold text-xl mb-2">M</div>
-              <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Lelam e-Procurement</h2>
+              <div className="w-10 h-10 bg-slate-900 text-white rounded flex items-center justify-center font-bold text-xl mb-2">L</div>
+              <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Lelam</h2>
               <p className="text-sm text-slate-500">Official System Generated Receipt</p>
             </div>
             <div className="text-right">
@@ -80,16 +83,16 @@ export function ReceiptModal({ isOpen, onClose, transaction, type }: ReceiptModa
                   <td className="px-4 py-4 text-sm text-slate-900">
                     {type === 'wallet' ? transaction.description || `Wallet ${transaction.transaction_type}` : `EMD Block for Auction REF: ${transaction.auction?.reference_number}`}
                   </td>
-                  <td className="px-4 py-4 text-sm font-bold text-slate-900 text-right">
-                    ₹{transaction.amount.toLocaleString()}
+                  <td className="px-4 py-4 text-sm font-bold text-slate-900 text-right font-mono">
+                    {formatPrice(transaction.amount, currency)}
                   </td>
                 </tr>
               </tbody>
               <tfoot className="bg-slate-50 border-t border-slate-200">
                 <tr>
                   <td className="px-4 py-3 text-sm font-bold text-slate-900 text-right">Total Amount</td>
-                  <td className="px-4 py-3 text-lg font-extrabold text-primary text-right">
-                    ₹{transaction.amount.toLocaleString()}
+                  <td className="px-4 py-3 text-lg font-extrabold text-primary text-right font-mono">
+                    {formatPrice(transaction.amount, currency)}
                   </td>
                 </tr>
               </tfoot>

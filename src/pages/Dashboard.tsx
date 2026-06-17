@@ -3,32 +3,29 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Gavel, Trophy, Heart, ArrowRight, Activity, 
-  TrendingUp, IndianRupee
+  TrendingUp
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { useAuthStore } from '../store/authStore';
+import { useAppStore } from '../store/appStore';
+import { formatPrice } from '../utils/currency';
 import { auctionService } from '../services/auctionService';
+import { dashboardService } from '../services/dashboardService';
 
-// Mock data for the chart
-const chartData = [
-  { name: 'Jan', bids: 4 },
-  { name: 'Feb', bids: 7 },
-  { name: 'Mar', bids: 5 },
-  { name: 'Apr', bids: 12 },
-  { name: 'May', bids: 8 },
-  { name: 'Jun', bids: 15 },
-];
+// Removed static chartData
 
 export function Dashboard() {
   const { user, profile } = useAuthStore();
+  const { currency } = useAppStore();
   const [stats, setStats] = useState({
     activeBids: 0,
     wonAuctions: 0,
     interestedAuctions: 0
   });
   const [recentBids, setRecentBids] = useState<any[]>([]);
+  const [dynamicChartData, setDynamicChartData] = useState<{name: string, bids: number}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -36,22 +33,40 @@ export function Dashboard() {
       if (!user) return;
       setIsLoading(true);
 
-      const [bids, wonData, watchlistIds] = await Promise.all([
+      const [bids, wonData] = await Promise.all([
         auctionService.getUserBids(user.id),
-        auctionService.getWonAuctions(user.id),
-        auctionService.getUserWatchlistIds(user.id)
+        auctionService.getWonAuctions(user.id)
       ]);
 
       const activeBids = bids.filter(b => b.auction.status === 'active').length;
 
+      const mstcInterested = dashboardService.getInterestedAuctions(user.id);
+
       setStats({
         activeBids,
         wonAuctions: wonData.length,
-        interestedAuctions: watchlistIds.length
+        interestedAuctions: mstcInterested.length
       });
       
       // Top 3 most recent bids
       setRecentBids(bids.slice(0, 3));
+
+      // Process bids for chart data (last 6 months)
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const now = new Date();
+      const newChartData = [];
+      
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthName = months[d.getMonth()];
+        const count = bids.filter(b => {
+          const bd = new Date(b.created_at);
+          return bd.getMonth() === d.getMonth() && bd.getFullYear() === d.getFullYear();
+        }).length;
+        newChartData.push({ name: monthName, bids: count });
+      }
+      setDynamicChartData(newChartData);
+
       setIsLoading(false);
     }
     loadDashboardData();
@@ -80,40 +95,48 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
+        <Link 
+          to="/dashboard/bids"
+          className="block bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow cursor-pointer group"
+        >
           <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded bg-primary/10 text-primary flex items-center justify-center">
+            <div className="w-12 h-12 rounded bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
               <Gavel className="w-6 h-6" />
             </div>
             <span className="text-sm font-medium text-green-600 flex items-center">
               <TrendingUp className="w-4 h-4 mr-1" /> +2
             </span>
           </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Ongoing Bids</h3>
+          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1 group-hover:text-primary transition-colors">Ongoing Bids</h3>
           <p className="text-3xl font-extrabold text-foreground">{stats.activeBids}</p>
-        </div>
+        </Link>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
+        <Link 
+          to="/dashboard/bids"
+          className="block bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow cursor-pointer group"
+        >
           <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded bg-green-50 text-green-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded bg-green-50 text-green-600 flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-colors">
               <Trophy className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Won Auctions</h3>
+          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1 group-hover:text-green-600 transition-colors">Won Auctions</h3>
           <p className="text-3xl font-extrabold text-foreground">{stats.wonAuctions}</p>
-        </div>
+        </Link>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow">
+        <Link 
+          to="/dashboard/interested"
+          className="block bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow cursor-pointer group"
+        >
           <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded bg-red-50 text-red-650 flex items-center justify-center">
+            <div className="w-12 h-12 rounded bg-red-50 text-red-600 flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-colors">
               <Heart className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1">Interested Auctions</h3>
+          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1 group-hover:text-red-500 transition-colors">Interested Auctions</h3>
           <p className="text-3xl font-extrabold text-foreground">{stats.interestedAuctions}</p>
-        </div>
+        </Link>
       </div>
 
       {/* Main Content Split */}
@@ -134,7 +157,7 @@ export function Dashboard() {
           
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={dynamicChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorBids" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#004ac6" stopOpacity={0.3}/>
@@ -172,7 +195,7 @@ export function Dashboard() {
                   <li key={bid.id} className="py-4">
                     <div className="flex justify-between items-start mb-1">
                       <h4 className="text-sm font-bold text-foreground line-clamp-1 mr-4">{bid.auction.title}</h4>
-                      <span className="text-sm font-bold text-primary shrink-0">₹{bid.amount.toLocaleString()}</span>
+                      <span className="text-sm font-bold text-primary shrink-0 font-mono">{formatPrice(bid.amount, currency)}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-muted-foreground">REF: {bid.auction.reference_number}</span>

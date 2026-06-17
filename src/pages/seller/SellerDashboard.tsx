@@ -1,12 +1,15 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { IndianRupee, Gavel, Activity, Download, Plus, ArrowUpRight } from 'lucide-react';
+import { Gavel, Activity, Download, Plus, ArrowUpRight } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice, CURRENCIES } from '../../utils/currency';
 import { auctionService } from '../../services/auctionService';
 
 export function SellerDashboard() {
   const { user, profile } = useAuthStore();
+  const { currency } = useAppStore();
   const [analytics, setAnalytics] = useState({ totalRevenue: 0, activeAuctions: 0, totalBids: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -74,14 +77,13 @@ export function SellerDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
-              <IndianRupee className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center font-bold text-lg font-mono">
+              {CURRENCIES[currency]?.symbol || '₹'}
             </div>
           </div>
           <h3 className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-1">Total Expected Revenue</h3>
-          <p className="text-3xl font-extrabold text-slate-900 flex items-center">
-            <IndianRupee className="w-6 h-6 mr-1 text-slate-400" />
-            {analytics.totalRevenue.toLocaleString()}
+          <p className="text-3xl font-extrabold text-slate-900 flex items-center font-mono">
+            {formatPrice(analytics.totalRevenue, currency)}
           </p>
         </div>
 

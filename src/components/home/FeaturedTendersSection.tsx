@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Calendar, ArrowRight } from 'lucide-react';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 import { tenderService } from '../../services/tenderService';
 import type { Tender } from '../../types/database.types';
 
 export function FeaturedTendersSection() {
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { currency } = useAppStore();
 
   useEffect(() => {
     async function loadTenders() {
@@ -54,8 +57,8 @@ export function FeaturedTendersSection() {
                     <span className="text-xs font-bold bg-primary/20 text-primary px-2.5 py-0.5 rounded uppercase tracking-wide">
                       {tender.reference_number}
                     </span>
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      EMD: ₹{tender.emd_amount.toLocaleString()}
+                    <span className="text-xs font-semibold text-muted-foreground font-mono">
+                      EMD: {formatPrice(tender.emd_amount, currency)}
                     </span>
                   </div>
                   <h3 className="text-xl font-bold text-foreground mb-2">{tender.title}</h3>

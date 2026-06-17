@@ -1,10 +1,12 @@
 // @ts-nocheck
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, IndianRupee, MapPin, Tag } from 'lucide-react';
+import { Heart, MapPin, Tag } from 'lucide-react';
 import { CountdownTimer } from './CountdownTimer';
 import type { Auction } from '../../types/database.types';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 import { auctionService } from '../../services/auctionService';
 import clsx from 'clsx';
 
@@ -16,6 +18,7 @@ interface AuctionCardProps {
 
 export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = false }: AuctionCardProps) {
   const { isAuthenticated, user } = useAuthStore();
+  const { currency } = useAppStore();
   const navigate = useNavigate();
   const [isWatchlisted, setIsWatchlisted] = useState(isWatchlistedInitial);
   const [isToggling, setIsToggling] = useState(false);
@@ -99,9 +102,8 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
             </div>
             <div className="text-right ml-4 shrink-0">
               <p className="text-xs text-slate-500 uppercase font-medium mb-1">Starting Price</p>
-              <p className="text-lg font-bold text-slate-900 flex items-center justify-end">
-                <IndianRupee className="w-5 h-5 text-slate-400" />
-                {auction.starting_price.toLocaleString()}
+              <p className="text-lg font-extrabold text-slate-900 font-mono text-right">
+                {formatPrice(auction.starting_price, currency)}
               </p>
             </div>
           </div>
@@ -192,9 +194,8 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
         <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-end">
           <div>
             <p className="text-xs text-slate-500 uppercase font-medium mb-1">Starting Price</p>
-            <p className="text-lg font-bold text-slate-900 flex items-center">
-              <IndianRupee className="w-4 h-4 mr-0.5 text-slate-400" />
-              {auction.starting_price.toLocaleString()}
+            <p className="text-lg font-extrabold text-slate-900 font-mono">
+              {formatPrice(auction.starting_price, currency)}
             </p>
           </div>
           <div>

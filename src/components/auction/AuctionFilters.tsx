@@ -25,7 +25,9 @@ interface AuctionFiltersProps {
     locations?: string[];
     preBid?: string; 
     startDate?: string; 
-    endDate?: string; 
+    endDate?: string;
+    hasAssetDocuments?: boolean;
+    hasImages?: boolean;
   }) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -42,7 +44,9 @@ interface AuctionFiltersProps {
     locations?: string[];
     preBid?: string; 
     startDate?: string; 
-    endDate?: string; 
+    endDate?: string;
+    hasAssetDocuments?: boolean;
+    hasImages?: boolean;
   };
   activeTab?: 'commercial' | 'mstc';
   customCategories?: string[];
@@ -90,6 +94,8 @@ export function AuctionFilters({
   const [selectedPreBid, setSelectedPreBid] = useState<string>(initialFilters.preBid || 'all');
   const [startDate, setStartDate] = useState<string>(initialFilters.startDate || '');
   const [endDate, setEndDate] = useState<string>(initialFilters.endDate || '');
+  const [hasAssetDocuments, setHasAssetDocuments] = useState<boolean>(initialFilters.hasAssetDocuments || false);
+  const [hasImages, setHasImages] = useState<boolean>(initialFilters.hasImages || false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
@@ -123,6 +129,8 @@ export function AuctionFilters({
     setSelectedPreBid(initialFilters.preBid || 'all');
     setStartDate(initialFilters.startDate || '');
     setEndDate(initialFilters.endDate || '');
+    setHasAssetDocuments(initialFilters.hasAssetDocuments || false);
+    setHasImages(initialFilters.hasImages || false);
 
     if (initialFilters.startDate) {
       setCalendarMonth(new Date(initialFilters.startDate));
@@ -305,6 +313,8 @@ export function AuctionFilters({
       preBid: selectedPreBid !== 'all' ? selectedPreBid : undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
+      hasAssetDocuments: hasAssetDocuments || undefined,
+      hasImages: hasImages || undefined,
     });
     if (window.innerWidth < 1024) onClose();
   };
@@ -319,6 +329,8 @@ export function AuctionFilters({
     setSelectedPreBid('all');
     setStartDate('');
     setEndDate('');
+    setHasAssetDocuments(false);
+    setHasImages(false);
     onFilterChange({
       categoryIds: [],
       subcategory: undefined,
@@ -333,6 +345,8 @@ export function AuctionFilters({
       preBid: 'all',
       startDate: undefined,
       endDate: undefined,
+      hasAssetDocuments: undefined,
+      hasImages: undefined,
     });
   };
 
@@ -671,28 +685,71 @@ export function AuctionFilters({
         </div>
 
         {/* Filter By */}
-        {activeTab !== 'mstc' && (
+        <div className="mb-8">
+          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Filter By</h3>
+          <div className="space-y-3">
+            {[
+              { label: 'All Upcoming Auctions', value: 'all' },
+              { label: 'Registration Closes Soon', value: 'closes_soon' },
+              { label: 'Recently Added', value: 'recently_added' },
+            ].map((option) => (
+              <label key={option.value} className="flex items-center cursor-pointer">
+                <input 
+                  type="radio" 
+                  name="listingType" 
+                  checked={selectedListingType === option.value}
+                  onChange={() => setSelectedListingType(option.value)}
+                  className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
+                />
+                <span className="ml-3 text-sm text-slate-700">
+                  {option.label}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Has Assets Filter - MSTC only */}
+        {activeTab === 'mstc' && (
           <div className="mb-8">
-            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Filter By</h3>
+            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Asset Attachments</h3>
             <div className="space-y-3">
-              {[
-                { label: 'All Upcoming Auctions', value: 'all' },
-                { label: 'Registration Closes Soon', value: 'closes_soon' },
-                { label: 'Recently Added', value: 'recently_added' },
-              ].map((option) => (
-                <label key={option.value} className="flex items-center cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="listingType" 
-                    checked={selectedListingType === option.value}
-                    onChange={() => setSelectedListingType(option.value)}
-                    className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
-                  />
-                  <span className="ml-3 text-sm text-slate-700">
-                    {option.label}
-                  </span>
-                </label>
-              ))}
+              <label className="flex items-center cursor-pointer group">
+                <div
+                  onClick={() => setHasAssetDocuments(!hasAssetDocuments)}
+                  className={clsx(
+                    "w-5 h-5 rounded border-2 transition-all duration-150 flex items-center justify-center flex-shrink-0 cursor-pointer",
+                    hasAssetDocuments
+                      ? "border-primary bg-primary"
+                      : "border-slate-300 bg-white group-hover:border-slate-400"
+                  )}
+                >
+                  {hasAssetDocuments && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3 text-white">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+                <span className="ml-3 text-sm text-slate-700 select-none">Has Asset Documents</span>
+              </label>
+              <label className="flex items-center cursor-pointer group">
+                <div
+                  onClick={() => setHasImages(!hasImages)}
+                  className={clsx(
+                    "w-5 h-5 rounded border-2 transition-all duration-150 flex items-center justify-center flex-shrink-0 cursor-pointer",
+                    hasImages
+                      ? "border-primary bg-primary"
+                      : "border-slate-300 bg-white group-hover:border-slate-400"
+                  )}
+                >
+                  {hasImages && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3 text-white">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+                <span className="ml-3 text-sm text-slate-700 select-none">Has Photos / Images</span>
+              </label>
             </div>
           </div>
         )}
@@ -814,31 +871,29 @@ export function AuctionFilters({
         </div>
 
         {/* Pre-bid Requirement */}
-        {activeTab !== 'mstc' && (
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Pre-Bid Requirement</h3>
-            <div className="space-y-3">
-              {[
-                { label: 'All', value: 'all' },
-                { label: 'Pre-bid Required', value: 'yes' },
-                { label: 'No Pre-bid Required', value: 'no' },
-              ].map((option) => (
-                <label key={option.value} className="flex items-center cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="preBid" 
-                    checked={selectedPreBid === option.value}
-                    onChange={() => setSelectedPreBid(option.value)}
-                    className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
-                  />
-                  <span className="ml-3 text-sm text-slate-700">
-                    {option.label}
-                  </span>
-                </label>
-              ))}
-            </div>
+        <div className="mb-8">
+          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Pre-Bid Requirement</h3>
+          <div className="space-y-3">
+            {[
+              { label: 'All', value: 'all' },
+              { label: 'Pre-bid Required', value: 'yes' },
+              { label: 'No Pre-bid Required', value: 'no' },
+            ].map((option) => (
+              <label key={option.value} className="flex items-center cursor-pointer">
+                <input 
+                  type="radio" 
+                  name="preBid" 
+                  checked={selectedPreBid === option.value}
+                  onChange={() => setSelectedPreBid(option.value)}
+                  className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
+                />
+                <span className="ml-3 text-sm text-slate-700">
+                  {option.label}
+                </span>
+              </label>
+            ))}
           </div>
-        )}
+        </div>
 
         {/* Date Range */}
         <div className="mb-8">

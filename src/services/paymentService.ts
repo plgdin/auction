@@ -82,6 +82,8 @@ export const paymentService = {
     // Mock processing delay
     await new Promise(resolve => setTimeout(resolve, 2000));
 
+    const txRef = `DEP-${paymentMethod.toUpperCase().replace(/\s+/g, '-')}-${Date.now()}`;
+
     const { data, error } = await supabase
       .from('wallet_transactions')
       .insert([{
@@ -89,7 +91,7 @@ export const paymentService = {
         amount,
         transaction_type: 'deposit',
         status: 'completed',
-        reference_id: `MOCK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        reference_id: txRef,
         description: `Deposit via ${paymentMethod}`
       }])
       .select()

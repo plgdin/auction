@@ -12,11 +12,11 @@ export function Footer() {
             <Link to="/" className="flex items-center gap-2">
               <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain" />
               <span className="text-xl font-bold text-white tracking-tight">
-                Lelam e-Procurement
+                Lelam
               </span>
             </Link>
             <p className="text-sm text-slate-400 leading-relaxed mt-4">
-              The premier enterprise platform for secure, transparent, and efficient e-procurement and online auctions. Empowering businesses globally.
+              The premier enterprise platform for secure, transparent, and efficient online bidding. Empowering businesses globally.
             </p>
           </div>
 
@@ -87,7 +87,7 @@ export function Footer() {
 
         <div className="border-t border-slate-800 pt-8 mt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-slate-500">
-            &copy; {new Date().getFullYear()} Lelam. All rights reserved. Not affiliated with Auction Limited.
+            &copy; {new Date().getFullYear()} Lelam. All rights reserved.
           </p>
           <div className="flex space-x-4">
             {/* Social Icons Placeholder */}

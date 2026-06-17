@@ -1,6 +1,7 @@
-import { Link } from 'react-router-dom';
+import { Link, useRouteError } from 'react-router-dom';
 
 export function NotFound() {
+  const error = useRouteError();
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4">
       <h1 className="text-6xl font-extrabold text-primary mb-4">404</h1>
@@ -11,6 +12,11 @@ export function NotFound() {
       >
         Go back home
       </Link>
+      {!!error && (
+        <pre className="mt-8 p-4 bg-red-50 text-red-600 rounded-md max-w-2xl overflow-auto text-sm">
+          {error instanceof Error ? error.stack : (typeof error === 'string' ? error : JSON.stringify(error, null, 2))}
+        </pre>
+      )}
     </div>
   );
 }

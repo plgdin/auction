@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { tenderService } from '../services/tenderService';
 import { useAuthStore } from '../store/authStore';
+import { useAppStore } from '../store/appStore';
+import { formatPrice } from '../utils/currency';
 import { TenderSubmissionModal } from '../components/tender/TenderSubmissionModal';
 import type { Tender, TenderDocument } from '../types/database.types';
 import clsx from 'clsx';
@@ -14,6 +16,7 @@ import clsx from 'clsx';
 export function TenderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { currency } = useAppStore();
   const { isAuthenticated } = useAuthStore();
   
   const [tender, setTender] = useState<Tender | null>(null);
@@ -125,11 +128,11 @@ export function TenderDetail() {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">EMD Amount</p>
-              <p className="text-sm font-bold text-slate-900">₹{tender.emd_amount.toLocaleString()}</p>
+              <p className="text-sm font-bold text-slate-900 font-mono">{formatPrice(tender.emd_amount, currency)}</p>
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Document Fee</p>
-              <p className="text-sm font-bold text-slate-900">₹{tender.document_fee.toLocaleString()}</p>
+              <p className="text-sm font-bold text-slate-900 font-mono">{formatPrice(tender.document_fee, currency)}</p>
             </div>
           </div>
         </div>

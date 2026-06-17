@@ -2,19 +2,25 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
-  Heart, Share2, Tag, MapPin, FileText, CheckCircle2, ChevronRight 
+  Heart, Share2, Tag, MapPin, FileText, CheckCircle2, ChevronRight, Copy, FilePlus
 } from 'lucide-react';
 import { auctionService } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
+import { useAppStore } from '../store/appStore';
+import { formatPrice } from '../utils/currency';
 import { ImageGallery } from '../components/auction/ImageGallery';
 import { BiddingPanel } from '../components/auction/BiddingPanel';
+import { MarketValuationPanel } from '../components/auction/MarketValuationPanel';
 import { useAuctionRealtime } from '../hooks/useAuctionRealtime';
 import type { Auction, AuctionImage, AuctionDocument } from '../types/database.types';
 import clsx from 'clsx';
+import { useQuoteStore } from '../store/quoteStore';
+import { toast } from 'react-hot-toast';
 
 export function AuctionDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { currency } = useAppStore();
   const { user, isAuthenticated } = useAuthStore();
   
   const [initialAuction, setInitialAuction] = useState<Auction | null>(null);
@@ -130,6 +136,20 @@ function AuctionDetailInner({
 }: any) {
   const { auction, bids, currentMaxBid } = useAuctionRealtime(initialAuction);
   const [activeTab, setActiveTab] = useState<'details' | 'terms' | 'documents'>('details');
+  const [copiedRefNum, setCopiedRefNum] = useState(false);
+
+  const addItemToActiveQuote = useQuoteStore(state => state.addItemToActiveQuote);
+
+  const handleAddToQuote = () => {
+    addItemToActiveQuote({
+      description: auction.title,
+      qty: 1,
+      unit: 'Lot',
+      price: auction.starting_bid || 0,
+      taxRate: 18,
+    });
+    toast.success(`Added "${auction.title}" to quote`);
+  };
 
   const isActive = auction.status === 'active';
 
@@ -159,8 +179,23 @@ function AuctionDetailInner({
               )}>
                 {auction.status}
               </span>
-              <span className="text-sm font-semibold text-primary uppercase tracking-wider flex items-center bg-primary/10 px-3 py-1 rounded-full">
-                <Tag className="w-3.5 h-3.5 mr-1.5" /> REF: {auction.reference_number}
+              <span className="text-sm font-semibold text-primary uppercase tracking-wider flex items-center bg-primary/10 px-3 py-1 rounded-full gap-1.5">
+                <Tag className="w-3.5 h-3.5" /> REF: {auction.reference_number}
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(auction.reference_number);
+                    setCopiedRefNum(true);
+                    setTimeout(() => setCopiedRefNum(false), 2000);
+                  }}
+                  className="p-0.5 rounded hover:bg-primary/20 text-primary-600 hover:text-primary transition-colors cursor-pointer flex items-center justify-center"
+                  title="Copy Reference ID"
+                >
+                  {copiedRefNum ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 animate-scale-up" />
+                  ) : (
+                    <Copy className="w-3 h-3" />
+                  )}
+                </button>
               </span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight">
@@ -173,6 +208,13 @@ function AuctionDetailInner({
           </div>
           
           <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={handleAddToQuote}
+              className="flex items-center justify-center w-12 h-12 bg-white border border-slate-200 rounded-full shadow-sm text-slate-600 hover:text-primary hover:border-primary/50 transition-colors"
+              title="Add to Quote"
+            >
+              <FilePlus className="w-5 h-5" />
+            </button>
             <button
               onClick={handleShare}
               className="flex items-center justify-center w-12 h-12 bg-white border border-slate-200 rounded-full shadow-sm text-slate-600 hover:text-primary hover:border-primary/50 transition-colors"
@@ -192,10 +234,10 @@ function AuctionDetailInner({
         </div>
 
         {/* Main Split Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
           
-          {/* Left: Gallery */}
-          <div className="lg:col-span-2">
+          {/* Left: Gallery & Details */}
+          <div className="lg:col-span-6 xl:col-span-7">
             <ImageGallery images={images} />
             
             {/* Tabs Section */}
@@ -250,7 +292,7 @@ function AuctionDetailInner({
                                 <FileText className="w-5 h-5" />
                               </div>
                               <div>
-                                <p className="font-semibold text-slate-900">{doc.document_type}</p>
+                                <p className="font-semibold text-slate-900">{doc.name}</p>
                                 <p className="text-sm text-slate-500">System verified document</p>
                               </div>
                             </div>
@@ -272,8 +314,13 @@ function AuctionDetailInner({
             </div>
           </div>
 
+          {/* Middle: Market Intelligence Panel */}
+          <div className="lg:col-span-3 xl:col-span-3">
+            <MarketValuationPanel auction={auction} currentBid={currentMaxBid || auction.starting_price} />
+          </div>
+
           {/* Right: Bidding Panel */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-3 xl:col-span-2">
             <BiddingPanel auction={auction} bids={bids} currentMaxBid={currentMaxBid} />
           </div>
 
@@ -303,8 +350,8 @@ function AuctionDetailInner({
                       {rel.title}
                     </h3>
                     <div className="mt-auto pt-3 border-t border-slate-50 flex justify-between items-center">
-                      <p className="text-sm font-bold text-slate-900 flex items-center">
-                        ₹{rel.starting_price.toLocaleString()}
+                      <p className="text-sm font-bold text-slate-900 flex items-center font-mono">
+                        {formatPrice(rel.starting_price, currency)}
                       </p>
                       <span className="text-xs font-bold text-slate-500">View</span>
                     </div>

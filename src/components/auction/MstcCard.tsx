@@ -1,127 +1,49 @@
-import { Eye, Download, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark } from 'lucide-react';
+﻿import { useState } from 'react';
+import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart } from 'lucide-react';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
+import { generateCatalogSummary, parsePdfDateTime } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
 
 interface MstcCardProps {
   item: MstcSanitizedAuction;
   isGrid?: boolean;
   onPreview: (item: MstcSanitizedAuction) => void;
+  isInterested?: boolean;
+  onInterestedToggle?: () => void;
 }
 
-interface CatalogSummary {
-  overview: string;
-  scopeOfWork: string;
-  depositDetails: {
-    emd: string;
-    preBidDdg: string;
-  };
-  preview_image_url?: string | null;
-  extracted_images?: string[];
-}
-
-const generateCatalogSummary = (item: MstcSanitizedAuction, shortId: string): CatalogSummary => {
-  let fallbackPreBid = '₹50,000';
-  const shortIdNum = parseInt(shortId, 10);
-  if (!isNaN(shortIdNum)) {
-    if (shortIdNum % 4 === 0) fallbackPreBid = '₹1,00,000';
-    else if (shortIdNum % 4 === 1) fallbackPreBid = '₹25,000';
-    else if (shortIdNum % 4 === 2) fallbackPreBid = '₹1,50,000';
-    else fallbackPreBid = '₹50,000';
-  }
-
-  if (item.raw_materials_text) {
-    try {
-      const parsed = JSON.parse(item.raw_materials_text);
-      if (parsed && typeof parsed === 'object') {
-        let emdVal = parsed.depositDetails?.emd || '10% of total bid value';
-        let preBidDdg = parsed.depositDetails?.preBidDdg;
-
-        if (emdVal.includes('%')) {
-          const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
-          if (percentMatch) {
-            const percentVal = parseFloat(percentMatch[1]);
-            if (percentVal > 100) {
-              emdVal = '10% of total bid value';
-              preBidDdg = 'Not required for registered MSME bidders';
-            }
-          }
-        } else {
-          const numMatch = emdVal.match(/([\d\.]+)/);
-          if (numMatch) {
-            const val = parseFloat(numMatch[1]);
-            if (val > 100) {
-              preBidDdg = `₹${val.toLocaleString('en-IN')}`;
-              emdVal = '10% of total bid value';
-            }
-          }
-        }
-
-        const finalPreBid = preBidDdg && !preBidDdg.toLowerCase().includes('not required')
-          ? preBidDdg
-          : fallbackPreBid;
-
-        return {
-          overview: parsed.overview || `Disposal of materials from ${item.seller_name} located at ${item.location || 'various sites'}.`,
-          scopeOfWork: parsed.scopeOfWork || `Assets and scrap materials offered strictly on an "As-Is-Where-Is" basis.`,
-          depositDetails: {
-            emd: emdVal,
-            preBidDdg: finalPreBid
-          },
-          preview_image_url: parsed.preview_image_url || null,
-          extracted_images: parsed.extracted_images || []
-        };
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  const cat = (item.category_name || '').toUpperCase();
-  let overview = `This auction is conducted by MSTC on behalf of ${item.seller_name} for the disposal of surplus assets, equipment, and scrap materials located at ${item.location || 'various sites'}.`;
-  let scopeOfWork = `Disposal and clearance of decommissioned industrial assets and general scrap material. All materials are offered strictly on an "As-Is-Where-Is" basis.`;
-  let emd = '10% of total bid value';
-
-  if (cat.includes('ROADWAYS') || cat.includes('TRANSPORT')) {
-    overview = `Disposal of unserviceable motor vehicles, bus scrap, tyre assemblies, and associated automobile waste from ${item.seller_name} depots.`;
-    scopeOfWork = `Complete dismantling, lifting, and clearing of designated transport assets from premises.`;
-  } else if (cat.includes('COPPER') || cat.includes('CABLE') || cat.includes('ELECTRICAL')) {
-    overview = `Disposal of obsolete electrical transformers, high-tension copper cables, stator coils, and copper scrap windings.`;
-    scopeOfWork = `Lifting of copper and electrical scrap material strictly under supervision of site engineer.`;
-  }
-
-  return {
-    overview,
-    scopeOfWork,
-    depositDetails: {
-      emd,
-      preBidDdg: fallbackPreBid
-    },
-    preview_image_url: null,
-    extracted_images: []
-  };
-};
-
-export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
+export function MstcCard({ item, isGrid = true, onPreview, isInterested = false, onInterestedToggle }: MstcCardProps) {
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
-  const summary = generateCatalogSummary(item, shortId);
+  const summary = generateCatalogSummary(item);
+  const hasOtherMedia = (summary.extracted_images || []).length > 0;
 
   const parts = item.mstc_auction_number.split('/');
   const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
   const regionalOfficeName = expandMstcOffice(rawOffice);
   const locationName = expandMstcOffice(item.location);
 
-  const auctionDate = new Date(item.opening_date);
-  const biddingCloseDate = new Date(auctionDate.getTime() - 14 * 24 * 60 * 60 * 1000);
+  // Parse start and close dates
+  const parsedStartDate = summary.auctionStartTime ? parsePdfDateTime(summary.auctionStartTime) : null;
+  const auctionDate = parsedStartDate || new Date(item.opening_date);
+  
+  const parsedCloseDate = summary.auctionCloseTime ? parsePdfDateTime(summary.auctionCloseTime) : null;
+  
   const now = new Date();
-  const diffMs = biddingCloseDate.getTime() - now.getTime();
-  const isClosed = diffMs <= 0;
+  const diffMs = auctionDate.getTime() - now.getTime();
+  const isStarted = diffMs <= 0;
+  const isClosed = parsedCloseDate ? (now.getTime() > parsedCloseDate.getTime()) : false;
+  
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const isUrgent = diffDays < 3;
   const isWarning = diffDays < 7;
 
   const timeLeftBadge = isClosed ? (
+    <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-slate-200 text-slate-500 bg-slate-50">
+      Bidding Closed
+    </span>
+  ) : isStarted ? (
     <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-rose-200 text-rose-700 bg-rose-50">
       Bidding Started
     </span>
@@ -137,11 +59,47 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
     </span>
   );
 
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(item.mstc_auction_number);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const cardHeader = (
-    <div className="flex justify-between items-center gap-4 mb-3">
-      <span className="text-xs font-semibold text-slate-500 font-mono bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg">
-        Ref ID: {shortId}
-      </span>
+    <div className="flex justify-between items-start gap-4 mb-3">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+          <span className="text-xs font-semibold text-slate-500 font-mono">
+            Ref ID: {shortId}
+          </span>
+          <button
+            onClick={handleCopy}
+            className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+            title="Copy full reference number to clipboard"
+          >
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+          </button>
+        </div>
+      </div>
+      <div className="flex flex-col items-end gap-1.5">
+        {(item.sanitized_document_path || (summary.extracted_images && summary.extracted_images.some(url => url.toLowerCase().includes('.pdf')))) && (
+          <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+            Asset documents available
+          </span>
+        )}
+        {hasOtherMedia && (
+          <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+            Images available
+          </span>
+        )}
+      </div>
     </div>
   );
 
@@ -150,16 +108,18 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/50 transition-all group p-5 flex flex-col sm:flex-row gap-5 justify-between">
         {(() => {
-          const displayImage = (summary.extracted_images && summary.extracted_images.length > 0)
-            ? summary.extracted_images[0]
-            : summary.preview_image_url;
+          const displayImage = summary.preview_image_url
+            ? summary.preview_image_url
+            : (summary.extracted_images && summary.extracted_images.length > 0)
+              ? summary.extracted_images[0]
+              : null;
 
           return displayImage ? (
             <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
               <img 
                 src={displayImage} 
                 alt="Catalog Image" 
-                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
               />
             </div>
           ) : (
@@ -185,12 +145,12 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
                   {subCat ? (
                     <>
                       <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCat}</div>
-                      <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                      <h3 className="text-lg font-bold text-slate-955 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
                         {subCat}
                       </h3>
                     </>
                   ) : (
-                    <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                    <h3 className="text-lg font-bold text-slate-955 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
                       {mainCat}
                     </h3>
                   )}
@@ -228,11 +188,11 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
               <div className="space-y-2 text-xs border-l border-slate-100 pl-4">
                 <div className="flex items-center text-slate-655">
                   <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Date: <strong className="text-slate-700 font-semibold">{auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
+                  <span>Date: <strong className="text-slate-700 font-semibold">{parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
                 </div>
                 <div className="flex items-center text-slate-655">
-                  <Clock className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Starts: <strong className="text-slate-700 font-semibold">{biddingCloseDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
+                  <Eye className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                  <span>Inspection: <strong className="text-slate-700 font-semibold">{summary.inspectionSchedule || 'N/A'}</strong></span>
                 </div>
               </div>
             </div>
@@ -245,31 +205,34 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
 
             <div className="flex gap-2 w-full sm:w-auto">
               {item.sanitized_document_path ? (
-                <>
-                  <button
-                    onClick={() => onPreview(item)}
-                    className="flex-grow sm:flex-none inline-flex justify-center items-center py-2 px-5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    View Details
-                  </button>
-                  <a
-                    href={item.sanitized_document_path}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-250 text-slate-655 hover:bg-slate-50 hover:border-slate-350 hover:text-slate-900 transition-colors cursor-pointer"
-                    title="Download PDF Catalog"
-                  >
-                    <Download className="w-4 h-4" />
-                  </a>
-                </>
+                <button
+                  onClick={() => onPreview(item)}
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center py-2 px-5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View Details
+                </button>
               ) : (
                 <button
                   disabled
-                  className="w-full inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
                 >
                   <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
                   PDF Processing...
+                </button>
+              )}
+
+              {onInterestedToggle && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onInterestedToggle();
+                  }}
+                  className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
+                  title={isInterested ? "Remove from interested list" : "Add to interested list"}
+                >
+                  <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
                 </button>
               )}
             </div>
@@ -283,18 +246,23 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full p-5 justify-between">
       <div>
-        <div className="h-[140px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
+        <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
           {(() => {
-            const displayImage = (summary.extracted_images && summary.extracted_images.length > 0)
-              ? summary.extracted_images[0]
-              : summary.preview_image_url;
+            const displayImage = summary.preview_image_url
+              ? summary.preview_image_url
+              : (summary.extracted_images && summary.extracted_images.length > 0)
+                ? summary.extracted_images[0]
+                : null;
 
             return displayImage ? (
-              <img 
-                src={displayImage} 
-                alt="Catalog Image" 
-                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-              />
+              <>
+                <img 
+                  src={displayImage} 
+                  alt="Catalog Image" 
+                  className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
+                />
+
+              </>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
                 <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -329,37 +297,43 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
           );
         })()}
 
-        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4 space-y-2 text-xs">
-          <div className="flex items-center text-slate-655 justify-between">
-            <span className="text-slate-400">Regional Office:</span>
-            <span className="truncate font-semibold text-slate-705 max-w-[200px]" title={regionalOfficeName}>
+        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs">
+          <div className="flex flex-col min-w-0">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Office</span>
+            <span className="font-bold text-slate-700 truncate" title={regionalOfficeName}>
               {regionalOfficeName}
             </span>
           </div>
-          {item.location && (
-            <div className="flex items-center text-slate-655 justify-between">
-              <span className="text-slate-400">Location:</span>
-              <span className="truncate font-semibold text-slate-705 max-w-[200px]" title={locationName}>{locationName}</span>
-            </div>
-          )}
-          <div className="flex items-center text-slate-655 justify-between">
-            <span className="text-slate-400">EMD Required:</span>
-            <span className="font-semibold text-slate-705 truncate max-w-[200px]" title={summary.depositDetails.emd}>{summary.depositDetails.emd}</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Location</span>
+            <span className="font-bold text-slate-700 truncate" title={locationName || 'N/A'}>
+              {locationName || 'N/A'}
+            </span>
           </div>
-          <div className="flex items-center text-slate-655 justify-between">
-            <span className="text-slate-400">Pre-bid EMD:</span>
-            <span className="font-semibold text-slate-705 truncate max-w-[200px]" title={summary.depositDetails.preBidDdg}>{summary.depositDetails.preBidDdg}</span>
+          <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">EMD Required</span>
+            <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.emd}>
+              {summary.depositDetails.emd}
+            </span>
+          </div>
+          <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
+            <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.preBidDdg}>
+              {summary.depositDetails.preBidDdg}
+            </span>
           </div>
         </div>
 
         <div className="space-y-1.5 mb-4 text-xs text-slate-500 border-t border-slate-50 pt-3">
           <div className="flex justify-between">
             <span>Auction Date:</span>
-            <span className="font-semibold text-slate-700">{auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
+            <span className="font-semibold text-slate-700">
+              {parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}
+            </span>
           </div>
           <div className="flex justify-between">
-            <span>Bidding Starts:</span>
-            <span className="font-semibold text-slate-700">{biddingCloseDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
+            <span>Inspection:</span>
+            <span className="font-semibold text-slate-700">{summary.inspectionSchedule || 'N/A'}</span>
           </div>
         </div>
       </div>
@@ -372,31 +346,34 @@ export function MstcCard({ item, isGrid = true, onPreview }: MstcCardProps) {
 
         <div className="flex gap-2 w-full mt-1">
           {item.sanitized_document_path ? (
-            <>
-              <button
-                onClick={() => onPreview(item)}
-                className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                View Details
-              </button>
-              <a
-                href={item.sanitized_document_path}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-250 text-slate-655 hover:bg-slate-50 hover:border-slate-350 hover:text-slate-900 transition-colors cursor-pointer"
-                title="Download PDF Catalog"
-              >
-                <Download className="w-4 h-4" />
-              </a>
-            </>
+            <button
+              onClick={() => onPreview(item)}
+              className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              View Details
+            </button>
           ) : (
             <button
               disabled
-              className="w-full inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
+              className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
             >
               <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
               PDF Processing...
+            </button>
+          )}
+
+          {onInterestedToggle && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onInterestedToggle();
+              }}
+              className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
+              title={isInterested ? "Remove from interested list" : "Add to interested list"}
+            >
+              <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
             </button>
           )}
         </div>

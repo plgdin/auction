@@ -1,13 +1,40 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Calendar, IndianRupee, ArrowRight } from 'lucide-react';
+import { FileText, Calendar, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 import { tenderService } from '../../services/tenderService';
 import clsx from 'clsx';
 
+function TenderRowSkeleton() {
+  return (
+    <tr className="animate-pulse">
+      <td className="px-6 py-4 space-y-2">
+        <div className="h-3 bg-slate-200 rounded w-20" />
+        <div className="h-4 bg-slate-250 rounded w-40" />
+      </td>
+      <td className="px-6 py-4">
+        <div className="h-4 bg-slate-200 rounded w-24" />
+      </td>
+      <td className="px-6 py-4 space-y-1">
+        <div className="h-4 bg-slate-200 rounded w-20" />
+        <div className="h-3 bg-slate-150 rounded w-12" />
+      </td>
+      <td className="px-6 py-4">
+        <div className="h-6 bg-slate-200 rounded w-24" />
+      </td>
+      <td className="px-6 py-4 text-right">
+        <div className="h-4 bg-slate-200 rounded w-10 ml-auto" />
+      </td>
+    </tr>
+  );
+}
+
 export function MyTenders() {
   const { user } = useAuthStore();
+  const { currency } = useAppStore();
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,8 +69,23 @@ export function MyTenders() {
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         {isLoading ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                  <th className="px-6 py-4 font-semibold">Tender Details</th>
+                  <th className="px-6 py-4 font-semibold">Submission Date</th>
+                  <th className="px-6 py-4 font-semibold">Your Bid</th>
+                  <th className="px-6 py-4 font-semibold">Tender Status</th>
+                  <th className="px-6 py-4 font-semibold text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {[...Array(3)].map((_, i) => (
+                  <TenderRowSkeleton key={i} />
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : submissions.length === 0 ? (
           <div className="text-center py-20 bg-slate-50">
@@ -82,9 +124,8 @@ export function MyTenders() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center font-bold text-slate-900">
-                        <IndianRupee className="w-4 h-4 mr-0.5 text-slate-400" />
-                        {sub.financial_bid ? sub.financial_bid.toLocaleString() : 'N/A'}
+                      <div className="flex items-center font-bold text-slate-900 font-mono">
+                        {sub.financial_bid ? formatPrice(sub.financial_bid, currency) : 'N/A'}
                       </div>
                       <span className="text-xs text-slate-500 uppercase">Financial</span>
                     </td>

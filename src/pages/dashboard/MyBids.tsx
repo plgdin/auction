@@ -3,14 +3,39 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Gavel, ArrowRight, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
+import { formatPrice } from '../../utils/currency';
 import { auctionService } from '../../services/auctionService';
 import type { Auction } from '../../types/database.types';
 import clsx from 'clsx';
 
 type TabType = 'active' | 'previous';
 
+function BidItemSkeleton() {
+  return (
+    <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6 animate-pulse">
+      <div className="flex-1 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <div className="h-4 bg-slate-200 rounded w-12" />
+          <div className="h-3.5 bg-slate-200 rounded w-24" />
+        </div>
+        <div className="h-5 bg-slate-250 rounded w-1/2" />
+        <div className="h-3.5 bg-slate-200 rounded w-32" />
+      </div>
+      <div className="w-full sm:w-auto flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3">
+        <div className="space-y-1.5 text-right">
+          <div className="h-2.5 bg-slate-200 rounded w-20" />
+          <div className="h-6 bg-slate-200 rounded w-28" />
+        </div>
+        <div className="h-9 bg-slate-200 rounded w-28" />
+      </div>
+    </div>
+  );
+}
+
 export function MyBids() {
   const { user } = useAuthStore();
+  const { currency } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [bids, setBids] = useState<any[]>([]); // Includes bid info + auction
   const [isLoading, setIsLoading] = useState(true);
@@ -28,7 +53,7 @@ export function MyBids() {
   }, [user]);
 
   const getActiveBids = () => bids.filter(b => b.auction.status === 'active');
-  const getPreviousBids = () => bids.filter(b => b.auction.status === 'ended');
+  const getPreviousBids = () => bids.filter(b => b.auction.status === 'closed' || b.auction.status === 'cancelled');
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -61,8 +86,10 @@ export function MyBids() {
         {/* Content */}
         <div className="p-0">
           {isLoading ? (
-            <div className="flex justify-center py-20">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="divide-y divide-slate-100">
+              {[...Array(3)].map((_, i) => (
+                <BidItemSkeleton key={i} />
+              ))}
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
@@ -94,7 +121,7 @@ export function MyBids() {
                       <div className="w-full sm:w-auto bg-slate-50 sm:bg-transparent p-4 sm:p-0 rounded-lg sm:rounded-none flex flex-row sm:flex-col justify-between sm:justify-center items-center sm:items-end sm:text-right border sm:border-none border-slate-200">
                         <div>
                           <p className="text-xs text-slate-500 uppercase font-bold mb-1">Your Highest Bid</p>
-                          <p className="text-xl font-bold text-primary">₹{bid.amount.toLocaleString()}</p>
+                          <p className="text-xl font-bold text-primary font-mono">{formatPrice(bid.amount, currency)}</p>
                         </div>
                         <Link 
                           to={`/auctions/${bid.auction.id}`}
@@ -138,7 +165,7 @@ export function MyBids() {
                         </div>
                         <div className="w-full sm:w-auto text-right">
                            <p className="text-xs text-slate-500 uppercase font-bold mb-1">Your Bid</p>
-                           <p className="text-lg font-bold text-slate-700">₹{bid.amount.toLocaleString()}</p>
+                           <p className="text-lg font-bold text-slate-700 font-mono">{formatPrice(bid.amount, currency)}</p>
                         </div>
                       </div>
                     );

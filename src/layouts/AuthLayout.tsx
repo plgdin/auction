@@ -1,23 +1,74 @@
-import { Outlet } from 'react-router-dom';
-import { Link } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 
 export function AuthLayout() {
-  return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link to="/" className="text-3xl font-bold text-primary tracking-tight">
-          Lelam
-        </Link>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900">
-          Sign in to your account
-        </h2>
-      </div>
+  const subtitlePhrase = 'Everything you need in a single platform.';
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <Outlet />
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-between relative overflow-hidden font-sans">
+      {/* Split screen container */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2">
+        
+        {/* Branding Column (Left) */}
+        <div className="hidden md:flex bg-slate-900 relative overflow-hidden flex-col justify-between p-16 text-white">
+          {/* Background decoration */}
+          <div className="absolute inset-0 z-0">
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-primary-950 mix-blend-multiply" />
+            <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-800/10 to-transparent" />
+          </div>
+
+          <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center">
+            {/* Circular badge for Logo */}
+            <div className="w-24 h-24 bg-slate-800/40 backdrop-blur-md rounded-3xl flex items-center justify-center border border-white/10 shadow-2xl mb-8">
+              <img src="/logo.png" alt="Logo" className="w-14 h-14 object-contain brightness-0 invert filter drop-shadow-md" />
+            </div>
+            
+            <h1 className="text-4xl font-black text-white tracking-tight mb-4">
+              Lelam
+            </h1>
+            
+            <p className="text-2xl font-bold text-primary-400 max-w-md leading-relaxed">
+              {subtitlePhrase}
+            </p>
+          </div>
+
+          {/* Footer of the branding column */}
+          <div className="relative z-10 flex justify-between items-center border-t border-slate-800/50 pt-6 mt-6">
+            {/* Progress lines */}
+            <div className="flex gap-1.5">
+              <span className="w-8 h-1 rounded bg-primary-500"></span>
+              <span className="w-4 h-1 rounded bg-slate-700"></span>
+              <span className="w-4 h-1 rounded bg-slate-700"></span>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Column (Right) */}
+        <div className="bg-white flex flex-col justify-center items-center py-16 px-6 sm:px-12 lg:px-20">
+          <div className="w-full max-w-md">
+            {/* Small branding for mobile views only */}
+            <div className="md:hidden flex flex-col items-center mb-8">
+              <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain filter drop-shadow-md" />
+              <span className="text-2xl font-black text-slate-900 tracking-tight mt-2">
+                Lelam
+              </span>
+            </div>
+            
+            <Outlet />
+          </div>
         </div>
       </div>
+
+      {/* Main Footer */}
+      <footer className="bg-slate-950 text-slate-500 py-5 px-6 md:px-16 flex flex-col md:flex-row justify-between items-center text-xs border-t border-slate-900 gap-4">
+        <div>
+          &copy; {new Date().getFullYear()} Lelam. All rights reserved.
+        </div>
+        <div className="flex gap-6 font-medium">
+          <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-slate-300 transition-colors">Terms of Service</Link>
+          <Link to="/support" className="hover:text-slate-300 transition-colors">Contact Support</Link>
+        </div>
+      </footer>
     </div>
   );
 }

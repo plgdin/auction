@@ -13,7 +13,7 @@ export function HeroSection() {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
         <div className="max-w-3xl">
           <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl mb-6 leading-tight">
-            Enterprise e-Procurement <br className="hidden sm:inline" />& Forward Auctions
+            Lelam Bidding <br className="hidden sm:inline" />& Forward Auctions
           </h1>
           <p className="mt-4 text-lg sm:text-xl text-slate-300 max-w-2xl leading-relaxed mb-10">
             A secure, transparent, and highly scalable platform for government and corporate asset disposal, procurement, and competitive bidding.
