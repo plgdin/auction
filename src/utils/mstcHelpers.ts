@@ -133,6 +133,7 @@ export interface CatalogSummary {
   inspectionSchedule?: string;
   auctionStartTime?: string;
   auctionCloseTime?: string;
+  totalMarketValue?: number;
 }
 
 export const parsePdfDateTime = (dateTimeStr: string): Date | null => {

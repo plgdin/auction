@@ -19,13 +19,7 @@ export const getNumericPrice = (priceStr: string): number => {
   return match ? parseFloat(match[1]) : 0;
 };
 
-const hasWord = (text: string, kw: string): boolean => {
-  if (kw.includes(' ')) {
-    return text.includes(kw);
-  }
-  const regex = new RegExp(`\\b${kw}(?:s|es)?\\b`, 'i');
-  return regex.test(text);
-};
+
 
 import { getEstimatedMarketPrice } from './mstcHelpers';
 
