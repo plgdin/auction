@@ -1370,7 +1370,8 @@ export const MstcSearchService = {
       let queryBuilder = supabase
         .from('mstc_auctions')
         .select('*')
-        .eq('asset_status', 'completed');
+        .eq('asset_status', 'completed')
+        .limit(10000);
 
       if (filters?.sellers && filters.sellers.length > 0) {
         queryBuilder = queryBuilder.in('seller_name', filters.sellers);
@@ -1789,7 +1790,8 @@ export const MstcSearchService = {
       const { data, error } = await supabase
         .from('mstc_auctions')
         .select('category_name, seller_name, location, mstc_auction_number')
-        .eq('asset_status', 'completed'); // Match filter dropdown choices with visible completed catalogs
+        .eq('asset_status', 'completed')
+        .limit(10000); // Match filter dropdown choices with visible completed catalogs
       
       if (error) throw error;
       
