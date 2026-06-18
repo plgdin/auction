@@ -334,42 +334,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
         parsed.depositDetails.preBidDdg = finalPreBid;
 
         if (parsed.items && Array.isArray(parsed.items)) {
-          parsed.items = parsed.items.map((lot: any) => {
-            let desc = lot.description || '';
-            if (desc && /^\d+$/.test(desc.trim())) {
-              desc = item.category_name || 'Auction Lot Items';
-            }
-            desc = expandAbbreviations(desc);
-
-            let tax = lot.taxRate || '';
-            if (tax) {
-              if (tax.includes('%')) {
-                const taxMatch = tax.match(/([\d\.]+)\s*%/);
-                if (taxMatch && parseFloat(taxMatch[1]) > 100) {
-                  tax = 'As Applicable GST';
-                }
-              }
-            }
-
-            // Correctly parse and preserve db market price if it's not a placeholder
-            let mPrice = lot.marketPrice || '';
-            let parsedPrice = 0;
-            if (mPrice) {
-              const cleanP = mPrice.replace(/,/g, '');
-              const match = cleanP.match(/₹\s*(\d+)/);
-              parsedPrice = match ? parseInt(match[1], 10) : 0;
-            }
-            if (parsedPrice <= 1) {
-              mPrice = getEstimatedMarketPrice(desc, item.category_name, lot.qty, lot.unit);
-            }
-
-            return {
-              ...lot,
-              description: desc,
-              taxRate: tax,
-              marketPrice: mPrice
-            };
-          });
+          parsed.items = flattenCatalogItems(parsed.items, item.category_name);
         }
 
         const finalInspectionSchedule = parsed.inspectionSchedule || defaultInspectionSchedule;
