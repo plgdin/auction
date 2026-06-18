@@ -1802,13 +1802,32 @@ export const MstcSearchService = {
     regionalOffices: string[];
   }> {
     try {
-      const { data, error } = await supabase
-        .from('mstc_auctions')
-        .select('category_name, seller_name, location, mstc_auction_number')
-        .eq('asset_status', 'completed')
-        .limit(10000); // Match filter dropdown choices with visible completed catalogs
-      
-      if (error) throw error;
+      let allData: any[] = [];
+      let pageIndex = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('mstc_auctions')
+          .select('category_name, seller_name, location, mstc_auction_number')
+          .eq('asset_status', 'completed')
+          .range(pageIndex * pageSize, (pageIndex + 1) * pageSize - 1);
+          
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData.push(...data);
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            pageIndex++;
+          }
+        }
+      }
+
+      const data = allData;
       
       const categories = new Set<string>();
       const subcategoriesMap: Record<string, Set<string>> = {};

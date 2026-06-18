@@ -35,6 +35,50 @@ const localApiPlugin = () => ({
   name: 'local-api-plugin',
   configureServer(server: any) {
     server.middlewares.use((req: any, res: any, next: any) => {
+      // Route serverless API endpoints in local dev server
+      if (req.url) {
+        const parsedUrl = new URL(req.url, 'http://localhost');
+        const pathname = parsedUrl.pathname;
+
+        if (
+          pathname === '/api/users' || 
+          pathname === '/api/pdf' || 
+          pathname === '/api/scraper/reset-failed' || 
+          pathname === '/api/scraper/reset-single' ||
+          pathname === '/api/scraper/unlock-processing'
+        ) {
+          // Add Vercel response helper methods
+          res.status = (code: number) => {
+            res.statusCode = code;
+            return res;
+          };
+          res.json = (data: any) => {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(data));
+            return res;
+          };
+          res.send = (data: any) => {
+            res.end(data);
+            return res;
+          };
+
+          if (pathname === '/api/users') {
+            import('./api/users.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/pdf') {
+            import('./api/pdf.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (
+            pathname === '/api/scraper/reset-failed' || 
+            pathname === '/api/scraper/reset-single' ||
+            pathname === '/api/scraper/unlock-processing'
+          ) {
+            import('./api/scraper.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          }
+        }
+      }
+
       if (req.url && req.url.startsWith('/api/scraper/')) {
         res.setHeader('Content-Type', 'application/json');
         

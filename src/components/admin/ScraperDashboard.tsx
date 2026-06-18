@@ -261,6 +261,54 @@ export function ScraperDashboard() {
     }
   };
 
+  const handleResetAllFailed = async () => {
+    if (!window.confirm("Are you sure you want to reset all failed auctions? They will be put back into 'pending' status for retry.")) {
+      return;
+    }
+    try {
+      const success = await adminService.resetFailedAuctions();
+      if (success) {
+        toast.success("Successfully reset all failed auctions!");
+        loadDashboardData(true);
+      } else {
+        toast.error("Failed to reset failed auctions.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "An error occurred.");
+    }
+  };
+
+  const handleUnlockAllProcessing = async () => {
+    if (!window.confirm("Are you sure you want to release locks on all processing auctions? They will be put back into 'pending' status for retry.")) {
+      return;
+    }
+    try {
+      const success = await adminService.unlockProcessingAuctions();
+      if (success) {
+        toast.success("Successfully released locks on all processing auctions!");
+        loadDashboardData(true);
+      } else {
+        toast.error("Failed to release locks.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "An error occurred.");
+    }
+  };
+
+  const handleResetSingleFailed = async (id: string) => {
+    try {
+      const success = await adminService.resetSingleFailedAuction(id);
+      if (success) {
+        toast.success("Auction queued for retry!");
+        loadDashboardData(true);
+      } else {
+        toast.error("Failed to reset this auction.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "An error occurred.");
+    }
+  };
+
   const filteredAuctions = auctions.filter(auc => {
     const matchesSearch = 
       auc.mstc_auction_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -390,9 +438,19 @@ export function ScraperDashboard() {
               <RefreshCw className="w-4 h-4 animate-spin" />
             </div>
           </div>
-          <div>
-            <p className="text-2xl font-black text-blue-700">{stats.processing}</p>
-            <p className="text-xs text-slate-400 mt-1">Active worker lock</p>
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-2xl font-black text-blue-700">{stats.processing}</p>
+              <p className="text-xs text-slate-400 mt-1">Active worker lock</p>
+            </div>
+            {stats.processing > 0 && (
+              <button
+                onClick={handleUnlockAllProcessing}
+                className="px-2.5 py-1 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-xs"
+              >
+                Release Locks
+              </button>
+            )}
           </div>
         </div>
 
@@ -418,9 +476,19 @@ export function ScraperDashboard() {
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <div>
-            <p className="text-2xl font-black text-rose-700">{stats.failed}</p>
-            <p className="text-xs text-slate-400 mt-1">Exceeded max retries</p>
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-2xl font-black text-rose-700">{stats.failed}</p>
+              <p className="text-xs text-slate-400 mt-1">Exceeded max retries</p>
+            </div>
+            {stats.failed > 0 && (
+              <button
+                onClick={handleResetAllFailed}
+                className="px-2.5 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-all shadow-xs"
+              >
+                Reset All
+              </button>
+            )}
           </div>
         </div>
 
@@ -585,9 +653,17 @@ export function ScraperDashboard() {
                         <div>
                           {getStatusBadge(auc.asset_status)}
                           {auc.asset_status === 'failed' && (
-                            <p className="text-[10px] text-rose-500 max-w-[180px] truncate mt-1" title={auc.error_log}>
-                              {auc.error_log}
-                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-[10px] text-rose-500 max-w-[140px] truncate" title={auc.error_log}>
+                                {auc.error_log}
+                              </p>
+                              <button
+                                onClick={() => handleResetSingleFailed(auc.id)}
+                                className="px-1.5 py-0.5 text-[9px] font-bold bg-rose-100 hover:bg-rose-200 text-rose-800 rounded transition-all cursor-pointer"
+                              >
+                                Retry
+                              </button>
+                            </div>
                           )}
                           {auc.asset_status === 'pending' && auc.retry_count > 0 && (
                             <p className="text-[10px] text-amber-500 mt-1">

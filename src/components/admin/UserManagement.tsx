@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
-import { Users, CheckCircle2, ShieldAlert, Shield } from 'lucide-react';
+import { Users, CheckCircle2, ShieldAlert, Shield, Globe, Clock } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import clsx from 'clsx';
 
@@ -54,6 +54,7 @@ export function UserManagement() {
             <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
               <th className="px-6 py-4 font-semibold">User Info</th>
               <th className="px-6 py-4 font-semibold">Contact</th>
+              <th className="px-6 py-4 font-semibold">Last Session / IP</th>
               <th className="px-6 py-4 font-semibold">Role</th>
               <th className="px-6 py-4 font-semibold">Organization / KYC</th>
               <th className="px-6 py-4 font-semibold text-right">Actions</th>
@@ -69,6 +70,22 @@ export function UserManagement() {
                 <td className="px-6 py-4">
                   <p className="text-sm text-slate-600">{user.email}</p>
                   <p className="text-xs text-slate-500">{user.phone_number || 'N/A'}</p>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5 text-slate-700 font-mono text-xs font-semibold">
+                      <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span>{user.last_ip || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-slate-400 text-xs mt-0.5">
+                      <Clock className="w-3 h-3 shrink-0" />
+                      <span>
+                        {user.last_active
+                          ? new Date(user.last_active).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+                          : 'Never active'}
+                      </span>
+                    </div>
+                  </div>
                 </td>
                 <td className="px-6 py-4">
                   <span className={clsx(

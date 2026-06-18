@@ -1,10 +1,12 @@
 import { Link, Outlet } from 'react-router-dom';
+import { PageTracker } from '../components/common/PageTracker';
 
 export function AuthLayout() {
   const subtitlePhrase = 'Everything you need in a single platform.';
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-between relative overflow-hidden font-sans">
+      <PageTracker />
       {/* Split screen container */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2">
         
