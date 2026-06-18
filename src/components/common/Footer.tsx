@@ -3,38 +3,40 @@ import { Mail, Phone, MapPin, Gavel, ArrowRight } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="bg-slate-950 text-slate-300 pt-16 pb-8">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <footer className="relative bg-slate-900 text-slate-300 pt-16 pb-8 overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
+        <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-800/20 to-transparent" />
+      </div>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           
           {/* Brand */}
           <div className="space-y-4">
-            <Link to="/" className="flex items-center gap-2">
-              <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain" />
-              <span className="text-xl font-bold text-white tracking-tight">
-                Lelam
-              </span>
+            <Link to="/" className="flex items-center">
+              <img src="/png_lelam_1.png" alt="Lelam Logo" className="h-8 w-auto object-contain brightness-0 invert" />
             </Link>
             <p className="text-sm text-slate-400 leading-relaxed mt-4">
-              The premier enterprise platform for secure, transparent, and efficient online bidding. Empowering businesses globally.
+              An independent, data-driven assistive intelligence platform for registered MSTC auction buyers. Track market prices, analyze trends, and estimate bids.
             </p>
             <p className="text-xs text-slate-500 italic mt-2">
-              Disclaimer: Lelam is an independent assistive tool and is not affiliated with MSTC.
+              Disclaimer: Lelam is an independent assistive tool and is not affiliated with MSTC or any government agency.
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-white font-semibold mb-6 uppercase tracking-wider text-sm">Services</h3>
+            <h3 className="text-white font-semibold mb-6 uppercase tracking-wider text-sm">Platform</h3>
             <ul className="space-y-3">
               <li>
                 <Link to="/auctions" className="hover:text-primary transition-colors flex items-center gap-2 text-sm">
-                  <Gavel size={16} /> Auctions
+                  <Gavel size={16} /> MSTC Catalog
                 </Link>
               </li>
               <li>
                 <Link to="/news" className="hover:text-primary transition-colors flex items-center gap-2 text-sm">
-                  <ArrowRight size={16} /> News & Updates
+                  <ArrowRight size={16} /> Market Trends
                 </Link>
               </li>
             </ul>

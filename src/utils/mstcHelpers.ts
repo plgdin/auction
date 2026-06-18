@@ -6,6 +6,8 @@ import {
   detectModelId, 
   detectGrade 
 } from './metalValuationModels';
+import { matchCommodity } from '../services/valuationService';
+import { marketPriceService } from '../services/marketPriceService';
 import { calculateLotValue } from './valuationUtils';
 
 export { calculateLotValue };
@@ -39,80 +41,123 @@ export const expandAbbreviations = (text: string): string => {
   return result;
 };
 
-export const getEstimatedMarketPrice = (description: string, categoryName: string = ''): string => {
+export const getEstimatedMarketPrice = (
+  description: string,
+  categoryName: string = '',
+  qty: string = '',
+  unit: string = ''
+): string => {
   const desc = (description || '').toLowerCase();
   const cat = (categoryName || '').toLowerCase();
+  const cleanQty = (qty || '').replace(/,/g, '').trim();
+  const parsedQty = parseFloat(cleanQty);
+  const qtyLower = cleanQty.toLowerCase();
+  const unitLower = (unit || '').toLowerCase().trim();
 
-  // Metal-related check (iron, steel, ferrous, scrap, vehicle, car, bus, truck, transport, auto, etc.)
   const isMetal = 
     desc.includes('scrap') || desc.includes('waste') ||
     desc.includes('iron') || desc.includes('steel') || desc.includes('ferrous') ||
     desc.includes('vehicle') || desc.includes('car') || desc.includes('bus') || desc.includes('truck') || desc.includes('transport') || desc.includes('auto') ||
-    cat.includes('iron') || cat.includes('steel') || cat.includes('ferrous') || cat.includes('scrap') || cat.includes('vehicle') || cat.includes('car');
+    desc.includes('e-waste') || desc.includes('ewaste') || desc.includes('motherboard') || desc.includes('printer') || desc.includes('monitor') || desc.includes('computer') || desc.includes('laptop') || desc.includes('smartphone') || desc.includes('tablet') || desc.includes('tv') || desc.includes('camera') || desc.includes('smartwatch') || desc.includes('console') || desc.includes('electronics') ||
+    cat.includes('iron') || cat.includes('steel') || cat.includes('ferrous') || cat.includes('scrap') || cat.includes('vehicle') || cat.includes('car') || cat.includes('waste') || cat.includes('electronics');
 
+  // Helper to apply multiplier to the resulting price string for non-metal items
+  const applyMultiplierToPriceString = (priceStr: string): string => {
+    if (priceStr === 'Not Available') return priceStr;
+    
+    let multiplier = 1.0;
+    if (desc.includes('unserviceable')) {
+      multiplier = Math.min(multiplier, 0.10);
+    }
+    if (desc.includes('broken')) {
+      multiplier = Math.min(multiplier, 0.15);
+    }
+    if (desc.includes('damaged')) {
+      multiplier = Math.min(multiplier, 0.15);
+    }
+    if (desc.includes('deteriorated')) {
+      multiplier = Math.min(multiplier, 0.15);
+    }
+    
+    if (multiplier === 1.0) return priceStr;
+
+    // Parse numeric part from priceStr. Example: "₹14,500 / Unit" or "₹235 / kg"
+    const match = priceStr.match(/₹\s*([\d,]+)/);
+    if (!match) return priceStr;
+    
+    const originalVal = parseFloat(match[1].replace(/,/g, ''));
+    if (isNaN(originalVal)) return priceStr;
+    
+    const newVal = Math.round(originalVal * multiplier);
+    const unitPart = priceStr.split('/').pop()?.trim() || '';
+    
+    return `₹${newVal.toLocaleString('en-IN')} / ${unitPart}`;
+  };
+
+  const getRawPrice = (): string => {
+    // 1. Check if quantity is "1 lot" or unrecognized/lot unit
+    const isLotUnit = unitLower.includes('lot') || qtyLower.includes('lot') || unitLower === 'ls' || unitLower === 'lumpsum';
+    const isUnparseableQty = isNaN(parsedQty) || parsedQty <= 0;
+    
+    if (isLotUnit || isUnparseableQty) {
+      return 'Not Available';
+    }
+
+    // 2. Check for stuff we can't put a price on, like ships, luxury cars, property
+    const unpriceableWords = [
+      'ship', 'boat', 'vessel', 'yacht', 'barge', 'ferry', 'tugboat', 'cruiser',
+      'property', 'flat', 'plot', 'land', 'building', 'office space', 'shop', 'showroom', 'immovable'
+    ];
+    if (unpriceableWords.some(word => desc.includes(word) || cat.includes(word))) {
+      return 'Not Available';
+    }
+
+    const comm = matchCommodity(description);
+    if (marketPriceService.isCommodityPricingDisabled(comm.name)) {
+      return 'Not Available';
+    }
+    const dbPrice = marketPriceService.getCommodityPrice(comm.name);
+
+    if (isMetal) {
+      const modelId = detectModelId(description);
+      const grade = detectGrade(description, modelId);
+      const region = 'Mumbai'; // Default region for global pricing feeds
+      const predicted = predictPrice(modelId, grade, region, DEFAULT_MACRO_INPUTS, description);
+      
+      let finalVal = predicted;
+      if (dbPrice > 0) {
+        finalVal = (predicted + dbPrice) / 2;
+      }
+      
+      const rounded = Math.round(finalVal);
+      const targetUnit = METALLIC_MODELS[modelId]?.targetUnit || 'Tons';
+      const singularUnit = targetUnit === 'Tons' ? 'Ton' : targetUnit === 'Units' ? 'Unit' : targetUnit;
+      return `₹${rounded.toLocaleString('en-IN')} / ${singularUnit}`;
+    }
+
+    if (comm.name !== 'default') {
+      const basePrice = dbPrice || comm.basePricePerKg || comm.basePricePerUnit || 0;
+      const unit = comm.unit || (comm.basePricePerKg !== undefined ? 'kg' : 'Unit');
+      return `₹${basePrice.toLocaleString('en-IN')} / ${unit}`;
+    }
+
+    return 'Not Available';
+  };
+
+  const rawPriceStr = getRawPrice();
   if (isMetal) {
-    const modelId = detectModelId(description);
-    const grade = detectGrade(description, modelId);
-    const region = 'Mumbai'; // Default region for global pricing feeds
-    const predicted = predictPrice(modelId, grade, region, DEFAULT_MACRO_INPUTS);
-    const rounded = Math.round(predicted);
-    const targetUnit = METALLIC_MODELS[modelId]?.targetUnit || 'Tons';
-    const singularUnit = targetUnit === 'Tons' ? 'Ton' : targetUnit === 'Units' ? 'Unit' : targetUnit;
-    return `₹${rounded.toLocaleString('en-IN')} / ${singularUnit}`;
+    return rawPriceStr;
   }
-
-  if (desc.includes('copper') || cat.includes('copper')) {
-    return '₹780 / kg';
-  }
-  if (desc.includes('aluminum') || desc.includes('aluminium') || cat.includes('aluminum') || cat.includes('aluminium')) {
-    return '₹235 / kg';
-  }
-  if (desc.includes('battery') || desc.includes('batteries') || cat.includes('battery') || cat.includes('batteries')) {
-    return '₹120 / kg';
-  }
-  if (desc.includes('lead') || cat.includes('lead')) {
-    return '₹185 / kg';
-  }
-  if (desc.includes('brass') || cat.includes('brass')) {
-    return '₹480 / kg';
-  }
-  if (desc.includes('zinc') || cat.includes('zinc')) {
-    return '₹220 / kg';
-  }
-  if (desc.includes('oil') || desc.includes('lubricating') || desc.includes('petroleum') || cat.includes('oil') || cat.includes('petroleum')) {
-    return '₹85 / Liter';
-  }
-  if (desc.includes('wheat') || cat.includes('wheat')) {
-    return '₹2,450 / Quintal';
-  }
-  if (desc.includes('rice') || desc.includes('paddy') || cat.includes('rice') || cat.includes('paddy')) {
-    return '₹2,200 / Quintal';
-  }
-  if (desc.includes('coal') || desc.includes('lignite') || cat.includes('coal') || cat.includes('lignite')) {
-    return '₹8,400 / Ton';
-  }
-  if (desc.includes('sand') || desc.includes('mine') || desc.includes('stone') || desc.includes('block') || cat.includes('sand') || cat.includes('mine') || cat.includes('stone') || cat.includes('block')) {
-    return '₹4,500 / Ton';
-  }
-  if ((desc.includes('cable') || desc.includes('wire') || cat.includes('cable') || cat.includes('wire')) &&
-      !desc.includes('drum') && !desc.includes('reel')) {
-    return '₹340 / kg';
-  }
-  if (desc.includes('computer') || desc.includes('laptop') || desc.includes('it equipment') || cat.includes('computer') || cat.includes('laptop')) {
-    return '₹14,500 / Unit';
-  }
-  return '₹2,500 / Ton';
+  return applyMultiplierToPriceString(rawPriceStr);
 };
 
-export const getNumericQty = (qtyStr: string, unitStr: string = ''): number => {
+export const getNumericQty = (qtyStr: string, _unitStr: string = ''): number => {
   const clean = (qtyStr || '').replace(/,/g, '').trim();
   let num = parseFloat(clean);
-  if (isNaN(num)) num = 1;
-  if ((unitStr || '').toUpperCase().trim() === 'MT') {
-    num = num * 1000;
-  }
-  return num;
+  return isNaN(num) ? 1 : num;
 };
+
+
 
 export const getNumericPrice = (priceStr: string): number => {
   const clean = (priceStr || '').replace(/[^\d]/g, '');
@@ -123,15 +168,7 @@ export const getNumericPrice = (priceStr: string): number => {
 export interface CatalogSummary {
   overview: string;
   scopeOfWork: string;
-  items: { 
-    sr: number | string; 
-    description: string; 
-    qty: string; 
-    unit: string; 
-    taxRate: string; 
-    marketPrice: string;
-    subItems?: { sr: number | string; description: string; qty: string; unit: string }[];
-  }[];
+  items: { sr: number; description: string; qty: string; unit: string; taxRate: string; marketPrice: string }[];
   eligibility: string[];
   depositDetails: {
     emd: string;
@@ -297,7 +334,42 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
         parsed.depositDetails.preBidDdg = finalPreBid;
 
         if (parsed.items && Array.isArray(parsed.items)) {
-          parsed.items = flattenCatalogItems(parsed.items, item.category_name);
+          parsed.items = parsed.items.map((lot: any) => {
+            let desc = lot.description || '';
+            if (desc && /^\d+$/.test(desc.trim())) {
+              desc = item.category_name || 'Auction Lot Items';
+            }
+            desc = expandAbbreviations(desc);
+
+            let tax = lot.taxRate || '';
+            if (tax) {
+              if (tax.includes('%')) {
+                const taxMatch = tax.match(/([\d\.]+)\s*%/);
+                if (taxMatch && parseFloat(taxMatch[1]) > 100) {
+                  tax = 'As Applicable GST';
+                }
+              }
+            }
+
+            // Correctly parse and preserve db market price if it's not a placeholder
+            let mPrice = lot.marketPrice || '';
+            let parsedPrice = 0;
+            if (mPrice) {
+              const cleanP = mPrice.replace(/,/g, '');
+              const match = cleanP.match(/₹\s*(\d+)/);
+              parsedPrice = match ? parseInt(match[1], 10) : 0;
+            }
+            if (parsedPrice <= 1) {
+              mPrice = getEstimatedMarketPrice(desc, item.category_name, lot.qty, lot.unit);
+            }
+
+            return {
+              ...lot,
+              description: desc,
+              taxRate: tax,
+              marketPrice: mPrice
+            };
+          });
         }
 
         const finalInspectionSchedule = parsed.inspectionSchedule || defaultInspectionSchedule;
@@ -390,7 +462,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
 
   const enrichedItems = items.map(lot => ({
     ...lot,
-    marketPrice: getEstimatedMarketPrice(lot.description, item.category_name)
+    marketPrice: getEstimatedMarketPrice(lot.description, item.category_name, lot.qty, lot.unit)
   }));
 
   return {
