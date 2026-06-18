@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { embeddingService } from './embeddingService';
-import type { ContactMessage, FaqItem, Announcement, NewsUpdate, Database } from '../types/database.types';
+import type { ContactMessage, FaqItem, Announcement, NewsUpdate } from '../types/database.types';
 import {
   INVERTED_SYNONYM_MAP,
   CONCEPT_MAP,
@@ -1875,7 +1875,6 @@ export const MstcSearchService = {
 
       // Filter by price constraint
       if (pConstraint) {
-        const { estimateAuctionValues } = await import('../utils/valuationUtils');
         mapped = mapped.filter(item => {
           const { preBid, totalValue } = estimateAuctionValues(item as any);
           const matchValue = (val: number) => {

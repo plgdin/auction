@@ -5,7 +5,7 @@ env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 class EmbeddingPipeline {
-  static task = 'feature-extraction';
+  static task: any = 'feature-extraction';
   static model = 'Xenova/all-MiniLM-L6-v2';
   static instance: any = null;
 
