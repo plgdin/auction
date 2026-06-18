@@ -57,9 +57,22 @@ export function News() {
                   <p className="text-slate-600 text-sm line-clamp-3 mb-6 flex-grow">
                     {item.summary || item.content}
                   </p>
-                  <button className="text-primary font-medium text-sm hover:text-primary-700 mt-auto inline-flex items-center group">
-                    Read article <ArrowRight className="ml-1 w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-                  </button>
+                  {(() => {
+                    // Try to extract the Original Link if it was fetched via aggregator
+                    const match = item.content?.match(/Original Link:\s*(https?:\/\/[^\s]+)/);
+                    const linkUrl = match ? match[1] : '#'; // Fallback to # if no link
+                    
+                    return (
+                      <a 
+                        href={linkUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary font-medium text-sm hover:text-primary-700 mt-auto inline-flex items-center group w-fit"
+                      >
+                        Read article <ArrowRight className="ml-1 w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                      </a>
+                    );
+                  })()}
                 </div>
               </article>
             ))}

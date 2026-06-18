@@ -156,15 +156,15 @@ export function NewsManagement() {
         </div>
 
         {/* List */}
-        <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
+        <div className="divide-y divide-slate-100">
           {displayedNews.length === 0 ? (
             <div className="p-8 text-center text-slate-500">
               No {activeTab} news found.
             </div>
           ) : (
             displayedNews.map((news) => (
-              <div key={news.id} className="p-4 hover:bg-slate-50 flex items-start justify-between gap-4 transition-colors">
-                <div className="flex gap-4 flex-1">
+              <div key={news.id} className="p-4 hover:bg-slate-50 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 transition-colors">
+                <div className="flex gap-4 flex-1 min-w-0 w-full">
                   {news.image_url ? (
                     <img src={news.image_url} alt="thumbnail" className="w-24 h-24 object-cover rounded-lg flex-shrink-0" />
                   ) : (
@@ -172,9 +172,9 @@ export function NewsManagement() {
                       <ImageIcon className="w-8 h-8" />
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold text-slate-900 truncate">{news.title}</h3>
-                    <p className="text-sm text-slate-500 line-clamp-2 mt-1">{news.summary || news.content}</p>
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <h3 className="text-lg font-bold text-slate-900 truncate" title={news.title}>{news.title}</h3>
+                    <p className="text-sm text-slate-500 line-clamp-2 mt-1" title={news.summary || news.content}>{news.summary || news.content}</p>
                     <div className="flex items-center gap-4 mt-2 text-xs text-slate-400 font-medium">
                       <span>Created: {new Date(news.created_at).toLocaleDateString()}</span>
                       {news.published_at && <span className="text-emerald-600">Published: {new Date(news.published_at).toLocaleDateString()}</span>}
@@ -182,33 +182,33 @@ export function NewsManagement() {
                   </div>
                 </div>
                 
-                <div className="flex flex-col gap-2 flex-shrink-0">
+                <div className="flex sm:flex-row xl:flex-col gap-2 flex-shrink-0 w-full xl:w-auto justify-end mt-4 xl:mt-0">
                   {activeTab === 'drafts' ? (
                     <button 
                       onClick={() => togglePublishStatus(news)}
-                      className="flex items-center px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-sm font-medium transition-colors"
+                      className="flex items-center justify-center px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
                     >
-                      <CheckCircle className="w-4 h-4 mr-1.5" /> Approve & Publish
+                      <CheckCircle className="w-4 h-4 mr-2" /> Approve & Publish
                     </button>
                   ) : (
                     <button 
                       onClick={() => togglePublishStatus(news)}
-                      className="flex items-center px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded text-sm font-medium transition-colors"
+                      className="flex items-center justify-center px-4 py-2 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
                     >
-                      <XCircle className="w-4 h-4 mr-1.5" /> Unpublish (Draft)
+                      <XCircle className="w-4 h-4 mr-2" /> Unpublish (Draft)
                     </button>
                   )}
                   
                   <div className="flex gap-2">
                     <button 
                       onClick={() => handleOpenModal(news)}
-                      className="flex-1 flex justify-center items-center px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-primary rounded text-sm font-medium transition-colors"
+                      className="flex-1 flex justify-center items-center px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-primary rounded-lg text-sm font-medium transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => handleDelete(news.id)}
-                      className="flex-1 flex justify-center items-center px-3 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 rounded text-sm font-medium transition-colors"
+                      className="flex-1 flex justify-center items-center px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

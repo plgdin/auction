@@ -7,8 +7,9 @@ export const newsAggregatorService = {
    */
   async fetchAndSaveLatestNews(): Promise<{ success: boolean; message: string; count: number }> {
     try {
-      // Google News RSS URL for "auction" OR "e-auction" in India
-      const rssUrl = 'https://news.google.com/rss/search?q=india+auction+OR+e-auction+OR+mstc&hl=en-IN&gl=IN&ceid=IN:en';
+      // Refined query specifically targeting auctions and explicitly excluding sports/cricket
+      const query = encodeURIComponent('auction OR bidding OR "e-auction" OR "scrap auction" -cricket -sports -ipl');
+      const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=en-IN&gl=IN&ceid=IN:en`;
       const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
       
       const response = await fetch(apiUrl);
@@ -18,8 +19,8 @@ export const newsAggregatorService = {
         throw new Error('Failed to fetch news from RSS feed');
       }
 
-      // We only want to process the top 15 results to prevent spam
-      const articles = data.items.slice(0, 15);
+      // We only want to process the top 10 results to prevent spam and reduce API calls
+      const articles = data.items.slice(0, 10);
       let insertedCount = 0;
 
       for (const article of articles) {
@@ -35,8 +36,25 @@ export const newsAggregatorService = {
         // Clean up the description/content (Google News includes HTML in descriptions)
         const summary = article.description ? article.description.replace(/<[^>]+>/g, '').trim().substring(0, 200) + '...' : '';
         
-        // Use a generic placeholder image if none provided by RSS
-        let imageUrl = article.enclosure?.link || article.thumbnail || 'https://images.unsplash.com/photo-1589816790906-8d5f30e9d6ff?auto=format&fit=crop&q=80&w=800';
+        let imageUrl = article.enclosure?.link || article.thumbnail;
+
+        // If no image is provided directly by RSS, fetch the real thumbnail using Microlink's free API
+        if (!imageUrl) {
+          try {
+            const mlResponse = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(article.link)}`);
+            const mlData = await mlResponse.json();
+            if (mlData.status === 'success' && mlData.data?.image?.url) {
+              imageUrl = mlData.data.image.url;
+            }
+          } catch (e) {
+            console.error('Failed to fetch real thumbnail from Microlink for:', article.link);
+          }
+        }
+
+        // Fallback to placeholder if microlink also fails
+        if (!imageUrl) {
+          imageUrl = 'https://placehold.co/800x400/1e293b/ffffff?text=Auction+News';
+        }
 
         // Insert as draft (is_published: false)
         const { error } = await supabase
