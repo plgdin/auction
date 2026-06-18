@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Download, Heart, FilePlus } from 'lucide-react';
+import { X, Copy, Check, Download, Heart, FilePlus, FileText } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
-import { expandMstcOffice } from '../../services/publicService';
+import { expandMstcOffice, MstcSearchService } from '../../services/publicService';
 import { generateCatalogSummary, getNumericQty, getNumericPrice, parsePdfDateTime } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
 import { useQuoteStore } from '../../store/quoteStore';
@@ -20,11 +20,34 @@ interface MstcDetailsModalProps {
 }
 
 export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
-  item,
+  item: initialItem,
   onClose,
   isInterested = false,
   onInterestedToggle
 }) => {
+  const [item, setItem] = useState<MstcSanitizedAuction>(initialItem);
+  const [loadingParent, setLoadingParent] = useState(false);
+
+  useEffect(() => {
+    setItem(initialItem);
+  }, [initialItem]);
+
+  const handleOpenParent = async (parentId: string) => {
+    setLoadingParent(true);
+    try {
+      const parent = await MstcSearchService.getMstcAuctionById(parentId);
+      if (parent) {
+        setItem(parent);
+      } else {
+        toast.error("Original parent auction details could not be found.");
+      }
+    } catch (e) {
+      console.error("Error loading parent auction:", e);
+      toast.error("Error loading parent auction details.");
+    } finally {
+      setLoadingParent(false);
+    }
+  };
   const [copied, setCopied] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -636,8 +659,40 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 </div>
               ) : (
                 <>
+                  {/* Re-auction notice banner */}
+                  {item.is_reauction && (
+                    <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-3xs text-amber-900 mb-6 backdrop-blur-xs">
+                      <div className="flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                        <div className="text-xs font-semibold leading-relaxed">
+                          This is a re-auction of original auction{' '}
+                          <span className="font-bold font-mono text-amber-805">{item.original_auction_number}</span>.
+                        </div>
+                      </div>
+                      {item.parent_auction_id && (
+                        <button
+                          onClick={() => handleOpenParent(item.parent_auction_id!)}
+                          disabled={loadingParent}
+                          className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-250 bg-white font-bold text-xs text-amber-800 hover:bg-amber-50 transition-all cursor-pointer disabled:opacity-50 shrink-0 shadow-3xs hover:shadow-2xs active:scale-[0.98]"
+                        >
+                          {loadingParent ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-700" />
+                              <span>Loading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>View Original</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Category & Auction Ref Title */}
-              <div>
+                  <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
                 {(() => {
                   const parts = item.category_name.split(' | ');

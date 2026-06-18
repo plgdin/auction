@@ -461,6 +461,9 @@ export interface MstcSanitizedAuction {
   sanitized_document_path: string | null; // Masked path pointing exclusively to your Supabase cloud asset
   raw_materials_text: string | null;
   status: string;
+  is_reauction?: boolean;
+  original_auction_number?: string | null;
+  parent_auction_id?: string | null;
 }
 
 export interface SearchSuggestion {
