@@ -6,9 +6,10 @@ import { UserManagement } from '../components/admin/UserManagement';
 import { SystemManagement } from '../components/admin/SystemManagement';
 import { ReportsAnalytics } from '../components/admin/ReportsAnalytics';
 import { ScraperDashboard } from '../components/admin/ScraperDashboard';
+import { NewsManagement } from '../components/admin/NewsManagement';
 import clsx from 'clsx';
 
-type AdminTab = 'overview' | 'users' | 'reports' | 'system' | 'scraper';
+type AdminTab = 'overview' | 'users' | 'reports' | 'system' | 'scraper' | 'news';
 
 export function Admin() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -16,6 +17,7 @@ export function Admin() {
   const tabs = [
     { id: 'overview', label: 'Overview & Analytics', icon: LayoutDashboard },
     { id: 'scraper', label: 'Scraper & Ingestion', icon: Cpu },
+    { id: 'news', label: 'News & Media', icon: Megaphone },
     { id: 'reports', label: 'Advanced Reports', icon: BarChart3 },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'system', label: 'System Announcements', icon: Megaphone },
@@ -33,6 +35,8 @@ export function Admin() {
         return <UserManagement />;
       case 'system':
         return <SystemManagement />;
+      case 'news':
+        return <NewsManagement />;
       default:
         return <AdminOverview />;
     }

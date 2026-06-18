@@ -114,6 +114,65 @@ export const adminService = {
     return data;
   },
 
+  async getAllNewsAdmin(): Promise<NewsUpdate[]> {
+    const { data, error } = await supabase
+      .from('news_updates')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching all news admin:', error);
+      return [];
+    }
+    return data;
+  },
+
+  async createNews(newsData: Partial<NewsUpdate>): Promise<boolean> {
+    const { error } = await supabase
+      .from('news_updates')
+      .insert([{
+        ...newsData,
+        published_at: newsData.is_published ? new Date().toISOString() : null
+      }]);
+
+    if (error) {
+      console.error('Error creating news:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async updateNews(id: string, newsData: Partial<NewsUpdate>): Promise<boolean> {
+    const updatePayload = { ...newsData };
+    if (newsData.is_published && !newsData.published_at) {
+      updatePayload.published_at = new Date().toISOString();
+    }
+
+    const { error } = await supabase
+      .from('news_updates')
+      .update(updatePayload)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating news:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async deleteNews(id: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('news_updates')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting news:', error);
+      return false;
+    }
+    return true;
+  },
+
   async markNotificationAsRead(id: string) {
     const { error } = await supabase
       .from('notifications')
