@@ -995,63 +995,73 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
             {/* Right Side: Image/Preview Panel */}
             {(() => {
-              const hasOtherMedia = item.raw_materials_text && summary.extracted_images && summary.extracted_images.length > 0;
-              const displayImage = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images![0] : null);
+              const allImages = (summary.extracted_images || []).filter(
+                (url: string) => !url.toLowerCase().endsWith('.pdf')
+              );
+              const actualPhotos = allImages.filter(
+                (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('mstc-previews/')
+              );
+              const catalogPages = allImages.filter(
+                (url: string) => url.toLowerCase().includes('_catalog_page_') || url.toLowerCase().includes('mstc-previews/')
+              );
+              
+              const displayImage = actualPhotos.length > 0 ? actualPhotos[0] : summary.preview_image_url;
 
               return (
                 <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
-                  {/* Image Gallery */}
-                  {(() => {
-                    const imageUrls = (summary.extracted_images || []).filter(
-                      (url: string) => !url.toLowerCase().endsWith('.pdf')
-                    );
-                    if (imageUrls.length === 0) return null;
-                    return (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
-                          <span>Auction Images</span>
-                          <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
-                        </h4>
-                        <div className="grid grid-cols-2 gap-2">
-                          {imageUrls.map((url: string, idx: number) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setLightboxImage(url)}
-                              className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
-                            >
-                              <img
-                                src={url}
-                                alt={`Auction image ${idx + 1}`}
-                                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {displayImage ? (
+                  {/* Actual Asset Photos */}
+                  {actualPhotos.length > 0 && (
                     <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
-                        Catalog Document Preview
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                        <span>Auction Images</span>
+                        <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{actualPhotos.length} Photos</span>
                       </h4>
-                      <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setLightboxImage(displayImage)}
-                          className="block w-full text-left cursor-zoom-in relative focus:outline-none"
-                        >
-                          <img
-                            src={displayImage}
-                            alt="PDF Catalog Preview"
-                            className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
-                          />
-                        </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        {actualPhotos.map((url: string, idx: number) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setLightboxImage(url)}
+                            className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
+                          >
+                            <img
+                              src={url}
+                              alt={`Auction image ${idx + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                            />
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  ) : (
+                  )}
+
+                  {/* PDF Catalog Page Previews */}
+                  {catalogPages.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                        <span>Catalog Pages</span>
+                        <span className="text-[9.5px] bg-slate-100 text-slate-600 border border-slate-200 font-bold px-2 py-0.5 rounded font-mono">{catalogPages.length} Pages</span>
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {catalogPages.map((url: string, idx: number) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setLightboxImage(url)}
+                            className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
+                          >
+                            <img
+                              src={url}
+                              alt={`Catalog page ${idx + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!displayImage && (
                     <div className="w-full py-12 flex flex-col items-center justify-center text-slate-400 gap-2 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
                       <svg className="w-10 h-10 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>

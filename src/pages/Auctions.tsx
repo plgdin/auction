@@ -410,10 +410,13 @@ export function Auctions() {
           try {
             const parsed = JSON.parse(item.raw_materials_text);
             const images = parsed?.extracted_images || [];
-            // Photos are non-PDF visual files
+            // Photos are non-PDF visual files that do not represent catalog pages or cover previews
             return images.some((url: string) => {
               const lower = url.toLowerCase();
-              return !lower.endsWith('.pdf') && /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
+              return !lower.endsWith('.pdf') && 
+                     !lower.includes('_catalog_page_') && 
+                     !lower.includes('mstc-previews/') &&
+                     /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
             });
           } catch { return false; }
         });
