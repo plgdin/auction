@@ -493,11 +493,29 @@ export function parseMstcCatalogText(
       // --- Extract block sub-items ---
       const subItems = parseSubItemsFromText(block);
 
+      let finalQty = qty;
+      let finalUnit = unit;
+      if (subItems && subItems.length > 0) {
+        const currentQtyLower = (qty || "").toLowerCase().trim();
+        const currentUnitLower = (unit || "").toLowerCase().trim();
+        const isGenericOrGarbage =
+          currentQtyLower === "1" ||
+          currentQtyLower === "1.0" ||
+          currentUnitLower === "lot" ||
+          currentUnitLower === "lots" ||
+          currentQtyLower.includes("+");
+
+        if (isGenericOrGarbage) {
+          finalQty = String(subItems.length);
+          finalUnit = "Items";
+        }
+      }
+
       items.push({
         sr,
         description: lotName || categoryName || "Auction Lot Items",
-        qty,
-        unit,
+        qty: finalQty,
+        unit: finalUnit,
         taxRate: `${gst} GST${tcs && tcs !== "0.0" && tcs !== "0" ? " + " + tcs + "% TCS" : ""}`,
         attachments: attachments.length > 0 ? attachments : undefined,
         marketPrice: lotMarketPrice,

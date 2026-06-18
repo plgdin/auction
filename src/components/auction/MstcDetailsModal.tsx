@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown, FileText } from 'lucide-react';
+import { X, Copy, Check, Download, Heart, FilePlus, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice, MstcSearchService } from '../../services/publicService';
-import { generateCatalogSummary, getNumericQty, getNumericPrice, parsePdfDateTime, calculateLotValue } from '../../utils/mstcHelpers';
+import { generateCatalogSummary, getNumericQty, getNumericPrice, parsePdfDateTime } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
-import { Dropdown } from 'antd';
 import { useQuoteStore } from '../../store/quoteStore';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../store/appStore';
@@ -12,13 +11,6 @@ import { formatPrice, CURRENCIES } from '../../utils/currency';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuationService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { 
-  DEFAULT_MACRO_INPUTS,  
-  predictPrice, 
-  detectModelId, 
-  detectGrade, 
-  detectRegion
-} from '../../utils/metalValuationModels';
 
 interface MstcDetailsModalProps {
   item: MstcSanitizedAuction;
@@ -59,6 +51,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [expandedLots, setExpandedLots] = useState<Set<string>>(new Set());
 
   const { currency } = useAppStore();
   const currencySymbol = CURRENCIES[currency]?.symbol || '₹';
@@ -70,118 +63,30 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     loadingUnloading: 2000,
     refurbishment: 0,
     otherFees: 1000,
-    extraCharge: 0,
   });
   const [valuationData, setValuationData] = useState<ValuationOutput | null>(null);
   const [isValuating, setIsValuating] = useState(false);
   const [selectedChartItemId, setSelectedChartItemId] = useState<string>('total');
-  const [extraChargeType, setExtraChargeType] = useState<string>('none');
-
-  const extraChargeLabels: Record<string, string> = {
-    none: 'None (₹0)',
-    customs_10: 'Customs Duty (10%)',
-    customs_15: 'Customs Duty (15%)',
-    customs_20: 'Customs Duty (20%)',
-    local_5: 'Entry Tax / Octroi (5%)',
-    env_2: 'Environmental Cess (2%)',
-    brokerage_3: 'Brokerage & Clearance (3%)',
-    warehousing_5k: 'Warehousing Surcharge (fixed ₹5,000)',
-    inspection_2k: 'Inspection / Quarantine (fixed ₹2,500)',
-  };
-
-  const extraChargeMenu = (
-    <div 
-      className="bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[220px] max-h-[280px] overflow-y-auto flex flex-col gap-0.5 z-90"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {Object.entries(extraChargeLabels).map(([key, label]) => {
-        const isSelected = extraChargeType === key;
-        return (
-          <div
-            key={key}
-            onClick={() => {
-              setExtraChargeType(key);
-            }}
-            className={clsx(
-              "flex items-center justify-between py-2 px-3 rounded-lg cursor-pointer text-xs font-bold transition-colors select-none",
-              isSelected
-                ? "bg-primary-50/70 text-primary"
-                : "hover:bg-slate-50 text-slate-700 hover:text-slate-900"
-            )}
-          >
-            <span>{label}</span>
-            {isSelected && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
-          </div>
-        );
-      })}
-    </div>
-  );
-
-  useEffect(() => {
-    let charge = 0;
-    const bid = customCosts.currentBid || 0;
-    if (extraChargeType === 'customs_10') charge = bid * 0.10;
-    else if (extraChargeType === 'customs_15') charge = bid * 0.15;
-    else if (extraChargeType === 'customs_20') charge = bid * 0.20;
-    else if (extraChargeType === 'local_5') charge = bid * 0.05;
-    else if (extraChargeType === 'env_2') charge = bid * 0.02;
-    else if (extraChargeType === 'brokerage_3') charge = bid * 0.03;
-    else if (extraChargeType === 'warehousing_5k') charge = 5000;
-    else if (extraChargeType === 'inspection_2k') charge = 2500;
-
-    setCustomCosts(prev => {
-      if (prev.extraCharge === charge) return prev;
-      return { ...prev, extraCharge: charge };
-    });
-  }, [extraChargeType, customCosts.currentBid]);
 
   const getChartData = () => {
     if (!valuationData) return [];
 
     let currentVal = valuationData.totalLotValue;
-    let targetTitle = item.raw_materials_text || item.category_name;
-
     if (selectedChartItemId !== 'total') {
       const idx = parseInt(selectedChartItemId, 10);
       const it = valuationData.items[idx];
       if (it) {
         currentVal = it.totalValue;
-        targetTitle = it.name || targetTitle;
       }
     }
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    const multipliers = [0.91, 0.94, 0.92, 0.96, 0.98, 1.0];
 
-    // Use ML model to generate realistic price history variations
-    const modelId = detectModelId(targetTitle);
-    const grade = detectGrade(targetTitle, modelId);
-    const region = detectRegion(item.location || '', targetTitle);
-    
-    const baseLME = DEFAULT_MACRO_INPUTS.LME_Steel_Scrap_USD;
-    const modelPoints: number[] = [];
-    
-    // Generate 6 months of historical prices by varying LME index slightly
-    // Jan (-5 months) to Jun (current)
-    for (let i = -5; i <= 0; i++) {
-      const tempInputs = {
-        ...DEFAULT_MACRO_INPUTS,
-        LME_Steel_Scrap_USD: baseLME + (i * 12) + (Math.random() * 5 - 2.5) // Adds slight variation
-      };
-      const pricePoint = predictPrice(modelId, grade, region, tempInputs, targetTitle);
-      modelPoints.push(pricePoint);
-    }
-    
-    // Scale the actual 'currentVal' using the shape of the ML model points
-    const currentModelPrice = modelPoints[modelPoints.length - 1];
-    
-    return months.map((m, i) => {
-      // If the model yields 0, fallback to a flat value to avoid NaN
-      const multiplier = currentModelPrice > 0 ? (modelPoints[i] / currentModelPrice) : 1;
-      return {
-        name: m,
-        value: Math.round(currentVal * multiplier)
-      };
-    });
+    return months.map((m, i) => ({
+      name: m,
+      value: Math.round(currentVal * multipliers[i])
+    }));
   };
 
   useEffect(() => {
@@ -202,9 +107,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
         loadingUnloading: 2000,
         refurbishment: 0,
         otherFees: 1000,
-        extraCharge: 0,
       });
-      setExtraChargeType('none');
       setModalTab('catalog');
       setSelectedChartItemId('total');
     } else {
@@ -427,10 +330,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <input
                             type="number"
                             value={customCosts.currentBid}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setCustomCosts(prev => ({ ...prev, currentBid: v === '' ? '' : Math.max(0, parseFloat(v) || 0) }));
-                            }}
+                            onChange={(e) => setCustomCosts(prev => ({ ...prev, currentBid: Math.max(0, parseFloat(e.target.value) || 0) }))}
                             className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
                         </div>
@@ -445,10 +345,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <input
                             type="number"
                             value={customCosts.transportation}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setCustomCosts(prev => ({ ...prev, transportation: v === '' ? '' : Math.max(0, parseFloat(v) || 0) }));
-                            }}
+                            onChange={(e) => setCustomCosts(prev => ({ ...prev, transportation: Math.max(0, parseFloat(e.target.value) || 0) }))}
                             className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
                         </div>
@@ -463,10 +360,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <input
                             type="number"
                             value={customCosts.loadingUnloading}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setCustomCosts(prev => ({ ...prev, loadingUnloading: v === '' ? '' : Math.max(0, parseFloat(v) || 0) }));
-                            }}
+                            onChange={(e) => setCustomCosts(prev => ({ ...prev, loadingUnloading: Math.max(0, parseFloat(e.target.value) || 0) }))}
                             className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
                         </div>
@@ -481,10 +375,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <input
                             type="number"
                             value={customCosts.refurbishment}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setCustomCosts(prev => ({ ...prev, refurbishment: v === '' ? '' : Math.max(0, parseFloat(v) || 0) }));
-                            }}
+                            onChange={(e) => setCustomCosts(prev => ({ ...prev, refurbishment: Math.max(0, parseFloat(e.target.value) || 0) }))}
                             className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
                         </div>
@@ -499,36 +390,9 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <input
                             type="number"
                             value={customCosts.otherFees}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setCustomCosts(prev => ({ ...prev, otherFees: v === '' ? '' : Math.max(0, parseFloat(v) || 0) }));
-                            }}
+                            onChange={(e) => setCustomCosts(prev => ({ ...prev, otherFees: Math.max(0, parseFloat(e.target.value) || 0) }))}
                             className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Customs & Extra Charges ({currency})</label>
-                        <div className="relative rounded-xl shadow-2xs">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                            <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
-                          </div>
-                          <Dropdown
-                            popupRender={() => extraChargeMenu}
-                            trigger={['click']}
-                            placement="bottomLeft"
-                          >
-                            <button
-                              type="button"
-                              className="w-full flex justify-between items-center pl-7 pr-8 py-2 border border-slate-250 rounded-xl bg-white text-sm font-bold text-slate-900 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-left cursor-pointer h-[38px]"
-                            >
-                              <span className="truncate">
-                                {extraChargeLabels[extraChargeType]}
-                              </span>
-                              <ChevronDown className="w-4 h-4 text-slate-500 shrink-0 ml-2" />
-                            </button>
-                          </Dropdown>
                         </div>
                       </div>
                     </div>
@@ -548,43 +412,32 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Estimated Lot Value</h5>
-                          <div className="text-lg font-black text-slate-900 font-mono">
-                            {valuationData.totalLotValue > 0 ? formatPrice(valuationData.totalLotValue, currency) : 'N/A'}
-                          </div>
+                          <div className="text-lg font-black text-slate-900 font-mono">{formatPrice(valuationData.totalLotValue, currency)}</div>
                           <p className="text-[10px] text-slate-400 font-medium">Market value of items</p>
                         </div>
 
                         <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Total Lot Cost</h5>
-                          <div className="text-lg font-black text-slate-900 font-mono">
-                            {valuationData.totalLotValue > 0 ? formatPrice(valuationData.totalCost, currency) : 'N/A'}
-                          </div>
+                          <div className="text-lg font-black text-slate-900 font-mono">{formatPrice(valuationData.totalCost, currency)}</div>
                           <p className="text-[10px] text-slate-400 font-medium">Bid + logistics</p>
                         </div>
 
                         <div className={clsx(
                           "rounded-2xl p-4.5 border shadow-2xs space-y-1",
-                          valuationData.totalLotValue <= 0
-                            ? "bg-slate-50 border-slate-200 text-slate-500"
-                            : valuationData.estimatedProfit >= 0
+                          valuationData.estimatedProfit >= 0
                             ? "bg-emerald-50/50 border-emerald-150 text-emerald-950"
                             : "bg-rose-50/50 border-rose-150 text-rose-950"
                         )}>
                           <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest font-mono">Projected Profit</h5>
                           <div className="text-lg font-black font-mono">
-                            {valuationData.totalLotValue > 0
-                              ? `${valuationData.estimatedProfit >= 0 ? '+' : ''}${formatPrice(valuationData.estimatedProfit, currency)}`
-                              : 'N/A'
-                            }
+                            {valuationData.estimatedProfit >= 0 ? '+' : ''}{formatPrice(valuationData.estimatedProfit, currency)}
                           </div>
                           <p className="text-[10px] opacity-70 font-medium">Net profit estimate</p>
                         </div>
 
                         <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Break-Even Bid</h5>
-                          <div className="text-lg font-black text-slate-900 font-mono">
-                            {valuationData.totalLotValue > 0 ? formatPrice(valuationData.breakEven, currency) : 'N/A'}
-                          </div>
+                          <div className="text-lg font-black text-slate-900 font-mono">{formatPrice(valuationData.breakEven, currency)}</div>
                           <p className="text-[10px] text-slate-400 font-medium">Includes handling</p>
                         </div>
                       </div>
@@ -608,26 +461,21 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                 <th className="py-2.5 px-3.5 font-bold text-center w-24">Confidence</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-105 text-slate-700">
+                            <tbody className="divide-y divide-slate-100 text-slate-700">
                               {valuationData.items.map((row, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/50">
                                   <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.name}</td>
                                   <td className="py-2.5 px-3.5 text-right font-mono text-slate-650">{row.qty}</td>
-                                  <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">
-                                    {row.notAvailable ? 'N/A' : formatPrice(row.unitValue, currency)}
-                                  </td>
-                                  <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">
-                                    {row.notAvailable ? 'N/A' : formatPrice(row.totalValue, currency)}
-                                  </td>
+                                  <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{formatPrice(row.unitValue, currency)}</td>
+                                  <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">{formatPrice(row.totalValue, currency)}</td>
                                   <td className="py-2.5 px-3.5 text-center font-mono">
                                     <span className={clsx(
                                       "text-[10px] font-bold px-2 py-0.5 rounded",
-                                      row.notAvailable ? "bg-slate-100 text-slate-650" :
                                       row.confidence >= 75 ? "bg-emerald-50 text-emerald-700" :
                                         row.confidence >= 55 ? "bg-amber-50 text-amber-700" :
                                           "bg-rose-50 text-rose-700"
                                     )}>
-                                      {row.notAvailable ? 'N/A' : `${row.confidence}%`}
+                                      {row.confidence}%
                                     </span>
                                   </td>
                                 </tr>
@@ -733,53 +581,47 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
 
                         <div className="h-[220px] w-full">
-                          {valuationData.totalLotValue <= 0 ? (
-                            <div className="h-full flex items-center justify-center text-slate-400 font-medium text-xs bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl select-none">
-                              No trend data available for this item
-                            </div>
-                          ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={getChartData()} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                                <defs>
-                                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                  </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis
-                                  dataKey="name"
-                                  axisLine={false}
-                                  tickLine={false}
-                                  tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 500 }}
-                                />
-                                <YAxis
-                                  axisLine={false}
-                                  tickLine={false}
-                                  tickFormatter={(v) => `${currencySymbol}${v >= 100000 ? (v / 100000).toFixed(1) + 'L' : v.toLocaleString('en-IN')}`}
-                                  tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 500 }}
-                                />
-                                <Tooltip
-                                  formatter={(value: any) => [`${currencySymbol}${value.toLocaleString('en-IN')}`, 'Est. Value']}
-                                  contentStyle={{
-                                    borderRadius: '16px',
-                                    border: '1px solid #e2e8f0',
-                                    backgroundColor: '#ffffff',
-                                    color: '#0f172a',
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)'
-                                  }}
-                                />
-                                <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorVal)" />
-                              </AreaChart>
-                            </ResponsiveContainer>
-                          )}
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={getChartData()} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                              <XAxis
+                                dataKey="name"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 500 }}
+                              />
+                              <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tickFormatter={(v) => `${currencySymbol}${v >= 100000 ? (v / 100000).toFixed(1) + 'L' : v.toLocaleString('en-IN')}`}
+                                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 500 }}
+                              />
+                              <Tooltip
+                                formatter={(value: any) => [`${currencySymbol}${value.toLocaleString('en-IN')}`, 'Est. Value']}
+                                contentStyle={{
+                                  borderRadius: '16px',
+                                  border: '1px solid #e2e8f0',
+                                  backgroundColor: '#ffffff',
+                                  color: '#0f172a',
+                                  fontSize: '11px',
+                                  fontWeight: 'bold',
+                                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)'
+                                }}
+                              />
+                              <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorVal)" />
+                            </AreaChart>
+                          </ResponsiveContainer>
                         </div>
                       </div>
 
                       {/* International Market Comparison Panel */}
-                      {valuationData.internationalTotals && valuationData.totalLotValue > 0 && (
+                      {valuationData.internationalTotals && (
                         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">
@@ -987,6 +829,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   <table className="w-full text-left border-collapse text-[13.5px]">
                     <thead>
                       <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
+                        <th className="py-3 px-1.5 font-bold w-8"></th>
                         <th className="py-3 px-3.5 font-bold w-12 text-center">Lot</th>
                         <th className="py-3 px-3.5 font-bold">Material Description</th>
                         <th className="py-3 px-3.5 font-bold text-right">Quantity</th>
@@ -995,58 +838,93 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-105 text-slate-700">
-                      {summary.items.map((row) => (
-                        <tr key={row.sr} className="hover:bg-slate-50/50">
-                          <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                          <td className="py-3 px-3.5 font-bold text-slate-900">
-                            <div>{row.description}</div>
-                            {row.subItems && row.subItems.length > 0 && (
-                              <div className="mt-2.5 pl-3 border-l-2 border-indigo-200/80 space-y-2 bg-slate-50/40 p-2.5 rounded-xl font-normal">
-                                <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider font-mono">Lot Inventory Details</div>
-                                <div className="overflow-x-auto rounded-lg border border-slate-100 bg-white shadow-3xs">
-                                  <table className="w-full text-left border-collapse text-xs text-slate-600">
-                                    <thead>
-                                      <tr className="bg-slate-50/75 border-b border-slate-100 font-mono text-[9.5px] text-slate-400">
-                                        <th className="py-1.5 px-2 font-bold w-12 text-center">Sl</th>
-                                        <th className="py-1.5 px-2 font-bold">Item Description</th>
-                                        <th className="py-1.5 px-2 font-bold text-right w-24">Quantity</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-50 text-[11.5px]">
-                                      {row.subItems.map((sub, sIdx) => (
-                                        <tr key={sIdx} className="hover:bg-slate-50/25">
-                                          <td className="py-1.5 px-2 text-center font-mono text-slate-400">{sub.sr}</td>
-                                          <td className="py-1.5 px-2 font-medium text-slate-700">{sub.description}</td>
-                                          <td className="py-1.5 px-2 text-right font-mono font-bold text-slate-800">{sub.qty} {sub.unit}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
+                      {summary.items.map((row) => {
+                        const hasSubItems = row.subItems && row.subItems.length > 0;
+                        const isExpanded = expandedLots.has(String(row.sr));
+                        const toggleExpand = () => {
+                          setExpandedLots(prev => {
+                            const next = new Set(prev);
+                            const rowId = String(row.sr);
+                            if (next.has(rowId)) {
+                              next.delete(rowId);
+                            } else {
+                              next.add(rowId);
+                            }
+                            return next;
+                          });
+                        };
+                        return (
+                          <React.Fragment key={row.sr}>
+                            <tr className={clsx("hover:bg-slate-50/50", hasSubItems && "cursor-pointer")} onClick={hasSubItems ? toggleExpand : undefined}>
+                              <td className="py-3 px-1.5 text-center">
+                                {hasSubItems && (
+                                  <button className="p-0.5 text-slate-400 hover:text-primary transition-colors" onClick={(e) => { e.stopPropagation(); toggleExpand(); }}>
+                                    {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                  </button>
+                                )}
+                              </td>
+                              <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
+                              <td className="py-3 px-3.5 font-bold text-slate-900">
+                                <div>{row.description}</div>
+                                {hasSubItems && (
+                                  <div className="mt-1 flex items-center gap-1.5">
+                                    <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded font-mono">
+                                      {row.subItems!.length} items inside
+                                    </span>
+                                    {!isExpanded && (
+                                      <span className="text-[10px] text-slate-400 font-medium">Click to expand</span>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
+                              <td className="py-3 px-3.5 text-center font-mono text-xs text-emerald-600 font-bold bg-emerald-50/50">{row.marketPrice}</td>
+                              <td className="py-2.5 px-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  onClick={() => handleAddItemToQuote(row)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-slate-700 hover:text-primary hover:bg-slate-100 border border-slate-200 hover:border-primary/30 rounded-md transition-colors cursor-pointer"
+                                  title="Add to Quote"
+                                >
+                                  <FilePlus className="w-3 h-3" />
+                                  <span>Add</span>
+                                </button>
+                              </td>
+                            </tr>
+                            {hasSubItems && isExpanded && (
+                              <tr>
+                                <td colSpan={6} className="p-0">
+                                  <div className="mx-4 my-3 border border-indigo-100 rounded-xl overflow-hidden bg-indigo-50/20">
+                                    <div className="bg-indigo-50/60 px-4 py-2 border-b border-indigo-100 flex items-center justify-between">
+                                      <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider font-mono">Lot {row.sr} — Inventory Details</span>
+                                      <span className="text-[10px] font-bold text-indigo-500 bg-white border border-indigo-100 px-2 py-0.5 rounded-md font-mono">{row.subItems!.length} items</span>
+                                    </div>
+                                    <div className="max-h-[400px] overflow-y-auto">
+                                      <table className="w-full text-left border-collapse text-xs">
+                                        <thead className="sticky top-0 z-10">
+                                          <tr className="bg-white border-b border-indigo-100 font-mono text-[9.5px] text-slate-400">
+                                            <th className="py-2 px-3 font-bold w-12 text-center">Sl</th>
+                                            <th className="py-2 px-3 font-bold">Item Description</th>
+                                            <th className="py-2 px-3 font-bold text-right w-28">Quantity</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                          {row.subItems!.map((sub, sIdx) => (
+                                            <tr key={sIdx} className="hover:bg-indigo-50/30 text-[11.5px]">
+                                              <td className="py-1.5 px-3 text-center font-mono text-slate-400">{sub.sr || sIdx + 1}</td>
+                                              <td className="py-1.5 px-3 font-medium text-slate-700">{sub.description}</td>
+                                              <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-800">{sub.qty} {sub.unit}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
                             )}
-                          </td>
-                          <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
-                          <td className={clsx(
-                            "py-3 px-3.5 text-center font-mono text-xs font-bold",
-                            row.marketPrice === "Not Available"
-                              ? "text-slate-500 bg-slate-100/50"
-                              : "text-emerald-600 bg-emerald-50/50"
-                          )}>
-                            {row.marketPrice}
-                          </td>
-                          <td className="py-2.5 px-3.5 text-center">
-                            <button
-                              onClick={() => handleAddItemToQuote(row)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-slate-700 hover:text-primary hover:bg-slate-100 border border-slate-200 hover:border-primary/30 rounded-md transition-colors cursor-pointer"
-                              title="Add to Quote"
-                            >
-                              <FilePlus className="w-3 h-3" />
-                              <span>Add</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                          </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1096,7 +974,9 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   {(() => {
                     let totalTurnover = 0;
                     summary.items.forEach(lot => {
-                      totalTurnover += calculateLotValue(lot.qty, lot.unit, lot.marketPrice || '2500');
+                      const qty = getNumericQty(lot.qty, lot.unit);
+                      const price = getNumericPrice(lot.marketPrice || '2500');
+                      totalTurnover += qty * price;
                     });
 
                     const predictedClosingBid = totalTurnover * 0.78;
@@ -1159,73 +1039,63 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
             {/* Right Side: Image/Preview Panel */}
             {(() => {
-              const allImages = (summary.extracted_images || []).filter(
-                (url: string) => !url.toLowerCase().endsWith('.pdf')
-              );
-              const actualPhotos = allImages.filter(
-                (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('mstc-previews/')
-              );
-              const catalogPages = allImages.filter(
-                (url: string) => url.toLowerCase().includes('_catalog_page_') || url.toLowerCase().includes('mstc-previews/')
-              );
-              
-              const displayImage = actualPhotos.length > 0 ? actualPhotos[0] : summary.preview_image_url;
+              const hasOtherMedia = item.raw_materials_text && summary.extracted_images && summary.extracted_images.length > 0;
+              const displayImage = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images![0] : null);
 
               return (
                 <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
-                  {/* Actual Asset Photos */}
-                  {actualPhotos.length > 0 && (
+                  {/* Image Gallery */}
+                  {(() => {
+                    const imageUrls = (summary.extracted_images || []).filter(
+                      (url: string) => !url.toLowerCase().endsWith('.pdf')
+                    );
+                    if (imageUrls.length === 0) return null;
+                    return (
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                          <span>Auction Images</span>
+                          <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {imageUrls.map((url: string, idx: number) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setLightboxImage(url)}
+                              className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
+                            >
+                              <img
+                                src={url}
+                                alt={`Auction image ${idx + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {displayImage ? (
                     <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
-                        <span>Auction Images</span>
-                        <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{actualPhotos.length} Photos</span>
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
+                        Catalog Document Preview
                       </h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {actualPhotos.map((url: string, idx: number) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => setLightboxImage(url)}
-                            className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
-                          >
-                            <img
-                              src={url}
-                              alt={`Auction image ${idx + 1}`}
-                              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
-                            />
-                          </button>
-                        ))}
+                      <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setLightboxImage(displayImage)}
+                          className="block w-full text-left cursor-zoom-in relative focus:outline-none"
+                        >
+                          <img
+                            src={displayImage}
+                            alt="PDF Catalog Preview"
+                            className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
+                          />
+                        </button>
                       </div>
                     </div>
-                  )}
-
-                  {/* PDF Catalog Page Previews */}
-                  {catalogPages.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
-                        <span>Catalog Pages</span>
-                        <span className="text-[9.5px] bg-slate-100 text-slate-600 border border-slate-200 font-bold px-2 py-0.5 rounded font-mono">{catalogPages.length} Pages</span>
-                      </h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {catalogPages.map((url: string, idx: number) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => setLightboxImage(url)}
-                            className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
-                          >
-                            <img
-                              src={url}
-                              alt={`Catalog page ${idx + 1}`}
-                              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {!displayImage && (
+                  ) : (
                     <div className="w-full py-12 flex flex-col items-center justify-center text-slate-400 gap-2 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
                       <svg className="w-10 h-10 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
