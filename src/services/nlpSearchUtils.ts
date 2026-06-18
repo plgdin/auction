@@ -295,11 +295,21 @@ export function parsePriceConstraint(query: string): PriceConstraint | null {
   }
 
   // Try pattern 2: standalone numbers, e.g. "25000" or "pre-bid 100000"
-  const pattern2 = /(?:(pre\s*bid|pre-bid|emd|deposit|price|value)\s+)?₹?\s*(\d+)/i;
+  const pattern2 = /(?:(pre\s*bid|pre-bid|emd|deposit|price|value)\s+)?(₹)?\s*(\d+)/i;
   const match2 = q.match(pattern2);
   if (match2) {
     const fieldWord = match2[1] ? match2[1].toLowerCase().replace(/\s/g, '') : '';
-    const value = parseInt(match2[2], 10);
+    const hasRupee = !!match2[2];
+    const value = parseInt(match2[3], 10);
+
+    // If it's a completely naked number (no prefix, no currency symbol, no multiplier)
+    if (!fieldWord && !hasRupee && !usedMultiplier) {
+      // Ignore it unless it looks like a round price value (e.g. 10000, 50000)
+      // This prevents stripping out auction numbers like "8321" or "2024"
+      if (value < 10000 || value % 1000 !== 0) {
+        return null;
+      }
+    }
 
     let field: 'pre_bid' | 'total_value' | 'either' = 'either';
     if (fieldWord) {
@@ -322,11 +332,22 @@ export function parsePriceConstraint(query: string): PriceConstraint | null {
 export function cleanQueryFromPriceConstraint(query: string): string {
   const cleaned = cleanQueryPriceTypos(query);
   
-  const pattern = /(?:(pre\s*bid|pre-bid|emd|deposit|price|value)\s+)?(?:(<=|>=|<|>|=|under|below|less\s+than|above|over|more\s+than|equal\s+to|is|of)\s+)?₹?\s*[\d\.,]+\s*(lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?/gi;
-  const standalonePattern = /₹?\s*[\d\.,]+\s*(lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)/gi;
+  // 1. Matches if it starts with field/operator: "under 50000", "prebid > 2000"
+  const patternWithPrefix = /(?:(?:pre\s*bid|pre-bid|emd|deposit|price|value)\s+)?(?:(?:<=|>=|<|>|=|under|below|less\s+than|above|over|more\s+than|equal\s+to|is|of)\s+)₹?\s*[\d\.,]+\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?/gi;
+  
+  // 2. Matches if it has field prefix but NO operator: "prebid 50000"
+  const patternWithField = /(?:pre\s*bid|pre-bid|emd|deposit|price|value)\s+₹?\s*[\d\.,]+\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?/gi;
+  
+  // 3. Matches if it has NO prefix but HAS currency or multiplier: "₹50000", "5 lakh"
+  const patternWithCurrencyOrMultiplier = /₹\s*[\d\.,]+\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?|[\d\.,]+\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)\b/gi;
 
-  let result = cleaned.replace(pattern, ' ');
-  result = result.replace(standalonePattern, ' ');
+  let result = cleaned.replace(patternWithPrefix, ' ');
+  result = result.replace(patternWithField, ' ');
+  result = result.replace(patternWithCurrencyOrMultiplier, ' ');
+  
+  // 4. Finally, strip round standalone numbers that we parsed as price constraints
+  const patternRoundNumbers = /\b[1-9]\d{3,}000\b/g;
+  result = result.replace(patternRoundNumbers, ' ');
   
   return result.replace(/\s+/g, ' ').trim();
 }
