@@ -839,7 +839,34 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {summary.items.map((row) => (
                         <tr key={row.sr} className="hover:bg-slate-50/50">
                           <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                          <td className="py-3 px-3.5 font-bold text-slate-900">{row.description}</td>
+                          <td className="py-3 px-3.5 font-bold text-slate-900">
+                            <div>{row.description}</div>
+                            {row.subItems && row.subItems.length > 0 && (
+                              <div className="mt-2.5 pl-3 border-l-2 border-indigo-200/80 space-y-2 bg-slate-50/40 p-2.5 rounded-xl font-normal">
+                                <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider font-mono">Lot Inventory Details</div>
+                                <div className="overflow-x-auto rounded-lg border border-slate-100 bg-white shadow-3xs">
+                                  <table className="w-full text-left border-collapse text-xs text-slate-600">
+                                    <thead>
+                                      <tr className="bg-slate-50/75 border-b border-slate-100 font-mono text-[9.5px] text-slate-400">
+                                        <th className="py-1.5 px-2 font-bold w-12 text-center">Sl</th>
+                                        <th className="py-1.5 px-2 font-bold">Item Description</th>
+                                        <th className="py-1.5 px-2 font-bold text-right w-24">Quantity</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50 text-[11.5px]">
+                                      {row.subItems.map((sub, sIdx) => (
+                                        <tr key={sIdx} className="hover:bg-slate-50/25">
+                                          <td className="py-1.5 px-2 text-center font-mono text-slate-400">{sub.sr}</td>
+                                          <td className="py-1.5 px-2 font-medium text-slate-700">{sub.description}</td>
+                                          <td className="py-1.5 px-2 text-right font-mono font-bold text-slate-800">{sub.qty} {sub.unit}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+                          </td>
                           <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
                           <td className="py-3 px-3.5 text-center font-mono text-xs text-emerald-600 font-bold bg-emerald-50/50">{row.marketPrice}</td>
                           <td className="py-2.5 px-3.5 text-center">

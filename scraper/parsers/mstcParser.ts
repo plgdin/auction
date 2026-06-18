@@ -12,6 +12,13 @@ import {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export interface SubItem {
+  sr: number | string;
+  description: string;
+  qty: string;
+  unit: string;
+}
+
 export interface CatalogItem {
   sr: number | string;
   description: string;
@@ -21,6 +28,7 @@ export interface CatalogItem {
   attachments?: string[];
   images?: string[];
   marketPrice?: string;
+  subItems?: SubItem[];
 }
 
 export interface KeyContact {
@@ -482,6 +490,9 @@ export function parseMstcCatalogText(
         return n.startsWith("photo_") || n.startsWith("annex_");
       });
 
+      // --- Extract block sub-items ---
+      const subItems = parseSubItemsFromText(block);
+
       items.push({
         sr,
         description: lotName || categoryName || "Auction Lot Items",
@@ -490,6 +501,7 @@ export function parseMstcCatalogText(
         taxRate: `${gst} GST${tcs && tcs !== "0.0" && tcs !== "0" ? " + " + tcs + "% TCS" : ""}`,
         attachments: attachments.length > 0 ? attachments : undefined,
         marketPrice: lotMarketPrice,
+        subItems: subItems.length > 0 ? subItems : undefined,
       });
     }
   }
@@ -604,4 +616,149 @@ export function parseMstcCatalogText(
       contact: inspectionContact
     }
   };
+}
+
+/**
+ * Parse sub-items from a block of text (selectable or OCR).
+ *
+ * Handles three common formats from OCR-processed PDF tables:
+ *   1. "<sr>. DESCRIPTION <unit> <qty>"   e.g., "1 PLASTIC CHAIR Nos 5"
+ *   2. "<sr>. DESCRIPTION <qty> <unit>"   e.g., "1 PLASTIC CHAIR 5 Nos"
+ *   3. "<sr>. DESCRIPTION <qty>"          e.g., "1 PLASTIC CHAIR 5" (defaults unit to Nos)
+ *
+ * Also pre-splits concatenated rows where OCR joins multiple table rows into one line.
+ */
+export function parseSubItemsFromText(text: string): SubItem[] {
+  if (!text) return [];
+  const subItems: SubItem[] = [];
+  const seenKeys = new Set<string>();
+
+  // Comprehensive unit keywords for Indian government surplus auctions
+  const UNITS =
+    "nos|no|sets|set|kgs|kg|gms|gm|mts|mt|mtr|mtrs|ltrs|ltr|pcs|pc|" +
+    "items|item|units|unit|bags|bag|box|boxes|bdl|bdls|coil|coils|" +
+    "roll|rolls|ac|pair|pairs|drums|drum|sheets|sheet|ton|tons|" +
+    "gross|dozen|doz|bottles|bottle|bunches|bunch|reams|ream|each|" +
+    "bundle|bundles|set\\/nos|nos\\/set";
+
+  // Step 1: Normalize text — clean OCR artifacts, compress whitespace per line
+  let normalized = text.replace(/\|/g, " ").replace(/\t/g, " ");
+
+  // Step 2: Pre-split concatenated items.
+  // When OCR joins multiple table rows into a single line, split them apart.
+  // Pattern: after "<unit_keyword> <qty_number>", before "<new_item_sr> <UPPERCASE_WORD>"
+  // e.g., "CHAIR Nos 5 2 PLASTIC TABLE Nos 3" → "CHAIR Nos 5\n2 PLASTIC TABLE Nos 3"
+  const splitOnUnitQty = new RegExp(
+    `(\\b(?:${UNITS})\\.?\\s+\\d+[\\d,.]*)\\s+(\\d{1,3})\\.?\\s+([A-Z])`,
+    "gi",
+  );
+  let prev = "";
+  while (prev !== normalized) {
+    prev = normalized;
+    normalized = normalized.replace(splitOnUnitQty, "$1\n$2 $3");
+  }
+
+  // Fallback split: bare quantity followed by new item number + uppercase word (3+ chars)
+  // e.g., "28 20 BADMINTON POST" → "28\n20 BADMINTON POST"
+  prev = "";
+  while (prev !== normalized) {
+    prev = normalized;
+    normalized = normalized.replace(
+      /(\d+[\d,.]*)\s+(\d{1,3})\s+([A-Z][A-Z][A-Z])/g,
+      "$1\n$2 $3",
+    );
+  }
+
+  // Step 3: Process line by line
+  const lines = normalized
+    .split(/\r?\n/)
+    .map((l) => l.replace(/\s+/g, " ").trim())
+    .filter((l) => l.length > 3);
+
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+
+    // Skip header rows, page markers, and irrelevant labels
+    if (
+      /^sl[\s.]?no/i.test(line) ||
+      /^serial\s*no/i.test(line) ||
+      lower.includes("nomenclature") ||
+      lower.includes("appendix") ||
+      lower.includes("annexure") ||
+      /\blot\s*no\b/i.test(line) ||
+      lower.includes("lot parameters") ||
+      lower.includes("lot name") ||
+      (lower.includes("description") &&
+        (lower.includes("qty") ||
+          lower.includes("quantity") ||
+          lower.includes("a/u"))) ||
+      (lower.includes("quantity") &&
+        (lower.includes("sl") ||
+          lower.includes("unit") ||
+          lower.includes("a/u"))) ||
+      /\bpage\s+\d/i.test(line) ||
+      /^total\b/i.test(line) ||
+      /^grand\s*total/i.test(line) ||
+      /^sub\s*total/i.test(line)
+    ) {
+      continue;
+    }
+    // Match 1: "<sr>. DESCRIPTION <unit> <qty>" (most common format)
+    const m1 = line.match(
+      new RegExp(
+        `^(\\d{1,3})\\.?\\s+(.+?)\\s+\\b(${UNITS})\\b\\.?\\s+(\\d+[\\d,.]*)\\s*$`,
+        "i",
+      ),
+    );
+    if (m1) {
+      addItem(m1[1], m1[2], m1[3], m1[4]);
+      continue;
+    }
+
+    // Match 2: "<sr>. DESCRIPTION <qty> <unit>"
+    const m2 = line.match(
+      new RegExp(
+        `^(\\d{1,3})\\.?\\s+(.+?)\\s+(\\d+[\\d,.]*)\\s+\\b(${UNITS})\\b\\.?\\s*$`,
+        "i",
+      ),
+    );
+    if (m2) {
+      addItem(m2[1], m2[2], m2[4], m2[3]);
+      continue;
+    }
+
+    // Match 3: "<sr>. DESCRIPTION <qty>" (no explicit unit, default to Nos)
+    const m3 = line.match(/^(\d{1,3})\.?\s+(.+?)\s+(\d+[\d,.]*)$/);
+    if (m3) {
+      const desc = m3[2].trim();
+      // Only accept if description has meaningful alpha text (not just OCR noise)
+      if (
+        desc.length > 2 &&
+        !/^\d+$/.test(desc) &&
+        /[a-zA-Z]{2,}/.test(desc)
+      ) {
+        addItem(m3[1], desc, "Nos", m3[3]);
+      }
+    }
+  }
+
+  function addItem(srStr: string, rawDesc: string, unit: string, qty: string) {
+    const desc = rawDesc.trim();
+    if (desc.length < 2 || !/[a-zA-Z]{2,}/.test(desc)) return;
+
+    const sr = parseInt(srStr, 10);
+    // Dedup using sr + normalized prefix of description (handles OCR variations)
+    const key = `${sr}_${desc.toLowerCase().substring(0, 30)}`;
+    if (seenKeys.has(key)) return;
+    seenKeys.add(key);
+
+    subItems.push({
+      sr,
+      description: desc,
+      unit: unit.trim(),
+      qty: qty.trim(),
+    });
+  }
+
+  return subItems;
 }

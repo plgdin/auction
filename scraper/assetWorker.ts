@@ -25,8 +25,8 @@ import {
 import { logger } from "./utils/logger.js";
 import { supabase, uploadToStorage } from "./utils/storage.js";
 import { renderPdfFirstPage, extractEmbeddedJpegs, renderAndExtractPdfPages } from "./utils/pdfUtils.js";
-import { parseMstcCatalogText } from "./parsers/mstcParser.js";
-import type { CatalogSummary } from "./parsers/mstcParser.js";
+import { parseMstcCatalogText, parseSubItemsFromText } from "./parsers/mstcParser.js";
+import type { CatalogSummary, SubItem } from "./parsers/mstcParser.js";
 import { performOcr } from "./utils/ocrUtils.js";
 import { calculateTotalMarketValue } from "../src/utils/valuationUtils.js";
 
@@ -298,6 +298,20 @@ async function extractAndProcessLotDocuments(
     "Found lot attachments to process",
   );
 
+  // Build reverse map: attachment filename → pre-assigned lot item(s) from catalog parsing.
+  // This is more reliable than text-based matching for generic lot descriptions
+  // (e.g. "General Non Electrical Items") where keywords won't appear in the PDF inventory.
+  const attachmentToLots = new Map<string, any[]>();
+  for (const item of items) {
+    if (item.attachments && Array.isArray(item.attachments)) {
+      for (const att of item.attachments) {
+        const existing = attachmentToLots.get(att) || [];
+        existing.push(item);
+        attachmentToLots.set(att, existing);
+      }
+    }
+  }
+
   for (let i = 0; i < uniqueAttachments.length; i++) {
     const fileName = uniqueAttachments[i];
     const lotImageUrls: string[] = [];
@@ -354,8 +368,11 @@ async function extractAndProcessLotDocuments(
           const ocrText = await performOcr(page.imageBuffer);
           const combinedText = `${page.text || ""}\n${ocrText}`;
 
-          // Find matches for this page using both the selectable and OCR text
-          const matched = matchPageToLots(combinedText, items, fileName);
+          // Use pre-assigned lot mapping first (from catalog parsing), fall back to text-based matching
+          let matched = attachmentToLots.get(fileName) || [];
+          if (matched.length === 0) {
+            matched = matchPageToLots(combinedText, items, fileName);
+          }
           pageToLots.push(matched);
 
           if (matched.length > 0) {
@@ -367,6 +384,14 @@ async function extractAndProcessLotDocuments(
             // Extract quantities from the combined text
             const extracted = extractQuantitiesDetailed(combinedText);
 
+            const subItems = parseSubItemsFromText(combinedText);
+            if (subItems && subItems.length > 0) {
+              log.info(
+                { pageNumber: page.pageNumber, subItemsCount: subItems.length },
+                `Extracted ${subItems.length} sub-items from page text`
+              );
+            }
+
             for (const lot of matched) {
               const srStr = String(lot.sr);
               if (!lotSpecificImagesMap[srStr]) {
@@ -374,23 +399,39 @@ async function extractAndProcessLotDocuments(
               }
               lotSpecificImagesMap[srStr].push(publicUrl);
 
-              // Update lot quantity and unit if more specific quantity is found in photo text
-              if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
-                const currentQtyLower = (lot.qty || "").toLowerCase().trim();
-                const currentUnitLower = (lot.unit || "").toLowerCase().trim();
-                const isCurrentGeneric = 
-                  currentQtyLower === "1" || 
-                  currentQtyLower === "1.0" || 
-                  currentUnitLower === "lot" || 
-                  currentUnitLower === "lots";
+              if (subItems && subItems.length > 0) {
+                if (!lot.subItems) {
+                  lot.subItems = [];
+                }
+                for (const sub of subItems) {
+                  if (!lot.subItems.some((s: any) => s.sr === sub.sr && s.description === sub.description)) {
+                    lot.subItems.push(sub);
+                  }
+                }
+              }
 
-                if (isCurrentGeneric) {
-                  log.info(
-                    { lotSr: lot.sr, oldQty: lot.qty, oldUnit: lot.unit, newQty: extracted.qty, newUnit: extracted.unit },
-                    "Updating lot quantity from OCR/scanned text"
-                  );
-                  lot.qty = extracted.qty;
-                  lot.unit = extracted.unit;
+              // Update lot quantity from OCR only when no sub-items were found on this page.
+              // When sub-items exist, extractQuantitiesDetailed picks up individual item
+              // quantities and produces garbage (e.g. "1 PLASTIC + 6 PCS + 170 NOS").
+              // Instead, lot qty will be derived from sub-item count in the final pass below.
+              if (!subItems || subItems.length === 0) {
+                if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
+                  const currentQtyLower = (lot.qty || "").toLowerCase().trim();
+                  const currentUnitLower = (lot.unit || "").toLowerCase().trim();
+                  const isCurrentGeneric = 
+                    currentQtyLower === "1" || 
+                    currentQtyLower === "1.0" || 
+                    currentUnitLower === "lot" || 
+                    currentUnitLower === "lots";
+
+                  if (isCurrentGeneric) {
+                    log.info(
+                      { lotSr: lot.sr, oldQty: lot.qty, oldUnit: lot.unit, newQty: extracted.qty, newUnit: extracted.unit },
+                      "Updating lot quantity from OCR/scanned text"
+                    );
+                    lot.qty = extracted.qty;
+                    lot.unit = extracted.unit;
+                  }
                 }
               }
             }
@@ -426,14 +467,27 @@ async function extractAndProcessLotDocuments(
             const ocrText = await performOcr(page.imageBuffer);
             const combinedText = `${page.text || ""}\n${ocrText}`;
             const extracted = extractQuantitiesDetailed(combinedText);
-            if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
-              const currentQtyLower = (item.qty || "").toLowerCase().trim();
-              const currentUnitLower = (item.unit || "").toLowerCase().trim();
-              const isCurrentGeneric = 
-                currentQtyLower === "1" || 
-                currentQtyLower === "1.0" || 
-                currentUnitLower === "lot" || 
-                currentUnitLower === "lots";
+            const subItems = parseSubItemsFromText(combinedText);
+            if (subItems && subItems.length > 0) {
+              if (!item.subItems) {
+                item.subItems = [];
+              }
+              for (const sub of subItems) {
+                if (!item.subItems.some((s: any) => s.sr === sub.sr && s.description === sub.description)) {
+                  item.subItems.push(sub);
+                }
+              }
+            }
+
+            if (!subItems || subItems.length === 0) {
+              if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
+                const currentQtyLower = (item.qty || "").toLowerCase().trim();
+                const currentUnitLower = (item.unit || "").toLowerCase().trim();
+                const isCurrentGeneric = 
+                  currentQtyLower === "1" || 
+                  currentQtyLower === "1.0" || 
+                  currentUnitLower === "lot" || 
+                  currentUnitLower === "lots";
 
                 if (isCurrentGeneric) {
                   log.info(
@@ -443,6 +497,7 @@ async function extractAndProcessLotDocuments(
                   item.qty = extracted.qty;
                   item.unit = extracted.unit;
                 }
+              }
             }
           } catch (ocrErr: any) {
             log.warn({ errorMessage: ocrErr.message }, "OCR failed during sequential fallback");
@@ -472,7 +527,11 @@ async function extractAndProcessLotDocuments(
             // Run OCR on the embedded image to match lots and extract quantities
             const ocrText = await performOcr(imgBuffer);
             if (ocrText) {
-              const matched = matchPageToLots(ocrText, items, fileName);
+              // Use pre-assigned lot mapping first, fall back to text-based matching
+              let matched = attachmentToLots.get(fileName) || [];
+              if (matched.length === 0) {
+                matched = matchPageToLots(ocrText, items, fileName);
+              }
               if (matched.length > 0) {
                 const extracted = extractQuantitiesDetailed(ocrText);
                 for (const lot of matched) {
@@ -482,22 +541,37 @@ async function extractAndProcessLotDocuments(
                   }
                   lotSpecificImagesMap[srStr].push(publicUrl);
 
-                  if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
-                    const currentQtyLower = (lot.qty || "").toLowerCase().trim();
-                    const currentUnitLower = (lot.unit || "").toLowerCase().trim();
-                    const isCurrentGeneric = 
-                      currentQtyLower === "1" || 
-                      currentQtyLower === "1.0" || 
-                      currentUnitLower === "lot" || 
-                      currentUnitLower === "lots";
+                  const subItems = parseSubItemsFromText(ocrText);
+                  if (subItems && subItems.length > 0) {
+                    if (!lot.subItems) {
+                      lot.subItems = [];
+                    }
+                    for (const sub of subItems) {
+                      if (!lot.subItems.some((s: any) => s.sr === sub.sr && s.description === sub.description)) {
+                        lot.subItems.push(sub);
+                      }
+                    }
+                  }
 
-                    if (isCurrentGeneric) {
-                      log.info(
-                        { lotSr: lot.sr, oldQty: lot.qty, newQty: extracted.qty },
-                        "Updating fallback lot quantity from OCR/scanned text"
-                      );
-                      lot.qty = extracted.qty;
-                      lot.unit = extracted.unit;
+                  // Only update qty from OCR when no sub-items were found
+                  if (!subItems || subItems.length === 0) {
+                    if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
+                      const currentQtyLower = (lot.qty || "").toLowerCase().trim();
+                      const currentUnitLower = (lot.unit || "").toLowerCase().trim();
+                      const isCurrentGeneric = 
+                        currentQtyLower === "1" || 
+                        currentQtyLower === "1.0" || 
+                        currentUnitLower === "lot" || 
+                        currentUnitLower === "lots";
+
+                      if (isCurrentGeneric) {
+                        log.info(
+                          { lotSr: lot.sr, oldQty: lot.qty, newQty: extracted.qty },
+                          "Updating fallback lot quantity from OCR/scanned text"
+                        );
+                        lot.qty = extracted.qty;
+                        lot.unit = extracted.unit;
+                      }
                     }
                   }
                 }
@@ -514,6 +588,36 @@ async function extractAndProcessLotDocuments(
     }
 
     attachmentMap[fileName] = lotImageUrls;
+  }
+
+  // Final pass: derive lot quantity from sub-items when the current qty is generic.
+  // This is more reliable than extractQuantitiesDetailed which produces garbage
+  // when scanning pages full of individual item rows.
+  for (const item of items) {
+    if (item.subItems && item.subItems.length > 0) {
+      const currentQtyLower = (item.qty || "").toLowerCase().trim();
+      const currentUnitLower = (item.unit || "").toLowerCase().trim();
+      const isGenericOrGarbage =
+        currentQtyLower === "1" ||
+        currentQtyLower === "1.0" ||
+        currentUnitLower === "lot" ||
+        currentUnitLower === "lots" ||
+        currentQtyLower.includes("+"); // e.g. "1 PLASTIC + 6 PCS + 170 NOS"
+
+      if (isGenericOrGarbage) {
+        log.info(
+          {
+            lotSr: item.sr,
+            oldQty: item.qty,
+            oldUnit: item.unit,
+            subItemCount: item.subItems.length,
+          },
+          "Deriving lot quantity from sub-item count",
+        );
+        item.qty = String(item.subItems.length);
+        item.unit = "Items";
+      }
+    }
   }
 
   return { 
