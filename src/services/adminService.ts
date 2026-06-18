@@ -127,16 +127,25 @@ export const adminService = {
 
   // User Management
   async getUsers(): Promise<any[]> {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
 
-    if (error) {
-      console.error('Error fetching users:', error);
+      const response = await fetch('/api/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch users: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching users via API:', error);
       return [];
     }
-    return data;
   },
 
   async updateUserRole(userId: string, role: string): Promise<boolean> {
@@ -226,5 +235,77 @@ export const adminService = {
       return [];
     }
     return data;
+  },
+
+  async resetFailedAuctions(): Promise<boolean> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
+
+      const response = await fetch('/api/scraper/reset-failed', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to reset failed auctions: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return !!data.success;
+    } catch (error) {
+      console.error('Error resetting failed auctions:', error);
+      return false;
+    }
+  },
+
+  async resetSingleFailedAuction(id: string): Promise<boolean> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
+
+      const response = await fetch(`/api/scraper/reset-single?id=${id}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to reset single failed auction: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return !!data.success;
+    } catch (error) {
+      console.error('Error resetting single failed auction:', error);
+      return false;
+    }
+  },
+
+  async unlockProcessingAuctions(): Promise<boolean> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
+
+      const response = await fetch('/api/scraper/unlock-processing', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to unlock processing auctions: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return !!data.success;
+    } catch (error) {
+      console.error('Error unlocking processing auctions:', error);
+      return false;
+    }
   }
 };

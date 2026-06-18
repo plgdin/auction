@@ -84,7 +84,7 @@ async function downloadAttachment(
       return null;
     }
 
-    const docBuffer = await response.buffer();
+    const docBuffer = Buffer.from(await response.arrayBuffer());
     if (docBuffer.toString("utf-8", 0, 4) === "%PDF") {
       return docBuffer;
     }
@@ -589,16 +589,23 @@ export async function processRecord(record: QueueRecord): Promise<void> {
   } as any);
 
   if (!payloadResponse.ok) {
-    throw new Error(
-      `Catalog download failed with status ${payloadResponse.status}`,
-    );
+    let errMessage = `Catalog download failed with status ${payloadResponse.status}`;
+    if (payloadResponse.status >= 500) {
+      errMessage = `MSTC Server Error: MSTC returned HTTP ${payloadResponse.status} (Internal Server Error / IBM HTTP Server)`;
+    }
+    throw new Error(errMessage);
   }
 
-  const fileBuffer = await payloadResponse.buffer();
+  const fileBuffer = Buffer.from(await payloadResponse.arrayBuffer());
 
   // Validate PDF structure
   if (fileBuffer.toString("utf-8", 0, 4) !== "%PDF") {
-    const preview = fileBuffer.toString("utf-8", 0, 200);
+    const preview = fileBuffer.toString("utf-8", 0, 1000);
+    if (preview.includes("IBM_HTTP_Server") || preview.includes("Internal Server Error")) {
+      throw new Error(
+        "MSTC Server Error: IBM HTTP Server returned 500 (Internal Server Error) instead of a PDF catalog."
+      );
+    }
     if (
       preview.includes("session") ||
       preview.includes("timeout") ||

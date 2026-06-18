@@ -1,5 +1,6 @@
 import { decryptPdfPath } from '../src/lib/crypto.js';
 import fetch from 'node-fetch';
+import { supabase } from '../src/lib/supabase.js';
 
 export default async function handler(req: any, res: any) {
   // CORS Headers
@@ -53,7 +54,26 @@ export default async function handler(req: any, res: any) {
     res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
 
     // Stream/send the response buffer
-    const buffer = await response.buffer();
+    const buffer = Buffer.from(await response.arrayBuffer());
+    
+    // Log PDF download to audit log
+    const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').toString().split(',')[0].trim();
+    try {
+      await supabase.from('audit_logs').insert([
+        {
+          action: 'mstc_catalog_pdf_served',
+          ip_address: ip,
+          details: {
+            filename,
+            decryptedUrl,
+            userAgent: req.headers['user-agent']
+          }
+        }
+      ]);
+    } catch (logErr) {
+      console.error('Failed to log PDF download event:', logErr);
+    }
+
     res.send(buffer);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
