@@ -1,6 +1,5 @@
-// @ts-nocheck
 import { useState } from 'react';
-import { LayoutDashboard, Users, Megaphone, Shield, BarChart3, Cpu, Mail } from 'lucide-react';
+import { LayoutDashboard, Users, Megaphone, Shield, BarChart3, Cpu, Mail, Activity } from 'lucide-react';
 import { AdminOverview } from '../components/admin/AdminOverview';
 import { UserManagement } from '../components/admin/UserManagement';
 import { SystemManagement } from '../components/admin/SystemManagement';
@@ -8,15 +7,17 @@ import { ReportsAnalytics } from '../components/admin/ReportsAnalytics';
 import { ScraperDashboard } from '../components/admin/ScraperDashboard';
 import { NewsManagement } from '../components/admin/NewsManagement';
 import { ContactMessages } from '../components/admin/ContactMessages';
+import { AuditLogsView } from '../components/admin/AuditLogsView';
 import clsx from 'clsx';
 
-type AdminTab = 'overview' | 'users' | 'reports' | 'system' | 'scraper' | 'news' | 'messages';
+type AdminTab = 'overview' | 'users' | 'reports' | 'system' | 'scraper' | 'news' | 'messages' | 'activities';
 
 export function Admin() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
 
   const tabs = [
     { id: 'overview', label: 'Overview & Analytics', icon: LayoutDashboard },
+    { id: 'activities', label: 'Audit Logs', icon: Activity },
     { id: 'scraper', label: 'Scraper & Ingestion', icon: Cpu },
     { id: 'news', label: 'News & Media', icon: Megaphone },
     { id: 'reports', label: 'Advanced Reports', icon: BarChart3 },
@@ -29,6 +30,8 @@ export function Admin() {
     switch (activeTab) {
       case 'overview':
         return <AdminOverview />;
+      case 'activities':
+        return <AuditLogsView />;
       case 'scraper':
         return <ScraperDashboard />;
       case 'reports':

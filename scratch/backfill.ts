@@ -49,7 +49,7 @@ async function executeBackfill(task: 'parse' | 'images' | 'both') {
         console.warn(` - Skip (Download failed: ${res.statusText})`);
         continue;
       }
-      const buffer = await res.buffer();
+      const buffer = Buffer.from(await res.arrayBuffer());
       if (buffer.toString('utf-8', 0, 4) !== '%PDF') {
         console.warn(' - Skip (Downloaded buffer is not PDF)');
         continue;

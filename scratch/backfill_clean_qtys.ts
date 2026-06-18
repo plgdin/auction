@@ -58,7 +58,7 @@ async function run() {
         continue;
       }
 
-      const buffer = await res.buffer();
+      const buffer = Buffer.from(await res.arrayBuffer());
       if (buffer.toString("utf-8", 0, 4) !== "%PDF") {
         console.log("  ❌ [SKIP] Downloaded file is not a valid PDF");
         failCount++;

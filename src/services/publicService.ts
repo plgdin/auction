@@ -512,6 +512,9 @@ export interface MstcSanitizedAuction {
   sanitized_document_path: string | null; // Masked path pointing exclusively to your Supabase cloud asset
   raw_materials_text: string | null;
   status: string;
+  is_reauction?: boolean;
+  original_auction_number?: string | null;
+  parent_auction_id?: string | null;
 }
 
 export interface SearchSuggestion {
@@ -1418,35 +1421,51 @@ export const MstcSearchService = {
     }
   ): Promise<MstcSanitizedAuction[]> {
     try {
-      let queryBuilder = supabase
-        .from('mstc_auctions')
-        .select('*')
-        .eq('asset_status', 'completed');
+      let allData: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
 
-      if (filters?.sellers && filters.sellers.length > 0) {
-        queryBuilder = queryBuilder.in('seller_name', filters.sellers);
-      } else if (filters?.seller) {
-        queryBuilder = queryBuilder.eq('seller_name', filters.seller);
+      while (true) {
+        let queryBuilder = supabase
+          .from('mstc_auctions')
+          .select('*')
+          .eq('asset_status', 'completed')
+          .order('opening_date', { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (filters?.sellers && filters.sellers.length > 0) {
+          queryBuilder = queryBuilder.in('seller_name', filters.sellers);
+        } else if (filters?.seller) {
+          queryBuilder = queryBuilder.eq('seller_name', filters.seller);
+        }
+        
+        if (filters?.locations && filters.locations.length > 0) {
+          queryBuilder = queryBuilder.in('location', filters.locations);
+        } else if (filters?.location) {
+          queryBuilder = queryBuilder.eq('location', filters.location);
+        }
+
+        if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
+          const orConditions = filters.regionalOffices.map(office => `mstc_auction_number.ilike.MSTC/${office}/%`).join(',');
+          queryBuilder = queryBuilder.or(orConditions);
+        } else if (filters?.regionalOffice) {
+          queryBuilder = queryBuilder.ilike('mstc_auction_number', `MSTC/${filters.regionalOffice}/%`);
+        }
+
+        const { data, error } = await queryBuilder;
+
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        
+        allData = [...allData, ...data];
+        
+        if (data.length < pageSize) break;
+        from += pageSize;
       }
       
-      if (filters?.locations && filters.locations.length > 0) {
-        queryBuilder = queryBuilder.in('location', filters.locations);
-      } else if (filters?.location) {
-        queryBuilder = queryBuilder.eq('location', filters.location);
-      }
+      const data = allData;
 
-      if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
-        const orConditions = filters.regionalOffices.map(office => `mstc_auction_number.ilike.MSTC/${office}/%`).join(',');
-        queryBuilder = queryBuilder.or(orConditions);
-      } else if (filters?.regionalOffice) {
-        queryBuilder = queryBuilder.ilike('mstc_auction_number', `MSTC/${filters.regionalOffice}/%`);
-      }
-
-      const { data, error } = await queryBuilder
-        .order('opening_date', { ascending: false });
-
-      if (error) throw error;
-      if (!data) return [];
+      if (!data || data.length === 0) return [];
 
       // Map raw category names to clean Category | Subcategory structure
       let mapped = (data as MstcSanitizedAuction[]).map(item => {
@@ -1837,12 +1856,32 @@ export const MstcSearchService = {
     regionalOffices: string[];
   }> {
     try {
-      const { data, error } = await supabase
-        .from('mstc_auctions')
-        .select('category_name, seller_name, location, mstc_auction_number')
-        .eq('asset_status', 'completed'); // Match filter dropdown choices with visible completed catalogs
-      
-      if (error) throw error;
+      let allData: any[] = [];
+      let pageIndex = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('mstc_auctions')
+          .select('category_name, seller_name, location, mstc_auction_number')
+          .eq('asset_status', 'completed')
+          .range(pageIndex * pageSize, (pageIndex + 1) * pageSize - 1);
+          
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData.push(...data);
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            pageIndex++;
+          }
+        }
+      }
+
+      const data = allData;
       
       const categories = new Set<string>();
       const subcategoriesMap: Record<string, Set<string>> = {};

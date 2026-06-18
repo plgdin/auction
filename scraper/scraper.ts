@@ -363,12 +363,16 @@ interface DiscoveredRow {
   mstc_auction_number: string;
   seller_name: string;
   category_name: string;
+  location: string;
   opening_date: string;
   closing_date: string;
   source_pdf_url: string;
   raw_materials_text: string;
   asset_status: string;
   retry_count: number;
+  is_reauction: boolean;
+  original_auction_number: string | null;
+  parent_auction_id: string | null;
 }
 
 function waitForUserConfirmation(query: string): Promise<string> {
@@ -661,9 +665,60 @@ async function executeDiscoveryScraper() {
         source_pdf_url: `https://www.mstcecommerce.com/auctionhome/mstc/auction_detailed_report_pdf.jsp?auc=${item.aucId}`,
         raw_materials_text: `Enterprise raw materials ledger managed by ${item.seller_name}. Distribution field index: ${category_name}. System Registry Tracking Node ID: ${mstc_auction_number}`,
         asset_status: 'pending',
-        retry_count: 0
+        retry_count: 0,
+        is_reauction: false,
+        original_auction_number: null,
+        parent_auction_id: null
       };
     });
+
+    console.log("Analyzing batch for potential re-auctions...");
+    for (const row of finalRows) {
+      // 1. Query DB for potential older matching parent auction
+      const { data: dbMatches, error: dbError } = await supabase
+        .from('mstc_auctions')
+        .select('id, mstc_auction_number, opening_date')
+        .eq('seller_name', row.seller_name)
+        .eq('location', row.location)
+        .eq('category_name', row.category_name)
+        .neq('mstc_auction_number', row.mstc_auction_number)
+        .lt('opening_date', row.opening_date)
+        .order('opening_date', { ascending: false });
+
+      if (dbError) {
+        console.error(`[Re-auction Check] Error querying DB for parent of ${row.mstc_auction_number}:`, dbError.message);
+        continue;
+      }
+
+      let parent = dbMatches && dbMatches.length > 0 ? dbMatches[0] : null;
+
+      // 2. Query within current batch for potential older matching parent auction
+      for (const otherRow of finalRows) {
+        if (
+          otherRow.mstc_auction_number !== row.mstc_auction_number &&
+          otherRow.seller_name === row.seller_name &&
+          otherRow.location === row.location &&
+          otherRow.category_name === row.category_name &&
+          otherRow.opening_date < row.opening_date
+        ) {
+          if (!parent || new Date(otherRow.opening_date).getTime() > new Date(parent.opening_date).getTime()) {
+            parent = {
+              id: null as any,
+              mstc_auction_number: otherRow.mstc_auction_number,
+              opening_date: otherRow.opening_date
+            };
+          }
+        }
+      }
+
+      if (parent) {
+        row.is_reauction = true;
+        row.original_auction_number = parent.mstc_auction_number;
+        if (parent.id) {
+          row.parent_auction_id = parent.id;
+        }
+      }
+    }
 
     const { error: upsertError } = await supabase
       .from('mstc_auctions')
@@ -676,6 +731,37 @@ async function executeDiscoveryScraper() {
       console.error('Ingestion Pipeline Conflict Error:', upsertError.message);
       await browser.close();
       return;
+    }
+
+    // Resolve parent_auction_id references for re-auctions whose parents were in the same batch
+    const reauctionsWithoutParentId = finalRows.filter(r => r.is_reauction && !r.parent_auction_id);
+    if (reauctionsWithoutParentId.length > 0) {
+      console.log(`Resolving parent IDs for ${reauctionsWithoutParentId.length} batch-internal re-auctions...`);
+      const originalNumbers = reauctionsWithoutParentId.map(r => r.original_auction_number).filter(Boolean) as string[];
+      if (originalNumbers.length > 0) {
+        const { data: parentsData, error: parentsError } = await supabase
+          .from('mstc_auctions')
+          .select('id, mstc_auction_number')
+          .in('mstc_auction_number', originalNumbers);
+
+        if (!parentsError && parentsData) {
+          const parentIdMap = new Map<string, string>();
+          parentsData.forEach(p => parentIdMap.set(p.mstc_auction_number, p.id));
+
+          for (const row of reauctionsWithoutParentId) {
+            if (row.original_auction_number) {
+              const pid = parentIdMap.get(row.original_auction_number);
+              if (pid) {
+                row.parent_auction_id = pid;
+                await supabase
+                  .from('mstc_auctions')
+                  .update({ parent_auction_id: pid })
+                  .eq('mstc_auction_number', row.mstc_auction_number);
+              }
+            }
+          }
+        }
+      }
     }
 
     console.log(`Deduplicated data merge complete. Saved ${finalRows.length} records.`);

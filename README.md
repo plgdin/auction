@@ -1,8 +1,8 @@
-# Auction Central - Enterprise e-Auction & Procurement Platform
+# Lelam - Enterprise Lelam & Procurement Platform
 
-![Auction Central Logo](/vite.svg)
+![Lelam Logo](/vite.svg)
 
-Auction Central is a comprehensive, scalable, and highly secure B2B/B2C marketplace platform explicitly designed for enterprise asset liquidation, forward e-auctions, and e-tendering. Built with a modern React + TypeScript frontend and powered by a Serverless Postgres database via Supabase.
+Lelam is a comprehensive, scalable, and highly secure B2B/B2C marketplace platform explicitly designed for enterprise asset disposal, forward auctions, and e-tendering. Built with a modern React + TypeScript frontend and powered by a Serverless Postgres database via Supabase.
 
 ## Core Architecture
 

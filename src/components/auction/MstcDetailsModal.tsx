@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown } from 'lucide-react';
+import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown, FileText } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
-import { expandMstcOffice } from '../../services/publicService';
-import { generateCatalogSummary, parsePdfDateTime, calculateLotValue } from '../../utils/mstcHelpers';
+import { expandMstcOffice, MstcSearchService } from '../../services/publicService';
+import { generateCatalogSummary, getNumericQty, getNumericPrice, parsePdfDateTime, calculateLotValue } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
 import { Dropdown } from 'antd';
 import { useQuoteStore } from '../../store/quoteStore';
@@ -28,11 +28,34 @@ interface MstcDetailsModalProps {
 }
 
 export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
-  item,
+  item: initialItem,
   onClose,
   isInterested = false,
   onInterestedToggle
 }) => {
+  const [item, setItem] = useState<MstcSanitizedAuction>(initialItem);
+  const [loadingParent, setLoadingParent] = useState(false);
+
+  useEffect(() => {
+    setItem(initialItem);
+  }, [initialItem]);
+
+  const handleOpenParent = async (parentId: string) => {
+    setLoadingParent(true);
+    try {
+      const parent = await MstcSearchService.getMstcAuctionById(parentId);
+      if (parent) {
+        setItem(parent);
+      } else {
+        toast.error("Original parent auction details could not be found.");
+      }
+    } catch (e) {
+      console.error("Error loading parent auction:", e);
+      toast.error("Error loading parent auction details.");
+    } finally {
+      setLoadingParent(false);
+    }
+  };
   const [copied, setCopied] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -795,8 +818,40 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 </div>
               ) : (
                 <>
+                  {/* Re-auction notice banner */}
+                  {item.is_reauction && (
+                    <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-3xs text-amber-900 mb-6 backdrop-blur-xs">
+                      <div className="flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                        <div className="text-xs font-semibold leading-relaxed">
+                          This is a re-auction of original auction{' '}
+                          <span className="font-bold font-mono text-amber-805">{item.original_auction_number}</span>.
+                        </div>
+                      </div>
+                      {item.parent_auction_id && (
+                        <button
+                          onClick={() => handleOpenParent(item.parent_auction_id!)}
+                          disabled={loadingParent}
+                          className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-250 bg-white font-bold text-xs text-amber-800 hover:bg-amber-50 transition-all cursor-pointer disabled:opacity-50 shrink-0 shadow-3xs hover:shadow-2xs active:scale-[0.98]"
+                        >
+                          {loadingParent ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-700" />
+                              <span>Loading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>View Original</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Category & Auction Ref Title */}
-              <div>
+                  <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
                 {(() => {
                   const parts = item.category_name.split(' | ');
@@ -943,7 +998,34 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {summary.items.map((row) => (
                         <tr key={row.sr} className="hover:bg-slate-50/50">
                           <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                          <td className="py-3 px-3.5 font-bold text-slate-900">{row.description}</td>
+                          <td className="py-3 px-3.5 font-bold text-slate-900">
+                            <div>{row.description}</div>
+                            {row.subItems && row.subItems.length > 0 && (
+                              <div className="mt-2.5 pl-3 border-l-2 border-indigo-200/80 space-y-2 bg-slate-50/40 p-2.5 rounded-xl font-normal">
+                                <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider font-mono">Lot Inventory Details</div>
+                                <div className="overflow-x-auto rounded-lg border border-slate-100 bg-white shadow-3xs">
+                                  <table className="w-full text-left border-collapse text-xs text-slate-600">
+                                    <thead>
+                                      <tr className="bg-slate-50/75 border-b border-slate-100 font-mono text-[9.5px] text-slate-400">
+                                        <th className="py-1.5 px-2 font-bold w-12 text-center">Sl</th>
+                                        <th className="py-1.5 px-2 font-bold">Item Description</th>
+                                        <th className="py-1.5 px-2 font-bold text-right w-24">Quantity</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50 text-[11.5px]">
+                                      {row.subItems.map((sub, sIdx) => (
+                                        <tr key={sIdx} className="hover:bg-slate-50/25">
+                                          <td className="py-1.5 px-2 text-center font-mono text-slate-400">{sub.sr}</td>
+                                          <td className="py-1.5 px-2 font-medium text-slate-700">{sub.description}</td>
+                                          <td className="py-1.5 px-2 text-right font-mono font-bold text-slate-800">{sub.qty} {sub.unit}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+                          </td>
                           <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
                           <td className={clsx(
                             "py-3 px-3.5 text-center font-mono text-xs font-bold",
@@ -1077,63 +1159,73 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
             {/* Right Side: Image/Preview Panel */}
             {(() => {
-              const hasOtherMedia = item.raw_materials_text && summary.extracted_images && summary.extracted_images.length > 0;
-              const displayImage = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images![0] : null);
+              const allImages = (summary.extracted_images || []).filter(
+                (url: string) => !url.toLowerCase().endsWith('.pdf')
+              );
+              const actualPhotos = allImages.filter(
+                (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('mstc-previews/')
+              );
+              const catalogPages = allImages.filter(
+                (url: string) => url.toLowerCase().includes('_catalog_page_') || url.toLowerCase().includes('mstc-previews/')
+              );
+              
+              const displayImage = actualPhotos.length > 0 ? actualPhotos[0] : summary.preview_image_url;
 
               return (
                 <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
-                  {/* Image Gallery */}
-                  {(() => {
-                    const imageUrls = (summary.extracted_images || []).filter(
-                      (url: string) => !url.toLowerCase().endsWith('.pdf')
-                    );
-                    if (imageUrls.length === 0) return null;
-                    return (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
-                          <span>Auction Images</span>
-                          <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
-                        </h4>
-                        <div className="grid grid-cols-2 gap-2">
-                          {imageUrls.map((url: string, idx: number) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setLightboxImage(url)}
-                              className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
-                            >
-                              <img
-                                src={url}
-                                alt={`Auction image ${idx + 1}`}
-                                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {displayImage ? (
+                  {/* Actual Asset Photos */}
+                  {actualPhotos.length > 0 && (
                     <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
-                        Catalog Document Preview
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                        <span>Auction Images</span>
+                        <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{actualPhotos.length} Photos</span>
                       </h4>
-                      <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setLightboxImage(displayImage)}
-                          className="block w-full text-left cursor-zoom-in relative focus:outline-none"
-                        >
-                          <img
-                            src={displayImage}
-                            alt="PDF Catalog Preview"
-                            className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
-                          />
-                        </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        {actualPhotos.map((url: string, idx: number) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setLightboxImage(url)}
+                            className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
+                          >
+                            <img
+                              src={url}
+                              alt={`Auction image ${idx + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                            />
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  ) : (
+                  )}
+
+                  {/* PDF Catalog Page Previews */}
+                  {catalogPages.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                        <span>Catalog Pages</span>
+                        <span className="text-[9.5px] bg-slate-100 text-slate-600 border border-slate-200 font-bold px-2 py-0.5 rounded font-mono">{catalogPages.length} Pages</span>
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {catalogPages.map((url: string, idx: number) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setLightboxImage(url)}
+                            className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
+                          >
+                            <img
+                              src={url}
+                              alt={`Catalog page ${idx + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!displayImage && (
                     <div className="w-full py-12 flex flex-col items-center justify-center text-slate-400 gap-2 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
                       <svg className="w-10 h-10 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>

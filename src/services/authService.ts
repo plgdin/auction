@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { Profile, Organization } from '../types/database.types';
+import { logUserActivity } from './auditService';
 
 export const authService = {
   // --------------------------------------------------------
@@ -18,6 +19,9 @@ export const authService = {
       },
     });
     if (error) throw error;
+    if (data.user) {
+      logUserActivity('user_register', 'profile', data.user.id, { email, firstName, lastName });
+    }
     return data;
   },
 
@@ -27,10 +31,21 @@ export const authService = {
       password,
     });
     if (error) throw error;
+    if (data.user) {
+      logUserActivity('user_login', 'profile', data.user.id, { email });
+    }
     return data;
   },
 
   async signOut() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await logUserActivity('user_logout', 'profile', user.id, { email: user.email });
+      }
+    } catch (e) {
+      // Ignore user fetching error on signout
+    }
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   },
