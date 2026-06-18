@@ -12,6 +12,13 @@ import { formatPrice, CURRENCIES } from '../../utils/currency';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuationService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { 
+  DEFAULT_MACRO_INPUTS,  
+  predictPrice, 
+  detectModelId, 
+  detectGrade, 
+  detectRegion
+} from '../../utils/metalValuationModels';
 
 interface MstcDetailsModalProps {
   item: MstcSanitizedAuction;
@@ -109,21 +116,49 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     if (!valuationData) return [];
 
     let currentVal = valuationData.totalLotValue;
+    let targetTitle = item.raw_materials_text || item.category_name;
+
     if (selectedChartItemId !== 'total') {
       const idx = parseInt(selectedChartItemId, 10);
       const it = valuationData.items[idx];
       if (it) {
         currentVal = it.totalValue;
+        targetTitle = it.name || targetTitle;
       }
     }
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const multipliers = [0.91, 0.94, 0.92, 0.96, 0.98, 1.0];
 
-    return months.map((m, i) => ({
-      name: m,
-      value: Math.round(currentVal * multipliers[i])
-    }));
+    // Use ML model to generate realistic price history variations
+    const modelId = detectModelId(targetTitle);
+    const grade = detectGrade(targetTitle, modelId);
+    const region = detectRegion(item.location || '', targetTitle);
+    
+    const baseLME = DEFAULT_MACRO_INPUTS.LME_Steel_Scrap_USD;
+    const modelPoints: number[] = [];
+    
+    // Generate 6 months of historical prices by varying LME index slightly
+    // Jan (-5 months) to Jun (current)
+    for (let i = -5; i <= 0; i++) {
+      const tempInputs = {
+        ...DEFAULT_MACRO_INPUTS,
+        LME_Steel_Scrap_USD: baseLME + (i * 12) + (Math.random() * 5 - 2.5) // Adds slight variation
+      };
+      const pricePoint = predictPrice(modelId, grade, region, tempInputs, targetTitle);
+      modelPoints.push(pricePoint);
+    }
+    
+    // Scale the actual 'currentVal' using the shape of the ML model points
+    const currentModelPrice = modelPoints[modelPoints.length - 1];
+    
+    return months.map((m, i) => {
+      // If the model yields 0, fallback to a flat value to avoid NaN
+      const multiplier = currentModelPrice > 0 ? (modelPoints[i] / currentModelPrice) : 1;
+      return {
+        name: m,
+        value: Math.round(currentVal * multiplier)
+      };
+    });
   };
 
   useEffect(() => {
