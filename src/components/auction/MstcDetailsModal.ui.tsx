@@ -1,8 +1,8 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { X, Copy, Check, Download, Heart, FilePlus } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice } from '../../services/publicService';
-import { generateCatalogSummary, getNumericQty, getNumericPrice, parsePdfDateTime } from '../../utils/mstcHelpers';
+import { generateCatalogSummary, parsePdfDateTime, calculateLotValue } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
 import { useQuoteStore } from '../../store/quoteStore';
 import { toast } from 'react-hot-toast';
@@ -371,9 +371,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   {(() => {
                     let totalTurnover = 0;
                     summary.items.forEach(lot => {
-                      const qty = getNumericQty(lot.qty, lot.unit);
-                      const price = getNumericPrice(lot.marketPrice || '2500');
-                      totalTurnover += qty * price;
+                      totalTurnover += calculateLotValue(lot.qty, lot.unit, lot.marketPrice || '2500');
                     });
 
                     const predictedClosingBid = totalTurnover * 0.78;

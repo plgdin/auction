@@ -1,14 +1,15 @@
 // @ts-nocheck
 import { useState } from 'react';
-import { LayoutDashboard, Users, Megaphone, Shield, BarChart3, Cpu } from 'lucide-react';
+import { LayoutDashboard, Users, Megaphone, Shield, BarChart3, Cpu, Mail } from 'lucide-react';
 import { AdminOverview } from '../components/admin/AdminOverview';
 import { UserManagement } from '../components/admin/UserManagement';
 import { SystemManagement } from '../components/admin/SystemManagement';
 import { ReportsAnalytics } from '../components/admin/ReportsAnalytics';
 import { ScraperDashboard } from '../components/admin/ScraperDashboard';
+import { ContactMessages } from '../components/admin/ContactMessages';
 import clsx from 'clsx';
 
-type AdminTab = 'overview' | 'users' | 'reports' | 'system' | 'scraper';
+type AdminTab = 'overview' | 'users' | 'reports' | 'system' | 'scraper' | 'messages';
 
 export function Admin() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -19,6 +20,7 @@ export function Admin() {
     { id: 'reports', label: 'Advanced Reports', icon: BarChart3 },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'system', label: 'System Announcements', icon: Megaphone },
+    { id: 'messages', label: 'Contact Messages', icon: Mail },
   ];
 
   const renderContent = () => {
@@ -33,6 +35,8 @@ export function Admin() {
         return <UserManagement />;
       case 'system':
         return <SystemManagement />;
+      case 'messages':
+        return <ContactMessages />;
       default:
         return <AdminOverview />;
     }

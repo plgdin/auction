@@ -60,8 +60,13 @@ export function AuthLayout() {
 
       {/* Main Footer */}
       <footer className="bg-slate-950 text-slate-500 py-5 px-6 md:px-16 flex flex-col md:flex-row justify-between items-center text-xs border-t border-slate-900 gap-4">
-        <div>
-          &copy; {new Date().getFullYear()} Lelam. All rights reserved.
+        <div className="flex flex-col gap-0.5">
+          <div>
+            &copy; {new Date().getFullYear()} Lelam. All rights reserved.
+          </div>
+          <div className="text-[10px] text-slate-605">
+            Lelam Company is not affiliated with MSTC.
+          </div>
         </div>
         <div className="flex gap-6 font-medium">
           <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>

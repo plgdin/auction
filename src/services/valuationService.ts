@@ -8,6 +8,7 @@ export interface ValuedItem {
   unitValue: number;
   totalValue: number;
   confidence: number;
+  notAvailable?: boolean;
   internationalPrices?: {
     in: { price: number; convertedPrice: number; sources: number };
     us: { price: number; convertedPrice: number; sources: number };
@@ -16,11 +17,12 @@ export interface ValuedItem {
 }
 
 export interface ValuationCosts {
-  currentBid: number;
-  transportation: number;
-  loadingUnloading: number;
-  refurbishment: number;
-  otherFees: number;
+  currentBid: number | '';
+  transportation: number | '';
+  loadingUnloading: number | '';
+  refurbishment: number | '';
+  otherFees: number | '';
+  extraCharge?: number | '';
 }
 
 export interface ValuationOutput {
@@ -384,6 +386,43 @@ export const valuationService = {
       const qty = totalQty > 0 ? totalQty : 1;
       const baseQty = totalBaseQty > 0 ? totalBaseQty : 1;
 
+      // Check if item should not be estimated (isNotAvailable)
+      const descLower = (rawItem.description || '').toLowerCase();
+      const cleanQty = qtyStr.replace(/,/g, '').trim();
+      const parsedQty = parseFloat(cleanQty);
+      const qtyLower = cleanQty.toLowerCase();
+      const unitLower = (rawItem.unit || '').toLowerCase().trim();
+
+      const isLotUnit = unitLower.includes('lot') || qtyLower.includes('lot') || unitLower === 'ls' || unitLower === 'lumpsum';
+      const isUnparseableQty = isNaN(parsedQty) || parsedQty <= 0;
+      
+      const unpriceableWords = [
+        'ship', 'boat', 'vessel', 'yacht', 'barge', 'ferry', 'tugboat', 'cruiser',
+        'bmw', 'audi', 'mercedes', 'benz', 'porsche', 'jaguar', 'land rover', 'rover',
+        'ferrari', 'lamborghini', 'rolls royce', 'bentley', 'luxury'
+      ];
+      const isUnpriceable = unpriceableWords.some(word => descLower.includes(word));
+      const isUnknownCommodity = comm.name === 'default';
+
+      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isUnknownCommodity;
+
+      if (isNotAvailable) {
+        valuedItems.push({
+          name: rawItem.description,
+          qty,
+          unitValue: 0,
+          totalValue: 0,
+          confidence: 0,
+          notAvailable: true,
+          internationalPrices: {
+            in: { price: 0, convertedPrice: 0, sources: 0 },
+            us: { price: 0, convertedPrice: 0, sources: 0 },
+            uk: { price: 0, convertedPrice: 0, sources: 0 }
+          }
+        });
+        continue;
+      }
+
       // 2. Fetch international prices or use pre-extracted marketPrice
       const intl = await this.fetchInternationalPrices(rawItem.description);
       let avgPrice = intl.in.convertedPrice;
@@ -446,16 +485,42 @@ export const valuationService = {
     }
 
     totalLotValue = Math.round(totalLotValue);
-    const avgItemConfidence = Math.round(totalConfidenceSum / (valuedItems.length || 1));
+    const avgItemConfidence = Math.round(totalConfidenceSum / (valuedItems.filter(v => !v.notAvailable).length || 1));
 
     // Calculate Costs and Profit
     const totalCost = Math.round(
-      costs.currentBid +
-      costs.transportation +
-      costs.loadingUnloading +
-      costs.refurbishment +
-      costs.otherFees
+      (costs.currentBid || 0) +
+      (costs.transportation || 0) +
+      (costs.loadingUnloading || 0) +
+      (costs.refurbishment || 0) +
+      (costs.otherFees || 0) +
+      (costs.extraCharge || 0)
     );
+
+    if (totalLotValue <= 0) {
+      return {
+        items: valuedItems,
+        totalLotValue: 0,
+        totalCost,
+        estimatedProfit: 0,
+        roiPercent: 0,
+        breakEven: totalCost,
+        riskAnalysis: {
+          dataConfidence: 0,
+          pricingConfidence: 0,
+          overallConfidence: 0,
+          riskLevel: 'High Risk',
+          reasoning: 'Pricing estimation is not available for the items in this lot. Unable to calculate profit/risk parameters.'
+        },
+        recommendation: 'Watch Carefully',
+        recommendationReasoning: 'Pricing data not available for this lot. Manual offline valuation is recommended before bidding.',
+        internationalTotals: {
+          in: 0,
+          us: 0,
+          uk: 0
+        }
+      };
+    }
 
     const estimatedProfit = totalLotValue - totalCost;
     const roiPercent = totalCost > 0 ? Math.round((estimatedProfit / totalCost) * 100) : 0;

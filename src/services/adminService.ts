@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { AuditLog, Notification, Announcement, FaqItem, NewsUpdate } from '../types/database.types';
+import type { AuditLog, Notification, Announcement, FaqItem, NewsUpdate, ContactMessage } from '../types/database.types';
 
 export const adminService = {
   async getAuditLogs(limit: number = 50): Promise<AuditLog[]> {
@@ -226,5 +226,32 @@ export const adminService = {
       return [];
     }
     return data;
+  },
+
+  // Contact Messages Management
+  async getContactMessages(): Promise<ContactMessage[]> {
+    const { data, error } = await supabase
+      .from('contact_messages')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching contact messages:', error);
+      return [];
+    }
+    return data;
+  },
+
+  async updateContactMessageStatus(id: string, status: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('contact_messages')
+      .update({ status })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating contact message status:', error);
+      return false;
+    }
+    return true;
   }
 };

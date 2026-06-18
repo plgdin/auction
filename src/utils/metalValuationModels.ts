@@ -137,13 +137,73 @@ export const METALLIC_MODELS: Record<string, ModelMetadata> = {
     ],
     targetUnit: 'Units',
     isPlaceholder: true
+  },
+  e_waste_electronics: {
+    id: 'e_waste_electronics',
+    name: 'E-Waste & Electronics Regression Model',
+    description: 'Trained on Indian e-waste and electronics pricing dataset merged with commodity indices.',
+    intercept: -3037.0274898273346,
+    coefficients: {
+      'Grade_DSLR Camera': 12488.644573352469,
+      'Grade_Electric Scooter': 3927.276520123368,
+      'Grade_Gaming Console': -5849.796135973533,
+      'Grade_Laptop': -2348.721757703607,
+      'Grade_Microwave': -10015.322929732867,
+      'Grade_Refrigerator': 1937.63337852609,
+      'Grade_Smartphone': -8305.677803449214,
+      'Grade_Smartwatch': -11325.243092968409,
+      'Grade_TV': 19953.56177301112,
+      'Grade_Tablet': -8233.125267746862,
+      'Grade_Washing Machine': -2149.9647449550516,
+      'Region_Delhi': -434.93493509571636,
+      'Region_Kolkata': -1186.3180819148106,
+      'Region_Mumbai': 49.29377353390225,
+      'LME_Steel_Scrap_USD': 28.923783781143623,
+      'USD_INR': -131.6592009012477,
+      'Domestic_Iron_Ore_INR': -0.1490383532504595,
+      'Domestic_Coal_INR': 0.09229225747003511,
+      'Monsoon_Season': 251.04701105915996,
+      'Construction_Index': 152.80578734959914
+    },
+    grades: [
+      'Air Conditioner',
+      'Laptop',
+      'Smartphone',
+      'TV',
+      'DSLR Camera',
+      'Electric Scooter',
+      'Washing Machine',
+      'Tablet',
+      'Microwave',
+      'Smartwatch',
+      'Gaming Console',
+      'Refrigerator'
+    ],
+    regions: ['Mumbai', 'Delhi', 'Chennai', 'Kolkata'],
+    features: [
+      'Grade',
+      'Region',
+      'LME_Steel_Scrap_USD',
+      'USD_INR',
+      'Domestic_Iron_Ore_INR',
+      'Domestic_Coal_INR',
+      'Monsoon_Season',
+      'Construction_Index'
+    ],
+    targetUnit: 'Units'
   }
 };
 
 /**
  * Predicts the price of a metal product based on regression coefficients
  */
-export function predictPrice(modelId: string, grade: string, region: string, macro: MacroInputs): number {
+export function predictPrice(
+  modelId: string,
+  grade: string,
+  region: string,
+  macro: MacroInputs,
+  title?: string
+): number {
   const model = METALLIC_MODELS[modelId] || METALLIC_MODELS.scrap_steel;
   
   let price = model.intercept;
@@ -172,6 +232,33 @@ export function predictPrice(modelId: string, grade: string, region: string, mac
   price += (model.coefficients['Monsoon_Season'] || 0) * macro.Monsoon_Season;
   price += (model.coefficients['Construction_Index'] || 0) * macro.Construction_Index;
 
+  // Apply negative remarks price adjustments if title/description is passed
+  if (title) {
+    const t = title.toLowerCase();
+    let multiplier = 1.0;
+    
+    if (t.includes('unserviceable')) {
+      multiplier = Math.min(multiplier, 0.10); // 90% reduction
+    }
+    if (t.includes('broken')) {
+      multiplier = Math.min(multiplier, 0.15); // 85% reduction
+    }
+    if (t.includes('damaged')) {
+      multiplier = Math.min(multiplier, 0.15); // 85% reduction
+    }
+    if (t.includes('deteriorated')) {
+      multiplier = Math.min(multiplier, 0.15); // 85% reduction
+    }
+    if (t.includes('scrap') && modelId !== 'scrap_steel') {
+      multiplier = Math.min(multiplier, 0.15); // 85% reduction
+    }
+    if (t.includes('waste') && modelId !== 'scrap_steel') {
+      multiplier = Math.min(multiplier, 0.15); // 85% reduction
+    }
+    
+    price = price * multiplier;
+  }
+
   // Ensure predicted price is positive
   return Math.max(0, price);
 }
@@ -181,6 +268,24 @@ export function predictPrice(modelId: string, grade: string, region: string, mac
  */
 export function detectModelId(title: string): string {
   const t = title.toLowerCase();
+  if (
+    t.includes('e-waste') ||
+    t.includes('ewaste') ||
+    t.includes('motherboard') ||
+    t.includes('printer') ||
+    t.includes('monitor') ||
+    t.includes('computer') ||
+    t.includes('laptop') ||
+    t.includes('smartphone') ||
+    t.includes('tablet') ||
+    t.includes('tv') ||
+    t.includes('camera') ||
+    t.includes('smartwatch') ||
+    t.includes('console') ||
+    t.includes('electronics')
+  ) {
+    return 'e_waste_electronics';
+  }
   if (t.includes('vehicle') || t.includes('car') || t.includes('truck') || t.includes('bus') || t.includes('transport') || t.includes('auto')) {
     return 'cars_vehicles';
   }
@@ -220,6 +325,19 @@ export function detectGrade(title: string, modelId: string): string {
     if (t.includes('550')) return 'Fe 550';
     if (t.includes('600')) return 'Fe 600';
     if (t.includes('BILLET')) return 'MS Billet';
+  } else if (modelId === 'e_waste_electronics') {
+    if (t.includes('LAPTOP') || t.includes('COMPUTER')) return 'Laptop';
+    if (t.includes('PHONE') || t.includes('MOBILE') || t.includes('SMARTPHONE')) return 'Smartphone';
+    if (t.includes('TV') || t.includes('TELEVISION') || t.includes('LED')) return 'TV';
+    if (t.includes('CAMERA') || t.includes('DSLR') || t.includes('NIKON') || t.includes('CANON') || t.includes('FUJIFILM')) return 'DSLR Camera';
+    if (t.includes('SCOOTER') || t.includes('BIKE') || t.includes('ELECTRIC SCOOTER')) return 'Electric Scooter';
+    if (t.includes('AC') || t.includes('CONDITIONER') || t.includes('AIR CONDITIONER')) return 'Air Conditioner';
+    if (t.includes('WASHING') || t.includes('MACHINE')) return 'Washing Machine';
+    if (t.includes('TABLET') || t.includes('PAD') || t.includes('IPAD')) return 'Tablet';
+    if (t.includes('MICROWAVE') || t.includes('OVEN')) return 'Microwave';
+    if (t.includes('WATCH') || t.includes('SMARTWATCH')) return 'Smartwatch';
+    if (t.includes('CONSOLE') || t.includes('PLAYSTATION') || t.includes('XBOX') || t.includes('NINTENDO')) return 'Gaming Console';
+    if (t.includes('FRIDGE') || t.includes('REFRIGERATOR')) return 'Refrigerator';
   }
   
   return model.grades[0]; // Default

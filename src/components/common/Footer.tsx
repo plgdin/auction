@@ -18,6 +18,9 @@ export function Footer() {
             <p className="text-sm text-slate-400 leading-relaxed mt-4">
               The premier enterprise platform for secure, transparent, and efficient online bidding. Empowering businesses globally.
             </p>
+            <p className="text-xs text-slate-500 italic mt-2">
+              Disclaimer: Lelam is an independent assistive tool and is not affiliated with MSTC.
+            </p>
           </div>
 
           {/* Quick Links */}
@@ -66,18 +69,18 @@ export function Footer() {
               <li className="flex items-start gap-3">
                 <MapPin className="text-primary shrink-0" size={20} />
                 <span className="text-slate-400">
-                  123 Enterprise Tower, Sector 4<br />
-                  Business District, NY 10001
+                  No: 2, 20th Cross Lakshimpuram,<br />
+                  Halasuru, Bangalore 560008
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="text-primary shrink-0" size={20} />
-                <span className="text-slate-400">+1 (800) 123-4567</span>
+                <span className="text-slate-400">+91 94477 53889</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="text-primary shrink-0" size={20} />
-                <a href="mailto:support@lelam.com" className="text-slate-400 hover:text-white transition-colors">
-                  support@lelam.com
+                <a href="mailto:Support@lelam.co" className="text-slate-400 hover:text-white transition-colors">
+                  Support@lelam.co
                 </a>
               </li>
             </ul>
@@ -86,9 +89,14 @@ export function Footer() {
         </div>
 
         <div className="border-t border-slate-800 pt-8 mt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-slate-500">
-            &copy; {new Date().getFullYear()} Lelam. All rights reserved.
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-slate-500">
+              &copy; {new Date().getFullYear()} Lelam. All rights reserved.
+            </p>
+            <p className="text-[11px] text-slate-650 max-w-lg">
+              Lelam Company is an independent assistive platform and is not affiliated with MSTC Limited.
+            </p>
+          </div>
           <div className="flex space-x-4">
             {/* Social Icons Placeholder */}
             <div className="w-8 h-8 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">

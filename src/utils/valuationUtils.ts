@@ -34,13 +34,13 @@ export const calculateTotalMarketValue = (items: any[], categoryName: string = '
     let cleanPrice = '';
     if (priceStr) {
       cleanPrice = priceStr.replace(/,/g, '');
-      const priceMatch = cleanPrice.match(/₹\s*(\d+)/);
+      const priceMatch = cleanPrice.match(/(?:₹|Ôé╣)\s*(\d+)/);
       price = priceMatch ? parseInt(priceMatch[1], 10) : 0;
     }
     if (price <= 1) {
-      priceStr = getEstimatedMarketPrice(lot.description || '', categoryName);
+      priceStr = getEstimatedMarketPrice(lot.description || '', categoryName, lot.qty, lot.unit);
       cleanPrice = priceStr.replace(/,/g, '');
-      const priceMatch = cleanPrice.match(/₹\s*(\d+)/);
+      const priceMatch = cleanPrice.match(/(?:₹|Ôé╣)\s*(\d+)/);
       price = priceMatch ? parseInt(priceMatch[1], 10) : 0;
     }
 
