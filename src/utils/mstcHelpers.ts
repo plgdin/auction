@@ -170,10 +170,14 @@ export const getEstimatedMarketPrice = (
   return applyMultiplierToPriceString(rawPriceStr);
 };
 
-export const getNumericQty = (qtyStr: string, _unitStr: string = ''): number => {
+export const getNumericQty = (qtyStr: string, unitStr: string = ''): number => {
   const clean = (qtyStr || '').replace(/,/g, '').trim();
   let num = parseFloat(clean);
-  return isNaN(num) ? 1 : num;
+  if (isNaN(num)) num = 1;
+  if ((unitStr || '').toUpperCase().trim() === 'MT') {
+    num = num * 1000;
+  }
+  return num;
 };
 
 export const calculateLotValue = (qtyStr: string, unitStr: string, priceStr: string): number => {
