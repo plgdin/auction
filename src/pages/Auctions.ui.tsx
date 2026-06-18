@@ -1,39 +1,26 @@
 // @ts-nocheck
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, MapPin, Tag, CornerDownLeft, FileText } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, Heart } from 'lucide-react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
-import { MstcDetailsModal } from '../components/auction/MstcDetailsModal';
 import { AuctionFilters } from '../components/auction/AuctionFilters';
 import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
-import { dashboardService } from '../services/dashboardService';
 import type { Auction } from '../types/database.types';
 import { MstcSearchService, expandMstcOffice } from '../services/publicService';
-import type { MstcSanitizedAuction, SearchSuggestion } from '../services/publicService';
+import type { MstcSanitizedAuction } from '../services/publicService';
 import clsx from 'clsx';
-import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
-
-const renderSuggestionText = (text: string, query: string) => {
-  if (!query) return <span>{text}</span>;
-  const cleanQuery = query.trim().toLowerCase();
-  const index = text.toLowerCase().indexOf(cleanQuery);
-  if (index === -1) return <span>{text}</span>;
-
-  const before = text.slice(0, index);
-  const match = text.slice(index, index + cleanQuery.length);
-  const after = text.slice(index + cleanQuery.length);
-
-  return (
-    <span>
-      {before}
-      <span className="font-normal text-slate-400">{match}</span>
-      <span className="font-bold text-slate-800">{after}</span>
-    </span>
-  );
-};
+import { toast } from 'react-hot-toast';
+import { dashboardService } from '../services/dashboardService';
+import { MstcDetailsModal } from '../components/auction/MstcDetailsModal';
+import { 
+  getEstimatedMarketPrice, 
+  getNumericQty, 
+  getNumericPrice, 
+  generateCatalogSummary 
+} from '../utils/mstcHelpers';
 
 function AuctionCardSkeleton({ isGrid }: { isGrid: boolean }) {
   if (isGrid) {
@@ -94,42 +81,9 @@ function SkeletonGrid({ isGrid, count = 6, classes }: { isGrid: boolean; count?:
   );
 }
 
-function getPageNumbers(currentPage: number, totalPages: number): (number | string)[] {
-  const pages: (number | string)[] = [];
-  
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
-  } else {
-    if (currentPage <= 4) {
-      for (let i = 1; i <= 5; i++) {
-        pages.push(i);
-      }
-      pages.push('...');
-      pages.push(totalPages);
-    } else if (currentPage >= totalPages - 3) {
-      pages.push(1);
-      pages.push('...');
-      for (let i = totalPages - 4; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      pages.push(1);
-      pages.push('...');
-      pages.push(currentPage - 1);
-      pages.push(currentPage);
-      pages.push(currentPage + 1);
-      pages.push('...');
-      pages.push(totalPages);
-    }
-  }
-  
-  return pages;
-}
-
 export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
 
   const activeTab = searchParams.get('tab') === 'commercial' ? 'commercial' : 'mstc';
@@ -140,49 +94,29 @@ export function Auctions() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
+  const [interestedMstcIds, setInterestedMstcIds] = useState<string[]>([]);
   const [isMstcLoading, setIsMstcLoading] = useState(false);
   const [mstcOptions, setMstcOptions] = useState<{
     categories: string[];
     subcategories: Record<string, string[]>;
     sellers: string[];
     locations: string[];
+    regionalOffices: string[];
   }>({
     categories: [],
     subcategories: {},
     sellers: [],
-    locations: []
+    locations: [],
+    regionalOffices: []
   });
 
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<MstcSanitizedAuction | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [copiedRef, setCopiedRef] = useState(false);
-  const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
-
-  const [interestedMstcIds, setInterestedMstcIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (user) {
-      setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
-    } else {
-      setInterestedMstcIds([]);
-    }
-  }, [user]);
-
-  const handleMstcInterestedToggle = (itemId: string) => {
-    if (!user) return;
-    dashboardService.toggleInterestedAuction(user.id, itemId);
-    setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
-  };
-
 
   const selectedMstcCategories = searchParams.getAll('mstc_category');
   const selectedMstcSubcategories = searchParams.getAll('mstc_subcategory');
   const selectedMstcLocations = searchParams.getAll('mstc_location');
   const selectedMstcSellers = searchParams.getAll('mstc_seller');
   const selectedMstcRegionalOffices = searchParams.getAll('mstc_regional_office');
-  const mstcHasAssetDocuments = searchParams.get('has_docs') === 'true';
-  const mstcHasImages = searchParams.get('has_images') === 'true';
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -193,101 +127,28 @@ export function Auctions() {
     setSearchQuery(searchParams.get('q') || '');
   }, [searchParams]);
 
-
-  // Autocomplete search suggestions states & refs
-  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const isDeletingRef = useRef(false);
-
-  // Click outside to close dropdown
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        inputRef.current &&
-        !inputRef.current.contains(event.target as Node)
-      ) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+    if (isAuthenticated && user) {
+      setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
+    } else {
+      setInterestedMstcIds([]);
+    }
+  }, [isAuthenticated, user]);
 
-  // Fetch suggestions as-you-type (debounced)
-  useEffect(() => {
-    if (activeTab !== 'mstc') {
-      setSuggestions([]);
+  const handleMstcInterestedToggle = (itemId: string) => {
+    if (!isAuthenticated || !user) {
+      navigate('/auth/login', { state: { from: `/auctions?tab=mstc` } });
       return;
     }
-
-    const timer = setTimeout(async () => {
-      const list = await MstcSearchService.getMstcSearchSuggestions(searchQuery);
-      setSuggestions(list);
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, activeTab]);
-
-  const selectSuggestion = (suggestion: SearchSuggestion) => {
-    let queryText = suggestion.text;
-    if (suggestion.type === 'location' && queryText.startsWith('Auctions in ')) {
-      queryText = queryText.replace('Auctions in ', '');
-    }
-    setSearchQuery(queryText);
-    setShowSuggestions(false);
-    setHighlightedIndex(-1);
-
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('q', queryText);
-      next.set('page', '1');
-      return next;
-    });
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchQuery(value);
-    setShowSuggestions(true);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' || e.key === 'Delete') {
-      isDeletingRef.current = true;
-    } else {
-      isDeletingRef.current = false;
-    }
-
-    if (!showSuggestions || suggestions.length === 0) return;
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHighlightedIndex(prev => (prev + 1) % suggestions.length);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHighlightedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
-    } else if (e.key === 'Enter') {
-      if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
-        e.preventDefault();
-        selectSuggestion(suggestions[highlightedIndex]);
-      }
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false);
-    }
+    dashboardService.toggleInterestedAuction(user.id, itemId);
+    setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
   };
 
   // Derived filter and paging variables from URL query parameters
   const categoryIds = searchParams.getAll('category');
   const listingType = (searchParams.get('listingType') as AuctionFilterParams['listingType']) || undefined;
-  const regionalOffice = searchParams.get('regionalOffice') || undefined;
-  const location = searchParams.get('location') || undefined;
+  const regionalOffices = searchParams.getAll('regionalOffice');
+  const locations = searchParams.getAll('location');
   const preBid = searchParams.get('preBid') || undefined;
   const startDate = searchParams.get('startDate') || undefined;
   const endDate = searchParams.get('endDate') || undefined;
@@ -298,8 +159,8 @@ export function Auctions() {
   const filters: AuctionFilterParams = {
     categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
     listingType,
-    regionalOffice,
-    location,
+    regionalOffices: regionalOffices.length > 0 ? regionalOffices : undefined,
+    locations: locations.length > 0 ? locations : undefined,
     preBid,
     startDate,
     endDate,
@@ -308,8 +169,8 @@ export function Auctions() {
   const isAnyFilterActive = !!(
     (filters.categoryIds && filters.categoryIds.length > 0) ||
     filters.listingType ||
-    filters.regionalOffice ||
-    filters.location ||
+    (filters.regionalOffices && filters.regionalOffices.length > 0) ||
+    (filters.locations && filters.locations.length > 0) ||
     filters.preBid ||
     filters.startDate ||
     filters.endDate ||
@@ -317,6 +178,8 @@ export function Auctions() {
   );
 
   const categoryIdsJoined = categoryIds.join(',');
+  const regionalOfficesJoined = regionalOffices.join(',');
+  const locationsJoined = locations.join(',');
 
   const loadData = useCallback(async () => {
     if (!isAnyFilterActive) {
@@ -351,8 +214,8 @@ export function Auctions() {
     searchParams,
     categoryIdsJoined,
     listingType,
-    regionalOffice,
-    location,
+    regionalOfficesJoined,
+    locationsJoined,
     preBid,
     startDate,
     endDate,
@@ -373,13 +236,12 @@ export function Auctions() {
   const loadMstcData = useCallback(async () => {
     setIsMstcLoading(true);
     try {
-      const qParam = searchParams.get('q') || '';
-      const data = await MstcSearchService.searchMarketplaceCatalog(qParam, {
-        categories: selectedMstcCategories.length > 0 ? selectedMstcCategories : undefined,
-        subcategories: selectedMstcSubcategories.length > 0 ? selectedMstcSubcategories : undefined,
-        locations: selectedMstcLocations.length > 0 ? selectedMstcLocations : undefined,
-        sellers: selectedMstcSellers.length > 0 ? selectedMstcSellers : undefined,
-        regionalOffices: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined
+      const data = await MstcSearchService.searchMarketplaceCatalog(searchQuery, {
+        categories: selectedMstcCategories,
+        subcategories: selectedMstcSubcategories,
+        locations: selectedMstcLocations,
+        sellers: selectedMstcSellers,
+        regionalOffices: selectedMstcRegionalOffices
       });
 
       let filteredData = data;
@@ -399,34 +261,6 @@ export function Auctions() {
           return openDate <= end;
         });
       }
-
-      // Filter by asset attachments
-      if (mstcHasAssetDocuments) {
-        filteredData = filteredData.filter(item => {
-          if (!item.raw_materials_text) return false;
-          try {
-            const parsed = JSON.parse(item.raw_materials_text);
-            const images = parsed?.extracted_images || [];
-            // Asset documents are PDFs or document-type files (not actual photos)
-            return images.some((url: string) => url.toLowerCase().endsWith('.pdf'));
-          } catch { return false; }
-        });
-      }
-      if (mstcHasImages) {
-        filteredData = filteredData.filter(item => {
-          if (!item.raw_materials_text) return false;
-          try {
-            const parsed = JSON.parse(item.raw_materials_text);
-            const images = parsed?.extracted_images || [];
-            // Photos are non-PDF visual files
-            return images.some((url: string) => {
-              const lower = url.toLowerCase();
-              return !lower.endsWith('.pdf') && /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
-            });
-          } catch { return false; }
-        });
-      }
-
       setMstcAuctions(filteredData);
     } catch (error) {
       console.error('Error loading MSTC catalogs:', error);
@@ -441,9 +275,7 @@ export function Auctions() {
     selectedMstcSellersJoined,
     selectedMstcRegionalOfficesJoined,
     startDate,
-    endDate,
-    mstcHasAssetDocuments,
-    mstcHasImages
+    endDate
   ]);
 
   const loadMstcOptions = useCallback(async () => {
@@ -470,7 +302,6 @@ export function Auctions() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setShowSuggestions(false);
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       if (searchQuery) {
@@ -489,37 +320,61 @@ export function Auctions() {
 
       // Update Category
       if ('categoryIds' in newFilters) {
+        next.delete('mstc_category');
         if (newFilters.categoryIds && newFilters.categoryIds.length > 0) {
-          next.set('mstc_category', newFilters.categoryIds[0]);
-        } else {
-          next.delete('mstc_category');
+          newFilters.categoryIds.forEach((id: string) => next.append('mstc_category', id));
         }
       }
 
       // Update Subcategory
-      if ('subcategory' in newFilters) {
+      if ('subcategories' in newFilters) {
+        next.delete('mstc_subcategory');
+        if (newFilters.subcategories && newFilters.subcategories.length > 0) {
+          newFilters.subcategories.forEach((sub: string) => next.append('mstc_subcategory', sub));
+        }
+      } else if ('subcategory' in newFilters) {
+        next.delete('mstc_subcategory');
         if (newFilters.subcategory) {
           next.set('mstc_subcategory', newFilters.subcategory);
-        } else {
-          next.delete('mstc_subcategory');
         }
       }
 
       // Update Location
-      if ('location' in newFilters) {
+      if ('locations' in newFilters) {
+        next.delete('mstc_location');
+        if (newFilters.locations && newFilters.locations.length > 0) {
+          newFilters.locations.forEach((loc: string) => next.append('mstc_location', loc));
+        }
+      } else if ('location' in newFilters) {
+        next.delete('mstc_location');
         if (newFilters.location) {
           next.set('mstc_location', newFilters.location);
-        } else {
-          next.delete('mstc_location');
         }
       }
 
-      // Update Seller (mapped to regionalOffice)
-      if ('regionalOffice' in newFilters) {
+      // Update Regional Office
+      if ('regionalOffices' in newFilters) {
+        next.delete('mstc_regional_office');
+        if (newFilters.regionalOffices && newFilters.regionalOffices.length > 0) {
+          newFilters.regionalOffices.forEach((office: string) => next.append('mstc_regional_office', office));
+        }
+      } else if ('regionalOffice' in newFilters) {
+        next.delete('mstc_regional_office');
         if (newFilters.regionalOffice) {
-          next.set('mstc_seller', newFilters.regionalOffice);
-        } else {
-          next.delete('mstc_seller');
+          next.set('mstc_regional_office', newFilters.regionalOffice);
+        }
+      }
+
+      // Update Seller
+      if ('mstcSellers' in newFilters) {
+        next.delete('mstc_seller');
+        if (newFilters.mstcSellers && newFilters.mstcSellers.length > 0) {
+          newFilters.mstcSellers.forEach((sel: string) => next.append('mstc_seller', sel));
+        }
+      } else if ('mstcSeller' in newFilters) {
+        next.delete('mstc_seller');
+        if (newFilters.mstcSeller) {
+          next.set('mstc_seller', newFilters.mstcSeller);
         }
       }
 
@@ -538,22 +393,6 @@ export function Auctions() {
           next.set('endDate', newFilters.endDate);
         } else {
           next.delete('endDate');
-        }
-      }
-
-      // Update asset attachment filters
-      if ('hasAssetDocuments' in newFilters) {
-        if (newFilters.hasAssetDocuments) {
-          next.set('has_docs', 'true');
-        } else {
-          next.delete('has_docs');
-        }
-      }
-      if ('hasImages' in newFilters) {
-        if (newFilters.hasImages) {
-          next.set('has_images', 'true');
-        } else {
-          next.delete('has_images');
         }
       }
 
@@ -593,17 +432,19 @@ export function Auctions() {
         next.delete('regionalOffice');
         if (newFilters.regionalOffice) {
           next.set('regionalOffice', newFilters.regionalOffice);
-        } else {
-          next.delete('regionalOffice');
         }
       }
 
-      // Update location
-      if ('location' in newFilters) {
+      // Update locations
+      if ('locations' in newFilters) {
+        next.delete('location');
+        if (newFilters.locations && newFilters.locations.length > 0) {
+          newFilters.locations.forEach(loc => next.append('location', loc));
+        }
+      } else if ('location' in newFilters) {
+        next.delete('location');
         if (newFilters.location) {
           next.set('location', newFilters.location);
-        } else {
-          next.delete('location');
         }
       }
 
@@ -656,24 +497,19 @@ export function Auctions() {
     });
   };
 
-  const totalPages = activeTab === 'commercial'
-    ? Math.ceil(totalCount / limit)
-    : Math.ceil(mstcAuctions.length / limit);
-
-  const startIndex = (page - 1) * limit;
-  const paginatedMstcAuctions = mstcAuctions.slice(startIndex, startIndex + limit);
+  const totalPages = Math.ceil(totalCount / limit);
 
   return (
     <div className="bg-slate-50 min-h-screen">
       {/* Header Banner */}
-      <div className="relative bg-slate-900 py-12">
+      <div className="relative bg-slate-900 overflow-hidden py-12">
         {/* Background decoration */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
           <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-800/20 to-transparent" />
         </div>
 
-        <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-white mb-2">Auctions Marketplace</h1>
           <p className="text-slate-400 mb-6">Browse live commercial auctions and official government catalogs.</p>
 
@@ -706,81 +542,23 @@ export function Auctions() {
             </button>
           </div>
 
-          <form onSubmit={handleSearch} className="max-w-3xl relative" onKeyDown={handleKeyDown}>
+          <form onSubmit={handleSearch} className="max-w-3xl relative">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-slate-400" />
             </div>
             <input
-              ref={inputRef}
               type="text"
               className="block w-full pl-11 pr-24 py-4 border-0 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary sm:text-lg shadow-lg text-slate-900"
               placeholder={activeTab === 'commercial' ? "Search by title, reference number, or keywords..." : "Search MSTC catalog numbers, categories, or sellers..."}
               value={searchQuery}
-              onChange={handleInputChange}
-              onFocus={() => setShowSuggestions(true)}
-              autoComplete="off"
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button
               type="submit"
-              className="absolute right-2 top-2 bottom-2 px-6 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
+              className="absolute right-2 top-2 bottom-2 px-6 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
             >
               Search
             </button>
-
-            {/* Gemini-style real-time autocomplete suggestions dropdown */}
-            {activeTab === 'mstc' && showSuggestions && suggestions.length > 0 && (
-              <div
-                ref={dropdownRef}
-                className="absolute left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50 py-2 text-slate-700 max-h-[380px] overflow-y-auto"
-              >
-                <div className="px-4 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-left">
-                  Suggested Searches
-                </div>
-                {suggestions.map((suggestion, index) => {
-                  const isHighlighted = highlightedIndex === index;
-                  return (
-                    <div
-                      key={index}
-                      onClick={() => selectSuggestion(suggestion)}
-                      onMouseEnter={() => setHighlightedIndex(index)}
-                      className={clsx(
-                        "px-4 py-3 flex items-center justify-between cursor-pointer transition-colors border-l-4",
-                        isHighlighted
-                          ? "bg-slate-50 border-primary-500 text-slate-900 font-medium"
-                          : "border-transparent hover:bg-slate-50 text-slate-700"
-                      )}
-                    >
-                      <div className="flex items-center space-x-3">
-                        {suggestion.type === 'location' && (
-                          <MapPin className="h-4.5 w-4.5 text-rose-500 shrink-0" />
-                        )}
-                        {suggestion.type === 'category' && (
-                          <Tag className="h-4.5 w-4.5 text-primary-500 shrink-0" />
-                        )}
-                        {suggestion.type === 'subcategory' && (
-                          <Tag className="h-4.5 w-4.5 text-teal-500 shrink-0" />
-                        )}
-                        {suggestion.type === 'auction' && (
-                          <FileText className="h-4.5 w-4.5 text-indigo-500 shrink-0" />
-                        )}
-                        {suggestion.type === 'query' && (
-                          <Search className="h-4.5 w-4.5 text-slate-400 shrink-0" />
-                        )}
-                        <div className="flex flex-col text-left">
-                          <span className="text-sm font-medium">{renderSuggestionText(suggestion.text, searchQuery)}</span>
-                          {suggestion.subtext && (
-                            <span className="text-xs text-slate-400">{suggestion.subtext}</span>
-                          )}
-                        </div>
-                      </div>
-                      {isHighlighted && (
-                        <CornerDownLeft className="h-4 w-4 text-slate-400 shrink-0" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </form>
         </div>
       </div>
@@ -818,20 +596,19 @@ export function Auctions() {
                 regionalOffices: selectedMstcRegionalOffices,
                 mstcSellers: selectedMstcSellers,
                 startDate,
-                endDate,
-                hasAssetDocuments: mstcHasAssetDocuments,
-                hasImages: mstcHasImages
+                endDate
               }}
               activeTab={activeTab}
               customCategories={mstcOptions.categories}
               customSubcategories={mstcOptions.subcategories}
               customLocations={mstcOptions.locations}
               customSellers={mstcOptions.sellers}
+              customRegionalOffices={mstcOptions.regionalOffices}
             />
             {/* Overlay for mobile filters */}
             {isFiltersOpen && (
               <div
-                className="fixed inset-0 bg-white/45 backdrop-blur-md z-30 lg:hidden"
+                className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden"
                 onClick={() => setIsFiltersOpen(false)}
               />
             )}
@@ -986,7 +763,7 @@ export function Auctions() {
                           <div>
                             <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                               <button
-                                onClick={() => handlePageChange(Math.max(1, page - 1))}
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={page === 1}
                                 className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
                               >
@@ -994,35 +771,23 @@ export function Auctions() {
                                 <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                               </button>
 
-                              {getPageNumbers(page, totalPages).map((p, i) => {
-                                if (p === '...') {
-                                  return (
-                                    <span
-                                      key={`dots-comm-${i}`}
-                                      className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-300 focus:outline-none"
-                                    >
-                                      ...
-                                    </span>
-                                  );
-                                }
-                                return (
-                                  <button
-                                    key={p}
-                                    onClick={() => handlePageChange(p as number)}
-                                    className={clsx(
-                                      "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset cursor-pointer",
-                                      page === p
-                                        ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
-                                        : "text-slate-900 ring-slate-300 hover:bg-slate-50"
-                                    )}
-                                  >
-                                    {p}
-                                  </button>
-                                );
-                              })}
+                              {[...Array(totalPages)].map((_, i) => (
+                                <button
+                                  key={i + 1}
+                                  onClick={() => setPage(i + 1)}
+                                  className={clsx(
+                                    "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset",
+                                    page === i + 1
+                                      ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
+                                      : "text-slate-900 ring-slate-300 hover:bg-slate-50"
+                                  )}
+                                >
+                                  {i + 1}
+                                </button>
+                              ))}
 
                               <button
-                                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                 disabled={page === totalPages}
                                 className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
                               >
@@ -1065,109 +830,26 @@ export function Auctions() {
                     </button>
                   </div>
                 ) : (
-                  <>
-                    <div className={clsx(
-                      "gap-6",
-                      isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
-                    )}>
-                      {paginatedMstcAuctions.map(item => (
-                        <MstcCard
-                          key={item.id}
-                          item={item}
-                          isGrid={isGridView}
-                          onPreview={setSelectedPreviewItem}
-                          isInterested={interestedMstcIds.includes(item.id)}
-                          onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="mt-10 flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 rounded-xl shadow-sm">
-                        <div className="flex flex-1 justify-between sm:hidden">
-                          <button
-                            onClick={() => handlePageChange(Math.max(1, page - 1))}
-                            disabled={page === 1}
-                            className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                          >
-                            Previous
-                          </button>
-                          <button
-                            onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                            disabled={page === totalPages}
-                            className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                          >
-                            Next
-                          </button>
-                        </div>
-                        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                          <div>
-                            <p className="text-sm text-slate-700">
-                              Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, mstcAuctions.length)}</span> of <span className="font-medium">{mstcAuctions.length}</span> results
-                            </p>
-                          </div>
-                          <div>
-                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                              <button
-                                onClick={() => handlePageChange(Math.max(1, page - 1))}
-                                disabled={page === 1}
-                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
-                              >
-                                <span className="sr-only">Previous</span>
-                                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-                              </button>
-
-                              {getPageNumbers(page, totalPages).map((p, i) => {
-                                if (p === '...') {
-                                  return (
-                                    <span
-                                      key={`dots-mstc-${i}`}
-                                      className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-300 focus:outline-none"
-                                    >
-                                      ...
-                                    </span>
-                                  );
-                                }
-                                return (
-                                  <button
-                                    key={p}
-                                    onClick={() => handlePageChange(p as number)}
-                                    className={clsx(
-                                      "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset cursor-pointer",
-                                      page === p
-                                        ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
-                                        : "text-slate-900 ring-slate-300 hover:bg-slate-50"
-                                    )}
-                                  >
-                                    {p}
-                                  </button>
-                                );
-                              })}
-
-                              <button
-                                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                                disabled={page === totalPages}
-                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
-                              >
-                                <span className="sr-only">Next</span>
-                                <ChevronRight className="h-5 w-5" aria-hidden="true" />
-                              </button>
-                            </nav>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                  <div className={clsx(
+                    "gap-6",
+                    isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
+                  )}>
+                    {mstcAuctions.map(item => (
+                      <MstcCard
+                        key={item.id}
+                        item={item}
+                        isGrid={isGridView}
+                        onPreview={setSelectedPreviewItem}
+                        isInterested={interestedMstcIds.includes(item.id)}
+                        onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
+                      />
+                    ))}
+                  </div>
                 )}
               </>
             )}
 
-          </div>
-        </div>
-      </div>
-
-      {/* Catalog Details Modal */}
+          {/* Catalog Details Modal */}
       {selectedPreviewItem && (
         <MstcDetailsModal
           item={selectedPreviewItem}
@@ -1176,7 +858,10 @@ export function Auctions() {
           onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
         />
       )}
-    </div>
+            </div>
+          </div>
+        </div>
+      </div>
   );
 }
 
