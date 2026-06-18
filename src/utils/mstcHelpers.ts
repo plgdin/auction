@@ -172,6 +172,67 @@ const formatDateDMY = (date: Date): string => {
   return `${d}-${m}-${y}`;
 };
 
+export const flattenCatalogItems = (items: any[], categoryName: string = ''): any[] => {
+  if (!items || !Array.isArray(items)) return [];
+  const flattened: any[] = [];
+
+  for (const item of items) {
+    let tax = item.taxRate || '';
+    if (tax && tax.includes('%')) {
+      const taxMatch = tax.match(/([\d\.]+)\s*%/);
+      if (taxMatch && parseFloat(taxMatch[1]) > 100) {
+        tax = 'As Applicable GST';
+      }
+    }
+
+    if (item.subItems && Array.isArray(item.subItems) && item.subItems.length > 0) {
+      item.subItems.forEach((sub: any, idx: number) => {
+        const subDesc = expandAbbreviations(sub.description || '');
+        const subQty = sub.qty || '1';
+        const subUnit = sub.unit || 'Nos';
+        const subTax = tax || '18% GST';
+        const subMPrice = getEstimatedMarketPrice(subDesc, categoryName);
+
+        flattened.push({
+          sr: `${item.sr}.${sub.sr || idx + 1}`,
+          description: subDesc,
+          qty: subQty,
+          unit: subUnit,
+          taxRate: subTax,
+          marketPrice: subMPrice,
+          attachments: item.attachments
+        });
+      });
+    } else {
+      let desc = item.description || '';
+      if (desc && /^\d+$/.test(desc.trim())) {
+        desc = categoryName || 'Auction Lot Items';
+      }
+      desc = expandAbbreviations(desc);
+
+      let mPrice = item.marketPrice || '';
+      let parsedPrice = 0;
+      if (mPrice) {
+        const cleanP = mPrice.replace(/,/g, '');
+        const match = cleanP.match(/₹\s*(\d+)/);
+        parsedPrice = match ? parseInt(match[1], 10) : 0;
+      }
+      if (parsedPrice <= 1) {
+        mPrice = getEstimatedMarketPrice(desc, categoryName);
+      }
+
+      flattened.push({
+        ...item,
+        description: desc,
+        taxRate: tax,
+        marketPrice: mPrice
+      });
+    }
+  }
+
+  return flattened;
+};
+
 export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
   let fallbackPreBid = '₹50,000';
@@ -236,55 +297,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
         parsed.depositDetails.preBidDdg = finalPreBid;
 
         if (parsed.items && Array.isArray(parsed.items)) {
-          parsed.items = parsed.items.map((lot: any) => {
-            let desc = lot.description || '';
-            if (desc && /^\d+$/.test(desc.trim())) {
-              desc = item.category_name || 'Auction Lot Items';
-            }
-            desc = expandAbbreviations(desc);
-
-            let tax = lot.taxRate || '';
-            if (tax) {
-              if (tax.includes('%')) {
-                const taxMatch = tax.match(/([\d\.]+)\s*%/);
-                if (taxMatch && parseFloat(taxMatch[1]) > 100) {
-                  tax = 'As Applicable GST';
-                }
-              }
-            }
-
-            // Correctly parse and preserve db market price if it's not a placeholder
-            let mPrice = lot.marketPrice || '';
-            let parsedPrice = 0;
-            if (mPrice) {
-              const cleanP = mPrice.replace(/,/g, '');
-              const match = cleanP.match(/₹\s*(\d+)/);
-              parsedPrice = match ? parseInt(match[1], 10) : 0;
-            }
-            if (parsedPrice <= 1) {
-              mPrice = getEstimatedMarketPrice(desc, item.category_name);
-            }
-
-            let lotQty = lot.qty;
-            let lotUnit = lot.unit;
-            if (lot.subItems && lot.subItems.length > 0) {
-              // Always derive qty from sub-items when available — the sub-item
-              // count is the most reliable source of truth from the parsed PDF.
-              // The catalog qty is often garbage like "1 AC + 1,005 NOS" or
-              // generic "1.0 LOT".
-              lotQty = String(lot.subItems.length);
-              lotUnit = 'Items';
-            }
-
-            return {
-              ...lot,
-              description: desc,
-              qty: lotQty,
-              unit: lotUnit,
-              taxRate: tax,
-              marketPrice: mPrice
-            };
-          });
+          parsed.items = flattenCatalogItems(parsed.items, item.category_name);
         }
 
         const finalInspectionSchedule = parsed.inspectionSchedule || defaultInspectionSchedule;

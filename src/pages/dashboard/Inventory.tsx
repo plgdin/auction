@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { Auction } from '../../types/database.types';
 import { toast } from 'react-hot-toast';
+import { flattenCatalogItems } from '../../utils/mstcHelpers';
 
 type AuctionWithMstc = Auction & { reference_number?: string; raw_materials_text?: string };
 
@@ -84,7 +85,9 @@ export function Inventory() {
     if (selectedAuction.raw_materials_text) {
       try {
         const parsed = JSON.parse(selectedAuction.raw_materials_text);
-        if (parsed?.items) lotItems = parsed.items;
+        if (parsed?.items) {
+          lotItems = flattenCatalogItems(parsed.items, selectedAuction.category?.name || selectedAuction.title);
+        }
       } catch (e) {
         // Fallback
       }

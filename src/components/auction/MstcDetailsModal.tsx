@@ -826,107 +826,114 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
-                  <table className="w-full text-left border-collapse text-[13.5px]">
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
-                        <th className="py-3 px-1.5 font-bold w-8"></th>
-                        <th className="py-3 px-3.5 font-bold w-12 text-center">Lot</th>
-                        <th className="py-3 px-3.5 font-bold">Material Description</th>
-                        <th className="py-3 px-3.5 font-bold text-right">Quantity</th>
-                        <th className="py-3 px-3.5 font-bold text-center">Market Price</th>
-                        <th className="py-3 px-3.5 font-bold text-center w-24">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-105 text-slate-700">
-                      {summary.items.map((row) => {
-                        const hasSubItems = row.subItems && row.subItems.length > 0;
-                        const isExpanded = expandedLots.has(String(row.sr));
-                        const toggleExpand = () => {
-                          setExpandedLots(prev => {
-                            const next = new Set(prev);
-                            const rowId = String(row.sr);
-                            if (next.has(rowId)) {
-                              next.delete(rowId);
-                            } else {
-                              next.add(rowId);
-                            }
-                            return next;
-                          });
-                        };
-                        return (
-                          <React.Fragment key={row.sr}>
-                            <tr className={clsx("hover:bg-slate-50/50", hasSubItems && "cursor-pointer")} onClick={hasSubItems ? toggleExpand : undefined}>
-                              <td className="py-3 px-1.5 text-center">
-                                {hasSubItems && (
-                                  <button className="p-0.5 text-slate-400 hover:text-primary transition-colors" onClick={(e) => { e.stopPropagation(); toggleExpand(); }}>
-                                    {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                  </button>
-                                )}
-                              </td>
-                              <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                              <td className="py-3 px-3.5 font-bold text-slate-900">
-                                <div>{row.description}</div>
-                                {hasSubItems && (
-                                  <div className="mt-1 flex items-center gap-1.5">
-                                    <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded font-mono">
-                                      {row.subItems!.length} items inside
-                                    </span>
-                                    {!isExpanded && (
-                                      <span className="text-[10px] text-slate-400 font-medium">Click to expand</span>
+                  {(() => {
+                    const showChevronColumn = (summary.items || []).some(row => row.subItems && row.subItems.length > 0);
+                    return (
+                      <table className="w-full text-left border-collapse text-[13.5px]">
+                        <thead>
+                          <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
+                            {showChevronColumn && <th className="py-3 px-1.5 font-bold w-8"></th>}
+                            <th className="py-3 px-3.5 font-bold w-12 text-center">Lot</th>
+                            <th className="py-3 px-3.5 font-bold">Material Description</th>
+                            <th className="py-3 px-3.5 font-bold text-right">Quantity</th>
+                            <th className="py-3 px-3.5 font-bold text-center">Market Price</th>
+                            <th className="py-3 px-3.5 font-bold text-center w-24">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-105 text-slate-700">
+                          {(summary.items || []).map((row) => {
+                            const hasSubItems = row.subItems && row.subItems.length > 0;
+                            const isExpanded = expandedLots.has(String(row.sr));
+                            const toggleExpand = () => {
+                              setExpandedLots(prev => {
+                                const next = new Set(prev);
+                                const rowId = String(row.sr);
+                                if (next.has(rowId)) {
+                                  next.delete(rowId);
+                                } else {
+                                  next.add(rowId);
+                                }
+                                return next;
+                              });
+                            };
+                            return (
+                              <React.Fragment key={row.sr}>
+                                <tr className={clsx("hover:bg-slate-50/50", hasSubItems && "cursor-pointer")} onClick={hasSubItems ? toggleExpand : undefined}>
+                                  {showChevronColumn && (
+                                    <td className="py-3 px-1.5 text-center">
+                                      {hasSubItems && (
+                                        <button className="p-0.5 text-slate-400 hover:text-primary transition-colors" onClick={(e) => { e.stopPropagation(); toggleExpand(); }}>
+                                          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                        </button>
+                                      )}
+                                    </td>
+                                  )}
+                                  <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
+                                  <td className="py-3 px-3.5 font-bold text-slate-900">
+                                    <div>{row.description}</div>
+                                    {hasSubItems && (
+                                      <div className="mt-1 flex items-center gap-1.5">
+                                        <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded font-mono">
+                                          {row.subItems!.length} items inside
+                                        </span>
+                                        {!isExpanded && (
+                                          <span className="text-[10px] text-slate-400 font-medium">Click to expand</span>
+                                        )}
+                                      </div>
                                     )}
-                                  </div>
+                                  </td>
+                                  <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
+                                  <td className="py-3 px-3.5 text-center font-mono text-xs text-emerald-600 font-bold bg-emerald-50/50">{row.marketPrice}</td>
+                                  <td className="py-2.5 px-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                      onClick={() => handleAddItemToQuote(row)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-slate-700 hover:text-primary hover:bg-slate-100 border border-slate-200 hover:border-primary/30 rounded-md transition-colors cursor-pointer"
+                                      title="Add to Quote"
+                                    >
+                                      <FilePlus className="w-3 h-3" />
+                                      <span>Add</span>
+                                    </button>
+                                  </td>
+                                </tr>
+                                {hasSubItems && isExpanded && (
+                                  <tr>
+                                    <td colSpan={showChevronColumn ? 6 : 5} className="p-0">
+                                      <div className="mx-4 my-3 border border-indigo-100 rounded-xl overflow-hidden bg-indigo-50/20">
+                                        <div className="bg-indigo-50/60 px-4 py-2 border-b border-indigo-100 flex items-center justify-between">
+                                          <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider font-mono">Lot {row.sr} — Inventory Details</span>
+                                          <span className="text-[10px] font-bold text-indigo-500 bg-white border border-indigo-100 px-2 py-0.5 rounded-md font-mono">{row.subItems!.length} items</span>
+                                        </div>
+                                        <div className="max-h-[400px] overflow-y-auto">
+                                          <table className="w-full text-left border-collapse text-xs">
+                                            <thead className="sticky top-0 z-10">
+                                              <tr className="bg-white border-b border-indigo-100 font-mono text-[9.5px] text-slate-400">
+                                                <th className="py-2 px-3 font-bold w-12 text-center">Sl</th>
+                                                <th className="py-2 px-3 font-bold">Item Description</th>
+                                                <th className="py-2 px-3 font-bold text-right w-28">Quantity</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                              {row.subItems!.map((sub, sIdx) => (
+                                                <tr key={sIdx} className="hover:bg-indigo-50/30 text-[11.5px]">
+                                                  <td className="py-1.5 px-3 text-center font-mono text-slate-400">{sub.sr || sIdx + 1}</td>
+                                                  <td className="py-1.5 px-3 font-medium text-slate-700">{sub.description}</td>
+                                                  <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-800">{sub.qty} {sub.unit}</td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
                                 )}
-                              </td>
-                              <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
-                              <td className="py-3 px-3.5 text-center font-mono text-xs text-emerald-600 font-bold bg-emerald-50/50">{row.marketPrice}</td>
-                              <td className="py-2.5 px-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  onClick={() => handleAddItemToQuote(row)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-slate-700 hover:text-primary hover:bg-slate-100 border border-slate-200 hover:border-primary/30 rounded-md transition-colors cursor-pointer"
-                                  title="Add to Quote"
-                                >
-                                  <FilePlus className="w-3 h-3" />
-                                  <span>Add</span>
-                                </button>
-                              </td>
-                            </tr>
-                            {hasSubItems && isExpanded && (
-                              <tr>
-                                <td colSpan={6} className="p-0">
-                                  <div className="mx-4 my-3 border border-indigo-100 rounded-xl overflow-hidden bg-indigo-50/20">
-                                    <div className="bg-indigo-50/60 px-4 py-2 border-b border-indigo-100 flex items-center justify-between">
-                                      <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider font-mono">Lot {row.sr} — Inventory Details</span>
-                                      <span className="text-[10px] font-bold text-indigo-500 bg-white border border-indigo-100 px-2 py-0.5 rounded-md font-mono">{row.subItems!.length} items</span>
-                                    </div>
-                                    <div className="max-h-[400px] overflow-y-auto">
-                                      <table className="w-full text-left border-collapse text-xs">
-                                        <thead className="sticky top-0 z-10">
-                                          <tr className="bg-white border-b border-indigo-100 font-mono text-[9.5px] text-slate-400">
-                                            <th className="py-2 px-3 font-bold w-12 text-center">Sl</th>
-                                            <th className="py-2 px-3 font-bold">Item Description</th>
-                                            <th className="py-2 px-3 font-bold text-right w-28">Quantity</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                          {row.subItems!.map((sub, sIdx) => (
-                                            <tr key={sIdx} className="hover:bg-indigo-50/30 text-[11.5px]">
-                                              <td className="py-1.5 px-3 text-center font-mono text-slate-400">{sub.sr || sIdx + 1}</td>
-                                              <td className="py-1.5 px-3 font-medium text-slate-700">{sub.description}</td>
-                                              <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-800">{sub.qty} {sub.unit}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              </React.Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
                 </div>
               </div>
 
