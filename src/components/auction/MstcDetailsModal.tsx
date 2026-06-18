@@ -11,6 +11,7 @@ import { useAppStore } from '../../store/appStore';
 import { formatPrice, CURRENCIES } from '../../utils/currency';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuationService';
+import { marketPriceService } from '../../services/marketPriceService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   DEFAULT_MACRO_INPUTS,  
@@ -1009,24 +1010,55 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
                   <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5 flex items-center justify-between">
                     <span>Market Analysis & ROI</span>
-                    <span className="text-[9.5px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2 py-0.5 rounded font-mono">LIVE PRICE</span>
                   </h4>
                   {(() => {
                     let totalTurnover = 0;
+                    let metalCount = 0;
+                    let vehicleCount = 0;
+                    let ewasteCount = 0;
                     summary.items.forEach(lot => {
-                      totalTurnover += calculateLotValue(lot.qty, lot.unit, lot.marketPrice || '2500');
+                      const val = calculateLotValue(lot.qty, lot.unit, lot.marketPrice || '2500');
+                      totalTurnover += val;
+                      const desc = (lot.description || '').toLowerCase();
+                      if (desc.includes('steel') || desc.includes('iron') || desc.includes('copper') || desc.includes('metal') || desc.includes('brass')) {
+                        metalCount++;
+                      } else if (desc.includes('vehicle') || desc.includes('car') || desc.includes('bus') || desc.includes('truck') || desc.includes('motorcycle')) {
+                        vehicleCount++;
+                      } else if (desc.includes('computer') || desc.includes('laptop') || desc.includes('battery') || desc.includes('e-waste') || desc.includes('electronic')) {
+                        ewasteCount++;
+                      }
                     });
 
-                    const predictedClosingBid = totalTurnover * 0.78;
-                    const projectedProfit = totalTurnover - predictedClosingBid;
+                    // Determine dynamic multiplier based on dominant commodity type
+                    let closingBidMultiplier = marketPriceService.getCommodityMultiplier('default');
+                    const totalItems = summary.items.length || 1;
+                    if (metalCount / totalItems > 0.5) {
+                      closingBidMultiplier = marketPriceService.getCommodityMultiplier('steel_iron_ferrous');
+                    } else if (vehicleCount / totalItems > 0.5) {
+                      closingBidMultiplier = marketPriceService.getCommodityMultiplier('vehicle');
+                    } else if (ewasteCount / totalItems > 0.5) {
+                      closingBidMultiplier = marketPriceService.getCommodityMultiplier('e_waste');
+                    }
+
+                    const finalTurnover = valuationData ? valuationData.totalLotValue : totalTurnover;
+                    const predictedClosingBid = finalTurnover * closingBidMultiplier;
+                    const projectedProfit = finalTurnover - predictedClosingBid;
                     const roi = predictedClosingBid > 0 ? (projectedProfit / predictedClosingBid) * 100 : 0;
+
+                    if (finalTurnover <= 0) {
+                      return (
+                        <div className="py-4 text-center text-slate-500 font-bold bg-slate-50 border border-dashed border-slate-205 rounded-xl font-mono text-xs">
+                          Pricing Not Available
+                        </div>
+                      );
+                    }
 
                     return (
                       <div className="space-y-3 text-[13.5px] text-slate-705">
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Projected Turnover</span>
                           <span className="font-bold text-slate-900">
-                            ₹{totalTurnover.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ₹{finalTurnover.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         

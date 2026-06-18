@@ -39,7 +39,7 @@ export function TopBar() {
   };
 
   return (
-    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-8">
+    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-8 shrink-0">
       <button 
         onClick={toggleSidebar}
         className="p-2 -ml-2 rounded-md hover:bg-secondary text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary lg:hidden"
@@ -51,7 +51,7 @@ export function TopBar() {
         <div className="relative notification-container">
           <button 
             onClick={() => setIsNotifOpen(!isNotifOpen)}
-            className="p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-secondary transition-colors relative"
+            className="p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-secondary transition-colors relative animate-none"
           >
             <Bell size={20} />
             {unreadCount > 0 && (

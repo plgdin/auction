@@ -6,6 +6,8 @@ import {
   detectModelId, 
   detectGrade 
 } from './metalValuationModels';
+import { matchCommodity } from '../services/valuationService';
+import { marketPriceService } from '../services/marketPriceService';
 
 export const expandAbbreviations = (text: string): string => {
   if (!text) return '';
@@ -98,66 +100,42 @@ export const getEstimatedMarketPrice = (
       return 'Not Available';
     }
 
-    // 2. Check for stuff we can't put a price on, like ships, luxury cars
+    // 2. Check for stuff we can't put a price on, like ships, luxury cars, property
     const unpriceableWords = [
       'ship', 'boat', 'vessel', 'yacht', 'barge', 'ferry', 'tugboat', 'cruiser',
-      'bmw', 'audi', 'mercedes', 'benz', 'porsche', 'jaguar', 'land rover', 'rover',
-      'ferrari', 'lamborghini', 'rolls royce', 'bentley', 'luxury'
+      'property', 'flat', 'plot', 'land', 'building', 'office space', 'shop', 'showroom', 'immovable'
     ];
     if (unpriceableWords.some(word => desc.includes(word) || cat.includes(word))) {
       return 'Not Available';
     }
+
+    const comm = matchCommodity(description);
+    if (marketPriceService.isCommodityPricingDisabled(comm.name)) {
+      return 'Not Available';
+    }
+    const dbPrice = marketPriceService.getCommodityPrice(comm.name);
 
     if (isMetal) {
       const modelId = detectModelId(description);
       const grade = detectGrade(description, modelId);
       const region = 'Mumbai'; // Default region for global pricing feeds
       const predicted = predictPrice(modelId, grade, region, DEFAULT_MACRO_INPUTS, description);
-      const rounded = Math.round(predicted);
+      
+      let finalVal = predicted;
+      if (dbPrice > 0) {
+        finalVal = (predicted + dbPrice) / 2;
+      }
+      
+      const rounded = Math.round(finalVal);
       const targetUnit = METALLIC_MODELS[modelId]?.targetUnit || 'Tons';
       const singularUnit = targetUnit === 'Tons' ? 'Ton' : targetUnit === 'Units' ? 'Unit' : targetUnit;
       return `₹${rounded.toLocaleString('en-IN')} / ${singularUnit}`;
     }
 
-    if (desc.includes('copper') || cat.includes('copper')) {
-      return '₹780 / kg';
-    }
-    if (desc.includes('aluminum') || desc.includes('aluminium') || cat.includes('aluminum') || cat.includes('aluminium')) {
-      return '₹235 / kg';
-    }
-    if (desc.includes('battery') || desc.includes('batteries') || cat.includes('battery') || cat.includes('batteries')) {
-      return '₹120 / kg';
-    }
-    if (desc.includes('lead') || cat.includes('lead')) {
-      return '₹185 / kg';
-    }
-    if (desc.includes('brass') || cat.includes('brass')) {
-      return '₹480 / kg';
-    }
-    if (desc.includes('zinc') || cat.includes('zinc')) {
-      return '₹220 / kg';
-    }
-    if (desc.includes('oil') || desc.includes('lubricating') || desc.includes('petroleum') || cat.includes('oil') || cat.includes('petroleum')) {
-      return '₹85 / Liter';
-    }
-    if (desc.includes('wheat') || cat.includes('wheat')) {
-      return '₹2,450 / Quintal';
-    }
-    if (desc.includes('rice') || desc.includes('paddy') || cat.includes('rice') || cat.includes('paddy')) {
-      return '₹2,200 / Quintal';
-    }
-    if (desc.includes('coal') || desc.includes('lignite') || cat.includes('coal') || cat.includes('lignite')) {
-      return '₹8,400 / Ton';
-    }
-    if (desc.includes('sand') || desc.includes('mine') || desc.includes('stone') || desc.includes('block') || cat.includes('sand') || cat.includes('mine') || cat.includes('stone') || cat.includes('block')) {
-      return '₹4,500 / Ton';
-    }
-    if ((desc.includes('cable') || desc.includes('wire') || cat.includes('cable') || cat.includes('wire')) &&
-        !desc.includes('drum') && !desc.includes('reel')) {
-      return '₹340 / kg';
-    }
-    if (desc.includes('computer') || desc.includes('laptop') || desc.includes('it equipment') || cat.includes('computer') || cat.includes('laptop')) {
-      return '₹14,500 / Unit';
+    if (comm.name !== 'default') {
+      const basePrice = dbPrice || comm.basePricePerKg || comm.basePricePerUnit || 0;
+      const unit = comm.unit || (comm.basePricePerKg !== undefined ? 'kg' : 'Unit');
+      return `₹${basePrice.toLocaleString('en-IN')} / ${unit}`;
     }
 
     return 'Not Available';

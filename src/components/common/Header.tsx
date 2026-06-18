@@ -29,16 +29,8 @@ export function Header() {
       <div className="w-full px-4 sm:px-8 lg:px-12">
         <div className="flex justify-between items-center h-20">
           <div className="flex-shrink-0 flex items-center -ml-4">
-            <Link to="/" className="flex items-center gap-2">
-              <img src="/logo.png" alt="Logo" className="w-20 h-20 object-contain" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                  Lelam
-                </span>
-                <span className="bg-sky-500/10 text-sky-600 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-sky-500/20 uppercase tracking-wide">
-                  Beta
-                </span>
-              </div>
+            <Link to="/" className="flex items-center">
+              <img src="/png_lelam_1.png" alt="Lelam Logo" className="w-auto object-contain" style={{ height: '38px' }} />
             </Link>
           </div>
 

@@ -15,6 +15,7 @@ import {
   detectRegion
 } from '../../utils/metalValuationModels';
 import type { MacroInputs } from '../../utils/metalValuationModels';
+import { marketPriceService } from '../../services/marketPriceService';
 
 interface MarketValuationPanelProps {
   auction: Auction;
@@ -106,160 +107,191 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
   // Determine market rate based on title/category
   const getMarketData = (title: string, basePrice: number) => {
     const t = title.toLowerCase();
+
+    const getHistoryForComm = (commId: string, mult = 1, fallbackArray: number[]) => {
+      try {
+        const logs = marketPriceService.getPriceHistoryLogs()
+          .filter(log => log.commodityId === commId)
+          .slice(0, 6)
+          .reverse(); // oldest first for chart
+        if (logs.length >= 3) {
+          return logs.map(log => log.price * mult);
+        }
+      } catch (e) {
+        console.warn('Error reading price history logs:', e);
+      }
+      return fallbackArray;
+    };
+
     if (t.includes('gold')) {
+      const priceVal = marketPriceService.getCommodityPrice('gold') || 7450;
       return { 
         name: 'Gold (99.9% Purity)', 
-        avgPrice: 7450, // per gram
+        avgPrice: priceVal, 
         unit: 'g', 
         source: 'Metals API', 
         trend: 'up',
-        history: [7320, 7350, 7390, 7380, 7420, 7450],
+        history: getHistoryForComm('gold', 1, [7320, 7350, 7390, 7380, 7420, 7450]),
         multiplier: 1
       };
     }
     if (t.includes('silver')) {
+      const priceVal = marketPriceService.getCommodityPrice('silver') || 91000;
       return { 
         name: 'Silver (99.9% Purity)', 
-        avgPrice: 91000, 
+        avgPrice: priceVal, 
         unit: 'kg', 
         source: 'Metals API', 
         trend: 'up',
-        history: [88500, 89200, 89900, 90100, 90500, 91000],
+        history: getHistoryForComm('silver', 1, [88500, 89200, 89900, 90100, 90500, 91000]),
         multiplier: 1
       };
     }
     if (t.includes('copper')) {
+      const priceVal = (marketPriceService.getCommodityPrice('copper') || 780) * 1000;
       return { 
         name: 'Copper Cathodes / Wire Scrap', 
-        avgPrice: 780000, // per Ton (INR 780/kg)
+        avgPrice: priceVal, 
         unit: 'Tons', 
         source: 'Commodities API', 
         trend: 'up',
-        history: [760000, 765000, 772000, 770000, 778000, 780000],
+        history: getHistoryForComm('copper', 1000, [760000, 765000, 772000, 770000, 778000, 780000]),
         multiplier: 1
       };
     }
     if (t.includes('aluminium') || t.includes('aluminum')) {
+      const priceVal = (marketPriceService.getCommodityPrice('aluminium') || 235) * 1000;
       return { 
         name: 'Aluminium Ingots (99.7% LME)', 
-        avgPrice: 235000, // per Ton
+        avgPrice: priceVal, 
         unit: 'Tons', 
         source: 'Commodities API', 
         trend: 'stable',
-        history: [234000, 236000, 235000, 233000, 235000, 235000],
+        history: getHistoryForComm('aluminium', 1000, [234000, 236000, 235000, 233000, 235000, 235000]),
         multiplier: 1
       };
     }
     if (t.includes('wheat')) {
+      const priceVal = (marketPriceService.getCommodityPrice('wheat') || 2450) * 10;
       return { 
         name: 'Wheat (Durum Grade A)', 
-        avgPrice: 24500, // per Ton
+        avgPrice: priceVal, 
         unit: 'Tons', 
         source: 'API Ninjas Commodity API', 
         trend: 'stable',
-        history: [24200, 24300, 24500, 24400, 24600, 24500],
+        history: getHistoryForComm('wheat', 10, [24200, 24300, 24500, 24400, 24600, 24500]),
         multiplier: 1
       };
     }
     if (t.includes('maize') || t.includes('corn')) {
+      const priceVal = marketPriceService.getCommodityPrice('maize_corn') || 21000;
       return { 
         name: 'Yellow Maize / Feed Corn', 
-        avgPrice: 21000, // per Ton
+        avgPrice: priceVal, 
         unit: 'Tons', 
         source: 'API Ninjas Commodity API', 
         trend: 'stable',
-        history: [20800, 20950, 21000, 21100, 21050, 21000],
+        history: getHistoryForComm('maize_corn', 1, [20800, 20950, 21000, 21100, 21050, 21000]),
         multiplier: 1
       };
     }
     if (t.includes('paddy') || t.includes('rice')) {
+      const priceVal = (marketPriceService.getCommodityPrice('rice') || 2200) * 10;
       return { 
         name: 'Basmati Paddy / Rice', 
-        avgPrice: 22000, // per Ton
+        avgPrice: priceVal, 
         unit: 'Tons', 
         source: 'API Ninjas Commodity API', 
         trend: 'stable',
-        history: [21800, 21900, 22100, 22000, 22250, 22000],
+        history: getHistoryForComm('rice', 10, [21800, 21900, 22100, 22000, 22250, 22000]),
         multiplier: 1
       };
     }
     if (t.includes('coal') || t.includes('lignite')) {
+      const priceVal = marketPriceService.getCommodityPrice('coal') || 8400;
       return { 
         name: 'Steam Coal (5500 GAR)', 
-        avgPrice: 8400, // per Ton
+        avgPrice: priceVal, 
         unit: 'Tons', 
         source: 'API Ninjas Commodity API', 
         trend: 'down',
-        history: [8900, 8750, 8600, 8550, 8480, 8400],
+        history: getHistoryForComm('coal', 1, [8900, 8750, 8600, 8550, 8480, 8400]),
         multiplier: 1
       };
     }
     if (t.includes('oil') || t.includes('petroleum')) {
+      const priceVal = marketPriceService.getCommodityPrice('crude_oil') || 6800;
       return { 
         name: 'Crude Oil (WTI Index)', 
-        avgPrice: 6800, // per Barrel
+        avgPrice: priceVal, 
         unit: 'Barrels', 
         source: 'API Ninjas Commodity API', 
         trend: 'down',
-        history: [7200, 7100, 6950, 6890, 6840, 6800],
+        history: getHistoryForComm('crude_oil', 1, [7200, 7100, 6950, 6890, 6840, 6800]),
         multiplier: 1
       };
     }
     if (t.includes('gas')) {
+      const priceVal = marketPriceService.getCommodityPrice('natural_gas') || 210;
       return { 
         name: 'Natural Gas (Henry Hub)', 
-        avgPrice: 210, // per MMBtu
+        avgPrice: priceVal, 
         unit: 'MMBtu', 
         source: 'API Ninjas Commodity API', 
         trend: 'down',
-        history: [240, 232, 225, 218, 212, 210],
+        history: getHistoryForComm('natural_gas', 1, [240, 232, 225, 218, 212, 210]),
         multiplier: 1
       };
     }
     if (t.includes('computer') || t.includes('laptop') || t.includes('tablet') || t.includes('electronics')) {
+      const priceVal = marketPriceService.getCommodityPrice('e_waste') || Math.round(basePrice * 1.38);
       return { 
         name: 'Refurbished IT Hardware Index', 
-        avgPrice: Math.round(basePrice * 1.38), 
+        avgPrice: priceVal, 
         unit: 'Units', 
         source: 'DataForSEO Product API', 
         trend: 'stable',
-        history: [basePrice * 1.35, basePrice * 1.36, basePrice * 1.38, basePrice * 1.37, basePrice * 1.39, basePrice * 1.38],
+        history: getHistoryForComm('e_waste', 1, [basePrice * 1.35, basePrice * 1.36, basePrice * 1.38, basePrice * 1.37, basePrice * 1.39, basePrice * 1.38]),
         multiplier: 1
       };
     }
     if (t.includes('vehicle') || t.includes('car') || t.includes('truck') || t.includes('bus') || t.includes('transport')) {
+      const priceVal = marketPriceService.getCommodityPrice('vehicle') || Math.round(basePrice * 1.28);
       return { 
         name: 'Commercial Vehicle Resale Index', 
-        avgPrice: Math.round(basePrice * 1.28), 
+        avgPrice: priceVal, 
         unit: 'Units', 
         source: 'Zenserp Shopping API', 
         trend: 'stable',
-        history: [basePrice * 1.25, basePrice * 1.26, basePrice * 1.27, basePrice * 1.28, basePrice * 1.29, basePrice * 1.28],
+        history: getHistoryForComm('vehicle', 1, [basePrice * 1.25, basePrice * 1.26, basePrice * 1.27, basePrice * 1.28, basePrice * 1.29, basePrice * 1.28]),
         multiplier: 1
       };
     }
     if (t.includes('scrap') || t.includes('waste')) {
+      const priceVal = marketPriceService.getCommodityPrice('industrial_scrap_index') || Math.round(basePrice * 1.32);
       return { 
         name: 'Industrial Scrap Metal Index', 
-        avgPrice: Math.round(basePrice * 1.32), 
+        avgPrice: priceVal, 
         unit: 'Tons', 
         source: 'Commodities API', 
         trend: 'up',
-        history: [basePrice * 1.28, basePrice * 1.30, basePrice * 1.32, basePrice * 1.31, basePrice * 1.33, basePrice * 1.32],
+        history: getHistoryForComm('industrial_scrap_index', 1, [basePrice * 1.28, basePrice * 1.30, basePrice * 1.32, basePrice * 1.31, basePrice * 1.33, basePrice * 1.32]),
         multiplier: 1
       };
     }
     // Generic fallback based on starting price
+    const fallbackPrice = marketPriceService.getCommodityPrice('default') || Math.round(basePrice * 1.35);
     return { 
       name: 'Estimated Market Valuation', 
-      avgPrice: Math.round(basePrice * 1.35), 
+      avgPrice: fallbackPrice, 
       unit: 'Units', 
       source: 'PriceAPI Consumer Index', 
       trend: 'stable',
-      history: [basePrice * 1.30, basePrice * 1.32, basePrice * 1.35, basePrice * 1.34, basePrice * 1.36, basePrice * 1.35],
+      history: getHistoryForComm('default', 1, [basePrice * 1.30, basePrice * 1.32, basePrice * 1.35, basePrice * 1.34, basePrice * 1.36, basePrice * 1.35]),
       multiplier: 1
     };
   };
+
 
   const marketData = getMarketData(auction.title, auction.starting_price);
 

@@ -2,14 +2,16 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Gavel, Heart, Bell, 
   Settings, Building2, LogOut, FolderLock, Users, Calendar, ClipboardCheck,
-  ArrowLeft, FileText
+  ArrowLeft, FileText, Cpu, Megaphone, BarChart3, Mail, TrendingUp
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
 import clsx from 'clsx';
 
 export function Sidebar() {
   const location = useLocation();
   const { logout, profile } = useAuthStore();
+  const { activeAdminTab, setActiveAdminTab } = useAppStore();
 
   const navItems = [
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
@@ -23,9 +25,21 @@ export function Sidebar() {
     { name: 'Notifications', path: '/dashboard/notifications', icon: Bell },
   ];
 
+  const adminNavItems = [
+    { name: 'Overview & Analytics', id: 'overview', icon: LayoutDashboard },
+    { name: 'Scraper & Ingestion', id: 'scraper', icon: Cpu },
+    { name: 'Market Price Manager', id: 'market-prices', icon: TrendingUp },
+    { name: 'Advanced Reports', id: 'reports', icon: BarChart3 },
+    { name: 'User Management', id: 'users', icon: Users },
+    { name: 'System Announcements', id: 'system', icon: Megaphone },
+    { name: 'Contact Messages', id: 'messages', icon: Mail },
+  ];
+
   const handleLogout = async () => {
     await logout();
   };
+
+  const isAdminSide = location.pathname.startsWith('/admin');
 
   return (
     <aside className="w-64 bg-white border-r border-border min-h-screen text-foreground flex flex-col hidden lg:flex sticky top-0 h-screen">
@@ -47,31 +61,57 @@ export function Sidebar() {
           <ArrowLeft className="w-4 h-4 mr-2.5 shrink-0" />
           Back to Auctions
         </Link>
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          
-          return (
-            <Link
-              key={item.name}
-              to={item.path}
-              className={clsx(
-                "flex items-center px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group",
-                isActive 
-                  ? "bg-primary/10 text-primary font-semibold" 
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Icon className={clsx(
-                "w-5 h-5 mr-3 shrink-0 transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-              )} />
-              {item.name}
-            </Link>
-          );
-        })}
+        {isAdminSide ? (
+          adminNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeAdminTab === item.id;
+            
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveAdminTab(item.id)}
+                className={clsx(
+                  "w-full flex items-center px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group text-left cursor-pointer",
+                  isActive 
+                    ? "bg-primary/10 text-primary font-semibold" 
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Icon className={clsx(
+                  "w-5 h-5 mr-3 shrink-0 transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                )} />
+                {item.name}
+              </button>
+            );
+          })
+        ) : (
+          navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            
+            return (
+              <Link
+                key={item.name}
+                to={item.path}
+                className={clsx(
+                  "flex items-center px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group",
+                  isActive 
+                    ? "bg-primary/10 text-primary font-semibold" 
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Icon className={clsx(
+                  "w-5 h-5 mr-3 shrink-0 transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                )} />
+                {item.name}
+              </Link>
+            );
+          })
+        )}
 
-        {profile?.role === 'admin' || profile?.role === 'superadmin' ? (
+        {!isAdminSide && (profile?.role === 'admin' || profile?.role === 'superadmin') ? (
           <>
             <div className="pt-6 pb-2">
               <p className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -96,7 +136,7 @@ export function Sidebar() {
           </>
         ) : null}
 
-        {profile?.role === 'seller' || profile?.role === 'admin' || profile?.role === 'superadmin' ? (
+        {!isAdminSide && (profile?.role === 'seller' || profile?.role === 'admin' || profile?.role === 'superadmin') ? (
           <>
             <div className="pt-6 pb-2">
               <p className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">

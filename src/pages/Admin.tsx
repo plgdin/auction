@@ -1,34 +1,25 @@
 // @ts-nocheck
-import { useState } from 'react';
-import { LayoutDashboard, Users, Megaphone, Shield, BarChart3, Cpu, Mail } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { AdminOverview } from '../components/admin/AdminOverview';
 import { UserManagement } from '../components/admin/UserManagement';
 import { SystemManagement } from '../components/admin/SystemManagement';
 import { ReportsAnalytics } from '../components/admin/ReportsAnalytics';
 import { ScraperDashboard } from '../components/admin/ScraperDashboard';
 import { ContactMessages } from '../components/admin/ContactMessages';
-import clsx from 'clsx';
-
-type AdminTab = 'overview' | 'users' | 'reports' | 'system' | 'scraper' | 'messages';
+import { MarketPriceManagement } from '../components/admin/MarketPriceManagement';
+import { useAppStore } from '../store/appStore';
 
 export function Admin() {
-  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
-
-  const tabs = [
-    { id: 'overview', label: 'Overview & Analytics', icon: LayoutDashboard },
-    { id: 'scraper', label: 'Scraper & Ingestion', icon: Cpu },
-    { id: 'reports', label: 'Advanced Reports', icon: BarChart3 },
-    { id: 'users', label: 'User Management', icon: Users },
-    { id: 'system', label: 'System Announcements', icon: Megaphone },
-    { id: 'messages', label: 'Contact Messages', icon: Mail },
-  ];
+  const { activeAdminTab } = useAppStore();
 
   const renderContent = () => {
-    switch (activeTab) {
+    switch (activeAdminTab) {
       case 'overview':
         return <AdminOverview />;
       case 'scraper':
         return <ScraperDashboard />;
+      case 'market-prices':
+        return <MarketPriceManagement />;
       case 'reports':
         return <ReportsAnalytics />;
       case 'users':
@@ -58,29 +49,6 @@ export function Admin() {
             Global system administration, user moderation, and platform analytics.
           </p>
         </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-2 flex overflow-x-auto hide-scrollbar">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as AdminTab)}
-              className={clsx(
-                "flex items-center px-6 py-3 rounded-lg text-sm font-bold transition-all whitespace-nowrap",
-                isActive 
-                  ? "bg-primary text-white shadow-md shadow-primary/20" 
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              )}
-            >
-              <Icon className={clsx("w-4 h-4 mr-2", isActive ? "text-white" : "text-slate-400")} />
-              {tab.label}
-            </button>
-          );
-        })}
       </div>
 
       {/* Content Area */}
