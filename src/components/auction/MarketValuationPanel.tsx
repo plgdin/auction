@@ -281,7 +281,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
   // Financial calculations
   const unitBidPrice = simulatedBid;
   const unitMarketPrice = isRegression ? predictedPrice : marketData.avgPrice;
-  const displayUnit = isRegression ? selectedModel.targetUnit : (isMT ? 'Mega Tons' : marketData.unit);
+  const displayUnit = isRegression ? selectedModel.targetUnit : (isMT ? 'Mega Ton' : marketData.unit);
 
   // Acquisition Cost calculations
   const rawAcquisitionCost = unitBidPrice * computedQty;
