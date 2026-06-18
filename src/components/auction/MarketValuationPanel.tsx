@@ -38,7 +38,21 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
     titleLower.includes('truck') || 
     titleLower.includes('bus') || 
     titleLower.includes('transport') || 
-    titleLower.includes('auto');
+    titleLower.includes('auto') ||
+    titleLower.includes('e-waste') ||
+    titleLower.includes('ewaste') ||
+    titleLower.includes('motherboard') ||
+    titleLower.includes('printer') ||
+    titleLower.includes('monitor') ||
+    titleLower.includes('computer') ||
+    titleLower.includes('laptop') ||
+    titleLower.includes('smartphone') ||
+    titleLower.includes('tablet') ||
+    titleLower.includes('tv') ||
+    titleLower.includes('camera') ||
+    titleLower.includes('smartwatch') ||
+    titleLower.includes('console') ||
+    titleLower.includes('electronics');
 
   // Parse initial quantity and unit
   const parseQuantityAndUnit = (title: string) => {
@@ -255,7 +269,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
 
   // Calculate predicted price
   const predictedPrice = isMetal
-    ? predictPrice(selectedModelId, selectedGrade, selectedRegion, macroInputs)
+    ? predictPrice(selectedModelId, selectedGrade, selectedRegion, macroInputs, auction.title)
     : 0;
 
   // Generate regression history points based on variation in LME or USD_INR
@@ -267,7 +281,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
         ...macroInputs,
         LME_Steel_Scrap_USD: baseLME + i * 15
       };
-      points.push(predictPrice(selectedModelId, selectedGrade, selectedRegion, tempInputs));
+      points.push(predictPrice(selectedModelId, selectedGrade, selectedRegion, tempInputs, auction.title));
     }
     return points;
   };
@@ -275,13 +289,13 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
 
   // Quantity calculations (Regression units match price directly, e.g. price per Ton and quantity in Tons)
   const isMT = !isRegression && (initialParsed.unit || '').toUpperCase().trim() === 'MT';
-  const qtyMultiplier = isMT ? 1000000 : 1;
+  const qtyMultiplier = 1; // 1 MT = 1 Metric Ton = 1 Ton
   const computedQty = quantity * qtyMultiplier;
 
   // Financial calculations
   const unitBidPrice = simulatedBid;
   const unitMarketPrice = isRegression ? predictedPrice : marketData.avgPrice;
-  const displayUnit = isRegression ? selectedModel.targetUnit : (isMT ? 'Mega Tons' : marketData.unit);
+  const displayUnit = isRegression ? selectedModel.targetUnit : (isMT ? 'Metric Ton' : marketData.unit);
 
   // Acquisition Cost calculations
   const rawAcquisitionCost = unitBidPrice * computedQty;

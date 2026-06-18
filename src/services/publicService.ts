@@ -406,17 +406,68 @@ export const publicService = {
   },
 
   async getActiveFaqs(): Promise<FaqItem[]> {
-    const { data, error } = await supabase
-      .from('faq_items')
-      .select('*')
-      .eq('is_active', true)
-      .order('display_order', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching FAQs:', error);
-      return [];
-    }
-    return data;
+    return [
+      {
+        id: 'mstc-faq-1',
+        question: 'How does bidding work in MSTC auctions, and how does Lelam assist in the process?',
+        answer: 'Bidding in MSTC auctions is conducted on the official MSTC e-commerce portal during the scheduled auction time. Lelam is an independent, third-party assistive platform that helps buyers analyze MSTC catalogs, estimate market values, calculate projected transportation and unloading costs, and assess potential ROI. Bidders must register and place actual bids on the official MSTC platform.',
+        category: 'Bidding',
+        display_order: 1,
+        is_active: true,
+        created_at: '2026-06-18T00:00:00Z',
+        updated_at: '2026-06-18T00:00:00Z'
+      },
+      {
+        id: 'mstc-faq-2',
+        question: 'Why are photos sometimes missing or different from the actual scrap items on MSTC, and how can Lelam help?',
+        answer: 'MSTC auctions feature scrap and surplus materials which are stored in open environments and subject to deterioration. Because of this, MSTC rarely uploads high-quality photos to prevent misleading interpretations, advising buyers to inspect materials in person. Lelam assists by aggregating available catalog details, providing documents, and helping you analyze lot specifications to make better-informed inspection and bidding decisions.',
+        category: 'Inspection',
+        display_order: 2,
+        is_active: true,
+        created_at: '2026-06-18T00:00:00Z',
+        updated_at: '2026-06-18T00:00:00Z'
+      },
+      {
+        id: 'mstc-faq-3',
+        question: 'How is the Pre-Bid EMD (Earnest Money Deposit) handled and refunded?',
+        answer: "Pre-Bid EMD is managed directly by MSTC and the respective sellers. For unsuccessful bids, the EMD is typically refunded back to the buyer's ledger on the MSTC portal. Please note that Lelam has no access to your financial transactions or EMD payments; all payments, challans, and refunds must be managed directly through the official MSTC portal.",
+        category: 'Payments',
+        display_order: 3,
+        is_active: true,
+        created_at: '2026-06-18T00:00:00Z',
+        updated_at: '2026-06-18T00:00:00Z'
+      },
+      {
+        id: 'mstc-faq-4',
+        question: 'What should I do if my Pre-Bid EMD is not credited in my MSTC ledger?',
+        answer: 'EMD credit delays on MSTC usually happen if multiple transactions are sent using a single NEFT/RTGS challan, or if the deposit is made more than 3 days after challan generation. You should double-check your transaction references and contact the respective MSTC branch officer. As Lelam is an independent utility, we do not handle or process any payments or deposits.',
+        category: 'Payments',
+        display_order: 4,
+        is_active: true,
+        created_at: '2026-06-18T00:00:00Z',
+        updated_at: '2026-06-18T00:00:00Z'
+      },
+      {
+        id: 'mstc-faq-5',
+        question: 'Why do MSTC auctions often run late into the night or go into extensions?',
+        answer: 'MSTC auctions automatically enter extensions if active bidding continues near the closing time. This system ensures fair competition for the lot. Lelam helps you prepare for these long sessions by providing real-time valuation metrics and an interactive bid-and-cost calculator so you can calculate your break-even bid threshold in advance.',
+        category: 'Bidding',
+        display_order: 5,
+        is_active: true,
+        created_at: '2026-06-18T00:00:00Z',
+        updated_at: '2026-06-18T00:00:00Z'
+      },
+      {
+        id: 'mstc-faq-6',
+        question: 'How do I submit my Pollution Control Board (PCB) documents for e-waste or hazard scrap auctions?',
+        answer: 'For e-waste and restricted scrap categories, buyers must submit their Consent to Operate and PCB passbooks to the concerned MSTC dealing officer listed in the auction catalogue. Lelam provides a consolidated view of these key contacts and eligibility criteria extracted from the official auction PDF to simplify your preparation.',
+        category: 'Documents',
+        display_order: 6,
+        is_active: true,
+        created_at: '2026-06-18T00:00:00Z',
+        updated_at: '2026-06-18T00:00:00Z'
+      }
+    ];
   },
 
   async getActiveAnnouncements(limit: number = 5): Promise<Announcement[]> {
