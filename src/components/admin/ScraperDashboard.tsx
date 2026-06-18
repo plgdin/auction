@@ -21,6 +21,8 @@ import {
   Server
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
+import { embeddingService } from '../../services/embeddingService';
+import { supabase } from '../../lib/supabase';
 import type { AuditLog } from '../../types/database.types';
 import toast from 'react-hot-toast';
 
@@ -53,6 +55,7 @@ export function ScraperDashboard() {
   const [liveBackfillLogs, setLiveBackfillLogs] = useState<string[]>([]);
   const [isLocalApiAvailable, setIsLocalApiAvailable] = useState(false);
   const [isServerless, setIsServerless] = useState(false);
+  const [generateVectorsRunning, setGenerateVectorsRunning] = useState(false);
 
   const scraperTerminalRef = useRef<HTMLDivElement>(null);
   const workerTerminalRef = useRef<HTMLDivElement>(null);
@@ -309,6 +312,59 @@ export function ScraperDashboard() {
     }
   };
 
+  const handleGenerateVectors = async () => {
+    if (generateVectorsRunning) return;
+    setGenerateVectorsRunning(true);
+    let processedCount = 0;
+    const toastId = toast.loading('Initializing embedding model...');
+    
+    try {
+      // Warm up model
+      await embeddingService.prewarmModel();
+      
+      while (true) {
+        // Fetch up to 50 items without embeddings
+        toast.loading(`Processing batch... (${processedCount} total so far)`, { id: toastId });
+        const { data, error } = await supabase
+          .from('mstc_auctions')
+          .select('id, category_name, raw_materials_text')
+          .is('embedding', null)
+          .limit(50);
+          
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        
+        // Generate embeddings and update
+        for (const item of data) {
+          try {
+            // Concatenate category and raw text for the embedding
+            const textToEmbed = `${item.category_name || ''} ${item.raw_materials_text || ''}`.trim();
+            if (textToEmbed.length < 5) continue; // Skip empty
+            
+            const vector = await embeddingService.generateEmbedding(textToEmbed);
+            const embeddingStr = `[${vector.join(',')}]`;
+            
+            await supabase
+              .from('mstc_auctions')
+              .update({ embedding: embeddingStr as any })
+              .eq('id', item.id);
+              
+            processedCount++;
+          } catch (e) {
+            console.warn(`Failed to generate embedding for ${item.id}`, e);
+          }
+        }
+      }
+      
+      toast.success(`Finished generating ${processedCount} embeddings!`, { id: toastId });
+    } catch (error: any) {
+      console.error(error);
+      toast.error(`Failed during vector generation: ${error.message}`, { id: toastId });
+    } finally {
+      setGenerateVectorsRunning(false);
+    }
+  };
+
   const filteredAuctions = auctions.filter(auc => {
     const matchesSearch = 
       auc.mstc_auction_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -533,7 +589,15 @@ export function ScraperDashboard() {
 
         {/* Right Action Side */}
         <div className="flex items-center gap-2 self-end md:self-auto">
-          <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+          <button
+            onClick={handleGenerateVectors}
+            disabled={generateVectorsRunning}
+            className="flex items-center px-4 py-2 text-xs font-bold bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-700 hover:bg-indigo-100 transition-all shadow-xs"
+          >
+            <Cpu className={`w-3.5 h-3.5 mr-2 ${generateVectorsRunning ? 'animate-pulse text-indigo-500' : 'text-indigo-600'}`} />
+            {generateVectorsRunning ? 'Generating...' : 'Generate Vectors'}
+          </button>
+          <span className="text-xs text-slate-400 font-medium hidden sm:inline ml-2">
             Status: Worker Listening (15s Poll)
           </span>
           <button

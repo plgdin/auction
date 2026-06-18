@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
-import type { ContactMessage, FaqItem, Announcement, NewsUpdate } from '../types/database.types';
+import { embeddingService } from './embeddingService';
+import type { ContactMessage, FaqItem, Announcement, NewsUpdate, Database } from '../types/database.types';
 import {
   INVERTED_SYNONYM_MAP,
   CONCEPT_MAP,
@@ -1813,10 +1814,87 @@ export const MstcSearchService = {
     }
   ): Promise<MstcSanitizedAuction[]> {
     try {
-      return MstcSearchService.searchClientSide(query, filters);
+      const cleanedQuery = cleanQueryPriceTypos(query);
+      const pConstraint = parsePriceConstraint(cleanedQuery);
+      const workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
+      
+      let embeddingStr: string | null = null;
+      if (workingQuery && workingQuery.length > 2) {
+        try {
+          const vector = await embeddingService.generateEmbedding(workingQuery);
+          embeddingStr = `[${vector.join(',')}]`;
+        } catch (e) {
+          console.warn('Failed to generate embedding:', e);
+        }
+      }
+
+      // 1. Try Hybrid RPC
+      const { data, error } = await supabase.rpc('hybrid_search_mstc_catalog', {
+        p_search_query: workingQuery || null,
+        p_embedding: embeddingStr as any,
+        p_category_filter: filters?.category || null,
+        p_subcategory_filter: filters?.subcategory || null,
+        p_location_filter: filters?.location || null,
+        p_seller_filter: filters?.seller || null,
+        p_match_count: 1000
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        return [];
+      }
+
+      // 2. Map Categories & Filter
+      let mapped = (data as any[]).map(item => {
+        const { category, subcategory } = mapRawCategory(item.category_name);
+        return {
+          ...item,
+          category_name: `${category} | ${subcategory}`
+        } as MstcSanitizedAuction;
+      });
+
+      // Filter by arrays
+      if (filters?.categories?.length) {
+        mapped = mapped.filter(item => filters.categories!.includes(item.category_name.split(' | ')[0]));
+      }
+      if (filters?.subcategories?.length) {
+        mapped = mapped.filter(item => filters.subcategories!.includes(item.category_name.split(' | ')[1]));
+      }
+      if (filters?.sellers?.length) {
+        mapped = mapped.filter(item => filters.sellers!.includes(item.seller_name));
+      }
+      if (filters?.locations?.length) {
+        mapped = mapped.filter(item => filters.locations!.includes(item.location));
+      }
+      if (filters?.regionalOffices?.length) {
+        mapped = mapped.filter(item => filters.regionalOffices!.some(office => item.mstc_auction_number.includes(`MSTC/${office}/`)));
+      }
+
+      // Filter by price constraint
+      if (pConstraint) {
+        const { estimateAuctionValues } = await import('../utils/valuationUtils');
+        mapped = mapped.filter(item => {
+          const { preBid, totalValue } = estimateAuctionValues(item as any);
+          const matchValue = (val: number) => {
+            if (val <= 0) return true;
+            if (pConstraint.operator === 'less') return val <= pConstraint.value;
+            if (pConstraint.operator === 'greater') return val >= pConstraint.value;
+            return val === pConstraint.value;
+          };
+          if (pConstraint.field === 'pre_bid') return matchValue(preBid);
+          if (pConstraint.field === 'total_value') return matchValue(totalValue);
+          return matchValue(preBid) || matchValue(totalValue);
+        });
+      }
+
+      return mapped;
+
     } catch (error) {
-      console.warn('Catalog search failed:', error);
-      return [];
+      console.warn('Hybrid search failed, falling back to client-side search:', error);
+      return MstcSearchService.searchClientSide(query, filters);
     }
   },
 
