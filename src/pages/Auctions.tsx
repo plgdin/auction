@@ -450,10 +450,14 @@ export function Auctions() {
   useEffect(() => {
     if (activeTab === 'commercial') {
       loadData();
-    } else {
+    }
+  }, [activeTab, loadData]);
+
+  useEffect(() => {
+    if (activeTab === 'mstc') {
       loadMstcData();
     }
-  }, [activeTab, loadData, loadMstcData]);
+  }, [activeTab, loadMstcData]);
 
   useEffect(() => {
     // Load options when tab is active OR initially on mount

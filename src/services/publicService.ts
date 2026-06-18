@@ -1371,15 +1371,16 @@ export const MstcSearchService = {
   ): Promise<MstcSanitizedAuction[]> {
     try {
       let allData: any[] = [];
-      let pageIndex = 0;
+      let from = 0;
       const pageSize = 1000;
-      let hasMore = true;
 
-      while (hasMore) {
+      while (true) {
         let queryBuilder = supabase
           .from('mstc_auctions')
           .select('*')
-          .eq('asset_status', 'completed');
+          .eq('asset_status', 'completed')
+          .order('opening_date', { ascending: false })
+          .range(from, from + pageSize - 1);
 
         if (filters?.sellers && filters.sellers.length > 0) {
           queryBuilder = queryBuilder.in('seller_name', filters.sellers);
@@ -1400,24 +1401,20 @@ export const MstcSearchService = {
           queryBuilder = queryBuilder.ilike('mstc_auction_number', `MSTC/${filters.regionalOffice}/%`);
         }
 
-        const { data, error } = await queryBuilder
-          .order('opening_date', { ascending: false })
-          .range(pageIndex * pageSize, (pageIndex + 1) * pageSize - 1);
+        const { data, error } = await queryBuilder;
 
         if (error) throw error;
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData.push(...data);
-          if (data.length < pageSize) {
-            hasMore = false;
-          } else {
-            pageIndex++;
-          }
-        }
+        if (!data || data.length === 0) break;
+        
+        allData = [...allData, ...data];
+        
+        if (data.length < pageSize) break;
+        from += pageSize;
       }
-
+      
       const data = allData;
+
+      if (!data || data.length === 0) return [];
 
       // Map raw category names to clean Category | Subcategory structure
       let mapped = (data as MstcSanitizedAuction[]).map(item => {

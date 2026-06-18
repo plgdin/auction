@@ -61,7 +61,7 @@ export default async function handler(req: any, res: any) {
     }
 
     // 4. Fetch all auth users to retrieve their email addresses
-    const { data: { users: authUsers }, error: authUsersError } = await supabase.auth.admin.listUsers();
+    const { data: { users: authUsers } } = await supabase.auth.admin.listUsers();
     
     // Map emails and last sign in timestamps
     const emailMap: Record<string, string> = {

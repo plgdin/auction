@@ -271,7 +271,7 @@ function AuctionDetailInner({
                 {activeTab === 'terms' && (
                   <div className="prose prose-slate max-w-none text-slate-700">
                     <p className="whitespace-pre-line leading-relaxed">
-                      {auction.terms_conditions || 'Standard Auction-Platform terms and conditions apply.'}
+                      {auction.terms_conditions || 'Standard Lelam terms and conditions apply.'}
                     </p>
                   </div>
                 )}
