@@ -86,7 +86,7 @@ export function Inventory() {
       try {
         const parsed = JSON.parse(selectedAuction.raw_materials_text);
         if (parsed?.items) {
-          lotItems = flattenCatalogItems(parsed.items, selectedAuction.category?.name || selectedAuction.title);
+          lotItems = flattenCatalogItems(parsed.items, (selectedAuction as any).category?.name || selectedAuction.title);
         }
       } catch (e) {
         // Fallback
