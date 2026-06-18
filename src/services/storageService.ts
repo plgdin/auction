@@ -147,5 +147,72 @@ export const storageService = {
       return null;
     }
     return data;
+  },
+
+  /**
+   * Extracts the relative storage path from a full Supabase storage URL
+   */
+  extractStoragePath(url: string): string {
+    if (!url) return '';
+    const publicMarker = '/storage/v1/object/public/auction_documents/';
+    const authMarker = '/storage/v1/object/authenticated/auction_documents/';
+    
+    if (url.includes(publicMarker)) {
+      return decodeURIComponent(url.substring(url.indexOf(publicMarker) + publicMarker.length));
+    }
+    if (url.includes(authMarker)) {
+      return decodeURIComponent(url.substring(url.indexOf(authMarker) + authMarker.length));
+    }
+    return decodeURIComponent(url);
+  },
+
+  /**
+   * Securely downloads a file from a private Supabase Storage bucket and triggers a browser download
+   */
+  async downloadPrivateFile(bucketName: string, storagePath: string, fileName: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .download(storagePath);
+
+      if (error) {
+        console.error('Error downloading private file:', error);
+        return false;
+      }
+
+      const blobUrl = window.URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+      return true;
+    } catch (err) {
+      console.error('Unexpected error downloading private file:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Generates a temporary signed URL for a private file
+   */
+  async getSignedUrl(bucketName: string, storagePath: string, expiresIn: number = 60): Promise<string | null> {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .createSignedUrl(storagePath, expiresIn);
+
+      if (error) {
+        console.error('Error creating signed URL:', error);
+        return null;
+      }
+
+      return data.signedUrl;
+    } catch (err) {
+      console.error('Unexpected error getting signed URL:', err);
+      return null;
+    }
   }
 };

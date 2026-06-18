@@ -23,6 +23,7 @@ import {
 import { adminService } from '../../services/adminService';
 import type { AuditLog } from '../../types/database.types';
 import toast from 'react-hot-toast';
+import { storageService } from '../../services/storageService';
 
 interface ScraperStats {
   total: number;
@@ -306,6 +307,22 @@ export function ScraperDashboard() {
       }
     } catch (err: any) {
       toast.error(err.message || "An error occurred.");
+    }
+  };
+
+  const handleViewPrivateAsset = async (e: React.MouseEvent, url: string) => {
+    e.preventDefault();
+    try {
+      const storagePath = storageService.extractStoragePath(url);
+      const signedUrl = await storageService.getSignedUrl('auction_documents', storagePath, 60);
+      if (signedUrl) {
+        window.open(signedUrl, '_blank');
+      } else {
+        toast.error('Failed to generate secure preview URL.');
+      }
+    } catch (err) {
+      console.error('Error opening asset:', err);
+      toast.error('An error occurred.');
     }
   };
 
@@ -689,15 +706,13 @@ export function ScraperDashboard() {
 
                           {/* downloaded pdf (internal supabase storage link) */}
                           {auc.sanitized_document_path ? (
-                            <a 
-                              href={auc.sanitized_document_path} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg transition-colors inline-block"
+                            <button 
+                              onClick={(e) => handleViewPrivateAsset(e, auc.sanitized_document_path)}
+                              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg transition-colors inline-block cursor-pointer"
                               title="Open Downloaded Cloud Storage Document"
                             >
                               <FileCheck className="w-3.5 h-3.5" />
-                            </a>
+                            </button>
                           ) : (
                             <span 
                               className="p-1.5 bg-slate-50 text-slate-300 border border-slate-100 rounded-lg cursor-not-allowed inline-block"
@@ -771,14 +786,12 @@ export function ScraperDashboard() {
                         <td className="px-6 py-4">
                           <p className="text-slate-700 font-semibold">{logMessage}</p>
                           {detailsObj.sanitized_document_path && (
-                            <a 
-                              href={detailsObj.sanitized_document_path} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1 mt-1"
+                            <button 
+                              onClick={(e) => handleViewPrivateAsset(e, detailsObj.sanitized_document_path)}
+                              className="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1 mt-1 cursor-pointer text-left bg-transparent border-0"
                             >
                               View Saved Asset <ExternalLink className="w-3 h-3" />
-                            </a>
+                            </button>
                           )}
                         </td>
 

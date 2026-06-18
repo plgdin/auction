@@ -6,6 +6,8 @@ import { generateCatalogSummary, parsePdfDateTime, calculateLotValue } from '../
 import clsx from 'clsx';
 import { useQuoteStore } from '../../store/quoteStore';
 import { toast } from 'react-hot-toast';
+import { useAuthStore } from '../../store/authStore';
+import { storageService } from '../../services/storageService';
 
 interface MstcDetailsModalProps {
   item: MstcSanitizedAuction;
@@ -23,6 +25,39 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const { isAuthenticated } = useAuthStore();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please log in to download the catalog PDF.');
+      return;
+    }
+
+    if (!item.sanitized_document_path) {
+      toast.error('No document path available.');
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      const storagePath = storageService.extractStoragePath(item.sanitized_document_path);
+      const cleanAuctionNum = item.mstc_auction_number.replace(/[\/\\:*?"<>|]/g, '_');
+      const filename = `${cleanAuctionNum}_catalog.pdf`;
+      
+      const success = await storageService.downloadPrivateFile('auction_documents', storagePath, filename);
+      if (success) {
+        toast.success('Catalog PDF downloaded successfully.');
+      } else {
+        toast.error('Failed to download the catalog PDF. Please try again.');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('An error occurred during catalog download.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const summary = generateCatalogSummary(item);
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
@@ -510,16 +545,23 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
             >
               Close Details
             </button>
-            <a
-              href={item.sanitized_document_path || '#'}
-              download
-              target="_blank"
-              rel="noreferrer"
-              className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
+            <button
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+              className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download className="w-4 h-4 mr-2" />
-              Download PDF Catalog
-            </a>
+              {downloading ? (
+                <>
+                  <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF Catalog
+                </>
+              )}
+            </button>
           </div>
 
         </div>

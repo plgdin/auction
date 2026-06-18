@@ -312,6 +312,6 @@ CREATE POLICY "Users can view bids on active auctions" ON bids FOR SELECT USING 
 CREATE POLICY "Users can place bids" ON bids FOR INSERT WITH CHECK (auth.uid() = bidder_id);
 
 -- Storage Buckets Setup
-INSERT INTO storage.buckets (id, name, public) VALUES ('auction_documents', 'auction_documents', true) ON CONFLICT DO NOTHING;
+INSERT INTO storage.buckets (id, name, public) VALUES ('auction_documents', 'auction_documents', false) ON CONFLICT DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('auction_images', 'auction_images', true) ON CONFLICT DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('tender_documents', 'tender_documents', true) ON CONFLICT DO NOTHING;

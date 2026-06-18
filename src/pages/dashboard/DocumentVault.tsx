@@ -20,6 +20,20 @@ export function DocumentVault() {
   
   // Preview Modal State
   const [previewDoc, setPreviewDoc] = useState<VaultDocument | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (previewDoc) {
+      const fetchSignedUrl = async () => {
+        const storagePath = storageService.extractStoragePath(previewDoc.url);
+        const signedUrl = await storageService.getSignedUrl('auction_documents', storagePath, 60);
+        setPreviewUrl(signedUrl);
+      };
+      fetchSignedUrl();
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [previewDoc]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -171,7 +185,10 @@ export function DocumentVault() {
                         <Eye className="w-3.5 h-3.5 mr-1.5" /> Preview
                       </button>
                       <button
-                        onClick={() => storageService.downloadFile(doc.url, doc.name)}
+                        onClick={async () => {
+                          const storagePath = storageService.extractStoragePath(doc.url);
+                          await storageService.downloadPrivateFile('auction_documents', storagePath, doc.name);
+                        }}
                         className="inline-flex items-center px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded transition-colors"
                       >
                         <Download className="w-3.5 h-3.5 mr-1.5" /> Download
@@ -196,7 +213,10 @@ export function DocumentVault() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => storageService.downloadFile(previewDoc.url, previewDoc.name)}
+                  onClick={async () => {
+                    const storagePath = storageService.extractStoragePath(previewDoc.url);
+                    await storageService.downloadPrivateFile('auction_documents', storagePath, previewDoc.name);
+                  }}
                   className="p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded transition-colors"
                   title="Download File"
                 >
@@ -211,15 +231,19 @@ export function DocumentVault() {
               </div>
             </div>
             <div className="flex-1 overflow-auto bg-muted p-6 flex items-center justify-center min-h-[500px]">
-              {isImage(previewDoc.name) ? (
+              {!previewUrl ? (
+                <div className="flex justify-center items-center py-20">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : isImage(previewDoc.name) ? (
                 <img 
-                  src={previewDoc.url} 
+                  src={previewUrl} 
                   alt={previewDoc.name} 
                   className="max-w-full max-h-[70vh] object-contain rounded shadow-md border border-border bg-white"
                 />
               ) : (
                 <iframe 
-                  src={`${previewDoc.url}#toolbar=0`} 
+                  src={`${previewUrl}#toolbar=0`} 
                   className="w-full h-[70vh] rounded shadow-md border border-border bg-white"
                   title="Document Preview"
                 />
