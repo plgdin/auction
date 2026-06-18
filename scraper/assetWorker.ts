@@ -26,7 +26,7 @@ import { logger } from "./utils/logger.js";
 import { supabase, uploadToStorage } from "./utils/storage.js";
 import { renderPdfFirstPage, extractEmbeddedJpegs, renderAndExtractPdfPages } from "./utils/pdfUtils.js";
 import { parseMstcCatalogText, parseSubItemsFromText } from "./parsers/mstcParser.js";
-import type { CatalogSummary, SubItem } from "./parsers/mstcParser.js";
+import type { CatalogSummary } from "./parsers/mstcParser.js";
 import { performOcr } from "./utils/ocrUtils.js";
 import { calculateTotalMarketValue } from "../src/utils/valuationUtils.js";
 

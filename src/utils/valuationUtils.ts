@@ -25,6 +25,39 @@ import { getEstimatedMarketPrice } from './mstcHelpers';
 
 export { getEstimatedMarketPrice };
 
+export const calculateLotValue = (qty: string, unit: string, marketPrice: string): number => {
+  const price = getNumericPrice(marketPrice);
+  const qtyNum = getNumericQty(qty);
+  // Simplify value calculation based on logic inside calculateTotalMarketValue
+  let factor = 1;
+  const isKgPrice = (marketPrice || '').toLowerCase().includes('/ kg');
+  const isTonPrice = (marketPrice || '').toLowerCase().includes('/ ton');
+  const isQuintalPrice = (marketPrice || '').toLowerCase().includes('/ quintal');
+  const partUnit = (unit || '').toLowerCase().trim();
+
+  const weightUnits = ['kg', 'kgs', 'kilogram', 'kilograms', 'mt', 'ton', 'tons', 'tonne', 'tonnes', 'quintal', 'quintals'];
+  const isWeightUnit = weightUnits.some(w => partUnit.includes(w) || w.includes(partUnit));
+
+  if (isWeightUnit) {
+    if (isKgPrice) {
+      if (partUnit === 'mt' || partUnit.includes('ton') || partUnit.includes('tonne')) factor = 1000;
+    } else if (isTonPrice) {
+      if (partUnit.includes('kg') || partUnit.includes('kilogram')) factor = 0.001;
+      else if (partUnit === 'mt') factor = 1;
+    } else if (isQuintalPrice) {
+      if (partUnit === 'mt' || partUnit.includes('ton') || partUnit.includes('tonne')) factor = 10;
+      else if (partUnit.includes('kg')) factor = 0.01;
+    }
+  } else {
+    let itemWeightInKg = 10;
+    if (isKgPrice) factor = itemWeightInKg;
+    else if (isTonPrice) factor = itemWeightInKg / 1000;
+    else if (isQuintalPrice) factor = itemWeightInKg / 100;
+  }
+  
+  return price * qtyNum * factor;
+};
+
 export const calculateTotalMarketValue = (items: any[], categoryName: string = ''): number => {
   if (!items || !Array.isArray(items)) return 0;
   let total = 0;
@@ -38,7 +71,7 @@ export const calculateTotalMarketValue = (items: any[], categoryName: string = '
       price = priceMatch ? parseInt(priceMatch[1], 10) : 0;
     }
     if (price <= 1) {
-      priceStr = getEstimatedMarketPrice(lot.description || '', categoryName, lot.qty, lot.unit);
+      priceStr = getEstimatedMarketPrice(lot.description || '', categoryName);
       cleanPrice = priceStr.replace(/,/g, '');
       const priceMatch = cleanPrice.match(/(?:₹|Ôé╣)\s*(\d+)/);
       price = priceMatch ? parseInt(priceMatch[1], 10) : 0;

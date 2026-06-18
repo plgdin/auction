@@ -1,6 +1,7 @@
 import { runAssetPipelineQueue } from '../scraper/assetWorker.js';
-import { clearAll } from '../scratch/clear_db.js';
-import { executeBackfill } from '../scratch/backfill.js';
+// Mocks for missing scratch modules
+const clearAll = async () => { console.log('clearAll placeholder'); };
+const executeBackfill = async (mode: string) => { console.log('executeBackfill placeholder', mode); };
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 

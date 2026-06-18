@@ -6,6 +6,9 @@ import {
   detectModelId, 
   detectGrade 
 } from './metalValuationModels';
+import { calculateLotValue } from './valuationUtils';
+
+export { calculateLotValue };
 
 export const expandAbbreviations = (text: string): string => {
   if (!text) return '';
