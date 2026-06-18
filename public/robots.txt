@@ -1,0 +1,33 @@
+# User-agent directives for Lelam.co (Assistive B2B Auction Platform)
+# Optimized for maximum crawl efficiency, Lighthouse validation, and search engine visibility.
+
+# Define rules for all crawlers
+User-agent: *
+
+# Allow crawling of public content and resources
+Allow: /
+Allow: /auctions
+Allow: /market-prices
+Allow: /about
+Allow: /contact
+Allow: /assets/
+
+# Block crawlers from indexing authentication, administration, and user-specific workspace areas
+Disallow: /auth/
+Disallow: /auth/login
+Disallow: /auth/register
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /*?*mockAdmin=
+Disallow: /*?*token=
+Disallow: /mock/
+
+# Crawl rate limit recommendation for polite crawl behavior (10 seconds delay)
+Crawl-delay: 10
+
+# Target Host URL
+Host: https://www.lelam.co
+
+# Reference to the XML sitemap
+Sitemap: https://www.lelam.co/sitemap.xml
