@@ -434,7 +434,7 @@ export function Auctions() {
       setIsMstcLoading(false);
     }
   }, [
-    searchQuery,
+    searchParams,
     selectedMstcCategoriesJoined,
     selectedMstcSubcategoriesJoined,
     selectedMstcLocationsJoined,
