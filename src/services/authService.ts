@@ -15,6 +15,7 @@ export const authService = {
           first_name: firstName,
           last_name: lastName,
         },
+        emailRedirectTo: `${window.location.origin}/auth/login?verified=true`,
       },
     });
     if (error) throw error;
