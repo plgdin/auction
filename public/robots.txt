@@ -7,9 +7,11 @@ User-agent: *
 # Allow crawling of public content and resources
 Allow: /
 Allow: /auctions
-Allow: /market-prices
 Allow: /about
 Allow: /contact
+Allow: /faq
+Allow: /notices
+Allow: /news
 Allow: /assets/
 
 # Block crawlers from indexing authentication, administration, and user-specific workspace areas

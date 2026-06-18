@@ -16,20 +16,12 @@
     <priority>0.90</priority>
   </url>
   
-  <!-- Market Price Trends -->
-  <url>
-    <loc>https://www.lelam.co/market-prices</loc>
-    <lastmod>2026-06-18</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.80</priority>
-  </url>
-  
   <!-- About Us -->
   <url>
     <loc>https://www.lelam.co/about</loc>
     <lastmod>2026-06-18</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.50</priority>
+    <priority>0.60</priority>
   </url>
   
   <!-- Contact Page -->
@@ -37,6 +29,30 @@
     <loc>https://www.lelam.co/contact</loc>
     <lastmod>2026-06-18</lastmod>
     <changefreq>monthly</changefreq>
+    <priority>0.60</priority>
+  </url>
+
+  <!-- FAQ Page -->
+  <url>
+    <loc>https://www.lelam.co/faq</loc>
+    <lastmod>2026-06-18</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.50</priority>
+  </url>
+
+  <!-- Official Notices -->
+  <url>
+    <loc>https://www.lelam.co/notices</loc>
+    <lastmod>2026-06-18</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- News & Market Insights -->
+  <url>
+    <loc>https://www.lelam.co/news</loc>
+    <lastmod>2026-06-18</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.70</priority>
   </url>
 </urlset>
