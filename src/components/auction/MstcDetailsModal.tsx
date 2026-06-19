@@ -12,6 +12,7 @@ import { formatPrice, CURRENCIES } from '../../utils/currency';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuationService';
 import { marketPriceService } from '../../services/marketPriceService';
+import { storageService } from '../../services/storageService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   DEFAULT_MACRO_INPUTS,  
@@ -1186,16 +1187,18 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
             >
               Close Details
             </button>
-            <a
-              href={item.sanitized_document_path || '#'}
-              download
-              target="_blank"
-              rel="noreferrer"
-              className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
+            <button
+              onClick={() => {
+                if (item.sanitized_document_path) {
+                  storageService.downloadFile(item.sanitized_document_path, `Catalog_${shortId}.pdf`);
+                }
+              }}
+              disabled={!item.sanitized_document_path}
+              className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4 mr-2" />
               Download PDF Catalog
-            </a>
+            </button>
           </div>
 
         </div>

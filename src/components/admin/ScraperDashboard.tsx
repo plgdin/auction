@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { embeddingService } from '../../services/embeddingService';
+import { storageService } from '../../services/storageService';
 import { supabase } from '../../lib/supabase';
 import type { AuditLog } from '../../types/database.types';
 import toast from 'react-hot-toast';
@@ -753,15 +754,13 @@ export function ScraperDashboard() {
 
                           {/* downloaded pdf (internal supabase storage link) */}
                           {auc.sanitized_document_path ? (
-                            <a 
-                              href={auc.sanitized_document_path} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg transition-colors inline-block"
-                              title="Open Downloaded Cloud Storage Document"
+                            <button 
+                              onClick={() => storageService.downloadFile(auc.sanitized_document_path as string, `Catalog_${auc.mstc_auction_number.split('/').pop()}.pdf`)}
+                              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg transition-colors inline-block cursor-pointer"
+                              title="Download Cloud Storage Document"
                             >
                               <FileCheck className="w-3.5 h-3.5" />
-                            </a>
+                            </button>
                           ) : (
                             <span 
                               className="p-1.5 bg-slate-50 text-slate-300 border border-slate-100 rounded-lg cursor-not-allowed inline-block"
@@ -835,14 +834,12 @@ export function ScraperDashboard() {
                         <td className="px-6 py-4">
                           <p className="text-slate-700 font-semibold">{logMessage}</p>
                           {detailsObj.sanitized_document_path && (
-                            <a 
-                              href={detailsObj.sanitized_document_path} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1 mt-1"
+                            <button 
+                              onClick={() => storageService.downloadFile(detailsObj.sanitized_document_path as string, `Catalog_Log_${log.id}.pdf`)}
+                              className="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1 mt-1 cursor-pointer bg-transparent border-none p-0"
                             >
-                              View Saved Asset <ExternalLink className="w-3 h-3" />
-                            </a>
+                              Download Saved Asset <Download className="w-3 h-3" />
+                            </button>
                           )}
                         </td>
 
