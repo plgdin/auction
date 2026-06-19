@@ -8,6 +8,7 @@ import { useQuoteStore } from '../../store/quoteStore';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { storageService } from '../../services/storageService';
+import { marketPriceService } from '../../services/marketPriceService';
 
 interface MstcDetailsModalProps {
   item: MstcSanitizedAuction;
@@ -401,15 +402,37 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
                   <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5 flex items-center justify-between">
                     <span>Market Analysis & ROI</span>
-                    <span className="text-[9.5px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2 py-0.5 rounded font-mono">LIVE PRICE</span>
                   </h4>
                   {(() => {
                     let totalTurnover = 0;
+                    let metalCount = 0;
+                    let vehicleCount = 0;
+                    let ewasteCount = 0;
                     summary.items.forEach(lot => {
-                      totalTurnover += calculateLotValue(lot.qty, lot.unit, lot.marketPrice || '2500');
+                      const val = calculateLotValue(lot.qty, lot.unit, lot.marketPrice || '2500');
+                      totalTurnover += val;
+                      const desc = (lot.description || '').toLowerCase();
+                      if (desc.includes('steel') || desc.includes('iron') || desc.includes('copper') || desc.includes('metal') || desc.includes('brass')) {
+                        metalCount++;
+                      } else if (desc.includes('vehicle') || desc.includes('car') || desc.includes('bus') || desc.includes('truck') || desc.includes('motorcycle')) {
+                        vehicleCount++;
+                      } else if (desc.includes('computer') || desc.includes('laptop') || desc.includes('battery') || desc.includes('e-waste') || desc.includes('electronic')) {
+                        ewasteCount++;
+                      }
                     });
 
-                    const predictedClosingBid = totalTurnover * 0.78;
+                    // Determine dynamic multiplier based on dominant commodity type
+                    let closingBidMultiplier = marketPriceService.getCommodityMultiplier('default');
+                    const totalItems = summary.items.length || 1;
+                    if (metalCount / totalItems > 0.5) {
+                      closingBidMultiplier = marketPriceService.getCommodityMultiplier('steel_iron_ferrous');
+                    } else if (vehicleCount / totalItems > 0.5) {
+                      closingBidMultiplier = marketPriceService.getCommodityMultiplier('vehicle');
+                    } else if (ewasteCount / totalItems > 0.5) {
+                      closingBidMultiplier = marketPriceService.getCommodityMultiplier('e_waste');
+                    }
+
+                    const predictedClosingBid = totalTurnover * closingBidMultiplier;
                     const projectedProfit = totalTurnover - predictedClosingBid;
                     const roi = predictedClosingBid > 0 ? (projectedProfit / predictedClosingBid) * 100 : 0;
 
@@ -418,21 +441,21 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Projected Turnover</span>
                           <span className="font-bold text-slate-900">
-                            Ôé╣{totalTurnover.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ₹{totalTurnover.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Predicted Closing Bid</span>
                           <span className="font-bold text-indigo-650">
-                            Ôé╣{predictedClosingBid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ₹{predictedClosingBid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Projected Profit</span>
                           <span className="font-bold text-emerald-605">
-                            Ôé╣{projectedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ₹{projectedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
 

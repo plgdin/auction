@@ -1,30 +1,29 @@
-// @ts-nocheck
-import { UserPlus, Wallet, Trophy, Gavel } from 'lucide-react';
+import { Search, TrendingUp, Sliders, LayoutDashboard } from 'lucide-react';
 
 const steps = [
   {
     id: '01',
-    name: 'Register & Verify',
-    description: 'Create an account and submit your organization details for robust KYC verification to ensure platform security.',
-    icon: UserPlus,
+    name: 'Access MSTC Auctions',
+    description: 'Instantly search and browse through synchronized government and corporate auction schedules and catalog listings.',
+    icon: Search,
   },
   {
     id: '02',
-    name: 'Deposit EMD',
-    description: 'Pay the Earnest Money Deposit securely through our integrated wallet to qualify for high-value auctions.',
-    icon: Wallet,
+    name: 'Track Market Prices',
+    description: 'View live and historical metal index trends, currency rates, and regression models to determine accurate valuations.',
+    icon: TrendingUp,
   },
   {
     id: '03',
-    name: 'Bid Live',
-    description: 'Participate in transparent forward auctions or submit sealed technical and financial bids for tenders.',
-    icon: Gavel,
+    name: 'Compare & Calculate',
+    description: 'Adjust customs duties and logistics charges, toggle price visibility, and evaluate potential ROI dynamically.',
+    icon: Sliders,
   },
   {
     id: '04',
-    name: 'Win & Procure',
-    description: 'Receive immediate notifications on winning bids. Download system-generated payment receipts and allotment letters.',
-    icon: Trophy,
+    name: 'Interactive Dashboard',
+    description: 'Monitor your bookmarked items, manage analyzed lots, and customize your settings from the admin sidebar.',
+    icon: LayoutDashboard,
   },
 ];
 
@@ -36,7 +35,7 @@ export function HowItWorksSection() {
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">How the Platform Works</h2>
           <p className="mt-4 text-lg text-slate-600">
-            A streamlined, transparent, and secure 4-step process for buyers and sellers.
+            Empowering MSTC buyers with data-driven auction intelligence in 4 simple steps.
           </p>
         </div>
 

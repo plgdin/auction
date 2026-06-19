@@ -38,6 +38,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initializeAuth: () => {
     if (get().isInitialized) return;
 
+    // Support mockAdmin query param or localStorage bypass for testing admin features
+    const isMock = typeof window !== 'undefined' && (
+      localStorage.getItem('lelam_mock_admin') === 'true' || 
+      window.location.search.includes('mockAdmin=true')
+    );
+
+    if (isMock) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('lelam_mock_admin', 'true');
+      }
+      const mockProfile: Profile = {
+        id: 'mock-admin-id',
+        first_name: 'Mock',
+        last_name: 'Admin',
+        role: 'admin',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        phone: undefined,
+        organization_id: undefined,
+        is_active: true
+      };
+      set({
+        session: { user: { id: 'mock-admin-id', email: 'admin@lelam.com' } },
+        user: { id: 'mock-admin-id', email: 'admin@lelam.com' },
+        profile: mockProfile,
+        isAuthenticated: true,
+        isLoading: false,
+        isInitialized: true
+      });
+      return;
+    }
+
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -52,6 +84,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // Listen to auth changes
     supabase.auth.onAuthStateChange(async (_event, session) => {
+      // If mock admin is active, ignore Supabase auth state change unless it was triggered explicitly
+      const currentIsMock = typeof window !== 'undefined' && localStorage.getItem('lelam_mock_admin') === 'true';
+      if (currentIsMock) return;
+
       get().setSession(session);
       
       if (session?.user) {
@@ -65,6 +101,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     set({ isLoading: true });
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('lelam_mock_admin');
+    }
     try {
       await authService.signOut();
     } catch (e) {

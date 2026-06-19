@@ -1,6 +1,13 @@
 import axios from 'axios';
 import { useAppStore } from '../store/appStore';
 import { formatPrice } from '../utils/currency';
+import { marketPriceService } from './marketPriceService';
+import { 
+  DEFAULT_MACRO_INPUTS,  
+  predictPrice, 
+  detectModelId, 
+  detectGrade 
+} from '../utils/metalValuationModels';
 
 export interface ValuedItem {
   name: string;
@@ -49,7 +56,7 @@ export interface ValuationOutput {
 }
 
 // Simple base price helper for realistic fallback valuation
-interface CommodityDef {
+export interface CommodityDef {
   name: string;
   keywords: string[];
   basePricePerKg?: number;
@@ -57,16 +64,18 @@ interface CommodityDef {
   minPrice: number;
   maxPrice: number;
   queryKeyword: string;
+  unit?: string;
 }
 
-const COMMODITIES: CommodityDef[] = [
+export const COMMODITIES: CommodityDef[] = [
   {
     name: 'immovable_property',
     keywords: ['flat', 'plot', 'land', 'building', 'office space', 'shop', 'showroom', 'immovable', 'residential', 'commercial space'],
     basePricePerUnit: 5000000,
     minPrice: 1000000,
     maxPrice: 200000000,
-    queryKeyword: 'property flat price India'
+    queryKeyword: 'property flat price India',
+    unit: 'Unit'
   },
   {
     name: 'heavy_vehicle_machinery',
@@ -74,7 +83,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerUnit: 350000,
     minPrice: 80000,
     maxPrice: 1000000,
-    queryKeyword: 'scrap bus truck heavy machinery price India'
+    queryKeyword: 'scrap bus truck heavy machinery price India',
+    unit: 'Unit'
   },
   {
     name: 'vehicle',
@@ -82,7 +92,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerUnit: 150000,
     minPrice: 30000,
     maxPrice: 400000,
-    queryKeyword: 'scrap car vehicle price India'
+    queryKeyword: 'scrap car vehicle price India',
+    unit: 'Unit'
   },
   {
     name: 'motorcycle',
@@ -90,7 +101,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerUnit: 45000,
     minPrice: 10000,
     maxPrice: 100000,
-    queryKeyword: 'scrap motorcycle bike price India'
+    queryKeyword: 'scrap motorcycle bike price India',
+    unit: 'Unit'
   },
   {
     name: 'transformer',
@@ -98,7 +110,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerUnit: 90000,
     minPrice: 40000,
     maxPrice: 250000,
-    queryKeyword: 'scrap transformer price India'
+    queryKeyword: 'scrap transformer price India',
+    unit: 'Unit'
   },
   {
     name: 'copper',
@@ -106,7 +119,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerKg: 780,
     minPrice: 500,
     maxPrice: 1000,
-    queryKeyword: 'copper scrap price per kg India'
+    queryKeyword: 'copper scrap price per kg India',
+    unit: 'kg'
   },
   {
     name: 'brass',
@@ -114,7 +128,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerKg: 480,
     minPrice: 300,
     maxPrice: 700,
-    queryKeyword: 'brass scrap price per kg India'
+    queryKeyword: 'brass scrap price per kg India',
+    unit: 'kg'
   },
   {
     name: 'aluminium',
@@ -122,7 +137,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerKg: 235,
     minPrice: 150,
     maxPrice: 350,
-    queryKeyword: 'aluminium scrap price per kg India'
+    queryKeyword: 'aluminium scrap price per kg India',
+    unit: 'kg'
   },
   {
     name: 'steel_iron_ferrous',
@@ -130,7 +146,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerKg: 38.5,
     minPrice: 25,
     maxPrice: 60,
-    queryKeyword: 'ms scrap price per kg India'
+    queryKeyword: 'ms scrap price per kg India',
+    unit: 'kg'
   },
   {
     name: 'battery',
@@ -138,7 +155,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerKg: 120,
     minPrice: 80,
     maxPrice: 180,
-    queryKeyword: 'scrap lead acid battery price India'
+    queryKeyword: 'scrap lead acid battery price India',
+    unit: 'kg'
   },
   {
     name: 'lubricant_oil',
@@ -146,7 +164,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerUnit: 85,
     minPrice: 50,
     maxPrice: 150,
-    queryKeyword: 'waste engine oil price per liter India'
+    queryKeyword: 'waste engine oil price per liter India',
+    unit: 'Liter'
   },
   {
     name: 'e_waste',
@@ -154,7 +173,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerUnit: 14500,
     minPrice: 5000,
     maxPrice: 30000,
-    queryKeyword: 'e-waste scrap price per kg India'
+    queryKeyword: 'e-waste scrap price per kg India',
+    unit: 'Unit'
   },
   {
     name: 'cable_wire',
@@ -162,7 +182,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerKg: 340,
     minPrice: 200,
     maxPrice: 500,
-    queryKeyword: 'copper cable scrap price India'
+    queryKeyword: 'copper cable scrap price India',
+    unit: 'kg'
   },
   {
     name: 'lead',
@@ -170,7 +191,8 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerKg: 185,
     minPrice: 120,
     maxPrice: 250,
-    queryKeyword: 'lead scrap price India'
+    queryKeyword: 'lead scrap price India',
+    unit: 'kg'
   },
   {
     name: 'zinc',
@@ -178,7 +200,44 @@ const COMMODITIES: CommodityDef[] = [
     basePricePerKg: 220,
     minPrice: 150,
     maxPrice: 300,
-    queryKeyword: 'zinc scrap price India'
+    queryKeyword: 'zinc scrap price India',
+    unit: 'kg'
+  },
+  {
+    name: 'wheat',
+    keywords: ['wheat'],
+    basePricePerUnit: 2450,
+    minPrice: 1500,
+    maxPrice: 3500,
+    queryKeyword: 'wheat price per quintal India',
+    unit: 'Quintal'
+  },
+  {
+    name: 'rice',
+    keywords: ['rice', 'paddy'],
+    basePricePerUnit: 2200,
+    minPrice: 1500,
+    maxPrice: 3500,
+    queryKeyword: 'rice paddy price per quintal India',
+    unit: 'Quintal'
+  },
+  {
+    name: 'coal',
+    keywords: ['coal', 'lignite'],
+    basePricePerUnit: 8400,
+    minPrice: 4000,
+    maxPrice: 15000,
+    queryKeyword: 'coal price per ton India',
+    unit: 'Ton'
+  },
+  {
+    name: 'sand',
+    keywords: ['sand', 'mine', 'stone', 'block'],
+    basePricePerUnit: 4500,
+    minPrice: 2000,
+    maxPrice: 8000,
+    queryKeyword: 'river sand stone price per ton India',
+    unit: 'Ton'
   }
 ];
 
@@ -190,8 +249,31 @@ function hasWord(text: string, kw: string): boolean {
   return regex.test(text);
 }
 
-function matchCommodity(description: string): CommodityDef {
+export function matchCommodity(description: string): CommodityDef {
   const normalized = description.toLowerCase();
+  
+  // First, check dynamic commodities from marketPriceService
+  const dynamicPrices = marketPriceService.getCommodityPrices();
+  for (const c of dynamicPrices) {
+    const keywords = c.keywords || [c.name.toLowerCase(), c.id.toLowerCase()];
+    for (const kw of keywords) {
+      if (hasWord(normalized, kw)) {
+        const isPerKg = c.unit.toLowerCase() === 'kg' || c.unit.toLowerCase() === 'kgs';
+        return {
+          name: c.id,
+          keywords: keywords,
+          basePricePerKg: isPerKg ? c.currentPrice : undefined,
+          basePricePerUnit: !isPerKg ? c.currentPrice : undefined,
+          minPrice: c.currentPrice * 0.5,
+          maxPrice: c.currentPrice * 2.0,
+          queryKeyword: `${c.name} price India`,
+          unit: c.unit
+        };
+      }
+    }
+  }
+
+  // Fallback to static COMMODITIES list
   for (const comm of COMMODITIES) {
     for (const kw of comm.keywords) {
       if (hasWord(normalized, kw)) {
@@ -199,10 +281,12 @@ function matchCommodity(description: string): CommodityDef {
       }
     }
   }
+  
+  const defPrice = marketPriceService.getCommodityPrice('default') || 2500;
   return {
     name: 'default',
     keywords: [],
-    basePricePerUnit: 2500,
+    basePricePerUnit: defPrice,
     minPrice: 500,
     maxPrice: 10000,
     queryKeyword: 'scrap metal price India'
@@ -257,8 +341,9 @@ export const valuationService = {
     // @ts-ignore
     const apiKey = (typeof import.meta !== 'undefined' && (import.meta as any).env ? (import.meta as any).env.VITE_SERPAPI_KEY : undefined) || (typeof process !== 'undefined' && (process as any).env ? (process as any).env.VITE_SERPAPI_KEY : undefined) || '';
     const comm = matchCommodity(itemName);
+    const customPrice = marketPriceService.getCommodityPrice(comm.name);
     const isPerKg = comm.basePricePerKg !== undefined;
-    const baseVal = comm.basePricePerKg || comm.basePricePerUnit || 50;
+    const baseVal = customPrice || comm.basePricePerKg || comm.basePricePerUnit || 50;
 
     const regions = [
       { code: 'in', name: 'India', rate: 1, suffix: 'price India' },
@@ -398,13 +483,13 @@ export const valuationService = {
       
       const unpriceableWords = [
         'ship', 'boat', 'vessel', 'yacht', 'barge', 'ferry', 'tugboat', 'cruiser',
-        'bmw', 'audi', 'mercedes', 'benz', 'porsche', 'jaguar', 'land rover', 'rover',
-        'ferrari', 'lamborghini', 'rolls royce', 'bentley', 'luxury'
+        'property', 'flat', 'plot', 'land', 'building', 'office space', 'shop', 'showroom', 'immovable'
       ];
       const isUnpriceable = unpriceableWords.some(word => descLower.includes(word));
       const isUnknownCommodity = comm.name === 'default';
+      const isPricingDisabled = marketPriceService.isCommodityPricingDisabled(comm.name);
 
-      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isUnknownCommodity;
+      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isUnknownCommodity || isPricingDisabled;
 
       if (isNotAvailable) {
         valuedItems.push({
@@ -423,11 +508,40 @@ export const valuationService = {
         continue;
       }
 
-      // 2. Fetch international prices or use pre-extracted marketPrice
-      const intl = await this.fetchInternationalPrices(rawItem.description);
-      let avgPrice = intl.in.convertedPrice;
+      // 2. Determine price and confidence
+      const modelId = detectModelId(rawItem.description);
+      const dbPrice = marketPriceService.getCommodityPrice(comm.name);
+      
+      let avgPrice = 0;
+      let pricingConfidence = 50;
+
+      if (modelId) {
+        const grade = detectGrade(rawItem.description, modelId);
+        const predictedVal = predictPrice(modelId, grade, 'Mumbai', DEFAULT_MACRO_INPUTS, rawItem.description);
+        if (dbPrice > 0) {
+          avgPrice = (predictedVal + dbPrice) / 2;
+          pricingConfidence = 90; // High consensus from ML prediction and admin entered price
+        } else {
+          avgPrice = predictedVal;
+          pricingConfidence = 80; // ML predicted
+        }
+      } else {
+        if (dbPrice > 0) {
+          avgPrice = dbPrice;
+          pricingConfidence = 95; // Supreme confidence from admin price override
+        } else {
+          const intl = await this.fetchInternationalPrices(rawItem.description);
+          avgPrice = intl.in.convertedPrice || comm.basePricePerKg || comm.basePricePerUnit || 50;
+          if (!intl.in.isMock) {
+            pricingConfidence = Math.min(85, 50 + intl.in.sources * 5);
+          } else {
+            pricingConfidence = 60;
+          }
+        }
+      }
+
       const customPriceStr = (rawItem as any).marketPrice;
-      if (customPriceStr) {
+      if (customPriceStr && !modelId && dbPrice <= 0) {
         const cleanPrice = customPriceStr.replace(/,/g, '');
         const priceMatch = cleanPrice.match(/₹\s*(\d+)/);
         if (priceMatch) {
@@ -437,17 +551,9 @@ export const valuationService = {
               parsedPrice = parsedPrice / 1000;
             }
             avgPrice = parsedPrice;
+            pricingConfidence = 85;
           }
         }
-      }
-      const isMock = intl.in.isMock;
-
-      // Compute confidence score based on number of sources and consistency
-      let pricingConfidence = 50; // base confidence
-      if (!isMock) {
-        pricingConfidence += Math.min(30, intl.in.sources * 4);
-      } else {
-        pricingConfidence = 65;
       }
 
       const itemTotalValue = Math.round(avgPrice * baseQty);
@@ -463,17 +569,17 @@ export const valuationService = {
           in: { 
             price: itemUnitValue, 
             convertedPrice: itemTotalValue, 
-            sources: intl.in.sources 
+            sources: modelId ? 2 : (dbPrice > 0 ? 3 : 1) 
           },
           us: { 
             price: Math.round((itemUnitValue * 0.95) / 85), 
             convertedPrice: Math.round(itemTotalValue * 0.95), 
-            sources: intl.us.sources 
+            sources: 1
           },
           uk: { 
             price: Math.round((itemUnitValue * 0.9) / 108), 
             convertedPrice: Math.round(itemTotalValue * 0.9), 
-            sources: intl.uk.sources 
+            sources: 1
           }
         }
       });
@@ -549,6 +655,31 @@ export const valuationService = {
       riskReasoning = 'Medium risk. Solid margins but watch out for transport logistics costs and potential quality variations.';
     }
 
+    // Determine dynamic multiplier based on dominant commodity type
+    let closingBidMultiplier = marketPriceService.getCommodityMultiplier('default');
+    let metalCount = 0;
+    let vehicleCount = 0;
+    let ewasteCount = 0;
+    valuedItems.forEach(item => {
+      const desc = (item.name || '').toLowerCase();
+      if (desc.includes('steel') || desc.includes('iron') || desc.includes('copper') || desc.includes('metal') || desc.includes('brass')) {
+        metalCount++;
+      } else if (desc.includes('vehicle') || desc.includes('car') || desc.includes('bus') || desc.includes('truck') || desc.includes('motorcycle')) {
+        vehicleCount++;
+      } else if (desc.includes('computer') || desc.includes('laptop') || desc.includes('battery') || desc.includes('e-waste') || desc.includes('electronic')) {
+        ewasteCount++;
+      }
+    });
+    
+    const totalItemsCount = valuedItems.length || 1;
+    if (metalCount / totalItemsCount > 0.5) {
+      closingBidMultiplier = marketPriceService.getCommodityMultiplier('steel_iron_ferrous');
+    } else if (vehicleCount / totalItemsCount > 0.5) {
+      closingBidMultiplier = marketPriceService.getCommodityMultiplier('vehicle');
+    } else if (ewasteCount / totalItemsCount > 0.5) {
+      closingBidMultiplier = marketPriceService.getCommodityMultiplier('e_waste');
+    }
+
     // Recommendation Engine
     let recommendation: ValuationOutput['recommendation'] = 'Watch Carefully';
     let recommendationReasoning = '';
@@ -558,7 +689,7 @@ export const valuationService = {
       recommendationReasoning = `Excellent bidding opportunity with a high projected ROI of ${roiPercent}%. Data verification is strong.`;
     } else if (roiPercent >= 20 && riskLevel !== 'High Risk') {
       recommendation = 'Buy';
-      recommendationReasoning = `Solid potential returns (${roiPercent}% ROI) with manageable risk levels. Recommended to place bids up to ${formatPrice(Math.round(totalLotValue * 0.75), useAppStore.getState().currency)}.`;
+      recommendationReasoning = `Solid potential returns (${roiPercent}% ROI) with manageable risk levels. Recommended to place bids up to ${formatPrice(Math.round(totalLotValue * closingBidMultiplier), useAppStore.getState().currency)}.`;
     } else if (riskLevel === 'High Risk' || roiPercent < 0) {
       recommendation = 'High Risk';
       recommendationReasoning = `Not recommended. The projected ROI is negative or extremely low (${roiPercent}%), making it likely unprofitable.`;
@@ -569,6 +700,7 @@ export const valuationService = {
       recommendation = 'Watch Carefully';
       recommendationReasoning = `Decent margins but confidence is moderate. Monitor bidding action closely and do not exceed the break-even value of ${formatPrice(breakEven, useAppStore.getState().currency)}.`;
     }
+
 
     return {
       items: valuedItems,

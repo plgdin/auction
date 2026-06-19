@@ -2,12 +2,12 @@ import { Recycle, Factory, Truck, Building2, Cpu, Gem, ArrowRight } from 'lucide
 import { Link } from 'react-router-dom';
 
 const categories = [
-  { name: 'Scrap & Scrap Material', icon: Recycle, count: '150+' },
-  { name: 'Plant & Machinery', icon: Factory, count: '85+' },
-  { name: 'Vehicles', icon: Truck, count: '320+' },
-  { name: 'Real Estate', icon: Building2, count: '45+' },
-  { name: 'E-Waste', icon: Cpu, count: '12+' },
-  { name: 'Minerals & Ores', icon: Gem, count: '28+' },
+  { name: 'Scrap & Scrap Material', icon: Recycle, count: '150+', mstcCategory: 'Metal' },
+  { name: 'Plant & Machinery', icon: Factory, count: '85+', mstcCategory: 'Plant/Machineries' },
+  { name: 'Vehicles', icon: Truck, count: '320+', mstcCategory: 'Transport Vehicles' },
+  { name: 'Real Estate', icon: Building2, count: '45+', mstcCategory: 'Immovable Property' },
+  { name: 'E-Waste', icon: Cpu, count: '12+', mstcCategory: 'Electronics Items' },
+  { name: 'Minerals & Ores', icon: Gem, count: '28+', mstcCategory: 'Minerals' },
 ];
 
 export function ServiceCategoriesSection() {
@@ -27,7 +27,7 @@ export function ServiceCategoriesSection() {
             return (
               <Link
                 key={category.name}
-                to={`/auctions?category=${category.name}`}
+                to={`/auctions?tab=mstc&mstc_category=${encodeURIComponent(category.mstcCategory)}`}
                 className="group bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl hover:border-primary-600/50 transition-all duration-300"
               >
                 <div className="w-14 h-14 bg-primary-50 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-primary-600 transition-all duration-300">

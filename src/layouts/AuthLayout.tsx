@@ -9,7 +9,7 @@ export function AuthLayout() {
       <PageTracker />
       {/* Split screen container */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2">
-        
+
         {/* Branding Column (Left) */}
         <div className="hidden md:flex bg-slate-900 relative overflow-hidden flex-col justify-between p-16 text-white">
           {/* Background decoration */}
@@ -19,15 +19,8 @@ export function AuthLayout() {
           </div>
 
           <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center">
-            {/* Circular badge for Logo */}
-            <div className="w-24 h-24 bg-slate-800/40 backdrop-blur-md rounded-3xl flex items-center justify-center border border-white/10 shadow-2xl mb-8">
-              <img src="/logo.png" alt="Logo" className="w-14 h-14 object-contain brightness-0 invert filter drop-shadow-md" />
-            </div>
-            
-            <h1 className="text-4xl font-black text-white tracking-tight mb-4">
-              Lelam
-            </h1>
-            
+            <img src="/png_lelam_1.png" alt="Lelam Logo" className="h-16 w-auto object-contain brightness-0 invert filter drop-shadow-md mb-8" />
+
             <p className="text-2xl font-bold text-primary-400 max-w-md leading-relaxed">
               {subtitlePhrase}
             </p>
@@ -49,12 +42,9 @@ export function AuthLayout() {
           <div className="w-full max-w-md">
             {/* Small branding for mobile views only */}
             <div className="md:hidden flex flex-col items-center mb-8">
-              <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain filter drop-shadow-md" />
-              <span className="text-2xl font-black text-slate-900 tracking-tight mt-2">
-                Lelam
-              </span>
+              <img src="/png_lelam_1.png" alt="Lelam Logo" className="h-12 w-auto object-contain filter drop-shadow-md" />
             </div>
-            
+
             <Outlet />
           </div>
         </div>

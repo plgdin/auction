@@ -11,6 +11,11 @@
 import fetch from "node-fetch";
 import * as fs from "fs";
 import { createRequire } from "module";
+import { pipeline, env } from "@xenova/transformers";
+
+// Configure transformers for Node.js environment
+env.allowLocalModels = false;
+env.useBrowserCache = false;
 
 import {
   MAX_RETRY_COUNT,
@@ -34,6 +39,15 @@ const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 
 const log = logger.child({ module: "assetWorker" });
+
+// Global cache for the embedding pipeline model
+let embeddingPipelineCache: any = null;
+async function getEmbeddingPipeline() {
+  if (!embeddingPipelineCache) {
+    embeddingPipelineCache = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+  }
+  return embeddingPipelineCache;
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -954,15 +968,42 @@ export async function processRecord(record: QueueRecord): Promise<void> {
     );
   }
 
+  // Generate AI Semantic Embedding vector for Hybrid Search
+  let embeddingStr: string | null = null;
+  try {
+    const textToEmbed = `${record.category_name || ''} ${rawMaterialsText || ''}`.trim();
+    if (textToEmbed.length >= 5) {
+      jobLog.info({}, "Generating AI embedding vector for semantic search");
+      const extractor = await getEmbeddingPipeline();
+      const output = await extractor(textToEmbed, {
+        pooling: 'mean',
+        normalize: true,
+      });
+      const vector = Array.from(output.data);
+      embeddingStr = `[${vector.join(',')}]`;
+    }
+  } catch (embedErr: any) {
+    jobLog.warn(
+      { errorMessage: embedErr.message },
+      "Failed to generate AI embedding vector, skipping vector integration for this item"
+    );
+  }
+
   // Update record as completed
+  const updatePayload: any = {
+    asset_status: "completed",
+    sanitized_document_path: catalogUrl,
+    raw_materials_text: rawMaterialsText,
+    error_log: null,
+  };
+
+  if (embeddingStr) {
+    updatePayload.embedding = embeddingStr;
+  }
+
   await supabase
     .from("mstc_auctions")
-    .update({
-      asset_status: "completed",
-      sanitized_document_path: catalogUrl,
-      raw_materials_text: rawMaterialsText,
-      error_log: null,
-    })
+    .update(updatePayload)
     .eq("id", record.id);
 
   // Log download event to audit logs
