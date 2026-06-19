@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Gavel, Heart, Bell, 
   Settings, Building2, LogOut, FolderLock, Users, Calendar, ClipboardCheck,
@@ -10,8 +10,16 @@ import clsx from 'clsx';
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { logout, profile } = useAuthStore();
   const { activeAdminTab, setActiveAdminTab } = useAppStore();
+
+  const handleAdminItemClick = (itemId: string) => {
+    setActiveAdminTab(itemId);
+    if (!location.pathname.startsWith('/admin')) {
+      navigate('/admin');
+    }
+  };
 
   const navItems = [
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
@@ -61,15 +69,15 @@ export function Sidebar() {
           <ArrowLeft className="w-4 h-4 mr-2.5 shrink-0" />
           Back to Auctions
         </Link>
-        {isAdminSide ? (
+        {(profile?.role === 'admin' || profile?.role === 'superadmin') ? (
           adminNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeAdminTab === item.id;
+            const isActive = location.pathname.startsWith('/admin') && activeAdminTab === item.id;
             
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveAdminTab(item.id)}
+                onClick={() => handleAdminItemClick(item.id)}
                 className={clsx(
                   "w-full flex items-center px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group text-left cursor-pointer",
                   isActive 
@@ -111,30 +119,7 @@ export function Sidebar() {
           })
         )}
 
-        {!isAdminSide && (profile?.role === 'admin' || profile?.role === 'superadmin') ? (
-          <>
-            <div className="pt-6 pb-2">
-              <p className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Administration
-              </p>
-            </div>
-            <Link
-              to="/admin"
-              className={clsx(
-                "flex items-center px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group",
-                location.pathname.startsWith('/admin')
-                  ? "bg-primary/10 text-primary font-semibold" 
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Building2 className={clsx(
-                "w-5 h-5 mr-3 shrink-0 transition-colors",
-                location.pathname.startsWith('/admin') ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-              )} />
-              Admin Portal
-            </Link>
-          </>
-        ) : null}
+
 
         {!isAdminSide && (profile?.role === 'seller' || profile?.role === 'admin' || profile?.role === 'superadmin') ? (
           <>
