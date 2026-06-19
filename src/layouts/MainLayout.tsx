@@ -3,6 +3,7 @@ import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 import { AnnouncementBanner } from '../components/common/AnnouncementBanner';
 import { PageTracker } from '../components/common/PageTracker';
+import { CookieConsent } from '../components/common/CookieConsent';
 
 export function MainLayout() {
   return (
@@ -14,6 +15,7 @@ export function MainLayout() {
         <Outlet />
       </main>
       <Footer />
+      <CookieConsent />
     </div>
   );
 }

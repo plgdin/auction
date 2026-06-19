@@ -7,23 +7,28 @@ import { formatPrice } from '../../utils/currency';
 import { auctionService } from '../../services/auctionService';
 import { useAuthStore } from '../../store/authStore';
 import type { Auction } from '../../types/database.types';
+import { recommendationService } from '../../services/recommendationService';
 
 export function FeaturedAuctionsSection() {
   const { currency } = useAppStore();
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   useEffect(() => {
     async function loadAuctions() {
       try {
-        // Fetch active auctions
-        const response = await auctionService.getAuctions({});
-        if (response && Array.isArray(response.data)) {
-          setAuctions(response.data.slice(0, 3));
-        } else {
-          setAuctions([]);
+        let recs = [];
+        if (isAuthenticated && user) {
+          recs = await recommendationService.getRecommendedAuctions(user.id, 3);
         }
+        if (recs.length === 0) {
+          const response = await auctionService.getAuctions({});
+          if (response && Array.isArray(response.data)) {
+            recs = response.data.slice(0, 3);
+          }
+        }
+        setAuctions(recs);
       } catch (error) {
         console.error('Error loading recommended auctions:', error);
       } finally {
@@ -31,7 +36,7 @@ export function FeaturedAuctionsSection() {
       }
     }
     loadAuctions();
-  }, []);
+  }, [isAuthenticated, user]);
 
   return (
     <section className="py-20 bg-white relative">

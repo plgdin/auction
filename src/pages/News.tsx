@@ -25,7 +25,7 @@ export function News() {
           </div>
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">News & Updates</h1>
-            <p className="mt-2 text-lg text-slate-600">Latest platform features, press releases, and industry news.</p>
+            <p className="mt-2 text-lg text-slate-600">Latest platform features, press releases, and industry news regarding market trends and material pricing impacting eAuctions.</p>
           </div>
         </div>
 
@@ -66,7 +66,7 @@ export function News() {
                       <a 
                         href={linkUrl} 
                         target="_blank" 
-                        rel="noopener noreferrer"
+                        rel="noopener noreferrer nofollow"
                         className="text-primary font-medium text-sm hover:text-primary-700 mt-auto inline-flex items-center group w-fit"
                       >
                         Read article <ArrowRight className="ml-1 w-4 h-4 transform group-hover:translate-x-1 transition-transform" />

@@ -15,6 +15,7 @@ import { MstcSearchService, expandMstcOffice } from '../services/publicService';
 import type { MstcSanitizedAuction, SearchSuggestion } from '../services/publicService';
 import clsx from 'clsx';
 import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
+import { recommendationService } from '../services/recommendationService';
 
 const renderSuggestionText = (text: string, query: string) => {
   if (!query) return <span>{text}</span>;
@@ -243,6 +244,10 @@ export function Auctions() {
     setSearchQuery(queryText);
     setShowSuggestions(false);
     setHighlightedIndex(-1);
+
+    if (user) {
+      recommendationService.logUserSearch(user.id, queryText);
+    }
 
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
@@ -478,6 +483,9 @@ export function Auctions() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setShowSuggestions(false);
+    if (user && searchQuery) {
+      recommendationService.logUserSearch(user.id, searchQuery);
+    }
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       if (searchQuery) {

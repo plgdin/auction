@@ -59,7 +59,7 @@ export function HeroSection() {
             transition={{ delay: 0.4, duration: 0.8 }}
             className="text-lg sm:text-xl md:text-2xl text-slate-300 leading-relaxed mb-12 max-w-2xl font-light"
           >
-            Empowering everyone with simple, secure, and transparent bidding—one transaction at a time.
+            Empowering everyone with simple, secure, and transparent eAuctions—one bid at a time.
           </motion.p>
           
           <motion.div 

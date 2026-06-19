@@ -25,6 +25,9 @@ import { FAQ } from '../pages/FAQ';
 import { Notices } from '../pages/Notices';
 import { News } from '../pages/News';
 import { AuctionDetail } from '../pages/AuctionDetail';
+import { Privacy } from '../pages/Privacy';
+import { Terms } from '../pages/Terms';
+import { Cookies } from '../pages/Cookies';
 
 import { SellerDashboard } from '../pages/seller/SellerDashboard';
 import { ManageAuctions } from '../pages/seller/ManageAuctions';
@@ -54,6 +57,9 @@ export const router = createBrowserRouter([
       { path: 'faq', element: <FAQ /> },
       { path: 'notices', element: <Notices /> },
       { path: 'news', element: <News /> },
+      { path: 'privacy', element: <Privacy /> },
+      { path: 'terms', element: <Terms /> },
+      { path: 'cookies', element: <Cookies /> },
       { path: 'quotes', element: <Navigate to="/dashboard/quotes" replace /> },
       { path: 'quote', element: <Navigate to="/dashboard/quotes" replace /> },
     ],

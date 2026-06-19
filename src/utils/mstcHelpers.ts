@@ -203,7 +203,7 @@ export interface CatalogSummary {
     preBidDdg: string;
     adminCharges: string;
   };
-  keyContacts: { role: string; name: string; email: string }[];
+  keyContacts: { role: string; name: string; email: string; phone?: string }[];
   preview_image_url?: string | null;
   extracted_images?: string[];
   inspectionSchedule?: string;
@@ -400,9 +400,9 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
     'Hazardous waste buyers must possess active State Pollution Control Board (SPCB) authorization.'
   ];
 
-  let keyContacts = [
-    { role: 'Auction Officer (MSTC)', name: 'S. K. Mukherjee', email: 'skmukherjee@mstcindia.co.in' },
-    { role: 'Site In-Charge', name: 'R. K. Sharma (Superintending Engineer)', email: 'rksharma@site-authority.org' }
+  let keyContacts: { role: string; name: string; email: string; phone?: string }[] = [
+    { role: 'Auction Officer (MSTC)', name: 'S. K. Mukherjee', email: 'skmukherjee@mstcindia.co.in', phone: '+91-33-2225 7101' },
+    { role: 'Site In-Charge', name: 'R. K. Sharma (Superintending Engineer)', email: 'rksharma@site-authority.org', phone: 'Listed in catalog' }
   ];
 
   let emd = '10% of total bid value to be submitted via pre-bid EMD link';

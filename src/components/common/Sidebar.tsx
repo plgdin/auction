@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Gavel, Heart, Bell, 
   Settings, Building2, LogOut, FolderLock, Users, Calendar, ClipboardCheck,
-  ArrowLeft, FileText, Cpu, Megaphone, BarChart3, Mail, TrendingUp
+  ArrowLeft, FileText, Cpu, Megaphone, BarChart3, Mail, TrendingUp, HelpCircle, ShieldAlert
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
@@ -35,8 +35,11 @@ export function Sidebar() {
 
   const adminNavItems = [
     { name: 'Overview & Analytics', id: 'overview', icon: LayoutDashboard },
+    { name: 'System Activity Logs', id: 'activities', icon: ShieldAlert },
     { name: 'Scraper & Ingestion', id: 'scraper', icon: Cpu },
     { name: 'Market Price Manager', id: 'market-prices', icon: TrendingUp },
+    { name: 'FAQ Manager', id: 'faq', icon: HelpCircle },
+    { name: 'News & Media Manager', id: 'news', icon: FileText },
     { name: 'Advanced Reports', id: 'reports', icon: BarChart3 },
     { name: 'User Management', id: 'users', icon: Users },
     { name: 'System Announcements', id: 'system', icon: Megaphone },
@@ -52,10 +55,8 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-white border-r border-border min-h-screen text-foreground flex flex-col hidden lg:flex sticky top-0 h-screen">
       <div className="h-16 flex items-center px-6 border-b border-border shrink-0">
-        <Link to="/" className="flex items-center gap-2">
-          <span className="text-xl font-extrabold text-foreground tracking-tight">
-            Dashboard
-          </span>
+        <Link to="/" className="flex items-center gap-2.5">
+          <img src="/png_lelam_1.png" alt="Lelam Logo" className="h-8 w-auto object-contain" />
         </Link>
       </div>
 

@@ -1,4 +1,4 @@
-# User-agent directives for Lelam.co (Assistive B2B Auction Platform)
+# User-agent directives for Lelam.co (Assistive B2B eAuctions & bidding platform)
 # Optimized for maximum crawl efficiency, Lighthouse validation, and search engine visibility.
 
 # Define rules for all crawlers
@@ -12,6 +12,9 @@ Allow: /contact
 Allow: /faq
 Allow: /notices
 Allow: /news
+Allow: /privacy
+Allow: /terms
+Allow: /cookies
 Allow: /assets/
 
 # Block crawlers from indexing authentication, administration, and user-specific workspace areas
