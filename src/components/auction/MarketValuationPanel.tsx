@@ -82,7 +82,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
   const [showTaxes, setShowTaxes] = useState<boolean>(true);
 
   // AI Regression States
-  const [selectedModelId, setSelectedModelId] = useState<string>(detectModelId(auction.title));
+  const [selectedModelId, setSelectedModelId] = useState<string>(detectModelId(auction.title) || 'scrap_steel');
   const [selectedGrade, setSelectedGrade] = useState<string>(detectGrade(auction.title, selectedModelId));
   const [selectedRegion, setSelectedRegion] = useState<string>(detectRegion(auction.location || '', auction.title));
   const [macroInputs, setMacroInputs] = useState<MacroInputs>(DEFAULT_MACRO_INPUTS);

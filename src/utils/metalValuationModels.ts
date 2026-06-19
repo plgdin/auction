@@ -266,8 +266,20 @@ export function predictPrice(
 /**
  * Automatically detects the best model based on auction title/category
  */
-export function detectModelId(title: string): string {
+export function detectModelId(title: string): string | null {
   const t = title.toLowerCase();
+
+  // Explicitly ignore non-ferrous and precious metals from the ML models
+  // We use direct market indices for these, not regression models.
+  if (
+    t.includes('copper') || t.includes('brass') || t.includes('aluminium') || 
+    t.includes('aluminum') || /\ba?ll?u\.?\b/i.test(t) || t.includes('lead') || t.includes('zinc') || 
+    t.includes('gold') || t.includes('silver') || t.includes('cable') || 
+    t.includes('wire') || t.includes('battery')
+  ) {
+    return null;
+  }
+
   if (
     t.includes('e-waste') ||
     t.includes('ewaste') ||
@@ -295,7 +307,7 @@ export function detectModelId(title: string): string {
   if (t.includes('steel') || t.includes('billet') || t.includes('tmt') || t.includes('iron') || t.includes('metal')) {
     return 'primary_steel';
   }
-  return 'scrap_steel'; // Default metal model
+  return null; // Default to null if no specific model matched
 }
 
 /**

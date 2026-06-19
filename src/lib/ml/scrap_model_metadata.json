@@ -1,0 +1,55 @@
+{
+    "intercept": -25614.816409036306,
+    "coefficients": {
+        "Grade_E2": 2001.1178278689015,
+        "Grade_E3": 4483.559426229489,
+        "Grade_E40": 5520.235655737746,
+        "Grade_E5H": 6002.453893442639,
+        "Grade_E6": -3087.8258196720863,
+        "Grade_E8": 8404.44262295086,
+        "Grade_EHRB": 3506.5993852459283,
+        "Region_Delhi": -317.11782786886414,
+        "Region_Kolkata": -998.544569672151,
+        "Region_Mumbai": 187.90471311475295,
+        "LME_Steel_Scrap_USD": 58.36535569680525,
+        "USD_INR": 340.9336977703216,
+        "Domestic_Iron_Ore_INR": 0.339909576834277,
+        "Domestic_Coal_INR": 0.16903155974496317,
+        "Monsoon_Season": 429.8259964690658,
+        "Construction_Index": 85.69607291251492
+    },
+    "metrics": {
+        "Train_R2": 0.9901230435196922,
+        "Test_R2": 0.9900321076608971,
+        "Train_MAE": 319.64049101385865,
+        "Test_MAE": 282.4642018737356,
+        "Train_RMSE": 408.04770104667847,
+        "Test_RMSE": 350.56141765552803
+    },
+    "features": [
+        "Grade",
+        "Region",
+        "LME_Steel_Scrap_USD",
+        "USD_INR",
+        "Domestic_Iron_Ore_INR",
+        "Domestic_Coal_INR",
+        "Monsoon_Season",
+        "Construction_Index"
+    ],
+    "grades": [
+        "E1",
+        "E2",
+        "E3",
+        "E5H",
+        "E6",
+        "E8",
+        "E40",
+        "EHRB"
+    ],
+    "regions": [
+        "Mumbai",
+        "Delhi",
+        "Chennai",
+        "Kolkata"
+    ]
+}

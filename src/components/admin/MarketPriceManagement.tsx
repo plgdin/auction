@@ -7,6 +7,7 @@ import { marketPriceService } from '../../services/marketPriceService';
 import type { PriceHistoryLog } from '../../services/marketPriceService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'react-hot-toast';
+import { ScrapPricePredictor } from '../pricing/ScrapPricePredictor';
 
 export function MarketPriceManagement() {
   const [commodityData, setCommodityData] = useState(() => marketPriceService.getCommodityPrices());
@@ -906,6 +907,11 @@ export function MarketPriceManagement() {
           )}
         </div>
 
+      </div>
+
+      {/* Full width bottom row for Predictor */}
+      <div className="xl:col-span-3 mt-4">
+        <ScrapPricePredictor />
       </div>
 
     </div>

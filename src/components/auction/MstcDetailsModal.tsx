@@ -39,6 +39,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [signedImages, setSignedImages] = useState<Record<string, string>>({});
+  const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
   const { isAuthenticated } = useAuthStore();
   const [downloading, setDownloading] = useState(false);
 
@@ -166,7 +168,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
 
     // Use ML model to generate realistic price history variations
-    const modelId = detectModelId(targetTitle);
+    const modelId = detectModelId(targetTitle) || 'scrap_steel';
     const grade = detectGrade(targetTitle, modelId);
     const region = detectRegion(item.location || '', targetTitle);
     
@@ -257,6 +259,36 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
       isMounted = false;
     };
   }, [item, customCosts]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchSignedUrls = async () => {
+      const summary = generateCatalogSummary(item);
+      const hasOtherMedia = item.raw_materials_text && summary.extracted_images && summary.extracted_images.length > 0;
+      const displayImageRaw = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images![0] : null);
+      const imageUrlsRaw = (summary.extracted_images || []).filter((url: string) => !url.toLowerCase().endsWith('.pdf'));
+
+      const urlsToSign = [...imageUrlsRaw];
+      if (displayImageRaw && !urlsToSign.includes(displayImageRaw)) {
+        urlsToSign.push(displayImageRaw);
+      }
+      if (urlsToSign.length === 0) return;
+
+      const signed = await storageService.getSignedUrls(urlsToSign, 'auction_documents');
+      if (cancelled) return;
+
+      const newSignedImages: Record<string, string> = {};
+      urlsToSign.forEach((url, i) => {
+        newSignedImages[url] = signed[i] || url;
+      });
+      setSignedImages(newSignedImages);
+      if (displayImageRaw) {
+        setSignedDisplayImage(newSignedImages[displayImageRaw] || null);
+      }
+    };
+    fetchSignedUrls();
+    return () => { cancelled = true; };
+  }, [item]);
 
   const summary = generateCatalogSummary(item);
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
@@ -1162,20 +1194,23 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
                         </h4>
                         <div className="grid grid-cols-2 gap-2">
-                          {imageUrls.map((url: string, idx: number) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setLightboxImage(url)}
-                              className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
-                            >
-                              <img
-                                src={url}
-                                alt={`Auction image ${idx + 1}`}
-                                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
-                              />
-                            </button>
-                          ))}
+                          {imageUrls.map((url: string, idx: number) => {
+                            const finalSrc = signedImages[url] || url;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setLightboxImage(finalSrc)}
+                                className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
+                              >
+                                <img
+                                  src={finalSrc}
+                                  alt={`Auction image ${idx + 1}`}
+                                  className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                                />
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -1189,11 +1224,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
                         <button
                           type="button"
-                          onClick={() => setLightboxImage(displayImage)}
+                          onClick={() => setLightboxImage(signedDisplayImage || displayImage)}
                           className="block w-full text-left cursor-zoom-in relative focus:outline-none"
                         >
                           <img
-                            src={displayImage}
+                            src={signedDisplayImage || displayImage}
                             alt="PDF Catalog Preview"
                             className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
                           />

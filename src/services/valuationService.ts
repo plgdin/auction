@@ -133,7 +133,7 @@ export const COMMODITIES: CommodityDef[] = [
   },
   {
     name: 'aluminium',
-    keywords: ['aluminium', 'aluminum', 'al'],
+    keywords: ['aluminium', 'aluminum', 'al', 'alu', 'alu.', 'allu', 'allu.'],
     basePricePerKg: 235,
     minPrice: 150,
     maxPrice: 350,
@@ -237,6 +237,24 @@ export const COMMODITIES: CommodityDef[] = [
     minPrice: 2000,
     maxPrice: 8000,
     queryKeyword: 'river sand stone price per ton India',
+    unit: 'Ton'
+  },
+  {
+    name: 'paper_wood',
+    keywords: ['paper', 'record', 'records', 'wood', 'wooden', 'cardboard', 'timber', 'plywood'],
+    basePricePerUnit: 15000,
+    minPrice: 5000,
+    maxPrice: 30000,
+    queryKeyword: 'waste paper wood scrap price India',
+    unit: 'Ton'
+  },
+  {
+    name: 'misc_scrap',
+    keywords: ['sweep', 'sweeping', 'dust', 'ash', 'sludge', 'garbage', 'misc'],
+    basePricePerUnit: 3500,
+    minPrice: 1000,
+    maxPrice: 10000,
+    queryKeyword: 'mixed scrap dust price India',
     unit: 'Ton'
   }
 ];
@@ -492,7 +510,15 @@ export const valuationService = {
       const isUnknownCommodity = comm.name === 'default';
       const isPricingDisabled = marketPriceService.isCommodityPricingDisabled(comm.name);
 
-      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isUnknownCommodity || isPricingDisabled;
+      const isDiscrete = unitLower.includes('no') || unitLower === 'ea' || unitLower.includes('unit') || unitLower.includes('set') || unitLower === 'pc' || unitLower === 'pcs';
+      const isWeight = unitLower.includes('kg') || unitLower.includes('mt') || unitLower.includes('ton');
+      
+      const modelId = detectModelId(rawItem.description);
+      const targetUnit = modelId ? (modelId === 'cars_vehicles' || modelId === 'e_waste_electronics' ? 'Units' : 'Tons') : (comm.unit === 'kg' || comm.unit === 'Ton' ? 'Tons' : 'Units');
+      
+      const isMismatch = (isDiscrete && targetUnit === 'Tons') || (isWeight && targetUnit === 'Units');
+
+      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isUnknownCommodity || isPricingDisabled || isMismatch;
 
       if (isNotAvailable) {
         valuedItems.push({
@@ -512,7 +538,6 @@ export const valuationService = {
       }
 
       // 2. Determine price and confidence
-      const modelId = detectModelId(rawItem.description);
       const dbPrice = marketPriceService.getCommodityPrice(comm.name);
       
       let avgPrice = 0;
@@ -521,11 +546,20 @@ export const valuationService = {
       if (modelId) {
         const grade = detectGrade(rawItem.description, modelId);
         const predictedVal = predictPrice(modelId, grade, 'Mumbai', DEFAULT_MACRO_INPUTS, rawItem.description);
+        
+        let normalizedPredictedVal = predictedVal;
+        const targetUnit = modelId === 'cars_vehicles' || modelId === 'e_waste_electronics' ? 'Units' : 'Tons';
+        
+        // Convert prediction to Per KG if the commodity operates in KG
+        if (targetUnit === 'Tons' && isPerKg) {
+          normalizedPredictedVal = predictedVal / 1000;
+        }
+
         if (dbPrice > 0) {
-          avgPrice = (predictedVal + dbPrice) / 2;
+          avgPrice = (normalizedPredictedVal + dbPrice) / 2;
           pricingConfidence = 90; // High consensus from ML prediction and admin entered price
         } else {
-          avgPrice = predictedVal;
+          avgPrice = normalizedPredictedVal;
           pricingConfidence = 80; // ML predicted
         }
       } else {

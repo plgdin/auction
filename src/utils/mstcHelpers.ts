@@ -118,24 +118,52 @@ export const getEstimatedMarketPrice = (
     }
     const dbPrice = marketPriceService.getCommodityPrice(comm.name);
 
+    const isDiscrete = unitLower.includes('no') || unitLower === 'ea' || unitLower.includes('unit') || unitLower.includes('set') || unitLower === 'pc' || unitLower === 'pcs';
+    const isWeight = unitLower.includes('kg') || unitLower.includes('mt') || unitLower.includes('ton');
+
     if (isMetal) {
       const modelId = detectModelId(description);
-      const grade = detectGrade(description, modelId);
-      const region = 'Mumbai'; // Default region for global pricing feeds
-      const predicted = predictPrice(modelId, grade, region, DEFAULT_MACRO_INPUTS, description);
-      
-      let finalVal = predicted;
-      if (dbPrice > 0) {
-        finalVal = (predicted + dbPrice) / 2;
+      if (modelId) {
+        const targetUnit = METALLIC_MODELS[modelId]?.targetUnit || 'Tons';
+        
+        // Prevent pricing if the ML model uses Tons but the item is in Units/Nos
+        if (targetUnit === 'Tons' && isDiscrete) {
+          return 'Not Available';
+        }
+        // Prevent pricing if the ML model uses Units but the item is in Tons/MT
+        if (targetUnit === 'Units' && isWeight) {
+          return 'Not Available';
+        }
+
+        const grade = detectGrade(description, modelId);
+        const region = 'Mumbai'; // Default region for global pricing feeds
+        const predicted = predictPrice(modelId, grade, region, DEFAULT_MACRO_INPUTS, description);
+        
+        let finalVal = predicted;
+        if (dbPrice > 0) {
+          const isPerKg = comm.unit === 'kg' || comm.basePricePerKg !== undefined;
+          let normalizedDbPrice = dbPrice;
+          
+          if (targetUnit === 'Tons' && isPerKg) {
+            normalizedDbPrice = dbPrice * 1000;
+          }
+          finalVal = (predicted + normalizedDbPrice) / 2;
+        }
+        
+        const rounded = Math.round(finalVal);
+        const singularUnit = targetUnit === 'Tons' ? 'Ton' : targetUnit === 'Units' ? 'Unit' : targetUnit;
+        return `₹${rounded.toLocaleString('en-IN')} / ${singularUnit}`;
       }
-      
-      const rounded = Math.round(finalVal);
-      const targetUnit = METALLIC_MODELS[modelId]?.targetUnit || 'Tons';
-      const singularUnit = targetUnit === 'Tons' ? 'Ton' : targetUnit === 'Units' ? 'Unit' : targetUnit;
-      return `₹${rounded.toLocaleString('en-IN')} / ${singularUnit}`;
     }
 
     if (comm.name !== 'default') {
+      const isDbWeight = comm.unit === 'kg' || comm.unit === 'Ton';
+      const isDbDiscrete = comm.unit === 'Unit';
+      
+      if ((isDbWeight && isDiscrete) || (isDbDiscrete && isWeight)) {
+        return 'Not Available';
+      }
+
       const basePrice = dbPrice || comm.basePricePerKg || comm.basePricePerUnit || 0;
       const unit = comm.unit || (comm.basePricePerKg !== undefined ? 'kg' : 'Unit');
       return `₹${basePrice.toLocaleString('en-IN')} / ${unit}`;

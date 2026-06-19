@@ -66,6 +66,8 @@ export const COMMODITY_DEFS: CommodityConfig[] = [
   { id: 'immovable_property', name: 'Immovable Property (Land/Building)', category: 'Property', unit: 'Unit', defaultPrice: 5000000, defaultMultiplier: 0.75 },
 
   // Others
+  { id: 'paper_wood', name: 'Paper / Wood / Cardboard Scrap', category: 'Others', unit: 'Ton', defaultPrice: 15000, defaultMultiplier: 0.70 },
+  { id: 'misc_scrap', name: 'Mixed Sweeping / Dust / Sludge', category: 'Others', unit: 'Ton', defaultPrice: 3500, defaultMultiplier: 0.50 },
   { id: 'sand', name: 'River Sand / Stone Mines', category: 'Others', unit: 'Ton', defaultPrice: 4500, defaultMultiplier: 0.75 },
   { id: 'default', name: 'Estimated Market Valuation', category: 'Others', unit: 'Unit', defaultPrice: 2500, defaultMultiplier: 0.75 }
 ];
