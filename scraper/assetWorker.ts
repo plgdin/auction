@@ -205,15 +205,25 @@ function extractQuantitiesDetailed(text: string): { qty: string; unit: string } 
 
   // 2. Match suffix-only units for count types only (e.g. "55 Nos", "10 Pcs")
   // Weight/volume/dimensions must be explicitly prefixed with QTY: to avoid matching capacities (e.g. "50 Kg bags")
+  // Exclude numbers that are preceded by serial/lot indicators (e.g. "Lot No. 5 Nos", "Sl. No. 10 Nos") to prevent lot numbers from overriding quantities.
   const countUnitRegex = /\b([\d\.,]+)\s*(nos|pcs|units|sets|pc|items|item)\b/gi;
+  const prefixRejectRegex = /\b(?:lot|sl|sr|s\.?no|no)\b[\s.:-]*$/i;
   while ((match = countUnitRegex.exec(text)) !== null) {
     const val = parseFloat(match[1].replace(/,/g, ''));
     if (!isNaN(val)) {
-      matches.push({
-        value: val,
-        unit: match[2].toUpperCase().trim(),
-        index: match.index
-      });
+      const prefixText = text.substring(0, match.index);
+      if (!prefixRejectRegex.test(prefixText)) {
+        matches.push({
+          value: val,
+          unit: match[2].toUpperCase().trim(),
+          index: match.index
+        });
+      } else {
+        log.info(
+          { matchedText: match[0], matchedVal: val, matchedIndex: match.index },
+          "Rejected OCR quantity match because it is preceded by a serial/lot number indicator"
+        );
+      }
     }
   }
 
