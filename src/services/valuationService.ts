@@ -433,6 +433,9 @@ export const valuationService = {
     costs: ValuationCosts,
     _hasImages: boolean = false
   ): Promise<ValuationOutput> {
+    // Ensure we have the latest global market indices from Supabase before matching
+    await marketPriceService.fetchCommodityPrices();
+
     const valuedItems: ValuedItem[] = [];
     let totalLotValue = 0;
     let totalConfidenceSum = 0;

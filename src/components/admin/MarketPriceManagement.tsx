@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   Save, Download, Trash2, Plus,
   RefreshCw, Layers, Database, Calendar, Search
@@ -10,7 +10,9 @@ import { toast } from 'react-hot-toast';
 
 export function MarketPriceManagement() {
   const [commodityData, setCommodityData] = useState(() => marketPriceService.getCommodityPrices());
-  const [historyLogs, setHistoryLogs] = useState<PriceHistoryLog[]>(() => marketPriceService.getPriceHistoryLogs());
+  const [historyLogs, setHistoryLogs] = useState<PriceHistoryLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isMigrating, setIsMigrating] = useState(false);
   
   // Selected commodity ID for the graph
   const [selectedGraphCommId, setSelectedGraphCommId] = useState<string>('steel_iron_ferrous');
@@ -37,6 +39,90 @@ export function MarketPriceManagement() {
 
   const categories = ['All', 'Metals', 'Agriculture', 'Energy', 'Vehicles', 'Electronics', 'Property', 'Others'];
 
+  // Initialize data and run one-time migration if needed
+  useEffect(() => {
+    let mounted = true;
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        // Check if we need to migrate local storage data to Supabase
+        const isAlreadyMigrated = localStorage.getItem('lelam_supabase_migrated') === 'true';
+        
+        if (!isAlreadyMigrated) {
+          setIsMigrating(true);
+          console.log('Starting one-time migration to Supabase...');
+          // Fetch existing to see if it's empty
+          const { data } = await import('../../lib/supabase').then(m => m.supabase).then(s => s.from('market_indices').select('id').limit(1));
+          
+          if (!data || data.length === 0) {
+            // It's empty, so we migrate all current local data!
+            const localData = marketPriceService._getLocalCommodityPrices();
+            const localHistory = marketPriceService._getLocalPriceHistoryLogs();
+            
+            // Insert all commodities
+            if (localData.length > 0) {
+              const { supabase } = await import('../../lib/supabase');
+              for (const c of localData) {
+                await supabase.from('market_indices').insert({
+                  id: c.id,
+                  name: c.name,
+                  category: c.category,
+                  unit: c.unit,
+                  default_price: c.defaultPrice,
+                  default_multiplier: c.defaultMultiplier,
+                  current_price: c.currentPrice,
+                  current_multiplier: c.currentMultiplier,
+                  keywords: c.keywords || [],
+                  is_custom: c.isCustom || false,
+                  is_pricing_disabled: c.isPricingDisabled || false,
+                  last_updated: c.lastUpdated || new Date().toISOString()
+                });
+              }
+            }
+            
+            // Insert history
+            if (localHistory.length > 0) {
+              const { supabase } = await import('../../lib/supabase');
+              for (const h of localHistory) {
+                await supabase.from('market_price_history').insert({
+                  id: h.id,
+                  timestamp: h.timestamp,
+                  commodity_id: h.commodityId,
+                  commodity_name: h.commodityName,
+                  price: h.price,
+                  multiplier: h.multiplier,
+                  updated_by: h.updatedBy
+                });
+              }
+            }
+            toast.success('Successfully migrated local pricing data to Supabase!');
+          }
+          localStorage.setItem('lelam_supabase_migrated', 'true');
+        }
+
+        // Now fetch live data
+        const prices = await marketPriceService.fetchCommodityPrices(true);
+        const logs = await marketPriceService.fetchPriceHistoryLogs();
+        
+        if (mounted) {
+          setCommodityData(prices);
+          setHistoryLogs(logs);
+        }
+      } catch (err) {
+        console.error('Error loading market prices:', err);
+        toast.error('Failed to load market prices from database.');
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+          setIsMigrating(false);
+        }
+      }
+    };
+    
+    loadData();
+    return () => { mounted = false; };
+  }, []);
+
   // Handle local change in price input
   const handlePriceChange = (id: string, val: string) => {
     const num = parseFloat(val);
@@ -58,7 +144,7 @@ export function MarketPriceManagement() {
   };
 
   // Save changes for a single commodity
-  const handleSave = (id: string) => {
+  const handleSave = async (id: string) => {
     const config = commodityData.find(c => c.id === id);
     if (!config) return;
 
@@ -70,31 +156,35 @@ export function MarketPriceManagement() {
       return;
     }
 
-    marketPriceService.updateCommodityPrice(id, price, multiplier, 'Admin System');
-    
-    // Refresh states
-    const updatedPrices = marketPriceService.getCommodityPrices();
-    const updatedLogs = marketPriceService.getPriceHistoryLogs();
-    setCommodityData(updatedPrices);
-    setHistoryLogs(updatedLogs);
+    try {
+      await marketPriceService.updateCommodityPrice(id, price, multiplier, 'Admin System');
+      
+      // Refresh states
+      const updatedPrices = await marketPriceService.fetchCommodityPrices(true);
+      const updatedLogs = await marketPriceService.fetchPriceHistoryLogs();
+      setCommodityData(updatedPrices);
+      setHistoryLogs(updatedLogs);
 
-    // Clear local edits for this row
-    setEditedPrices(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-    setEditedMultipliers(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+      // Clear local edits for this row
+      setEditedPrices(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setEditedMultipliers(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
 
-    toast.success(`Updated market price for ${config.name} successfully! New entry added to ML training log.`);
+      toast.success(`Updated market price for ${config.name} successfully! New entry added to ML training log.`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update price.');
+    }
   };
 
   // Create custom commodity
-  const handleCreateCommodity = (e: React.FormEvent) => {
+  const handleCreateCommodity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) {
       toast.error('Commodity name is required.');
@@ -125,7 +215,7 @@ export function MarketPriceManagement() {
     }
 
     try {
-      marketPriceService.addCustomCommodity({
+      await marketPriceService.addCustomCommodity({
         name: newName,
         category: newCategory,
         unit: newUnit,
@@ -143,8 +233,8 @@ export function MarketPriceManagement() {
       setNewKeywords('');
 
       // Refresh data
-      const updatedPrices = marketPriceService.getCommodityPrices();
-      const updatedLogs = marketPriceService.getPriceHistoryLogs();
+      const updatedPrices = await marketPriceService.fetchCommodityPrices(true);
+      const updatedLogs = await marketPriceService.fetchPriceHistoryLogs();
       setCommodityData(updatedPrices);
       setHistoryLogs(updatedLogs);
       
@@ -158,21 +248,25 @@ export function MarketPriceManagement() {
   };
 
   // Delete custom commodity
-  const handleDeleteCustom = (id: string, name: string) => {
+  const handleDeleteCustom = async (id: string, name: string) => {
     if (window.confirm(`Are you sure you want to delete "${name}"? This will remove it from pricing matching indexes and historical logs.`)) {
-      marketPriceService.deleteCustomCommodity(id);
-      
-      // Refresh data
-      const updatedPrices = marketPriceService.getCommodityPrices();
-      const updatedLogs = marketPriceService.getPriceHistoryLogs();
-      setCommodityData(updatedPrices);
-      setHistoryLogs(updatedLogs);
+      try {
+        await marketPriceService.deleteCustomCommodity(id);
+        
+        // Refresh data
+        const updatedPrices = await marketPriceService.fetchCommodityPrices(true);
+        const updatedLogs = await marketPriceService.fetchPriceHistoryLogs();
+        setCommodityData(updatedPrices);
+        setHistoryLogs(updatedLogs);
 
-      if (selectedGraphCommId === id) {
-        setSelectedGraphCommId('steel_iron_ferrous');
+        if (selectedGraphCommId === id) {
+          setSelectedGraphCommId('steel_iron_ferrous');
+        }
+
+        toast.success(`Deleted custom commodity "${name}" successfully.`);
+      } catch (err: any) {
+        toast.error('Failed to delete commodity.');
       }
-
-      toast.success(`Deleted custom commodity "${name}" successfully.`);
     }
   };
 
@@ -219,29 +313,61 @@ export function MarketPriceManagement() {
   };
 
   // Clear all historical log records
-  const handleClearHistory = () => {
+  const handleClearHistory = async () => {
     if (window.confirm('Are you sure you want to clear all historical price log records? This will delete the data needed for ML training.')) {
-      marketPriceService.clearHistoryLogs();
-      setHistoryLogs([]);
-      toast.success('Historical price log database cleared.');
+      try {
+        await marketPriceService.clearHistoryLogs();
+        setHistoryLogs([]);
+        toast.success('Historical price log database cleared.');
+      } catch (err: any) {
+        toast.error('Failed to clear history.');
+      }
     }
   };
 
   // Reset to default configuration
-  const handleResetDefaults = () => {
-    if (window.confirm('Reset all prices and expected multipliers to defaults? This will wipe custom commodities and history.')) {
-      localStorage.removeItem('lelam_current_market_prices');
-      localStorage.removeItem('lelam_market_price_history');
-      localStorage.removeItem('lelam_custom_commodities');
-      
-      const defaults = marketPriceService.getCommodityPrices();
-      const logs = marketPriceService.getPriceHistoryLogs();
-      setCommodityData(defaults);
-      setHistoryLogs(logs);
-      setEditedPrices({});
-      setEditedMultipliers({});
-      setSelectedGraphCommId('steel_iron_ferrous');
-      toast.success('Reset system to default commodity values.');
+  const handleResetDefaults = async () => {
+    if (window.confirm('Reset all prices and expected multipliers to defaults? This will wipe custom commodities and history in Supabase.')) {
+      try {
+        // Clear Supabase tables
+        const { supabase } = await import('../../lib/supabase');
+        await supabase.from('market_price_history').delete().neq('id', 'dummy');
+        await supabase.from('market_indices').delete().neq('id', 'dummy');
+        
+        // Re-seed defaults
+        const defaults = marketPriceService._getLocalCommodityPrices().filter(c => !c.isCustom);
+        for (const c of defaults) {
+          await supabase.from('market_indices').insert({
+            id: c.id,
+            name: c.name,
+            category: c.category,
+            unit: c.unit,
+            default_price: c.defaultPrice,
+            default_multiplier: c.defaultMultiplier,
+            current_price: c.defaultPrice,
+            current_multiplier: c.defaultMultiplier,
+            keywords: c.keywords || [],
+            is_custom: false,
+            is_pricing_disabled: false,
+            last_updated: new Date().toISOString()
+          });
+        }
+        
+        localStorage.removeItem('lelam_current_market_prices');
+        localStorage.removeItem('lelam_market_price_history');
+        localStorage.removeItem('lelam_custom_commodities');
+        
+        const prices = await marketPriceService.fetchCommodityPrices(true);
+        const logs = await marketPriceService.fetchPriceHistoryLogs();
+        setCommodityData(prices);
+        setHistoryLogs(logs);
+        setEditedPrices({});
+        setEditedMultipliers({});
+        setSelectedGraphCommId('steel_iron_ferrous');
+        toast.success('Reset system to default commodity values.');
+      } catch (err: any) {
+        toast.error('Failed to reset defaults.');
+      }
     }
   };
 
@@ -286,6 +412,16 @@ export function MarketPriceManagement() {
     const roi = ((1 - multiplier) / multiplier) * 100;
     return `${roi.toFixed(1)}%`;
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <RefreshCw className="w-8 h-8 text-primary animate-spin mb-4" />
+        <h3 className="text-slate-800 font-bold">Connecting to Database...</h3>
+        <p className="text-slate-500 text-sm mt-2">{isMigrating ? 'Migrating your local settings to the cloud...' : 'Loading market indices'}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -448,11 +584,15 @@ export function MarketPriceManagement() {
 
                         <td className="py-3 px-4 text-center">
                           <button
-                            onClick={() => {
-                              const nextState = !item.isPricingDisabled;
-                              marketPriceService.setCommodityPricingDisabled(item.id, nextState);
-                              setCommodityData(marketPriceService.getCommodityPrices());
-                              toast.success(`${item.name} pricing is now ${nextState ? 'Disabled' : 'Enabled'}`);
+                            onClick={async () => {
+                              try {
+                                const nextState = !item.isPricingDisabled;
+                                await marketPriceService.setCommodityPricingDisabled(item.id, nextState);
+                                setCommodityData(await marketPriceService.fetchCommodityPrices(true));
+                                toast.success(`${item.name} pricing is now ${nextState ? 'Disabled' : 'Enabled'}`);
+                              } catch (err) {
+                                toast.error('Failed to update status.');
+                              }
                             }}
                             className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-200 border cursor-pointer ${
                               item.isPricingDisabled

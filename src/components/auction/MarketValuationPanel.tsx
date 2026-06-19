@@ -95,6 +95,25 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
     }
   }, [currentBid]);
 
+  // Ensure fresh data is fetched when panel opens
+  useEffect(() => {
+    let mounted = true;
+    const fetchFreshPrices = async () => {
+      try {
+        await marketPriceService.fetchCommodityPrices();
+        await marketPriceService.fetchPriceHistoryLogs();
+        if (mounted) {
+          // Force a re-render to pick up new prices if they changed
+          setQuantity(prev => prev);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch fresh prices in Valuation Panel', e);
+      }
+    };
+    fetchFreshPrices();
+    return () => { mounted = false; };
+  }, []);
+
   // Sync grade when model changes
   const handleModelChange = (modelId: string) => {
     setSelectedModelId(modelId);

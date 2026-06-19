@@ -1,3 +1,5 @@
+import { supabase } from '../lib/supabase';
+
 export interface CommodityConfig {
   id: string;
   name: string;
@@ -23,6 +25,8 @@ export interface PriceHistoryLog {
   multiplier: number;
   updatedBy: string;
 }
+
+export type FullCommodityConfig = CommodityConfig & { currentPrice: number; currentMultiplier: number; lastUpdated: string; keywords?: string[]; isCustom?: boolean; isPricingDisabled?: boolean };
 
 export const COMMODITY_DEFS: CommodityConfig[] = [
   // Metals
@@ -66,11 +70,7 @@ export const COMMODITY_DEFS: CommodityConfig[] = [
   { id: 'default', name: 'Estimated Market Valuation', category: 'Others', unit: 'Unit', defaultPrice: 2500, defaultMultiplier: 0.75 }
 ];
 
-const CURRENT_PRICES_KEY = 'lelam_current_market_prices';
-const PRICE_HISTORY_KEY = 'lelam_market_price_history';
-
-// Helper to pre-populate mock historical data (15 entries per commodity over the last 30 days)
-// so the user has something nice to see and train their model on!
+// Helper to pre-populate mock historical data
 function generateMockHistory(currentPrices: Record<string, number>): PriceHistoryLog[] {
   const history: PriceHistoryLog[] = [];
   const now = new Date();
@@ -83,11 +83,9 @@ function generateMockHistory(currentPrices: Record<string, number>): PriceHistor
     for (let i = 15; i >= 1; i--) {
       const logDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000 - Math.random() * 6 * 60 * 60 * 1000);
       
-      // Random walk price variation of +/- 5%
       const variation = 1 + (Math.sin(i * 0.5) * 0.04) + (Math.random() * 0.02 - 0.01);
       const priceVal = Math.round(basePrice * variation * 10) / 10;
       
-      // Random walk multiplier variation +/- 2%
       const multVal = Math.round((baseMult + (Math.random() * 0.04 - 0.02)) * 1000) / 1000;
       
       history.push({
@@ -102,110 +100,224 @@ function generateMockHistory(currentPrices: Record<string, number>): PriceHistor
     }
   });
   
-  // Sort history newest first
   return history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
+let cachedPrices: FullCommodityConfig[] = [];
+let cachedHistory: PriceHistoryLog[] = [];
+let isFetched = false;
+
 export const marketPriceService = {
-  // Get list of disabled pricing commodity IDs
-  getDisabledCommodityIds(): string[] {
-    if (typeof window === 'undefined') return [];
-    const disabledStr = localStorage.getItem('lelam_disabled_pricing_ids');
-    if (!disabledStr) return [];
-    try {
-      return JSON.parse(disabledStr);
-    } catch {
-      return [];
+  // Sync wrapper (returns cached data for valuation matching)
+  getCommodityPrices(): FullCommodityConfig[] {
+    if (!isFetched && typeof window !== 'undefined') {
+      // Fallback to local storage or defaults if not fetched yet (prevent crashes)
+      return this._getLocalCommodityPrices();
     }
+    return cachedPrices.length > 0 ? cachedPrices : this._getLocalCommodityPrices();
+  },
+
+  getCommodityPrice(id: string): number {
+    const prices = this.getCommodityPrices();
+    const found = prices.find(p => p.id === id);
+    return found ? found.currentPrice : 0;
+  },
+
+  getCommodityMultiplier(id: string): number {
+    const prices = this.getCommodityPrices();
+    const found = prices.find(p => p.id === id);
+    return found ? found.currentMultiplier : 0.75;
+  },
+  
+  getPriceHistoryLogs(): PriceHistoryLog[] {
+    if (!isFetched && typeof window !== 'undefined') {
+      return this._getLocalPriceHistoryLogs();
+    }
+    return cachedHistory.length > 0 ? cachedHistory : this._getLocalPriceHistoryLogs();
   },
 
   isCommodityPricingDisabled(id: string): boolean {
-    return this.getDisabledCommodityIds().includes(id);
+    const prices = this.getCommodityPrices();
+    const found = prices.find(p => p.id === id);
+    return found ? (found.isPricingDisabled || false) : false;
   },
 
-  setCommodityPricingDisabled(id: string, isDisabled: boolean): void {
-    if (typeof window === 'undefined') return;
-    const disabledIds = this.getDisabledCommodityIds();
-    let nextDisabledIds = [...disabledIds];
-    if (isDisabled) {
-      if (!nextDisabledIds.includes(id)) {
-        nextDisabledIds.push(id);
-      }
-    } else {
-      nextDisabledIds = nextDisabledIds.filter(x => x !== id);
-    }
-    localStorage.setItem('lelam_disabled_pricing_ids', JSON.stringify(nextDisabledIds));
+  async setCommodityPricingDisabled(id: string, isDisabled: boolean): Promise<void> {
+    await supabase.from('market_indices').update({ is_pricing_disabled: isDisabled }).eq('id', id);
+    await this.fetchCommodityPrices(true);
   },
 
-  // Get all active prices and configs
-  getCommodityPrices(): (CommodityConfig & { currentPrice: number; currentMultiplier: number; lastUpdated: string; keywords?: string[]; isCustom?: boolean; isPricingDisabled?: boolean })[] {
-    let baseList = [...COMMODITY_DEFS];
-    if (typeof window !== 'undefined') {
-      const customStr = localStorage.getItem('lelam_custom_commodities');
-      if (customStr) {
-        try {
-          const customList = JSON.parse(customStr);
-          customList.forEach((c: any) => {
-            // Check if not already in baseList to avoid duplicates
-            if (!baseList.some(item => item.id === c.id)) {
-              baseList.push({
-                ...c,
-                isCustom: true
-              });
-            }
-          });
-        } catch (e) {
-          console.warn('Failed to parse custom commodities:', e);
-        }
+  // Async Fetcher from Supabase
+  async fetchCommodityPrices(forceRefresh = false): Promise<FullCommodityConfig[]> {
+    if (isFetched && !forceRefresh) return cachedPrices;
+    
+    try {
+      const { data, error } = await supabase.from('market_indices').select('*').order('name');
+      
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        // Table is empty. We will not auto-populate it here.
+        // We will do it in the Admin Panel's one-time migration hook.
+        cachedPrices = this._getLocalCommodityPrices();
+        isFetched = true;
+        return cachedPrices;
       }
-    }
 
-    const disabledIds = this.getDisabledCommodityIds();
-
-    if (typeof window === 'undefined') {
-      return baseList.map(c => ({
-        ...c,
-        currentPrice: c.defaultPrice,
-        currentMultiplier: c.defaultMultiplier,
-        lastUpdated: new Date().toISOString(),
-        isPricingDisabled: disabledIds.includes(c.id)
+      cachedPrices = data.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        category: row.category as any,
+        unit: row.unit,
+        defaultPrice: Number(row.default_price),
+        defaultMultiplier: Number(row.default_multiplier),
+        currentPrice: Number(row.current_price),
+        currentMultiplier: Number(row.current_multiplier),
+        keywords: row.keywords,
+        isCustom: row.is_custom,
+        isPricingDisabled: row.is_pricing_disabled,
+        lastUpdated: row.last_updated
       }));
+      
+      isFetched = true;
+      return cachedPrices;
+    } catch (err) {
+      console.error('Failed to fetch market indices from Supabase:', err);
+      // Fallback to local storage safely
+      return this._getLocalCommodityPrices();
     }
+  },
 
-    let current = localStorage.getItem(CURRENT_PRICES_KEY);
-    let states: Record<string, { price: number; multiplier: number; lastUpdated: string }> = {};
-
-    if (!current) {
-      // Initialize defaults
-      const initialStates: Record<string, { price: number; multiplier: number; lastUpdated: string }> = {};
-      const nowStr = new Date().toISOString();
-      baseList.forEach(c => {
-        initialStates[c.id] = {
-          price: c.defaultPrice,
-          multiplier: c.defaultMultiplier,
-          lastUpdated: nowStr
-        };
-      });
-      localStorage.setItem(CURRENT_PRICES_KEY, JSON.stringify(initialStates));
-      states = initialStates;
-    } else {
-      states = JSON.parse(current);
-      // Sync any missing items from baseList to states
-      let changed = false;
-      baseList.forEach(c => {
-        if (!states[c.id]) {
-          states[c.id] = {
-            price: c.defaultPrice,
-            multiplier: c.defaultMultiplier,
-            lastUpdated: new Date().toISOString()
-          };
-          changed = true;
-        }
-      });
-      if (changed) {
-        localStorage.setItem(CURRENT_PRICES_KEY, JSON.stringify(states));
+  // Fetch History from Supabase
+  async fetchPriceHistoryLogs(): Promise<PriceHistoryLog[]> {
+    try {
+      const { data, error } = await supabase
+        .from('market_price_history')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(1000);
+        
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        // Fallback or generate mock
+        return this._getLocalPriceHistoryLogs();
       }
+
+      cachedHistory = data.map((row: any) => ({
+        id: row.id,
+        timestamp: row.timestamp,
+        commodityId: row.commodity_id,
+        commodityName: row.commodity_name,
+        price: Number(row.price),
+        multiplier: Number(row.multiplier),
+        updatedBy: row.updated_by
+      }));
+      
+      return cachedHistory;
+    } catch (err) {
+      console.error('Failed to fetch price history from Supabase:', err);
+      return this._getLocalPriceHistoryLogs();
     }
+  },
+
+  // Update price in Supabase
+  async updateCommodityPrice(id: string, price: number, multiplier: number, updatedBy: string = 'Admin'): Promise<void> {
+    const config = this.getCommodityPrices().find(c => c.id === id);
+    if (!config) return;
+
+    // Update index table
+    const { error: updateError } = await supabase.from('market_indices').update({
+      current_price: price,
+      current_multiplier: multiplier,
+      last_updated: new Date().toISOString()
+    }).eq('id', id);
+
+    if (updateError) throw updateError;
+
+    // Insert history log
+    const { error: logError } = await supabase.from('market_price_history').insert({
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      timestamp: new Date().toISOString(),
+      commodity_id: id,
+      commodity_name: config.name,
+      price: price,
+      multiplier: multiplier,
+      updated_by: updatedBy
+    });
+
+    if (logError) throw logError;
+
+    // Refresh cache
+    await this.fetchCommodityPrices(true);
+  },
+
+  // Add Custom Commodity to Supabase
+  async addCustomCommodity(c: { name: string; category: 'Metals' | 'Agriculture' | 'Energy' | 'Vehicles' | 'Electronics' | 'Property' | 'Others'; unit: string; defaultPrice: number; defaultMultiplier: number; keywords: string[] }): Promise<void> {
+    const id = c.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_');
+    if (!id) throw new Error('Invalid commodity name.');
+
+    const prices = await this.fetchCommodityPrices();
+    if (prices.some(item => item.id === id)) {
+      throw new Error(`Commodity with name/id "${c.name}" already exists.`);
+    }
+
+    const { error } = await supabase.from('market_indices').insert({
+      id,
+      name: c.name.trim(),
+      category: c.category,
+      unit: c.unit.trim(),
+      default_price: c.defaultPrice,
+      default_multiplier: c.defaultMultiplier,
+      current_price: c.defaultPrice,
+      current_multiplier: c.defaultMultiplier,
+      keywords: c.keywords.map(k => k.trim().toLowerCase()).filter(k => k.length > 0),
+      is_custom: true,
+      is_pricing_disabled: false,
+      last_updated: new Date().toISOString()
+    });
+
+    if (error) throw error;
+
+    await this.fetchCommodityPrices(true);
+  },
+
+  async deleteCustomCommodity(id: string): Promise<void> {
+    const { error } = await supabase.from('market_indices').delete().eq('id', id);
+    if (error) throw error;
+    await this.fetchCommodityPrices(true);
+  },
+
+  async clearHistoryLogs(): Promise<void> {
+    const { error } = await supabase.from('market_price_history').delete().neq('id', 'dummy');
+    if (error) throw error;
+  },
+
+  // ====== LOCAL STORAGE FALLBACKS & MIGRATION HELPERS ======
+
+  // Gets the exact data currently sitting in local storage (for the migration script)
+  _getLocalCommodityPrices(): FullCommodityConfig[] {
+    if (typeof window === 'undefined') return COMMODITY_DEFS.map(c => ({...c, currentPrice: c.defaultPrice, currentMultiplier: c.defaultMultiplier, lastUpdated: new Date().toISOString()}));
+    
+    let baseList = [...COMMODITY_DEFS];
+    const customStr = localStorage.getItem('lelam_custom_commodities');
+    if (customStr) {
+      try {
+        const customList = JSON.parse(customStr);
+        customList.forEach((c: any) => {
+          if (!baseList.some(item => item.id === c.id)) {
+            baseList.push({ ...c, isCustom: true });
+          }
+        });
+      } catch (e) {}
+    }
+
+    const disabledStr = localStorage.getItem('lelam_disabled_pricing_ids');
+    const disabledIds = disabledStr ? JSON.parse(disabledStr) : [];
+
+    let current = localStorage.getItem('lelam_current_market_prices');
+    let states: Record<string, { price: number; multiplier: number; lastUpdated: string }> = {};
+    if (current) states = JSON.parse(current);
 
     return baseList.map(c => {
       const state = states[c.id] || { price: c.defaultPrice, multiplier: c.defaultMultiplier, lastUpdated: new Date().toISOString() };
@@ -219,170 +331,15 @@ export const marketPriceService = {
     });
   },
 
-  // Helper to fetch just a single commodity price
-  getCommodityPrice(id: string): number {
-    const prices = this.getCommodityPrices();
-    const found = prices.find(p => p.id === id);
-    return found ? found.currentPrice : 0;
-  },
-
-  // Helper to fetch just a single commodity multiplier
-  getCommodityMultiplier(id: string): number {
-    const prices = this.getCommodityPrices();
-    const found = prices.find(p => p.id === id);
-    return found ? found.currentMultiplier : 0.75;
-  },
-
-  // Update price and multiplier, and log to history
-  updateCommodityPrice(id: string, price: number, multiplier: number, updatedBy: string = 'Admin'): void {
-    if (typeof window === 'undefined') return;
-
-    const currentStr = localStorage.getItem(CURRENT_PRICES_KEY);
-    let states: Record<string, { price: number; multiplier: number; lastUpdated: string }> = {};
-    if (currentStr) {
-      states = JSON.parse(currentStr);
-    }
-
-    const nowStr = new Date().toISOString();
-    states[id] = {
-      price,
-      multiplier,
-      lastUpdated: nowStr
-    };
-    localStorage.setItem(CURRENT_PRICES_KEY, JSON.stringify(states));
-
-    // Append to history log
-    const historyStr = localStorage.getItem(PRICE_HISTORY_KEY);
-    let history: PriceHistoryLog[] = [];
-    if (historyStr) {
-      history = JSON.parse(historyStr);
-    } else {
-      // Populate mock history first so we don't start with an empty list
-      const pricesMap: Record<string, number> = {};
-      Object.keys(states).forEach(k => { pricesMap[k] = states[k].price; });
-      history = generateMockHistory(pricesMap);
-    }
-
-    const prices = this.getCommodityPrices();
-    const commDef = prices.find(c => c.id === id) || { name: 'Unknown Commodity' };
-
-    const newLog: PriceHistoryLog = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: nowStr,
-      commodityId: id,
-      commodityName: commDef.name,
-      price,
-      multiplier,
-      updatedBy
-    };
-
-    history.unshift(newLog); // Prepend so it is sorted newest first
-    localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(history));
-  },
-
-  // Get price history logs
-  getPriceHistoryLogs(): PriceHistoryLog[] {
+  _getLocalPriceHistoryLogs(): PriceHistoryLog[] {
     if (typeof window === 'undefined') return [];
-
-    const historyStr = localStorage.getItem(PRICE_HISTORY_KEY);
+    const historyStr = localStorage.getItem('lelam_market_price_history');
     if (!historyStr) {
-      // Pre-populate on first load
-      const currentPrices = this.getCommodityPrices();
+      const currentPrices = this._getLocalCommodityPrices();
       const pricesMap: Record<string, number> = {};
       currentPrices.forEach(p => { pricesMap[p.id] = p.currentPrice; });
-      const mockHistory = generateMockHistory(pricesMap);
-      localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(mockHistory));
-      return mockHistory;
+      return generateMockHistory(pricesMap);
     }
     return JSON.parse(historyStr);
-  },
-
-  // Add custom commodity
-  addCustomCommodity(c: { name: string; category: 'Metals' | 'Agriculture' | 'Energy' | 'Vehicles' | 'Electronics' | 'Property' | 'Others'; unit: string; defaultPrice: number; defaultMultiplier: number; keywords: string[] }): void {
-    if (typeof window === 'undefined') return;
-    const id = c.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_');
-    if (!id) throw new Error('Invalid commodity name.');
-
-    const prices = this.getCommodityPrices();
-    if (prices.some(item => item.id === id)) {
-      throw new Error(`Commodity with name/id "${c.name}" already exists.`);
-    }
-
-    const newConfig = {
-      id,
-      name: c.name.trim(),
-      category: c.category,
-      unit: c.unit.trim(),
-      defaultPrice: c.defaultPrice,
-      defaultMultiplier: c.defaultMultiplier,
-      keywords: c.keywords.map(k => k.trim().toLowerCase()).filter(k => k.length > 0)
-    };
-
-    const customStr = localStorage.getItem('lelam_custom_commodities');
-    let customList: any[] = [];
-    if (customStr) {
-      try {
-        customList = JSON.parse(customStr);
-      } catch (e) {
-        customList = [];
-      }
-    }
-
-    customList.push(newConfig);
-    localStorage.setItem('lelam_custom_commodities', JSON.stringify(customList));
-
-    // Force sync the state
-    this.updateCommodityPrice(id, c.defaultPrice, c.defaultMultiplier, 'Admin Init');
-  },
-
-  // Delete custom commodity
-  deleteCustomCommodity(id: string): void {
-    if (typeof window === 'undefined') return;
-    const customStr = localStorage.getItem('lelam_custom_commodities');
-    if (customStr) {
-      try {
-        let customList: any[] = JSON.parse(customStr);
-        customList = customList.filter(item => item.id !== id);
-        localStorage.setItem('lelam_custom_commodities', JSON.stringify(customList));
-      } catch (e) {
-        console.warn('Failed to parse or clear custom commodities:', e);
-      }
-    }
-
-    // Remove from current prices state
-    const currentStr = localStorage.getItem(CURRENT_PRICES_KEY);
-    if (currentStr) {
-      try {
-        const states = JSON.parse(currentStr);
-        delete states[id];
-        localStorage.setItem(CURRENT_PRICES_KEY, JSON.stringify(states));
-      } catch (e) {
-        console.warn('Failed to clear current states for', id, e);
-      }
-    }
-
-    // Remove from history logs too
-    const historyStr = localStorage.getItem(PRICE_HISTORY_KEY);
-    if (historyStr) {
-      try {
-        let history: PriceHistoryLog[] = JSON.parse(historyStr);
-        history = history.filter(log => log.commodityId !== id);
-        localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(history));
-      } catch (e) {
-        console.warn('Failed to filter history for', id, e);
-      }
-    }
-  },
-
-  // Import external historical logs (e.g. from file)
-  importPriceHistoryLogs(logs: PriceHistoryLog[]): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(logs));
-  },
-
-  // Clear all history logs
-  clearHistoryLogs(): void {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem(PRICE_HISTORY_KEY);
   }
 };

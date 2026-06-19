@@ -228,7 +228,7 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
         const subQty = sub.qty || '1';
         const subUnit = sub.unit || 'Nos';
         const subTax = tax || '18% GST';
-        const subMPrice = getEstimatedMarketPrice(subDesc, categoryName);
+        const subMPrice = getEstimatedMarketPrice(subDesc, categoryName, subQty, subUnit);
 
         flattened.push({
           sr: `${item.sr}.${sub.sr || idx + 1}`,
@@ -255,7 +255,7 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
         parsedPrice = match ? parseInt(match[1], 10) : 0;
       }
       if (parsedPrice <= 1) {
-        mPrice = getEstimatedMarketPrice(desc, categoryName);
+        mPrice = getEstimatedMarketPrice(desc, categoryName, String(item.qty || '1'), item.unit || 'Nos');
       }
 
       flattened.push({

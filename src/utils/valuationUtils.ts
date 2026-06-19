@@ -71,7 +71,7 @@ export const calculateTotalMarketValue = (items: any[], categoryName: string = '
       price = priceMatch ? parseInt(priceMatch[1], 10) : 0;
     }
     if (price <= 1) {
-      priceStr = getEstimatedMarketPrice(lot.description || '', categoryName);
+      priceStr = getEstimatedMarketPrice(lot.description || '', categoryName, lot.qty || '1', lot.unit || 'Nos');
       cleanPrice = priceStr.replace(/,/g, '');
       const priceMatch = cleanPrice.match(/(?:₹|Ôé╣)\s*(\d+)/);
       price = priceMatch ? parseInt(priceMatch[1], 10) : 0;
