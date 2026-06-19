@@ -50,13 +50,35 @@ export const storageService = {
   },
 
   /**
-   * Triggers a browser download for a public Supabase URL
+   * Triggers a browser download securely, supporting private Supabase buckets
    */
-  async downloadFile(url: string, fileName: string) {
+  async downloadFile(urlOrPath: string, fileName: string, bucketName: string = 'auction_documents') {
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
+      // Extract the filename from a full URL if necessary
+      let finalPath = urlOrPath;
+      if (urlOrPath.startsWith('http')) {
+        try {
+          const urlObj = new URL(urlOrPath);
+          const parts = urlObj.pathname.split('/');
+          finalPath = parts[parts.length - 1];
+        } catch (e) {
+          console.warn('Could not parse URL, using as raw path', e);
+        }
+      }
+
+      // Download the file securely via Supabase client (attaches auth tokens automatically)
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .download(finalPath);
+        
+      if (error) {
+        console.error('Supabase storage download error:', error);
+        return;
+      }
+      
+      if (!data) return;
+
+      const blobUrl = window.URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = fileName;
@@ -66,6 +88,38 @@ export const storageService = {
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error('Error downloading file:', err);
+    }
+  },
+
+  /**
+   * Retrieves a temporary signed URL for a private file
+   */
+  async getSignedUrl(urlOrPath: string, bucketName: string = 'auction_documents'): Promise<string | null> {
+    try {
+      let finalPath = urlOrPath;
+      if (urlOrPath.startsWith('http')) {
+        try {
+          const urlObj = new URL(urlOrPath);
+          const parts = urlObj.pathname.split('/');
+          finalPath = parts[parts.length - 1];
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .createSignedUrl(finalPath, 3600);
+
+      if (error) {
+        console.error('Error creating signed URL:', error);
+        return null;
+      }
+
+      return data.signedUrl;
+    } catch (err) {
+      console.error('Unexpected error creating signed URL:', err);
+      return null;
     }
   },
 

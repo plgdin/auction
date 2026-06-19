@@ -20,6 +20,8 @@ export function DocumentVault() {
   
   // Preview Modal State
   const [previewDoc, setPreviewDoc] = useState<VaultDocument | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -34,6 +36,26 @@ export function DocumentVault() {
   useEffect(() => {
     loadDocuments();
   }, [loadDocuments]);
+
+  useEffect(() => {
+    async function fetchPreviewUrl() {
+      if (!previewDoc) {
+        setPreviewUrl(null);
+        return;
+      }
+      setIsLoadingPreview(true);
+      
+      // Determine bucket based on source (this is a simplified guess based on your sources)
+      let bucketName = 'auction_documents';
+      if (previewDoc.source === 'Tender Attachment') bucketName = 'tender_documents';
+      if (previewDoc.source === 'User Vault (KYC)') bucketName = 'auction_documents'; // Assumes KYC is in auction_documents
+
+      const signedUrl = await storageService.getSignedUrl(previewDoc.url, bucketName);
+      setPreviewUrl(signedUrl);
+      setIsLoadingPreview(false);
+    }
+    fetchPreviewUrl();
+  }, [previewDoc]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -211,15 +233,25 @@ export function DocumentVault() {
               </div>
             </div>
             <div className="flex-1 overflow-auto bg-muted p-6 flex items-center justify-center min-h-[500px]">
-              {isImage(previewDoc.name) ? (
+              {isLoadingPreview ? (
+                <div className="flex flex-col items-center text-muted-foreground">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                  <p>Loading secure preview...</p>
+                </div>
+              ) : !previewUrl ? (
+                <div className="flex flex-col items-center text-destructive">
+                  <X className="w-8 h-8 mb-4" />
+                  <p>Failed to load secure preview</p>
+                </div>
+              ) : isImage(previewDoc.name) ? (
                 <img 
-                  src={previewDoc.url} 
+                  src={previewUrl} 
                   alt={previewDoc.name} 
                   className="max-w-full max-h-[70vh] object-contain rounded shadow-md border border-border bg-white"
                 />
               ) : (
                 <iframe 
-                  src={`${previewDoc.url}#toolbar=0`} 
+                  src={`${previewUrl}#toolbar=0`} 
                   className="w-full h-[70vh] rounded shadow-md border border-border bg-white"
                   title="Document Preview"
                 />
