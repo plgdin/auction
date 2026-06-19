@@ -2,6 +2,7 @@
 import { supabase } from '../lib/supabase';
 import type { Auction, AuctionCategory, AuctionImage, AuctionDocument, Watchlist } from '../types/database.types';
 import { FALLBACK_CATEGORIES } from './fallbackCategories';
+import { PageCache } from '../utils/pageCache';
 import {
   INVERTED_SYNONYM_MAP,
   CONCEPT_MAP,
@@ -66,7 +67,7 @@ export const enrichAuction = (auction: any): any => {
 };
 
 export const auctionService = {
-  async getCategories(): Promise<AuctionCategory[]> {
+  getCategories: PageCache.memoize(async function getCategories(): Promise<AuctionCategory[]> {
     const { data, error } = await supabase
       .from('auction_categories')
       .select('*')
@@ -79,9 +80,9 @@ export const auctionService = {
       return FALLBACK_CATEGORIES;
     }
     return data;
-  },
+  }, 'categories'),
 
-  async getAuctions(params: AuctionFilterParams = {}): Promise<{ data: Auction[], count: number }> {
+  getAuctions: PageCache.memoize(async function getAuctions(params: AuctionFilterParams = {}): Promise<{ data: Auction[], count: number }> {
     let query = supabase
       .from('auctions')
       .select('*, seller:organizations(*)', { count: 'exact' })
@@ -456,10 +457,10 @@ export const auctionService = {
       data: paginated,
       count: totalCount
     };
-  },
+  }, 'auctions'),
 
 
-  async getAuctionById(id: string): Promise<Auction | null> {
+  getAuctionById: PageCache.memoize(async function getAuctionById(id: string): Promise<Auction | null> {
     const { data, error } = await supabase
       .from('auctions')
       .select(`
@@ -474,9 +475,9 @@ export const auctionService = {
       return null;
     }
     return enrichAuction(data);
-  },
+  }, 'auctionById'),
 
-  async getAuctionImages(auctionId: string): Promise<AuctionImage[]> {
+  getAuctionImages: PageCache.memoize(async function getAuctionImages(auctionId: string): Promise<AuctionImage[]> {
     const { data, error } = await supabase
       .from('auction_images')
       .select('*')
@@ -488,9 +489,9 @@ export const auctionService = {
       return [];
     }
     return data;
-  },
+  }, 'auctionImages'),
 
-  async getAuctionDocuments(auctionId: string): Promise<AuctionDocument[]> {
+  getAuctionDocuments: PageCache.memoize(async function getAuctionDocuments(auctionId: string): Promise<AuctionDocument[]> {
     const { data, error } = await supabase
       .from('auction_documents')
       .select('*')
@@ -501,9 +502,9 @@ export const auctionService = {
       return [];
     }
     return data;
-  },
+  }, 'auctionDocs'),
 
-  async getRelatedAuctions(categoryId: string, currentAuctionId: string, limit: number = 4): Promise<Auction[]> {
+  getRelatedAuctions: PageCache.memoize(async function getRelatedAuctions(categoryId: string, currentAuctionId: string, limit: number = 4): Promise<Auction[]> {
     const { data, error } = await supabase
       .from('auctions')
       .select('*')
@@ -517,10 +518,11 @@ export const auctionService = {
       return [];
     }
     return data;
-  },
+  }, 'relatedAuctions'),
 
   // Watchlist
   async toggleWatchlist(userId: string, auctionId: string): Promise<boolean> {
+    PageCache.invalidate('userWatchlistIds');
     // Check if it exists
     const { data: existing } = await supabase
       .from('watchlists')
@@ -547,7 +549,7 @@ export const auctionService = {
     }
   },
 
-  async getUserWatchlistIds(userId: string): Promise<string[]> {
+  getUserWatchlistIds: PageCache.memoize(async function getUserWatchlistIds(userId: string): Promise<string[]> {
     const { data, error } = await supabase
       .from('watchlists')
       .select('auction_id')
@@ -558,7 +560,7 @@ export const auctionService = {
       return [];
     }
     return data.map(w => w.auction_id);
-  },
+  }, 'userWatchlistIds'),
 
   // User Dashboard Aggregation
   async getUserBids(userId: string) {
@@ -632,6 +634,10 @@ export const auctionService = {
 
   // Seller Methods
   async createAuction(auctionData: Partial<Auction>): Promise<Auction | null> {
+    PageCache.invalidate('auctions');
+    PageCache.invalidate('auctionById');
+    PageCache.invalidate('relatedAuctions');
+    PageCache.invalidate('auctionsBySeller');
     const { data, error } = await supabase
       .from('auctions')
       .insert([auctionData])
@@ -645,7 +651,7 @@ export const auctionService = {
     return data;
   },
 
-  async getAuctionsBySeller(sellerId: string): Promise<Auction[]> {
+  getAuctionsBySeller: PageCache.memoize(async function getAuctionsBySeller(sellerId: string): Promise<Auction[]> {
     const { data, error } = await supabase
       .from('auctions')
       .select('*')
@@ -657,7 +663,7 @@ export const auctionService = {
       return [];
     }
     return data;
-  },
+  }, 'auctionsBySeller'),
 
   async getAuctionAnalytics(sellerId: string) {
     // A simplified analytics fetch for the dashboard

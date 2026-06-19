@@ -5,6 +5,9 @@ import { Toaster } from 'react-hot-toast';
 import { router } from './router';
 import { useAuthStore } from './store/authStore';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { embeddingService } from './services/embeddingService';
+import { MstcSearchService } from './services/publicService';
+import { auctionService } from './services/auctionService';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,6 +23,11 @@ function App() {
 
   useEffect(() => {
     initializeAuth();
+    
+    // Background pre-warming and pre-fetching to guarantee < 1s loading times
+    embeddingService.prewarmModel().catch(err => console.warn('Pre-warming model failed:', err));
+    MstcSearchService.getMstcFilterOptions().catch(err => console.warn('Pre-fetching filter options failed:', err));
+    auctionService.getCategories().catch(err => console.warn('Pre-fetching categories failed:', err));
   }, [initializeAuth]);
 
   return (

@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { embeddingService } from './embeddingService';
 import type { ContactMessage, FaqItem, Announcement, NewsUpdate } from '../types/database.types';
+import { PageCache } from '../utils/pageCache';
 import {
   INVERTED_SYNONYM_MAP,
   CONCEPT_MAP,
@@ -406,7 +407,7 @@ export const publicService = {
     return true;
   },
 
-  async getActiveFaqs(): Promise<FaqItem[]> {
+  getActiveFaqs: PageCache.memoize(async function getActiveFaqs(): Promise<FaqItem[]> {
     return [
       {
         id: 'mstc-faq-1',
@@ -469,9 +470,9 @@ export const publicService = {
         updated_at: '2026-06-18T00:00:00Z'
       }
     ];
-  },
+  }, 'activeFaqs'),
 
-  async getActiveAnnouncements(limit: number = 5): Promise<Announcement[]> {
+  getActiveAnnouncements: PageCache.memoize(async function getActiveAnnouncements(limit: number = 5): Promise<Announcement[]> {
     const { data, error } = await supabase
       .from('announcements')
       .select('*')
@@ -484,9 +485,9 @@ export const publicService = {
       return [];
     }
     return data;
-  },
+  }, 'activeAnnouncements'),
 
-  async getPublishedNews(limit: number = 10): Promise<NewsUpdate[]> {
+  getPublishedNews: PageCache.memoize(async function getPublishedNews(limit: number = 10): Promise<NewsUpdate[]> {
     const { data, error } = await supabase
       .from('news_updates')
       .select('*')
@@ -499,7 +500,7 @@ export const publicService = {
       return [];
     }
     return data;
-  }
+  }, 'publishedNews')
 };
 
 export interface MstcSanitizedAuction {
@@ -1798,7 +1799,7 @@ export const MstcSearchService = {
   /**
    * High-speed catalog search engine filtering through clean, deduplicated snapshots with Layman's search
    */
-  async searchMarketplaceCatalog(
+  searchMarketplaceCatalog: PageCache.memoize(async function searchMarketplaceCatalog(
     query: string,
     filters?: { 
       category?: string; 
@@ -1821,7 +1822,11 @@ export const MstcSearchService = {
       let embeddingStr: string | null = null;
       if (workingQuery && workingQuery.length > 2) {
         try {
-          const vector = await embeddingService.generateEmbedding(workingQuery);
+          const vectorPromise = embeddingService.generateEmbedding(workingQuery);
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Embedding generation timeout')), 800)
+          );
+          const vector = await Promise.race([vectorPromise, timeoutPromise]);
           embeddingStr = `[${vector.join(',')}]`;
         } catch (e) {
           console.warn('Failed to generate embedding:', e);
@@ -1895,12 +1900,12 @@ export const MstcSearchService = {
       console.warn('Hybrid search failed, falling back to client-side search:', error);
       return MstcSearchService.searchClientSide(query, filters);
     }
-  },
+  }, 'marketplaceSearch'),
 
   /**
    * Fetches a single MSTC auction by its UUID/ID, mapping raw categories appropriately.
    */
-  async getMstcAuctionById(id: string): Promise<MstcSanitizedAuction | null> {
+  getMstcAuctionById: PageCache.memoize(async function getMstcAuctionById(id: string): Promise<MstcSanitizedAuction | null> {
     try {
       const { data, error } = await supabase
         .from('mstc_auctions')
@@ -1920,12 +1925,12 @@ export const MstcSearchService = {
       console.error('Failed to fetch MSTC auction by ID:', error);
       return null;
     }
-  },
+  }, 'mstcAuctionById'),
 
   /**
    * Fetches unique filter options (State/Location, Category, Seller, Regional Office) from the database
    */
-  async getMstcFilterOptions(): Promise<{
+  getMstcFilterOptions: PageCache.memoize(async function getMstcFilterOptions(): Promise<{
     categories: string[];
     subcategories: Record<string, string[]>;
     sellers: string[];
@@ -2010,7 +2015,7 @@ export const MstcSearchService = {
       console.error('Failed to fetch MSTC filter options:', error);
       return { categories: [], subcategories: {}, sellers: [], locations: [], regionalOffices: [] };
     }
-  },
+  }, 'mstcFilterOptions'),
 
   /**
    * Fetches similar/related MSTC auctions.
@@ -2018,7 +2023,8 @@ export const MstcSearchService = {
    * If there is no active search query, it falls back to category matching.
    * Results are ranked by category, seller, location, and item keywords.
    */
-  async getRelatedMstcAuctions(
+  getRelatedMstcAuctions: PageCache.memoize(async function getRelatedMstcAuctions(
+    this: any,
     currentItem: MstcSanitizedAuction,
     searchQuery: string = '',
     limit: number = 4
@@ -2029,7 +2035,7 @@ export const MstcSearchService = {
       if (searchQuery) {
         // If there is an active search query, get matching items
         const results = await this.searchMarketplaceCatalog(searchQuery);
-        relatedItems = results.filter(item => item.id !== currentItem.id);
+        relatedItems = results.filter((item: MstcSanitizedAuction) => item.id !== currentItem.id);
       } else {
         // If no search query, match by category/subcategory
         const categoryParts = (currentItem.category_name || '').split(' | ');
@@ -2041,7 +2047,7 @@ export const MstcSearchService = {
           subcategory: subcategory || undefined
         });
         
-        relatedItems = results.filter(item => item.id !== currentItem.id);
+        relatedItems = results.filter((item: MstcSanitizedAuction) => item.id !== currentItem.id);
         
         // Relax subcategory if we have fewer items
         if (relatedItems.length < limit && mainCategory) {
@@ -2049,7 +2055,7 @@ export const MstcSearchService = {
             category: mainCategory || undefined
           });
           const extraItems = mainResults.filter(
-            item => item.id !== currentItem.id && !relatedItems.some(r => r.id === item.id)
+            (item: MstcSanitizedAuction) => item.id !== currentItem.id && !relatedItems.some((r: MstcSanitizedAuction) => r.id === item.id)
           );
           relatedItems = [...relatedItems, ...extraItems];
         }
@@ -2121,13 +2127,13 @@ export const MstcSearchService = {
       console.error('Error getting related MSTC auctions:', error);
       return [];
     }
-  },
+  }, 'relatedMstcAuctions'),
 
   /**
    * Generates real-time, Gemini-like autocomplete suggestions based on categories, subcategories,
    * locations, and specific catalog item text matches.
    */
-  async getMstcSearchSuggestions(query: string): Promise<SearchSuggestion[]> {
+  getMstcSearchSuggestions: PageCache.memoize(async function getMstcSearchSuggestions(query: string): Promise<SearchSuggestion[]> {
     try {
       const trimmedQuery = query.trim();
       const suggestions: SearchSuggestion[] = [];
@@ -2359,12 +2365,12 @@ export const MstcSearchService = {
       console.error('Error generating search suggestions:', e);
       return [];
     }
-  },
+  }, 'mstcSuggestions', { ttlMs: 60000 }),
 
   /**
    * Fetches verified, fully processed feeds for consultant analytics modules
    */
-  async fetchVerifiedConsultantFeed(limitCount: number = 15): Promise<MstcSanitizedAuction[]> {
+  fetchVerifiedConsultantFeed: PageCache.memoize(async function fetchVerifiedConsultantFeed(limitCount: number = 15): Promise<MstcSanitizedAuction[]> {
     try {
       const { data, error } = await supabase
           .from('mstc_auctions')
@@ -2385,6 +2391,5 @@ export const MstcSearchService = {
       console.error('Failed processing analytics baseline query maps:', error);
       return [];
     }
-  }
+  }, 'verifiedConsultantFeed')
 };
-
