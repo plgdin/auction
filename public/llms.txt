@@ -1,0 +1,24 @@
+# Lelam eAuctions Assistant
+
+> An advanced, assistive B2B intelligence platform that indexes, normalizes, and analyzes government eAuctions (like MSTC India) to help bidders make informed, data-driven decisions.
+
+## Key Features & Capabilities
+- **eAuctions Catalog Search**: NLP-powered search that parses technical metal grades, locations, and scrap types.
+- **Dynamic Bid & Cost Calculator**: Computes landed costs (GST, TCS, Customs duties, loading fees, and transport) to project bidding ROI.
+- **Scrap Metal Price Valuation**: Linear regression model forecasting Indian metal scrap price ranges based on LME & local benchmarks.
+- **Watchlist & Bookmark Management**: Real-time tracking and bookmarking of upcoming government eAuctions.
+- **PDF Catalog Processor**: Auto-indexing of official government catalog PDF documents in secure storage.
+
+## Site Structure & Navigation
+- `/` - Homepage featuring global search, live statistics, and recent news.
+- `/auctions` - Search directory for all active, upcoming, and closed eAuctions.
+- `/tenders` - B2B bidding directory for tenders and procurement opportunities.
+- `/news` - Industry news, LME price alerts, and platform announcements.
+- `/faq` - eAuctions Help Center (FAQ page containing schema for common MSTC and Lelam questions).
+- `/about` - Core platform values, whitepapers, and branding updates.
+- `/contact` - Support channel and corporate inquiry messaging.
+
+## Information for AI Agents & Crawlers
+- **Allowed Directories**: `/faq`, `/auctions`, `/about`, `/contact`, `/news`, `/cookies` are open to crawling.
+- **Disallowed Directories**: `/auth/`, `/admin/`, `/dashboard/`, `/api/` are blocked for privacy and user data protection.
+- **Data Freshness**: Government eAuction schedules are scraped, processed, and updated multiple times daily.

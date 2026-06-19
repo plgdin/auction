@@ -1,5 +1,6 @@
 import { Link, Outlet } from 'react-router-dom';
 import { PageTracker } from '../components/common/PageTracker';
+import { CookieConsent } from '../components/common/CookieConsent';
 
 export function AuthLayout() {
   const subtitlePhrase = 'Everything you need in a single platform.';
@@ -63,9 +64,11 @@ export function AuthLayout() {
         <div className="flex gap-6 font-medium">
           <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
           <Link to="/terms" className="hover:text-slate-300 transition-colors">Terms of Service</Link>
+          <Link to="/cookies" className="hover:text-slate-300 transition-colors">Cookie Policy</Link>
           <Link to="/support" className="hover:text-slate-300 transition-colors">Contact Support</Link>
         </div>
       </footer>
+      <CookieConsent />
     </div>
   );
 }

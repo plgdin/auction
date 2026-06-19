@@ -8,6 +8,7 @@ import { NewsManagement } from '../components/admin/NewsManagement';
 import { ContactMessages } from '../components/admin/ContactMessages';
 import { AuditLogsView } from '../components/admin/AuditLogsView';
 import { MarketPriceManagement } from '../components/admin/MarketPriceManagement';
+import { FaqManagement } from '../components/admin/FaqManagement';
 import { useAppStore } from '../store/appStore';
 
 export function Admin() {
@@ -23,6 +24,8 @@ export function Admin() {
         return <ScraperDashboard />;
       case 'market-prices':
         return <MarketPriceManagement />;
+      case 'faq':
+        return <FaqManagement />;
       case 'reports':
         return <ReportsAnalytics />;
       case 'users':

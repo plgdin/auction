@@ -56,10 +56,13 @@ export function Footer() {
                 <Link to="/contact" className="hover:text-primary transition-colors">Contact Support</Link>
               </li>
               <li>
-                <a href="#" className="hover:text-primary transition-colors">Terms & Conditions</a>
+                <Link to="/terms" className="hover:text-primary transition-colors">Terms & Conditions</Link>
               </li>
               <li>
-                <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
+                <Link to="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+              </li>
+              <li>
+                <Link to="/cookies" className="hover:text-primary transition-colors">Cookie Policy</Link>
               </li>
             </ul>
           </div>

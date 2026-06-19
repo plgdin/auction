@@ -3,6 +3,7 @@ import { Sidebar } from '../components/common/Sidebar';
 import { TopBar } from '../components/common/TopBar';
 import { AnnouncementBanner } from '../components/common/AnnouncementBanner';
 import { PageTracker } from '../components/common/PageTracker';
+import { CookieConsent } from '../components/common/CookieConsent';
 
 export function DashboardLayout() {
   return (
@@ -18,6 +19,7 @@ export function DashboardLayout() {
           </main>
         </div>
       </div>
+      <CookieConsent />
     </div>
   );
 }

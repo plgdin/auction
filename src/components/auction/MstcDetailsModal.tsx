@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown } from 'lucide-react';
+import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown, Mail, Phone } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime, calculateLotValue } from '../../utils/mstcHelpers';
@@ -1089,19 +1089,86 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               </div>
 
               {/* Key Contact Personnel */}
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3.5">
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-5">
                 <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
                   Key Contact Personnel
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {summary.keyContacts.map((contact, i) => (
-                    <div key={i} className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl space-y-1.5">
-                      <span className="text-[10.5px] font-mono text-primary font-bold uppercase tracking-wider">{contact.role}</span>
-                      <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
-                      <p className="text-xs text-slate-605 font-mono break-all mt-0.5">{contact.email}</p>
+
+                {/* MSTC Contacts */}
+                {(() => {
+                  const mstcContacts = summary.keyContacts.filter(c => 
+                    c.role.toLowerCase().includes('mstc') || c.role.toLowerCase().includes('auction officer')
+                  );
+                  const sellerContacts = summary.keyContacts.filter(c => 
+                    !c.role.toLowerCase().includes('mstc') && !c.role.toLowerCase().includes('auction officer')
+                  );
+
+                  return (
+                    <div className="space-y-4">
+                      {/* MSTC Officer Section */}
+                      {mstcContacts.length > 0 && (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest font-mono bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
+                              MSTC Auction Officers
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {mstcContacts.map((contact, i) => (
+                              <div key={`mstc-${i}`} className="bg-blue-50/30 border border-blue-150/50 p-3.5 rounded-xl space-y-2">
+                                <span className="text-[10px] font-mono text-blue-600 font-bold uppercase tracking-wider">{contact.role}</span>
+                                <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
+                                <div className="space-y-1">
+                                  <p className="text-xs text-slate-605 font-mono break-all flex items-center gap-1.5">
+                                    <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                                    <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">{contact.email}</a>
+                                  </p>
+                                  {contact.phone && contact.phone !== 'no contact info available' && (
+                                    <p className="text-xs text-slate-605 font-mono flex items-center gap-1.5">
+                                      <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="hover:text-primary transition-colors">{contact.phone}</a>
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Seller / Site Contacts Section */}
+                      {sellerContacts.length > 0 && (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest font-mono bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
+                              Seller / Site Contacts
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {sellerContacts.map((contact, i) => (
+                              <div key={`seller-${i}`} className="bg-emerald-50/30 border border-emerald-150/50 p-3.5 rounded-xl space-y-2">
+                                <span className="text-[10px] font-mono text-emerald-600 font-bold uppercase tracking-wider">{contact.role}</span>
+                                <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
+                                <div className="space-y-1">
+                                  <p className="text-xs text-slate-605 font-mono break-all flex items-center gap-1.5">
+                                    <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                                    <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">{contact.email}</a>
+                                  </p>
+                                  {contact.phone && contact.phone !== 'no contact info available' && (
+                                    <p className="text-xs text-slate-605 font-mono flex items-center gap-1.5">
+                                      <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="hover:text-primary transition-colors">{contact.phone}</a>
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </div>
                 </>
               )}

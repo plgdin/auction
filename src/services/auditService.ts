@@ -59,7 +59,7 @@ export async function logUserActivity(
       ...extraDetails
     };
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('audit_logs')
       .insert([
         {
@@ -70,16 +70,15 @@ export async function logUserActivity(
           details,
           ip_address: ip
         }
-      ])
-      .select()
-      .single();
+      ]);
 
     if (error) {
       console.error('Failed to insert audit log:', error);
       return null;
     }
     
-    return data;
+    // Return dummy object conforming to type or just a success indicator since return is unused
+    return { id: '', action } as any;
   } catch (err) {
     console.error('Error logging user activity:', err);
     return null;

@@ -100,6 +100,80 @@ export const adminService = {
     return data;
   },
 
+  async getFaqItemsAdmin(): Promise<FaqItem[]> {
+    const { data, error } = await supabase
+      .from('faq_items')
+      .select('*')
+      .order('display_order', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching admin FAQs:', error);
+      return [];
+    }
+    return data;
+  },
+
+  async createFaqItem(faqData: Partial<FaqItem>): Promise<boolean> {
+    const { error } = await supabase
+      .from('faq_items')
+      .insert([faqData]);
+
+    if (error) {
+      console.error('Error creating FAQ:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async updateFaqItem(id: string, faqData: Partial<FaqItem>): Promise<boolean> {
+    const { error } = await supabase
+      .from('faq_items')
+      .update(faqData)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating FAQ:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async reorderFaqItems(reorderedItems: { id: string; display_order: number }[]): Promise<boolean> {
+    try {
+      const updates = reorderedItems.map(item =>
+        supabase
+          .from('faq_items')
+          .update({ display_order: item.display_order })
+          .eq('id', item.id)
+      );
+
+      const results = await Promise.all(updates);
+      const failed = results.filter(r => r.error);
+
+      if (failed.length > 0) {
+        console.error('Error reordering FAQs:', failed.map(f => f.error));
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error reordering FAQs:', error);
+      return false;
+    }
+  },
+
+  async deleteFaqItem(id: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('faq_items')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting FAQ:', error);
+      return false;
+    }
+    return true;
+  },
+
   async getNewsUpdates(): Promise<NewsUpdate[]> {
     const { data, error } = await supabase
       .from('news_updates')

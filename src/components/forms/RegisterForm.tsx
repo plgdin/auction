@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import { User, Mail, Lock, Loader2 } from 'lucide-react';
 
@@ -11,7 +11,10 @@ const registerSchema = z.object({
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string()
+  confirmPassword: z.string(),
+  acceptTerms: z.boolean().refine(val => val === true, {
+    message: 'You must accept the Terms and Conditions to register',
+  }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -147,6 +150,30 @@ export function RegisterForm() {
           />
         </div>
         {errors.confirmPassword && <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>}
+      </div>
+
+      <div className="flex items-start mt-2">
+        <div className="flex items-center h-5">
+          <input
+            id="acceptTerms"
+            type="checkbox"
+            {...register('acceptTerms')}
+            className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded-md cursor-pointer"
+          />
+        </div>
+        <div className="ml-2 text-xs">
+          <label htmlFor="acceptTerms" className="text-slate-600 dark:text-slate-400 font-medium">
+            I accept the{' '}
+            <Link to="/terms" target="_blank" className="text-primary hover:underline font-bold">
+              Terms & Conditions
+            </Link>{' '}
+            and{' '}
+            <Link to="/privacy" target="_blank" className="text-primary hover:underline font-bold">
+              Privacy Policy
+            </Link>
+          </label>
+          {errors.acceptTerms && <p className="text-[11px] text-destructive mt-1">{errors.acceptTerms.message}</p>}
+        </div>
       </div>
 
       <div className="pt-2">
