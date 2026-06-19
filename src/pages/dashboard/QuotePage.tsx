@@ -1015,7 +1015,7 @@ export function QuotePage() {
           </div>
 
           {/* RIGHT COLUMN: PREVIEW SHEET */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 space-y-6 lg:sticky lg:top-6 lg:self-start">
             
             {/* Editor Top Bar for Preview actions */}
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-end print:hidden bg-white p-4 border border-slate-200 rounded-2xl shadow-xs">
@@ -1037,10 +1037,10 @@ export function QuotePage() {
 
             {/* PRINT WRAPPER AND THE PREVIEW SHEET */}
             {/* We apply printing overrides to isolate the quote-sheet during windows printing */}
-            <div className="bg-slate-100 lg:p-6 rounded-2xl border border-slate-200/50 print:p-0 print:border-none print:bg-white overflow-hidden shadow-inner">
+            <div className="bg-slate-100 lg:p-3 rounded-2xl border border-slate-200/50 print:p-0 print:border-none print:bg-white overflow-hidden shadow-inner">
               <div 
                 id="quote-print-sheet"
-                className="w-full bg-white mx-auto p-8 sm:p-12 shadow-md print:shadow-none print:p-0 text-slate-800 relative flex flex-col justify-between min-h-[1050px]"
+                className="w-full max-w-2xl print:max-w-none bg-white mx-auto p-5 sm:p-6 shadow-md print:shadow-none print:p-0 text-slate-800 relative flex flex-col justify-between min-h-[680px]"
                 style={{ 
                   fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                 }}
@@ -1052,10 +1052,10 @@ export function QuotePage() {
                   {/* QUOTE HEADER LOGO BLOCK (Absolutely Positioned to prevent layout shifting on resize) */}
                   {(activeQuote.senderLogoUrl || activeQuote.senderCompany) && (
                     <div 
-                      className="absolute left-8 right-8 flex items-center justify-start print:left-[20mm] print:right-[20mm]"
+                      className="absolute left-5 right-5 flex items-center justify-start print:left-[20mm] print:right-[20mm]"
                       style={{ 
                         top: `${activeQuote.logoTopOffset !== undefined ? activeQuote.logoTopOffset + 12 : 28}px`,
-                        height: '150px'
+                        height: '75px'
                       }}
                     >
                       <div
@@ -1072,7 +1072,7 @@ export function QuotePage() {
                             style={{ 
                               width: `${activeQuote.logoWidth || 150}px`,
                               height: 'auto',
-                              maxHeight: '150px',
+                              maxHeight: '75px',
                               objectFit: 'contain'
                             }} 
                           />
@@ -1091,13 +1091,13 @@ export function QuotePage() {
                   {/* Fixed space reservation for header logo block so that other text never shifts */}
                   <div 
                     style={{ 
-                      height: `${(activeQuote.logoTopOffset !== undefined ? activeQuote.logoTopOffset : 16) + 150 + 10}px` 
+                      height: `${(activeQuote.logoTopOffset !== undefined ? activeQuote.logoTopOffset : 16) + 75 + 10}px` 
                     }}
                     className="w-full block" 
                   />
 
                   {/* QUOTE DETAILS BLOCK */}
-                  <div className="flex justify-between items-start gap-4 mb-8">
+                  <div className="flex justify-between items-start gap-4 mb-4">
                     {/* Sender Details */}
                     <div className="text-xs text-slate-500 space-y-0.5 leading-relaxed">
                       {activeQuote.senderName && (
@@ -1144,7 +1144,7 @@ export function QuotePage() {
                   </div>
 
                   {/* BILLING / CLIENT ADDRESS SECTION */}
-                  <div className="grid grid-cols-2 gap-4 border-t border-b border-slate-100 py-6 mb-10 bg-slate-50/50 px-4 rounded-xl">
+                  <div className="grid grid-cols-2 gap-4 border-t border-b border-slate-100 py-2.5 mb-4 bg-slate-50/50 px-3 rounded-xl">
                     <div className="space-y-1">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono">Prepared For</span>
                       <div className="text-xs text-slate-700 space-y-1 leading-relaxed">
@@ -1159,16 +1159,16 @@ export function QuotePage() {
                   </div>
 
                   {/* ITEMS TABLE — Clean read-only rows with click-to-edit panel */}
-                  <div className="mb-8">
+                  <div className="mb-4">
                     <table className="w-full border-collapse text-xs">
                       <thead>
                         <tr className="border-b-2 border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">
-                          <th className="py-3 text-left w-8">#</th>
-                          <th className="py-3 text-left">Description / Particulars</th>
-                          <th className="py-3 text-right w-28">Qty / Unit</th>
-                          <th className="py-3 text-right w-28">Unit Rate</th>
-                          {activeQuote.gstEnabled && <th className="py-3 text-right w-16">Tax %</th>}
-                          <th className="py-3 text-right w-40">Amount</th>
+                          <th className="py-1.5 text-left w-8">#</th>
+                          <th className="py-1.5 text-left">Description / Particulars</th>
+                          <th className="py-1.5 text-right w-28">Qty / Unit</th>
+                          <th className="py-1.5 text-right w-28">Unit Rate</th>
+                          {activeQuote.gstEnabled && <th className="py-1.5 text-right w-16">Tax %</th>}
+                          <th className="py-1.5 text-right w-40">Amount</th>
                         </tr>
                       </thead>
                       <tbody className="text-slate-700">
@@ -1192,14 +1192,14 @@ export function QuotePage() {
                                   )}
                                   onClick={() => setEditingItemId(isEditing ? null : item.id)}
                                 >
-                                  <td className="py-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                                  <td className="py-3 font-semibold text-slate-900 text-xs leading-snug pr-4">
+                                  <td className="py-1.5 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                                  <td className="py-1.5 font-semibold text-slate-900 text-xs leading-snug pr-4">
                                     <span className="line-clamp-2 print:line-clamp-none">{item.description || <span className="text-slate-350 italic font-normal">No description</span>}</span>
                                   </td>
-                                  <td className="py-3 text-right font-mono font-medium whitespace-nowrap text-xs">{item.qty} {item.unit}</td>
-                                  <td className="py-3 text-right font-mono font-medium whitespace-nowrap text-xs">{formatPrice(item.price, currency)}</td>
-                                  {activeQuote.gstEnabled && <td className="py-3 text-right font-mono whitespace-nowrap text-xs">{item.taxRate}%</td>}
-                                  <td className="py-3 text-right">
+                                  <td className="py-1.5 text-right font-mono font-medium whitespace-nowrap text-xs">{item.qty} {item.unit}</td>
+                                  <td className="py-1.5 text-right font-mono font-medium whitespace-nowrap text-xs">{formatPrice(item.price, currency)}</td>
+                                  {activeQuote.gstEnabled && <td className="py-1.5 text-right font-mono whitespace-nowrap text-xs">{item.taxRate}%</td>}
+                                  <td className="py-1.5 text-right">
                                     <span className="font-mono font-bold text-slate-900 whitespace-nowrap text-xs">
                                       {formatPrice(amount, currency)}
                                     </span>
@@ -1304,8 +1304,8 @@ export function QuotePage() {
                   </div>
 
                   {/* SUMMARY SECTION */}
-                  <div className="flex justify-end mb-10 pt-4">
-                    <div className="w-80 space-y-2.5 text-xs">
+                  <div className="flex justify-end mb-4 pt-1">
+                    <div className="w-80 space-y-1.5 text-xs">
                       
                       <div className="flex justify-between items-center text-slate-550 font-semibold">
                         <span>Items Subtotal:</span>
@@ -1368,7 +1368,7 @@ export function QuotePage() {
 
                   {/* ATTACHED DOCUMENTS LIST (IN PREVIEW) */}
                   {activeQuote.attachments && activeQuote.attachments.length > 0 && (
-                    <div className="border-t border-slate-100 pt-6 mt-8 space-y-2">
+                    <div className="border-t border-slate-100 pt-2 mt-4 space-y-1.5">
                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono">Associated Enclosures & Documentation</h4>
                       <div className="flex flex-wrap gap-2 pt-1">
                         {activeQuote.attachments.map((file, idx) => (
@@ -1388,7 +1388,7 @@ export function QuotePage() {
 
                 {/* FOOTER */}
                 {(activeQuote.footerText || activeQuote.id) && (
-                  <div className="border-t border-slate-100 pt-6 mt-12 text-[10px] text-slate-400 leading-relaxed max-w-2xl">
+                  <div className="border-t border-slate-100 pt-2.5 mt-6 text-[10px] text-slate-400 leading-relaxed max-w-2xl">
                     {activeQuote.footerText && (
                       <p className="whitespace-pre-line">{activeQuote.footerText}</p>
                     )}
