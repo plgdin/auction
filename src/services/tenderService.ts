@@ -1,9 +1,10 @@
 // @ts-nocheck
 import { supabase } from '../lib/supabase';
 import type { Tender, TenderSubmission, TenderDocument } from '../types/database.types';
+import { PageCache } from '../utils/pageCache';
 
 export const tenderService = {
-  async getTenders(filters?: { status?: string; search?: string }): Promise<Tender[]> {
+  getTenders: PageCache.memoize(async function getTenders(filters?: { status?: string; search?: string }): Promise<Tender[]> {
     let query = supabase.from('tenders').select('*').order('created_at', { ascending: false });
 
     if (filters?.status) {
@@ -20,9 +21,9 @@ export const tenderService = {
       return [];
     }
     return data;
-  },
+  }, 'tenders'),
 
-  async getTenderById(id: string): Promise<Tender | null> {
+  getTenderById: PageCache.memoize(async function getTenderById(id: string): Promise<Tender | null> {
     const { data, error } = await supabase
       .from('tenders')
       .select('*, tender_documents(*)')
@@ -34,9 +35,10 @@ export const tenderService = {
       return null;
     }
     return data;
-  },
+  }, 'tenderById'),
 
   async createTender(tenderData: Partial<Tender>): Promise<Tender | null> {
+    PageCache.invalidate('tenders');
     const { data, error } = await supabase
       .from('tenders')
       .insert([tenderData])
@@ -51,6 +53,10 @@ export const tenderService = {
   },
 
   async submitTender(submissionData: Partial<TenderSubmission>): Promise<TenderSubmission | null> {
+    PageCache.invalidate('tenders');
+    PageCache.invalidate('tenderById');
+    PageCache.invalidate('tenderSubmissions');
+    PageCache.invalidate('userTenderSubmissions');
     const { data, error } = await supabase
       .from('tender_submissions')
       .insert([submissionData])
@@ -64,7 +70,7 @@ export const tenderService = {
     return data;
   },
 
-  async getSubmissionsForTender(tenderId: string): Promise<TenderSubmission[]> {
+  getSubmissionsForTender: PageCache.memoize(async function getSubmissionsForTender(tenderId: string): Promise<TenderSubmission[]> {
     const { data, error } = await supabase
       .from('tender_submissions')
       .select('*')
@@ -76,9 +82,9 @@ export const tenderService = {
       return [];
     }
     return data;
-  },
+  }, 'tenderSubmissions'),
 
-  async getUserTenderSubmissions(userId: string): Promise<any[]> {
+  getUserTenderSubmissions: PageCache.memoize(async function getUserTenderSubmissions(userId: string): Promise<any[]> {
     const { data, error } = await supabase
       .from('tender_submissions')
       .select(`
@@ -93,5 +99,5 @@ export const tenderService = {
       return [];
     }
     return data;
-  }
+  }, 'userTenderSubmissions')
 };

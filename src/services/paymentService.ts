@@ -1,12 +1,13 @@
 import { supabase } from '../lib/supabase';
 import type { EmdTransaction, WalletTransaction } from '../types/database.types';
+import { PageCache } from '../utils/pageCache';
 
 export const paymentService = {
   // --------------------------------------------------------
   // WALLET OPERATIONS
   // --------------------------------------------------------
 
-  async getWalletBalance(userId: string): Promise<{ available: number; blocked: number }> {
+  getWalletBalance: PageCache.memoize(async function getWalletBalance(userId: string): Promise<{ available: number; blocked: number }> {
     // 1. Calculate Total Deposits - Total Withdrawals
     const { data: walletTx, error: wError } = await supabase
       .from('wallet_transactions')
@@ -44,9 +45,9 @@ export const paymentService = {
       available: totalBalance - blocked,
       blocked: blocked
     };
-  },
+  }, 'walletBalance'),
 
-  async getWalletTransactions(userId: string): Promise<WalletTransaction[]> {
+  getWalletTransactions: PageCache.memoize(async function getWalletTransactions(userId: string): Promise<WalletTransaction[]> {
     const { data, error } = await supabase
       .from('wallet_transactions')
       .select('*')
@@ -58,13 +59,13 @@ export const paymentService = {
       return [];
     }
     return data;
-  },
+  }, 'walletTransactions'),
 
   // --------------------------------------------------------
   // EMD OPERATIONS
   // --------------------------------------------------------
 
-  async getEmdTransactions(userId: string): Promise<EmdTransaction[]> {
+  getEmdTransactions: PageCache.memoize(async function getEmdTransactions(userId: string): Promise<EmdTransaction[]> {
     const { data, error } = await supabase
       .from('emd_transactions')
       .select('*, auction:auctions(title, reference_number)')
@@ -76,9 +77,11 @@ export const paymentService = {
       return [];
     }
     return data;
-  },
+  }, 'emdTransactions'),
 
   async processWalletDeposit(userId: string, amount: number, paymentMethod: string): Promise<{ success: boolean; transactionId?: string }> {
+    PageCache.invalidate('walletBalance');
+    PageCache.invalidate('walletTransactions');
     // Mock processing delay
     await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -130,6 +133,8 @@ export const paymentService = {
   },
 
   async blockAuctionEmd(userId: string, auctionId: string, amount: number): Promise<{ success: boolean; message: string }> {
+    PageCache.invalidate('walletBalance');
+    PageCache.invalidate('emdTransactions');
     // 1. Check available balance
     const balance = await this.getWalletBalance(userId);
     if (balance.available < amount) {
