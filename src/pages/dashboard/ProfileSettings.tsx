@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText } from 'lucide-react';
+import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText, Lock } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
@@ -22,7 +22,43 @@ export function ProfileSettings() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'privacy'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'privacy' | 'security'>('profile');
+
+  // Change Password state
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState<string | null>(null);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwError(null);
+    setPwSuccess(null);
+
+    if (newPassword.length < 6) {
+      setPwError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPwError('Passwords do not match.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await authService.updateUserPassword(newPassword);
+      setPwSuccess('Password updated successfully!');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setPwSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Error changing password:', err);
+      setPwError(err.message || 'Failed to update password. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleClearWatchlist = () => {
     if (!user) return;
@@ -185,6 +221,15 @@ export function ProfileSettings() {
         >
           <Shield className="w-4 h-4 mr-2" />
           Privacy & Data
+        </button>
+        <button
+          onClick={() => setActiveTab('security')}
+          className={`flex items-center px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
+            activeTab === 'security' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          <Lock className="w-4 h-4 mr-2" />
+          Security
         </button>
       </div>
 
@@ -452,6 +497,64 @@ export function ProfileSettings() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'security' && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-slate-50 border-b border-slate-200 p-6 flex items-center">
+            <Lock className="w-6 h-6 text-primary mr-3" />
+            <h2 className="text-lg font-bold text-slate-900">Change Password</h2>
+          </div>
+          
+          <form onSubmit={handleChangePassword} className="p-6 max-w-lg space-y-6">
+            {pwError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium">
+                {pwError}
+              </div>
+            )}
+            
+            {pwSuccess && (
+              <div className="bg-green-55 border border-green-200 text-green-705 px-4 py-3 rounded-lg text-sm font-medium">
+                {pwSuccess}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password (min. 6 characters)"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary shadow-xs"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary shadow-xs"
+                required
+              />
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-slate-100">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-xs disabled:opacity-50 cursor-pointer"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {isSubmitting ? 'Updating...' : 'Update Password'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
