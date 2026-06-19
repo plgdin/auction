@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice } from '../../services/publicService';
+import { useAuthStore } from '../../store/authStore';
+import { storageService } from '../../services/storageService';
 import { generateCatalogSummary, parsePdfDateTime, calculateLotValue } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
 import { Dropdown } from 'antd';
@@ -12,7 +14,6 @@ import { formatPrice, CURRENCIES } from '../../utils/currency';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuationService';
 import { marketPriceService } from '../../services/marketPriceService';
-import { storageService } from '../../services/storageService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   DEFAULT_MACRO_INPUTS,  
@@ -38,9 +39,39 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
-  const [signedImageUrls, setSignedImageUrls] = useState<string[]>([]);
-  const [signedPreviewUrl, setSignedPreviewUrl] = useState<string | null>(null);
-  const [imagesLoading, setImagesLoading] = useState(true);
+  const { isAuthenticated } = useAuthStore();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please log in to download the catalog PDF.');
+      return;
+    }
+
+    if (!item.sanitized_document_path) {
+      toast.error('No document path available.');
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      const storagePath = storageService.extractStoragePath(item.sanitized_document_path);
+      const cleanAuctionNum = item.mstc_auction_number.replace(/[\/\\:*?"<>|]/g, '_');
+      const filename = `${cleanAuctionNum}_catalog.pdf`;
+      
+      const success = await storageService.downloadPrivateFile('auction_documents', storagePath, filename);
+      if (success) {
+        toast.success('Catalog PDF downloaded successfully.');
+      } else {
+        toast.error('Failed to download the catalog PDF. Please try again.');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('An error occurred during catalog download.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const { currency } = useAppStore();
   const currencySymbol = CURRENCIES[currency]?.symbol || '₹';
@@ -58,38 +89,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [isValuating, setIsValuating] = useState(false);
   const [selectedChartItemId, setSelectedChartItemId] = useState<string>('total');
   const [extraChargeType, setExtraChargeType] = useState<string>('none');
-
-  const summary = generateCatalogSummary(item);
-
-  // Resolve all images to signed URLs on mount (private bucket)
-  useEffect(() => {
-    let cancelled = false;
-    async function resolveImages() {
-      setImagesLoading(true);
-      const rawImages = summary.extracted_images || [];
-      const rawPreview = summary.preview_image_url || null;
-      const allUrls = rawPreview ? [rawPreview, ...rawImages] : rawImages;
-      if (allUrls.length === 0) {
-        setSignedImageUrls([]);
-        setSignedPreviewUrl(null);
-        setImagesLoading(false);
-        return;
-      }
-      const signed = await storageService.getSignedUrls(allUrls);
-      if (cancelled) return;
-      if (rawPreview) {
-        setSignedPreviewUrl(signed[0] || null);
-        setSignedImageUrls(signed.slice(1));
-      } else {
-        setSignedPreviewUrl(null);
-        setSignedImageUrls(signed);
-      }
-      setImagesLoading(false);
-    }
-    resolveImages();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.id]);
 
   const extraChargeLabels: Record<string, string> = {
     none: 'None (₹0)',
@@ -259,6 +258,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     };
   }, [item, customCosts]);
 
+  const summary = generateCatalogSummary(item);
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
   const regionalOfficeName = expandMstcOffice(
     item.mstc_auction_number.split('/')[0].toUpperCase() === 'MSTC'
@@ -1144,25 +1144,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
             {/* Right Side: Image/Preview Panel */}
             {(() => {
+              const hasOtherMedia = item.raw_materials_text && summary.extracted_images && summary.extracted_images.length > 0;
+              const displayImage = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images![0] : null);
+
               return (
                 <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
                   {/* Image Gallery */}
                   {(() => {
-                    const imageUrls = signedImageUrls.filter(
-                      (url: string) => !url.toLowerCase().includes('.pdf')
+                    const imageUrls = (summary.extracted_images || []).filter(
+                      (url: string) => !url.toLowerCase().endsWith('.pdf')
                     );
-                    if (imagesLoading) {
-                      return (
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">Auction Images</h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {[1,2,3,4].map(i => (
-                              <div key={i} className="aspect-square rounded-xl bg-slate-100 animate-pulse" />
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    }
                     if (imageUrls.length === 0) return null;
                     return (
                       <div className="space-y-3">
@@ -1190,12 +1181,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     );
                   })()}
 
-                  {imagesLoading ? (
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">Catalog Document Preview</h4>
-                      <div className="w-full h-48 rounded-2xl bg-slate-100 animate-pulse" />
-                    </div>
-                  ) : signedPreviewUrl ? (
+                  {displayImage ? (
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
                         Catalog Document Preview
@@ -1203,11 +1189,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
                         <button
                           type="button"
-                          onClick={() => setLightboxImage(signedPreviewUrl)}
+                          onClick={() => setLightboxImage(displayImage)}
                           className="block w-full text-left cursor-zoom-in relative focus:outline-none"
                         >
                           <img
-                            src={signedPreviewUrl}
+                            src={displayImage}
                             alt="PDF Catalog Preview"
                             className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
                           />
@@ -1236,16 +1222,21 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               Close Details
             </button>
             <button
-              onClick={() => {
-                if (item.sanitized_document_path) {
-                  storageService.downloadFile(item.sanitized_document_path, `Catalog_${shortId}.pdf`);
-                }
-              }}
-              disabled={!item.sanitized_document_path}
+              onClick={handleDownloadPdf}
+              disabled={downloading}
               className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download className="w-4 h-4 mr-2" />
-              Download PDF Catalog
+              {downloading ? (
+                <>
+                  <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF Catalog
+                </>
+              )}
             </button>
           </div>
 

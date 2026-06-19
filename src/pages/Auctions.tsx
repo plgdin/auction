@@ -720,13 +720,33 @@ export function Auctions() {
             <input
               ref={inputRef}
               type="text"
-              className="block w-full pl-11 pr-24 py-4 border-0 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary sm:text-lg shadow-lg text-slate-900"
+              className="block w-full pl-11 pr-[135px] py-4 border-0 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary sm:text-lg shadow-lg text-slate-900"
               placeholder={activeTab === 'commercial' ? "Search by title, reference number, or keywords..." : "Search MSTC catalog numbers, categories, or sellers..."}
               value={searchQuery}
               onChange={handleInputChange}
               onFocus={() => setShowSuggestions(true)}
               autoComplete="off"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSearchParams(prev => {
+                    const next = new URLSearchParams(prev);
+                    next.delete('q');
+                    next.set('page', '1');
+                    return next;
+                  });
+                  if (inputRef.current) {
+                    inputRef.current.focus();
+                  }
+                }}
+                className="absolute right-[105px] top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
             <button
               type="submit"
               className="absolute right-2 top-2 bottom-2 px-6 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"

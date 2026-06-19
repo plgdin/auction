@@ -736,10 +736,7 @@ export async function processRecord(record: QueueRecord): Promise<void> {
     throw new Error("Downloaded file is not a valid PDF.");
   }
 
-  const sanitizedAuctionNum = record.mstc_auction_number.replace(
-    /[\/\\:*?"<>|]/g,
-    "_",
-  );
+  const sanitizedAuctionNum = record.id;
 
   // Upload catalog PDF
   const catalogUrl = await uploadToStorage(

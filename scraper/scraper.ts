@@ -425,12 +425,12 @@ async function executeDiscoveryScraper() {
       // 3. Remove physical files from storage
       for (const auc of expiredAuctions) {
         if (auc.sanitized_document_path) {
-          const sanitizedAuctionNum = auc.mstc_auction_number.replace(/[\/\\:*?"<>|]/g, '_');
-          const cloudStorageLocation = `mstc-catalogs/${sanitizedAuctionNum}.pdf`;
+          const cloudStorageLocation = `mstc-catalogs/${auc.id}.pdf`;
+          const previewStorageLocation = `mstc-previews/${auc.id}.jpg`;
           
           const { error: storageDeleteError } = await supabase.storage
             .from('auction_documents')
-            .remove([cloudStorageLocation]);
+            .remove([cloudStorageLocation, previewStorageLocation]);
 
           if (storageDeleteError) {
             console.warn(`[Cleanup] Failed to remove storage file ${cloudStorageLocation}:`, storageDeleteError.message);

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { FileText, FileImage, Download, UploadCloud, X, FolderLock, Eye } from 'lucide-react';
+import { FileText, FileImage, Download, UploadCloud, X, FolderLock, Eye, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { storageService } from '../../services/storageService';
 
@@ -84,6 +84,23 @@ export function DocumentVault() {
     
     setIsUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDelete = async (docId: string, source: string, fileUrl: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${name}" from your vault?`)) {
+      return;
+    }
+    try {
+      const success = await storageService.deleteDocument(docId, source, fileUrl);
+      if (success) {
+        setDocuments(prev => prev.filter(doc => doc.id !== docId));
+      } else {
+        alert('Failed to delete document. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      alert('An error occurred while deleting the document.');
+    }
   };
 
   const isImage = (fileName: string) => {
@@ -193,10 +210,19 @@ export function DocumentVault() {
                         <Eye className="w-3.5 h-3.5 mr-1.5" /> Preview
                       </button>
                       <button
-                        onClick={() => storageService.downloadFile(doc.url, doc.name)}
+                        onClick={async () => {
+                          const storagePath = storageService.extractStoragePath(doc.url);
+                          await storageService.downloadPrivateFile('auction_documents', storagePath, doc.name);
+                        }}
                         className="inline-flex items-center px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded transition-colors"
                       >
                         <Download className="w-3.5 h-3.5 mr-1.5" /> Download
+                      </button>
+                      <button
+                        onClick={() => handleDelete(doc.id, doc.source, doc.url, doc.name)}
+                        className="inline-flex items-center px-3 py-1.5 bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-bold rounded border border-destructive/20 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete
                       </button>
                     </td>
                   </tr>
@@ -218,7 +244,10 @@ export function DocumentVault() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => storageService.downloadFile(previewDoc.url, previewDoc.name)}
+                  onClick={async () => {
+                    const storagePath = storageService.extractStoragePath(previewDoc.url);
+                    await storageService.downloadPrivateFile('auction_documents', storagePath, previewDoc.name);
+                  }}
                   className="p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded transition-colors"
                   title="Download File"
                 >
@@ -236,12 +265,12 @@ export function DocumentVault() {
               {isLoadingPreview ? (
                 <div className="flex flex-col items-center text-muted-foreground">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-                  <p>Loading secure preview...</p>
+                  <p className="text-sm">Loading secure preview...</p>
                 </div>
               ) : !previewUrl ? (
                 <div className="flex flex-col items-center text-destructive">
                   <X className="w-8 h-8 mb-4" />
-                  <p>Failed to load secure preview</p>
+                  <p className="text-sm font-bold">Failed to load secure preview</p>
                 </div>
               ) : isImage(previewDoc.name) ? (
                 <img 
@@ -251,7 +280,7 @@ export function DocumentVault() {
                 />
               ) : (
                 <iframe 
-                  src={`${previewUrl}#toolbar=0`} 
+                  src={`${previewUrl || ''}#toolbar=0`} 
                   className="w-full h-[70vh] rounded shadow-md border border-border bg-white"
                   title="Document Preview"
                 />

@@ -22,10 +22,10 @@ import {
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { embeddingService } from '../../services/embeddingService';
-import { storageService } from '../../services/storageService';
 import { supabase } from '../../lib/supabase';
 import type { AuditLog } from '../../types/database.types';
 import toast from 'react-hot-toast';
+import { storageService } from '../../services/storageService';
 
 interface ScraperStats {
   total: number;
@@ -310,6 +310,22 @@ export function ScraperDashboard() {
       }
     } catch (err: any) {
       toast.error(err.message || "An error occurred.");
+    }
+  };
+
+  const handleViewPrivateAsset = async (e: React.MouseEvent, url: string) => {
+    e.preventDefault();
+    try {
+      const storagePath = storageService.extractStoragePath(url);
+      const signedUrl = await storageService.getSignedUrlForBucket('auction_documents', storagePath, 60);
+      if (signedUrl) {
+        window.open(signedUrl, '_blank');
+      } else {
+        toast.error('Failed to generate secure preview URL.');
+      }
+    } catch (err) {
+      console.error('Error opening asset:', err);
+      toast.error('An error occurred.');
     }
   };
 
@@ -755,9 +771,9 @@ export function ScraperDashboard() {
                           {/* downloaded pdf (internal supabase storage link) */}
                           {auc.sanitized_document_path ? (
                             <button 
-                              onClick={() => storageService.downloadFile(auc.sanitized_document_path as string, `Catalog_${auc.mstc_auction_number.split('/').pop()}.pdf`)}
+                              onClick={(e) => handleViewPrivateAsset(e, auc.sanitized_document_path)}
                               className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg transition-colors inline-block cursor-pointer"
-                              title="Download Cloud Storage Document"
+                              title="Open Downloaded Cloud Storage Document"
                             >
                               <FileCheck className="w-3.5 h-3.5" />
                             </button>
@@ -835,10 +851,10 @@ export function ScraperDashboard() {
                           <p className="text-slate-700 font-semibold">{logMessage}</p>
                           {detailsObj.sanitized_document_path && (
                             <button 
-                              onClick={() => storageService.downloadFile(detailsObj.sanitized_document_path as string, `Catalog_Log_${log.id}.pdf`)}
-                              className="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1 mt-1 cursor-pointer bg-transparent border-none p-0"
+                              onClick={(e) => handleViewPrivateAsset(e, detailsObj.sanitized_document_path)}
+                              className="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1 mt-1 cursor-pointer text-left bg-transparent border-0"
                             >
-                              Download Saved Asset <Download className="w-3 h-3" />
+                              View Saved Asset <ExternalLink className="w-3 h-3" />
                             </button>
                           )}
                         </td>

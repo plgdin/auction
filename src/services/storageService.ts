@@ -240,5 +240,121 @@ export const storageService = {
       return null;
     }
     return data;
+  },
+
+  /**
+   * Extracts the relative storage path from a full Supabase storage URL
+   */
+  extractStoragePath(url: string): string {
+    if (!url) return '';
+    const publicMarker = '/storage/v1/object/public/auction_documents/';
+    const authMarker = '/storage/v1/object/authenticated/auction_documents/';
+    
+    if (url.includes(publicMarker)) {
+      return decodeURIComponent(url.substring(url.indexOf(publicMarker) + publicMarker.length));
+    }
+    if (url.includes(authMarker)) {
+      return decodeURIComponent(url.substring(url.indexOf(authMarker) + authMarker.length));
+    }
+    return decodeURIComponent(url);
+  },
+
+  /**
+   * Securely downloads a file from a private Supabase Storage bucket and triggers a browser download
+   */
+  async downloadPrivateFile(bucketName: string, storagePath: string, fileName: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .download(storagePath);
+
+      if (error) {
+        console.error('Error downloading private file:', error);
+        return false;
+      }
+
+      const blobUrl = window.URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+      return true;
+    } catch (err) {
+      console.error('Unexpected error downloading private file:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Generates a temporary signed URL for a private file
+   */
+  async getSignedUrlForBucket(bucketName: string, storagePath: string, expiresIn: number = 60): Promise<string | null> {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .createSignedUrl(storagePath, expiresIn);
+
+      if (error) {
+        console.error('Error creating signed URL:', error);
+        return null;
+      }
+
+      return data.signedUrl;
+    } catch (err) {
+      console.error('Unexpected error getting signed URL:', err);
+      return null;
+    }
+  },
+
+  /**
+   * Deletes a document from the database and the Supabase Storage bucket
+   */
+  async deleteDocument(docId: string, source: string, fileUrl: string): Promise<boolean> {
+    try {
+      let tableName = '';
+      let bucketName = 'auction_documents';
+
+      if (source === 'Auction Attachment') {
+        tableName = 'auction_documents';
+        bucketName = 'auction_documents';
+      } else if (source === 'Tender Attachment') {
+        tableName = 'tender_documents';
+        bucketName = 'tender_documents';
+      } else if (source === 'User Vault (KYC)') {
+        tableName = 'user_documents';
+        bucketName = 'auction_documents';
+      } else {
+        throw new Error(`Unknown document source: ${source}`);
+      }
+
+      const { error: dbError } = await supabase
+        .from(tableName)
+        .delete()
+        .eq('id', docId);
+
+      if (dbError) {
+        console.error('Database deletion error:', dbError);
+        return false;
+      }
+
+      const storagePath = this.extractStoragePath(fileUrl);
+      if (storagePath) {
+        const { error: storageError } = await supabase.storage
+          .from(bucketName)
+          .remove([storagePath]);
+
+        if (storageError) {
+          console.error('Storage deletion error:', storageError);
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Unexpected error during document deletion:', err);
+      return false;
+    }
   }
 };
