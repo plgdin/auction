@@ -7,14 +7,14 @@ import { supabase } from '../lib/supabase';
  * If it's already a plain path (no 'http'), return as-is.
  */
 function extractStoragePath(urlOrPath: string, bucketName: string): string {
-  if (!urlOrPath.startsWith('http')) return urlOrPath;
+  if (!urlOrPath.startsWith('http')) return decodeURIComponent(urlOrPath);
   try {
     const urlObj = new URL(urlOrPath);
     // pathname is like /storage/v1/object/public/BUCKET/path/to/file
     const marker = `/object/public/${bucketName}/`;
     const idx = urlObj.pathname.indexOf(marker);
     if (idx !== -1) {
-      return urlObj.pathname.substring(idx + marker.length);
+      return decodeURIComponent(urlObj.pathname.substring(idx + marker.length));
     }
     // Fallback: also handle /object/sign/ style
     const signMarker = `/object/sign/${bucketName}/`;
@@ -22,11 +22,11 @@ function extractStoragePath(urlOrPath: string, bucketName: string): string {
     if (signIdx !== -1) {
       const afterBucket = urlObj.pathname.substring(signIdx + signMarker.length);
       // signed URL paths may have a query string embedded — strip it
-      return afterBucket.split('?')[0];
+      return decodeURIComponent(afterBucket.split('?')[0]);
     }
     // Last-resort: just use the last path segment (old behaviour)
     const parts = urlObj.pathname.split('/');
-    return parts[parts.length - 1];
+    return decodeURIComponent(parts[parts.length - 1]);
   } catch {
     return urlOrPath;
   }
