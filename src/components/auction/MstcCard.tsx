@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart } from 'lucide-react';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
+import { storageService } from '../../services/storageService';
 
 interface MstcCardProps {
   item: MstcSanitizedAuction;
@@ -23,7 +24,29 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
   );
   
   const hasOtherMedia = actualPhotos.length > 0;
-  const displayImage = actualPhotos.length > 0 ? actualPhotos[0] : summary.preview_image_url;
+  const rawDisplayImage = actualPhotos.length > 0 ? actualPhotos[0] : summary.preview_image_url;
+
+  const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function resolveImage() {
+      setImageLoading(true);
+      if (!rawDisplayImage) {
+        setSignedDisplayImage(null);
+        setImageLoading(false);
+        return;
+      }
+      const signed = await storageService.getSignedUrls([rawDisplayImage]);
+      if (!cancelled) {
+        setSignedDisplayImage(signed[0] || null);
+        setImageLoading(false);
+      }
+    }
+    resolveImage();
+    return () => { cancelled = true; };
+  }, [rawDisplayImage]);
 
   const parts = item.mstc_auction_number.split('/');
   const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
@@ -120,10 +143,12 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     // LIST VIEW
     return (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/50 transition-all group p-5 flex flex-col sm:flex-row gap-5 justify-between">
-        {displayImage ? (
+        {imageLoading ? (
+          <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-100 animate-pulse hidden sm:block"></div>
+        ) : signedDisplayImage ? (
           <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
             <img 
-              src={displayImage} 
+              src={signedDisplayImage} 
               alt="Catalog Image" 
               className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
             />
@@ -252,9 +277,11 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full p-5 justify-between">
       <div>
         <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
-          {displayImage ? (
+          {imageLoading ? (
+            <div className="w-full h-full bg-slate-100 animate-pulse"></div>
+          ) : signedDisplayImage ? (
             <img 
-              src={displayImage} 
+              src={signedDisplayImage} 
               alt="Catalog Image" 
               className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
             />

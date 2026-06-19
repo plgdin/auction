@@ -1,9 +1,10 @@
-﻿import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart } from 'lucide-react';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
+import { storageService } from '../../services/storageService';
 
 interface MstcCardProps {
   item: MstcSanitizedAuction;
@@ -16,7 +17,42 @@ interface MstcCardProps {
 export function MstcCard({ item, isGrid = true, onPreview, isInterested = false, onInterestedToggle }: MstcCardProps) {
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
   const summary = generateCatalogSummary(item);
-  const hasOtherMedia = (summary.extracted_images || []).length > 0;
+
+  // Distinguish actual item photos from document page preview images
+  const actualPhotos = (summary.extracted_images || []).filter(
+    (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('mstc-previews/')
+  );
+  
+  const hasOtherMedia = actualPhotos.length > 0;
+  
+  // Use UI component default fallback rules for preview image
+  const rawDisplayImage = summary.preview_image_url
+    ? summary.preview_image_url
+    : (summary.extracted_images && summary.extracted_images.length > 0)
+      ? summary.extracted_images[0]
+      : null;
+
+  const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function resolveImage() {
+      setImageLoading(true);
+      if (!rawDisplayImage) {
+        setSignedDisplayImage(null);
+        setImageLoading(false);
+        return;
+      }
+      const signed = await storageService.getSignedUrls([rawDisplayImage]);
+      if (!cancelled) {
+        setSignedDisplayImage(signed[0] || null);
+        setImageLoading(false);
+      }
+    }
+    resolveImage();
+    return () => { cancelled = true; };
+  }, [rawDisplayImage]);
 
   const parts = item.mstc_auction_number.split('/');
   const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
@@ -107,30 +143,24 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     // LIST VIEW
     return (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/50 transition-all group p-5 flex flex-col sm:flex-row gap-5 justify-between">
-        {(() => {
-          const displayImage = summary.preview_image_url
-            ? summary.preview_image_url
-            : (summary.extracted_images && summary.extracted_images.length > 0)
-              ? summary.extracted_images[0]
-              : null;
-
-          return displayImage ? (
-            <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
-              <img 
-                src={displayImage} 
-                alt="Catalog Image" 
-                className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
-              />
-            </div>
-          ) : (
-            <div className="w-[120px] h-[120px] rounded-xl border border-slate-200 shrink-0 bg-slate-50 flex flex-col items-center justify-center text-slate-400 select-none hidden sm:flex gap-1.5">
-              <svg className="w-6 h-6 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-              </svg>
-              <span className="text-[9px] font-medium tracking-wide text-slate-400 text-center px-1.5 leading-tight">No pictures available</span>
-            </div>
-          );
-        })()}
+        {imageLoading ? (
+          <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-100 animate-pulse hidden sm:block"></div>
+        ) : signedDisplayImage ? (
+          <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
+            <img 
+              src={signedDisplayImage} 
+              alt="Catalog Image" 
+              className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
+            />
+          </div>
+        ) : (
+          <div className="w-[120px] h-[120px] rounded-xl border border-slate-200 shrink-0 bg-slate-50 flex flex-col items-center justify-center text-slate-400 select-none hidden sm:flex gap-1.5">
+            <svg className="w-6 h-6 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            <span className="text-[9px] font-medium tracking-wide text-slate-400 text-center px-1.5 leading-tight">No pictures available</span>
+          </div>
+        )}
 
         <div className="flex-1 flex flex-col justify-between">
           <div>
@@ -247,31 +277,22 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full p-5 justify-between">
       <div>
         <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
-          {(() => {
-            const displayImage = summary.preview_image_url
-              ? summary.preview_image_url
-              : (summary.extracted_images && summary.extracted_images.length > 0)
-                ? summary.extracted_images[0]
-                : null;
-
-            return displayImage ? (
-              <>
-                <img 
-                  src={displayImage} 
-                  alt="Catalog Image" 
-                  className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
-                />
-
-              </>
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
-                <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                <span className="text-[11px] font-medium tracking-wide">No pictures available</span>
-              </div>
-            );
-          })()}
+          {imageLoading ? (
+            <div className="w-full h-full bg-slate-100 animate-pulse"></div>
+          ) : signedDisplayImage ? (
+            <img 
+              src={signedDisplayImage} 
+              alt="Catalog Image" 
+              className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
+              <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              <span className="text-[11px] font-medium tracking-wide">No pictures available</span>
+            </div>
+          )}
         </div>
         {cardHeader}
 
