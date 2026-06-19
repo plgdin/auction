@@ -1,5 +1,37 @@
 import { supabase } from '../lib/supabase';
 
+/**
+ * Extracts the bucket-relative path from a full Supabase storage URL.
+ * e.g. https://.../storage/v1/object/public/auction_documents/mstc-extracted-images/foo.jpg
+ *   → mstc-extracted-images/foo.jpg
+ * If it's already a plain path (no 'http'), return as-is.
+ */
+function extractStoragePath(urlOrPath: string, bucketName: string): string {
+  if (!urlOrPath.startsWith('http')) return urlOrPath;
+  try {
+    const urlObj = new URL(urlOrPath);
+    // pathname is like /storage/v1/object/public/BUCKET/path/to/file
+    const marker = `/object/public/${bucketName}/`;
+    const idx = urlObj.pathname.indexOf(marker);
+    if (idx !== -1) {
+      return urlObj.pathname.substring(idx + marker.length);
+    }
+    // Fallback: also handle /object/sign/ style
+    const signMarker = `/object/sign/${bucketName}/`;
+    const signIdx = urlObj.pathname.indexOf(signMarker);
+    if (signIdx !== -1) {
+      const afterBucket = urlObj.pathname.substring(signIdx + signMarker.length);
+      // signed URL paths may have a query string embedded — strip it
+      return afterBucket.split('?')[0];
+    }
+    // Last-resort: just use the last path segment (old behaviour)
+    const parts = urlObj.pathname.split('/');
+    return parts[parts.length - 1];
+  } catch {
+    return urlOrPath;
+  }
+}
+
 export const storageService = {
   /**
    * Uploads a file to a specific Supabase Storage bucket and returns its public URL
@@ -54,17 +86,7 @@ export const storageService = {
    */
   async downloadFile(urlOrPath: string, fileName: string, bucketName: string = 'auction_documents') {
     try {
-      // Extract the filename from a full URL if necessary
-      let finalPath = urlOrPath;
-      if (urlOrPath.startsWith('http')) {
-        try {
-          const urlObj = new URL(urlOrPath);
-          const parts = urlObj.pathname.split('/');
-          finalPath = parts[parts.length - 1];
-        } catch (e) {
-          console.warn('Could not parse URL, using as raw path', e);
-        }
-      }
+      const finalPath = extractStoragePath(urlOrPath, bucketName);
 
       // Download the file securely via Supabase client (attaches auth tokens automatically)
       const { data, error } = await supabase.storage
@@ -92,20 +114,11 @@ export const storageService = {
   },
 
   /**
-   * Retrieves a temporary signed URL for a private file
+   * Retrieves a temporary signed URL for a single private file.
    */
   async getSignedUrl(urlOrPath: string, bucketName: string = 'auction_documents'): Promise<string | null> {
     try {
-      let finalPath = urlOrPath;
-      if (urlOrPath.startsWith('http')) {
-        try {
-          const urlObj = new URL(urlOrPath);
-          const parts = urlObj.pathname.split('/');
-          finalPath = parts[parts.length - 1];
-        } catch (e) {
-          // ignore
-        }
-      }
+      const finalPath = extractStoragePath(urlOrPath, bucketName);
 
       const { data, error } = await supabase.storage
         .from(bucketName)
@@ -120,6 +133,32 @@ export const storageService = {
     } catch (err) {
       console.error('Unexpected error creating signed URL:', err);
       return null;
+    }
+  },
+
+  /**
+   * Batch-resolves an array of private storage URLs to temporary signed URLs.
+   * Skips any URL that is already a signed URL (contains 'token=') to avoid double-signing.
+   */
+  async getSignedUrls(urls: string[], bucketName: string = 'auction_documents'): Promise<string[]> {
+    if (!urls || urls.length === 0) return [];
+    try {
+      const paths = urls.map(u => extractStoragePath(u, bucketName));
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .createSignedUrls(paths, 3600);
+
+      if (error || !data) {
+        console.error('Error creating signed URLs:', error);
+        // Fall back to individual signing
+        const results = await Promise.all(urls.map(u => this.getSignedUrl(u, bucketName)));
+        return results.filter(Boolean) as string[];
+      }
+
+      return data.map(item => item.signedUrl).filter(Boolean) as string[];
+    } catch (err) {
+      console.error('Unexpected error creating signed URLs:', err);
+      return [];
     }
   },
 

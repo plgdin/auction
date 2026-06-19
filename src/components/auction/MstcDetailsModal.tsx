@@ -38,6 +38,9 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [signedImageUrls, setSignedImageUrls] = useState<string[]>([]);
+  const [signedPreviewUrl, setSignedPreviewUrl] = useState<string | null>(null);
+  const [imagesLoading, setImagesLoading] = useState(true);
 
   const { currency } = useAppStore();
   const currencySymbol = CURRENCIES[currency]?.symbol || '₹';
@@ -55,6 +58,38 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [isValuating, setIsValuating] = useState(false);
   const [selectedChartItemId, setSelectedChartItemId] = useState<string>('total');
   const [extraChargeType, setExtraChargeType] = useState<string>('none');
+
+  const summary = generateCatalogSummary(item);
+
+  // Resolve all images to signed URLs on mount (private bucket)
+  useEffect(() => {
+    let cancelled = false;
+    async function resolveImages() {
+      setImagesLoading(true);
+      const rawImages = summary.extracted_images || [];
+      const rawPreview = summary.preview_image_url || null;
+      const allUrls = rawPreview ? [rawPreview, ...rawImages] : rawImages;
+      if (allUrls.length === 0) {
+        setSignedImageUrls([]);
+        setSignedPreviewUrl(null);
+        setImagesLoading(false);
+        return;
+      }
+      const signed = await storageService.getSignedUrls(allUrls);
+      if (cancelled) return;
+      if (rawPreview) {
+        setSignedPreviewUrl(signed[0] || null);
+        setSignedImageUrls(signed.slice(1));
+      } else {
+        setSignedPreviewUrl(null);
+        setSignedImageUrls(signed);
+      }
+      setImagesLoading(false);
+    }
+    resolveImages();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
 
   const extraChargeLabels: Record<string, string> = {
     none: 'None (₹0)',
@@ -1110,16 +1145,25 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
             {/* Right Side: Image/Preview Panel */}
             {(() => {
-              const hasOtherMedia = item.raw_materials_text && summary.extracted_images && summary.extracted_images.length > 0;
-              const displayImage = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images![0] : null);
-
               return (
                 <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
                   {/* Image Gallery */}
                   {(() => {
-                    const imageUrls = (summary.extracted_images || []).filter(
-                      (url: string) => !url.toLowerCase().endsWith('.pdf')
+                    const imageUrls = signedImageUrls.filter(
+                      (url: string) => !url.toLowerCase().includes('.pdf')
                     );
+                    if (imagesLoading) {
+                      return (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">Auction Images</h4>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[1,2,3,4].map(i => (
+                              <div key={i} className="aspect-square rounded-xl bg-slate-100 animate-pulse" />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
                     if (imageUrls.length === 0) return null;
                     return (
                       <div className="space-y-3">
@@ -1147,7 +1191,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     );
                   })()}
 
-                  {displayImage ? (
+                  {signedPreviewUrl ? (
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
                         Catalog Document Preview
@@ -1155,11 +1199,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
                         <button
                           type="button"
-                          onClick={() => setLightboxImage(displayImage)}
+                          onClick={() => setLightboxImage(signedPreviewUrl)}
                           className="block w-full text-left cursor-zoom-in relative focus:outline-none"
                         >
                           <img
-                            src={displayImage}
+                            src={signedPreviewUrl}
                             alt="PDF Catalog Preview"
                             className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
                           />
