@@ -317,7 +317,7 @@ export function ScraperDashboard() {
     e.preventDefault();
     try {
       const storagePath = storageService.extractStoragePath(url);
-      const signedUrl = await storageService.getSignedUrl('auction_documents', storagePath, 60);
+      const signedUrl = await storageService.getSignedUrlForBucket('auction_documents', storagePath, 60);
       if (signedUrl) {
         window.open(signedUrl, '_blank');
       } else {

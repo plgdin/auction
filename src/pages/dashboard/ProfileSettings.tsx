@@ -1,9 +1,10 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2 } from 'lucide-react';
+import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
@@ -17,10 +18,53 @@ const profileSchema = z.object({
 type ProfileValues = z.infer<typeof profileSchema>;
 
 export function ProfileSettings() {
-  const { user, profile, setProfile } = useAuthStore();
+  const { user, profile, setProfile, logout } = useAuthStore();
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'profile' | 'notifications'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'privacy'>('profile');
+
+  const handleClearWatchlist = () => {
+    if (!user) return;
+    if (window.confirm('Are you sure you want to clear your interested watchlist? This will remove all items.')) {
+      localStorage.setItem(`usr_interested_${user.id}`, '[]');
+      setSuccessMsg('Watchlist cleared successfully.');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    }
+  };
+
+  const handleClearSearchFilters = () => {
+    navigate('/auctions');
+    setSuccessMsg('Active search parameters and filters reset.');
+    setTimeout(() => setSuccessMsg(null), 3000);
+  };
+
+  const handleTerminateAccount = async () => {
+    if (!user) return;
+    const confirmInput = window.prompt(
+      'WARNING: This action is permanent. Type "DELETE" to request account termination:'
+    );
+    if (confirmInput !== 'DELETE') {
+      alert('Deactivation cancelled.');
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      localStorage.removeItem(`usr_interested_${user.id}`);
+      localStorage.removeItem(`usr_reminders_${user.id}`);
+      localStorage.removeItem(`usr_vendors_${user.id}`);
+      
+      await logout();
+      alert('Account deactivation and termination requested. You have been successfully signed out.');
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error requesting account deactivation:', error);
+      alert('An error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Mock Notification State
   const [prefs, setPrefs] = useState({
@@ -132,6 +176,15 @@ export function ProfileSettings() {
         >
           <Bell className="w-4 h-4 mr-2" />
           Alert Preferences
+        </button>
+        <button
+          onClick={() => setActiveTab('privacy')}
+          className={`flex items-center px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
+            activeTab === 'privacy' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          <Shield className="w-4 h-4 mr-2" />
+          Privacy & Data
         </button>
       </div>
 
@@ -293,6 +346,110 @@ export function ProfileSettings() {
               >
                 {isSubmitting ? 'Saving...' : <><Save className="w-4 h-4 mr-2" /> Save Preferences</>}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'privacy' && (
+        <div className="space-y-8">
+          {/* Account Settings Panel */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-200 p-6 flex items-center">
+              <User className="w-6 h-6 text-primary mr-3" />
+              <h2 className="text-lg font-bold text-slate-900">Account Settings</h2>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-600 text-sm mb-4 leading-relaxed">
+                You can edit your profile information (such as your name, company details, phone number, and contact preferences) at any time through the Profile Settings page.
+              </p>
+              <button
+                onClick={() => setActiveTab('profile')}
+                className="inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 transition-colors shadow-sm"
+              >
+                Go to Profile Settings
+              </button>
+            </div>
+          </div>
+
+          {/* Data Deletion Panel */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-200 p-6 flex items-center">
+              <Shield className="w-6 h-6 text-red-500 mr-3" />
+              <h2 className="text-lg font-bold text-slate-900">Data Deletion</h2>
+            </div>
+            <div className="p-6 space-y-6">
+              <p className="text-slate-600 text-sm leading-relaxed">
+                You can manage the removal of your active data from the platform, delete your watchlist items, remove documents from your vault, or request account termination.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <div className="border border-slate-200 rounded-xl p-4 flex flex-col justify-between hover:shadow-sm transition-shadow">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm mb-1">Clear Watchlist</h3>
+                    <p className="text-xs text-slate-500 mb-4">Remove all auctions and catalog items from your interested list.</p>
+                  </div>
+                  <button
+                    onClick={handleClearWatchlist}
+                    className="w-full text-center py-2 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Clear Watchlist
+                  </button>
+                </div>
+
+                <div className="border border-slate-200 rounded-xl p-4 flex flex-col justify-between hover:shadow-sm transition-shadow">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm mb-1">Remove Documents</h3>
+                    <p className="text-xs text-slate-500 mb-4">View and delete individual KYC and transaction documents from your vault.</p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/dashboard/documents')}
+                    className="w-full text-center py-2 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Manage Vault
+                  </button>
+                </div>
+
+                <div className="border border-red-100 rounded-xl p-4 flex flex-col justify-between hover:shadow-sm transition-shadow bg-red-50/10">
+                  <div>
+                    <h3 className="font-bold text-red-600 text-sm mb-1">Terminate Account</h3>
+                    <p className="text-xs text-slate-500 mb-4">Permanently delete your profile and deactivate your account credentials.</p>
+                  </div>
+                  <button
+                    onClick={handleTerminateAccount}
+                    className="w-full text-center py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors shadow-sm cursor-pointer"
+                  >
+                    Request Termination
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Search History Panel */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-200 p-6 flex items-center">
+              <Globe className="w-6 h-6 text-primary mr-3" />
+              <h2 className="text-lg font-bold text-slate-900">Search History & Filters</h2>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-600 text-sm mb-4 leading-relaxed">
+                Clear or modify your local search filters directly from the global search interface. Resets categories, regional offices, locations, sellers, and dates.
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleClearSearchFilters}
+                  className="inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                >
+                  Clear Local Search Filters
+                </button>
+                <button
+                  onClick={() => navigate('/auctions')}
+                  className="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary-700 text-sm font-medium rounded-lg text-white transition-colors shadow-sm cursor-pointer"
+                >
+                  Go to Marketplace
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { FileText, FileImage, Download, UploadCloud, X, FolderLock, Eye } from 'lucide-react';
+import { FileText, FileImage, Download, UploadCloud, X, FolderLock, Eye, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { storageService } from '../../services/storageService';
 
@@ -21,19 +21,7 @@ export function DocumentVault() {
   // Preview Modal State
   const [previewDoc, setPreviewDoc] = useState<VaultDocument | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (previewDoc) {
-      const fetchSignedUrl = async () => {
-        const storagePath = storageService.extractStoragePath(previewDoc.url);
-        const signedUrl = await storageService.getSignedUrl('auction_documents', storagePath, 60);
-        setPreviewUrl(signedUrl);
-      };
-      fetchSignedUrl();
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [previewDoc]);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,6 +36,26 @@ export function DocumentVault() {
   useEffect(() => {
     loadDocuments();
   }, [loadDocuments]);
+
+  useEffect(() => {
+    async function fetchPreviewUrl() {
+      if (!previewDoc) {
+        setPreviewUrl(null);
+        return;
+      }
+      setIsLoadingPreview(true);
+      
+      // Determine bucket based on source (this is a simplified guess based on your sources)
+      let bucketName = 'auction_documents';
+      if (previewDoc.source === 'Tender Attachment') bucketName = 'tender_documents';
+      if (previewDoc.source === 'User Vault (KYC)') bucketName = 'auction_documents'; // Assumes KYC is in auction_documents
+
+      const signedUrl = await storageService.getSignedUrl(previewDoc.url, bucketName);
+      setPreviewUrl(signedUrl);
+      setIsLoadingPreview(false);
+    }
+    fetchPreviewUrl();
+  }, [previewDoc]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -76,6 +84,23 @@ export function DocumentVault() {
     
     setIsUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDelete = async (docId: string, source: string, fileUrl: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${name}" from your vault?`)) {
+      return;
+    }
+    try {
+      const success = await storageService.deleteDocument(docId, source, fileUrl);
+      if (success) {
+        setDocuments(prev => prev.filter(doc => doc.id !== docId));
+      } else {
+        alert('Failed to delete document. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      alert('An error occurred while deleting the document.');
+    }
   };
 
   const isImage = (fileName: string) => {
@@ -193,6 +218,12 @@ export function DocumentVault() {
                       >
                         <Download className="w-3.5 h-3.5 mr-1.5" /> Download
                       </button>
+                      <button
+                        onClick={() => handleDelete(doc.id, doc.source, doc.url, doc.name)}
+                        className="inline-flex items-center px-3 py-1.5 bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-bold rounded border border-destructive/20 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -231,9 +262,15 @@ export function DocumentVault() {
               </div>
             </div>
             <div className="flex-1 overflow-auto bg-muted p-6 flex items-center justify-center min-h-[500px]">
-              {!previewUrl ? (
-                <div className="flex justify-center items-center py-20">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              {isLoadingPreview ? (
+                <div className="flex flex-col items-center text-muted-foreground">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                  <p className="text-sm">Loading secure preview...</p>
+                </div>
+              ) : !previewUrl ? (
+                <div className="flex flex-col items-center text-destructive">
+                  <X className="w-8 h-8 mb-4" />
+                  <p className="text-sm font-bold">Failed to load secure preview</p>
                 </div>
               ) : isImage(previewDoc.name) ? (
                 <img 
@@ -243,7 +280,7 @@ export function DocumentVault() {
                 />
               ) : (
                 <iframe 
-                  src={`${previewUrl}#toolbar=0`} 
+                  src={`${previewUrl || ''}#toolbar=0`} 
                   className="w-full h-[70vh] rounded shadow-md border border-border bg-white"
                   title="Document Preview"
                 />
