@@ -259,7 +259,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     };
   }, [item, customCosts]);
 
-  const summary = generateCatalogSummary(item);
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
   const regionalOfficeName = expandMstcOffice(
     item.mstc_auction_number.split('/')[0].toUpperCase() === 'MSTC'
