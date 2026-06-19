@@ -1190,7 +1190,12 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     );
                   })()}
 
-                  {signedPreviewUrl ? (
+                  {imagesLoading ? (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">Catalog Document Preview</h4>
+                      <div className="w-full h-48 rounded-2xl bg-slate-100 animate-pulse" />
+                    </div>
+                  ) : signedPreviewUrl ? (
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
                         Catalog Document Preview
