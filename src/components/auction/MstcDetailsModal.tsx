@@ -358,35 +358,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     };
   }, [item, customCosts]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchSignedUrls = async () => {
-      const summary = generateCatalogSummary(item);
-      const hasOtherMedia = item.raw_materials_text && summary.extracted_images && summary.extracted_images.length > 0;
-      const displayImageRaw = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images![0] : null);
-      const imageUrlsRaw = (summary.extracted_images || []).filter((url: string) => !url.toLowerCase().endsWith('.pdf'));
 
-      const urlsToSign = [...imageUrlsRaw];
-      if (displayImageRaw && !urlsToSign.includes(displayImageRaw)) {
-        urlsToSign.push(displayImageRaw);
-      }
-      if (urlsToSign.length === 0) return;
-
-      const signed = await storageService.getSignedUrls(urlsToSign, 'auction_documents');
-      if (cancelled) return;
-
-      const newSignedImages: Record<string, string> = {};
-      urlsToSign.forEach((url, i) => {
-        newSignedImages[url] = signed[i] || url;
-      });
-      setSignedImages(newSignedImages);
-      if (displayImageRaw) {
-        setSignedDisplayImage(newSignedImages[displayImageRaw] || null);
-      }
-    };
-    fetchSignedUrls();
-    return () => { cancelled = true; };
-  }, [item]);
 
   const summary = generateCatalogSummary(item);
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
