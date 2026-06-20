@@ -434,7 +434,19 @@ async function extractAndProcessLotDocuments(
             // Extract quantities from the combined text
             const extracted = extractQuantitiesDetailed(combinedText);
 
-            const subItems = parseSubItemsFromText(combinedText);
+            // Classify page: skip parsing if it is a terms & conditions or instructional page
+            const lowerText = combinedText.toLowerCase();
+            const isTermsPage = 
+              lowerText.includes("special terms") || 
+              lowerText.includes("general terms") || 
+              lowerText.includes("instructions to bidders") || 
+              lowerText.includes("payment guidelines") || 
+              lowerText.includes("how to participate") ||
+              lowerText.includes("terms and conditions") ||
+              lowerText.includes("terms & conditions") ||
+              lowerText.includes("guide for making payment");
+
+            const subItems = isTermsPage ? [] : parseSubItemsFromText(combinedText);
             if (subItems && subItems.length > 0) {
               log.info(
                 { pageNumber: page.pageNumber, subItemsCount: subItems.length },
@@ -517,7 +529,20 @@ async function extractAndProcessLotDocuments(
             const ocrText = await performOcr(page.imageBuffer);
             const combinedText = `${page.text || ""}\n${ocrText}`;
             const extracted = extractQuantitiesDetailed(combinedText);
-            const subItems = parseSubItemsFromText(combinedText);
+            
+            // Classify page: skip parsing if it is a terms & conditions or instructional page
+            const lowerText = combinedText.toLowerCase();
+            const isTermsPage = 
+              lowerText.includes("special terms") || 
+              lowerText.includes("general terms") || 
+              lowerText.includes("instructions to bidders") || 
+              lowerText.includes("payment guidelines") || 
+              lowerText.includes("how to participate") ||
+              lowerText.includes("terms and conditions") ||
+              lowerText.includes("terms & conditions") ||
+              lowerText.includes("guide for making payment");
+
+            const subItems = isTermsPage ? [] : parseSubItemsFromText(combinedText);
             if (subItems && subItems.length > 0) {
               if (!item.subItems) {
                 item.subItems = [];
@@ -591,7 +616,19 @@ async function extractAndProcessLotDocuments(
                   }
                   lotSpecificImagesMap[srStr].push(publicUrl);
 
-                  const subItems = parseSubItemsFromText(ocrText);
+                  // Classify page: skip parsing if it is a terms & conditions or instructional page
+                  const lowerText = ocrText.toLowerCase();
+                  const isTermsPage = 
+                    lowerText.includes("special terms") || 
+                    lowerText.includes("general terms") || 
+                    lowerText.includes("instructions to bidders") || 
+                    lowerText.includes("payment guidelines") || 
+                    lowerText.includes("how to participate") ||
+                    lowerText.includes("terms and conditions") ||
+                    lowerText.includes("terms & conditions") ||
+                    lowerText.includes("guide for making payment");
+
+                  const subItems = isTermsPage ? [] : parseSubItemsFromText(ocrText);
                   if (subItems && subItems.length > 0) {
                     if (!lot.subItems) {
                       lot.subItems = [];

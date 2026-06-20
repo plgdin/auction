@@ -346,7 +346,12 @@ export function parseMstcCatalogText(
 
   if (lotBlocks.length > 1) {
     for (let i = 1; i < lotBlocks.length; i++) {
-      const block = lotBlocks[i];
+      const rawBlock = lotBlocks[i];
+
+      // Truncate lot block at boilerplate/terms & conditions sections (usually appended to the last block)
+      const boilerplatePattern = /(?:seller\s+specific\s+terms|special\s+terms\s+and\s+conditions|special\s+terms\s+&\s+conditions|general\s+terms\s+and\s+conditions|terms\s+&\s+conditions|terms\s+and\s+conditions|instructions\s+to\s+bidders|instructions\s+to\s+the\s+bidder|payment\s+procedure|e-payment|pre-bid\s+emd|important\s+instructions)/i;
+      const boilerplateIdx = rawBlock.search(boilerplatePattern);
+      const block = boilerplateIdx !== -1 ? rawBlock.substring(0, boilerplateIdx) : rawBlock;
 
       // --- Extract lot identifier ---
       // Everything before "Lot Name" is the lot ID (may span multiple lines)
@@ -807,6 +812,21 @@ export function parseSubItemsFromText(text: string): SubItem[] {
     normalized = normalized.replace(splitOnQtyUnitNewSerialHyphen, "$1\n$2-$3");
   }
 
+  // Split the very first item from the header row if run together
+  const splitFirstItem = new RegExp(
+    `\\b(?:photograph|photo|uom|unit|qty|quantity|description|location|state|gst|tcs)\\s+(\\d{1,2})\\s+([A-Z])`,
+    "i"
+  );
+  normalized = normalized.replace(splitFirstItem, "\n$1 $2");
+
+  // Fallback split with intermediate non-numeric text (e.g. locations/boilerplates) between quantity and next serial
+  const splitOnIntermediateText = /([a-zA-Z]+)\s+(\d+[\d,.]*)\s+([^0-9\n]{2,100}?)\s+(\d{1,3})\s+([A-Z][A-Z][A-Z])/g;
+  let prevVal = "";
+  while (prevVal !== normalized) {
+    prevVal = normalized;
+    normalized = normalized.replace(splitOnIntermediateText, "$1 $2 $3\n$4 $5");
+  }
+
   // Step 3: Line-merging pre-pass to handle wrapped OCR lines
   const rawLines = normalized.split(/\r?\n/).map((l) => l.trim());
   const mergedLines: string[] = [];
@@ -930,18 +950,10 @@ export function parseSubItemsFromText(text: string): SubItem[] {
       continue;
     }
 
-    // Match 3: "<sr>. DESCRIPTION <qty>" (no explicit unit, default to Nos)
-    const m3 = matchLine.match(/^(\d{1,3})[\\s.-]+(.+?)\\s+(\\d+[\d,.]*)$/);
+    // Match 3: "<sr>. DESCRIPTION <qty>" (no explicit unit, default to Nos, supports optional trailing location/non-digit text)
+    const m3 = matchLine.match(/^(\d{1,3})[\s.-]+(.+?)\s+(\d+[\d,.]*)(?:\s+[^0-9]+.*)?$/);
     if (m3) {
-      const desc = m3[2].trim();
-      // Only accept if description has meaningful alpha text (not just OCR noise)
-      if (
-        desc.length > 2 &&
-        !/^\d+$/.test(desc) &&
-        /[a-zA-Z]{2,}/.test(desc)
-      ) {
-        addItem(m3[1], desc, "Nos", m3[3]);
-      }
+      addItem(m3[1], m3[2], "Nos", m3[3]);
     }
   }
 
@@ -953,7 +965,16 @@ export function parseSubItemsFromText(text: string): SubItem[] {
     desc = desc.replace(/,?\s*Qty\s*-\s*$/i, "");
     desc = desc.trim();
 
-    if (desc.length < 2 || !/[a-zA-Z]{2,}/.test(desc)) return;
+    if (desc.length < 2 || desc.length > 160 || !/[a-zA-Z]{2,}/.test(desc)) return;
+
+    // Filter out boilerplate instructions/legal/contact clauses
+    const instructionKeywords = /\b(?:payment|e-payment|bidder|bidders|bid\s+value|bid\s+price|reserve\s+price|earnest\s+money|security\s+deposit|emd|levies|duties|statutory|authorities|click\s+here|download|website|portal|annexure|appendix|refund|forfeit|forfeiture|successful\s+bidder|shall\s+be|will\s+be|should\s+be|available\s+at|mobile|phone|email|manager|officer|telephone|contact\s+person)\b/i;
+    if (instructionKeywords.test(desc)) return;
+
+    // Filter out huge quantities like phone numbers / pin codes / serial numbers
+    const cleanQtyStr = qty.replace(/[^0-9.]/g, '');
+    const numQty = parseFloat(cleanQtyStr);
+    if (!isNaN(numQty) && numQty > 5000000) return;
 
     const sr = parseInt(srStr, 10);
     // Dedup using sr + normalized prefix of description (handles OCR variations)
