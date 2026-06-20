@@ -78,6 +78,105 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const { currency } = useAppStore();
   const currencySymbol = CURRENCIES[currency]?.symbol || '₹';
 
+  const [signedImages, setSignedImages] = useState<{
+    displayImage: string | null;
+    imageUrls: string[];
+    actualPhotos: string[];
+    urlMap: Record<string, string>;
+  }>({
+    displayImage: null,
+    imageUrls: [],
+    actualPhotos: [],
+    urlMap: {}
+  });
+  const [imagesLoading, setImagesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!item) return;
+    let isMounted = true;
+    
+    async function resolvePreviewUrls() {
+      setImagesLoading(true);
+      
+      const summary = generateCatalogSummary(item);
+      const rawExtImages = summary.extracted_images || [];
+      const rawPreviewUrl = summary.preview_image_url;
+      
+      // Determine actual photos & catalog pages
+      const rawActualPhotos = rawExtImages.filter(
+        (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('_page_') && !url.toLowerCase().includes('mstc-previews/') && !url.toLowerCase().endsWith('.pdf')
+      );
+      
+      const rawCatalogPages = rawExtImages.filter(
+        (url: string) => (url.toLowerCase().includes('_catalog_page_') || url.toLowerCase().includes('_page_') || url.toLowerCase().includes('mstc-previews/')) && !url.toLowerCase().endsWith('.pdf')
+      );
+      
+      const rawDisplayImage = rawActualPhotos.length > 0
+        ? rawActualPhotos[0]
+        : (rawPreviewUrl || (rawCatalogPages.length > 0 ? rawCatalogPages[0] : null));
+
+      // Gather all unique paths to sign
+      const pathsToSign: string[] = [];
+      if (rawDisplayImage) pathsToSign.push(rawDisplayImage);
+      rawActualPhotos.forEach(p => { if (!pathsToSign.includes(p)) pathsToSign.push(p); });
+      rawCatalogPages.forEach(p => { if (!pathsToSign.includes(p)) pathsToSign.push(p); });
+      
+      const rawItems = summary.items || [];
+      rawItems.forEach((row: any) => {
+        const rowImages = row.images || [];
+        rowImages.forEach((img: string) => {
+          if (!pathsToSign.includes(img)) pathsToSign.push(img);
+        });
+      });
+      
+      if (pathsToSign.length === 0) {
+        if (isMounted) {
+          setSignedImages({ displayImage: null, imageUrls: [], actualPhotos: [], urlMap: {} });
+          setImagesLoading(false);
+        }
+        return;
+      }
+      
+      try {
+        const signedUrls = await storageService.getSignedUrls(pathsToSign);
+        
+        // Map signed URLs back to their categories
+        const signedMap: Record<string, string> = {};
+        pathsToSign.forEach((path, idx) => {
+          signedMap[path] = signedUrls[idx] || path;
+        });
+        
+        const resolvedDisplayImage = rawDisplayImage ? (signedMap[rawDisplayImage] || null) : null;
+        const resolvedActualPhotos = rawActualPhotos.map(p => signedMap[p]).filter(Boolean);
+        const resolvedCatalogPages = rawCatalogPages.map(p => signedMap[p]).filter(Boolean);
+        
+        // Show actual photos first, then catalog pages.
+        const resolvedImageUrls = [...resolvedActualPhotos, ...resolvedCatalogPages];
+        
+        if (isMounted) {
+          setSignedImages({
+            displayImage: resolvedDisplayImage,
+            imageUrls: resolvedImageUrls,
+            actualPhotos: resolvedActualPhotos,
+            urlMap: signedMap
+          });
+        }
+      } catch (err) {
+        console.error('Failed to resolve preview images to signed URLs:', err);
+      } finally {
+        if (isMounted) {
+          setImagesLoading(false);
+        }
+      }
+    }
+    
+    resolvePreviewUrls();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [item]);
+
   const [modalTab, setModalTab] = useState<'catalog' | 'valuation'>('catalog');
   const [customCosts, setCustomCosts] = useState<ValuationCosts>({
     currentBid: 0,
@@ -1009,9 +1108,54 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     </thead>
                     <tbody className="divide-y divide-slate-105 text-slate-700">
                       {summary.items.map((row) => (
-                        <tr key={row.sr} className="hover:bg-slate-50/50">
+                        <tr key={row.sr} className="hover:bg-slate-50/50 align-top">
                           <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
-                          <td className="py-3 px-3.5 font-bold text-slate-900">{row.description}</td>
+                          <td className="py-3 px-3.5 text-slate-900">
+                            <div className="font-bold">{row.description}</div>
+                            {/* Lot Images */}
+                            {(() => {
+                              const rawRowImages = (row.images || []).filter((img: string) => !img.toLowerCase().endsWith('.pdf'));
+                              
+                              // Separate actual photos from catalog pages
+                              const rowActualPhotos = rawRowImages.filter(
+                                (img: string) => !img.toLowerCase().includes('_catalog_page_') && !img.toLowerCase().includes('_page_') && !img.toLowerCase().includes('mstc-previews/')
+                              );
+                              const rowCatalogPages = rawRowImages.filter(
+                                (img: string) => img.toLowerCase().includes('_catalog_page_') || img.toLowerCase().includes('_page_') || img.toLowerCase().includes('mstc-previews/')
+                              );
+                              
+                              const rowSortedImages = [...rowActualPhotos, ...rowCatalogPages];
+                              if (rowSortedImages.length === 0) return null;
+                              
+                              return (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {rowSortedImages.map((img: string, i: number) => {
+                                    const resolvedUrl = signedImages.urlMap[img] || img;
+                                    return (
+                                      <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => setLightboxImage(resolvedUrl)}
+                                        className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-white hover:scale-105 transition-transform cursor-zoom-in shrink-0 shadow-2xs group"
+                                      >
+                                        <img
+                                          src={resolvedUrl}
+                                          alt={`Lot image ${i + 1}`}
+                                          className="w-full h-full object-cover group-hover:opacity-95 transition-opacity"
+                                          onError={(e) => {
+                                            const parent = e.currentTarget.parentElement;
+                                            if (parent) {
+                                              parent.style.display = 'none';
+                                            }
+                                          }}
+                                        />
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+                          </td>
                           <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
                           <td className={clsx(
                             "py-3 px-3.5 text-center font-mono text-xs font-bold",
@@ -1243,72 +1387,76 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
             {/* Right Side: Image/Preview Panel */}
             {(() => {
-              const hasOtherMedia = item.raw_materials_text && summary.extracted_images && summary.extracted_images.length > 0;
-              const displayImage = summary.preview_image_url || (hasOtherMedia ? summary.extracted_images![0] : null);
+              const displayImage = signedImages.displayImage;
+              const imageUrls = signedImages.imageUrls;
+              const actualPhotos = signedImages.actualPhotos;
 
               return (
                 <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
-                  {/* Image Gallery */}
-                  {(() => {
-                    const imageUrls = (summary.extracted_images || []).filter(
-                      (url: string) => !url.toLowerCase().endsWith('.pdf')
-                    );
-                    if (imageUrls.length === 0) return null;
-                    return (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
-                          <span>Auction Images</span>
-                          <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
-                        </h4>
-                        <div className="grid grid-cols-2 gap-2">
-                          {imageUrls.map((url: string, idx: number) => {
-                            const finalSrc = signedImages[url] || url;
-                            return (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => setLightboxImage(finalSrc)}
-                                className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
-                              >
-                                <img
-                                  src={finalSrc}
-                                  alt={`Auction image ${idx + 1}`}
-                                  className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
-                                />
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {displayImage ? (
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
-                        Catalog Document Preview
-                      </h4>
-                      <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setLightboxImage(signedDisplayImage || displayImage)}
-                          className="block w-full text-left cursor-zoom-in relative focus:outline-none"
-                        >
-                          <img
-                            src={signedDisplayImage || displayImage}
-                            alt="PDF Catalog Preview"
-                            className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
-                          />
-                        </button>
-                      </div>
+                  {imagesLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-2">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                      <span className="text-xs font-semibold">Loading secure previews...</span>
                     </div>
                   ) : (
-                    <div className="w-full py-12 flex flex-col items-center justify-center text-slate-400 gap-2 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                      <svg className="w-10 h-10 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                      </svg>
-                      <span className="text-xs font-semibold tracking-wide">No preview available</span>
-                    </div>
+                    <>
+                      {/* Image Gallery */}
+                      {(() => {
+                        if (imageUrls.length === 0) return null;
+                        return (
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                              <span>Auction Images</span>
+                              <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
+                            </h4>
+                            <div className="grid grid-cols-2 gap-2">
+                              {imageUrls.map((url: string, idx: number) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setLightboxImage(url)}
+                                  className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group cursor-zoom-in aspect-square"
+                                >
+                                  <img
+                                    src={url}
+                                    alt={`Auction image ${idx + 1}`}
+                                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {displayImage ? (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
+                            {actualPhotos.includes(displayImage) ? 'Item Photo Preview' : 'Catalog Document Preview'}
+                          </h4>
+                          <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setLightboxImage(displayImage)}
+                              className="block w-full text-left cursor-zoom-in relative focus:outline-none"
+                            >
+                              <img
+                                src={displayImage}
+                                alt="PDF Catalog Preview"
+                                className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
+                              />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full py-12 flex flex-col items-center justify-center text-slate-400 gap-2 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                          <svg className="w-10 h-10 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                          </svg>
+                          <span className="text-xs font-semibold tracking-wide">No preview available</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );

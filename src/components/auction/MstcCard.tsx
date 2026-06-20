@@ -20,11 +20,11 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
   
   // Distinguish actual item photos from document page preview images
   const actualPhotos = (summary.extracted_images || []).filter(
-    (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('mstc-previews/')
+    (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('_page_') && !url.toLowerCase().includes('mstc-previews/') && !url.toLowerCase().endsWith('.pdf')
   );
   
   const hasOtherMedia = actualPhotos.length > 0;
-  const rawDisplayImage = actualPhotos.length > 0 ? actualPhotos[0] : summary.preview_image_url;
+  const rawDisplayImage = actualPhotos.length > 0 ? actualPhotos[0] : (summary.preview_image_url || null);
 
   const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);

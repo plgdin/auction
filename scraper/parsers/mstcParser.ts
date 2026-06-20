@@ -426,6 +426,18 @@ export function parseMstcCatalogText(
         }
       }
 
+      // --- Fallback: Extract quantities from the lot description text ---
+      // Many catalogs (especially forest/timber) embed quantities inline in the
+      // description column rather than the Quantity parameter field:
+      //   "Wood 2.0046 cum"  /  "Fire wood 2.136 cum"
+      if ((qty === "1" || qty === "1.0") && unit.toLowerCase() === "lot") {
+        const descQty = extractQuantitiesFromDescriptionBlock(block);
+        if (descQty) {
+          qty = descQty.qty;
+          unit = descQty.unit;
+        }
+      }
+
       // --- Extract GST ---
       let gst = "As Applicable";
       const gstMatch = block.match(
@@ -636,6 +648,88 @@ export function parseMstcCatalogText(
   };
 }
 
+// ─── Description Block Quantity Extraction ──────────────────────────────────
+
+/**
+ * Units commonly found inline in lot description text (volume, weight, count, length).
+ */
+const DESC_UNITS =
+  "cum|cft|cbm|" +
+  "kg|kgs|gms|gm|mt|mts|ton|tons|" +
+  "nos|no|pcs|pc|sets|set|items|item|units|unit|" +
+  "mtr|mtrs|rm|rft|" +
+  "ltrs|ltr|bags|bag";
+
+/**
+ * Extract quantities embedded in a lot description text block.
+ *
+ * The lot block from `pdf-parse` contains a description column between
+ * the lot header (Lot Name / Category) and the structured parameters
+ * (Quantity / Start Price). This description column may contain
+ * material-specific quantities like:
+ *   "Wood 2.0046 cum"
+ *   "Fire wood 2.136 cum"
+ *
+ * This function extracts the description portion and scans it for
+ * `<number> <unit>` patterns, grouping and summing by unit.
+ */
+function extractQuantitiesFromDescriptionBlock(
+  block: string,
+): { qty: string; unit: string } | null {
+  // Extract the description text: content after "Category -" line and before
+  // "Quantity -" or other parameter markers.
+  // The description column in MSTC PDFs appears between the category and the parameters.
+  const descMatch = block.match(
+    /Category\s*-[^\n]*\n([\s\S]*?)(?=Quantity\s*-|Start\s*Price|Post\s*Bid|Bid\s*Increment|TCS\s*\()/i,
+  );
+
+  if (!descMatch) return null;
+
+  const descText = descMatch[1];
+  const descUnitRegex = new RegExp(
+    `\\b(\\d+[\\d,.]*)\\s+(${DESC_UNITS})\\b`,
+    "gi",
+  );
+
+  const groups: { [unit: string]: number } = {};
+  let match;
+  while ((match = descUnitRegex.exec(descText)) !== null) {
+    const val = parseFloat(match[1].replace(/,/g, ""));
+    if (!isNaN(val) && val > 0) {
+      const u = match[2].toUpperCase().trim();
+      groups[u] = (groups[u] || 0) + val;
+    }
+  }
+
+  const entries = Object.entries(groups);
+  if (entries.length === 0) return null;
+
+  if (entries.length === 1) {
+    const [u, totalVal] = entries[0];
+    const qty = Number.isInteger(totalVal)
+      ? totalVal.toLocaleString("en-IN")
+      : totalVal.toLocaleString("en-IN", {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 3,
+        });
+    return { qty, unit: u };
+  }
+
+  // Multiple units: combine them
+  const qty = entries
+    .map(([u, totalVal]) => {
+      const formatted = Number.isInteger(totalVal)
+        ? totalVal.toLocaleString("en-IN")
+        : totalVal.toLocaleString("en-IN", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 3,
+          });
+      return `${formatted} ${u}`;
+    })
+    .join(" + ");
+  return { qty, unit: "" };
+}
+
 /**
  * Parse sub-items from a block of text (selectable or OCR).
  *
@@ -657,14 +751,17 @@ export function parseSubItemsFromText(text: string): SubItem[] {
     "items|item|units|unit|bags|bag|box|boxes|bdl|bdls|coil|coils|" +
     "roll|rolls|ac|pair|pairs|drums|drum|sheets|sheet|ton|tons|" +
     "gross|dozen|doz|bottles|bottle|bunches|bunch|reams|ream|each|" +
-    "bundle|bundles|set\\/nos|nos\\/set";
+    "bundle|bundles|set\\/nos|nos\\/set|" +
+    "cum|cft|cbm|rm|rft";
+
+  const unitsRegex = new RegExp(`^(?:${UNITS})\\b`, "i");
 
   // Step 1: Normalize text — clean OCR artifacts, compress whitespace per line
   let normalized = text.replace(/\|/g, " ").replace(/\t/g, " ");
 
   // Step 2: Pre-split concatenated items.
   // When OCR joins multiple table rows into a single line, split them apart.
-  // Pattern: after "<unit_keyword> <qty_number>", before "<new_item_sr> <UPPERCASE_WORD>"
+  // Pattern 1: after "<unit_keyword> <qty_number>", before "<new_item_sr> <UPPERCASE_WORD>"
   // e.g., "CHAIR Nos 5 2 PLASTIC TABLE Nos 3" → "CHAIR Nos 5\n2 PLASTIC TABLE Nos 3"
   const splitOnUnitQty = new RegExp(
     `(\\b(?:${UNITS})\\.?\\s+\\d+[\\d,.]*)\\s+(\\d{1,3})\\.?\\s+([A-Z])`,
@@ -674,6 +771,18 @@ export function parseSubItemsFromText(text: string): SubItem[] {
   while (prev !== normalized) {
     prev = normalized;
     normalized = normalized.replace(splitOnUnitQty, "$1\n$2 $3");
+  }
+
+  // Pattern 2: after "<qty_number> <unit_keyword>", before "<new_item_sr> <UPPERCASE_WORD>"
+  // e.g., "01 NO 02 Tarpaulin" → "01 NO\n02 Tarpaulin"
+  const splitOnQtyUnitNewSerial = new RegExp(
+    `(\\b\\d+[\\d,.]*\\s+(?:${UNITS})\\b\\.?)\\s+(\\d{1,3})\\s+([A-Z])`,
+    "gi"
+  );
+  prev = "";
+  while (prev !== normalized) {
+    prev = normalized;
+    normalized = normalized.replace(splitOnQtyUnitNewSerial, "$1\n$2 $3");
   }
 
   // Fallback split: bare quantity followed by new item number + uppercase word (3+ chars)
@@ -687,14 +796,79 @@ export function parseSubItemsFromText(text: string): SubItem[] {
     );
   }
 
-  // Step 3: Process line by line
-  const lines = normalized
-    .split(/\r?\n/)
-    .map((l) => l.replace(/\s+/g, " ").trim())
-    .filter((l) => l.length > 3);
+  // Pre-split on hyphenated serials as well, e.g. "32.150 Kgs 2-Plastic" -> "32.150 Kgs\n2-Plastic"
+  const splitOnQtyUnitNewSerialHyphen = new RegExp(
+    `(\\b(?:${UNITS})\\b\\.?\\s*\\d+[\\d,.]*|\\b\\d+[\\d,.]*\\s*(?:${UNITS})\\b\\.?)\\s+(\\d{1,3})\\-([A-Z])`,
+    "gi"
+  );
+  prev = "";
+  while (prev !== normalized) {
+    prev = normalized;
+    normalized = normalized.replace(splitOnQtyUnitNewSerialHyphen, "$1\n$2-$3");
+  }
 
-  for (const line of lines) {
+  // Step 3: Line-merging pre-pass to handle wrapped OCR lines
+  const rawLines = normalized.split(/\r?\n/).map((l) => l.trim());
+  const mergedLines: string[] = [];
+  let currentLine = "";
+
+  function startsWithSerial(line: string): boolean {
+    if (/^\d+\.\d+/.test(line)) {
+      return false; // Starts with a decimal (e.g. "32.150 Kgs"), not a serial number
+    }
+    const match = line.match(/^(\d+)([\s.-]+)?(.*)$/);
+    if (!match) return false;
+    const num = parseInt(match[1], 10);
+    if (num > 150) return false; // Reasonable upper bound for sub-item serial numbers
+    const rest = match[3].trim();
+    if (unitsRegex.test(rest)) return false; // Starts with a unit keyword, so it is likely a quantity/capacity, not serial
+    return true;
+  }
+
+  for (const line of rawLines) {
+    if (!line) continue;
+    if (startsWithSerial(line)) {
+      if (currentLine) {
+        mergedLines.push(currentLine);
+      }
+      currentLine = line;
+    } else {
+      if (currentLine) {
+        currentLine += " " + line;
+      } else {
+        mergedLines.push(line);
+      }
+    }
+  }
+  if (currentLine) {
+    mergedLines.push(currentLine);
+  }
+
+  // Step 4: Process line by line
+  for (const line of mergedLines) {
     const lower = line.toLowerCase();
+
+    let cleanedLine = line
+      .replace(/\b\d+\.?\d*\s*%/g, "")                     // strip percentage columns (18%, 5.00%, 2.50%)
+      .replace(/Mob\.?\s*No\.?\s*[\d\s-]+/gi, "")           // strip "Mob No. 9497612987"
+      .replace(/Contact\s*(?:Number|No\.?)\s*:?\s*[\d\s-]+/gi, "")  // strip contact numbers
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // Truncate after the last <number> <unit> match to discard trailing
+    // location/column text from merged OCR table rows.
+    const lastUnitMatch = new RegExp(
+      `(\\d+[\\d,.]*)\\s+(${UNITS})\\b\\.?`,
+      "gi",
+    );
+    let lastMatchEnd = -1;
+    let um;
+    while ((um = lastUnitMatch.exec(cleanedLine)) !== null) {
+      lastMatchEnd = um.index + um[0].length;
+    }
+    if (lastMatchEnd > 0 && lastMatchEnd < cleanedLine.length) {
+      cleanedLine = cleanedLine.substring(0, lastMatchEnd).trim();
+    }
 
     // Skip header rows, page markers, and irrelevant labels
     if (
@@ -714,6 +888,8 @@ export function parseSubItemsFromText(text: string): SubItem[] {
         (lower.includes("sl") ||
           lower.includes("unit") ||
           lower.includes("a/u"))) ||
+      lower.includes("u.o.m") ||
+      lower.includes("gst%") ||
       /\bpage\s+\d/i.test(line) ||
       /^total\b/i.test(line) ||
       /^grand\s*total/i.test(line) ||
@@ -721,10 +897,19 @@ export function parseSubItemsFromText(text: string): SubItem[] {
     ) {
       continue;
     }
+    const matchLine = cleanedLine || line;
+
+    // Check if it starts with a serial number that is actually followed by a unit keyword
+    // to prevent malformed text lines from being matched.
+    const isUnitAfterSr = new RegExp(`^\\d+\\s*\\b(${UNITS})\\b`, "i").test(matchLine);
+    if (isUnitAfterSr) {
+      continue;
+    }
+
     // Match 1: "<sr>. DESCRIPTION <unit> <qty>" (most common format)
-    const m1 = line.match(
+    const m1 = matchLine.match(
       new RegExp(
-        `^(\\d{1,3})\\.?\\s+(.+?)\\s+\\b(${UNITS})\\b\\.?\\s+(\\d+[\\d,.]*)\\s*$`,
+        `^(\\d{1,3})[\\s.-]+(.+?)\\s+\\b(${UNITS})\\b\\.?\\s+(\\d+[\\d,.]*)\\s*$`,
         "i",
       ),
     );
@@ -734,9 +919,9 @@ export function parseSubItemsFromText(text: string): SubItem[] {
     }
 
     // Match 2: "<sr>. DESCRIPTION <qty> <unit>"
-    const m2 = line.match(
+    const m2 = matchLine.match(
       new RegExp(
-        `^(\\d{1,3})\\.?\\s+(.+?)\\s+(\\d+[\\d,.]*)\\s+\\b(${UNITS})\\b\\.?\\s*$`,
+        `^(\\d{1,3})[\\s.-]+(.+?)\\s+(\\d+[\\d,.]*)\\s+\\b(${UNITS})\\b\\.?\\s*$`,
         "i",
       ),
     );
@@ -746,7 +931,7 @@ export function parseSubItemsFromText(text: string): SubItem[] {
     }
 
     // Match 3: "<sr>. DESCRIPTION <qty>" (no explicit unit, default to Nos)
-    const m3 = line.match(/^(\d{1,3})\.?\s+(.+?)\s+(\d+[\d,.]*)$/);
+    const m3 = matchLine.match(/^(\d{1,3})[\\s.-]+(.+?)\\s+(\\d+[\d,.]*)$/);
     if (m3) {
       const desc = m3[2].trim();
       // Only accept if description has meaningful alpha text (not just OCR noise)
@@ -761,7 +946,13 @@ export function parseSubItemsFromText(text: string): SubItem[] {
   }
 
   function addItem(srStr: string, rawDesc: string, unit: string, qty: string) {
-    const desc = rawDesc.trim();
+    // Clean trailing junk from description, e.g. ", Qty :", "Qty :", etc.
+    let desc = rawDesc.trim();
+    desc = desc.replace(/,?\s*Qty\s*:\s*$/i, "");
+    desc = desc.replace(/,?\s*Quantity\s*:\s*$/i, "");
+    desc = desc.replace(/,?\s*Qty\s*-\s*$/i, "");
+    desc = desc.trim();
+
     if (desc.length < 2 || !/[a-zA-Z]{2,}/.test(desc)) return;
 
     const sr = parseInt(srStr, 10);

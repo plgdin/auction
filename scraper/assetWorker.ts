@@ -49,6 +49,20 @@ async function getEmbeddingPipeline() {
   return embeddingPipelineCache;
 }
 
+/**
+ * Calculates exponential backoff cooldown delay in milliseconds.
+ * - Attempt 1 retry (retry_count = 1): wait 1 minute
+ * - Attempt 2 retry (retry_count = 2): wait 5 minutes
+ * - Attempt 3 retry (retry_count = 3): wait 15 minutes
+ * - Attempt 4+ retry (retry_count >= 4): wait 30 minutes
+ */
+function getRetryDelayMs(retryCount: number): number {
+  if (retryCount <= 0) return 0;
+  const backoffMinutes = [1, 5, 15, 30];
+  const index = Math.min(retryCount - 1, backoffMinutes.length - 1);
+  return backoffMinutes[index] * 60 * 1000;
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface QueueRecord {
@@ -60,6 +74,7 @@ export interface QueueRecord {
   seller_name: string | null;
   location: string | null;
   raw_materials_text: string | null;
+  updated_at?: string;
 }
 
 // ─── Attachment Processing ───────────────────────────────────────────────────
@@ -77,35 +92,46 @@ async function downloadAttachment(
   const jobLog = log.child({ fileName, docType });
   jobLog.info({}, "Downloading attachment");
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(
-    () => controller.abort(),
-    ATTACHMENT_DOWNLOAD_TIMEOUT_MS,
-  );
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      ATTACHMENT_DOWNLOAD_TIMEOUT_MS,
+    );
 
-  try {
-    const response = await fetch(fileUrl, {
-      method: "GET",
-      headers,
-      signal: controller.signal,
-    });
+    try {
+      const response = await fetch(fileUrl, {
+        method: "GET",
+        headers,
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
+      if (response.ok) {
+        const docBuffer = Buffer.from(await response.arrayBuffer());
+        if (docBuffer.toString("utf-8", 0, 4) === "%PDF") {
+          clearTimeout(timeoutId);
+          return docBuffer;
+        }
+      } else {
+        jobLog.warn(
+          { status: response.status, attempt },
+          "Attachment download returned non-OK status",
+        );
+      }
+    } catch (e: any) {
       jobLog.warn(
-        { status: response.status },
-        "Attachment download returned non-OK status",
+        { errorMessage: e.message, attempt },
+        "Network error downloading attachment",
       );
-      return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
 
-    const docBuffer = Buffer.from(await response.arrayBuffer());
-    if (docBuffer.toString("utf-8", 0, 4) === "%PDF") {
-      return docBuffer;
+    if (attempt < maxAttempts) {
+      jobLog.info({ attempt, nextAttemptDelayMs: 3000 }, "Retrying attachment download...");
+      await new Promise((resolve) => setTimeout(resolve, 3000));
     }
-  } catch (e: any) {
-    jobLog.warn({ errorMessage: e.message }, "Network error downloading attachment");
-  } finally {
-    clearTimeout(timeoutId);
   }
   return null;
 }
@@ -205,15 +231,25 @@ function extractQuantitiesDetailed(text: string): { qty: string; unit: string } 
 
   // 2. Match suffix-only units for count types only (e.g. "55 Nos", "10 Pcs")
   // Weight/volume/dimensions must be explicitly prefixed with QTY: to avoid matching capacities (e.g. "50 Kg bags")
+  // Exclude numbers that are preceded by serial/lot indicators (e.g. "Lot No. 5 Nos", "Sl. No. 10 Nos") to prevent lot numbers from overriding quantities.
   const countUnitRegex = /\b([\d\.,]+)\s*(nos|pcs|units|sets|pc|items|item)\b/gi;
+  const prefixRejectRegex = /\b(?:lot|sl|sr|s\.?no|no)\b[\s.:-]*$/i;
   while ((match = countUnitRegex.exec(text)) !== null) {
     const val = parseFloat(match[1].replace(/,/g, ''));
     if (!isNaN(val)) {
-      matches.push({
-        value: val,
-        unit: match[2].toUpperCase().trim(),
-        index: match.index
-      });
+      const prefixText = text.substring(0, match.index);
+      if (!prefixRejectRegex.test(prefixText)) {
+        matches.push({
+          value: val,
+          unit: match[2].toUpperCase().trim(),
+          index: match.index
+        });
+      } else {
+        log.info(
+          { matchedText: match[0], matchedVal: val, matchedIndex: match.index },
+          "Rejected OCR quantity match because it is preceded by a serial/lot number indicator"
+        );
+      }
     }
   }
 
@@ -699,17 +735,41 @@ export async function processRecord(record: QueueRecord): Promise<void> {
 
   const headers = buildMstcHeaders();
 
-  const payloadResponse = await fetch(MSTC_CATALOG_PDF_ENDPOINT, {
-    method: "POST",
-    body: formData,
-    headers,
-    timeout: CATALOG_DOWNLOAD_TIMEOUT_MS,
-  } as any);
+  let payloadResponse;
+  const fetchAttempts = 3;
+  let lastFetchError: any = null;
 
-  if (!payloadResponse.ok) {
-    let errMessage = `Catalog download failed with status ${payloadResponse.status}`;
-    if (payloadResponse.status >= 500) {
-      errMessage = `MSTC Server Error: MSTC returned HTTP ${payloadResponse.status} (Internal Server Error / IBM HTTP Server)`;
+  for (let attempt = 1; attempt <= fetchAttempts; attempt++) {
+    try {
+      payloadResponse = await fetch(MSTC_CATALOG_PDF_ENDPOINT, {
+        method: "POST",
+        body: formData,
+        headers,
+        timeout: CATALOG_DOWNLOAD_TIMEOUT_MS,
+      } as any);
+      lastFetchError = null;
+      break;
+    } catch (fetchErr: any) {
+      lastFetchError = fetchErr;
+      jobLog.warn(
+        { attempt, errorMessage: fetchErr.message },
+        "PDF catalog fetch failed, retrying..."
+      );
+      if (attempt < fetchAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    }
+  }
+
+  if (lastFetchError) {
+    throw lastFetchError;
+  }
+
+  if (!payloadResponse || !payloadResponse.ok) {
+    const status = payloadResponse ? payloadResponse.status : 0;
+    let errMessage = `Catalog download failed with status ${status}`;
+    if (status >= 500) {
+      errMessage = `MSTC Server Error: MSTC returned HTTP ${status} (Internal Server Error / IBM HTTP Server)`;
     }
     throw new Error(errMessage);
   }
@@ -995,6 +1055,7 @@ export async function processRecord(record: QueueRecord): Promise<void> {
     sanitized_document_path: catalogUrl,
     raw_materials_text: rawMaterialsText,
     error_log: null,
+    updated_at: new Date().toISOString(),
   };
 
   if (embeddingStr) {
@@ -1027,11 +1088,11 @@ async function runAssetPipelineQueue(): Promise<void> {
   const { data: executableQueue, error: queryError } = await supabase
     .from("mstc_auctions")
     .select(
-      "id, mstc_auction_number, source_pdf_url, retry_count, category_name, seller_name, location, raw_materials_text",
+      "id, mstc_auction_number, source_pdf_url, retry_count, category_name, seller_name, location, raw_materials_text, updated_at",
     )
     .or("asset_status.eq.pending,asset_status.eq.failed")
     .lt("retry_count", MAX_RETRY_COUNT)
-    .limit(QUEUE_BATCH_SIZE);
+    .limit(100);
 
   if (queryError) {
     log.error(
@@ -1045,16 +1106,47 @@ async function runAssetPipelineQueue(): Promise<void> {
     return;
   }
 
+  // Filter queue items in JS to discard those within their backoff cooldown window
+  const now = Date.now();
+  const eligibleRecords = (executableQueue as QueueRecord[]).filter((record) => {
+    if (record.retry_count === 0) {
+      return true; // brand new job, process immediately
+    }
+    const lastUpdated = record.updated_at ? new Date(record.updated_at).getTime() : 0;
+    const cooldown = getRetryDelayMs(record.retry_count);
+    const timeSinceLastUpdate = now - lastUpdated;
+    
+    const isEligible = timeSinceLastUpdate >= cooldown;
+    if (!isEligible) {
+      log.debug(
+        {
+          auctionNumber: record.mstc_auction_number,
+          retryCount: record.retry_count,
+          cooldownMs: cooldown,
+          timeRemainingMs: cooldown - timeSinceLastUpdate,
+        },
+        "Skipping record due to exponential backoff cooldown"
+      );
+    }
+    return isEligible;
+  });
+
+  if (eligibleRecords.length === 0) {
+    return;
+  }
+
+  const batchToProcess = eligibleRecords.slice(0, QUEUE_BATCH_SIZE);
+
   log.info(
-    { batchSize: executableQueue.length },
+    { batchSize: batchToProcess.length, totalEligible: eligibleRecords.length },
     "Processing queue batch",
   );
 
-  for (const record of executableQueue as QueueRecord[]) {
-    // Row-Lock: Set state to processing immediately
+  for (const record of batchToProcess) {
+    // Row-Lock: Set state to processing immediately, and update updated_at
     await supabase
       .from("mstc_auctions")
-      .update({ asset_status: "processing" })
+      .update({ asset_status: "processing", updated_at: new Date().toISOString() })
       .eq("id", record.id);
 
     try {
@@ -1079,6 +1171,7 @@ async function runAssetPipelineQueue(): Promise<void> {
           asset_status: reachedMaxRetries ? "failed" : "pending",
           retry_count: nextRetryCount,
           error_log: `[Retry ${nextRetryCount}] ${jobError.message}`,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", record.id);
 

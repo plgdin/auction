@@ -196,7 +196,7 @@ export const getNumericPrice = (priceStr: string): number => {
 export interface CatalogSummary {
   overview: string;
   scopeOfWork: string;
-  items: { sr: number; description: string; qty: string; unit: string; taxRate: string; marketPrice: string }[];
+  items: { sr: number | string; description: string; qty: string; unit: string; taxRate: string; marketPrice: string; images?: string[] }[];
   eligibility: string[];
   depositDetails: {
     emd: string;
