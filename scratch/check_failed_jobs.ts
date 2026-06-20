@@ -3,27 +3,23 @@ import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from "../scraper/config.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-async function main() {
-  const { data, error } = await supabase
-    .from("mstc_auctions")
-    .select("asset_status, retry_count");
+const AUCTION_NUM = "MSTC/NRO/ESD DELHI CANTT/3/DELHI CANTT/26-27/15065";
 
-  if (error) {
+async function main() {
+  const { data: record, error } = await supabase
+    .from("mstc_auctions")
+    .select("raw_materials_text")
+    .eq("mstc_auction_number", AUCTION_NUM)
+    .single();
+
+  if (error || !record) {
     console.error("Error:", error);
     return;
   }
 
-  const counts: Record<string, number> = {};
-  for (const row of data) {
-    counts[row.asset_status] = (counts[row.asset_status] || 0) + 1;
-  }
-  console.log("Asset status counts:", counts);
-
-  const failedRecords = data.filter(r => r.asset_status === 'failed');
-  console.log("Failed records total count:", failedRecords.length);
-  
-  const pendingRecords = data.filter(r => r.asset_status === 'pending');
-  console.log("Pending records total count:", pendingRecords.length);
+  const parsed = JSON.parse(record.raw_materials_text);
+  console.log("Parsed items:");
+  console.log(JSON.stringify(parsed.items, null, 2));
 }
 
 main();

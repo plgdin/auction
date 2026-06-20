@@ -23,7 +23,7 @@ export function parseSubItemsFromText(text: string): SubItem[] {
   // Step 1: Normalize text — clean OCR artifacts, compress whitespace per line
   let normalized = text.replace(/\|/g, " ").replace(/\t/g, " ");
 
-  // Step 2: Pre-split concatenated items (e.g. OCR joining multiple rows into one line)
+  // Step 2: Pre-split concatenated items
   const splitOnUnitQty = new RegExp(
     `(\\b(?:${UNITS})\\.?\\s+\\d+[\\d,.]*)\\s+(\\d{1,3})\\.?\\s+([A-Z])`,
     "gi",
@@ -53,7 +53,6 @@ export function parseSubItemsFromText(text: string): SubItem[] {
     );
   }
 
-  // Pre-split on hyphenated serials as well, e.g. "32.150 Kgs 2-Plastic" -> "32.150 Kgs\n2-Plastic"
   const splitOnQtyUnitNewSerialHyphen = new RegExp(
     `(\\b(?:${UNITS})\\b\\.?\\s*\\d+[\\d,.]*|\\b\\d+[\\d,.]*\\s*(?:${UNITS})\\b\\.?)\\s+(\\d{1,3})\\-([A-Z])`,
     "gi"
@@ -70,6 +69,9 @@ export function parseSubItemsFromText(text: string): SubItem[] {
   let currentLine = "";
 
   function startsWithSerial(line: string): boolean {
+    if (/^\d+\.\d+/.test(line)) {
+      return false; // Starts with a decimal (e.g. "32.150 Kgs"), not a serial number
+    }
     const match = line.match(/^(\d+)([\s.-]+)?(.*)$/);
     if (!match) return false;
     const num = parseInt(match[1], 10);
@@ -231,13 +233,20 @@ export function parseSubItemsFromText(text: string): SubItem[] {
 
 const testText = `
 General Scrap Items
-1-Iron, Qty : 32.150 Kgs
-2-Plastic, Qty : 5.750 Kgs
-3-Stainless Steel, Qty : 5.600 Kgs
-4-Aluminium, Qty : 9.300 Kgs
-5-Wood, Qty : Wood 19.500 Kgs
-6-Rubber, Qty : 15 Nos
-7-Atta Kneeder 25 Kgs, Qty : 1 No
+1-Iron, Qty :
+32.150 Kgs
+2-Plastic, Qty :
+5.750 Kgs
+3-Stainless Steel,
+Qty : 5.600 Kgs
+4-Aluminium, Qty
+: 9.300 Kgs
+5-Wood, Qty :
+19.500 Kgs
+6-Rubber, Qty :
+15 Nos
+7-Atta Kneeder 25
+Kgs, Qty : 1 No
 8-Deep Freezer
 500 Ltr, Qty : 1 No
 9-Centrifugal Pump 1 HP Single Phase, Qty : 1 No

@@ -813,6 +813,9 @@ export function parseSubItemsFromText(text: string): SubItem[] {
   let currentLine = "";
 
   function startsWithSerial(line: string): boolean {
+    if (/^\d+\.\d+/.test(line)) {
+      return false; // Starts with a decimal (e.g. "32.150 Kgs"), not a serial number
+    }
     const match = line.match(/^(\d+)([\s.-]+)?(.*)$/);
     if (!match) return false;
     const num = parseInt(match[1], 10);
