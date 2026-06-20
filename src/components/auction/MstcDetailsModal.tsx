@@ -39,8 +39,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
-  const [signedImages, setSignedImages] = useState<Record<string, string>>({});
-  const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
+
   const { isAuthenticated } = useAuthStore();
   const [downloading, setDownloading] = useState(false);
 

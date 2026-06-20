@@ -22,6 +22,7 @@ export interface RankedAuction {
   riskLevel: 'Low' | 'Medium' | 'High';
   isRecommended: boolean;
   score?: number;
+  isMstc?: boolean;
 }
 
 const DEFAULT_PREFS: UserPreference = {
@@ -176,7 +177,7 @@ export const recommendationService = {
   async getAllAvailableAuctions(categories: any[]): Promise<any[]> {
     // Get all commercial auctions
     const response = await auctionService.getAuctions({ limit: 100 });
-    let allAuctions = response.data || [];
+    let allAuctions: any[] = response.data || [];
 
     // Get active upcoming MSTC auctions
     try {
