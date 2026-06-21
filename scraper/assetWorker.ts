@@ -451,7 +451,7 @@ async function extractAndProcessLotDocuments(
             // Extract quantities from the combined text
             const extracted = extractQuantitiesDetailed(combinedText);
 
-            let subItems = parseSubItemsFromText(combinedText);
+            fs.appendFileSync('debug_combined.txt', '\n\n=== NEW TEXT ===\n\n' + combinedText); let subItems = parseSubItemsFromText(combinedText);
             if (ocrResult.llmParsed && ocrResult.llmParsed.length > 0) {
               subItems = ocrResult.llmParsed.map((item: any) => ({
                 sr: parseInt(item.sr, 10) || item.sr,

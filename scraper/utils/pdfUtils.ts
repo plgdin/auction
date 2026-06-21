@@ -197,9 +197,38 @@ export async function renderAndExtractPdfPages(
       for (let pNum = 1; pNum <= limit; pNum++) {
         const pdfPage = await pdfDoc.getPage(pNum);
         
-        // 1. Extract text content
+        // 1. Extract text content with Vector Coordinate Parsing
         const textContent = await pdfPage.getTextContent();
-        const pageText = textContent.items.map((item: any) => item.str).join(" ");
+        
+        const linesMap = new Map();
+        for (const item of textContent.items) {
+          if (!item.str || item.str.trim() === "") continue;
+          
+          const y = Math.round(item.transform[5]);
+          const x = item.transform[4];
+          
+          // Group by Y with a tolerance of +/- 5
+          let foundY = null;
+          for (const key of linesMap.keys()) {
+            if (Math.abs(key - y) <= 5) {
+              foundY = key;
+              break;
+            }
+          }
+          if (foundY === null) {
+            foundY = y;
+            linesMap.set(foundY, []);
+          }
+          linesMap.get(foundY).push({ str: item.str, x });
+        }
+
+        const sortedY = Array.from(linesMap.keys()).sort((a, b) => b - a);
+        let pageText = "";
+        for (const y of sortedY) {
+          const lineItems = linesMap.get(y);
+          lineItems.sort((a: any, b: any) => a.x - b.x);
+          pageText += lineItems.map((item: any) => item.str.trim()).filter((s: string) => s).join(" ") + "\n";
+        }
         
         // 2. Render to canvas and get data URL
         const viewport = pdfPage.getViewport({ scale: 1.5 });
@@ -210,6 +239,66 @@ export async function renderAndExtractPdfPages(
         canvasContext.clearRect(0, 0, canvas.width, canvas.height);
         
         await pdfPage.render({ canvasContext, viewport }).promise;
+        
+        // --- Custom Computer Vision Grid Eraser ---
+        try {
+          const imgData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imgData.data;
+          const width = canvas.width;
+          const height = canvas.height;
+          
+          const hLines = [];
+          for (let y = 0; y < height; y++) {
+            let maxConsecutiveDark = 0;
+            let currentConsecutiveDark = 0;
+            for (let x = 0; x < width; x++) {
+              const idx = (y * width + x) * 4;
+              if (data[idx] + data[idx+1] + data[idx+2] < 450) {
+                currentConsecutiveDark++;
+                if (currentConsecutiveDark > maxConsecutiveDark) {
+                  maxConsecutiveDark = currentConsecutiveDark;
+                }
+              } else {
+                currentConsecutiveDark = 0;
+              }
+            }
+            if (maxConsecutiveDark > 150) {
+              hLines.push(y);
+            }
+          }
+          
+          const vLines = [];
+          for (let x = 0; x < width; x++) {
+            let maxConsecutiveDark = 0;
+            let currentConsecutiveDark = 0;
+            for (let y = 0; y < height; y++) {
+              const idx = (y * width + x) * 4;
+              if (data[idx] + data[idx+1] + data[idx+2] < 450) {
+                currentConsecutiveDark++;
+                if (currentConsecutiveDark > maxConsecutiveDark) {
+                  maxConsecutiveDark = currentConsecutiveDark;
+                }
+              } else {
+                currentConsecutiveDark = 0;
+              }
+            }
+            if (maxConsecutiveDark > 75) {
+              vLines.push(x);
+            }
+          }
+          
+          canvasContext.fillStyle = "white";
+          for (const y of hLines) {
+            canvasContext.fillRect(0, y - 2, width, 5);
+          }
+          for (const x of vLines) {
+            canvasContext.fillRect(x - 2, 0, 5, height);
+          }
+        } catch (e) {
+          // Ignore canvas taint errors if any
+        }
+        // --- End of Grid Eraser ---
+        
         const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
         
         results.push({

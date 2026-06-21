@@ -1,7 +1,6 @@
 // @ts-ignore
 import Tesseract from "tesseract.js";
 import { logger } from "./logger.js";
-import { parseImageWithVisionLLM } from "./visionLlm.js";
 
 const log = logger.child({ module: "ocrUtils" });
 
@@ -51,6 +50,9 @@ function isGibberishOrForeign(text: string): boolean {
 export async function performOcr(imageBuffer: Buffer): Promise<{ text: string, llmParsed?: any[] }> {
   try {
     const worker = await Tesseract.createWorker("eng");
+    await worker.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK, // PSM 6
+    });
     const { data: { text, confidence } } = await worker.recognize(imageBuffer);
     await worker.terminate();
     
@@ -58,21 +60,12 @@ export async function performOcr(imageBuffer: Buffer): Promise<{ text: string, l
     const isGib = isGibberishOrForeign(text);
     log.info({ isGibberish: isGib, confidence }, "OCR completed");
     if (isGib || confidence < 65) {
-      log.warn({ confidence }, "Gibberish, non-English text, or low confidence detected in OCR. Falling back to Vision LLM.");
-      const llmParsed = await parseImageWithVisionLLM(imageBuffer);
-      log.info({ count: llmParsed.length }, "Vision LLM returned items");
-      return { text: "", llmParsed };
+      log.warn({ confidence }, "Gibberish or low confidence detected in OCR. Gemini fallback is currently DISABLED.");
     }
 
     return { text: text || "" };
   } catch (err: any) {
-    log.error({ errorMessage: err.message }, "Classical OCR failed completely. Falling back to Vision LLM.");
-    try {
-      const llmParsed = await parseImageWithVisionLLM(imageBuffer);
-      return { text: "", llmParsed };
-    } catch (llmErr: any) {
-      log.error({ errorMessage: llmErr.message }, "Vision LLM fallback also failed.");
-      return { text: "" };
-    }
+    log.error({ errorMessage: err.message }, "Classical OCR failed completely.");
+    return { text: "" };
   }
 }

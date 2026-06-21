@@ -84,9 +84,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // Listen to auth changes
     supabase.auth.onAuthStateChange(async (_event, session) => {
-      // If mock admin is active, ignore Supabase auth state change unless it was triggered explicitly
+      // If mock admin is active, ignore Supabase auth state change
       const currentIsMock = typeof window !== 'undefined' && localStorage.getItem('lelam_mock_admin') === 'true';
       if (currentIsMock) return;
+
+      // On TOKEN_REFRESHED, avoid re-setting state if the user hasn't actually changed
+      // This prevents unnecessary re-renders across all components that depend on `user`
+      if (_event === 'TOKEN_REFRESHED') {
+        const currentUserId = get().user?.id;
+        const newUserId = session?.user?.id;
+        if (currentUserId === newUserId) {
+          // Silently update the session token in store without triggering user object change
+          set({ session });
+          return;
+        }
+      }
 
       get().setSession(session);
       

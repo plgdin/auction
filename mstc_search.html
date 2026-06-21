@@ -1,0 +1,3210 @@
+<!doctype html>
+<html lang="en">
+<head> 
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=9; IE=EDGE;" />
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="description" content="">
+<meta name="author" content="">
+<title>Event/Auction Search</title>
+<link href="font-awesome-4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<!-- Bootstrap core CSS -->
+<link href="css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" type="text/css" href="fonts/fontawesome-5.0.8/css/fontawesome-all.min.css">
+<!--===============================================================================================-->
+<link rel="stylesheet" type="text/css" href="fonts/iconic/css/material-design-iconic-font.min.css">
+<!-- Custom styles for this template -->
+<link href="css/carousel.css" rel="stylesheet">
+<link href="css/gijgo.min.css" rel="stylesheet" type="text/css" />
+
+</head>
+<body>
+
+
+
+
+
+
+
+
+ 
+
+
+<main role="main">
+<form id="mainfrm">
+<div class="container-fluid"> <img src="images/auction_search_banner.jpg" class="img-fluid"></div>
+    <div class="container-fluid mt-2">
+	<div id="accordion" class="accordion">
+        <div class="card mb-0">
+			<h5 class="card-header bg-primary text-white text-center" data-toggle="collapse" href="#collapseOne"><i class="fa fa-search" aria-hidden="true"></i>&nbsp;EVENT/AUCTION SEARCH   <a class="text-white float-left " href="../../index.jsp"><i class="fa fa-home mr-1" aria-hidden="true"></i>Home</a> </h5>
+            <div id="collapseOne" class="card-body collapse show" data-parent="#accordion">
+            <div class="panel panel-default">
+            <div class="panel-body">
+	<div class="row">
+	<div class="col-sm-12" id="tab4">
+        <div class="card">
+          <div class="card-body">
+            <form>
+              <div class="d-flex">
+                <div class="ml-auto p-2">
+                  <label class="sr-only" for="inlineFormInputGroup">Username</label>
+                  <div class="form-inline">
+                    <label class="p-1">Search by Keyword:</label>
+					<input type="text" class="form-control keyword" id="keyword" placeholder="Enter Any Valid Keyword" width="500" name="keyword">
+                    
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+		
+		
+      <div class="col-sm-12" id="maintab">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-center" style="  margin-left: -189px !important;">
+			<div class="p-2">
+				   <h6 class="card-title text-primary">Select Options :</h6>
+			  </div>
+			  <div class="p-2">
+				  <div class="custom-control custom-radio custom-control-inline ml-3">
+					<input type="radio" id="liveauc" name="seropt" value="live" class="custom-control-input seropt">
+					<label class="custom-control-label" for="liveauc">Live Auctions</label>
+				  </div>
+			  </div>
+			  <div class="p-2">
+				  <div class="custom-control custom-radio custom-control-inline">
+					<input type="radio" id="forthauc" name="seropt" value="forthauc" class="custom-control-input seropt">
+					<label class="custom-control-label" for="forthauc">Upcoming Auctions</label>
+				  </div>
+			  </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  <div class="container-fluid" id="tab1" style="display:none;">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card">
+          <div class="card-body">
+              <div class="d-flex float-right">
+                <div class="p-2">
+                  <div class="custom-control custom-radio custom-control-inline ml-3">
+                    <input type="radio" id="allauc" name="forthaucchk" class="custom-control-input forthaucchk" checked value="all">
+                    <label class="custom-control-label" for="allauc">All</label>
+                  </div>
+                </div>
+                <div class="p-2">
+                  <div class="custom-control custom-radio custom-control-inline">
+                    <input type="radio" id="notified" name="forthaucchk" class="custom-control-input forthaucchk" value="notified">
+                    <label class="custom-control-label" for="notified">Notified Date</label>
+                  </div>
+                </div>
+                <div class="d-flex" style="display:none;" id="dates">
+					<div class="p-2">From:</div>
+					<div class="p-2"><input id="fromdate" name="fromdate" for="NotifiedDatefrm" width="200" disabled readonly/></div>
+					<div class="p-2">To:</div>
+					<div class="p-2"><input id="todate" name="todate" for="NotifiedDateto" width="200" disabled readonly/></div>
+                </div>
+              </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+ <div class="container-fluid" id="tab2">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card" style="background-color: #91dc93;">
+          <div class="card-body">
+              <div class="d-flex">
+                <div class="p-2 w-75">
+                  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline ml-3">
+                    <input type="checkbox" class="custom-control-input filteropt" id="filtercat" name="filteropt" value="category">
+                    <label class="custom-control-label" for="filtercat">Filter by Category</label>
+                  </div>
+                </div>
+                <div class="p-2 flex-shrink-1 border-left border-success">
+                  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+                    <input type="checkbox" id="filterloc" name="filteropt" class="custom-control-input filteropt"  value="location">
+                    <label class="custom-control-label" for="filterloc">Filter by Location</label>
+                  </div>
+                </div>
+                <div class="p-2 flex-shrink-1 border-left border-success">
+                  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+                    <input type="checkbox" id="filteroff" name="filteropt" class="custom-control-input filteropt"  value="office">
+                    <label class="custom-control-label" for="filteroff">Filter By Office</label>
+                  </div>
+                </div>
+              </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="container-fluid" id="tab3">
+    <div class="d-flex">
+        <div class="card col-md-3" style="padding:10px;height:320px;" id="tabit">
+          <h6 class="card-title text-primary" style="border-bottom: 1px solid #fc0;padding-bottom: 10px;">Select Item Type</h6>
+          <div class="card-body custom-scrollbar-css p-2">
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it1" name="itemtype" value="1">
+				  <label class="custom-control-label" for="it1">Agricultural Produce</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it20" name="itemtype" value="20">
+				  <label class="custom-control-label" for="it20">Aquatic Produce</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it19" name="itemtype" value="19">
+				  <label class="custom-control-label" for="it19">Ash</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it2" name="itemtype" value="2">
+				  <label class="custom-control-label" for="it2">Chemicals</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it4" name="itemtype" value="4">
+				  <label class="custom-control-label" for="it4">Coal</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it3" name="itemtype" value="3">
+				  <label class="custom-control-label" for="it3">Container</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it5" name="itemtype" value="5">
+				  <label class="custom-control-label" for="it5">Diamond</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it6" name="itemtype" value="6">
+				  <label class="custom-control-label" for="it6">Electrical Items</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it7" name="itemtype" value="7">
+				  <label class="custom-control-label" for="it7">Electronics Items</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it8" name="itemtype" value="8">
+				  <label class="custom-control-label" for="it8">Forest Produce</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it9" name="itemtype" value="9">
+				  <label class="custom-control-label" for="it9">Immovable Property</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it18" name="itemtype" value="18">
+				  <label class="custom-control-label" for="it18">Liquor License Contracts</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it10" name="itemtype" value="10">
+				  <label class="custom-control-label" for="it10">Metal</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it12" name="itemtype" value="12">
+				  <label class="custom-control-label" for="it12">Mine Block</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it11" name="itemtype" value="11">
+				  <label class="custom-control-label" for="it11">Minerals</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it13" name="itemtype" value="13">
+				  <label class="custom-control-label" for="it13">Miscellaneous</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it14" name="itemtype" value="14">
+				  <label class="custom-control-label" for="it14">Petroleum Products</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it15" name="itemtype" value="15">
+				  <label class="custom-control-label" for="it15">Plant/Machineries</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it16" name="itemtype" value="16">
+				  <label class="custom-control-label" for="it16">Transport Vehicles</label>
+				</div>
+			
+				 <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+				  <input type="checkbox" class="custom-control-input itemtype" id="it17" name="itemtype" value="17">
+				  <label class="custom-control-label" for="it17">Vessels</label>
+				</div>
+			
+          </div>
+          <!--<div class="card-footer" id="subcatpropcl" style="display:none;">
+             <button type="button" class="btn btn-secondary" id="clear" >Clear</button>
+			 <button type="button" class="btn btn-primary ml-5" id="search">Search</button>
+         </div>-->
+        </div>
+		
+		<div class="card col-md-5" style="padding:10px;height:320px;" id="subcatview">
+          <h6 class="card-title text-primary" style="border-bottom: 1px solid #fc0;padding-bottom: 10px;">Select Item Category & Sub-Category</h6>
+          <div class="card-body custom-scrollbar-css p-2" id="subcatprop" >
+		  
+			<div id="1" class='1 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Agricultural Produce</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis1">
+              <input type="checkbox" class="custom-control-input catind" id="cat72" name="catind" value="72">
+              <label class="custom-control-label" for="cat72">Cereals</label>
+            </div>
+			
+			
+					  <div class="card ml-3 72" style="display:block;" id="72">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat1" name="subcat" value="1">
+					<label class="custom-control-label" for="subcat1">Maize</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat2" name="subcat" value="2">
+					<label class="custom-control-label" for="subcat2">Barley</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat3" name="subcat" value="3">
+					<label class="custom-control-label" for="subcat3">Bajra</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat4" name="subcat" value="4">
+					<label class="custom-control-label" for="subcat4">Ragi</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat5" name="subcat" value="5">
+					<label class="custom-control-label" for="subcat5">Jowar</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat6" name="subcat" value="6">
+					<label class="custom-control-label" for="subcat6">Paddy</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat7" name="subcat" value="7">
+					<label class="custom-control-label" for="subcat7">Wheat</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis1">
+              <input type="checkbox" class="custom-control-input catind" id="cat73" name="catind" value="73">
+              <label class="custom-control-label" for="cat73">Pulses</label>
+            </div>
+			
+			
+					  <div class="card ml-3 73" style="display:block;" id="73">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat8" name="subcat" value="8">
+					<label class="custom-control-label" for="subcat8">Gram/Chickpea</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat9" name="subcat" value="9">
+					<label class="custom-control-label" for="subcat9">Moong Dal /Green gram</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat10" name="subcat" value="10">
+					<label class="custom-control-label" for="subcat10">Toor Dal/ Arhar Dal</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat11" name="subcat" value="11">
+					<label class="custom-control-label" for="subcat11">Urad / Black Gram</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis1">
+              <input type="checkbox" class="custom-control-input catind" id="cat74" name="catind" value="74">
+              <label class="custom-control-label" for="cat74">Oil seeds/oil</label>
+            </div>
+			
+			
+					  <div class="card ml-3 74" style="display:block;" id="74">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat12" name="subcat" value="12">
+					<label class="custom-control-label" for="subcat12">Mustard Seed</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat13" name="subcat" value="13">
+					<label class="custom-control-label" for="subcat13">Ground Nut</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat14" name="subcat" value="14">
+					<label class="custom-control-label" for="subcat14">Sesamum Seed</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat15" name="subcat" value="15">
+					<label class="custom-control-label" for="subcat15">Soyabean</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat16" name="subcat" value="16">
+					<label class="custom-control-label" for="subcat16">Sunflower Seed</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat17" name="subcat" value="17">
+					<label class="custom-control-label" for="subcat17">Copra</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat18" name="subcat" value="18">
+					<label class="custom-control-label" for="subcat18">Palm Oil</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat19" name="subcat" value="19">
+					<label class="custom-control-label" for="subcat19">Kernel Oil</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis1">
+              <input type="checkbox" class="custom-control-input catind" id="cat75" name="catind" value="75">
+              <label class="custom-control-label" for="cat75">Cotton</label>
+            </div>
+			
+			
+					  <div class="card ml-3 75" style="display:block;" id="75">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat20" name="subcat" value="20">
+					<label class="custom-control-label" for="subcat20">Cotton Bale</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat21" name="subcat" value="21">
+					<label class="custom-control-label" for="subcat21">Cotton Seed</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis1">
+              <input type="checkbox" class="custom-control-input catind" id="cat76" name="catind" value="76">
+              <label class="custom-control-label" for="cat76">Spices</label>
+            </div>
+			
+			
+					  <div class="card ml-3 76" style="display:block;" id="76">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat22" name="subcat" value="22">
+					<label class="custom-control-label" for="subcat22">Cardamom</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat23" name="subcat" value="23">
+					<label class="custom-control-label" for="subcat23">Pepper</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat24" name="subcat" value="24">
+					<label class="custom-control-label" for="subcat24">Onion</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat25" name="subcat" value="25">
+					<label class="custom-control-label" for="subcat25">Ginger</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis1">
+              <input type="checkbox" class="custom-control-input catind" id="cat77" name="catind" value="77">
+              <label class="custom-control-label" for="cat77">Others</label>
+            </div>
+			
+			
+					  <div class="card ml-3 77" style="display:block;" id="77">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat26" name="subcat" value="26">
+					<label class="custom-control-label" for="subcat26">Makhana/Fox Nut</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat27" name="subcat" value="27">
+					<label class="custom-control-label" for="subcat27">Medicinal Plants/ Plant parts</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat28" name="subcat" value="28">
+					<label class="custom-control-label" for="subcat28">Plantation</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis1">
+              <input type="checkbox" class="custom-control-input catind" id="cat216" name="catind" value="216">
+              <label class="custom-control-label" for="cat216">Cashew</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis1">
+              <input type="checkbox" class="custom-control-input catind" id="cat217" name="catind" value="217">
+              <label class="custom-control-label" for="cat217">Arecanut/betel nut</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis1">
+              <input type="checkbox" class="custom-control-input catind" id="cat218" name="catind" value="218">
+              <label class="custom-control-label" for="cat218">Coconut</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="20" class='20 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Aquatic Produce</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis20">
+              <input type="checkbox" class="custom-control-input catind" id="cat257" name="catind" value="257">
+              <label class="custom-control-label" for="cat257">Fish</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="19" class='19 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Ash</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis19">
+              <input type="checkbox" class="custom-control-input catind" id="cat155" name="catind" value="155">
+              <label class="custom-control-label" for="cat155">Fly ash</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis19">
+              <input type="checkbox" class="custom-control-input catind" id="cat188" name="catind" value="188">
+              <label class="custom-control-label" for="cat188">Pond ash</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis19">
+              <input type="checkbox" class="custom-control-input catind" id="cat195" name="catind" value="195">
+              <label class="custom-control-label" for="cat195">Bottom ash</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="2" class='2 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Chemicals</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis2">
+              <input type="checkbox" class="custom-control-input catind" id="cat78" name="catind" value="78">
+              <label class="custom-control-label" for="cat78">Paints, dyes and pigments</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis2">
+              <input type="checkbox" class="custom-control-input catind" id="cat79" name="catind" value="79">
+              <label class="custom-control-label" for="cat79">Spent catalyst</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis2">
+              <input type="checkbox" class="custom-control-input catind" id="cat80" name="catind" value="80">
+              <label class="custom-control-label" for="cat80">Others</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis2">
+              <input type="checkbox" class="custom-control-input catind" id="cat233" name="catind" value="233">
+              <label class="custom-control-label" for="cat233">Resins</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis2">
+              <input type="checkbox" class="custom-control-input catind" id="cat234" name="catind" value="234">
+              <label class="custom-control-label" for="cat234">Acid</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="4" class='4 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Coal</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis4">
+              <input type="checkbox" class="custom-control-input catind" id="cat81" name="catind" value="81">
+              <label class="custom-control-label" for="cat81">Coal</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis4">
+              <input type="checkbox" class="custom-control-input catind" id="cat82" name="catind" value="82">
+              <label class="custom-control-label" for="cat82">Coal  linkage</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis4">
+              <input type="checkbox" class="custom-control-input catind" id="cat83" name="catind" value="83">
+              <label class="custom-control-label" for="cat83">Lignite</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis4">
+              <input type="checkbox" class="custom-control-input catind" id="cat247" name="catind" value="247">
+              <label class="custom-control-label" for="cat247">Coal by products</label>
+            </div>
+			
+			
+					  <div class="card ml-3 247" style="display:block;" id="247">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat79" name="subcat" value="79">
+					<label class="custom-control-label" for="subcat79">Graphite Fines</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat80" name="subcat" value="80">
+					<label class="custom-control-label" for="subcat80">Met Coke Dust/Fines</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			 
+            </div>
+			
+			<div id="3" class='3 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Container</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis3">
+              <input type="checkbox" class="custom-control-input catind" id="cat84" name="catind" value="84">
+              <label class="custom-control-label" for="cat84">Barrel/drum</label>
+            </div>
+			
+			
+					  <div class="card ml-3 84" style="display:block;" id="84">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat29" name="subcat" value="29">
+					<label class="custom-control-label" for="subcat29">MS Barrel/Drum</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat30" name="subcat" value="30">
+					<label class="custom-control-label" for="subcat30">Plastic Barrel/Drum</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis3">
+              <input type="checkbox" class="custom-control-input catind" id="cat85" name="catind" value="85">
+              <label class="custom-control-label" for="cat85">Can/tin</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="5" class='5 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Diamond</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis5">
+              <input type="checkbox" class="custom-control-input catind" id="cat86" name="catind" value="86">
+              <label class="custom-control-label" for="cat86">Rough diamond</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis5">
+              <input type="checkbox" class="custom-control-input catind" id="cat182" name="catind" value="182">
+              <label class="custom-control-label" for="cat182">Gem-individual</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis5">
+              <input type="checkbox" class="custom-control-input catind" id="cat183" name="catind" value="183">
+              <label class="custom-control-label" for="cat183">Gem-packets</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis5">
+              <input type="checkbox" class="custom-control-input catind" id="cat184" name="catind" value="184">
+              <label class="custom-control-label" for="cat184">Off colour-packets</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis5">
+              <input type="checkbox" class="custom-control-input catind" id="cat185" name="catind" value="185">
+              <label class="custom-control-label" for="cat185">Darkbrown-packets</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="6" class='6 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Electrical Items</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis6">
+              <input type="checkbox" class="custom-control-input catind" id="cat87" name="catind" value="87">
+              <label class="custom-control-label" for="cat87">Air conditioner/ac plant</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis6">
+              <input type="checkbox" class="custom-control-input catind" id="cat88" name="catind" value="88">
+              <label class="custom-control-label" for="cat88">Battery</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis6">
+              <input type="checkbox" class="custom-control-input catind" id="cat89" name="catind" value="89">
+              <label class="custom-control-label" for="cat89">Cables</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis6">
+              <input type="checkbox" class="custom-control-input catind" id="cat90" name="catind" value="90">
+              <label class="custom-control-label" for="cat90">Transformer</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis6">
+              <input type="checkbox" class="custom-control-input catind" id="cat91" name="catind" value="91">
+              <label class="custom-control-label" for="cat91">Others</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis6">
+              <input type="checkbox" class="custom-control-input catind" id="cat199" name="catind" value="199">
+              <label class="custom-control-label" for="cat199">Dg sets/generators</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis6">
+              <input type="checkbox" class="custom-control-input catind" id="cat229" name="catind" value="229">
+              <label class="custom-control-label" for="cat229">Conductors</label>
+            </div>
+			
+			
+					  <div class="card ml-3 229" style="display:block;" id="229">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat74" name="subcat" value="74">
+					<label class="custom-control-label" for="subcat74">AAC</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat75" name="subcat" value="75">
+					<label class="custom-control-label" for="subcat75">AAAC</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat76" name="subcat" value="76">
+					<label class="custom-control-label" for="subcat76">ACSR</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis6">
+              <input type="checkbox" class="custom-control-input catind" id="cat230" name="catind" value="230">
+              <label class="custom-control-label" for="cat230">Circuit breaker</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis6">
+              <input type="checkbox" class="custom-control-input catind" id="cat231" name="catind" value="231">
+              <label class="custom-control-label" for="cat231">Meter scrap</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis6">
+              <input type="checkbox" class="custom-control-input catind" id="cat232" name="catind" value="232">
+              <label class="custom-control-label" for="cat232">Crgo scrap</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="7" class='7 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Electronics Items</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis7">
+              <input type="checkbox" class="custom-control-input catind" id="cat92" name="catind" value="92">
+              <label class="custom-control-label" for="cat92">Compters/peripherals</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis7">
+              <input type="checkbox" class="custom-control-input catind" id="cat93" name="catind" value="93">
+              <label class="custom-control-label" for="cat93">Others</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis7">
+              <input type="checkbox" class="custom-control-input catind" id="cat201" name="catind" value="201">
+              <label class="custom-control-label" for="cat201">Mobile/tablet</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="8" class='8 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Forest Produce</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat55" name="catind" value="55">
+              <label class="custom-control-label" for="cat55">Timber</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat56" name="catind" value="56">
+              <label class="custom-control-label" for="cat56">Poles</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat57" name="catind" value="57">
+              <label class="custom-control-label" for="cat57">Billets</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat59" name="catind" value="59">
+              <label class="custom-control-label" for="cat59">Ntfd</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat60" name="catind" value="60">
+              <label class="custom-control-label" for="cat60">Canes</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat94" name="catind" value="94">
+              <label class="custom-control-label" for="cat94">Timber - teak</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat95" name="catind" value="95">
+              <label class="custom-control-label" for="cat95">Timber - rosewood</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat96" name="catind" value="96">
+              <label class="custom-control-label" for="cat96">Timber - others</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat97" name="catind" value="97">
+              <label class="custom-control-label" for="cat97">Timber cut sizes</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat98" name="catind" value="98">
+              <label class="custom-control-label" for="cat98">Sandal wood</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat99" name="catind" value="99">
+              <label class="custom-control-label" for="cat99">Red sander</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat100" name="catind" value="100">
+              <label class="custom-control-label" for="cat100">Sandalwood oil</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat101" name="catind" value="101">
+              <label class="custom-control-label" for="cat101">Poles- teak</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat102" name="catind" value="102">
+              <label class="custom-control-label" for="cat102">Poles - others</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat103" name="catind" value="103">
+              <label class="custom-control-label" for="cat103">Pulpwood</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat104" name="catind" value="104">
+              <label class="custom-control-label" for="cat104">Firewood</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat105" name="catind" value="105">
+              <label class="custom-control-label" for="cat105">Tendu leaves</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis8">
+              <input type="checkbox" class="custom-control-input catind" id="cat110" name="catind" value="110">
+              <label class="custom-control-label" for="cat110">Others</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="9" class='9 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Immovable Property</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis9">
+              <input type="checkbox" class="custom-control-input catind" id="catP1" name="catind" value="P1">
+              <label class="custom-control-label" for="catP1">Residential</label>
+            </div>
+			
+			
+					  <div class="card ml-3 P1" style="display:block;" id="P1">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS1" name="subcat" value="PS1">
+					<label class="custom-control-label" for="subcatPS1">Flat</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS2" name="subcat" value="PS2">
+					<label class="custom-control-label" for="subcatPS2">Plot/Land</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS3" name="subcat" value="PS3">
+					<label class="custom-control-label" for="subcatPS3">Independent House</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis9">
+              <input type="checkbox" class="custom-control-input catind" id="catP2" name="catind" value="P2">
+              <label class="custom-control-label" for="catP2">Commercial</label>
+            </div>
+			
+			
+					  <div class="card ml-3 P2" style="display:block;" id="P2">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS4" name="subcat" value="PS4">
+					<label class="custom-control-label" for="subcatPS4">Shops</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS5" name="subcat" value="PS5">
+					<label class="custom-control-label" for="subcatPS5">Showroom</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS6" name="subcat" value="PS6">
+					<label class="custom-control-label" for="subcatPS6">Office</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS7" name="subcat" value="PS7">
+					<label class="custom-control-label" for="subcatPS7">Land/Plot</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS8" name="subcat" value="PS8">
+					<label class="custom-control-label" for="subcatPS8">Buildings</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS9" name="subcat" value="PS9">
+					<label class="custom-control-label" for="subcatPS9">Malls</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS10" name="subcat" value="PS10">
+					<label class="custom-control-label" for="subcatPS10">Storage Space</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS11" name="subcat" value="PS11">
+					<label class="custom-control-label" for="subcatPS11">Godowns</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS12" name="subcat" value="PS12">
+					<label class="custom-control-label" for="subcatPS12">Hoardings</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS21" name="subcat" value="PS21">
+					<label class="custom-control-label" for="subcatPS21">Bus Adda</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS22" name="subcat" value="PS22">
+					<label class="custom-control-label" for="subcatPS22">Parking Lot</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS23" name="subcat" value="PS23">
+					<label class="custom-control-label" for="subcatPS23">Toilets/Bathrooms/Washrooms</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis9">
+              <input type="checkbox" class="custom-control-input catind" id="catP3" name="catind" value="P3">
+              <label class="custom-control-label" for="catP3">Agriculture</label>
+            </div>
+			
+			
+					  <div class="card ml-3 P3" style="display:block;" id="P3">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS18" name="subcat" value="PS18">
+					<label class="custom-control-label" for="subcatPS18">Land/Plot</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS19" name="subcat" value="PS19">
+					<label class="custom-control-label" for="subcatPS19">Farmhouse</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS20" name="subcat" value="PS20">
+					<label class="custom-control-label" for="subcatPS20">Agriculture</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis9">
+              <input type="checkbox" class="custom-control-input catind" id="catP4" name="catind" value="P4">
+              <label class="custom-control-label" for="catP4">Industry</label>
+            </div>
+			
+			
+					  <div class="card ml-3 P4" style="display:block;" id="P4">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS13" name="subcat" value="PS13">
+					<label class="custom-control-label" for="subcatPS13">Building</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS14" name="subcat" value="PS14">
+					<label class="custom-control-label" for="subcatPS14">Land/Plot</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS15" name="subcat" value="PS15">
+					<label class="custom-control-label" for="subcatPS15">Warehouse</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS16" name="subcat" value="PS16">
+					<label class="custom-control-label" for="subcatPS16">Industrial Shed</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcatPS17" name="subcat" value="PS17">
+					<label class="custom-control-label" for="subcatPS17">Shed with Plant and Machinery</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis9">
+              <input type="checkbox" class="custom-control-input catind" id="catP5" name="catind" value="P5">
+              <label class="custom-control-label" for="catP5">Others</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="18" class='18 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Liquor License Contracts</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis18">
+              <input type="checkbox" class="custom-control-input catind" id="cat186" name="catind" value="186">
+              <label class="custom-control-label" for="cat186">Liquor shop license</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="10" class='10 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Metal</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat111" name="catind" value="111">
+              <label class="custom-control-label" for="cat111">Iron and steel</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat112" name="catind" value="112">
+              <label class="custom-control-label" for="cat112">Aluminium</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat113" name="catind" value="113">
+              <label class="custom-control-label" for="cat113">Brass</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat114" name="catind" value="114">
+              <label class="custom-control-label" for="cat114">Copper</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat115" name="catind" value="115">
+              <label class="custom-control-label" for="cat115">Lead</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat116" name="catind" value="116">
+              <label class="custom-control-label" for="cat116">Gold</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat117" name="catind" value="117">
+              <label class="custom-control-label" for="cat117">Platinum</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat118" name="catind" value="118">
+              <label class="custom-control-label" for="cat118">Silver</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat119" name="catind" value="119">
+              <label class="custom-control-label" for="cat119">Zinc</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat120" name="catind" value="120">
+              <label class="custom-control-label" for="cat120">Nickle</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat121" name="catind" value="121">
+              <label class="custom-control-label" for="cat121">Gun metal/bronze</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat122" name="catind" value="122">
+              <label class="custom-control-label" for="cat122">Other metals</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis10">
+              <input type="checkbox" class="custom-control-input catind" id="cat227" name="catind" value="227">
+              <label class="custom-control-label" for="cat227">Mixed metal scraps</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="12" class='12 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Mine Block</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat50" name="catind" value="50">
+              <label class="custom-control-label" for="cat50">Mine block</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat136" name="catind" value="136">
+              <label class="custom-control-label" for="cat136">Coal mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat137" name="catind" value="137">
+              <label class="custom-control-label" for="cat137">Iron ore mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat138" name="catind" value="138">
+              <label class="custom-control-label" for="cat138">Lime stone mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat139" name="catind" value="139">
+              <label class="custom-control-label" for="cat139">Graphite mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat140" name="catind" value="140">
+              <label class="custom-control-label" for="cat140">Gold mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat141" name="catind" value="141">
+              <label class="custom-control-label" for="cat141">Manganese ore mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat142" name="catind" value="142">
+              <label class="custom-control-label" for="cat142">Diamond mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat143" name="catind" value="143">
+              <label class="custom-control-label" for="cat143">Bauxite mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat144" name="catind" value="144">
+              <label class="custom-control-label" for="cat144">Copper ore mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat145" name="catind" value="145">
+              <label class="custom-control-label" for="cat145">Platinum ore mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat146" name="catind" value="146">
+              <label class="custom-control-label" for="cat146">Sand block</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat147" name="catind" value="147">
+              <label class="custom-control-label" for="cat147">Murram block</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat148" name="catind" value="148">
+              <label class="custom-control-label" for="cat148">Rcc/ercc</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat197" name="catind" value="197">
+              <label class="custom-control-label" for="cat197">Magnesite mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat198" name="catind" value="198">
+              <label class="custom-control-label" for="cat198">Decorative stone mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat206" name="catind" value="206">
+              <label class="custom-control-label" for="cat206">Limestone mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat207" name="catind" value="207">
+              <label class="custom-control-label" for="cat207">Phosphorite mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat208" name="catind" value="208">
+              <label class="custom-control-label" for="cat208">Basemetal  mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat209" name="catind" value="209">
+              <label class="custom-control-label" for="cat209">Vanadium mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat210" name="catind" value="210">
+              <label class="custom-control-label" for="cat210">Iron ore & manganese ore mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat211" name="catind" value="211">
+              <label class="custom-control-label" for="cat211">Gold and basemetal mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat212" name="catind" value="212">
+              <label class="custom-control-label" for="cat212">Graphite & vanadium mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat213" name="catind" value="213">
+              <label class="custom-control-label" for="cat213">Flourite mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat214" name="catind" value="214">
+              <label class="custom-control-label" for="cat214">Siliceous earth mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat215" name="catind" value="215">
+              <label class="custom-control-label" for="cat215">Potash mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat241" name="catind" value="241">
+              <label class="custom-control-label" for="cat241">Rare earth elements mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat246" name="catind" value="246">
+              <label class="custom-control-label" for="cat246">Garnet mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat248" name="catind" value="248">
+              <label class="custom-control-label" for="cat248">Copper lead zinc mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat249" name="catind" value="249">
+              <label class="custom-control-label" for="cat249">Copper and associated gold mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat250" name="catind" value="250">
+              <label class="custom-control-label" for="cat250">Lead zinc mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat251" name="catind" value="251">
+              <label class="custom-control-label" for="cat251">Emerald mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat256" name="catind" value="256">
+              <label class="custom-control-label" for="cat256">Ordinary sand mine</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis12">
+              <input type="checkbox" class="custom-control-input catind" id="cat258" name="catind" value="258">
+              <label class="custom-control-label" for="cat258">Grant of license rights</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="11" class='11 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Minerals</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat71" name="catind" value="71">
+              <label class="custom-control-label" for="cat71">Blue stone</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat123" name="catind" value="123">
+              <label class="custom-control-label" for="cat123">Iron ore</label>
+            </div>
+			
+			
+					  <div class="card ml-3 123" style="display:block;" id="123">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat66" name="subcat" value="66">
+					<label class="custom-control-label" for="subcat66">Mixed - Fines and Lumps</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat124" name="catind" value="124">
+              <label class="custom-control-label" for="cat124">Manganese/ferro-manganese ore</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat125" name="catind" value="125">
+              <label class="custom-control-label" for="cat125">Sand</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat126" name="catind" value="126">
+              <label class="custom-control-label" for="cat126">Clay</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat127" name="catind" value="127">
+              <label class="custom-control-label" for="cat127">Chrome ore</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat128" name="catind" value="128">
+              <label class="custom-control-label" for="cat128">Baryte</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat129" name="catind" value="129">
+              <label class="custom-control-label" for="cat129">Dolomite</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat130" name="catind" value="130">
+              <label class="custom-control-label" for="cat130">Granite</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat131" name="catind" value="131">
+              <label class="custom-control-label" for="cat131">Limestone</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat132" name="catind" value="132">
+              <label class="custom-control-label" for="cat132">Marble</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat133" name="catind" value="133">
+              <label class="custom-control-label" for="cat133">Silica sand</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat134" name="catind" value="134">
+              <label class="custom-control-label" for="cat134">Gypsum</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat135" name="catind" value="135">
+              <label class="custom-control-label" for="cat135">Fluorspar</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat187" name="catind" value="187">
+              <label class="custom-control-label" for="cat187">Weathered/mixed stone</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat194" name="catind" value="194">
+              <label class="custom-control-label" for="cat194">Inferior quality material</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat196" name="catind" value="196">
+              <label class="custom-control-label" for="cat196">M-sand</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat223" name="catind" value="223">
+              <label class="custom-control-label" for="cat223">Bauxite</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat242" name="catind" value="242">
+              <label class="custom-control-label" for="cat242">Magnesite</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat243" name="catind" value="243">
+              <label class="custom-control-label" for="cat243">Dunite</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat245" name="catind" value="245">
+              <label class="custom-control-label" for="cat245">Salt</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat253" name="catind" value="253">
+              <label class="custom-control-label" for="cat253">Low graded/nala sand</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat254" name="catind" value="254">
+              <label class="custom-control-label" for="cat254">Primarily blue stone</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis11">
+              <input type="checkbox" class="custom-control-input catind" id="cat255" name="catind" value="255">
+              <label class="custom-control-label" for="cat255">Rock phosphate</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="13" class='13 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Miscellaneous</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat149" name="catind" value="149">
+              <label class="custom-control-label" for="cat149">Plastic</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat150" name="catind" value="150">
+              <label class="custom-control-label" for="cat150">Leather</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat151" name="catind" value="151">
+              <label class="custom-control-label" for="cat151">Rubber</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat152" name="catind" value="152">
+              <label class="custom-control-label" for="cat152">Building materials</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat153" name="catind" value="153">
+              <label class="custom-control-label" for="cat153">Cenosphere</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat154" name="catind" value="154">
+              <label class="custom-control-label" for="cat154">Dismantaling of buildings/plants</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat156" name="catind" value="156">
+              <label class="custom-control-label" for="cat156">Furniture</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat157" name="catind" value="157">
+              <label class="custom-control-label" for="cat157">Wooden items</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat158" name="catind" value="158">
+              <label class="custom-control-label" for="cat158">Scrips</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat159" name="catind" value="159">
+              <label class="custom-control-label" for="cat159">Miscellaneous items</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat190" name="catind" value="190">
+              <label class="custom-control-label" for="cat190">Fgd gypsum</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat193" name="catind" value="193">
+              <label class="custom-control-label" for="cat193">Paper and related products</label>
+            </div>
+			
+			
+					  <div class="card ml-3 193" style="display:block;" id="193">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat51" name="subcat" value="51">
+					<label class="custom-control-label" for="subcat51">Paper</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat52" name="subcat" value="52">
+					<label class="custom-control-label" for="subcat52">Board</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat53" name="subcat" value="53">
+					<label class="custom-control-label" for="subcat53">Cartoons</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat54" name="subcat" value="54">
+					<label class="custom-control-label" for="subcat54">Paper Bricks</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat55" name="subcat" value="55">
+					<label class="custom-control-label" for="subcat55">others</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat200" name="catind" value="200">
+              <label class="custom-control-label" for="cat200">Cloth/garments</label>
+            </div>
+			
+			
+					  <div class="card ml-3 200" style="display:block;" id="200">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat60" name="subcat" value="60">
+					<label class="custom-control-label" for="subcat60">Fabric/Yarn/Cloth</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat61" name="subcat" value="61">
+					<label class="custom-control-label" for="subcat61">Garbage/Sweeping Dust/Broom Waste</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat202" name="catind" value="202">
+              <label class="custom-control-label" for="cat202">Glass</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat203" name="catind" value="203">
+              <label class="custom-control-label" for="cat203">Medical</label>
+            </div>
+			
+			
+					  <div class="card ml-3 203" style="display:block;" id="203">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat56" name="subcat" value="56">
+					<label class="custom-control-label" for="subcat56">Medical Equipment</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat57" name="subcat" value="57">
+					<label class="custom-control-label" for="subcat57">Medical Waste</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat58" name="subcat" value="58">
+					<label class="custom-control-label" for="subcat58">Medical Machinery</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat59" name="subcat" value="59">
+					<label class="custom-control-label" for="subcat59">Lab Equipment</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat62" name="subcat" value="62">
+					<label class="custom-control-label" for="subcat62">Medicines</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat204" name="catind" value="204">
+              <label class="custom-control-label" for="cat204">Garbage/sweeping dust/broom waste</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat205" name="catind" value="205">
+              <label class="custom-control-label" for="cat205">Human hair</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat219" name="catind" value="219">
+              <label class="custom-control-label" for="cat219">Silk cocoons</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat220" name="catind" value="220">
+              <label class="custom-control-label" for="cat220">Fibre scrap or fiber glass scrap</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat221" name="catind" value="221">
+              <label class="custom-control-label" for="cat221">Footwear</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat222" name="catind" value="222">
+              <label class="custom-control-label" for="cat222">Packing material</label>
+            </div>
+			
+			
+					  <div class="card ml-3 222" style="display:block;" id="222">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat70" name="subcat" value="70">
+					<label class="custom-control-label" for="subcat70">Gunny Bags</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat71" name="subcat" value="71">
+					<label class="custom-control-label" for="subcat71">Jute Bags</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat72" name="subcat" value="72">
+					<label class="custom-control-label" for="subcat72">Corrugated Box</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat226" name="catind" value="226">
+              <label class="custom-control-label" for="cat226">Textile</label>
+            </div>
+			
+			
+					  <div class="card ml-3 226" style="display:block;" id="226">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat67" name="subcat" value="67">
+					<label class="custom-control-label" for="subcat67">Jute Items/Jute Waste</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat68" name="subcat" value="68">
+					<label class="custom-control-label" for="subcat68">Cotton Items/Cotton Waste</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat69" name="subcat" value="69">
+					<label class="custom-control-label" for="subcat69">Tents/Tarpaulin</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat235" name="catind" value="235">
+              <label class="custom-control-label" for="cat235">Custom goods</label>
+            </div>
+			
+			
+					  <div class="card ml-3 235" style="display:block;" id="235">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat77" name="subcat" value="77">
+					<label class="custom-control-label" for="subcat77">Unclaimed/Uncleared Cargo</label>
+				  </div>
+				
+				
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat78" name="subcat" value="78">
+					<label class="custom-control-label" for="subcat78">CFS Containers</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat236" name="catind" value="236">
+              <label class="custom-control-label" for="cat236">Safety equipment</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat237" name="catind" value="237">
+              <label class="custom-control-label" for="cat237">Household and office items</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat238" name="catind" value="238">
+              <label class="custom-control-label" for="cat238">Artifacts</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat239" name="catind" value="239">
+              <label class="custom-control-label" for="cat239">Musical instruments</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat244" name="catind" value="244">
+              <label class="custom-control-label" for="cat244">Tdr -transferrable development rights</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis13">
+              <input type="checkbox" class="custom-control-input catind" id="cat252" name="catind" value="252">
+              <label class="custom-control-label" for="cat252">Omda</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="14" class='14 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Petroleum Products</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis14">
+              <input type="checkbox" class="custom-control-input catind" id="cat160" name="catind" value="160">
+              <label class="custom-control-label" for="cat160">Pet coke</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis14">
+              <input type="checkbox" class="custom-control-input catind" id="cat161" name="catind" value="161">
+              <label class="custom-control-label" for="cat161">Used/ waste oil</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis14">
+              <input type="checkbox" class="custom-control-input catind" id="cat162" name="catind" value="162">
+              <label class="custom-control-label" for="cat162">Lubricants</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis14">
+              <input type="checkbox" class="custom-control-input catind" id="cat163" name="catind" value="163">
+              <label class="custom-control-label" for="cat163">Rlng</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis14">
+              <input type="checkbox" class="custom-control-input catind" id="cat164" name="catind" value="164">
+              <label class="custom-control-label" for="cat164">Bitumen</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis14">
+              <input type="checkbox" class="custom-control-input catind" id="cat165" name="catind" value="165">
+              <label class="custom-control-label" for="cat165">Wax</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="15" class='15 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Plant/Machineries</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis15">
+              <input type="checkbox" class="custom-control-input catind" id="cat166" name="catind" value="166">
+              <label class="custom-control-label" for="cat166">Plants</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis15">
+              <input type="checkbox" class="custom-control-input catind" id="cat167" name="catind" value="167">
+              <label class="custom-control-label" for="cat167">Machinery items</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis15">
+              <input type="checkbox" class="custom-control-input catind" id="cat168" name="catind" value="168">
+              <label class="custom-control-label" for="cat168">Aircrafts</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis15">
+              <input type="checkbox" class="custom-control-input catind" id="cat169" name="catind" value="169">
+              <label class="custom-control-label" for="cat169">Crane/earth moving equipments</label>
+            </div>
+			
+			
+					  <div class="card ml-3 169" style="display:block;" id="169">
+                          <div class="card-body">
+                            <div class="row mx-1">
+					
+			  
+				  <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline">
+					<input type="checkbox" class="custom-control-input" id="subcat73" name="subcat" value="73">
+					<label class="custom-control-label" for="subcat73">Forklift</label>
+				  </div>
+				
+				
+				</div>
+				</div>
+				</div>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis15">
+              <input type="checkbox" class="custom-control-input catind" id="cat170" name="catind" value="170">
+              <label class="custom-control-label" for="cat170">Surplus stores/ spares</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis15">
+              <input type="checkbox" class="custom-control-input catind" id="cat171" name="catind" value="171">
+              <label class="custom-control-label" for="cat171">Engine assemblies/ vehicle comp.</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis15">
+              <input type="checkbox" class="custom-control-input catind" id="cat224" name="catind" value="224">
+              <label class="custom-control-label" for="cat224">Tools & equipments</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis15">
+              <input type="checkbox" class="custom-control-input catind" id="cat225" name="catind" value="225">
+              <label class="custom-control-label" for="cat225">Spare parts</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="16" class='16 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Transport Vehicles</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis16">
+              <input type="checkbox" class="custom-control-input catind" id="cat172" name="catind" value="172">
+              <label class="custom-control-label" for="cat172">Auto rikshaw</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis16">
+              <input type="checkbox" class="custom-control-input catind" id="cat173" name="catind" value="173">
+              <label class="custom-control-label" for="cat173">Two-wheller</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis16">
+              <input type="checkbox" class="custom-control-input catind" id="cat174" name="catind" value="174">
+              <label class="custom-control-label" for="cat174">Car</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis16">
+              <input type="checkbox" class="custom-control-input catind" id="cat175" name="catind" value="175">
+              <label class="custom-control-label" for="cat175">Bus</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis16">
+              <input type="checkbox" class="custom-control-input catind" id="cat176" name="catind" value="176">
+              <label class="custom-control-label" for="cat176">Truck</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis16">
+              <input type="checkbox" class="custom-control-input catind" id="cat189" name="catind" value="189">
+              <label class="custom-control-label" for="cat189">End of life vehicles</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis16">
+              <input type="checkbox" class="custom-control-input catind" id="cat191" name="catind" value="191">
+              <label class="custom-control-label" for="cat191">Cycles</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis16">
+              <input type="checkbox" class="custom-control-input catind" id="cat192" name="catind" value="192">
+              <label class="custom-control-label" for="cat192">E-rikshaw</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis16">
+              <input type="checkbox" class="custom-control-input catind" id="cat228" name="catind" value="228">
+              <label class="custom-control-label" for="cat228">Spv - special purpose vehicle</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis16">
+              <input type="checkbox" class="custom-control-input catind" id="cat240" name="catind" value="240">
+              <label class="custom-control-label" for="cat240">Others</label>
+            </div>
+			
+			 
+            </div>
+			
+			<div id="17" class='17 my-3 subcatdisp' style="display:none;">
+			<h6 class="card-title" style="border-bottom: 1px solid #ccc;padding-bottom: 10px;">Vessels</h6>
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis17">
+              <input type="checkbox" class="custom-control-input catind" id="cat177" name="catind" value="177">
+              <label class="custom-control-label" for="cat177">Ship</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis17">
+              <input type="checkbox" class="custom-control-input catind" id="cat178" name="catind" value="178">
+              <label class="custom-control-label" for="cat178">Boat</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis17">
+              <input type="checkbox" class="custom-control-input catind" id="cat179" name="catind" value="179">
+              <label class="custom-control-label" for="cat179">Tug</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis17">
+              <input type="checkbox" class="custom-control-input catind" id="cat180" name="catind" value="180">
+              <label class="custom-control-label" for="cat180">Barge</label>
+            </div>
+			
+			
+		  
+            <div class="custom-control custom-checkbox my-1 mr-sm-2 form-check-inline catdis17">
+              <input type="checkbox" class="custom-control-input catind" id="cat181" name="catind" value="181">
+              <label class="custom-control-label" for="cat181">Dredger</label>
+            </div>
+			
+			 
+            </div>
+			
+            </div>
+          
+        </div>
+        
+        <div class="card col-md-4" style="padding:10px;height:320px;">
+		  <div  id="locview">
+			  <h6 class="card-title text-primary" style="border-bottom: 1px solid #fc0;padding-bottom: 10px;">Select Location</h6>
+			  <div class="card-body">
+				<div class="form-group">
+				<label for="state">Select State</label>
+				<select class="form-control state" id="state" name="state" multiple='multiple'>
+				
+					<option value='Andaman and Nicobar Islands'>Andaman and Nicobar Islands</option>
+				
+					<option value='Andhra Pradesh'>Andhra Pradesh</option>
+				
+					<option value='Arunachal Pradesh'>Arunachal Pradesh</option>
+				
+					<option value='Assam'>Assam</option>
+				
+					<option value='Bihar'>Bihar</option>
+				
+					<option value='Chandigarh'>Chandigarh</option>
+				
+					<option value='Chhattisgarh'>Chhattisgarh</option>
+				
+					<option value='Dadra and Nagar Haveli and Daman and Diu'>Dadra and Nagar Haveli and Daman and Diu</option>
+				
+					<option value='Delhi'>Delhi</option>
+				
+					<option value='Goa'>Goa</option>
+				
+					<option value='Gujarat'>Gujarat</option>
+				
+					<option value='Haryana'>Haryana</option>
+				
+					<option value='Himachal Pradesh'>Himachal Pradesh</option>
+				
+					<option value='Jammu and Kashmir'>Jammu and Kashmir</option>
+				
+					<option value='Jharkhand'>Jharkhand</option>
+				
+					<option value='Karnataka'>Karnataka</option>
+				
+					<option value='Kerala'>Kerala</option>
+				
+					<option value='Ladakh'>Ladakh</option>
+				
+					<option value='Lakshdweep'>Lakshdweep</option>
+				
+					<option value='Madhya Pradesh'>Madhya Pradesh</option>
+				
+					<option value='Maharashtra'>Maharashtra</option>
+				
+					<option value='Manipur'>Manipur</option>
+				
+					<option value='Meghalaya'>Meghalaya</option>
+				
+					<option value='Mizoram'>Mizoram</option>
+				
+					<option value='Nagaland'>Nagaland</option>
+				
+					<option value='Odisha'>Odisha</option>
+				
+					<option value='Puducherry'>Puducherry</option>
+				
+					<option value='Punjab'>Punjab</option>
+				
+					<option value='Rajasthan'>Rajasthan</option>
+				
+					<option value='Sikkim'>Sikkim</option>
+				
+					<option value='Tamil Nadu'>Tamil Nadu</option>
+				
+					<option value='Telangana'>Telangana</option>
+				
+					<option value='Tripura'>Tripura</option>
+				
+					<option value='Uttar Pradesh'>Uttar Pradesh</option>
+				
+					<option value='Uttarakhand'>Uttarakhand</option>
+				
+					<option value='West Bengal'>West Bengal</option>
+				
+				</select>
+				</div>
+				</div>
+			</div>	
+			  <div  id="offview">
+			  <h6 class="card-title text-primary" style="border-bottom: 1px solid #fc0;padding-bottom: 10px;">Select Office</h6>
+			  <div class="card-body">
+				<div class="form-group">
+				<label for="office">Select Office</label>
+				<select class="form-control office" id="office" name="office" multiple='multiple'>
+				
+					<option value='BBR'>BBR - MSTC Bhubaneswar office</option>
+				
+					<option value='BLR'>BLR - MSTC Bangalore office</option>
+				
+					<option value='BPL'>BPL - MSTC Bhopal office</option>
+				
+					<option value='CDG'>CDG - MSTC Chandigarh office</option>
+				
+					<option value='ERO'>ERO - MSTC Kolkata office</option>
+				
+					<option value='GHY'>GHY - MSTC Guwahati office</option>
+				
+					<option value='HYD'>HYD - MSTC Hydrabad office</option>
+				
+					<option value='JPR'>JPR - MSTC Jaipur office</option>
+				
+					<option value='LKO'>LKO - MSTC Lucknow office</option>
+				
+					<option value='NRO'>NRO - MSTC Delhi office</option>
+				
+					<option value='PTN'>PTN - MSTC PATNA Office</option>
+				
+					<option value='RNC'>RNC - MSTC Ranchi office</option>
+				
+					<option value='RPR'>RPR - MSTC Raipur office</option>
+				
+					<option value='SRO'>SRO - MSTC Chennai office</option>
+				
+					<option value='TVC'>TVC - MSTC Trivandrum office</option>
+				
+					<option value='VAD'>VAD - MSTC Vadadora office</option>
+				
+					<option value='VZG'>VZG - MSTC Vizag office</option>
+				
+					<option value='WRO'>WRO - MSTC Mumbai office</option>
+				
+				</select>
+				</div>
+			  </div>
+			</div>
+        </div>	
+    </div>
+	<div class="d-flex justify-content-center p-2" id="subcatpropcl" style="display:none !important;">
+		 <button type="button" class="btn btn-secondary" id="clear" >Clear</button>
+		 <button type="button" class="btn btn-primary ml-5" id="search">Search</button>
+    </div>
+  </div>
+  
+  </div>
+  </div>
+  
+  </div>
+  </div>
+  </div>
+  </div>
+  </div>
+  </form>
+  
+  <div class="container-fluid my-1" id="databody">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="card p-2">
+          <div class="card-body">
+		   <h5 class="card-header bg-success text-white"><i class="fa fa-list" aria-hidden="true"></i>&nbsp;Search Result </h5>
+           <table class="table table-bordered text-center">
+              <thead class="thead-dark">
+                <tr>
+                  <th width="4%" scope="col">Sl.No.</th>
+                  <th width="20%" scope="col">Category/Sub-Category</th>
+                  <th width="28%" scope="col">Auction Number</th>
+                  <th width="13%" scope="col">Date of Auction</th>
+                  <th width="22%" scope="col">Scheduled Auction Duration</th>
+                  <th width="13%" scope="col">Login/Register</th>
+                </tr>
+              </thead>
+			  <tbody id="finalAppendBody" class="text-center">
+			  </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<canvas id='textCanvas'  width="100" height="12" style="display:none;"></canvas>
+</main>
+<div id="capmodal">
+<div id="capmodalin" class="modal" role="dialog" data-backdrop="static" data-keyboard="false">
+	<div class="modal-dialog" style="width:30%">
+    <!-- Modal content-->
+    <div class="modal-content">
+		<div class="modal-header">
+			<h6 style="text-align:left;"><span style="font-weight:bold;">Captcha Verification</span></h6>
+			<button type="button" class="close" data-dismiss="modal">&times;</button>
+		</div>
+	  
+		<div class="modal-body text-center">
+			<div class="form-group row">
+			 <img id='img' src='' width="200" class="mr-sm-2"   >
+			  <button  class="btn btn-success mb-2 btn-sm" type="button"  name="B1" onclick="createCaptcha();">Refresh</button>
+			  </div>
+			  <div class="form-group row">
+			  <label for="email" class="mx-auto">Verification Code :</label>
+			  <input type="text" name="vercd" class="form-control mx-auto" placeholder="Enter Verification Code" id="vercd" style="width: 60%;">
+			  </div>
+		</div>
+		<div class="modal-footer">
+			<button type="button" class="btn btn-primary" data-dismiss="modal" id="capbtn">Submit</button>
+        </div>
+	</div>
+	</div>
+</div> 
+</div>
+<script src="js/jquery-3.2.1.min.js" ></script>
+<script src="js/jquery.alphanum.js" ></script>
+<script src="../js/mstccaptcha.js"></script>
+<script src="js/popper.min.js" type="text/javascript"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="js/gijgo.min.js" type="text/javascript"></script>
+<link href="css/bootstrap-multiselect.css" rel="stylesheet" type="text/css" />
+<script src="js/bootstrap-multiselect.js"></script>
+<script>
+	$('#fromdate').datepicker({
+		format: 'mm/dd/yyyy',
+		uiLibrary: 'bootstrap4',
+		showOnFocus: true, 
+		showRightIcon: false 
+	});
+	
+	$('#todate').datepicker({
+		format: 'mm/dd/yyyy',
+		uiLibrary: 'bootstrap4',
+		showOnFocus: true, 
+		showRightIcon: false 
+	});
+	
+	
+	function clear_form_elements(attname) {
+		$("."+attname).find(':input').each(function() {
+		switch(this.type) {
+			case 'text':
+			case 'textarea':
+				$(this).val('');
+				$(this).val('');
+				break;
+			case 'checkbox':
+			case 'radio':
+				this.checked = false;
+				break;
+		}
+	  });
+	  
+	  $("#"+attname).find(':input').each(function() {
+		switch(this.type) {
+			case 'text':
+			case 'textarea':
+				$(this).val('');
+				$(this).val('');
+				break;
+			case 'checkbox':
+			case 'radio':
+				this.checked = false;
+				break;
+		}
+	  });
+	}
+	
+	$(document).ready(function(){
+		$('#databody').hide();
+		$('#state').multiselect({  
+			includeSelectAllOption: true,
+			maxHeight: 250,
+			buttonWidth: '320px'
+		});
+		$('#office').multiselect({  
+			includeSelectAllOption: true,
+			maxHeight: 250,
+			buttonWidth: '320px'
+		});
+		
+		
+		$("#keyword").alphanum({
+		  allowUpper: false  // Allow Upper Case characters
+		});
+
+		$('body').bind('cut copy paste', function (e) {
+			e.preventDefault();
+		});
+		
+		
+		$("#forthauc").prop("checked", true);
+		clear_form_elements("tab1");
+		$("div[id$='tab1']").css("display", "block");
+		$('#tab1,#tab2,#tab4').find('input,button,select').prop("disabled", false);
+		var processShowData=false;
+		$("#todate").change(function () {
+			$('#databody').hide();
+			$("#finalAppendBody").html("");
+			var toDateval=$(this).val();
+			var frmDateval=$("#fromdate").val();
+			if(frmDateval!=''){
+				if(Date.parse(toDateval) < Date.parse(frmDateval)){
+					alert("To Date Should be Greater Than or Equal to From Date");
+					$("#todate").val("");
+				}
+			}
+		});
+		$("#fromdate").change(function () {
+			$('#databody').hide();
+			$("#finalAppendBody").html("");
+			$('#todate').prop("disabled", false);
+		});
+		
+		$("#keyword").on('input',function() {
+			var srckeyval=$("#keyword").val().trim();
+			$('#databody').hide();
+			$("#finalAppendBody").html("");
+			if(!processShowData && srckeyval.length==1){
+				processShowData=true;
+				var optcnt=0;
+				$(".subcatdisp").hide();
+				clear_form_elements("tab1");
+				clear_form_elements("tab2");
+				clear_form_elements("tab3");
+				clear_form_elements("tabit");
+				clear_form_elements("subcatview");
+				//$("#state").val("Andaman and Nicobar Islands");
+				$('#tabit,#subcatview,#tab3').find('input,button,select').prop("disabled", true);
+				$('#filtercat').prop("disabled", true);
+				$('.filteropt').each(function() {
+					if($(this).is(":checked")){
+						optcnt++;
+					}
+				});
+				$('#subcatpropcl').find('input,button,select').prop("disabled", false);
+				$("div[id$='subcatpropcl']").css("display", "block");
+				$("div[id$='subcatpropcl']").show();
+				/**
+				if(optcnt==0){
+					$('#subcatpropcl').find('input,button,select').prop("disabled", true);
+					$("div[id$='subcatpropcl']").hide();
+				}else{
+					$('#subcatpropcl').find('input,button,select').prop("disabled", false);
+				}
+				**/
+				$('.seropt').each(function() {
+					var dataval=$(this).val();
+					if($(this).is(":checked")){
+						if(dataval=='forthauc'){
+							clear_form_elements("tab1");
+							$("div[id$='tab1']").hide();
+						}
+					}
+				});
+			}
+			if(srckeyval==''){
+				processShowData=false;
+				clear_form_elements("tab2");
+				clear_form_elements("tab3");
+				//$("#state").val("Andaman and Nicobar Islands");
+				$('#tab2').find('input,button,select').prop("disabled", false);
+				$('#tab3').find('input,button,select').prop("disabled", true);
+				$("div[id$='subcatpropcl']").attr( "style", "display: none !important;" );//.hide();
+				$(".subcatdisp").hide();
+				$('.seropt').each(function() {
+					var dataval=$(this).val();
+					if($(this).is(":checked")){
+						if(dataval=='forthauc'){
+							clear_form_elements("tab1");
+							$("div[id$='tab1']").css("display", "block");
+						}
+					}
+				});
+			}
+			
+		});
+		$('#tab3').find('input,button,select').prop("disabled", true);
+		//$("#state").val("Andaman and Nicobar Islands");
+		$(".seropt").change(function () {
+			processShowData=false;
+			var dataval=$(this).val();
+			$('#databody').hide();
+			$("#finalAppendBody").html("");
+			if(dataval=='forthauc'){
+				clear_form_elements("tab1");
+				clear_form_elements("tab2");
+				clear_form_elements("tab3");
+				clear_form_elements("tab4");
+				//$("#state").val("Andaman and Nicobar Islands");
+				$("div[id$='tab1']").css("display", "block");
+				$('#tab1,#tab2,#tab4').find('input,button,select').prop("disabled", false);
+				$('#tab3').find('input,button,select').prop("disabled", true);
+				$('#subcatpropcl').find('input,button,select').prop("disabled", true);
+				$("div[id$='subcatpropcl']").attr( "style", "display: none !important;" );//.hide();
+				$(".subcatdisp").hide();
+				$('#dates').find('input,button,select').prop("disabled", true);
+			}else{
+				clear_form_elements("tab1");
+				clear_form_elements("tab2");
+				clear_form_elements("tab3");
+				clear_form_elements("tab4")
+				//$("#state").val("Andaman and Nicobar Islands");;
+				$('#tab1,#tab3').find('input,button,select').prop("disabled", true);
+				$('#tab2,#tab4').find('input,button,select').prop("disabled", false);
+				$("div[id$='tab1']").hide();
+				$("div[id$='subcatpropcl']").attr( "style", "display: none !important;" );//.hide();
+				$(".subcatdisp").hide();
+			}
+			
+			
+		});
+		$(".forthaucchk").change(function () {
+			var dataval=$(this).val();
+			$('#databody').hide();
+			$("#finalAppendBody").html("");
+			if(dataval=='notified'){
+				clear_form_elements("dates");
+				$('#dates').find('input,button,select').prop("disabled", false);
+				$('#todate').prop("disabled", true);
+			}else{
+				clear_form_elements("dates");
+				$('#dates').find('input,button,select').prop("disabled", true);
+			}
+		});
+		$(".filteropt").change(function () {
+			var optsel="0";
+			var displaySerch=false;
+			$('#databody').hide();
+			$("#finalAppendBody").html("");
+			var optcnt=0;
+			$('.filteropt').each(function() {
+				if($(this).is(":checked")){
+					optcnt++;
+				}
+			}); 
+			
+			$('.itemtype').each(function() {
+				if($(this).is(":checked")){
+					displaySerch=true;
+				}
+			}); 
+			var keywordvalin=$("#keyword").val().trim();
+			if(keywordvalin!=''){
+				displaySerch=true;
+			}
+			
+			var dataval=$(this).val();
+			if($(this).is(":checked")){
+				if(dataval=='category'){
+					$('#tabit').find('input,button,select').prop("disabled", false);
+				}else if(dataval=='location'){
+					$('#subcatpropcl').find('input,button,select').prop("disabled", false);
+					$("div[id$='subcatpropcl']").css("display", "block");
+					 $("div[id$='subcatpropcl']").show();
+					$('#locview').find('input,button,select').prop("disabled", false);
+					$('#offview').find('input,button,select').prop("disabled", true);
+					$("#filteroff").prop("disabled", true);
+				}else if(dataval=='office'){
+					$('#subcatpropcl').find('input,button,select').prop("disabled", false);
+					$("div[id$='subcatpropcl']").css("display", "block");
+					 $("div[id$='subcatpropcl']").show();
+					$('#offview').find('input,button,select').prop("disabled", false);
+					$('#locview').find('input,button,select').prop("disabled", true);
+					$("#filterloc").prop("disabled", true);
+				}
+			}else{
+				if(dataval=='category'){
+					$(".subcatdisp").hide();
+					clear_form_elements("tabit");
+					clear_form_elements("subcatview");
+					$('#tabit,#subcatview').find('input,button,select').prop("disabled", true);
+					if(optcnt==0){
+						$('#subcatpropcl').find('input,button,select').prop("disabled", true);
+						$("div[id$='subcatpropcl']").attr( "style", "display: none !important;" );//.hide();
+					}else{
+						$('#subcatpropcl').find('input,button,select').prop("disabled", false);
+					}
+				}else if(dataval=='location'){
+					if(!displaySerch){
+						$('#subcatpropcl').find('input,button,select').prop("disabled", true);
+						$("div[id$='subcatpropcl']").attr( "style", "display: none !important;" );//.hide();
+					}
+					clear_form_elements("locview");
+					$('#locview').find('input,button,select').prop("disabled", true);
+					$("#filteroff").prop("disabled", false);
+					$("#filterloc").prop("disabled", false);
+					$('#state').val([]).multiselect('refresh')
+					$('#office').val([]).multiselect('refresh')
+				}else if(dataval=='office'){
+					if(!displaySerch){
+						$('#subcatpropcl').find('input,button,select').prop("disabled", true);
+						$("div[id$='subcatpropcl']").attr( "style", "display: none !important;" );//.hide();
+					}
+					clear_form_elements("offview");
+					$('#offview').find('input,button,select').prop("disabled", true);
+					$("#filteroff").prop("disabled", false);
+					$("#filterloc").prop("disabled", false);
+					$('#state').val([]).multiselect('refresh')
+					$('#office').val([]).multiselect('refresh')
+				}
+			}
+			if(optcnt==0){
+				clear_form_elements("tab3");
+				//$("#state").val("Andaman and Nicobar Islands");
+				$('#tab3').find('input,button,select').prop("disabled", true);
+			}
+			if(displaySerch){
+				$('#subcatpropcl').find('input,button,select').prop("disabled", false);
+			}
+		});
+		
+		$(".itemtype").change(function () {
+			var showsearch=false;
+			$('#databody').hide();
+			$("#finalAppendBody").html("");
+			var itemcnt=0;
+			$('.itemtype').each(function() {
+				if($(this).is(":checked")){
+					itemcnt++;
+				}
+			}); 
+			var dataval=$(this).val();
+			if($(this).is(":checked")){
+				$("div[id='"+dataval+"']").css("display", "block");
+				$('.catdis'+dataval).find('input,button,select').prop("disabled", false);
+			}else{
+				clear_form_elements(dataval);
+				$("div[id='"+dataval+"']").hide();;
+				$('.catdis'+dataval).find('input,button,select').prop("disabled", true);
+			}
+			
+			$('.filteropt').each(function() {
+				if($(this).is(":checked")){
+					var datavaln=$(this).val();
+					if(datavaln=='location'){
+						showsearch=true;
+					}
+				}
+			});
+			
+			if(itemcnt==0){
+				clear_form_elements("subcatview");
+				$('#subcatview').find('input,button,select').prop("disabled", true);
+				if(!showsearch){
+					$('#subcatpropcl').find('input,button,select').prop("disabled", true);
+					$("div[id$='subcatpropcl']").attr( "style", "display: none !important;" );//.hide();
+				}
+			}else{
+				$('#subcatpropcl').find('input,button,select').prop("disabled", false);
+				$("div[id$='subcatpropcl']").css("display", "block");
+				$("div[id$='subcatpropcl']").show();
+			}
+		});
+		
+		$(".catind").change(function () {
+			$('#databody').hide();
+			$("#finalAppendBody").html("");
+			var catcnt=0;
+			$('.catind').each(function() {
+				if($(this).is(":checked")){
+					catcnt++;
+				}
+			}); 
+			var dataval=$(this).val();
+			if($(this).is(":checked")){
+				$('#'+dataval).find('input,button,select').prop("disabled", false);
+			}else{
+				clear_form_elements(dataval);
+				$('#'+dataval).find('input,button,select').prop("disabled", true);
+			}
+		});
+		
+		$('#search').on('click',function(){
+			$('#databody').show();
+			$("#finalAppendBody").html("");
+			var proceed=true;
+			var stage1chck=false;
+			var stage2chck=false;
+			var stage3chck=false;
+			var forthaucchk=false;
+			processShowData=false;
+			$('.seropt').each(function() {
+				var dataval=$(this).val();
+				if($(this).is(":checked")){
+					stage1chck=true;
+					if(dataval=='forthauc'){
+						forthaucchk=true;
+					}
+				}
+			});
+			if(stage1chck){
+				var keyval=$("#keyword").val().trim();
+				if(keyval==''){
+					if(forthaucchk){
+						var forthcnt=0;
+						$('.forthaucchk').each(function() {
+							var dataval=$(this).val();
+							if($(this).is(":checked")){
+								forthcnt++;
+								if(dataval=='all'){
+									stage2chck=true;
+								}else{
+									var toDateval=$("#todate").val();
+									var frmDateval=$("#fromdate").val();
+									if(toDateval==''){
+										proceed=false;
+										alert("To Date Can Not Be Blank");
+										return false;
+									}else if(frmDateval==''){
+										proceed=false;
+										alert("From Date Can Not Be Blank");
+										return false;
+									}else if(Date.parse(toDateval) < Date.parse(frmDateval)){
+										proceed=false;
+										alert("To Date Should be Greater Than or Equal to From Date");
+										return false;
+									}else{
+										stage2chck=true;
+									}
+								}
+							}
+						});
+						if(forthcnt==0){
+							proceed=false;
+							alert("Please select At Least One Option From Upcoming Auctions Filter");
+							return false;
+						}
+					}else{
+						stage2chck=true;
+					}
+					if(stage2chck){
+						var filtercnt=0;
+						var itemcntin=0;
+						var subcatin=0;
+						var catchk=false;
+						var loccheck=false;
+						$('.filteropt').each(function() {
+							var dataval=$(this).val();
+							if($(this).is(":checked")){
+								filtercnt++;
+								if(dataval=='category'){
+									catchk=true;
+									$('.itemtype').each(function() {
+										if($(this).is(":checked")){
+											itemcntin++;
+										}
+									});
+								}else if(dataval=='location'){
+									loccheck=true;
+								}
+							}
+						});
+						if(filtercnt==0){
+							proceed=false;
+							alert("Please Select Valid Auction Search Filter Option !!");
+							return false;
+						}else if(catchk && itemcntin==0){
+							proceed=false;
+							alert("Please Select At Least One Item Type !!");
+							return false;
+						}else{
+							stage3chck=true;
+						}
+						
+					}else{
+						proceed=false;
+						return false;
+					}
+				}else{
+					stage2chck=true;
+					stage3chck=true;
+				}
+			}else{
+				proceed=false;
+				return false;
+			}
+			
+			if(proceed && stage1chck && stage2chck && stage3chck){
+				$("#vercd").val("");
+				createCaptcha();
+				$("#capmodalin").modal('show');	
+			}else{
+				alert("Please Select Valid Auction Search Option !!!");
+				return false;
+			}
+		});
+		$('#clear').on('click',function(){
+			processShowData=false;
+			$('#databody').hide();
+			$("#finalAppendBody").html("");
+			clear_form_elements("maintab");
+			clear_form_elements("tab1");
+			clear_form_elements("tab2");
+			clear_form_elements("tab3");
+			clear_form_elements("tab4");
+			$("div[id$='tab1']").hide();
+			$("div[id$='subcatpropcl']").attr( "style", "display: none !important;" );//.hide();
+			$(".subcatdisp").hide();
+			$('#tab1,#tab2,#tab3,#tab4').find('input,button,select').prop("disabled", true);
+		});
+		
+
+		$('#capbtn').on('click',function(){
+			var capval=$("#vercd").val().trim();
+			if(capval==''){
+				alert("Please Enter Verification Code.");
+				return false;
+			}else{
+				$('#capmodalin').modal('hide');
+				var datavalp=$("#mainfrm").serialize();
+				datavalp=datavalp+"&captcha="+capval;
+				getFilteredValues(datavalp);
+				//alert(datavalp);
+			}
+		});		
+		
+	});	
+	
+	function getFilteredValues(filterData){
+		$.ajax({
+			type: "get",
+			url: "get_event_details.jsp",
+			data: filterData,
+			cache:false,
+			async:false,
+			success: function(resp){
+				$("#finalAppendBody").html("");
+				resp = resp.trim();
+				if(resp=='Failed'){
+					alert("Captcha Verification Failed.");
+					createCaptcha();
+					return false;
+				}else{
+					if(resp!=''){
+						$("#finalAppendBody").html(resp);
+						 $("#collapseOne").collapse('hide');
+					}else{
+						alert("No Data Found");
+						return false;
+					}
+				}
+			}
+		});
+	}
+	function downloadCatalogue(aucid)
+	{
+		$("#auc").val(aucid);
+		$("#pdffrm").submit();
+	}
+</script>
+
+<form name="pdffrm" id="pdffrm" method="post" action="../mstc/auction_detailed_report_pdf.jsp">
+	<input type="hidden" name="auc"  id="auc">
+	<input type="hidden" name="cat"  value="0">
+	<input type="hidden" name="sell" value="0">
+</form>
+</body>
+</html>

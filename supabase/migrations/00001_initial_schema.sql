@@ -12,7 +12,7 @@ CREATE TYPE bid_status AS ENUM ('active', 'winning', 'outbid', 'withdrawn');
 CREATE TYPE tender_status AS ENUM ('draft', 'open', 'under_evaluation', 'awarded', 'cancelled');
 
 CREATE TABLE organizations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     registration_number VARCHAR(100),
     tax_id VARCHAR(100),
@@ -42,7 +42,7 @@ CREATE TABLE profiles (
 -- ============================================================================
 
 CREATE TABLE auction_categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
     description TEXT,
     parent_id UUID REFERENCES auction_categories(id) ON DELETE SET NULL,
@@ -51,7 +51,7 @@ CREATE TABLE auction_categories (
 );
 
 CREATE TABLE auctions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     description TEXT,
     category_id UUID REFERENCES auction_categories(id) ON DELETE SET NULL,
@@ -69,7 +69,7 @@ CREATE TABLE auctions (
 );
 
 CREATE TABLE auction_documents (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     auction_id UUID NOT NULL REFERENCES auctions(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     file_url TEXT NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE auction_documents (
 );
 
 CREATE TABLE auction_images (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     auction_id UUID NOT NULL REFERENCES auctions(id) ON DELETE CASCADE,
     image_url TEXT NOT NULL,
     is_primary BOOLEAN DEFAULT false,
@@ -88,7 +88,7 @@ CREATE TABLE auction_images (
 );
 
 CREATE TABLE bids (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     auction_id UUID NOT NULL REFERENCES auctions(id) ON DELETE CASCADE,
     bidder_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     amount DECIMAL(15, 2) NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE bids (
 );
 
 CREATE TABLE watchlists (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     auction_id UUID NOT NULL REFERENCES auctions(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -110,7 +110,7 @@ CREATE TABLE watchlists (
 -- ============================================================================
 
 CREATE TABLE tenders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     reference_number VARCHAR(100) UNIQUE NOT NULL,
     description TEXT,
@@ -125,7 +125,7 @@ CREATE TABLE tenders (
 );
 
 CREATE TABLE tender_documents (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tender_id UUID NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     file_url TEXT NOT NULL,
@@ -135,7 +135,7 @@ CREATE TABLE tender_documents (
 );
 
 CREATE TABLE tender_submissions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tender_id UUID NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
     submitter_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     status VARCHAR(50) DEFAULT 'submitted',
@@ -150,7 +150,7 @@ CREATE TABLE tender_submissions (
 -- ============================================================================
 
 CREATE TABLE emd_transactions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id),
     auction_id UUID REFERENCES auctions(id),
     tender_id UUID REFERENCES tenders(id),
@@ -164,7 +164,7 @@ CREATE TABLE emd_transactions (
 );
 
 CREATE TABLE payment_receipts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id),
     amount DECIMAL(15, 2) NOT NULL,
     receipt_url TEXT,
@@ -173,7 +173,7 @@ CREATE TABLE payment_receipts (
 );
 
 CREATE TABLE wallet_transactions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id),
     amount DECIMAL(15, 2) NOT NULL,
     transaction_type VARCHAR(50) NOT NULL, -- e.g., 'deposit', 'withdrawal', 'emd_hold', 'emd_release'
@@ -187,7 +187,7 @@ CREATE TABLE wallet_transactions (
 -- ============================================================================
 
 CREATE TABLE notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
@@ -198,7 +198,7 @@ CREATE TABLE notifications (
 );
 
 CREATE TABLE audit_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
     action VARCHAR(255) NOT NULL,
     entity_type VARCHAR(100),
@@ -209,7 +209,7 @@ CREATE TABLE audit_logs (
 );
 
 CREATE TABLE announcements (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
     is_published BOOLEAN DEFAULT false,
@@ -219,7 +219,7 @@ CREATE TABLE announcements (
 );
 
 CREATE TABLE faq_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     question TEXT NOT NULL,
     answer TEXT NOT NULL,
     category VARCHAR(100),
@@ -230,7 +230,7 @@ CREATE TABLE faq_items (
 );
 
 CREATE TABLE news_updates (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     summary TEXT,
     content TEXT NOT NULL,
@@ -242,7 +242,7 @@ CREATE TABLE news_updates (
 );
 
 CREATE TABLE contact_messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     subject VARCHAR(255),

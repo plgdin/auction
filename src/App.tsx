@@ -25,10 +25,12 @@ function App() {
     initializeAuth();
     
     // Background pre-warming and pre-fetching to guarantee < 1s loading times
+    // Use empty dep array - these are one-time initializations, not reactive to store changes
     embeddingService.prewarmModel().catch(err => console.warn('Pre-warming model failed:', err));
     MstcSearchService.getMstcFilterOptions().catch(err => console.warn('Pre-fetching filter options failed:', err));
     auctionService.getCategories().catch(err => console.warn('Pre-fetching categories failed:', err));
-  }, [initializeAuth]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount only
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -161,14 +161,15 @@ export function Auctions() {
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const [interestedMstcIds, setInterestedMstcIds] = useState<string[]>([]);
+  const userId = user?.id;
 
   useEffect(() => {
-    if (user) {
-      setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
+    if (userId) {
+      setInterestedMstcIds(dashboardService.getInterestedAuctions(userId));
     } else {
       setInterestedMstcIds([]);
     }
-  }, [user]);
+  }, [userId]);
 
   const handleMstcInterestedToggle = (itemId: string) => {
     if (!user) return;
@@ -189,10 +190,11 @@ export function Auctions() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   // Sync searchQuery local input state with query params
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const queryParam = searchParams.get('q') || '';
+  const [searchQuery, setSearchQuery] = useState(queryParam);
   useEffect(() => {
-    setSearchQuery(searchParams.get('q') || '');
-  }, [searchParams]);
+    setSearchQuery(queryParam);
+  }, [queryParam]);
 
 
   // Autocomplete search suggestions states & refs
@@ -336,12 +338,12 @@ export function Auctions() {
       const [{ data, count }, wIds] = await Promise.all([
         auctionService.getAuctions({
           ...filters,
-          searchQuery: searchParams.get('q') || undefined,
+          searchQuery: queryParam || undefined,
           sortBy,
           page,
           limit
         }),
-        isAuthenticated && user ? auctionService.getUserWatchlistIds(user.id) : Promise.resolve([])
+        isAuthenticated && userId ? auctionService.getUserWatchlistIds(userId) : Promise.resolve([])
       ]);
 
       setAuctions(data);
@@ -353,7 +355,7 @@ export function Auctions() {
       setIsLoading(false);
     }
   }, [
-    searchParams,
+    queryParam,
     categoryIdsJoined,
     listingType,
     regionalOffice,
@@ -365,7 +367,7 @@ export function Auctions() {
     page,
     limit,
     isAuthenticated,
-    user,
+    userId,
     isAnyFilterActive
   ]);
 
@@ -378,7 +380,7 @@ export function Auctions() {
   const loadMstcData = useCallback(async () => {
     setIsMstcLoading(true);
     try {
-      const qParam = searchParams.get('q') || '';
+      const qParam = queryParam;
       const data = await MstcSearchService.searchMarketplaceCatalog(qParam, {
         categories: selectedMstcCategories.length > 0 ? selectedMstcCategories : undefined,
         subcategories: selectedMstcSubcategories.length > 0 ? selectedMstcSubcategories : undefined,
@@ -442,7 +444,7 @@ export function Auctions() {
       setIsMstcLoading(false);
     }
   }, [
-    searchParams,
+    queryParam,
     selectedMstcCategoriesJoined,
     selectedMstcSubcategoriesJoined,
     selectedMstcLocationsJoined,

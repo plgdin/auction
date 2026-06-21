@@ -12,6 +12,7 @@ class EmbeddingPipeline {
   static async getInstance(progress_callback?: any) {
     if (this.instance === null) {
       this.instance = await pipeline(this.task, this.model, { progress_callback });
+      console.log('Embedding model loaded successfully.');
     }
     return this.instance;
   }
@@ -45,7 +46,6 @@ export const embeddingService = {
   async prewarmModel() {
     try {
       await EmbeddingPipeline.getInstance();
-      console.log('Embedding model loaded successfully.');
     } catch (e) {
       console.warn('Failed to pre-warm embedding model:', e);
     }

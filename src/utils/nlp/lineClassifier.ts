@@ -72,7 +72,10 @@ const inventoryExamples = [
   "E-Waste computer laptops 50 kg",
   "Steel pipes ms scrap 2 MT",
   "Brass scrap turnings 150 kg",
-  "Heavy duty compressor unit 1 No"
+  "Heavy duty compressor unit 1 No",
+  "200 Pair UG Cable Pieces 1*5 Mtrs Sojat City Main TE",
+  "10 Pair UG Cable Pieces Chandawal",
+  "400 Pair UG Cable Pieces Bagri Nagar"
 ];
 
 const termsExamples = [

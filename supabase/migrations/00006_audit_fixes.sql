@@ -60,7 +60,7 @@ $$;
 
 -- Fix 4: User Documents Table (for Document Vault KYC)
 CREATE TABLE IF NOT EXISTS user_documents (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     file_url TEXT NOT NULL,
@@ -76,7 +76,7 @@ CREATE TRIGGER update_user_documents_updated_at BEFORE UPDATE ON user_documents 
 
 -- Fix 5: User Notification Preferences Table
 CREATE TABLE IF NOT EXISTS user_notification_preferences (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE UNIQUE,
     email_bids BOOLEAN DEFAULT true,
     email_tenders BOOLEAN DEFAULT true,

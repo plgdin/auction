@@ -1,0 +1,95 @@
+
+
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>404 Error</title>
+
+<style type="text/css">
+html, body{
+	background-color:#fff;
+	
+	}
+.errordiv{
+	width:100%;
+	height:500px;
+	margin-left:auto;
+	margin-right:auto;
+	/*background-color:#3CC;*/
+	display:block;
+	}
+.errorimg{
+	float: left;
+	padding:10px;
+	width: 30%;
+	display: block;
+	background-color: #996;
+}
+.errortxt{
+	display: block;
+	font-family: Verdana, Geneva, sans-serif;
+	font-size: 24px;
+	font-weight: bold;
+	color: #066;
+	text-align: left;
+	padding: 15px;
+	border-bottom-width: 1px;
+	border-bottom-style: dashed;
+	border-bottom-color: #666;	
+	/*background-color:#09C;*/
+	
+	}
+.errortxt2{
+	padding-top:20px;
+	padding-left:20px;
+	width:60%;
+	background-color:#F90;
+	float:right;
+	}
+.bullets{
+	font-family:Arial, Helvetica, sans-serif;
+	font-size:18px;
+	font-weight:normal;
+	color:#003;
+	text-align:left;
+	/*background-color:#F2F2F2;*/
+	padding:25px;
+	border-bottom-width: 1px;
+	border-bottom-style: dashed;
+	border-bottom-color: #666;
+	}			
+</style>
+</head>
+
+<body>
+	<div class="errordiv">
+     <table width="100%" border="0" cellspacing="0" cellpadding="0">
+          <tr>
+            <td><img src="/auctionhome/images/404_error.png" /></td>
+            <td>
+            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+              <tr>
+                <td>
+                <div class="errortxt">Trying to access pages through improper channel</div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                <div class="bullets">
+               <p>You are trying to access pages from Server in an unauthorised way.Any Unauthorised access will be tracked and penalised as per provisions.</p> 
+               <p align="center">Or</p>
+               <p>SORRY FOR THE INCONVENIENCE CAUSED.
+GENERALLY MAINTENANCE IS DONE ON FIRST SATURDAY OF EVERY MONTH</p>
+            </div>
+                
+                </td>
+              </tr>
+            </table>
+		   </td>
+          </tr>
+        </table>
+
+	</div>
+</body>
+</html>

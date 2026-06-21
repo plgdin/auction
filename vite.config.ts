@@ -242,4 +242,17 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    watch: {
+      ignored: [
+        '**/cookies.txt',
+        '**/debug_page.html',
+        '**/debug_combined.txt',
+        '**/debug_*',
+        '**/scraper/**',
+        '**/scratch/**',
+        '**/supabase/**'
+      ]
+    }
+  }
 })

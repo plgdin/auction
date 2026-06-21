@@ -65,7 +65,7 @@ export function AuctionDetail() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, isAuthenticated, user, navigate]);
+  }, [id, isAuthenticated, user?.id, navigate]);
 
   useEffect(() => {
     loadAuctionData();

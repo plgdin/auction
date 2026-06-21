@@ -63,13 +63,13 @@ BEGIN
           setweight(to_tsvector('english', coalesce(m.mstc_auction_number, '')), 'B') ||
           setweight(to_tsvector('english', coalesce(m.raw_materials_text, '')), 'C'),
           v_tsquery
-        )
-      ELSE 0.0
+        )::REAL
+      ELSE 0.0::REAL
     END AS search_rank,
     CASE 
       WHEN p_embedding IS NOT NULL AND m.embedding IS NOT NULL THEN
-        1 - (m.embedding <=> p_embedding)
-      ELSE 0.0
+        (1 - (m.embedding <=> p_embedding))::REAL
+      ELSE 0.0::REAL
     END AS semantic_similarity
   FROM mstc_auctions m
   WHERE 

@@ -1,10 +1,10 @@
 import type { MstcSanitizedAuction } from '../services/publicService';
-import { 
-  METALLIC_MODELS, 
-  DEFAULT_MACRO_INPUTS, 
-  predictPrice, 
-  detectModelId, 
-  detectGrade 
+import {
+  METALLIC_MODELS,
+  DEFAULT_MACRO_INPUTS,
+  predictPrice,
+  detectModelId,
+  detectGrade
 } from './metalValuationModels';
 import { matchCommodity } from '../services/valuationService';
 import { marketPriceService } from '../services/marketPriceService';
@@ -16,7 +16,7 @@ export { calculateLotValue };
 export const expandAbbreviations = (text: string): string => {
   if (!text) return '';
   let result = text;
-  
+
   const replacements: { pattern: RegExp; replacement: string }[] = [
     { pattern: /\bGL\b/g, replacement: 'Galvalume' },
     { pattern: /\bG\.L\.\b/g, replacement: 'Galvalume' },
@@ -55,7 +55,7 @@ export const getEstimatedMarketPrice = (
   const qtyLower = cleanQty.toLowerCase();
   const unitLower = (unit || '').toLowerCase().trim();
 
-  const isMetal = 
+  const isMetal =
     desc.includes('scrap') || desc.includes('waste') ||
     desc.includes('iron') || desc.includes('steel') || desc.includes('ferrous') ||
     desc.includes('vehicle') || desc.includes('car') || desc.includes('bus') || desc.includes('truck') || desc.includes('transport') || desc.includes('auto') ||
@@ -65,7 +65,7 @@ export const getEstimatedMarketPrice = (
   // Helper to apply multiplier to the resulting price string for non-metal items
   const applyMultiplierToPriceString = (priceStr: string): string => {
     if (priceStr === 'Not Available') return priceStr;
-    
+
     let multiplier = 1.0;
     if (desc.includes('unserviceable')) {
       multiplier = Math.min(multiplier, 0.10);
@@ -79,19 +79,19 @@ export const getEstimatedMarketPrice = (
     if (desc.includes('deteriorated')) {
       multiplier = Math.min(multiplier, 0.15);
     }
-    
+
     if (multiplier === 1.0) return priceStr;
 
     // Parse numeric part from priceStr. Example: "₹14,500 / Unit" or "₹235 / kg"
     const match = priceStr.match(/₹\s*([\d,]+)/);
     if (!match) return priceStr;
-    
+
     const originalVal = parseFloat(match[1].replace(/,/g, ''));
     if (isNaN(originalVal)) return priceStr;
-    
+
     const newVal = Math.round(originalVal * multiplier);
     const unitPart = priceStr.split('/').pop()?.trim() || '';
-    
+
     return `₹${newVal.toLocaleString('en-IN')} / ${unitPart}`;
   };
 
@@ -99,7 +99,7 @@ export const getEstimatedMarketPrice = (
     // 1. Check if quantity is "1 lot" or unrecognized/lot unit
     const isLotUnit = unitLower.includes('lot') || qtyLower.includes('lot') || unitLower === 'ls' || unitLower === 'lumpsum';
     const isUnparseableQty = isNaN(parsedQty) || parsedQty <= 0;
-    
+
     if (isLotUnit || isUnparseableQty) {
       return 'Not Available';
     }
@@ -126,7 +126,7 @@ export const getEstimatedMarketPrice = (
       const modelId = detectModelId(description);
       if (modelId) {
         const targetUnit = METALLIC_MODELS[modelId]?.targetUnit || 'Tons';
-        
+
         // Prevent pricing if the ML model uses Tons but the item is in Units/Nos
         if (targetUnit === 'Tons' && isDiscrete) {
           return 'Not Available';
@@ -139,18 +139,18 @@ export const getEstimatedMarketPrice = (
         const grade = detectGrade(description, modelId);
         const region = 'Mumbai'; // Default region for global pricing feeds
         const predicted = predictPrice(modelId, grade, region, DEFAULT_MACRO_INPUTS, description);
-        
+
         let finalVal = predicted;
         if (dbPrice > 0) {
           const isPerKg = comm.unit === 'kg' || comm.basePricePerKg !== undefined;
           let normalizedDbPrice = dbPrice;
-          
+
           if (targetUnit === 'Tons' && isPerKg) {
             normalizedDbPrice = dbPrice * 1000;
           }
           finalVal = (predicted + normalizedDbPrice) / 2;
         }
-        
+
         const rounded = Math.round(finalVal);
         const singularUnit = targetUnit === 'Tons' ? 'Ton' : targetUnit === 'Units' ? 'Unit' : targetUnit;
         return `₹${rounded.toLocaleString('en-IN')} / ${singularUnit}`;
@@ -160,7 +160,7 @@ export const getEstimatedMarketPrice = (
     if (comm.name !== 'default') {
       const isDbWeight = comm.unit === 'kg' || comm.unit === 'Ton';
       const isDbDiscrete = comm.unit === 'Unit';
-      
+
       if ((isDbWeight && isDiscrete) || (isDbDiscrete && isWeight)) {
         return 'Not Available';
       }
@@ -184,7 +184,7 @@ export const getNumericQty = (qtyStr: string, _unitStr: string = ''): number => 
   // Lightweight NER heuristic: Look for numbers followed by unit-like patterns
   // Avoid picking up random section numbers like "Rate 1.9"
   const clean = (qtyStr || '').replace(/,/g, '').trim();
-  
+
   // If it's something like "2. No" or "10. Unit" but we know it's a T&C, it will be filtered earlier.
   // Here we just safely parse the number.
   let num = parseFloat(clean);
@@ -340,67 +340,87 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
   const defaultAuctionStartTime = `${formatDateDMY(mockStart)} 12:00`;
   const defaultAuctionCloseTime = `${formatDateDMY(mockClose)} 18:00`;
 
+  // Always try to extract extracted_images and other metadata from JSON
+  // even if we fall back to mock for the items list
+  let jsonExtractedImages: string[] = [];
+  let jsonPreviewUrl: string | undefined;
+  let jsonMetadata: any = null;
+
   if (item.raw_materials_text) {
     try {
       const parsed = JSON.parse(item.raw_materials_text);
-      if (
-        parsed &&
-        typeof parsed === 'object' &&
-        parsed.items &&
-        parsed.eligibility &&
-        parsed.depositDetails &&
-        parsed.keyContacts
-      ) {
-        // EMD extraction/cleaning logic
-        let emdVal = parsed.depositDetails.emd || '';
-        let preBidDdg = parsed.depositDetails.preBidDdg;
+      if (parsed && typeof parsed === 'object') {
+        // Capture images/preview from JSON regardless of whether items are usable
+        if (parsed.extracted_images) jsonExtractedImages = parsed.extracted_images;
+        if (parsed.preview_image_url) jsonPreviewUrl = parsed.preview_image_url;
 
-        if (emdVal.includes('%')) {
-          const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
-          if (percentMatch) {
-            const percentVal = parseFloat(percentMatch[1]);
-            if (percentVal > 100) {
-              emdVal = '10% of total bid value';
-              preBidDdg = 'Not required for registered MSME bidders';
+        // Only use JSON metadata if it has ALL required fields with non-empty items
+        if (
+          parsed.items &&
+          Array.isArray(parsed.items) &&
+          parsed.items.length > 0 &&
+          parsed.eligibility &&
+          parsed.depositDetails &&
+          parsed.keyContacts
+        ) {
+          // EMD extraction/cleaning logic
+          let emdVal = parsed.depositDetails.emd || '';
+          let preBidDdg = parsed.depositDetails.preBidDdg;
+
+          if (emdVal.includes('%')) {
+            const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
+            if (percentMatch) {
+              const percentVal = parseFloat(percentMatch[1]);
+              if (percentVal > 100) {
+                emdVal = '10% of total bid value';
+                preBidDdg = 'Not required for registered MSME bidders';
+              }
+            }
+          } else {
+            const numMatch = emdVal.match(/([\d\.]+)/);
+            if (numMatch) {
+              const val = parseFloat(numMatch[1]);
+              if (val > 100) {
+                preBidDdg = `₹${val.toLocaleString('en-IN')}`;
+                emdVal = '10% of total bid value';
+              }
             }
           }
-        } else {
-          const numMatch = emdVal.match(/([\d\.]+)/);
-          if (numMatch) {
-            const val = parseFloat(numMatch[1]);
-            if (val > 100) {
-              preBidDdg = `₹${val.toLocaleString('en-IN')}`;
-              emdVal = '10% of total bid value';
-            }
+
+          const finalPreBid = preBidDdg && !preBidDdg.toLowerCase().includes('not required')
+            ? preBidDdg
+            : fallbackPreBid;
+
+          parsed.depositDetails.emd = emdVal;
+          parsed.depositDetails.preBidDdg = finalPreBid;
+
+          const flattenedItems = flattenCatalogItems(parsed.items, item.category_name);
+
+          // Only return if we still have items after flattening
+          if (flattenedItems.length > 0) {
+            parsed.items = flattenedItems;
+            const finalInspectionSchedule = parsed.inspectionSchedule || defaultInspectionSchedule;
+            const finalAuctionStartTime = parsed.auctionStartTime || defaultAuctionStartTime;
+            const finalAuctionCloseTime = parsed.auctionCloseTime || defaultAuctionCloseTime;
+
+            return {
+              ...parsed,
+              extracted_images: jsonExtractedImages,
+              preview_image_url: jsonPreviewUrl,
+              inspectionSchedule: formatInspectionSchedule(finalInspectionSchedule),
+              auctionStartTime: finalAuctionStartTime,
+              auctionCloseTime: finalAuctionCloseTime
+            };
           }
+          // If items went to 0 after flattening, store metadata for partial merge below
+          jsonMetadata = parsed;
         }
-
-        const finalPreBid = preBidDdg && !preBidDdg.toLowerCase().includes('not required')
-          ? preBidDdg
-          : fallbackPreBid;
-
-        parsed.depositDetails.emd = emdVal;
-        parsed.depositDetails.preBidDdg = finalPreBid;
-
-        if (parsed.items && Array.isArray(parsed.items)) {
-          parsed.items = flattenCatalogItems(parsed.items, item.category_name);
-        }
-
-        const finalInspectionSchedule = parsed.inspectionSchedule || defaultInspectionSchedule;
-        const finalAuctionStartTime = parsed.auctionStartTime || defaultAuctionStartTime;
-        const finalAuctionCloseTime = parsed.auctionCloseTime || defaultAuctionCloseTime;
-
-        return {
-          ...parsed,
-          inspectionSchedule: formatInspectionSchedule(finalInspectionSchedule),
-          auctionStartTime: finalAuctionStartTime,
-          auctionCloseTime: finalAuctionCloseTime
-        };
       }
     } catch (e) {
-      console.warn('Failed to parse raw_materials_text as JSON, falling back to mock generator:', e);
+      // raw_materials_text is plain text, not JSON — this is expected for many records
     }
   }
+
 
   const cat = (item.category_name || '').toUpperCase();
   const seller = (item.seller_name || '').toUpperCase();
@@ -492,7 +512,9 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
     keyContacts,
     inspectionSchedule: formatInspectionSchedule(defaultInspectionSchedule),
     auctionStartTime: defaultAuctionStartTime,
-    auctionCloseTime: defaultAuctionCloseTime
+    auctionCloseTime: defaultAuctionCloseTime,
+    extracted_images: jsonExtractedImages,
+    preview_image_url: jsonPreviewUrl
   };
 };
 
@@ -516,7 +538,7 @@ export function formatDateToOrdinal(dateStr: string): string {
   const day = parseInt(match[1], 10);
   const month = parseInt(match[2], 10);
   const yearStr = match[3];
-  
+
   if (isNaN(day) || isNaN(month) || month < 1 || month > 12) {
     return dateStr;
   }
@@ -561,12 +583,12 @@ export function formatDateTimeOrdinal(dateInput: string | Date | null | undefine
   if (isNaN(date.getTime())) return typeof dateInput === 'string' ? dateInput : '';
 
   const datePart = formatDateOrdinal(date);
-  
+
   let hours = date.getHours();
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12;
   hours = hours ? hours : 12;
-  
+
   return `${datePart}, ${hours}:${minutes} ${ampm}`;
 }
