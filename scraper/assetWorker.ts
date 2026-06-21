@@ -415,7 +415,24 @@ async function extractAndProcessLotDocuments(
           pageUrls.push(publicUrl);
 
           // Perform OCR to extract text from scans/photos on this page
-          const ocrText = await performOcr(page.imageBuffer);
+          const ocrResult = await performOcr(page.imageBuffer);
+          let ocrText = ocrResult.text;
+          if (ocrResult.llmParsed && ocrResult.llmParsed.length > 0) {
+            if (items.length === 0) {
+              log.info({}, "Main catalog is empty. Bootstrapping inventory directly from Vision LLM results.");
+              for (const llmItem of ocrResult.llmParsed) {
+                items.push({
+                  sr: llmItem.sr,
+                  description: llmItem.description,
+                  qty: llmItem.qty,
+                  unit: llmItem.unit,
+                  subItems: [],
+                  images: []
+                });
+              }
+            }
+            ocrText = ocrResult.llmParsed.map((item: any) => `SR: ${item.sr} DESC: ${item.description} QTY: ${item.qty} UNIT: ${item.unit}`).join('\n');
+          }
           const combinedText = `${page.text || ""}\n${ocrText}`;
 
           // Use pre-assigned lot mapping first (from catalog parsing), fall back to text-based matching
@@ -434,7 +451,15 @@ async function extractAndProcessLotDocuments(
             // Extract quantities from the combined text
             const extracted = extractQuantitiesDetailed(combinedText);
 
-            const subItems = parseSubItemsFromText(combinedText);
+            let subItems = parseSubItemsFromText(combinedText);
+            if (ocrResult.llmParsed && ocrResult.llmParsed.length > 0) {
+              subItems = ocrResult.llmParsed.map((item: any) => ({
+                sr: parseInt(item.sr, 10) || item.sr,
+                description: item.description,
+                qty: String(item.qty),
+                unit: String(item.unit)
+              }));
+            }
             if (subItems && subItems.length > 0) {
               log.info(
                 { pageNumber: page.pageNumber, subItemsCount: subItems.length },
@@ -514,10 +539,35 @@ async function extractAndProcessLotDocuments(
           // Run OCR and extract quantities for sequential matching as well
           const page = renderedPages[pIdx];
           try {
-            const ocrText = await performOcr(page.imageBuffer);
+            const ocrResult = await performOcr(page.imageBuffer);
+            let ocrText = ocrResult.text;
+            if (ocrResult.llmParsed && ocrResult.llmParsed.length > 0) {
+              if (items.length === 0) {
+                log.info({}, "Main catalog is empty. Bootstrapping inventory directly from Vision LLM results.");
+                for (const llmItem of ocrResult.llmParsed) {
+                  items.push({
+                    sr: llmItem.sr,
+                    description: llmItem.description,
+                    qty: llmItem.qty,
+                    unit: llmItem.unit,
+                    subItems: [],
+                    images: []
+                  });
+                }
+              }
+              ocrText = ocrResult.llmParsed.map((item: any) => `SR: ${item.sr} DESC: ${item.description} QTY: ${item.qty} UNIT: ${item.unit}`).join('\n');
+            }
             const combinedText = `${page.text || ""}\n${ocrText}`;
             const extracted = extractQuantitiesDetailed(combinedText);
-            const subItems = parseSubItemsFromText(combinedText);
+            let subItems = parseSubItemsFromText(combinedText);
+            if (ocrResult.llmParsed && ocrResult.llmParsed.length > 0) {
+              subItems = ocrResult.llmParsed.map((item: any) => ({
+                sr: parseInt(item.sr, 10) || item.sr,
+                description: item.description,
+                qty: String(item.qty),
+                unit: String(item.unit)
+              }));
+            }
             if (subItems && subItems.length > 0) {
               if (!item.subItems) {
                 item.subItems = [];
@@ -575,7 +625,25 @@ async function extractAndProcessLotDocuments(
             lotImageUrls.push(publicUrl);
 
             // Run OCR on the embedded image to match lots and extract quantities
-            const ocrText = await performOcr(imgBuffer);
+            const ocrResult = await performOcr(imgBuffer);
+            let ocrText = ocrResult.text;
+            if (ocrResult.llmParsed && ocrResult.llmParsed.length > 0) {
+              if (items.length === 0) {
+                log.info({}, "Main catalog is empty. Bootstrapping inventory directly from Vision LLM results.");
+                for (const llmItem of ocrResult.llmParsed) {
+                  items.push({
+                    sr: llmItem.sr,
+                    description: llmItem.description,
+                    qty: llmItem.qty,
+                    unit: llmItem.unit,
+                    subItems: [],
+                    images: []
+                  });
+                }
+              }
+              ocrText = ocrResult.llmParsed.map((item: any) => `SR: ${item.sr} DESC: ${item.description} QTY: ${item.qty} UNIT: ${item.unit}`).join('\n');
+            }
+            
             if (ocrText) {
               // Use pre-assigned lot mapping first, fall back to text-based matching
               let matched = attachmentToLots.get(fileName) || [];
@@ -591,7 +659,15 @@ async function extractAndProcessLotDocuments(
                   }
                   lotSpecificImagesMap[srStr].push(publicUrl);
 
-                  const subItems = parseSubItemsFromText(ocrText);
+                  let subItems = parseSubItemsFromText(ocrText);
+                  if (ocrResult.llmParsed && ocrResult.llmParsed.length > 0) {
+                    subItems = ocrResult.llmParsed.map((item: any) => ({
+                      sr: parseInt(item.sr, 10) || item.sr,
+                      description: item.description,
+                      qty: String(item.qty),
+                      unit: String(item.unit)
+                    }));
+                  }
                   if (subItems && subItems.length > 0) {
                     if (!lot.subItems) {
                       lot.subItems = [];

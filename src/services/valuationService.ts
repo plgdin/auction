@@ -8,6 +8,7 @@ import {
   detectModelId, 
   detectGrade 
 } from '../utils/metalValuationModels';
+import { findBestMatch } from '../utils/nlp/fuzzyMatch';
 
 export interface ValuedItem {
   name: string;
@@ -270,11 +271,14 @@ function hasWord(text: string, kw: string): boolean {
 export function matchCommodity(description: string): CommodityDef {
   const normalized = description.toLowerCase();
   
+  const allKeywords: { keyword: string, comm: any, isDynamic: boolean }[] = [];
+
   // First, check dynamic commodities from marketPriceService
   const dynamicPrices = marketPriceService.getCommodityPrices();
   for (const c of dynamicPrices) {
     const keywords = c.keywords || [c.name.toLowerCase(), c.id.toLowerCase()];
     for (const kw of keywords) {
+      allKeywords.push({ keyword: kw.toLowerCase(), comm: c, isDynamic: true });
       if (hasWord(normalized, kw)) {
         const isPerKg = c.unit.toLowerCase() === 'kg' || c.unit.toLowerCase() === 'kgs';
         return {
@@ -294,8 +298,39 @@ export function matchCommodity(description: string): CommodityDef {
   // Fallback to static COMMODITIES list
   for (const comm of COMMODITIES) {
     for (const kw of comm.keywords) {
+      allKeywords.push({ keyword: kw.toLowerCase(), comm: comm, isDynamic: false });
       if (hasWord(normalized, kw)) {
         return comm;
+      }
+    }
+  }
+  
+  // If exact match fails, try fuzzy matching each word in the description
+  const words = normalized.split(/\s+/);
+  const keywordStrings = allKeywords.map(k => k.keyword);
+  
+  for (const word of words) {
+    if (word.length < 4) continue; // Don't fuzzy match short words
+    const bestFuzzy = findBestMatch(word, keywordStrings, 0.75);
+    if (bestFuzzy) {
+      const matchedObj = allKeywords.find(k => k.keyword === bestFuzzy);
+      if (matchedObj) {
+        if (matchedObj.isDynamic) {
+          const c = matchedObj.comm;
+          const isPerKg = c.unit.toLowerCase() === 'kg' || c.unit.toLowerCase() === 'kgs';
+          return {
+            name: c.id,
+            keywords: c.keywords || [c.name.toLowerCase(), c.id.toLowerCase()],
+            basePricePerKg: isPerKg ? c.currentPrice : undefined,
+            basePricePerUnit: !isPerKg ? c.currentPrice : undefined,
+            minPrice: c.currentPrice * 0.5,
+            maxPrice: c.currentPrice * 2.0,
+            queryKeyword: `${c.name} price India`,
+            unit: c.unit
+          };
+        } else {
+          return matchedObj.comm;
+        }
       }
     }
   }

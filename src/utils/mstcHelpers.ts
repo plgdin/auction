@@ -9,6 +9,7 @@ import {
 import { matchCommodity } from '../services/valuationService';
 import { marketPriceService } from '../services/marketPriceService';
 import { calculateLotValue } from './valuationUtils';
+import { classifyLine } from './nlp/lineClassifier';
 
 export { calculateLotValue };
 
@@ -180,9 +181,18 @@ export const getEstimatedMarketPrice = (
 };
 
 export const getNumericQty = (qtyStr: string, _unitStr: string = ''): number => {
+  // Lightweight NER heuristic: Look for numbers followed by unit-like patterns
+  // Avoid picking up random section numbers like "Rate 1.9"
   const clean = (qtyStr || '').replace(/,/g, '').trim();
+  
+  // If it's something like "2. No" or "10. Unit" but we know it's a T&C, it will be filtered earlier.
+  // Here we just safely parse the number.
   let num = parseFloat(clean);
-  return isNaN(num) ? 1 : num;
+  if (isNaN(num)) {
+    const match = clean.match(/([\d\.]+)/);
+    if (match) num = parseFloat(match[1]);
+  }
+  return isNaN(num) || num <= 0 ? 1 : num;
 };
 
 
@@ -250,8 +260,19 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
       }
     }
 
+    // Filter out top-level terms
+    const descClass = classifyLine(item.description || '');
+    if (descClass === 'TERMS' || descClass === 'GIBBERISH') {
+      continue;
+    }
+
     if (item.subItems && Array.isArray(item.subItems) && item.subItems.length > 0) {
       item.subItems.forEach((sub: any, idx: number) => {
+        const subDescClass = classifyLine(sub.description || '');
+        if (subDescClass === 'TERMS' || subDescClass === 'GIBBERISH') {
+          return;
+        }
+
         const subDesc = expandAbbreviations(sub.description || '');
         const subQty = sub.qty || '1';
         const subUnit = sub.unit || 'Nos';
