@@ -387,6 +387,16 @@ export function parseMstcCatalogText(
         lotName = nameMatch[1].replace(/\r?\n/g, " ").trim();
       }
 
+      // --- Extract lot description ---
+      // The full description usually appears after "Category -" and before the lot parameters
+      let lotDescription = "";
+      const descTextMatch = block.match(
+        /Category\s*-[^\n]*\n([\s\S]*?)(?=Quantity\s*-|Start\s*Price|Post\s*Bid|Bid\s*Increment|TCS|GST|Lot Location|State)/i,
+      );
+      if (descTextMatch) {
+        lotDescription = descTextMatch[1].replace(/\r?\n/g, " ").trim();
+      }
+
       // --- Extract quantity & unit ---
       let qty = "1";
       let unit = "Lot";
@@ -528,9 +538,16 @@ export function parseMstcCatalogText(
         }
       }
 
+      let finalDescription = lotDescription;
+      if (!finalDescription) {
+        finalDescription = lotName || categoryName || "Auction Lot Items";
+      } else if (lotName && !finalDescription.toLowerCase().includes(lotName.toLowerCase())) {
+        finalDescription = `${lotName} - ${finalDescription}`;
+      }
+
       items.push({
         sr,
-        description: lotName || categoryName || "Auction Lot Items",
+        description: finalDescription,
         qty: finalQty,
         unit: finalUnit,
         taxRate: `${gst} GST${tcs && tcs !== "0.0" && tcs !== "0" ? " + " + tcs + "% TCS" : ""}`,

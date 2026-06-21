@@ -327,6 +327,34 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
             if (desc && /^\d+$/.test(desc.trim())) {
               desc = item.category_name || 'Auction Lot Items';
             }
+
+            // Extract real description from subItems if available (for existing DB records)
+            if (lot.subItems && Array.isArray(lot.subItems) && lot.subItems.length > 0) {
+              const validSubs = lot.subItems.filter((sub: any) => {
+                if (!sub.description) return false;
+                const lower = sub.description.toLowerCase();
+                return !(
+                  lower.includes('guide for making payment') ||
+                  lower.includes('emd ledger will be given effect') ||
+                  lower.includes('the bid value shall be the basic price') ||
+                  lower.includes('basic price of the material exclusive') ||
+                  lower.includes('bidders are advised to make pre-bid')
+                );
+              });
+
+              if (validSubs.length > 0) {
+                const subDesc = validSubs[0].description;
+                // Only merge if they are different and subDesc is not just a tiny generic string
+                if (subDesc.length > 3) {
+                  if (desc.toLowerCase() !== subDesc.toLowerCase() && !subDesc.toLowerCase().includes(desc.toLowerCase())) {
+                     desc = `${desc} - ${subDesc}`;
+                  } else if (subDesc.length > desc.length) {
+                     desc = subDesc;
+                  }
+                }
+              }
+            }
+
             desc = expandAbbreviations(desc);
 
             let tax = lot.taxRate || '';
