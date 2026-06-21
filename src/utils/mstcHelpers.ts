@@ -39,7 +39,12 @@ export const expandAbbreviations = (text: string): string => {
   return result;
 };
 
-export const getEstimatedMarketPrice = (description: string, categoryName: string = ''): string => {
+export const getEstimatedMarketPrice = (
+  description: string,
+  categoryName: string = '',
+  _qty: string = '',
+  _unit: string = ''
+): string => {
   const desc = (description || '').toLowerCase();
   const cat = (categoryName || '').toLowerCase();
 
@@ -52,13 +57,16 @@ export const getEstimatedMarketPrice = (description: string, categoryName: strin
 
   if (isMetal) {
     const modelId = detectModelId(description);
-    const grade = detectGrade(description, modelId);
-    const region = 'Mumbai'; // Default region for global pricing feeds
-    const predicted = predictPrice(modelId, grade, region, DEFAULT_MACRO_INPUTS);
-    const rounded = Math.round(predicted);
-    const targetUnit = METALLIC_MODELS[modelId]?.targetUnit || 'Tons';
-    const singularUnit = targetUnit === 'Tons' ? 'Ton' : targetUnit === 'Units' ? 'Unit' : targetUnit;
-    return `₹${rounded.toLocaleString('en-IN')} / ${singularUnit}`;
+    if (modelId) {
+      const grade = detectGrade(description, modelId);
+      const region = 'Mumbai'; // Default region for global pricing feeds
+      // Passing description as 5th argument in case predictPrice expects it
+      const predicted = predictPrice(modelId, grade, region, DEFAULT_MACRO_INPUTS, description);
+      const rounded = Math.round(predicted);
+      const targetUnit = METALLIC_MODELS[modelId]?.targetUnit || 'Tons';
+      const singularUnit = targetUnit === 'Tons' ? 'Ton' : targetUnit === 'Units' ? 'Unit' : targetUnit;
+      return `₹${rounded.toLocaleString('en-IN')} / ${singularUnit}`;
+    }
   }
 
   if (desc.includes('copper') || cat.includes('copper')) {
@@ -130,6 +138,7 @@ export interface CatalogSummary {
     unit: string; 
     taxRate: string; 
     marketPrice: string;
+    images?: string[];
     subItems?: { sr: number | string; description: string; qty: string; unit: string }[];
   }[];
   eligibility: string[];
@@ -138,7 +147,7 @@ export interface CatalogSummary {
     preBidDdg: string;
     adminCharges: string;
   };
-  keyContacts: { role: string; name: string; email: string }[];
+  keyContacts: { role: string; name: string; email: string; phone?: string }[];
   preview_image_url?: string | null;
   extracted_images?: string[];
   inspectionSchedule?: string;
