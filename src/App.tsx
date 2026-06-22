@@ -26,7 +26,7 @@ function App() {
 
   useEffect(() => {
     initializeAuth();
-    
+
     // Fetch latest currency rates dynamically on load
     fetchLatestRates()
       .then((rates) => {
@@ -35,7 +35,7 @@ function App() {
         }
       })
       .catch((err) => console.warn('Dynamic exchange rate fetch failed:', err));
-    
+
     // Background pre-warming and pre-fetching to guarantee < 1s loading times
     embeddingService.prewarmModel().catch(err => console.warn('Pre-warming model failed:', err));
     MstcSearchService.getMstcFilterOptions().catch(err => console.warn('Pre-fetching filter options failed:', err));
@@ -46,8 +46,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <RouterProvider router={router} />
-        <Toaster 
-          position="top-right" 
+        <Toaster
+          position="top-right"
           toastOptions={{
             duration: 3000,
             success: {
