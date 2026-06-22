@@ -39,11 +39,10 @@ import {
   renderPdfFirstPage,
   extractEmbeddedJpegs,
   renderAndExtractPdfPages,
-  closeBrowser,
 } from "./utils/pdfUtils.js";
 import { parseMstcCatalogText, parseSubItemsFromText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
-import { performOcr, shouldPerformOcr, terminateOcrWorker } from "./utils/ocrUtils.js";
+import { performOcr, shouldPerformOcr } from "./utils/ocrUtils.js";
 import { isTermsOrInstructionPage } from "./parsers/documentClassifier.js";
 import { calculateTotalMarketValue } from "../src/utils/valuationUtils.js";
 
@@ -90,15 +89,7 @@ async function getEmbeddingPipeline() {
   return embeddingPipelineCache;
 }
 
-/**
- * Calculates exponential backoff cooldown delay in milliseconds.
- */
-function getRetryDelayMs(retryCount: number): number {
-  if (retryCount <= 0) return 0;
-  const backoffMinutes = [1, 5, 15, 30];
-  const index = Math.min(retryCount - 1, backoffMinutes.length - 1);
-  return backoffMinutes[index] * 60 * 1000;
-}
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -226,7 +217,6 @@ export async function processPageForLotEnrichment(
   if (matched.length > 1) {
     // Multi-lot page segmentation logic
     const lotPositions: { lot: any; index: number }[] = [];
-    const normalizedText = combinedText.toLowerCase();
 
     for (const lot of matched) {
       const srStr = String(lot.sr).toLowerCase().trim();

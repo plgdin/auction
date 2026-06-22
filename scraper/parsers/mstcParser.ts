@@ -130,7 +130,6 @@ export function parseMstcCatalogText(
 export function parseSubItemsFromText(text: string): SubItem[] {
   if (!text) return [];
   const subItems: SubItem[] = [];
-  const seenKeys = new Set<string>();
 
   // Comprehensive unit keywords for Indian government surplus auctions
   const UNITS =
