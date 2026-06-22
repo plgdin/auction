@@ -1906,7 +1906,7 @@ export const MstcSearchService = {
       page?: number;
       limit?: number;
     }
-  ): Promise<{ data: MstcSanitizedAuction[], count: number }> {
+  ): Promise<{ data: MstcSanitizedAuction[], count: number, correctedQuery?: string }> {
     try {
       const cleanedQuery = cleanQueryPriceTypos(query);
       const pConstraint = parsePriceConstraint(cleanedQuery);
@@ -1950,12 +1950,18 @@ export const MstcSearchService = {
         // If no match found for auction number, fall through to normal NLP search
       }
 
-      // If a price constraint exists (e.g. "more than 50k prebid"), skip the RPC entirely.
-      // Pre-bid/EMD values live inside raw_materials_text JSON blobs — SQL cannot filter
-      // or count them accurately. Server-side pagination would return wrong results and
-      // wrong totals. Client-side search filters the full dataset and paginates correctly.
+      let p_min_pre_bid: number | undefined = undefined;
+      let p_max_pre_bid: number | undefined = undefined;
+
       if (pConstraint) {
-        throw new Error('PRICE_CONSTRAINT_FORCE_CLIENT_SIDE');
+        if (pConstraint.field === 'pre_bid' || pConstraint.field === 'either') {
+          if (pConstraint.operator === 'greater') p_min_pre_bid = pConstraint.value;
+          if (pConstraint.operator === 'less') p_max_pre_bid = pConstraint.value;
+          if (pConstraint.operator === 'equal') {
+            p_min_pre_bid = pConstraint.value;
+            p_max_pre_bid = pConstraint.value;
+          }
+        }
       }
       
       let embeddingStr: string | null = null;
@@ -1985,6 +1991,8 @@ export const MstcSearchService = {
         p_end_date: filters?.endDate || null,
         p_has_images: filters?.hasImages || null,
         p_has_docs: filters?.hasAssetDocuments || null,
+        p_min_pre_bid: p_min_pre_bid || null,
+        p_max_pre_bid: p_max_pre_bid || null,
         p_page: filters?.page || 1,
         p_limit: filters?.limit || 12
       });
@@ -1993,20 +2001,55 @@ export const MstcSearchService = {
         throw error;
       }
 
+      let searchData = data;
+      let totalCount = 0;
+      let returnedCorrectedQuery: string | undefined = undefined;
+
       // If the DB text/vector search returned 0 results but there was a meaningful
-      // query, fall back to client-side search which has smarter keyword/synonym matching.
-      if (!data || data.length === 0) {
-        if (query && query.trim().length > 0) {
-          console.warn('RPC returned 0 results for query, falling back to client-side search:', query);
-          throw new Error('RPC_ZERO_RESULTS');
+      // query, ask the backend for a spell-check auto-correction!
+      if (!searchData || searchData.length === 0) {
+        if (workingQuery && workingQuery.trim().length > 0) {
+          const { data: correctedQuery, error: correctionError } = await supabase.rpc('suggest_search_correction', {
+            p_query: workingQuery
+          });
+
+          if (!correctionError && correctedQuery && correctedQuery !== workingQuery) {
+            console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
+            const { data: retryData, error: retryError } = await supabase.rpc('hybrid_search_mstc_catalog', {
+              p_search_query: correctedQuery,
+              p_embedding: embeddingStr as any,
+              p_category_filter: filters?.categories?.[0] || filters?.category || null,
+              p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
+              p_location_filter: filters?.locations?.[0] || filters?.location || null,
+              p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
+              p_start_date: filters?.startDate || null,
+              p_end_date: filters?.endDate || null,
+              p_has_images: filters?.hasImages || null,
+              p_has_docs: filters?.hasAssetDocuments || null,
+              p_min_pre_bid: p_min_pre_bid || null,
+              p_max_pre_bid: p_max_pre_bid || null,
+              p_page: filters?.page || 1,
+              p_limit: filters?.limit || 12
+            });
+
+            if (!retryError && retryData && retryData.length > 0) {
+              searchData = retryData;
+              returnedCorrectedQuery = correctedQuery;
+            } else {
+              throw new Error('RPC_ZERO_RESULTS');
+            }
+          } else {
+            throw new Error('RPC_ZERO_RESULTS');
+          }
+        } else {
+          return { data: [], count: 0 };
         }
-        return { data: [], count: 0 };
       }
 
-      const totalCount = Number(data[0].total_count) || 0;
+      totalCount = Number(searchData[0].total_count) || 0;
 
       // 2. Map Categories
-      let mapped = (data as any[]).map(item => {
+      let mapped = (searchData as any[]).map(item => {
         const { category, subcategory } = mapRawCategory(item.category_name);
         return {
           ...item,
@@ -2016,7 +2059,7 @@ export const MstcSearchService = {
 
 
 
-      return { data: mapped, count: totalCount };
+      return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery };
 
     } catch (error) {
       console.warn('Hybrid search failed, falling back to client-side search:', error);
