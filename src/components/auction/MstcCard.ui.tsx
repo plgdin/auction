@@ -148,6 +148,8 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
             <img 
               src={signedDisplayImage} 
               alt="Catalog Image" 
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
             />
           </div>
@@ -281,6 +283,8 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
             <img 
               src={signedDisplayImage} 
               alt="Catalog Image" 
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
             />
           ) : (

@@ -32,6 +32,10 @@ function extractStoragePath(urlOrPath: string, bucketName: string): string {
   }
 }
 
+// Global in-memory cache to prevent redundant signed URL requests
+// Key: bucketName + path + JSON.stringify(transform)
+const signedUrlCache = new Map<string, { url: string, expiresAt: number }>();
+
 export const storageService = {
   /**
    * Uploads a file to a specific Supabase Storage bucket and returns its public URL
@@ -115,21 +119,46 @@ export const storageService = {
 
   /**
    * Retrieves a temporary signed URL for a single private file.
+   * Utilizes a memory cache to avoid redundant API requests.
    */
-  async getSignedUrl(urlOrPath: string, bucketName: string = 'auction_documents'): Promise<string | null> {
+  async getSignedUrl(
+    urlOrPath: string, 
+    bucketName: string = 'auction_documents',
+    transform?: any
+  ): Promise<string | null> {
     try {
       const finalPath = extractStoragePath(urlOrPath, bucketName);
+      const cacheKey = `${bucketName}:${finalPath}:${transform ? JSON.stringify(transform) : 'none'}`;
+      
+      const cached = signedUrlCache.get(cacheKey);
+      // If we have a cached URL and it expires in more than 5 minutes
+      if (cached && cached.expiresAt > Date.now() + 5 * 60 * 1000) {
+        return cached.url;
+      }
+
+      // Pass transform options if provided
+      const options: any = {};
+      if (transform) {
+        options.transform = transform;
+      }
 
       const { data, error } = await supabase.storage
         .from(bucketName)
-        .createSignedUrl(finalPath, 3600);
+        .createSignedUrl(finalPath, 3600, options);
 
       if (error) {
         console.error('Error creating signed URL:', error);
         return null;
       }
 
-      return data.signedUrl;
+      if (data?.signedUrl) {
+        signedUrlCache.set(cacheKey, {
+          url: data.signedUrl,
+          expiresAt: Date.now() + 3600 * 1000
+        });
+        return data.signedUrl;
+      }
+      return null;
     } catch (err) {
       console.error('Unexpected error creating signed URL:', err);
       return null;
@@ -138,24 +167,18 @@ export const storageService = {
 
   /**
    * Batch-resolves an array of private storage URLs to temporary signed URLs.
-   * Skips any URL that is already a signed URL (contains 'token=') to avoid double-signing.
    */
-  async getSignedUrls(urls: string[], bucketName: string = 'auction_documents'): Promise<string[]> {
+  async getSignedUrls(
+    urls: string[], 
+    bucketName: string = 'auction_documents',
+    transform?: any
+  ): Promise<string[]> {
     if (!urls || urls.length === 0) return [];
     try {
-      const paths = urls.map(u => extractStoragePath(u, bucketName));
-      const { data, error } = await supabase.storage
-        .from(bucketName)
-        .createSignedUrls(paths, 3600);
-
-      if (error || !data) {
-        console.error('Error creating signed URLs:', error);
-        // Fall back to individual signing
-        const results = await Promise.all(urls.map(u => this.getSignedUrl(u, bucketName)));
-        return results.filter(Boolean) as string[];
-      }
-
-      return data.map(item => item.signedUrl).filter(Boolean) as string[];
+      // If transform is provided, or to leverage our global cache, we use Promise.all.
+      // Promise.all with our caching layer is often faster than createSignedUrls if there are duplicates!
+      const results = await Promise.all(urls.map(u => this.getSignedUrl(u, bucketName, transform)));
+      return results.filter(Boolean) as string[];
     } catch (err) {
       console.error('Unexpected error creating signed URLs:', err);
       return [];
