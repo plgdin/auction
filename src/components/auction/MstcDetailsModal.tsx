@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown, Mail, Phone } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice } from '../../services/publicService';
@@ -177,6 +177,13 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   }, [item]);
 
   const [modalTab, setModalTab] = useState<'catalog' | 'valuation'>('catalog');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [modalTab]);
   const [customCosts, setCustomCosts] = useState<ValuationCosts>({
     currentBid: 0,
     transportation: 5000,
@@ -519,7 +526,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           {/* Modal Body */}
           <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
             {/* Left Side: Details Scrollable */}
-            <div className="flex-grow overflow-y-auto p-6 space-y-6 bg-slate-50/25">
+            <div ref={scrollContainerRef} className="flex-grow overflow-y-auto p-6 space-y-6 bg-slate-50/25">
               {modalTab === 'valuation' ? (
                 <div className="space-y-6">
                   {/* Cost Input Form Card */}
@@ -768,20 +775,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                              <span>Data Quality</span>
-                              <span className="text-slate-700">{valuationData.riskAnalysis.dataConfidence}%</span>
-                            </div>
-                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                  className="h-full bg-slate-800 rounded-full transition-all duration-500"
-                                  style={{ width: `${valuationData.riskAnalysis.dataConfidence}%` }}
-                              />
-                            </div>
-                          </div>
-
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
                             <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
                               <span>Pricing Consistency</span>
