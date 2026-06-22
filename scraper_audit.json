@@ -1,0 +1,6351 @@
+[
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "0 5MM STEEL TYRE WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "25000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "22 HRC 6063 ALUMINIUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "255000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "304 SS LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "122000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "304 STAINLESS STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "304 STAINLESS STEEL TURNING",
+    "oldPriceMT": "0",
+    "newPriceMT": "90000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "310 STAINLESS STEEL THICKNESS 5 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "321 STAINLESS STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "137000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "321 STAINLESS STEEL MATERIAL GRADE SS321 5 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "137000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "500GM ZINC METAL DUST POWDER 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "275000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "98 BRASS INGOTS",
+    "oldPriceMT": "0",
+    "newPriceMT": "580000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "98 ZINC DUST POWDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "360000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "98 ZINC DUST POWDER 5 KG GRADE STANDARD TECHNICAL LABORATORY REAGENT",
+    "oldPriceMT": "0",
+    "newPriceMT": "350000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "99 ZINC DUST POWDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "360000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "A GRADE ALUMINIUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "170000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "AB 12 ALUMINIUM BRONZE",
+    "oldPriceMT": "0",
+    "newPriceMT": "550000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "ACSR CONDUCTOR",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.764Z",
+    "type": "ADDED",
+    "component": "ALLOY STEEL MATERIAL GRADE H13",
+    "oldPriceMT": "0",
+    "newPriceMT": "75000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM 6063",
+    "oldPriceMT": "0",
+    "newPriceMT": "190000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM 6063 EXTRUSION FROM INDIA AUTOMOTIVE CONSTRUCTION",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM BRIQUETTE",
+    "oldPriceMT": "0",
+    "newPriceMT": "220000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM CABLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "370000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM COMPONENT",
+    "oldPriceMT": "0",
+    "newPriceMT": "292000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM COMPUTER",
+    "oldPriceMT": "0",
+    "newPriceMT": "180000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM CUTTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "230000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM ENGINE",
+    "oldPriceMT": "0",
+    "newPriceMT": "195000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM EXTRUSION",
+    "oldPriceMT": "0",
+    "newPriceMT": "225000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM FOIL PAINTED FOIL USED FOR ALUMINIUM CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "95000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM INGOT",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM OF BOTTLE CAP",
+    "oldPriceMT": "0",
+    "newPriceMT": "140000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM SECTION",
+    "oldPriceMT": "0",
+    "newPriceMT": "325000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM SOFT TURNING",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM TURNING",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM UBC CAN",
+    "oldPriceMT": "0",
+    "newPriceMT": "151000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM UBC PURITY 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "155000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINUM BRIQUETTE",
+    "oldPriceMT": "0",
+    "newPriceMT": "148000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINUM LITHO SHEET 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ALUMINUM SHEET",
+    "oldPriceMT": "0",
+    "newPriceMT": "280000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "AUTOMOBILE ALUMINIUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BALED STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "45000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BARE COPPER WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "435690.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BERYLLIUM COPPER GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BERYLLIUM COPPER GRADE GRADE A 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BLACK ABS GRINDING",
+    "oldPriceMT": "0",
+    "newPriceMT": "60000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BLACK BRASS",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BLACK PLASTIC",
+    "oldPriceMT": "0",
+    "newPriceMT": "60000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BLACK PVC",
+    "oldPriceMT": "0",
+    "newPriceMT": "32000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BLUE FIRST GRINDED HDPE",
+    "oldPriceMT": "0",
+    "newPriceMT": "58000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BLUE FIRST GRINDED HDPE DRUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "79000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BORING BRASS",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BOX PATTI MIX",
+    "oldPriceMT": "0",
+    "newPriceMT": "25000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "UPDATED",
+    "component": "BRASS",
+    "oldPriceMT": "443405.00",
+    "newPriceMT": "468912.31"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BRASS BARTAN",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BRASS CDA C49300 BRASS CDA C49300 BAR BRASS CDA C49300 PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1440000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BRASS CDA C84400 BRASS CDA C84400 BAR BRASS CDA C84400 PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1080.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BRASS METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "690000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BRASS METAL HONEY ISRI",
+    "oldPriceMT": "0",
+    "newPriceMT": "305000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BRASS ROD",
+    "oldPriceMT": "0",
+    "newPriceMT": "805000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BRASS SHEET CUTTINGS",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BRASS TURNING",
+    "oldPriceMT": "0",
+    "newPriceMT": "505000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BRASS TURNING BORINGS",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BRASS VILAYATI",
+    "oldPriceMT": "0",
+    "newPriceMT": "510000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "BUNDLE STEEL TYRE WIRE THICKNESS 5 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "32000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "C R C SHEET IRON",
+    "oldPriceMT": "0",
+    "newPriceMT": "42500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "CARBIDE COMPUTER",
+    "oldPriceMT": "0",
+    "newPriceMT": "480000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "CARBIDE COMPUTER SERVER",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "CAST IRON",
+    "oldPriceMT": "0",
+    "newPriceMT": "34000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "CAST IRON FOR FOUNDRY INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "32000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "CAST IRON ROTOR AND DRUM FOR METAL INDUSTRY 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "48000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "CI",
+    "oldPriceMT": "0",
+    "newPriceMT": "39000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COMMERCIAL ALUMINUM BRONZE",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COMPUTER",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COMPUTER 50 KG COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COMPUTER BUYER",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COMPUTER MONITOR",
+    "oldPriceMT": "0",
+    "newPriceMT": "99000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COMPUTER PROCESSOR",
+    "oldPriceMT": "0",
+    "newPriceMT": "12000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COMPUTER SERVER LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "270000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "UPDATED",
+    "component": "COPPER",
+    "oldPriceMT": "606171.67",
+    "newPriceMT": "559620.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "1380.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER 99 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "1050.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER ARMATURE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "1150.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER BEST GRADE GRADE AA 99 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER BRASS MIX 99 99 GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "650000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER BUY AND SALE",
+    "oldPriceMT": "0",
+    "newPriceMT": "930000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER CDA UNS C10200 COPPER CDA UNS C10200 BAR COPPER CDA UNS C10200 PLATE COPPER C10200",
+    "oldPriceMT": "0",
+    "newPriceMT": "1080.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER ENAMELED ARMATURE 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "950000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "840000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER GRADE GRADE A 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "830000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER JALI PATTI",
+    "oldPriceMT": "0",
+    "newPriceMT": "1250.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER METAL KHADIYA",
+    "oldPriceMT": "0",
+    "newPriceMT": "1500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER MILLBERRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "1260.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER MILLBERRY 99 9 GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "770000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER MILLBERRY WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "760000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER NICKEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "2155.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER PATTI 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER POWDER BUKKA",
+    "oldPriceMT": "0",
+    "newPriceMT": "740000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER PUNCHING",
+    "oldPriceMT": "0",
+    "newPriceMT": "1235000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER TUBE",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1170.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "COPPER WIRE 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "CRC SHEET METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "CRCA AUTOMOBILE DAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "50000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "CRT MONITOR SCARP",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "DELL COMPUTER SERVERS 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "320000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "DUPLEX STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "DUPLEX STEEL 2205",
+    "oldPriceMT": "0",
+    "newPriceMT": "235000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "DUPLEX STEEL 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "ELECTRONIC COMPUTER",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "FIRST GRINDED BLACK ABS",
+    "oldPriceMT": "0",
+    "newPriceMT": "70000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "FOR CONSTRUCTION IRON BEAM FOR METAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "38000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GERMAN SILVER 12 18 NICKEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "2000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GOLDEN BRASS FOR CASTING INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "550000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GOLDEN BRASS METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "690000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GOLDEN BRASS S",
+    "oldPriceMT": "0",
+    "newPriceMT": "550000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GOLDEN BRASS SHEET",
+    "oldPriceMT": "0",
+    "newPriceMT": "330000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GOLDEN BRASS SHEET CUTTING PACKAGING SIZE 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "900000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GPPS GRINDING",
+    "oldPriceMT": "0",
+    "newPriceMT": "80000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GRANULES NUTUROS ZINC METAL DUST 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GRANULES ZINC DROSS 80",
+    "oldPriceMT": "0",
+    "newPriceMT": "220000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GREY RIGID PVC",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GREY ZINC DUST POWDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "310000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "GRINDED PET PREFORM",
+    "oldPriceMT": "0",
+    "newPriceMT": "60000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "H10 H12 H21 M50 A2 A6 A7 A10 D6 D7 TOOL STEEL BARS THICKNESS 5 TO 100MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "65000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "HDPE NATURAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "55000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "HEAVY MELTING HMS IRON METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "1000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "HIGH CHROME STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "75000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "HIGH TENSILE BRASS HTB1 HTB2 HTB3",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "HS 6",
+    "oldPriceMT": "0",
+    "newPriceMT": "1800.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "INCONEL 625 5 MM 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "1200.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "INCONEL 825",
+    "oldPriceMT": "0",
+    "newPriceMT": "5004.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "INDIA FOUNDRY GRAD PIG IRON 5 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "32000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL BRASS",
+    "oldPriceMT": "0",
+    "newPriceMT": "550000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "INSULATED COPPER CABLE 99 9 GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "1290.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "UPDATED",
+    "component": "IRON",
+    "oldPriceMT": "34943.33",
+    "newPriceMT": "34954.67"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "IRON ANGLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "55000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "IRON DEALER",
+    "oldPriceMT": "0",
+    "newPriceMT": "36000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "IRON FOR METAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "IRON HEAVY",
+    "oldPriceMT": "0",
+    "newPriceMT": "45000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "IRON LIKE SHEETS PACKAGING TYPE NOT FIX",
+    "oldPriceMT": "0",
+    "newPriceMT": "41500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "IRON MIX",
+    "oldPriceMT": "0",
+    "newPriceMT": "33000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "IRON S",
+    "oldPriceMT": "0",
+    "newPriceMT": "18500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "IRON SHEET",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "IT COMPUTER ALUMINUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "1000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "LD PLASTIC",
+    "oldPriceMT": "0",
+    "newPriceMT": "82000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "LDPE FILM",
+    "oldPriceMT": "0",
+    "newPriceMT": "130000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "LEAD FREE GRINDER BRASS",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "LLDPE ROTO MOLDING TANK BLUE GRINDING",
+    "oldPriceMT": "0",
+    "newPriceMT": "42000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "LOOSE HEAVY MELTING COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "1350.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "LOOSELY PACKED PLASTIC",
+    "oldPriceMT": "0",
+    "newPriceMT": "65000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "M S IRON 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "31000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MANGANESE METAL FLAKE",
+    "oldPriceMT": "0",
+    "newPriceMT": "170000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MATERIAL GRADE M3 HIGH SPEED STEEL THICKNESS 3 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "300000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MILD STEEL TYPE PLATE CUTTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "36000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MILLBERRY COPPER 99 GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MIX CAN ALUMINIUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MIXED BRASS HONEY ISRI",
+    "oldPriceMT": "0",
+    "newPriceMT": "780000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MOLYBDENUM METAL MOLY PIPES",
+    "oldPriceMT": "0",
+    "newPriceMT": "4800.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MOTOR STAINLESS STEEL THICKNESS 10 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MS AND IRON",
+    "oldPriceMT": "0",
+    "newPriceMT": "37000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MS LOW CARBON IRON FOR METAL INDUSTRY 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "50000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MS RAILWAY IRON 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "36000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MS SKELETON IRON",
+    "oldPriceMT": "0",
+    "newPriceMT": "33000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "MULTICOLOR PP PLASTIC S",
+    "oldPriceMT": "0",
+    "newPriceMT": "33000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "NATURAL WHITE PEEK",
+    "oldPriceMT": "0",
+    "newPriceMT": "220000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.765Z",
+    "type": "ADDED",
+    "component": "NATURAL WHITE PPCP BATTERY GRINDING",
+    "oldPriceMT": "0",
+    "newPriceMT": "82000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "NYLON",
+    "oldPriceMT": "0",
+    "newPriceMT": "120000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "OFF WHITE CP",
+    "oldPriceMT": "0",
+    "newPriceMT": "80000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "OLD COMPUTER",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "OLD IRON",
+    "oldPriceMT": "0",
+    "newPriceMT": "31000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "PC NATURAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "90000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "UPDATED",
+    "component": "PLASTIC",
+    "oldPriceMT": "13890.83",
+    "newPriceMT": "13976.15"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "PLASTIC SEPTIC TANK",
+    "oldPriceMT": "0",
+    "newPriceMT": "16000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "POWDER 95 PURE ZINC ASH 30KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "POWDER 99 99 ZINC DUST 99 9 50 KG DRUM GRADE STANDARD PURE",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "POWDER 99 ZINC METAL DUST 25 KG GRADE STANDARD INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "295000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "POWDER GREY ZINC METAL DUST FOR INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "475000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "POWDER ZINC ASH ZINC DUST 70",
+    "oldPriceMT": "0",
+    "newPriceMT": "195000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "POWDER ZINC DUST 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "32000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "PP BUCKET REGRINDS",
+    "oldPriceMT": "0",
+    "newPriceMT": "75000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "PP PLASTIC GRINDING",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "PURE ALUMINIUM BALED ABOVE 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "220000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "PURE COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "760000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "PURE COPPER SHEET",
+    "oldPriceMT": "0",
+    "newPriceMT": "1150.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "PURITY 97 BRASS",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "PURITY 98 ALUMINUM TT SECTION",
+    "oldPriceMT": "0",
+    "newPriceMT": "205000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "PVC CABLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "25000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "RED COPPER ALLOY PACKAGING TYPE LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "500000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "REFURBISHABLE COMPUTER CPU 50 KG LOT PLASTIC BODY CORPORATE IT SOURCE",
+    "oldPriceMT": "0",
+    "newPriceMT": "130000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "REGRIND FIRST RED HD CRATES",
+    "oldPriceMT": "0",
+    "newPriceMT": "47000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "REMELT DIE CAST ZINC SOLID 99 PURITY",
+    "oldPriceMT": "0",
+    "newPriceMT": "500000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "REPROCESSING PLASTIC",
+    "oldPriceMT": "0",
+    "newPriceMT": "15000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SILVER AND ZINC MIX",
+    "oldPriceMT": "0",
+    "newPriceMT": "180.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SILVER NON FERROUS ALUMINIUM DIE CASTING FOR AUTOMOBILE INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "165000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SILVER PURE ALUMINUM ALLOY WHEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SOLID 5 10 ATTACHMENTS ZINC IMPORTER 20 FT CONTAINER",
+    "oldPriceMT": "0",
+    "newPriceMT": "190000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SOLID PURE ZINC",
+    "oldPriceMT": "0",
+    "newPriceMT": "275000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SOLID SILVER AND ZINC MIX 90",
+    "oldPriceMT": "0",
+    "newPriceMT": "180000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SOLID ZINC",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SOLID ZINC 0 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "230000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SOLID ZINC METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "300000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SOLID ZINC METALS",
+    "oldPriceMT": "0",
+    "newPriceMT": "240000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SOLID ZINC PLATED 90",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SS 304 PLATE CUTTING THICKNESS 5 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "130000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SS 410 LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "65000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SS PLATE CUTTING MATERIAL GRADE 304 THICKNESS 3 5 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "225000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "SS PLATE CUTTING PURCHASE MATERIAL GRADE 304 THICKNESS 18 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "155000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "UPDATED",
+    "component": "STAINLESS STEEL",
+    "oldPriceMT": "137143.33",
+    "newPriceMT": "130593.85"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL 202 BHARDAN BUNDLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL 202 MATERIAL GRADE SS202",
+    "oldPriceMT": "0",
+    "newPriceMT": "65000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL 310",
+    "oldPriceMT": "0",
+    "newPriceMT": "380000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL 316L",
+    "oldPriceMT": "0",
+    "newPriceMT": "272000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL 410 FOUNDRY BARS OFFCUT 410",
+    "oldPriceMT": "0",
+    "newPriceMT": "80000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL CG DUST 304 THICKNESS 6 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL MATERIAL GRADE 2507",
+    "oldPriceMT": "0",
+    "newPriceMT": "86000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL MATERIAL GRADE 304 THICKNESS 6 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "121000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL PACKAGING TYPE BUNDLE PLATE OFFCUTS",
+    "oldPriceMT": "0",
+    "newPriceMT": "190000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "180000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STEEL METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "31000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STEEL TYRE WIRE MATERIAL GRADE 2507 THICKNESS 4 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "33000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "STEEL WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "20000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "TOOL STEEL D2 PLATE CUTTING D2 ROUND OFFCUTS",
+    "oldPriceMT": "0",
+    "newPriceMT": "28000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "UNWASHED GREY DABBA",
+    "oldPriceMT": "0",
+    "newPriceMT": "37000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "USED RAILS",
+    "oldPriceMT": "0",
+    "newPriceMT": "38000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "UTENSILS BRASS METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "555000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "WHITE PLASTIC BAG",
+    "oldPriceMT": "0",
+    "newPriceMT": "20000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "WHITE PVC REGRIND PACKAGING SIZE 40 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "38000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "YELLOW BRASS PIPE 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "YELLOW BRASS SHEET CUTTINGS",
+    "oldPriceMT": "0",
+    "newPriceMT": "500000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "YELLOW OLD BRASS PACKAGING SIZE 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "620000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC DIE",
+    "oldPriceMT": "0",
+    "newPriceMT": "270000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC DUST 90 95 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "265000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC DUST 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC DUST CAS NO 7440 66 6",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC DUST POWDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "265000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC DUST POWDER 0 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "198000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC DUST POWDER 50 KG 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "325000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC EAF DUST",
+    "oldPriceMT": "0",
+    "newPriceMT": "60000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "300000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC METALS",
+    "oldPriceMT": "0",
+    "newPriceMT": "220000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:41:09.766Z",
+    "type": "ADDED",
+    "component": "ZINC SOLID",
+    "oldPriceMT": "0",
+    "newPriceMT": "225000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "0 25MM MILBERRY COPPER GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "1280.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "0 35 ALUMINIUM FOIL",
+    "oldPriceMT": "0",
+    "newPriceMT": "170000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "0 75 AUTOMOBILE COPPER PIPE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "805000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "0 85 ALUMINIUM FOIL 100 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "0 85 GUN METAL S",
+    "oldPriceMT": "0",
+    "newPriceMT": "550000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "0 89 99 9 A GRADE COPPER PIPE",
+    "oldPriceMT": "0",
+    "newPriceMT": "822000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "0 98 M S BLACK MELTING 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "39000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "0 99 ALUMINIUM FOIL 100 KG 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "90000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "0 99 ALUMINIUM FOIL 25 KG 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "110000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "0 99 GUN METAL BOARING",
+    "oldPriceMT": "0",
+    "newPriceMT": "520000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "1 0 MM ALUMINIUM FOIL",
+    "oldPriceMT": "0",
+    "newPriceMT": "80000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "1 2 INCH ROUND MOLYBDENUM ROD 3 METER",
+    "oldPriceMT": "0",
+    "newPriceMT": "3500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "10MM ALUMINIUM PLATES",
+    "oldPriceMT": "0",
+    "newPriceMT": "270000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "12MM ALUMINIUM WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "372000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "2507 ALLOY 22 H THICKNESS 10MM GUNNY PACK",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "25MM CAST IRON",
+    "oldPriceMT": "0",
+    "newPriceMT": "43500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "28 MM MILD STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "38000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "2MM ALUMINUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "297000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "304 BORING STAINLESS STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "120000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "400 MONEL NICKEL COPPER ALLOY",
+    "oldPriceMT": "0",
+    "newPriceMT": "1150.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "50 150 MM CAST IRON",
+    "oldPriceMT": "0",
+    "newPriceMT": "13000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "50 KG CABLE COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "1050.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "50 ZINC DUST POWDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "50000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "500GM BURGOYNE ZINC METAL DUST POWDER LABORATORY REAGENT 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "910000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "6061 ALUMINIUM EXTRUSION",
+    "oldPriceMT": "0",
+    "newPriceMT": "210000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "6061 ALUMINIUM EXTRUSION 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "218000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "6063 ALUMINIUM EXTRUSION",
+    "oldPriceMT": "0",
+    "newPriceMT": "180000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "6063 ALUMINIUM EXTRUSION 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "160000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "85 5 ALUMINIUM CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "160000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "85 5 ALUMINIUM CASTING 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "190000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "85 5 ALUMINUM CASTING 100 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "195000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "85 5 ALUMINUM CASTING 90",
+    "oldPriceMT": "0",
+    "newPriceMT": "160000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "89 BROWN COPPER PIPE FOR CASTING INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "790000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "90 10 CUPRO NICKEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "950000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "90 10 NICKEL COPPER ALLOY",
+    "oldPriceMT": "0",
+    "newPriceMT": "650000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "904L METAL FOR INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "310000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "95 COPPER PIPE KALIYA",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "95 COPPER PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "860000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "95 PURITY BIKE WHEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "50000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "97 COPPER PIPE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1090.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 5 COPPER PLATE FOR INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "650000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 9 ALUMINIUM CASTING 50 KG 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "175000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 9 COPPER PLAIN PIPE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1040000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 9 INSULATED COPPER WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 9 MILLBERRY COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 9 PURE COPPER SHEET COILS FOR MELTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "950000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 99 HEAVY MELTING COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "400000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 99 LEAD 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "230000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 ALUMINIUM PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "370000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 ALUMINIUM PLATE T6 6061 CUT PIECES 10 20MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "280000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 COPPER CATHODE FOR ELECTRIC WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "650000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 COPPER PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1300.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 PURE COPPER PIPE FOR MELTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "950000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 ZINC",
+    "oldPriceMT": "0",
+    "newPriceMT": "278000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "99 ZINC DUST POWDER GRADE STANDARD TECHNICAL GRADE",
+    "oldPriceMT": "0",
+    "newPriceMT": "240000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "A GRADE ALUMINIUM CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "33000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "A GRADE ALUMINIUM CASTING 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "33000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "A GRADE BRASS",
+    "oldPriceMT": "0",
+    "newPriceMT": "500000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "A GRADE CAST IRON FOR METAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "33000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "A GRADE MS",
+    "oldPriceMT": "0",
+    "newPriceMT": "31000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "A GRADE NICKEL COPPER ALLOY",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "AA GRADE HEAVY MELTING COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "760000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "AA INSULATED COPPER WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ABS CHAKLI PLANT",
+    "oldPriceMT": "0",
+    "newPriceMT": "58000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "AC COPPER PIPE",
+    "oldPriceMT": "0",
+    "newPriceMT": "633713.33"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "AC COPPER PIPE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALLOY 20 STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "460000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALLOY 500",
+    "oldPriceMT": "0",
+    "newPriceMT": "950000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALLOY 500 25 KG 70 30 COPPER NICKEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "950000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALLOY 59",
+    "oldPriceMT": "0",
+    "newPriceMT": "1600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALLOY STEEL 8620 8630 8640 BLOOM",
+    "oldPriceMT": "0",
+    "newPriceMT": "24000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALLOY WHEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "235000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALLOY WHEELS BUYER",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALMINIUM WHEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "270000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "165000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM 6061 EXTRUSION",
+    "oldPriceMT": "0",
+    "newPriceMT": "235000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM ALLOY WHEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "285000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM ALLOY WHEEL 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "185000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM ALLOY WHEEL RIM",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM ALLOY WHEEL TROMA 25 KG 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "235000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM ALUMINUM RADIATOR FOR METAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "145000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM AUTO CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "145000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM AUTOMOTIVE CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "275000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "135000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM CABLE 95 PURITY",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM CAR ALLOY WHEELS",
+    "oldPriceMT": "0",
+    "newPriceMT": "210000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM CAR ALLOY WHEELS 100 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "225000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "300000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM CASTING ADC12 AUTOMOTIVE RUNNER RISER",
+    "oldPriceMT": "0",
+    "newPriceMT": "185000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM EXTRUSION 6063",
+    "oldPriceMT": "0",
+    "newPriceMT": "253666.67"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM EXTRUSION 6063 3 5 CIF PORT PACKAGING TYPE BALES",
+    "oldPriceMT": "0",
+    "newPriceMT": "190000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM EXTRUSION 6063 PACKAGING SIZE 100 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "225000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM EXTRUSION 99 PACKAGING SIZE 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "190000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM EXTRUSION CLEAN",
+    "oldPriceMT": "0",
+    "newPriceMT": "335000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM EXTRUSION PROFILE",
+    "oldPriceMT": "0",
+    "newPriceMT": "220000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM EXTRUSION SECTIONS PROFILE 6063",
+    "oldPriceMT": "0",
+    "newPriceMT": "170000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM FOIL",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM FOIL 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "110000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.587Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM FOIL FOR MELTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "82000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM FOIL PEPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "60000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM FOIL SHEET PHARMA APPLICATION",
+    "oldPriceMT": "0",
+    "newPriceMT": "220000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM HEAVY",
+    "oldPriceMT": "0",
+    "newPriceMT": "190000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM LITHO SHEET",
+    "oldPriceMT": "0",
+    "newPriceMT": "225000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM MIXED WHEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "310000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM MOTOR PARTS",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1260.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM PLATE 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "165000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM PLATE 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "195000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM PLATE 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "210000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM PLATE 99 5",
+    "oldPriceMT": "0",
+    "newPriceMT": "360000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM PLATE CUTTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "170000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM PLATES 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "240000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM PLATES CUT PIECES",
+    "oldPriceMT": "0",
+    "newPriceMT": "220000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM POLY FOILS FOR MELTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "99000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM RADIATOR",
+    "oldPriceMT": "0",
+    "newPriceMT": "140000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM SILVER ALUMINUM CASTING BRIQ 6063 FOR MELTING SIZE SQUARE",
+    "oldPriceMT": "0",
+    "newPriceMT": "173000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM SILVER ALUMINUM CASTING FOR AUTOMOBILE INDUSTRY SIZE LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM SILVER INDUSTRIAL ALUMINUM FOR AUTOMOBILE INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "130000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM SILVER RECTANGULAR ALUMINUM LITHO PLATE FOR MACHINERY",
+    "oldPriceMT": "0",
+    "newPriceMT": "195000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM TROMA WHEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "225000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM WHEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "244000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM WHEEL 97",
+    "oldPriceMT": "0",
+    "newPriceMT": "225000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM WHEEL 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM WIRE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "180000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM WIRE CABLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "235000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM WIRE WITH PVC INSULATION",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "UPDATED",
+    "component": "ALUMINUM",
+    "oldPriceMT": "159669.17",
+    "newPriceMT": "173540.77"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM 30 40 CM ALUMINIUM FOIL",
+    "oldPriceMT": "0",
+    "newPriceMT": "300000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "1260.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM CASTING 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "160000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM CENTERING PLATES FOR MACHINERY",
+    "oldPriceMT": "0",
+    "newPriceMT": "185000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM CLIPPED FOIL",
+    "oldPriceMT": "0",
+    "newPriceMT": "270000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM EXTRUSION",
+    "oldPriceMT": "0",
+    "newPriceMT": "185000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM FOIL 99 7",
+    "oldPriceMT": "0",
+    "newPriceMT": "145000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM PINTING PLATES",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "227000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM PLATES",
+    "oldPriceMT": "0",
+    "newPriceMT": "285000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM SHINING WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "350000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM WHEELS TROMA",
+    "oldPriceMT": "0",
+    "newPriceMT": "275000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "122000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM WIRE 25 KG 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "190000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM WIRE 99 100 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "255000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMINUM WIRE PURCHASE",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "ALUMNIUM WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "180000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BARE BRIGHT COPPER WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "950000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BARE BRIGHT COPPER WIRE GRADE NO 1",
+    "oldPriceMT": "0",
+    "newPriceMT": "950000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "UPDATED",
+    "component": "BARE COPPER WIRE",
+    "oldPriceMT": "435690.00",
+    "newPriceMT": "1380.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BARE COPPER WIRE MILLBERRY 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BARE COPPER WIRE OC",
+    "oldPriceMT": "0",
+    "newPriceMT": "1160000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BEARING",
+    "oldPriceMT": "0",
+    "newPriceMT": "111500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BERYLIUM COPPER TURNING IN",
+    "oldPriceMT": "0",
+    "newPriceMT": "2500000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BERYLIUM COPPER TURNING IN FORM WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "2500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BLACK IRON MS BURADA FOR INDUSTRIAL PACKAGING TYPE LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "39500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BLACK MILD STEEL BAR FOR METAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "65000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BLACK MILD STEEL MS CR",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BLACK MILD STEEL TURNING",
+    "oldPriceMT": "0",
+    "newPriceMT": "36000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BOLL BEARING",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BRASS BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "640000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BRASS BORING 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "520000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BRASS CDA C41100 BRASS CDA C41100 BAR BRASS CDA C41100 PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1260.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BRASS HONEY PIECES LOOSE PACKAGING",
+    "oldPriceMT": "0",
+    "newPriceMT": "550000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BRASS HONEY PURITY 0 75",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "UPDATED",
+    "component": "BRASS METAL",
+    "oldPriceMT": "690000.00",
+    "newPriceMT": "535000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BRASS NON FERROUS METAL S",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BRASS SHEET",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BUSHELING",
+    "oldPriceMT": "0",
+    "newPriceMT": "280000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "BUSHING TITANIUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "350000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.588Z",
+    "type": "ADDED",
+    "component": "CARBON STEEL THICKNESS 20 MM 2000 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "30000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "31000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON BORING FOR FOUNDRY INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "41000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON BROWN",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON CI BORINGS",
+    "oldPriceMT": "0",
+    "newPriceMT": "45000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON CI ROTOR DRUM CAST IRON SOLID",
+    "oldPriceMT": "0",
+    "newPriceMT": "34000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON CI ROTOR DRUM CAST IRON SOLID FOR METAL INDUSTRY 100 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "500000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON FOR METAL INDUSTRY 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "36500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON MACHINERY FOR CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "3900.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON METAL 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "42500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON MIX",
+    "oldPriceMT": "0",
+    "newPriceMT": "18000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON MIX FOR CHEMICAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "32000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON PARK BENCHES",
+    "oldPriceMT": "0",
+    "newPriceMT": "1700.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON POT RAIL R50",
+    "oldPriceMT": "0",
+    "newPriceMT": "38000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON S",
+    "oldPriceMT": "0",
+    "newPriceMT": "99000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON S FOR FOUNDRY INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "40900.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON S FOR METAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON S HMS 1 FOR METAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "51000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAST IRON TOKA FOR USE IN CASTING PROCESSES LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "36000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CAUSTIC SODA PLANT",
+    "oldPriceMT": "0",
+    "newPriceMT": "500000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CERAMIC",
+    "oldPriceMT": "0",
+    "newPriceMT": "45000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CI BORINGS",
+    "oldPriceMT": "0",
+    "newPriceMT": "32000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CI CAST IRON BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CI MOLD",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CLEAN ALUMINUM ALLOY WHEEL ADC12",
+    "oldPriceMT": "0",
+    "newPriceMT": "220000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "CLEAN PLAIN ALUMINIUM FOIL 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "90000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "UPDATED",
+    "component": "COPPER",
+    "oldPriceMT": "559620.00",
+    "newPriceMT": "519740.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "1230.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER AC TUBE COIL",
+    "oldPriceMT": "0",
+    "newPriceMT": "1080.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER ASH",
+    "oldPriceMT": "0",
+    "newPriceMT": "400000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER ASH 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER ASH DUST",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER ASH POWDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "500000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER ASH POWDER 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER ASH POWDER 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "650000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "630000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CABLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CABLE 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "840000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CABLE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "830000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CABLE ARMORED CABLE 99 99 COPPER RECOVERY",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CABLE GRADE INSULATED WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "350000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CABLE PURCHASE AND SALE GRADE GRADE A 90 ABOVE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1200.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CABLE PVC INSULATED HOUSE WIRING 50 60 RECOVERY",
+    "oldPriceMT": "0",
+    "newPriceMT": "1000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CABLE WIRE 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CABLE WIRE RASSA",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CATHODE",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CATHODE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "650000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CHIP",
+    "oldPriceMT": "0",
+    "newPriceMT": "785000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER CONTROL CABLE 70 80",
+    "oldPriceMT": "0",
+    "newPriceMT": "192000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER DC WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER FILTER PIPE GRADE MILLBERRY WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1250.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER HEAVY",
+    "oldPriceMT": "0",
+    "newPriceMT": "950000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER HEAVY MELTING COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER HEAVY MELTING COPPER 70",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER JALI PATTI 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "740000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER METAL TURNING",
+    "oldPriceMT": "0",
+    "newPriceMT": "578000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER METAL TURNING 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "578000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER METAL TURNING 25 KG 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER METAL TURNING FILLING SMALL PIECES 500GM",
+    "oldPriceMT": "0",
+    "newPriceMT": "1794.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER METAL TURNINGS",
+    "oldPriceMT": "0",
+    "newPriceMT": "1200.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER METAL TURNINGS 99 100 GM",
+    "oldPriceMT": "0",
+    "newPriceMT": "1250.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER METAL TURNINGS EXTRA PURE 7440 50 8 25KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "1450.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "UPDATED",
+    "component": "COPPER MILLBERRY 99 9 GRADE GRADE A",
+    "oldPriceMT": "770000.00",
+    "newPriceMT": "785000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER MILLBERRY WIRE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "1300.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER MULTICORE TELECOM CABLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1020.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER NICKEL 100 KG 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "650000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER NICKEL 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.589Z",
+    "type": "ADDED",
+    "component": "COPPER NICKEL 75 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER NICKEL 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER NICKEL 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER NICKEL 99 9 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "1200.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER NICKEL 99 91 50 100 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER NICKEL ALLOY 30 70 99 97",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER NICKEL LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "680000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER PIBE BUYER",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER PIPE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1075.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER PIPE GRADE GRADE A 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "810000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1280.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER PLATE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER PLATE 99 PURITY",
+    "oldPriceMT": "0",
+    "newPriceMT": "1190.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER PLATE FOR INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "440000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER POWDER ASH",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER SHEET",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER SHEET 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "400000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER SHEET 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER SHEET CUTTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER SHEET PACKAGING SIZE 50 KG FOR ELECTRICAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "445000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER SHEET PUNCHING",
+    "oldPriceMT": "0",
+    "newPriceMT": "950000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER TIN DROSS 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "1850.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER TURNING",
+    "oldPriceMT": "0",
+    "newPriceMT": "775000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER TURNING 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER TURNING 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "680000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER TURNING GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER TURNING WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "690000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER TURNINGS",
+    "oldPriceMT": "0",
+    "newPriceMT": "900000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER TURNINGS 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "755000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "UPDATED",
+    "component": "COPPER WIRE",
+    "oldPriceMT": "1170.00",
+    "newPriceMT": "450585.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER WIRE 95 GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER WIRE 98",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER WIRE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "760000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER WIRE 99 9 GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "421000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER WIRE 99 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER WIRE 99 99 GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER WIRE DORI",
+    "oldPriceMT": "0",
+    "newPriceMT": "725000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER WIRE GRADE MILLBERRY BERRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "1200.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "COPPER WIRE TURNINGS",
+    "oldPriceMT": "0",
+    "newPriceMT": "900000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "CRCA CRC BUNDLE FOUNDRY 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "41000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "CRCA DANDA",
+    "oldPriceMT": "0",
+    "newPriceMT": "38000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "CUPPRO NICKEL 70 30 PIPE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "CUPRO NICKEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "710000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "CUPRO NICKEL CUPRO NICKEL 70 30 CU NI",
+    "oldPriceMT": "0",
+    "newPriceMT": "350000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "CUPRO NICKEL CUPRO NICKEL 90 10 CU NI",
+    "oldPriceMT": "0",
+    "newPriceMT": "350000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "DROSS",
+    "oldPriceMT": "0",
+    "newPriceMT": "2000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "DROSS REDUCING POWDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "3900000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "DUCTING COPPER PIPE BUYER",
+    "oldPriceMT": "0",
+    "newPriceMT": "1150.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "ELECTROLYTIC TOUGH PITCH COPPER SHEET 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "1100.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "EN24 BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "45000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "EXTRUSION ALUMINIUM 99 PACKAGING SIZE 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "178000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "F 75 TURNING 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "1300.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "FERROUS METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "50000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "FERROUS METAL S",
+    "oldPriceMT": "0",
+    "newPriceMT": "55000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "FERROUS SILICON METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "168000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "FERROUS SILICON METAL 50 KG LEAD",
+    "oldPriceMT": "0",
+    "newPriceMT": "168000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "FINE COPPER TURNING",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "FINE COPPER WIRE TURNINGS 99 PURITY",
+    "oldPriceMT": "0",
+    "newPriceMT": "900000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "FOR CONSTRUCTION CAST IRON FOR INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "30000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "FOUNDRY FOR METAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "233000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "GALVANISED IRON FOR METAL INDUSTRY 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "49500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "GALVANISED IRON GI SHEETS FOR METAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "38000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.590Z",
+    "type": "ADDED",
+    "component": "GI ANGLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "60000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GOLDEN BRASS VILAYATI PACKAGING SIZE 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "570000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GOLDEN MIXED BRASS PACKAGING SIZE 20 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "470000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A 0 89 25MM COPPER PIPE 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A 0 89 AC COPPER PIPE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A 0 99 COPPER PIPE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "866000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A AIR CONDITIONER COPPER PIPE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A COPPER CABLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "415000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A COPPER CUTTING SHEET 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "1000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A COPPER NICKEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "650000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A COPPER NICKEL LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A COPPER PIPE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A COPPER SHEET 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A COPPER SHEET CUTTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A COPPER SHEET PUNCHING 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "710000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A COPPER WIRE 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "870000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A MONEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "900000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE A PURE COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "680000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADE NICKEL COPPER MONEL 70 30 COPPER NICKEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRADED CAST IRON FOR CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GRANULES COPPER METAL TURNING FOR LABORATORY CHEMICALS CATALYSTS SIZE 18 MESH",
+    "oldPriceMT": "0",
+    "newPriceMT": "1375.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "GREY ALUMINUM CASTING FOR AUTOMOBILE INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "158000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HARD STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "31000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HASTELLOY C276",
+    "oldPriceMT": "0",
+    "newPriceMT": "2150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HDPE PLASTIC RECYCLING",
+    "oldPriceMT": "0",
+    "newPriceMT": "180000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HEAVY COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "880000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HEAVY COPPER 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HEAVY MELTING COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "75000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HEAVY MELTING COPPER 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HEAVY MELTING COPPER LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "630000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HEAVY MELTING HMS FOR INDUSTRIAL CAST IRON FOR METAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HEAVY MELTING INDUSTRIAL COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "1300.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HEAVY RECYCLING COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HEAVY VEHICLE ALUMINIUM ALLOY WHEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "110000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HIGH SPEED STEEL M2",
+    "oldPriceMT": "0",
+    "newPriceMT": "229000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HRCA METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "HSS SCARP COIMBATORE",
+    "oldPriceMT": "0",
+    "newPriceMT": "2000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.591Z",
+    "type": "ADDED",
+    "component": "INCO 825 5 MM ALUMINUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "750000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INCONEL 713C POWDER INCO 713C GRINDING DUST INCONEL 713 DRY POWDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "300000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INCONEL 751 INCONEL 751 FOUNDRY INCO 751 100 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "500000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INCONEL BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "900000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL ALUMINUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "249000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL BRASS GOLDEN SIZE 6 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "460000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL CAST IRON S",
+    "oldPriceMT": "0",
+    "newPriceMT": "32000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL FERROUS METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "20000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL IRON 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "35500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL METAL 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "37500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL MS MELTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "85000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL NON FERROUS METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "80000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL PROTEIN BINDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "55000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INDUSTRY IRON",
+    "oldPriceMT": "0",
+    "newPriceMT": "400000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INGOTS HIGH CHROME NICKEL GRATE BAAR",
+    "oldPriceMT": "0",
+    "newPriceMT": "90000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INSERT CARBIDE",
+    "oldPriceMT": "0",
+    "newPriceMT": "8000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INSULATED ALUMINIUM CABLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "120000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INSULATED COPPER CABLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "700000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INSULATED COPPER WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "INSULATED COPPER WIRE GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "UPDATED",
+    "component": "IRON",
+    "oldPriceMT": "34954.67",
+    "newPriceMT": "34951.43"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "IRON HMS1 HMS 2 GRADE LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "31000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "IRON MS BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "34000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "IRON REMELTING GRINDING DUST BRIQUETTE MS 1 TONNE",
+    "oldPriceMT": "0",
+    "newPriceMT": "25000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "J I",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "LEAD ALLOY DROSS",
+    "oldPriceMT": "0",
+    "newPriceMT": "130000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "LEAD FREE METAL DROSS",
+    "oldPriceMT": "0",
+    "newPriceMT": "2550000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "LEAD FREE METAL DROSS 98 PACKAGING SIZE 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "2550.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "LEADED BRASS",
+    "oldPriceMT": "0",
+    "newPriceMT": "650000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "LOOSE COPPER NICKEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "1150.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "LOOSE COPPER PIPE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1220.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "LOOSE COPPER WIRE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1270.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "LOOSE MILD STEEL BEARING",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "LOOSELY PACKED WHITE LDPE GRINDING",
+    "oldPriceMT": "0",
+    "newPriceMT": "73000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "MAGNESIUM METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "MANGANESE METAL POWDER FLAKES",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.592Z",
+    "type": "ADDED",
+    "component": "MANGANESE STEEL CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "60000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "METAL BHEL MELTING 0 98 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "39500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "METAL CARBIDE GRINDING DUST 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "50000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "METAL CRC BUNDLE FOR INDUTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "37500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "METAL FOR BEARING",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "METAL LEAD DROSS",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL ANGLE PURCHASE",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL BALL BEARING",
+    "oldPriceMT": "0",
+    "newPriceMT": "30000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL BEARING",
+    "oldPriceMT": "0",
+    "newPriceMT": "30000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL FERROUS",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL HR TRIMMING INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "24000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "28000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL M S IRON FOR INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL MS PLATE 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "38000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL PLATE ED",
+    "oldPriceMT": "0",
+    "newPriceMT": "33000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL PUNCHING",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL SHEET",
+    "oldPriceMT": "0",
+    "newPriceMT": "33000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILD STEEL TMT BAR",
+    "oldPriceMT": "0",
+    "newPriceMT": "30000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILL FINISH ALUMINIUM EXTRUSION",
+    "oldPriceMT": "0",
+    "newPriceMT": "225000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILLBERRY COPPER 99 9",
+    "oldPriceMT": "0",
+    "newPriceMT": "811000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MILLBERRY COPPER GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "760000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MIXED MS",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MOLY",
+    "oldPriceMT": "0",
+    "newPriceMT": "4500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MONAL 400 500",
+    "oldPriceMT": "0",
+    "newPriceMT": "1150.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MONEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MONEL 400 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MONEL 400 50 KG 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "880000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MONEL 400 IN VASAI",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MONEL 400 MONEL 400 FOUNDRY ALLOY 400 FOR CONSTRUCTION SIZE DIAMETER 4 INCH",
+    "oldPriceMT": "0",
+    "newPriceMT": "1200.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MONEL 401 MONEL 404 MONEL R 405 MONEL 501 505 506",
+    "oldPriceMT": "0",
+    "newPriceMT": "500000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MONEL 500",
+    "oldPriceMT": "0",
+    "newPriceMT": "650000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MONEL 99 9 GRADE GRADE A",
+    "oldPriceMT": "0",
+    "newPriceMT": "550000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MONEL K500 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "1000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS",
+    "oldPriceMT": "0",
+    "newPriceMT": "36000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS AND STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "38000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS BEARING",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "42000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS CHENNAI",
+    "oldPriceMT": "0",
+    "newPriceMT": "41000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS CR",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS GRINDING DUST",
+    "oldPriceMT": "0",
+    "newPriceMT": "25000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS HIGH CHROME 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "70000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS INDUSTRIAL 904L",
+    "oldPriceMT": "0",
+    "newPriceMT": "545000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS MILD STEEL BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS PIPE",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "30000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS TURNING BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "29000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MS TURNING BUNDLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "33000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MULTICOLOR PP CP CRUSHED GRINDING",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "MULTILAYER ALUMINUM FOIL FOR MELTING 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "225000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "NICKEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "2300.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "NICKEL ALLOY",
+    "oldPriceMT": "0",
+    "newPriceMT": "1565.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "NICKEL COPPER ALLOY 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "770000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "NICKEL COPPER ALLOY 75 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "3000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "NICKEL COPPER CDA UNS C72700 NICKEL COPPER UNS C72700 BAR NICKEL COPPER CDA UNS C72700 PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "1710.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "NICKEL COPPER TURNING GRADE 600 99 PURE",
+    "oldPriceMT": "0",
+    "newPriceMT": "2050.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "NON FERROUS METAL S",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "NON SERVICEABLE MOTOR",
+    "oldPriceMT": "0",
+    "newPriceMT": "110000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "OLD BEARING IN PANSARA YAMUNANAGAR",
+    "oldPriceMT": "0",
+    "newPriceMT": "48000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "OMKARMETALCORPORATION MONEL 400 SUPPLIER",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "POLISHED ALUMINIUM WHEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "255000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "POWDER 99 ZINC DUST GRADE STANDARD 0 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "235000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "POWDER 99 ZN ZINC DUST",
+    "oldPriceMT": "0",
+    "newPriceMT": "325000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "POWDER COATED ALUMINIUM CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "207000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "POWDER FINAR ZINC METAL DUST",
+    "oldPriceMT": "0",
+    "newPriceMT": "550000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "POWDER ZINC ASH ZINC DUST",
+    "oldPriceMT": "0",
+    "newPriceMT": "110000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "POWDER ZINC DUST 325 MESH",
+    "oldPriceMT": "0",
+    "newPriceMT": "450000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "POWDER ZINC METAL DUST 95",
+    "oldPriceMT": "0",
+    "newPriceMT": "120000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "UPDATED",
+    "component": "PP BUCKET REGRINDS",
+    "oldPriceMT": "75000.00",
+    "newPriceMT": "80000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "PRECISION BEARING",
+    "oldPriceMT": "0",
+    "newPriceMT": "20000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "PRISMATIC CELL PURCHASE 100 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "50000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "PURE ALUMINUM FOIL 99 PURITY",
+    "oldPriceMT": "0",
+    "newPriceMT": "320000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "PURE COPPER ASH",
+    "oldPriceMT": "0",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "PURITY 97 STAINLESS STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "PURITY 98 ALUMINIUM CASTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "190000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.593Z",
+    "type": "ADDED",
+    "component": "PURPLE GRINDED PPCP REGRIND",
+    "oldPriceMT": "0",
+    "newPriceMT": "72000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "RECYCLABLE ALUMINUM FOIL",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "RECYCLABLE COPPER SHEET",
+    "oldPriceMT": "0",
+    "newPriceMT": "1260.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "RECYCLABLE HEAVY MELTING HMS 1",
+    "oldPriceMT": "0",
+    "newPriceMT": "39000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "RED COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "695000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "RED COPPER ASH",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "REXINE CHINDI 137 CM 54 IN",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "ROUND MS PIPE",
+    "oldPriceMT": "0",
+    "newPriceMT": "60000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "S G BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "S TUNGSTEN CARBIDE",
+    "oldPriceMT": "0",
+    "newPriceMT": "2400.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SALVAGE",
+    "oldPriceMT": "0",
+    "newPriceMT": "28000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SHEET COPPER NICKEL 70",
+    "oldPriceMT": "0",
+    "newPriceMT": "1000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SHEET PLATE FOR INDUSTRIAL CAST IRON PURCHASE KHARIDI KARTA HU",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SHREDDED CAST IRON FOR INDUSTRIAL USE",
+    "oldPriceMT": "0",
+    "newPriceMT": "36000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SHREDDED CHOPPED INSULATED COPPER CABLES PVC GRADE",
+    "oldPriceMT": "0",
+    "newPriceMT": "940000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SHREDDED STAINLESS STEEL ZURIK MATERIAL GRADE 304",
+    "oldPriceMT": "0",
+    "newPriceMT": "80000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SILVER ALUMINIUM EXTRUSION FOR MELTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "195000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SILVER ALUMINIUM RADIATOR",
+    "oldPriceMT": "0",
+    "newPriceMT": "195000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SILVER ALUMINIUM TELIC BRIQUETTES",
+    "oldPriceMT": "0",
+    "newPriceMT": "110000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SILVER ALUMINIUM WHEEL FOR INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "210000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SILVER ALUMNIUM WIRE FOR MELTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "180000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SILVER COATED COPPER PLATES PURCHASE GRADE GRADE AA",
+    "oldPriceMT": "0",
+    "newPriceMT": "1200.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SILVER MILD STEEL TURNING",
+    "oldPriceMT": "0",
+    "newPriceMT": "30000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SILVER NON FERROUS METAL S",
+    "oldPriceMT": "0",
+    "newPriceMT": "400000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SILVER STAINLESS STEEL TURNING BORING FOR MELTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "50000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SILVER ZINC TURNING FOR INDUSTRIAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "175000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SOFT MATERIAL ALUMINIUM NARAM",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SOLDER DROSS REDUCING POWDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "1500.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SOLID HEAVY MELTING STEEL FOR METAL INDUSTRY PACKAGING TYPE SACK",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SOLID ZINC DUST 95 EXTRA PURE",
+    "oldPriceMT": "0",
+    "newPriceMT": "2200.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SQUARE COPPER SHEET FOR INDUSTRIAL THICKNESS 0 20 MM 6 00 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "757000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SQUARE COPPER SHEET THICKNESS 2 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "460000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SS 304 PLATE",
+    "oldPriceMT": "0",
+    "newPriceMT": "130000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SS 4 CHROME 1 MOLY 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "80000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "SS FOUNDRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL 304",
+    "oldPriceMT": "0",
+    "newPriceMT": "115000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL 316 ALL GRADES",
+    "oldPriceMT": "0",
+    "newPriceMT": "130000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL CHITTAM GRADE MIX FOR RE MELTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "105000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL HICROME PUMP IMPELLER",
+    "oldPriceMT": "0",
+    "newPriceMT": "75000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "UPDATED",
+    "component": "STAINLESS STEEL MATERIAL GRADE 304 THICKNESS 6 MM",
+    "oldPriceMT": "121000.00",
+    "newPriceMT": "120000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "STELLITE 4 COBALT CHROMIUM ALLOY STELLITE 4 FOUNDRY STELLITE 4 COBALT TUNGSTEN",
+    "oldPriceMT": "0",
+    "newPriceMT": "1950.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "TIN DROSS",
+    "oldPriceMT": "0",
+    "newPriceMT": "1850000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "TIN INSULATED COPPER CABLE 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "1190.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "TIN METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "32000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "TOP MONEL BUYERS NEAR ME",
+    "oldPriceMT": "0",
+    "newPriceMT": "1400.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "TRANSPARENT PVC BLISTER GRINDING",
+    "oldPriceMT": "0",
+    "newPriceMT": "55000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "TUNGSTEN CARBIDE",
+    "oldPriceMT": "0",
+    "newPriceMT": "8000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "TURNING COPPER NICKEL JUMBO BAG OF 1 TON",
+    "oldPriceMT": "0",
+    "newPriceMT": "120000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "WIRE COPPER NICKEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "910000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "ZINC ASH POWDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "125000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "ZINC DIECASTING DROSS",
+    "oldPriceMT": "0",
+    "newPriceMT": "180000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "ZINC DIECASTING DROSS 25 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "180000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "ZINC DROSS",
+    "oldPriceMT": "0",
+    "newPriceMT": "220000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.594Z",
+    "type": "ADDED",
+    "component": "ZINC DUST POWDER 90",
+    "oldPriceMT": "0",
+    "newPriceMT": "445000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.595Z",
+    "type": "ADDED",
+    "component": "ZINC METAL DUST 99 5",
+    "oldPriceMT": "0",
+    "newPriceMT": "1250.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.595Z",
+    "type": "ADDED",
+    "component": "ZINC POWDER DUST 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "480000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.595Z",
+    "type": "ADDED",
+    "component": "ZINC POWDER ZINC DUST POWDER",
+    "oldPriceMT": "0",
+    "newPriceMT": "445000.00"
+  },
+  {
+    "timestamp": "2026-06-22T07:56:58.595Z",
+    "type": "ADDED",
+    "component": "ZURIK 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "190000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "0 98 GUN METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "1080.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "0 99 50 HRC ALUMINIUM FOIL",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "1 INCH TUNGSTEN CARBIDE BUTTON",
+    "oldPriceMT": "0",
+    "newPriceMT": "11000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "13MM ALUMINIUM CABLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "372000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "UPDATED",
+    "component": "99 9 COPPER PLAIN PIPE",
+    "oldPriceMT": "1040000.00",
+    "newPriceMT": "1040.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "UPDATED",
+    "component": "AC COPPER PIPE",
+    "oldPriceMT": "633713.33",
+    "newPriceMT": "267413.33"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "AC COPPER PIPE 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM AUTO TRUCK WHEELS 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "215000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM CABLE 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "185000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM CABLE 99 PURITY",
+    "oldPriceMT": "0",
+    "newPriceMT": "285000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM EXTRUSION 99",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "ALUMINIUM PRINTING PLATES",
+    "oldPriceMT": "0",
+    "newPriceMT": "250000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "UPDATED",
+    "component": "ALUMINIUM RADIATOR",
+    "oldPriceMT": "140000.00",
+    "newPriceMT": "85000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "ALUMINUM SILVER ALUMINIUM FOIL FOR MELTING",
+    "oldPriceMT": "0",
+    "newPriceMT": "125000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "ADDED",
+    "component": "B GRADE CAST IRON FOR METAL INDUSTRY",
+    "oldPriceMT": "0",
+    "newPriceMT": "34000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.623Z",
+    "type": "UPDATED",
+    "component": "BARE COPPER WIRE",
+    "oldPriceMT": "1380.00",
+    "newPriceMT": "1290.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "CAR METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "20000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "CAST IRON FOR METAL INDUSTRY 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "CASTING ALUMINIUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "185000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "COBALT ALLOY",
+    "oldPriceMT": "0",
+    "newPriceMT": "3500.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "UPDATED",
+    "component": "COPPER ASH",
+    "oldPriceMT": "400000.00",
+    "newPriceMT": "600000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "UPDATED",
+    "component": "COPPER ASH DUST",
+    "oldPriceMT": "700000.00",
+    "newPriceMT": "355000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "UPDATED",
+    "component": "COPPER ASH POWDER",
+    "oldPriceMT": "500000.00",
+    "newPriceMT": "400000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "COPPER METAL TURNING 100",
+    "oldPriceMT": "0",
+    "newPriceMT": "120000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "UPDATED",
+    "component": "COPPER PIPE",
+    "oldPriceMT": "1075.00",
+    "newPriceMT": "1050.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "UPDATED",
+    "component": "COPPER TURNING",
+    "oldPriceMT": "775000.00",
+    "newPriceMT": "783333.33"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "CORNER CRC SHEET LOOSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "45000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "F75 COBALT ALLOY",
+    "oldPriceMT": "0",
+    "newPriceMT": "2200.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "FERROUS STEEL",
+    "oldPriceMT": "0",
+    "newPriceMT": "30000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "FLAT BOTTOMED INDIAN RAIL 30 LBS",
+    "oldPriceMT": "0",
+    "newPriceMT": "55000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "G I",
+    "oldPriceMT": "0",
+    "newPriceMT": "59000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "GALVANISED IRON GALVANIZED RAIL",
+    "oldPriceMT": "0",
+    "newPriceMT": "50000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "HASTELLOY B",
+    "oldPriceMT": "0",
+    "newPriceMT": "2004.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "HEAVY METAL S",
+    "oldPriceMT": "0",
+    "newPriceMT": "44000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "INCONAL 600",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "INCONEL 625 3 MM",
+    "oldPriceMT": "0",
+    "newPriceMT": "800000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.624Z",
+    "type": "ADDED",
+    "component": "INCONEL 718",
+    "oldPriceMT": "0",
+    "newPriceMT": "1100.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "UPDATED",
+    "component": "INDUSTRIAL IRON 50 KG",
+    "oldPriceMT": "35500.00",
+    "newPriceMT": "33500.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "ADDED",
+    "component": "LEAD",
+    "oldPriceMT": "0",
+    "newPriceMT": "202000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "ADDED",
+    "component": "LEAD FREE SOLDER DROSS 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "2550.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "ADDED",
+    "component": "M S IRON",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "UPDATED",
+    "component": "MAGNESIUM METAL",
+    "oldPriceMT": "150000.00",
+    "newPriceMT": "350000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "ADDED",
+    "component": "MAGNESIUM TURNING",
+    "oldPriceMT": "0",
+    "newPriceMT": "285000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "ADDED",
+    "component": "MANGANESE METAL FLAKES BRIQUETTES",
+    "oldPriceMT": "0",
+    "newPriceMT": "230000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "ADDED",
+    "component": "METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "31000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "ADDED",
+    "component": "METAL BEARING",
+    "oldPriceMT": "0",
+    "newPriceMT": "1000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "ADDED",
+    "component": "MONEL METAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "925000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "ADDED",
+    "component": "MS USED RAILS",
+    "oldPriceMT": "0",
+    "newPriceMT": "60000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "UPDATED",
+    "component": "NICKEL ALLOY",
+    "oldPriceMT": "1565.00",
+    "newPriceMT": "40000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "ADDED",
+    "component": "PHOSPHOR BRONZE PIECES FOR MELTING 85 COPPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "950000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "UPDATED",
+    "component": "PURITY 98 ALUMINIUM CASTING",
+    "oldPriceMT": "190000.00",
+    "newPriceMT": "300000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.625Z",
+    "type": "ADDED",
+    "component": "SILVER ALUMINIUM FOILS",
+    "oldPriceMT": "0",
+    "newPriceMT": "200000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.626Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL 904 904L SS 904L SOLID",
+    "oldPriceMT": "0",
+    "newPriceMT": "400000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.626Z",
+    "type": "ADDED",
+    "component": "STAINLESS STEEL PLATE CUTTING 17 7PH FOR METAL RECYCLING",
+    "oldPriceMT": "0",
+    "newPriceMT": "98000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.626Z",
+    "type": "ADDED",
+    "component": "STEEL BORING",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.626Z",
+    "type": "ADDED",
+    "component": "TITANIUM ON INDIAMART",
+    "oldPriceMT": "0",
+    "newPriceMT": "300000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.626Z",
+    "type": "ADDED",
+    "component": "TITANIUM TI GR 5 6 4 VAC TITANIUM GRADE 2",
+    "oldPriceMT": "0",
+    "newPriceMT": "400000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.626Z",
+    "type": "UPDATED",
+    "component": "TUNGSTEN CARBIDE",
+    "oldPriceMT": "8000.00",
+    "newPriceMT": "2600.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:01:39.626Z",
+    "type": "ADDED",
+    "component": "TUNGSTEN CARBIDE MINING BUTTONS",
+    "oldPriceMT": "0",
+    "newPriceMT": "2500.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:08:35.609Z",
+    "type": "UPDATED",
+    "component": "ALUMINIUM",
+    "oldPriceMT": "165000.00",
+    "newPriceMT": "205226.43"
+  },
+  {
+    "timestamp": "2026-06-22T08:08:35.609Z",
+    "type": "ADDED",
+    "component": "BATTERY",
+    "oldPriceMT": "0",
+    "newPriceMT": "73271.51"
+  },
+  {
+    "timestamp": "2026-06-22T08:08:35.609Z",
+    "type": "UPDATED",
+    "component": "BRASS",
+    "oldPriceMT": "468912.31",
+    "newPriceMT": "563158.22"
+  },
+  {
+    "timestamp": "2026-06-22T08:08:35.609Z",
+    "type": "UPDATED",
+    "component": "COPPER",
+    "oldPriceMT": "519740.00",
+    "newPriceMT": "527599.83"
+  },
+  {
+    "timestamp": "2026-06-22T08:08:35.609Z",
+    "type": "ADDED",
+    "component": "E-WASTE",
+    "oldPriceMT": "0",
+    "newPriceMT": "154033.18"
+  },
+  {
+    "timestamp": "2026-06-22T08:08:35.609Z",
+    "type": "UPDATED",
+    "component": "LEAD",
+    "oldPriceMT": "202000.00",
+    "newPriceMT": "596910.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:08:35.609Z",
+    "type": "ADDED",
+    "component": "PAPER",
+    "oldPriceMT": "0",
+    "newPriceMT": "11491.67"
+  },
+  {
+    "timestamp": "2026-06-22T08:08:35.609Z",
+    "type": "UPDATED",
+    "component": "PLASTIC",
+    "oldPriceMT": "13976.15",
+    "newPriceMT": "63464.59"
+  },
+  {
+    "timestamp": "2026-06-22T08:08:35.609Z",
+    "type": "ADDED",
+    "component": "STEEL / IRON",
+    "oldPriceMT": "0",
+    "newPriceMT": "77846.30"
+  },
+  {
+    "timestamp": "2026-06-22T08:08:35.609Z",
+    "type": "UPDATED",
+    "component": "ZINC",
+    "oldPriceMT": "200000.00",
+    "newPriceMT": "255811.03"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "UPDATED",
+    "component": "ALUMINIUM",
+    "oldPriceMT": "205226.43",
+    "newPriceMT": "206015.64"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "UPDATED",
+    "component": "BRASS",
+    "oldPriceMT": "563158.22",
+    "newPriceMT": "577934.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "ADDED",
+    "component": "COMPRESSORS & MOTORS",
+    "oldPriceMT": "0",
+    "newPriceMT": "101152.86"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "UPDATED",
+    "component": "COPPER",
+    "oldPriceMT": "527599.83",
+    "newPriceMT": "528497.08"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "UPDATED",
+    "component": "E-WASTE",
+    "oldPriceMT": "154033.18",
+    "newPriceMT": "538309.70"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "ADDED",
+    "component": "GUN METAL & BRONZE",
+    "oldPriceMT": "0",
+    "newPriceMT": "260540.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "ADDED",
+    "component": "MOLYBDENUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "442657.14"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "ADDED",
+    "component": "NICKEL ALLOYS",
+    "oldPriceMT": "0",
+    "newPriceMT": "493575.89"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "UPDATED",
+    "component": "PLASTIC",
+    "oldPriceMT": "63464.59",
+    "newPriceMT": "50467.25"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "UPDATED",
+    "component": "STEEL / IRON",
+    "oldPriceMT": "77846.30",
+    "newPriceMT": "74139.24"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "ADDED",
+    "component": "TITANIUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "350000.00"
+  },
+  {
+    "timestamp": "2026-06-22T08:24:00.809Z",
+    "type": "UPDATED",
+    "component": "TUNGSTEN CARBIDE",
+    "oldPriceMT": "2600.00",
+    "newPriceMT": "100002.86"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "ADDED",
+    "component": "410",
+    "oldPriceMT": "0",
+    "newPriceMT": "62000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "ADDED",
+    "component": "904L",
+    "oldPriceMT": "0",
+    "newPriceMT": "123000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "ADDED",
+    "component": "ACRYLIC SHEET",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "UPDATED",
+    "component": "ALUMINIUM",
+    "oldPriceMT": "206015.64",
+    "newPriceMT": "211063.94"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "UPDATED",
+    "component": "BRASS",
+    "oldPriceMT": "577934.00",
+    "newPriceMT": "589045.11"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "UPDATED",
+    "component": "COPPER",
+    "oldPriceMT": "528497.08",
+    "newPriceMT": "538892.04"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "UPDATED",
+    "component": "GUN METAL & BRONZE",
+    "oldPriceMT": "260540.00",
+    "newPriceMT": "340360.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "ADDED",
+    "component": "LOGITECH MOUSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "400000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "ADDED",
+    "component": "LOOSELY PACKED PTFE TEFLON",
+    "oldPriceMT": "0",
+    "newPriceMT": "69500.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "UPDATED",
+    "component": "MOLYBDENUM",
+    "oldPriceMT": "442657.14",
+    "newPriceMT": "515633.33"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "UPDATED",
+    "component": "NICKEL ALLOYS",
+    "oldPriceMT": "493575.89",
+    "newPriceMT": "507766.78"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "ADDED",
+    "component": "OFFICE DISMANTLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "25000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "UPDATED",
+    "component": "PLASTIC",
+    "oldPriceMT": "50467.25",
+    "newPriceMT": "44824.72"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "ADDED",
+    "component": "PU FOAM SIDE BOTTOM",
+    "oldPriceMT": "0",
+    "newPriceMT": "80000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "ADDED",
+    "component": "SS 316",
+    "oldPriceMT": "0",
+    "newPriceMT": "225000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "ADDED",
+    "component": "SS 316 PUNCHING",
+    "oldPriceMT": "0",
+    "newPriceMT": "230000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "ADDED",
+    "component": "SS S",
+    "oldPriceMT": "0",
+    "newPriceMT": "135000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "UPDATED",
+    "component": "STEEL / IRON",
+    "oldPriceMT": "74139.24",
+    "newPriceMT": "73925.26"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "ADDED",
+    "component": "WHITE ROLLED PTFE",
+    "oldPriceMT": "0",
+    "newPriceMT": "100000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:08:24.400Z",
+    "type": "UPDATED",
+    "component": "ZINC",
+    "oldPriceMT": "255811.03",
+    "newPriceMT": "251267.89"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "0 98 M S BLACK MELTING 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "39000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "98 TIN SOLDER DROSS PACKAGING TYPE 50KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "2650.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "UPDATED",
+    "component": "ALUMINIUM",
+    "oldPriceMT": "211063.94",
+    "newPriceMT": "203790.27"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "UPDATED",
+    "component": "BRASS",
+    "oldPriceMT": "589045.11",
+    "newPriceMT": "590848.48"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "BRENT",
+    "oldPriceMT": "0",
+    "newPriceMT": "48673.13"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "CARBON",
+    "oldPriceMT": "0",
+    "newPriceMT": "150000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "COAL",
+    "oldPriceMT": "0",
+    "newPriceMT": "12024.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "COKING",
+    "oldPriceMT": "0",
+    "newPriceMT": "20290.50"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "UPDATED",
+    "component": "COPPER",
+    "oldPriceMT": "538892.04",
+    "newPriceMT": "535506.49"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "CORN",
+    "oldPriceMT": "0",
+    "newPriceMT": "12714.13"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "CRUDE",
+    "oldPriceMT": "0",
+    "newPriceMT": "46247.33"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "GOLD",
+    "oldPriceMT": "0",
+    "newPriceMT": "11293620975.13"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "UPDATED",
+    "component": "GUN METAL & BRONZE",
+    "oldPriceMT": "340360.00",
+    "newPriceMT": "510000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "INDUSTRIAL DEALER",
+    "oldPriceMT": "0",
+    "newPriceMT": "36000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "UPDATED",
+    "component": "LEAD",
+    "oldPriceMT": "596910.00",
+    "newPriceMT": "548038.71"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "UPDATED",
+    "component": "NICKEL ALLOYS",
+    "oldPriceMT": "507766.78",
+    "newPriceMT": "508010.50"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "PALLADIUM",
+    "oldPriceMT": "0",
+    "newPriceMT": "3445665278.83"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "UPDATED",
+    "component": "PLASTIC",
+    "oldPriceMT": "44824.72",
+    "newPriceMT": "44915.13"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "RICE",
+    "oldPriceMT": "0",
+    "newPriceMT": "22467.71"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "SILVER",
+    "oldPriceMT": "0",
+    "newPriceMT": "178358480.56"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "SS 2507",
+    "oldPriceMT": "0",
+    "newPriceMT": "300000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "UPDATED",
+    "component": "STEEL / IRON",
+    "oldPriceMT": "73925.26",
+    "newPriceMT": "78105.09"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "TUNGSTAN SOLID 100 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "1800.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "UPDATED",
+    "component": "TUNGSTEN CARBIDE",
+    "oldPriceMT": "100002.86",
+    "newPriceMT": "101131.43"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "ADDED",
+    "component": "WHEAT",
+    "oldPriceMT": "0",
+    "newPriceMT": "18355.86"
+  },
+  {
+    "timestamp": "2026-06-22T09:36:54.419Z",
+    "type": "UPDATED",
+    "component": "ZINC",
+    "oldPriceMT": "251267.89",
+    "newPriceMT": "222722.06"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.337Z",
+    "type": "UPDATED",
+    "component": "ALUMINIUM",
+    "oldPriceMT": "203790.27",
+    "newPriceMT": "204932.65"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.337Z",
+    "type": "UPDATED",
+    "component": "BRASS",
+    "oldPriceMT": "590848.48",
+    "newPriceMT": "583783.26"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.337Z",
+    "type": "UPDATED",
+    "component": "BRENT",
+    "oldPriceMT": "48673.13",
+    "newPriceMT": "48599.46"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.337Z",
+    "type": "UPDATED",
+    "component": "COPPER",
+    "oldPriceMT": "535506.49",
+    "newPriceMT": "535506.22"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.337Z",
+    "type": "UPDATED",
+    "component": "CORN",
+    "oldPriceMT": "12714.13",
+    "newPriceMT": "12721.69"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.337Z",
+    "type": "UPDATED",
+    "component": "CRUDE",
+    "oldPriceMT": "46247.33",
+    "newPriceMT": "46179.18"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.337Z",
+    "type": "UPDATED",
+    "component": "GOLD",
+    "oldPriceMT": "11293620975.13",
+    "newPriceMT": "26546633505.88"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.337Z",
+    "type": "UPDATED",
+    "component": "LEAD",
+    "oldPriceMT": "548038.71",
+    "newPriceMT": "548035.73"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.337Z",
+    "type": "UPDATED",
+    "component": "SILVER",
+    "oldPriceMT": "178358480.56",
+    "newPriceMT": "531316270.52"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.338Z",
+    "type": "UPDATED",
+    "component": "STEEL / IRON",
+    "oldPriceMT": "78105.09",
+    "newPriceMT": "78280.95"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.338Z",
+    "type": "UPDATED",
+    "component": "WHEAT",
+    "oldPriceMT": "18355.86",
+    "newPriceMT": "18363.53"
+  },
+  {
+    "timestamp": "2026-06-22T09:39:47.338Z",
+    "type": "UPDATED",
+    "component": "ZINC",
+    "oldPriceMT": "222722.06",
+    "newPriceMT": "222722.54"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.983Z",
+    "type": "ADDED",
+    "component": "ALOOY",
+    "oldPriceMT": "0",
+    "newPriceMT": "320000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.983Z",
+    "type": "UPDATED",
+    "component": "ALUMINIUM",
+    "oldPriceMT": "204932.65",
+    "newPriceMT": "206808.12"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.983Z",
+    "type": "UPDATED",
+    "component": "BRASS",
+    "oldPriceMT": "583783.26",
+    "newPriceMT": "574234.68"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.983Z",
+    "type": "UPDATED",
+    "component": "BRENT",
+    "oldPriceMT": "48599.46",
+    "newPriceMT": "48573.06"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "COPPER",
+    "oldPriceMT": "535506.22",
+    "newPriceMT": "535159.13"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "ADDED",
+    "component": "CRNO BUNDLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "35000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "CRUDE",
+    "oldPriceMT": "46179.18",
+    "newPriceMT": "46143.57"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "GOLD",
+    "oldPriceMT": "26546633505.88",
+    "newPriceMT": "26553257720.19"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "GUN METAL & BRONZE",
+    "oldPriceMT": "510000.00",
+    "newPriceMT": "560000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "LEAD",
+    "oldPriceMT": "548035.73",
+    "newPriceMT": "479035.73"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "ADDED",
+    "component": "LOGITECH MOUSE",
+    "oldPriceMT": "0",
+    "newPriceMT": "400000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "NICKEL ALLOYS",
+    "oldPriceMT": "508010.50",
+    "newPriceMT": "530793.58"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "ADDED",
+    "component": "OFFICE DISMANTLE",
+    "oldPriceMT": "0",
+    "newPriceMT": "25000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "ADDED",
+    "component": "PRISMATIC CELL PURCHASE 100 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "50000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "SILVER",
+    "oldPriceMT": "531316270.52",
+    "newPriceMT": "531516272.12"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "ADDED",
+    "component": "SS 316",
+    "oldPriceMT": "0",
+    "newPriceMT": "257500.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "ADDED",
+    "component": "SS S",
+    "oldPriceMT": "0",
+    "newPriceMT": "135000.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "STEEL / IRON",
+    "oldPriceMT": "78280.95",
+    "newPriceMT": "78530.78"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "TITANIUM",
+    "oldPriceMT": "350000.00",
+    "newPriceMT": "468750.00"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "TUNGSTEN CARBIDE",
+    "oldPriceMT": "101131.43",
+    "newPriceMT": "89177.50"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "WHEAT",
+    "oldPriceMT": "18363.53",
+    "newPriceMT": "18371.20"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "UPDATED",
+    "component": "ZINC",
+    "oldPriceMT": "222722.54",
+    "newPriceMT": "238143.33"
+  },
+  {
+    "timestamp": "2026-06-22T09:41:46.984Z",
+    "type": "ADDED",
+    "component": "ZURIK 50 KG",
+    "oldPriceMT": "0",
+    "newPriceMT": "190000.00"
+  }
+]

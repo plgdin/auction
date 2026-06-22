@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import fs from 'fs'
 import { spawn } from 'child_process'
 
 let scraperProcess: any = null;
@@ -13,6 +14,7 @@ let scraperLogs: string[] = [];
 let workerLogs: string[] = [];
 let clearDbLogs: string[] = [];
 let backfillLogs: string[] = [];
+let automateInterval: NodeJS.Timeout | null = null;
 
 const appendLog = (type: string, data: any) => {
   const lines = data.toString().split('\n');
@@ -88,12 +90,35 @@ const localApiPlugin = () => ({
             workerRunning: workerProcess !== null,
             clearDbRunning: clearDbProcess !== null,
             backfillRunning: backfillProcess !== null,
+            automateRunning: automateInterval !== null,
             scraperLogs,
             workerLogs,
             clearDbLogs,
             backfillLogs
           }));
           return;
+        }
+
+        if (req.method === 'GET') {
+          if (req.url === '/api/scraper/data') {
+            const dataPath = path.join(process.cwd(), 'daily_market_prices.json');
+            if (fs.existsSync(dataPath)) {
+              res.end(fs.readFileSync(dataPath, 'utf-8'));
+            } else {
+              res.end(JSON.stringify({ summary: {} }));
+            }
+            return;
+          }
+
+          if (req.url === '/api/scraper/audit') {
+            const auditPath = path.join(process.cwd(), 'scraper_audit.json');
+            if (fs.existsSync(auditPath)) {
+              res.end(fs.readFileSync(auditPath, 'utf-8'));
+            } else {
+              res.end('[]');
+            }
+            return;
+          }
         }
         
         if (req.method === 'POST') {
@@ -103,8 +128,8 @@ const localApiPlugin = () => ({
               return;
             }
             scraperLogs = [];
-            appendLog('scraper', 'Starting Scraper (npx tsx scraper/scraper.ts)...');
-            scraperProcess = spawn('npx', ['tsx', 'scraper/scraper.ts'], { shell: true });
+            appendLog('scraper', 'Starting Scraper (npx tsx scraper/marketScraper.ts)...');
+            scraperProcess = spawn('npx', ['tsx', 'scraper/marketScraper.ts'], { shell: true });
             
             scraperProcess.stdout.on('data', (data: any) => appendLog('scraper', data));
             scraperProcess.stderr.on('data', (data: any) => appendLog('scraper', data));
@@ -124,6 +149,39 @@ const localApiPlugin = () => ({
               appendLog('scraper', 'Scraper process stopped by user request.');
             }
             res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/automate') {
+            let body = '';
+            req.on('data', (chunk: any) => body += chunk.toString());
+            req.on('end', () => {
+              const { automate } = JSON.parse(body || '{}');
+              if (automate) {
+                if (!automateInterval) {
+                  appendLog('scraper', 'Automated Daily Scraping ENABLED (Runs every 24h).');
+                  automateInterval = setInterval(() => {
+                    if (!scraperProcess) {
+                       appendLog('scraper', 'Starting Automated Daily Scraping...');
+                       scraperProcess = spawn('npx', ['tsx', 'scraper/marketScraper.ts'], { shell: true });
+                       scraperProcess.stdout.on('data', (data: any) => appendLog('scraper', data));
+                       scraperProcess.stderr.on('data', (data: any) => appendLog('scraper', data));
+                       scraperProcess.on('close', (code: any) => {
+                         appendLog('scraper', `Scraper process terminated with exit code ${code}`);
+                         scraperProcess = null;
+                       });
+                    }
+                  }, 24 * 60 * 60 * 1000);
+                }
+              } else {
+                if (automateInterval) {
+                  clearInterval(automateInterval);
+                  automateInterval = null;
+                  appendLog('scraper', 'Automated Daily Scraping DISABLED.');
+                }
+              }
+              res.end(JSON.stringify({ success: true }));
+            });
             return;
           }
 
@@ -242,4 +300,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    watch: {
+      ignored: ['**/scraper_logs.json', '**/daily_market_prices.json']
+    }
+  }
 })

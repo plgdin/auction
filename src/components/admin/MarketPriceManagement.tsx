@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   Save, Download, Trash2, Plus,
-  RefreshCw, Layers, Database, Calendar, Search
+  RefreshCw, Layers, Database, Calendar, Search,
+  ChevronDown, ChevronUp, ExternalLink, Activity
 } from 'lucide-react';
 import { marketPriceService } from '../../services/marketPriceService';
 import type { PriceHistoryLog } from '../../services/marketPriceService';
@@ -9,8 +10,137 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { toast } from 'react-hot-toast';
 
 export function MarketPriceManagement() {
-  const [commodityData, setCommodityData] = useState(() => marketPriceService.getCommodityPrices());
+  const [commodityData, setCommodityData] = useState<any[]>(() => marketPriceService.getCommodityPrices());
   const [historyLogs, setHistoryLogs] = useState<PriceHistoryLog[]>(() => marketPriceService.getPriceHistoryLogs());
+  const [scraperAuditLogs, setScraperAuditLogs] = useState<any[]>([]);
+  const [activeLogTab, setActiveLogTab] = useState<'Manual' | 'Scraper'>('Scraper');
+  
+  // Hierarchical Breakdown States
+  const [viewMode, setViewMode] = useState<'Flat' | 'Hierarchy'>('Flat');
+  const [categoriesData, setCategoriesData] = useState<Record<string, any>>({});
+  const [subcategoriesData, setSubcategoriesData] = useState<Record<string, any>>({});
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [expandedSubcategories, setExpandedSubcategories] = useState<Record<string, boolean>>({});
+  
+  // Scraper Automation States
+  const [scraperLogs, setScraperLogs] = useState<string[]>([]);
+  const [isScraping, setIsScraping] = useState(false);
+  const [isAutomated, setIsAutomated] = useState(false);
+
+  // Poll for scraper logs
+  useEffect(() => {
+    // One-time cleanup to remove random custom commodities and simplify the flat list
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('lelam_custom_commodities');
+    }
+    
+    let interval: any;
+    interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/scraper/status');
+        if (res.ok) {
+          const data = await res.json();
+          setScraperLogs(data.scraperLogs || []);
+          setIsScraping(data.scraperRunning);
+          setIsAutomated(data.automateRunning);
+        }
+      } catch (e) {
+         // Silently fail if API not available
+      }
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch Live Data
+  useEffect(() => {
+    if (!isScraping) {
+       fetch('/api/scraper/data').then(res => res.json()).then(data => {
+         const summary = data.summary || {};
+         const registered = marketPriceService.getCommodityPrices();
+         
+         if (Object.keys(summary).length > 0) {
+            const updated = registered.map((c) => {
+              let scrapedAvgMT: number | null = null;
+              
+              // 1. Try matching by ID or Name (case-insensitive)
+              const matchKeys = [c.id.toLowerCase(), c.name.toLowerCase(), c.id.replace(/_/g, ' ')];
+              for (const mk of matchKeys) {
+                if (summary[mk]) {
+                  scrapedAvgMT = parseFloat(summary[mk].averagePriceMT);
+                  break;
+                }
+              }
+              
+              // 2. If no direct match, check if any summary key contains/matches keywords
+              if (scrapedAvgMT === null && c.keywords) {
+                for (const kw of c.keywords) {
+                  const kwLower = kw.toLowerCase();
+                  const matchedSummaryKey = Object.keys(summary).find(sk => 
+                    sk.toLowerCase() === kwLower ||
+                    sk.toLowerCase().includes(kwLower) ||
+                    kwLower.includes(sk.toLowerCase())
+                  );
+                  if (matchedSummaryKey) {
+                    scrapedAvgMT = parseFloat(summary[matchedSummaryKey].averagePriceMT);
+                    break;
+                  }
+                }
+              }
+              
+              if (scrapedAvgMT !== null) {
+                let convertedPrice = scrapedAvgMT;
+                if (c.unit.toLowerCase() === 'kg' || c.unit.toLowerCase() === 'kgs') {
+                  convertedPrice = scrapedAvgMT / 1000;
+                } else if (c.unit.toLowerCase() === 'gram' || c.unit.toLowerCase() === 'grams') {
+                  convertedPrice = scrapedAvgMT / 1000000;
+                }
+                
+                return {
+                  ...c,
+                  currentPrice: parseFloat(convertedPrice.toFixed(2)),
+                  lastUpdated: data.timestamp || new Date().toISOString()
+                };
+              }
+              
+              return c;
+            });
+            setCommodityData(updated);
+         } else {
+            setCommodityData(registered);
+         }
+         setCategoriesData(data.categories || {});
+         setSubcategoriesData(data.subcategories || {});
+       }).catch(e => console.log('No scraper data yet.'));
+
+       fetch('/api/scraper/audit').then(res => res.json()).then(data => {
+         setScraperAuditLogs(data);
+       }).catch(e => console.log('No audit logs yet.'));
+    }
+  }, [isScraping]);
+
+  const handleStartScraping = async () => {
+    setIsScraping(true);
+    toast.success('Initiating Live Market & Salasar Scraper...', { icon: '🚀' });
+    try {
+      await fetch('/api/scraper/start', { method: 'POST' });
+    } catch (e) {
+      toast.error('Failed to start scraper.');
+      setIsScraping(false);
+    }
+  };
+
+  const handleToggleAutomate = async () => {
+    const newState = !isAutomated;
+    setIsAutomated(newState);
+    toast.success(newState ? 'Daily background scraping enabled!' : 'Automated scraping disabled.');
+    try {
+      await fetch('/api/scraper/automate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ automate: newState })
+      });
+    } catch (e) {}
+  };
   
   // Selected commodity ID for the graph
   const [selectedGraphCommId, setSelectedGraphCommId] = useState<string>('steel_iron_ferrous');
@@ -327,175 +457,472 @@ export function MarketPriceManagement() {
 
         {/* Commodity Grid Table */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
-            <div>
-              <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Today's Market Indices</h3>
-              <p className="text-[11px] text-slate-450 mt-0.5">Edit today's price & expected bid multipliers below. Changes log to the ML history database.</p>
+          <div className="px-6 py-4.5 border-b border-slate-150 flex flex-col md:flex-row justify-between md:items-center gap-4 bg-slate-50/50">
+            <div className="flex flex-wrap items-center gap-4">
+              <div>
+                <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Today's Market Indices</h3>
+                <p className="text-[11px] text-slate-450 mt-0.5">Edit today's price & expected bid multipliers below. Changes log to the ML history database.</p>
+              </div>
+              
+              <div className="flex bg-slate-200/50 p-0.5 rounded-lg shrink-0 border border-slate-250">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('Flat')}
+                  className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${viewMode === 'Flat' ? 'bg-white text-slate-900 shadow-3xs' : 'text-slate-500 hover:text-slate-900'}`}
+                >
+                  Flat List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('Hierarchy')}
+                  className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${viewMode === 'Hierarchy' ? 'bg-white text-slate-900 shadow-3xs' : 'text-slate-500 hover:text-slate-900'}`}
+                >
+                  Hierarchical Breakdown
+                </button>
+              </div>
             </div>
             
-            <button 
-              onClick={handleResetDefaults}
-              className="text-[10px] text-slate-550 hover:text-red-500 font-bold border border-slate-200 hover:border-red-200 rounded-lg px-2.5 py-1.5 bg-white shadow-3xs transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <RefreshCw className="w-3 h-3" /> Reset & Clear
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                type="button"
+                onClick={handleToggleAutomate}
+                className={`text-white font-bold rounded-lg px-3 py-1.5 shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer text-xs uppercase tracking-wider ${isAutomated ? 'bg-green-600 hover:bg-green-500' : 'bg-slate-500 hover:bg-slate-400'}`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                {isAutomated ? 'Automate Daily [ON]' : 'Automate Daily [OFF]'}
+              </button>
+              <button 
+                type="button"
+                onClick={handleStartScraping}
+                disabled={isScraping}
+                className="text-white font-bold bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-lg px-3 py-1.5 shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer text-xs uppercase tracking-wider"
+              >
+                {isScraping ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
+                {isScraping ? 'Scraping...' : 'Start Scraping & Automate'}
+              </button>
+              <button 
+                type="button"
+                onClick={handleResetDefaults}
+                className="text-[10px] text-slate-550 hover:text-red-500 font-bold border border-slate-200 hover:border-red-200 rounded-lg px-2.5 py-1.5 bg-white shadow-3xs transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <RefreshCw className="w-3 h-3" /> Reset & Clear
+              </button>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50/70 border-b border-slate-150 text-slate-500 font-mono">
-                  <th className="py-3 px-4.5 font-bold">Commodity Name</th>
-                  <th className="py-3 px-4 font-bold text-center w-24">Unit</th>
-                  <th className="py-3 px-4 font-bold text-right w-36">Today's Price (INR)</th>
-                  <th className="py-3 px-4 font-bold text-center w-48">Expected Bid Multiplier (ROI)</th>
-                  <th className="py-3 px-4 font-bold text-center w-32">Pricing Status</th>
-                  <th className="py-3 px-4 font-bold text-center w-28">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
-                {filteredCommodities.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400 font-bold">
-                      No matching commodities found. Try adjusting filters.
-                    </td>
+          {viewMode === 'Flat' ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/70 border-b border-slate-150 text-slate-500 font-mono">
+                    <th className="py-3 px-4.5 font-bold">Commodity Name</th>
+                    <th className="py-3 px-4 font-bold text-center w-24">Unit</th>
+                    <th className="py-3 px-4 font-bold text-right w-36">Today's Price (INR)</th>
+                    <th className="py-3 px-4 font-bold text-center w-48">Expected Bid Multiplier (ROI)</th>
+                    <th className="py-3 px-4 font-bold text-center w-32">Pricing Status</th>
+                    <th className="py-3 px-4 font-bold text-center w-28">Actions</th>
                   </tr>
-                ) : (
-                  filteredCommodities.map((item) => {
-                    const priceVal = editedPrices[item.id] !== undefined ? editedPrices[item.id] : item.currentPrice;
-                    const multVal = editedMultipliers[item.id] !== undefined ? editedMultipliers[item.id] : item.currentMultiplier;
-                    const isEdited = editedPrices[item.id] !== undefined || editedMultipliers[item.id] !== undefined;
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                  {filteredCommodities.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-slate-400 font-bold">
+                        No matching commodities found. Try adjusting filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCommodities.map((item) => {
+                      const priceVal = editedPrices[item.id] !== undefined ? editedPrices[item.id] : item.currentPrice;
+                      const multVal = editedMultipliers[item.id] !== undefined ? editedMultipliers[item.id] : item.currentMultiplier;
+                      const isEdited = editedPrices[item.id] !== undefined || editedMultipliers[item.id] !== undefined;
+
+                      return (
+                        <tr 
+                          key={item.id} 
+                          className={`hover:bg-slate-50/40 transition-colors ${
+                            selectedGraphCommId === item.id ? 'bg-primary-50/10' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-4.5">
+                            <div className="flex flex-col gap-1">
+                              <button
+                                onClick={() => setSelectedGraphCommId(item.id)}
+                                className="text-left font-bold text-slate-900 hover:text-primary transition-colors flex flex-col cursor-pointer"
+                              >
+                                <span className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-900">
+                                  {item.name}
+                                  {item.isCustom && (
+                                    <span className="px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase rounded bg-sky-50 text-sky-600 border border-sky-200">
+                                      Custom
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="text-[10px] text-slate-450 font-mono mt-0.5">{item.id}</span>
+                              </button>
+                              {item.keywords && item.keywords.length > 0 && (
+                                <div className="text-[10px] text-slate-450 font-semibold bg-slate-50 border border-slate-150 px-1.5 py-0.5 rounded-md inline-block w-fit">
+                                  Keywords: <span className="text-slate-650 font-mono font-bold">{item.keywords.join(', ')}</span>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          
+                          <td className="py-3 px-4 text-center font-mono text-slate-500 font-semibold bg-slate-50/20">
+                            {item.unit}
+                          </td>
+                          
+                          <td className="py-3 px-4 text-right">
+                            <div className="relative rounded-lg shadow-3xs inline-block w-32">
+                              <span className="absolute inset-y-0 left-0 pl-2 flex items-center text-slate-400 font-bold">₹</span>
+                              <input
+                                type="number"
+                                disabled={item.isPricingDisabled}
+                                className={`w-full pl-5 pr-2 py-1 text-right border rounded-lg text-xs font-mono font-bold focus:ring-1 focus:ring-primary focus:outline-none ${
+                                  item.isPricingDisabled
+                                    ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                                    : editedPrices[item.id] !== undefined 
+                                      ? 'border-amber-300 bg-amber-50/20 text-amber-900' 
+                                      : 'border-slate-200 bg-white text-slate-800'
+                                }`}
+                                value={priceVal === 0 ? '' : priceVal}
+                                onChange={(e) => handlePriceChange(item.id, e.target.value)}
+                              />
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0.1"
+                                max="1.0"
+                                disabled={item.isPricingDisabled}
+                                className={`w-18 px-2 py-1 text-center border rounded-lg text-xs font-mono font-bold focus:ring-1 focus:ring-primary focus:outline-none ${
+                                  item.isPricingDisabled
+                                    ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                                    : editedMultipliers[item.id] !== undefined 
+                                      ? 'border-amber-300 bg-amber-50/20 text-amber-900' 
+                                      : 'border-slate-200 bg-white text-slate-800'
+                                }`}
+                                value={multVal}
+                                onChange={(e) => handleMultiplierChange(item.id, e.target.value)}
+                              />
+                              
+                              <span className={`text-[10px] font-mono font-black px-2 py-1 rounded inline-block w-20 text-center ${
+                                item.isPricingDisabled
+                                  ? 'bg-slate-100 text-slate-400 border border-slate-200'
+                                  : multVal <= 0.7 
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                    : multVal <= 0.8 
+                                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                      : 'bg-slate-50 text-slate-700 border border-slate-200'
+                              }`}>
+                                {item.isPricingDisabled ? 'Disabled' : `${getRoiPreview(multVal)} ROI`}
+                              </span>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => {
+                                const nextState = !item.isPricingDisabled;
+                                marketPriceService.setCommodityPricingDisabled(item.id, nextState);
+                                setCommodityData(marketPriceService.getCommodityPrices());
+                                toast.success(`${item.name} pricing is now ${nextState ? 'Disabled' : 'Enabled'}`);
+                              }}
+                              className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-200 border cursor-pointer ${
+                                item.isPricingDisabled
+                                  ? 'bg-rose-50 text-rose-650 border-rose-200 hover:bg-rose-100'
+                                  : 'bg-emerald-50 text-emerald-650 border-emerald-200 hover:bg-emerald-100'
+                              }`}
+                            >
+                              {item.isPricingDisabled ? 'Disabled' : 'Enabled'}
+                            </button>
+                          </td>
+
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handleSave(item.id)}
+                                disabled={!isEdited || item.isPricingDisabled}
+                                className={`p-1.5 rounded-lg border flex items-center justify-center shadow-3xs transition-all ${
+                                  isEdited && !item.isPricingDisabled
+                                    ? 'bg-amber-500 border-amber-600 hover:bg-amber-600 text-white cursor-pointer active:scale-95'
+                                    : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                                }`}
+                                title="Save & log daily entry"
+                              >
+                                <Save className="w-3.5 h-3.5" />
+                              </button>
+                              {item.isCustom && (
+                                <button
+                                  onClick={() => handleDeleteCustom(item.id, item.name)}
+                                  className="p-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 hover:text-rose-750 transition-all cursor-pointer shadow-3xs"
+                                  title="Delete custom commodity"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-6 space-y-4 bg-slate-50/30">
+              {Object.keys(categoriesData).length === 0 ? (
+                <div className="py-16 text-center text-slate-450 font-bold border border-dashed border-slate-200 rounded-3xl bg-white shadow-3xs flex flex-col items-center justify-center gap-3">
+                  <Activity className="w-8 h-8 text-slate-350 animate-pulse" />
+                  <div>
+                    <p className="text-slate-650 font-extrabold text-xs uppercase tracking-wider">No Hierarchical Breakdown Data Available</p>
+                    <p className="text-[10px] text-slate-400 font-semibold mt-1">Please start the scraper to crawl categories and compute averages.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 border border-slate-200 rounded-2xl shadow-3xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">Live Hierarchical Pricing Directory</span>
+                    </div>
+                    <div className="flex gap-4 text-xs">
+                      <div className="flex flex-col text-right">
+                        <span className="text-[9px] text-slate-400 uppercase font-bold font-mono">Total Categories</span>
+                        <span className="font-mono font-black text-slate-900 mt-0.5">{Object.keys(categoriesData).length}</span>
+                      </div>
+                      <div className="flex flex-col text-right">
+                        <span className="text-[9px] text-slate-400 uppercase font-bold font-mono">Total Subcategories</span>
+                        <span className="font-mono font-black text-slate-900 mt-0.5">{Object.keys(subcategoriesData).length}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {Object.keys(categoriesData).map((catName) => {
+                    const catObj = categoriesData[catName];
+                    const isCatExpanded = !!expandedCategories[catName];
+                    
+                    let categoryBorder = 'border-l-indigo-500';
+                    let categoryText = 'text-indigo-650';
+                    let categoryBg = 'bg-indigo-50/20';
+                    
+                    const lowerCat = catName.toLowerCase();
+                    if (lowerCat.includes('metal')) {
+                      categoryBorder = 'border-l-blue-600';
+                      categoryText = 'text-blue-700';
+                      categoryBg = 'bg-blue-50/30';
+                    } else if (lowerCat.includes('electronic')) {
+                      categoryBorder = 'border-l-sky-500';
+                      categoryText = 'text-sky-750';
+                      categoryBg = 'bg-sky-50/30';
+                    } else if (lowerCat.includes('vehicle')) {
+                      categoryBorder = 'border-l-emerald-500';
+                      categoryText = 'text-emerald-700';
+                      categoryBg = 'bg-emerald-50/30';
+                    } else if (lowerCat.includes('energy')) {
+                      categoryBorder = 'border-l-amber-500';
+                      categoryText = 'text-amber-700';
+                      categoryBg = 'bg-amber-50/30';
+                    } else if (lowerCat.includes('agri')) {
+                      categoryBorder = 'border-l-green-600';
+                      categoryText = 'text-green-750';
+                      categoryBg = 'bg-green-50/30';
+                    } else {
+                      categoryBorder = 'border-l-slate-500';
+                      categoryText = 'text-slate-700';
+                      categoryBg = 'bg-slate-50/30';
+                    }
 
                     return (
-                      <tr 
-                        key={item.id} 
-                        className={`hover:bg-slate-50/40 transition-colors ${
-                          selectedGraphCommId === item.id ? 'bg-primary-50/10' : ''
-                        }`}
-                      >
-                        <td className="py-3 px-4.5">
-                          <button
-                            onClick={() => setSelectedGraphCommId(item.id)}
-                            className="text-left font-bold text-slate-900 hover:text-primary transition-colors flex flex-col cursor-pointer"
-                          >
-                            <span className="flex items-center gap-1.5">
-                              {item.name}
-                              {item.isCustom && (
-                                <span className="px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase rounded bg-sky-50 text-sky-600 border border-sky-200">
-                                  Custom
-                                </span>
-                              )}
-                            </span>
-                            <span className="text-[10px] text-slate-450 font-mono mt-0.5">{item.id}</span>
-                          </button>
-                        </td>
-                        
-                        <td className="py-3 px-4 text-center font-mono text-slate-500 font-semibold bg-slate-50/20">
-                          {item.unit}
-                        </td>
-                        
-                        <td className="py-3 px-4 text-right">
-                          <div className="relative rounded-lg shadow-3xs inline-block w-32">
-                            <span className="absolute inset-y-0 left-0 pl-2 flex items-center text-slate-400 font-bold">₹</span>
-                            <input
-                              type="number"
-                              disabled={item.isPricingDisabled}
-                              className={`w-full pl-5 pr-2 py-1 text-right border rounded-lg text-xs font-mono font-bold focus:ring-1 focus:ring-primary focus:outline-none ${
-                                item.isPricingDisabled
-                                  ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                                  : editedPrices[item.id] !== undefined 
-                                    ? 'border-amber-300 bg-amber-50/20 text-amber-900' 
-                                    : 'border-slate-200 bg-white text-slate-800'
-                              }`}
-                              value={priceVal === 0 ? '' : priceVal}
-                              onChange={(e) => handlePriceChange(item.id, e.target.value)}
-                            />
+                      <div key={catName} className="bg-white border border-slate-200 rounded-2xl shadow-3xs overflow-hidden">
+                        <div 
+                          onClick={() => setExpandedCategories(prev => ({ ...prev, [catName]: !prev[catName] }))}
+                          className={`px-5 py-4 flex items-center justify-between gap-4 cursor-pointer transition-colors border-l-4 ${categoryBorder} hover:bg-slate-50/85`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`p-1.5 rounded-lg ${categoryBg} ${categoryText}`}>
+                              <Layers className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider">{catName}</h4>
+                              <p className="text-[9px] text-slate-450 mt-0.5 font-semibold uppercase">{catObj.subcategories.length} Subcategories available</p>
+                            </div>
                           </div>
-                        </td>
 
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0.1"
-                              max="1.0"
-                              disabled={item.isPricingDisabled}
-                              className={`w-18 px-2 py-1 text-center border rounded-lg text-xs font-mono font-bold focus:ring-1 focus:ring-primary focus:outline-none ${
-                                item.isPricingDisabled
-                                  ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                                  : editedMultipliers[item.id] !== undefined 
-                                    ? 'border-amber-300 bg-amber-50/20 text-amber-900' 
-                                    : 'border-slate-200 bg-white text-slate-800'
-                              }`}
-                              value={multVal}
-                              onChange={(e) => handleMultiplierChange(item.id, e.target.value)}
-                            />
-                            
-                            <span className={`text-[10px] font-mono font-black px-2 py-1 rounded inline-block w-20 text-center ${
-                              item.isPricingDisabled
-                                ? 'bg-slate-100 text-slate-400 border border-slate-200'
-                                : multVal <= 0.7 
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                                  : multVal <= 0.8 
-                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                    : 'bg-slate-50 text-slate-700 border border-slate-200'
-                            }`}>
-                              {item.isPricingDisabled ? 'Disabled' : `${getRoiPreview(multVal)} ROI`}
-                            </span>
+                          <div className="flex items-center gap-5">
+                            <div className="text-right">
+                              <span className="text-[9px] text-slate-450 uppercase font-bold font-mono">Average Price</span>
+                              <div className="font-mono font-black text-slate-900 text-xs mt-0.5">
+                                ₹{parseFloat(catObj.averagePriceMT).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px] text-slate-450 font-normal">/ MT</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span className="text-[9px] font-mono font-bold text-slate-450 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                                {catObj.sourcesAveraged} rates
+                              </span>
+                              {isCatExpanded ? <ChevronUp className="w-4 h-4 text-slate-450" /> : <ChevronDown className="w-4 h-4 text-slate-450" />}
+                            </div>
                           </div>
-                        </td>
+                        </div>
 
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => {
-                              const nextState = !item.isPricingDisabled;
-                              marketPriceService.setCommodityPricingDisabled(item.id, nextState);
-                              setCommodityData(marketPriceService.getCommodityPrices());
-                              toast.success(`${item.name} pricing is now ${nextState ? 'Disabled' : 'Enabled'}`);
-                            }}
-                            className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-200 border cursor-pointer ${
-                              item.isPricingDisabled
-                                ? 'bg-rose-50 text-rose-650 border-rose-200 hover:bg-rose-100'
-                                : 'bg-emerald-50 text-emerald-650 border-emerald-200 hover:bg-emerald-100'
-                            }`}
-                          >
-                            {item.isPricingDisabled ? 'Disabled' : 'Enabled'}
-                          </button>
-                        </td>
+                        {isCatExpanded && (
+                          <div className="border-t border-slate-150 bg-slate-50/30 divide-y divide-slate-150">
+                            {catObj.subcategories.map((subName: string) => {
+                              const subObj = subcategoriesData[subName];
+                              if (!subObj) return null;
+                              
+                              const isSubExpanded = !!expandedSubcategories[subName];
+                              
+                              return (
+                                <div key={subName} className="overflow-hidden">
+                                  <div 
+                                    onClick={() => setExpandedSubcategories(prev => ({ ...prev, [subName]: !prev[subName] }))}
+                                    className="px-6 py-3 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-100/60 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                      <span className="font-bold text-[11px] text-slate-700 uppercase tracking-wider">{subName}</span>
+                                    </div>
 
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleSave(item.id)}
-                              disabled={!isEdited || item.isPricingDisabled}
-                              className={`p-1.5 rounded-lg border flex items-center justify-center shadow-3xs transition-all ${
-                                isEdited && !item.isPricingDisabled
-                                  ? 'bg-amber-500 border-amber-600 hover:bg-amber-600 text-white cursor-pointer active:scale-95'
-                                  : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                              }`}
-                              title="Save & log daily entry"
-                            >
-                              <Save className="w-3.5 h-3.5" />
-                            </button>
-                            {item.isCustom && (
-                              <button
-                                onClick={() => handleDeleteCustom(item.id, item.name)}
-                                className="p-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 hover:text-rose-750 transition-all cursor-pointer shadow-3xs"
-                                title="Delete custom commodity"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                                    <div className="flex items-center gap-4">
+                                      <div className="text-right">
+                                        <span className="font-mono font-black text-slate-900 text-[11px]">
+                                          ₹{parseFloat(subObj.averagePriceMT).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px] text-slate-450 font-normal">/ MT</span>
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-mono font-semibold text-slate-450 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shadow-3xs">
+                                          {subObj.sourcesAveraged} items
+                                        </span>
+                                        {isSubExpanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-450" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-450" />}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {isSubExpanded && (() => {
+                                    const groups: Record<string, {
+                                      originalName: string;
+                                      sources: string[];
+                                      cities: string[];
+                                      priceMTs: number[];
+                                      url?: string;
+                                    }> = {};
+
+                                    subObj.entries.forEach((entry: any) => {
+                                      const name = entry.originalName.trim();
+                                      const key = name.toLowerCase();
+                                      if (!groups[key]) {
+                                        groups[key] = {
+                                          originalName: name,
+                                          sources: [],
+                                          cities: [],
+                                          priceMTs: [],
+                                          url: entry.url
+                                        };
+                                      }
+                                      const g = groups[key];
+                                      if (!g.sources.includes(entry.source)) {
+                                        g.sources.push(entry.source);
+                                      }
+                                      if (entry.city && entry.city !== 'N/A' && !g.cities.includes(entry.city)) {
+                                        g.cities.push(entry.city);
+                                      }
+                                      if (entry.priceMT > 0) {
+                                        g.priceMTs.push(entry.priceMT);
+                                      }
+                                    });
+
+                                    const groupedList = Object.values(groups).map(g => {
+                                      const avgPriceMT = g.priceMTs.length > 0
+                                        ? g.priceMTs.reduce((sum, p) => sum + p, 0) / g.priceMTs.length
+                                        : 0;
+                                      return {
+                                        originalName: g.originalName,
+                                        sources: g.sources,
+                                        cities: g.cities,
+                                        priceMT: avgPriceMT,
+                                        url: g.url
+                                      };
+                                    });
+
+                                    return (
+                                      <div className="px-6 pb-4 bg-white border-t border-slate-100 overflow-x-auto">
+                                        <table className="w-full text-left border-collapse text-[10px] mt-3">
+                                          <thead>
+                                            <tr className="bg-slate-50 border-b border-slate-150 text-slate-500 font-mono text-[9px]">
+                                              <th className="py-2 px-3 font-bold uppercase tracking-wider">Commodity Name</th>
+                                              <th className="py-2 px-3 font-bold uppercase tracking-wider text-center w-36">Source Sites</th>
+                                              <th className="py-2 px-3 font-bold uppercase tracking-wider text-right w-44">All-Over MT Price (INR)</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                                            {groupedList.map((entry: any, index: number) => {
+                                              return (
+                                                <tr key={index} className="hover:bg-slate-50/50 transition-colors">
+                                                  <td className="py-2 px-3 font-semibold text-slate-900 flex items-center gap-1.5 uppercase">
+                                                    <span>{entry.originalName}</span>
+                                                    {entry.url && (
+                                                      <a 
+                                                        href={entry.url} 
+                                                        target="_blank" 
+                                                        rel="noreferrer"
+                                                        className="p-0.5 text-slate-400 hover:text-primary transition-colors cursor-pointer shrink-0"
+                                                        title="Open source website"
+                                                      >
+                                                        <ExternalLink className="w-3 h-3" />
+                                                      </a>
+                                                    )}
+                                                  </td>
+                                                  <td className="py-2 px-3 text-center">
+                                                    <div className="flex flex-wrap gap-1 justify-center max-w-[150px] mx-auto">
+                                                      {entry.sources.map((src: string) => {
+                                                        let srcBadge = 'bg-slate-50 text-slate-650 border-slate-200';
+                                                        if (src === 'IndiaMart') {
+                                                          srcBadge = 'bg-teal-50 text-teal-700 border-teal-200';
+                                                        } else if (src === 'RecycleInMe') {
+                                                          srcBadge = 'bg-orange-50 text-orange-700 border-orange-200';
+                                                        } else if (src === 'ScrapRates') {
+                                                          srcBadge = 'bg-rose-50 text-rose-700 border-rose-200';
+                                                        } else if (src.includes('Salasar')) {
+                                                          srcBadge = 'bg-purple-50 text-purple-700 border-purple-200';
+                                                        }
+                                                        return (
+                                                          <span key={src} className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase border inline-block ${srcBadge}`}>
+                                                            {src}
+                                                          </span>
+                                                        );
+                                                      })}
+                                                    </div>
+                                                  </td>
+                                                  <td className="py-2 px-3 text-right font-mono font-black text-slate-900">
+                                                    ₹{entry.priceMT > 0 ? Math.round(entry.priceMT).toLocaleString('en-IN') : 'N/A'}
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              );
+                            })}
                           </div>
-                        </td>
-                      </tr>
+                        )}
+                      </div>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         
       </div>
@@ -716,36 +1143,70 @@ export function MarketPriceManagement() {
         {/* Audit Log list */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between gap-4">
           <div className="border-b border-slate-150 pb-2 flex justify-between items-center">
-            <h4 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Price Logger Audits</h4>
-            <span className="text-[10px] text-slate-400 font-semibold">Page {historyPage} of {totalHistoryPages}</span>
+            <h4 className="font-extrabold text-[11px] text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+               <button type="button" onClick={() => setActiveLogTab('Manual')} className={`px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${activeLogTab === 'Manual' ? 'bg-primary text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>MANUAL AUDITS</button>
+               <button type="button" onClick={() => setActiveLogTab('Scraper')} className={`px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${activeLogTab === 'Scraper' ? 'bg-primary text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>SCRAPER AUDITS</button>
+            </h4>
+            <span className="text-[10px] text-slate-400 font-semibold">
+              {activeLogTab === 'Manual' ? `Page ${historyPage} of ${totalHistoryPages}` : `${scraperAuditLogs.length} updates`}
+            </span>
           </div>
 
-          {paginatedLogs.length === 0 ? (
-            <div className="py-8 text-center text-slate-400 font-bold text-xs">
-              No entries logged in database.
-            </div>
+          {activeLogTab === 'Manual' ? (
+            paginatedLogs.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 font-bold text-xs">
+                No manual entries logged in database.
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                {paginatedLogs.map((log) => (
+                  <div key={log.id} className="p-3 bg-slate-50/80 hover:bg-slate-50 border border-slate-150 rounded-2xl flex justify-between items-start gap-2.5 text-[11px] transition-colors">
+                    <div className="space-y-1">
+                      <div className="font-bold text-slate-900 leading-tight">{log.commodityName}</div>
+                      <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
+                        <Calendar className="w-3 h-3" /> {new Date(log.timestamp).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                      </div>
+                    </div>
+                    <div className="text-right space-y-1 shrink-0">
+                      <div className="font-bold text-slate-950 font-mono">₹{log.price.toLocaleString('en-IN')}</div>
+                      <div className="text-[9px] font-bold text-emerald-650 bg-emerald-50 border border-emerald-150 px-1.5 py-0.5 rounded font-mono inline-block">
+                        Mult: {log.multiplier} ({getRoiPreview(log.multiplier)})
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
-            <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
-              {paginatedLogs.map((log) => (
-                <div key={log.id} className="p-3 bg-slate-50/80 hover:bg-slate-50 border border-slate-150 rounded-2xl flex justify-between items-start gap-2.5 text-[11px] transition-colors">
-                  <div className="space-y-1">
-                    <div className="font-bold text-slate-900 leading-tight">{log.commodityName}</div>
-                    <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
-                      <Calendar className="w-3 h-3" /> {new Date(log.timestamp).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+            scraperAuditLogs.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 font-bold text-xs">
+                No scraper updates logged yet.
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                {scraperAuditLogs.slice().reverse().map((log, idx) => (
+                  <div key={idx} className="p-3 bg-slate-50/80 border border-slate-150 rounded-2xl flex justify-between items-start gap-2.5 text-[11px]">
+                    <div className="space-y-1">
+                      <div className="font-bold text-slate-900 leading-tight">{log.component}</div>
+                      <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
+                        <Calendar className="w-3 h-3" /> {new Date(log.timestamp).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="text-right space-y-1 shrink-0">
+                      <div className={`font-bold font-mono px-2 py-0.5 rounded text-[10px] ${log.type === 'ADDED' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'} border inline-block`}>
+                         {log.type}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono mt-1">
+                        {log.type === 'ADDED' ? `₹${log.newPriceMT}` : `₹${log.oldPriceMT} -> ₹${log.newPriceMT}`}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right space-y-1 shrink-0">
-                    <div className="font-bold text-slate-950 font-mono">₹{log.price.toLocaleString('en-IN')}</div>
-                    <div className="text-[9px] font-bold text-emerald-650 bg-emerald-50 border border-emerald-150 px-1.5 py-0.5 rounded font-mono inline-block">
-                      Mult: {log.multiplier} ({getRoiPreview(log.multiplier)})
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           )}
 
-          {totalHistoryPages > 1 && (
+          {activeLogTab === 'Manual' && totalHistoryPages > 1 && (
             <div className="flex justify-between items-center border-t border-slate-100 pt-3 text-[10px] font-bold">
               <button
                 onClick={() => setHistoryPage(prev => Math.max(1, prev - 1))}
@@ -764,6 +1225,38 @@ export function MarketPriceManagement() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Live Scraper Logs */}
+        <div className="bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-md flex flex-col gap-3 max-h-[300px]">
+          <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
+            <h4 className="font-extrabold text-sm text-white uppercase tracking-wider flex items-center gap-1.5">
+               Live Automation Logs
+            </h4>
+            <div className="flex gap-2">
+              {isAutomated && <span className="text-[10px] bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded-full font-mono">24H CRON ACTIVE</span>}
+              {isScraping && <span className="text-[10px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-mono animate-pulse">RUNNING</span>}
+            </div>
+          </div>
+          <div className="overflow-y-auto pr-1 flex flex-col gap-2 font-mono text-[10px]">
+            {scraperLogs.length === 0 ? (
+              <div className="text-slate-500 text-center py-4">No recent scraper executions.</div>
+            ) : (
+              scraperLogs.slice().reverse().map((log, idx) => {
+                let colorClass = "text-slate-300";
+                if (log.includes('[ADDED]')) colorClass = "text-green-400 font-bold";
+                if (log.includes('[UPDATED]')) colorClass = "text-amber-400 font-bold";
+                if (log.includes('[VERIFIED]')) colorClass = "text-slate-400";
+                if (log.includes('Scraping finished!')) colorClass = "text-sky-400 font-bold";
+                
+                return (
+                  <div key={idx} className={`bg-slate-800/50 p-2 rounded border border-slate-700/50 ${colorClass}`}>
+                    {log}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
 
       </div>
