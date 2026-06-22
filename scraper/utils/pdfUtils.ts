@@ -3,15 +3,107 @@
  *
  * Handles rendering PDF pages to images via Puppeteer and extracting
  * embedded JPEG streams from raw PDF binary data.
+ *
+ * Fixes applied:
+ * - Shared browser singleton: all render calls reuse the same Chromium instance.
+ * - Auto-restart on crash with graceful shutdown on process exit.
+ * - Reduced memory overhead from repeated browser launches.
  */
-import puppeteer from "puppeteer";
+import puppeteer, { Browser } from "puppeteer";
 import { MAX_EMBEDDED_IMAGES, MIN_IMAGE_BYTE_SIZE } from "../config.js";
 import { logger } from "./logger.js";
 
 const log = logger.child({ module: "pdfUtils" });
 
+// ─── Browser Singleton ───────────────────────────────────────────────────────
+
+let browserInstance: Browser | null = null;
+let browserInitializing: Promise<Browser> | null = null;
+
 /**
- * Render the first page of a PDF buffer as a JPEG image using Puppeteer + pdf.js.
+ * Get or initialize the shared Puppeteer browser instance.
+ * Thread-safe: concurrent calls wait for the same initialization promise.
+ */
+async function getBrowser(): Promise<Browser> {
+  if (browserInstance && browserInstance.connected) return browserInstance;
+  if (browserInitializing) return browserInitializing;
+
+  browserInitializing = (async () => {
+    try {
+      log.info({}, "Launching shared Puppeteer browser instance");
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+
+      // Auto-restart on disconnect
+      browser.on("disconnected", () => {
+        log.warn({}, "Browser disconnected — will reinitialize on next request");
+        browserInstance = null;
+        browserInitializing = null;
+      });
+
+      browserInstance = browser;
+      browserInitializing = null;
+      return browser;
+    } catch (err: any) {
+      log.error({ errorMessage: err.message }, "Failed to launch browser");
+      browserInitializing = null;
+      throw err;
+    }
+  })();
+
+  return browserInitializing;
+}
+
+/**
+ * Close the shared browser instance (call on process exit).
+ */
+export async function closeBrowser(): Promise<void> {
+  if (browserInstance) {
+    try {
+      await browserInstance.close();
+      log.info({}, "Shared browser closed");
+    } catch (err: any) {
+      log.warn({ errorMessage: err.message }, "Error closing browser");
+    }
+    browserInstance = null;
+    browserInitializing = null;
+  }
+}
+
+// Register cleanup on process exit
+process.on("beforeExit", () => {
+  closeBrowser().catch(() => {});
+});
+process.on("SIGINT", () => {
+  closeBrowser()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+});
+
+// ─── PDF.js Rendering Helpers ────────────────────────────────────────────────
+
+/**
+ * The HTML template injected into Puppeteer pages for PDF.js rendering.
+ */
+const PDF_JS_HTML = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+  </head>
+  <body>
+    <canvas id="pdf-canvas"></canvas>
+  </body>
+  </html>
+`;
+
+/**
+ * Render the first page of a PDF buffer as a JPEG image using the shared browser.
  *
  * @param fileBuffer - The raw PDF file buffer.
  * @returns A JPEG image buffer, or `null` if rendering fails.
@@ -19,30 +111,13 @@ const log = logger.child({ module: "pdfUtils" });
 export async function renderPdfFirstPage(
   fileBuffer: Buffer,
 ): Promise<Buffer | null> {
-  let browser = null;
+  let page = null;
   try {
     const pdfBase64 = fileBuffer.toString("base64");
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-    const page = await browser.newPage();
+    const browser = await getBrowser();
+    page = await browser.newPage();
     await page.setViewport({ width: 1200, height: 1600 });
-
-    await page.setContent(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-        <script>
-          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        </script>
-      </head>
-      <body>
-        <canvas id="pdf-canvas"></canvas>
-      </body>
-      </html>
-    `);
+    await page.setContent(PDF_JS_HTML);
 
     const dataUrl = await page.evaluate(async (base64Data) => {
       const binaryString = atob(base64Data);
@@ -75,8 +150,8 @@ export async function renderPdfFirstPage(
     );
     return null;
   } finally {
-    if (browser) {
-      await browser.close();
+    if (page) {
+      await page.close().catch(() => {});
     }
   }
 }
@@ -142,7 +217,7 @@ export interface RenderedPage {
 }
 
 /**
- * Render multiple pages of a PDF and extract text per page.
+ * Render multiple pages of a PDF and extract text per page using the shared browser.
  *
  * @param fileBuffer - Raw PDF file buffer.
  * @param maxPages - Maximum number of pages to process.
@@ -152,78 +227,71 @@ export async function renderAndExtractPdfPages(
   fileBuffer: Buffer,
   maxPages = 20,
 ): Promise<RenderedPage[]> {
-  let browser = null;
+  let page = null;
   try {
     const pdfBase64 = fileBuffer.toString("base64");
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-    const page = await browser.newPage();
+    const browser = await getBrowser();
+    page = await browser.newPage();
     await page.setViewport({ width: 1200, height: 1600 });
+    await page.setContent(PDF_JS_HTML);
 
-    await page.setContent(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-        <script>
-          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        </script>
-      </head>
-      <body>
-        <canvas id="pdf-canvas"></canvas>
-      </body>
-      </html>
-    `);
-
-    const pagesResult = await page.evaluate(async (base64Data, maxP) => {
-      const binaryString = atob(base64Data);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const loadingTask = (window as any).pdfjsLib.getDocument({ data: bytes });
-      const pdfDoc = await loadingTask.promise;
-      const numPages = pdfDoc.numPages;
-      const limit = Math.min(numPages, maxP);
-      const results = [];
-
-      const canvas = document.getElementById("pdf-canvas") as HTMLCanvasElement;
-      const canvasContext = canvas.getContext("2d");
-      if (!canvasContext) throw new Error("Failed to get 2d context");
-
-      for (let pNum = 1; pNum <= limit; pNum++) {
-        const pdfPage = await pdfDoc.getPage(pNum);
-        
-        // 1. Extract text content
-        const textContent = await pdfPage.getTextContent();
-        const pageText = textContent.items.map((item: any) => item.str).join(" ");
-        
-        // 2. Render to canvas and get data URL
-        const viewport = pdfPage.getViewport({ scale: 1.5 });
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        
-        // Clear canvas context
-        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
-        
-        await pdfPage.render({ canvasContext, viewport }).promise;
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-        
-        results.push({
-          pageNumber: pNum,
-          text: pageText,
-          dataUrl,
+    const pagesResult = await page.evaluate(
+      async (base64Data, maxP) => {
+        const binaryString = atob(base64Data);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const loadingTask = (window as any).pdfjsLib.getDocument({
+          data: bytes,
         });
-      }
-      return results;
-    }, pdfBase64, maxPages);
+        const pdfDoc = await loadingTask.promise;
+        const numPages = pdfDoc.numPages;
+        const limit = Math.min(numPages, maxP);
+        const results = [];
+
+        const canvas = document.getElementById(
+          "pdf-canvas",
+        ) as HTMLCanvasElement;
+        const canvasContext = canvas.getContext("2d");
+        if (!canvasContext) throw new Error("Failed to get 2d context");
+
+        for (let pNum = 1; pNum <= limit; pNum++) {
+          const pdfPage = await pdfDoc.getPage(pNum);
+
+          // 1. Extract text content
+          const textContent = await pdfPage.getTextContent();
+          const pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(" ");
+
+          // 2. Render to canvas and get data URL
+          const viewport = pdfPage.getViewport({ scale: 1.5 });
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+          await pdfPage.render({ canvasContext, viewport }).promise;
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+          results.push({
+            pageNumber: pNum,
+            text: pageText,
+            dataUrl,
+          });
+        }
+        return results;
+      },
+      pdfBase64,
+      maxPages,
+    );
 
     const renderedPages: RenderedPage[] = [];
     for (const res of pagesResult) {
-      const base64Image = res.dataUrl.replace(/^data:image\/jpeg;base64,/, "");
+      const base64Image = res.dataUrl.replace(
+        /^data:image\/jpeg;base64,/,
+        "",
+      );
       renderedPages.push({
         pageNumber: res.pageNumber,
         text: res.text,
@@ -238,9 +306,8 @@ export async function renderAndExtractPdfPages(
     );
     return [];
   } finally {
-    if (browser) {
-      await browser.close();
+    if (page) {
+      await page.close().catch(() => {});
     }
   }
 }
-

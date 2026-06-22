@@ -5,12 +5,18 @@
  * their catalog PDFs, extracts images and structured metadata, then
  * updates the database with the results.
  *
- * This file is the queue coordinator only — all domain logic lives in
- * dedicated modules under `parsers/` and `utils/`.
+ * Fixes applied:
+ * - Deduplicated terms-page detection via documentClassifier.
+ * - Deduplicated quantity update logic via tryUpdateLotQuantity().
+ * - Deduplicated page processing logic via processPageForLotEnrichment().
+ * - Memory management: null out buffers after processing.
+ * - Improved lot matching: stricter sequential fallback, higher keyword threshold.
+ * - Expanded attachment detection beyond photo_/annex_ prefixes.
  */
 import fetch from "node-fetch";
 import * as fs from "fs";
 import { createRequire } from "module";
+import { randomUUID } from "crypto";
 import { pipeline, env } from "@xenova/transformers";
 
 // Configure transformers for Node.js environment
@@ -29,32 +35,63 @@ import {
 } from "./config.js";
 import { logger } from "./utils/logger.js";
 import { supabase, uploadToStorage } from "./utils/storage.js";
-import { renderPdfFirstPage, extractEmbeddedJpegs, renderAndExtractPdfPages } from "./utils/pdfUtils.js";
+import {
+  renderPdfFirstPage,
+  extractEmbeddedJpegs,
+  renderAndExtractPdfPages,
+  closeBrowser,
+} from "./utils/pdfUtils.js";
 import { parseMstcCatalogText, parseSubItemsFromText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
-import { performOcr } from "./utils/ocrUtils.js";
+import { performOcr, shouldPerformOcr, terminateOcrWorker } from "./utils/ocrUtils.js";
+import { isTermsOrInstructionPage } from "./parsers/documentClassifier.js";
 import { calculateTotalMarketValue } from "../src/utils/valuationUtils.js";
 
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 
 const log = logger.child({ module: "assetWorker" });
+const workerId = `worker_${randomUUID()}`;
+
+/**
+ * Concurrency limiter to run a batch of asynchronous tasks in parallel.
+ */
+async function limitConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  concurrencyLimit: number,
+): Promise<T[]> {
+  const results: T[] = [];
+  const executing: Promise<any>[] = [];
+
+  for (const task of tasks) {
+    const p = Promise.resolve().then(() => task());
+    results.push(p as any);
+
+    if (concurrencyLimit <= tasks.length) {
+      const e: Promise<any> = p.then(() => executing.splice(executing.indexOf(e), 1));
+      executing.push(e);
+      if (executing.length >= concurrencyLimit) {
+        await Promise.race(executing);
+      }
+    }
+  }
+  return Promise.all(results);
+}
 
 // Global cache for the embedding pipeline model
 let embeddingPipelineCache: any = null;
 async function getEmbeddingPipeline() {
   if (!embeddingPipelineCache) {
-    embeddingPipelineCache = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+    embeddingPipelineCache = await pipeline(
+      "feature-extraction",
+      "Xenova/all-MiniLM-L6-v2",
+    );
   }
   return embeddingPipelineCache;
 }
 
 /**
  * Calculates exponential backoff cooldown delay in milliseconds.
- * - Attempt 1 retry (retry_count = 1): wait 1 minute
- * - Attempt 2 retry (retry_count = 2): wait 5 minutes
- * - Attempt 3 retry (retry_count = 3): wait 15 minutes
- * - Attempt 4+ retry (retry_count >= 4): wait 30 minutes
  */
 function getRetryDelayMs(retryCount: number): number {
   if (retryCount <= 0) return 0;
@@ -75,6 +112,214 @@ export interface QueueRecord {
   location: string | null;
   raw_materials_text: string | null;
   updated_at?: string;
+}
+
+// ─── Shared Helpers (Deduplicated) ───────────────────────────────────────────
+
+/**
+ * Check if a lot's quantity is generic/garbage and should be overwritten.
+ */
+function isGenericQuantity(qty: string, unit: string): boolean {
+  const qtyLower = (qty || "").toLowerCase().trim();
+  const unitLower = (unit || "").toLowerCase().trim();
+  return (
+    qtyLower === "1" ||
+    qtyLower === "1.0" ||
+    unitLower === "lot" ||
+    unitLower === "lots" ||
+    qtyLower.includes("+")
+  );
+}
+
+/**
+ * Try to update a lot's quantity from extracted OCR data.
+ * Only updates when no sub-items were found and current qty is generic.
+ *
+ * Previously duplicated 3× across the worker.
+ */
+function tryUpdateLotQuantity(
+  lot: any,
+  extracted: { qty: string; unit: string } | null,
+  subItems: any[] | null,
+  jobLog: any,
+): void {
+  // Skip when sub-items exist — qty will be derived from sub-item count
+  if (subItems && subItems.length > 0) return;
+
+  if (
+    !extracted ||
+    !extracted.qty ||
+    extracted.qty === "1" ||
+    extracted.qty === "1.0"
+  ) {
+    return;
+  }
+
+  if (isGenericQuantity(lot.qty, lot.unit)) {
+    jobLog.info(
+      {
+        lotSr: lot.sr,
+        oldQty: lot.qty,
+        oldUnit: lot.unit,
+        newQty: extracted.qty,
+        newUnit: extracted.unit,
+      },
+      "Updating lot quantity from OCR/scanned text",
+    );
+    lot.qty = extracted.qty;
+    lot.unit = extracted.unit;
+  }
+}
+
+/**
+ * Merge OCR-extracted sub-items into a lot, avoiding duplicates.
+ *
+ * Previously duplicated 3× across the worker.
+ */
+function mergeSubItems(lot: any, subItems: any[]): void {
+  if (!subItems || subItems.length === 0) return;
+  if (!lot.subItems) {
+    lot.subItems = [];
+  }
+  for (const sub of subItems) {
+    if (
+      !lot.subItems.some(
+        (s: any) => s.sr === sub.sr && s.description === sub.description,
+      )
+    ) {
+      lot.subItems.push(sub);
+    }
+  }
+}
+
+/**
+ * Process a single page image for lot enrichment: OCR, sub-item extraction,
+ * quantity extraction, and lot matching.
+ *
+ * Previously the same 30-line block was duplicated 3× across the worker.
+ */
+export async function processPageForLotEnrichment(
+  imageBuffer: Buffer,
+  selectableText: string,
+  items: any[],
+  attachmentToLots: Map<string, any[]>,
+  fileName: string,
+  publicUrl: string,
+  lotSpecificImagesMap: Record<string, string[]>,
+  jobLog: any,
+  lotEmbeddings?: Map<string, number[]>,
+  lastMatched?: any[],
+): Promise<{ matched: any[]; ocrText: string }> {
+  // Smart OCR: only run OCR when selectable text is insufficient
+  let ocrText = "";
+  if (shouldPerformOcr(selectableText)) {
+    ocrText = await performOcr(imageBuffer);
+  }
+  const combinedText = `${selectableText || ""}\n${ocrText}`;
+
+  // Use pre-assigned lot mapping first, fall back to text-based matching
+  let matched = attachmentToLots.get(fileName) || [];
+  if (matched.length === 0) {
+    matched = await matchPageToLots(combinedText, items, fileName, lotEmbeddings, lastMatched);
+  }
+
+  if (matched.length > 1) {
+    // Multi-lot page segmentation logic
+    const lotPositions: { lot: any; index: number }[] = [];
+    const normalizedText = combinedText.toLowerCase();
+
+    for (const lot of matched) {
+      const srStr = String(lot.sr).toLowerCase().trim();
+      const patterns = [
+        new RegExp(`\\blot\\s*(?:no|num|number|#)?\\s*[-.:]?\\s*0*${srStr}\\b`, "i"),
+        new RegExp(`\\b(?:sr|sl|s)\\.?\\s*(?:no|num|number)?\\s*[-.:]?\\s*0*${srStr}\\b`, "i"),
+      ];
+
+      let earliestIndex = -1;
+      for (const pattern of patterns) {
+        const match = combinedText.match(pattern);
+        if (match && match.index !== undefined) {
+          if (earliestIndex === -1 || match.index < earliestIndex) {
+            earliestIndex = match.index;
+          }
+        }
+      }
+
+      if (earliestIndex !== -1) {
+        lotPositions.push({ lot, index: earliestIndex });
+      }
+    }
+
+    // Sort by index ascending
+    lotPositions.sort((a, b) => a.index - b.index);
+
+    if (lotPositions.length > 1) {
+      jobLog.info(
+        {
+          lotSrs: lotPositions.map((p) => p.lot.sr),
+          fileName,
+        },
+        "Segmenting multi-lot page text into individual sections",
+      );
+
+      for (let idx = 0; idx < lotPositions.length; idx++) {
+        const current = lotPositions[idx];
+        const next = lotPositions[idx + 1];
+        const start = current.index;
+        const end = next ? next.index : combinedText.length;
+        const segmentText = combinedText.substring(start, end);
+
+        const subItems = isTermsOrInstructionPage(segmentText)
+          ? []
+          : parseSubItemsFromText(segmentText);
+        const extracted = extractQuantitiesDetailed(segmentText);
+
+        const lot = current.lot;
+        const srStr = String(lot.sr);
+        if (!lotSpecificImagesMap[srStr]) {
+          lotSpecificImagesMap[srStr] = [];
+        }
+        lotSpecificImagesMap[srStr].push(publicUrl);
+
+        mergeSubItems(lot, subItems);
+        tryUpdateLotQuantity(lot, extracted, subItems, jobLog);
+      }
+    } else {
+      // Fallback: assign to all matched lots (no distinct markers found)
+      const subItems = isTermsOrInstructionPage(combinedText)
+        ? []
+        : parseSubItemsFromText(combinedText);
+      const extracted = extractQuantitiesDetailed(combinedText);
+
+      for (const lot of matched) {
+        const srStr = String(lot.sr);
+        if (!lotSpecificImagesMap[srStr]) {
+          lotSpecificImagesMap[srStr] = [];
+        }
+        lotSpecificImagesMap[srStr].push(publicUrl);
+
+        mergeSubItems(lot, subItems);
+        tryUpdateLotQuantity(lot, extracted, subItems, jobLog);
+      }
+    }
+  } else if (matched.length === 1) {
+    const lot = matched[0];
+    const subItems = isTermsOrInstructionPage(combinedText)
+      ? []
+      : parseSubItemsFromText(combinedText);
+    const extracted = extractQuantitiesDetailed(combinedText);
+
+    const srStr = String(lot.sr);
+    if (!lotSpecificImagesMap[srStr]) {
+      lotSpecificImagesMap[srStr] = [];
+    }
+    lotSpecificImagesMap[srStr].push(publicUrl);
+
+    mergeSubItems(lot, subItems);
+    tryUpdateLotQuantity(lot, extracted, subItems, jobLog);
+  }
+
+  return { matched, ocrText };
 }
 
 // ─── Attachment Processing ───────────────────────────────────────────────────
@@ -129,7 +374,10 @@ async function downloadAttachment(
     }
 
     if (attempt < maxAttempts) {
-      jobLog.info({ attempt, nextAttemptDelayMs: 3000 }, "Retrying attachment download...");
+      jobLog.info(
+        { attempt, nextAttemptDelayMs: 3000 },
+        "Retrying attachment download...",
+      );
       await new Promise((resolve) => setTimeout(resolve, 3000));
     }
   }
@@ -137,19 +385,112 @@ async function downloadAttachment(
 }
 
 /**
- * Extract attachment file references from the parsed catalog text,
- * download each, extract/render images, and upload them to storage.
+ * Fast Levenshtein distance similarity calculation helper.
  */
+export function getLevenshteinSimilarity(s1: string, s2: string): number {
+  const m = s1.length;
+  const n = s2.length;
+  if (m === 0 || n === 0) return 0;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (s1[i - 1] === s2[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+  }
+  return 1 - dp[m][n] / Math.max(m, n);
+}
+
 /**
- * Helper to match a rendered PDF page to specific lot items by analyzing text content.
+ * Disambiguate multiple keyword/description matches using semantic similarity.
  */
-function matchPageToLots(
+export async function disambiguateLots(
+  pageText: string,
+  matchedLots: any[],
+  lotEmbeddings: Map<string, number[]>,
+): Promise<any | null> {
+  try {
+    const extractor = await getEmbeddingPipeline();
+    const pageOutput = await extractor(pageText, {
+      pooling: "mean",
+      normalize: true,
+    });
+    const pageVector = Array.from(pageOutput.data) as number[];
+
+    const cosineSimilarity = (v1: number[], v2: number[]) => {
+      let dot = 0;
+      for (let idx = 0; idx < v1.length; idx++) {
+        dot += v1[idx] * v2[idx];
+      }
+      return dot;
+    };
+
+    let highestSim = -1;
+    let secondHighestSim = -1;
+    let bestLot = null;
+
+    for (const lot of matchedLots) {
+      const lotVector = lotEmbeddings.get(lot.description || "");
+      if (lotVector) {
+        const sim = cosineSimilarity(pageVector, lotVector);
+        if (sim > highestSim) {
+          secondHighestSim = highestSim;
+          highestSim = sim;
+          bestLot = lot;
+        } else if (sim > secondHighestSim) {
+          secondHighestSim = sim;
+        }
+      }
+    }
+
+    if (bestLot && highestSim >= 0.50) {
+      const diff = highestSim - secondHighestSim;
+      if (diff >= 0.05) {
+        log.info(
+          {
+            bestLotSr: bestLot.sr,
+            highestSim: highestSim.toFixed(4),
+            diff: diff.toFixed(4),
+            allMatchedSrs: matchedLots.map((l) => l.sr),
+          },
+          "Successfully disambiguated description matches via semantic similarity",
+        );
+        return bestLot;
+      }
+    }
+  } catch (err: any) {
+    log.warn({ errorMessage: err.message }, "Error during description matching disambiguation");
+  }
+  return null;
+}
+
+/**
+ * Match a rendered PDF page to specific lot items by analyzing text content.
+ *
+ * Improved matching:
+ * - Increased minimum keyword threshold for generic descriptions.
+ * - Requires ≥2 absolute keyword matches.
+ */
+export async function matchPageToLots(
   pageText: string,
   items: any[],
-  attachmentName: string
-): any[] {
+  attachmentName: string,
+  lotEmbeddings?: Map<string, number[]>,
+  lastMatched?: any[],
+): Promise<any[]> {
   const matchedLots: any[] = [];
-  const normalizedText = pageText.toLowerCase().replace(/\s+/g, " ");
+  
+  // Clean common OCR replacement typos (like | -> i) and normalize spaces
+  const cleanOcrText = pageText
+    .replace(/\|/g, "i")
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+    
   const filenameLower = attachmentName.toLowerCase();
 
   // 1. Check if the filename itself targets a specific lot
@@ -163,40 +504,153 @@ function matchPageToLots(
       matchedLots.push(item);
     }
   }
-  if (matchedLots.length > 0) {
-    return matchedLots;
-  }
+  if (matchedLots.length > 0) return matchedLots;
 
-  // 2. Scan page text for explicit lot serial number, e.g. "lot no. 1", "lot - A-1"
+  // 2. Scan page text for explicit lot serial number (handles leading-zero formats and sl/sl.no/s.no/sr.no)
   for (const item of items) {
     const srStr = String(item.sr).toLowerCase().trim();
     const lotPatterns = [
-      new RegExp(`\\blot\\s*(?:no|num|number)?\\s*[-.:]?\\s*${srStr}\\b`, "i"),
-      new RegExp(`\\bsr\\.?\\s*(?:no|num|number)?\\s*[-.:]?\\s*${srStr}\\b`, "i")
+      new RegExp(
+        `\\blot\\s*(?:no|num|number|#)?\\s*[-.:]?\\s*0*${srStr}\\b`,
+        "i",
+      ),
+      new RegExp(
+        `\\b(?:sr|sl|s)\\.?\\s*(?:no|num|number)?\\s*[-.:]?\\s*0*${srStr}\\b`,
+        "i",
+      ),
     ];
-    if (lotPatterns.some(p => p.test(normalizedText))) {
+    if (lotPatterns.some((p) => p.test(cleanOcrText))) {
       matchedLots.push(item);
     }
   }
-  if (matchedLots.length > 0) {
-    return matchedLots;
-  }
+  if (matchedLots.length > 0) return matchedLots;
 
-  // 3. Scan page text for description keyword matches
+  // 3. Scan page text for description keyword matches (improved thresholds + fuzzy OCR typo resiliency)
+  const whitelistedScrapTerms = new Set(["ms", "gi", "ci", "ss", "fe", "cu", "al"]);
+  const fillerWords = new Set([
+    "as", "per", "annexure", "attached", "items", "and", "the",
+    "for", "with", "from", "auction", "lot", "general", "scrap",
+    "material", "materials", "miscellaneous", "various",
+  ]);
+
+  // Tokenize page words for fuzzy keyword checking
+  const pageWords = cleanOcrText
+    .split(/[^a-z0-9]/)
+    .map((w) => w.trim())
+    .filter((w) => w.length >= 2);
+
   for (const item of items) {
     const desc = (item.description || "").toLowerCase();
-    const fillerWords = new Set(["as", "per", "annexure", "attached", "items", "and", "the", "for", "with", "from"]);
     const keywords = desc
       .split(/[^a-zA-Z0-9]/)
       .map((w: string) => w.trim())
-      .filter((w: string) => w.length >= 3 && !fillerWords.has(w));
+      .filter((w: string) => (w.length >= 3 || whitelistedScrapTerms.has(w)) && !fillerWords.has(w));
 
     if (keywords.length > 0) {
-      const matchedKeywords = keywords.filter((word: string) => normalizedText.includes(word));
-      // Require matching at least 50% of keywords, with a minimum of 1
-      if (matchedKeywords.length >= Math.max(1, Math.ceil(keywords.length * 0.5))) {
+      const matchedKeywords = keywords.filter((word: string) => {
+        const isWhitelist = whitelistedScrapTerms.has(word);
+        
+        // Exact match check first
+        if (pageWords.includes(word)) return true;
+        if (isWhitelist) return false; // whitelist terms must match exactly
+        
+        // Starts-with check
+        const startsWithRx = new RegExp(`\\b${word}[a-z]*\\b`, "i");
+        if (startsWithRx.test(cleanOcrText)) return true;
+
+        // Fuzzy match check (Levenshtein similarity >= 0.80 for long keywords) to handle OCR typos
+        if (word.length >= 4) {
+          for (const pw of pageWords) {
+            if (pw.length >= 4 && getLevenshteinSimilarity(word, pw) >= 0.8) {
+              return true;
+            }
+          }
+        }
+        return false;
+      });
+
+      // Require at least 60% overlap, but cap at keywords length and require at least 2 if length >= 2
+      const threshold = Math.min(keywords.length, Math.max(2, Math.ceil(keywords.length * 0.6)));
+      if (matchedKeywords.length >= threshold) {
         matchedLots.push(item);
       }
+    }
+  }
+
+  // Disambiguation for description keyword matches
+  if (matchedLots.length > 1 && lotEmbeddings && lotEmbeddings.size > 0) {
+    const bestMatch = await disambiguateLots(cleanOcrText, matchedLots, lotEmbeddings);
+    if (bestMatch) {
+      return [bestMatch];
+    }
+  }
+
+  if (matchedLots.length > 0) return matchedLots;
+
+  // 4. Continuation fallback check: if this page has no matches but the previous page in this attachment did,
+  // we assume it is a continuation of those same lots.
+  // Check this BEFORE running semantic similarity to avoid wasting CPU.
+  if (lastMatched && lastMatched.length > 0) {
+    log.info(
+      { continuationLots: lastMatched.map((l) => l.sr) },
+      "Applying continuation page fallback match",
+    );
+    return [...lastMatched];
+  }
+
+  // 5. Semantic Similarity fallback matching
+  if (lotEmbeddings && lotEmbeddings.size > 0 && cleanOcrText.trim().length > 10) {
+    try {
+      const extractor = await getEmbeddingPipeline();
+      const pageOutput = await extractor(cleanOcrText, {
+        pooling: "mean",
+        normalize: true,
+      });
+      const pageVector = Array.from(pageOutput.data) as number[];
+
+      const cosineSimilarity = (v1: number[], v2: number[]) => {
+        let dot = 0;
+        for (let idx = 0; idx < v1.length; idx++) {
+          dot += v1[idx] * v2[idx];
+        }
+        return dot;
+      };
+
+      const semanticMatches: { lot: any; sim: number }[] = [];
+      for (const item of items) {
+        const lotVector = lotEmbeddings.get(item.description || "");
+        if (lotVector) {
+          const sim = cosineSimilarity(pageVector, lotVector);
+          if (sim >= 0.55) {
+            semanticMatches.push({ lot: item, sim });
+          }
+        }
+      }
+
+      // Disambiguate semantic matches
+      if (semanticMatches.length > 0) {
+        semanticMatches.sort((a, b) => b.sim - a.sim);
+        const best = semanticMatches[0];
+
+        if (semanticMatches.length > 1) {
+          const second = semanticMatches[1];
+          const diff = best.sim - second.sim;
+          if (diff >= 0.05) {
+            log.info(
+              { lotSr: best.lot.sr, similarity: best.sim.toFixed(4), diff: diff.toFixed(4) },
+              "Single best semantic match selected after disambiguation",
+            );
+            matchedLots.push(best.lot);
+          } else {
+            // Keep both if they are very close
+            matchedLots.push(best.lot, second.lot);
+          }
+        } else {
+          matchedLots.push(best.lot);
+        }
+      }
+    } catch (err: any) {
+      log.warn({ errorMessage: err.message }, "Error during semantic page-to-lot matching");
     }
   }
 
@@ -204,57 +658,48 @@ function matchPageToLots(
 }
 
 /**
- * Extract attachment file references from the parsed catalog text,
- * download each, extract/render images, and upload them to storage.
- * Maps images to specific lots if text matches are found.
- */
-/**
  * Robustly extract quantities and units from text content.
- * Matches both prefixed patterns (e.g. Qty: 17 nos) and count suffix-only patterns (e.g. 55 Nos).
  */
-function extractQuantitiesDetailed(text: string): { qty: string; unit: string } {
+function extractQuantitiesDetailed(
+  text: string,
+): { qty: string; unit: string } {
   const matches: { value: number; unit: string; index: number }[] = [];
-  
+
   // 1. Match "QTY: 21,172NOS", "QTY: 296.800KGS", "(Qty: 17 nos.)"
-  const qtyRegex = /(?:qty|quantity|quantities)\s*[:.-]?\s*([\d\.,]+)\s*([A-Za-z]+)?/gi;
+  const qtyRegex =
+    /(?:qty|quantity|quantities)\s*[:.-]?\s*([\d.,]+)\s*([A-Za-z]+)?/gi;
   let match;
   while ((match = qtyRegex.exec(text)) !== null) {
-    const val = parseFloat(match[1].replace(/,/g, ''));
+    const val = parseFloat(match[1].replace(/,/g, ""));
     if (!isNaN(val)) {
       matches.push({
         value: val,
-        unit: (match[2] || 'NOS').toUpperCase().trim(),
-        index: match.index
+        unit: (match[2] || "NOS").toUpperCase().trim(),
+        index: match.index,
       });
     }
   }
 
-  // 2. Match suffix-only units for count types only (e.g. "55 Nos", "10 Pcs")
-  // Weight/volume/dimensions must be explicitly prefixed with QTY: to avoid matching capacities (e.g. "50 Kg bags")
-  // Exclude numbers that are preceded by serial/lot indicators (e.g. "Lot No. 5 Nos", "Sl. No. 10 Nos") to prevent lot numbers from overriding quantities.
-  const countUnitRegex = /\b([\d\.,]+)\s*(nos|pcs|units|sets|pc|items|item)\b/gi;
+  // 2. Match suffix-only units for count types
+  const countUnitRegex =
+    /\b([\d.,]+)\s*(nos|pcs|units|sets|pc|items|item)\b/gi;
   const prefixRejectRegex = /\b(?:lot|sl|sr|s\.?no|no)\b[\s.:-]*$/i;
   while ((match = countUnitRegex.exec(text)) !== null) {
-    const val = parseFloat(match[1].replace(/,/g, ''));
+    const val = parseFloat(match[1].replace(/,/g, ""));
     if (!isNaN(val)) {
       const prefixText = text.substring(0, match.index);
       if (!prefixRejectRegex.test(prefixText)) {
         matches.push({
           value: val,
           unit: match[2].toUpperCase().trim(),
-          index: match.index
+          index: match.index,
         });
-      } else {
-        log.info(
-          { matchedText: match[0], matchedVal: val, matchedIndex: match.index },
-          "Rejected OCR quantity match because it is preceded by a serial/lot number indicator"
-        );
       }
     }
   }
 
   if (matches.length === 0) {
-    return { qty: '1', unit: 'Lot' };
+    return { qty: "1", unit: "Lot" };
   }
 
   // Deduplicate overlapping matches within 15 characters
@@ -262,7 +707,7 @@ function extractQuantitiesDetailed(text: string): { qty: string; unit: string } 
   const uniqueMatches: typeof matches = [];
   for (const m of matches) {
     const isOverlapping = uniqueMatches.some(
-      (um) => Math.abs(um.index - m.index) < 15
+      (um) => Math.abs(um.index - m.index) < 15,
     );
     if (!isOverlapping) {
       uniqueMatches.push(m);
@@ -273,66 +718,91 @@ function extractQuantitiesDetailed(text: string): { qty: string; unit: string } 
   const groups: { [unit: string]: number } = {};
   for (const m of uniqueMatches) {
     let u = m.unit;
-    if (u === 'KG') u = 'KGS';
-    if (u === 'MT') u = 'MTS';
-    if (u === 'PC') u = 'PCS';
-    if (u === 'LTR') u = 'LTRS';
-    if (u === 'TON') u = 'TONS';
-    if (u === 'ITEM') u = 'ITEMS';
-    
+    if (u === "KG") u = "KGS";
+    if (u === "MT") u = "MTS";
+    if (u === "PC") u = "PCS";
+    if (u === "LTR") u = "LTRS";
+    if (u === "TON") u = "TONS";
+    if (u === "ITEM") u = "ITEMS";
     groups[u] = (groups[u] || 0) + m.value;
   }
 
   const groupEntries = Object.entries(groups);
   if (groupEntries.length === 0) {
-    return { qty: '1', unit: 'Lot' };
+    return { qty: "1", unit: "Lot" };
   }
 
   if (groupEntries.length === 1) {
     const [u, totalVal] = groupEntries[0];
     const qty = Number.isInteger(totalVal)
-      ? totalVal.toLocaleString('en-IN')
-      : totalVal.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+      ? totalVal.toLocaleString("en-IN")
+      : totalVal.toLocaleString("en-IN", {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 3,
+        });
     return { qty, unit: u };
   } else {
     const qty = groupEntries
       .map(([u, totalVal]) => {
         const formattedVal = Number.isInteger(totalVal)
-          ? totalVal.toLocaleString('en-IN')
-          : totalVal.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+          ? totalVal.toLocaleString("en-IN")
+          : totalVal.toLocaleString("en-IN", {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 3,
+            });
         return `${formattedVal} ${u}`;
       })
-      .join(' + ');
-    return { qty, unit: '' };
+      .join(" + ");
+    return { qty, unit: "" };
   }
 }
 
+/**
+ * Check if an attachment filename is a lot-specific document.
+ * Expanded beyond photo_/annex_ to catch more naming conventions.
+ */
+function isLotAttachment(name: string): boolean {
+  const n = name.toLowerCase();
+  return (
+    n.startsWith("photo_") ||
+    n.startsWith("annex_") ||
+    n.startsWith("image_") ||
+    n.startsWith("img_") ||
+    n.startsWith("spec_") ||
+    n.startsWith("inventory_") ||
+    n.startsWith("doc_") ||
+    n.startsWith("lot_")
+  );
+}
+
+/**
+ * Extract attachment file references from catalog text,
+ * download each, extract/render images, and upload them to storage.
+ */
 async function extractAndProcessLotDocuments(
   catalogText: string,
   sanitizedAuctionNum: string,
   headers: Record<string, string>,
   items: any[] = [],
+  lotEmbeddings?: Map<string, number[]>,
 ): Promise<{
   imageUrls: string[];
   attachmentMap: Record<string, string[]>;
   lotSpecificImagesMap: Record<string, string[]>;
   eligibilityNotes: string[];
 }> {
-  // Reconstruct filename if there are newlines or spaces
+  // Reconstruct filenames if there are newlines or spaces
   const cleanedText = catalogText
     .replace(/\r?\n/g, " ")
     .replace(
-      /(Annex_|Photo_)\s*([a-zA-Z0-9_]+)\s*([a-zA-Z0-9_]*)\s*(\.pdf)/gi,
+      /(Annex_|Photo_|Image_|Img_|Spec_|Doc_|Lot_)\s*([a-zA-Z0-9_]+)\s*([a-zA-Z0-9_]*)\s*(\.pdf)/gi,
       (_match, p1, p2, p3, p4) => {
         return `${p1}${p2}${p3 || ""}${p4}`;
       },
     );
 
   const matches = cleanedText.match(/([a-zA-Z0-9_]+\.pdf)/g) || [];
-  const uniqueAttachments = Array.from(new Set(matches)).filter((name) => {
-    const n = name.toLowerCase();
-    return n.startsWith("photo_") || n.startsWith("annex_");
-  });
+  const uniqueAttachments = Array.from(new Set(matches)).filter(isLotAttachment);
 
   const imageUrls: string[] = [];
   const attachmentMap: Record<string, string[]> = {};
@@ -348,9 +818,7 @@ async function extractAndProcessLotDocuments(
     "Found lot attachments to process",
   );
 
-  // Build reverse map: attachment filename → pre-assigned lot item(s) from catalog parsing.
-  // This is more reliable than text-based matching for generic lot descriptions
-  // (e.g. "General Non Electrical Items") where keywords won't appear in the PDF inventory.
+  // Build reverse map: attachment filename → pre-assigned lot item(s)
   const attachmentToLots = new Map<string, any[]>();
   for (const item of items) {
     if (item.attachments && Array.isArray(item.attachments)) {
@@ -362,11 +830,11 @@ async function extractAndProcessLotDocuments(
     }
   }
 
-  for (let i = 0; i < uniqueAttachments.length; i++) {
-    const fileName = uniqueAttachments[i];
+  // Create concurrent tasks for attachment processing
+  const tasks = uniqueAttachments.map((fileName, i) => async () => {
     const lotImageUrls: string[] = [];
 
-    // Determine initial doc_type
+    // Determine doc_type
     const primaryType = fileName.toLowerCase().startsWith("photo_")
       ? "attached_photo"
       : "attached_annex";
@@ -381,7 +849,7 @@ async function extractAndProcessLotDocuments(
 
     if (!docBuffer) {
       log.warn({ fileName }, "Could not retrieve valid PDF for attachment");
-      continue;
+      return;
     }
 
     log.info(
@@ -389,16 +857,20 @@ async function extractAndProcessLotDocuments(
       "Attachment retrieved, processing images",
     );
 
-    // 1. Try to render all pages of the attachment and match them page-by-page
+    // 1. Try to render all pages
     const renderedPages = await renderAndExtractPdfPages(docBuffer, 20);
     if (renderedPages.length > 0) {
+      // Release raw PDF buffer immediately as we have rendered the pages
+      docBuffer = null as any;
+
       log.info(
         { fileName, pageCount: renderedPages.length },
-        "Rendered attachment pages, executing text matching with OCR",
+        "Rendered attachment pages",
       );
 
       const pageUrls: string[] = [];
-      const pageToLots: any[][] = [];
+      const pageMatches: any[][] = [];
+      let lastMatched: any[] = [];
 
       for (let pIdx = 0; pIdx < renderedPages.length; pIdx++) {
         const page = renderedPages[pIdx];
@@ -409,95 +881,42 @@ async function extractAndProcessLotDocuments(
             page.imageBuffer,
             "image/jpeg",
           );
-          
+
           imageUrls.push(publicUrl);
           lotImageUrls.push(publicUrl);
           pageUrls.push(publicUrl);
 
-          // Perform OCR to extract text from scans/photos on this page
-          const ocrText = await performOcr(page.imageBuffer);
-          const combinedText = `${page.text || ""}\n${ocrText}`;
+          const { matched } = await processPageForLotEnrichment(
+            page.imageBuffer,
+            page.text,
+            items,
+            attachmentToLots,
+            fileName,
+            publicUrl,
+            lotSpecificImagesMap,
+            log,
+            lotEmbeddings,
+            lastMatched,
+          );
+          pageMatches.push(matched);
 
-          // Use pre-assigned lot mapping first (from catalog parsing), fall back to text-based matching
-          let matched = attachmentToLots.get(fileName) || [];
-          if (matched.length === 0) {
-            matched = matchPageToLots(combinedText, items, fileName);
+          if (matched && matched.length > 0) {
+            lastMatched = matched;
           }
-          pageToLots.push(matched);
 
           if (matched.length > 0) {
             log.info(
-              { pageNumber: page.pageNumber, matchedLots: matched.map(m => m.sr) },
-              "Mapped rendered page specifically to lot(s)",
+              {
+                pageNumber: page.pageNumber,
+                matchedLots: matched.map((m) => m.sr),
+              },
+              "Mapped rendered page to lot(s)",
             );
-            
-            // Extract quantities from the combined text
-            const extracted = extractQuantitiesDetailed(combinedText);
-
-            // Classify page: skip parsing if it is a terms & conditions or instructional page
-            const lowerText = combinedText.toLowerCase();
-            const isTermsPage = 
-              lowerText.includes("special terms") || 
-              lowerText.includes("general terms") || 
-              lowerText.includes("instructions to bidders") || 
-              lowerText.includes("payment guidelines") || 
-              lowerText.includes("how to participate") ||
-              lowerText.includes("terms and conditions") ||
-              lowerText.includes("terms & conditions") ||
-              lowerText.includes("guide for making payment");
-
-            const subItems = isTermsPage ? [] : parseSubItemsFromText(combinedText);
-            if (subItems && subItems.length > 0) {
-              log.info(
-                { pageNumber: page.pageNumber, subItemsCount: subItems.length },
-                `Extracted ${subItems.length} sub-items from page text`
-              );
-            }
-
-            for (const lot of matched) {
-              const srStr = String(lot.sr);
-              if (!lotSpecificImagesMap[srStr]) {
-                lotSpecificImagesMap[srStr] = [];
-              }
-              lotSpecificImagesMap[srStr].push(publicUrl);
-
-              if (subItems && subItems.length > 0) {
-                if (!lot.subItems) {
-                  lot.subItems = [];
-                }
-                for (const sub of subItems) {
-                  if (!lot.subItems.some((s: any) => s.sr === sub.sr && s.description === sub.description)) {
-                    lot.subItems.push(sub);
-                  }
-                }
-              }
-
-              // Update lot quantity from OCR only when no sub-items were found on this page.
-              // When sub-items exist, extractQuantitiesDetailed picks up individual item
-              // quantities and produces garbage (e.g. "1 PLASTIC + 6 PCS + 170 NOS").
-              // Instead, lot qty will be derived from sub-item count in the final pass below.
-              if (!subItems || subItems.length === 0) {
-                if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
-                  const currentQtyLower = (lot.qty || "").toLowerCase().trim();
-                  const currentUnitLower = (lot.unit || "").toLowerCase().trim();
-                  const isCurrentGeneric = 
-                    currentQtyLower === "1" || 
-                    currentQtyLower === "1.0" || 
-                    currentUnitLower === "lot" || 
-                    currentUnitLower === "lots";
-
-                  if (isCurrentGeneric) {
-                    log.info(
-                      { lotSr: lot.sr, oldQty: lot.qty, oldUnit: lot.unit, newQty: extracted.qty, newUnit: extracted.unit },
-                      "Updating lot quantity from OCR/scanned text"
-                    );
-                    lot.qty = extracted.qty;
-                    lot.unit = extracted.unit;
-                  }
-                }
-              }
-            }
           }
+
+          // Memory management: null out buffer and text after processing
+          (page as any).imageBuffer = null;
+          (page as any).text = null;
         } catch (uploadErr: any) {
           log.warn(
             { errorMessage: uploadErr.message, pageNumber: page.pageNumber },
@@ -506,87 +925,52 @@ async function extractAndProcessLotDocuments(
         }
       }
 
-      // Check if ANY specific matches were made for this attachment
-      const hasSpecificMatches = pageToLots.some(m => m.length > 0);
-      
-      // Fallback 1: Sequential matching if pages count matches items count
-      if (!hasSpecificMatches && renderedPages.length === items.length && items.length > 0) {
-        log.info(
-          { fileName, pageCount: renderedPages.length, itemsCount: items.length },
-          "No specific page matches found, mapping pages sequentially to lots",
+      // Improved sequential fallback:
+      const hasSpecificMatches = pageMatches.some((m) => m.length > 0);
+      if (
+        !hasSpecificMatches &&
+        renderedPages.length === items.length &&
+        items.length > 0
+      ) {
+        const hasLotReferences = renderedPages.some(
+          (p) => p.text && /lot\s*no/i.test(p.text),
         );
-        for (let pIdx = 0; pIdx < pageUrls.length; pIdx++) {
-          const item = items[pIdx];
-          const srStr = String(item.sr);
-          if (!lotSpecificImagesMap[srStr]) {
-            lotSpecificImagesMap[srStr] = [];
-          }
-          lotSpecificImagesMap[srStr].push(pageUrls[pIdx]);
-
-          // Run OCR and extract quantities for sequential matching as well
-          const page = renderedPages[pIdx];
-          try {
-            const ocrText = await performOcr(page.imageBuffer);
-            const combinedText = `${page.text || ""}\n${ocrText}`;
-            const extracted = extractQuantitiesDetailed(combinedText);
-            
-            // Classify page: skip parsing if it is a terms & conditions or instructional page
-            const lowerText = combinedText.toLowerCase();
-            const isTermsPage = 
-              lowerText.includes("special terms") || 
-              lowerText.includes("general terms") || 
-              lowerText.includes("instructions to bidders") || 
-              lowerText.includes("payment guidelines") || 
-              lowerText.includes("how to participate") ||
-              lowerText.includes("terms and conditions") ||
-              lowerText.includes("terms & conditions") ||
-              lowerText.includes("guide for making payment");
-
-            const subItems = isTermsPage ? [] : parseSubItemsFromText(combinedText);
-            if (subItems && subItems.length > 0) {
-              if (!item.subItems) {
-                item.subItems = [];
-              }
-              for (const sub of subItems) {
-                if (!item.subItems.some((s: any) => s.sr === sub.sr && s.description === sub.description)) {
-                  item.subItems.push(sub);
-                }
-              }
+        if (!hasLotReferences) {
+          log.info(
+            {
+              fileName,
+              pageCount: renderedPages.length,
+              itemsCount: items.length,
+            },
+            "No matches found, mapping pages sequentially (standalone photos confirmed)",
+          );
+          for (let pIdx = 0; pIdx < pageUrls.length; pIdx++) {
+            const item = items[pIdx];
+            const srStr = String(item.sr);
+            if (!lotSpecificImagesMap[srStr]) {
+              lotSpecificImagesMap[srStr] = [];
             }
-
-            if (!subItems || subItems.length === 0) {
-              if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
-                const currentQtyLower = (item.qty || "").toLowerCase().trim();
-                const currentUnitLower = (item.unit || "").toLowerCase().trim();
-                const isCurrentGeneric = 
-                  currentQtyLower === "1" || 
-                  currentQtyLower === "1.0" || 
-                  currentUnitLower === "lot" || 
-                  currentUnitLower === "lots";
-
-                if (isCurrentGeneric) {
-                  log.info(
-                    { lotSr: item.sr, oldQty: item.qty, newQty: extracted.qty },
-                    "Updating sequential lot quantity from OCR/scanned text"
-                  );
-                  item.qty = extracted.qty;
-                  item.unit = extracted.unit;
-                }
-              }
-            }
-          } catch (ocrErr: any) {
-            log.warn({ errorMessage: ocrErr.message }, "OCR failed during sequential fallback");
+            lotSpecificImagesMap[srStr].push(pageUrls[pIdx]);
           }
+        } else {
+          log.info(
+            { fileName },
+            "Skipping sequential fallback — pages contain mixed lot references",
+          );
         }
       }
     } else {
-      // 2. Fallback to extracting embedded JPEGs if page rendering yielded nothing
+      // 2. Fallback: extract embedded JPEGs
       const embeddedJpegs = extractEmbeddedJpegs(docBuffer);
+      // Release raw PDF buffer immediately after extraction
+      docBuffer = null as any;
+
       if (embeddedJpegs.length > 0) {
         log.info(
           { fileName, imageCount: embeddedJpegs.length },
           "Extracted embedded images from attachment (fallback)",
         );
+        let lastMatched: any[] = [];
         for (let j = 0; j < embeddedJpegs.length; j++) {
           try {
             const imgBuffer = embeddedJpegs[j];
@@ -599,70 +983,21 @@ async function extractAndProcessLotDocuments(
             imageUrls.push(publicUrl);
             lotImageUrls.push(publicUrl);
 
-            // Run OCR on the embedded image to match lots and extract quantities
-            const ocrText = await performOcr(imgBuffer);
-            if (ocrText) {
-              // Use pre-assigned lot mapping first, fall back to text-based matching
-              let matched = attachmentToLots.get(fileName) || [];
-              if (matched.length === 0) {
-                matched = matchPageToLots(ocrText, items, fileName);
-              }
-              if (matched.length > 0) {
-                const extracted = extractQuantitiesDetailed(ocrText);
-                for (const lot of matched) {
-                  const srStr = String(lot.sr);
-                  if (!lotSpecificImagesMap[srStr]) {
-                    lotSpecificImagesMap[srStr] = [];
-                  }
-                  lotSpecificImagesMap[srStr].push(publicUrl);
+            const { matched } = await processPageForLotEnrichment(
+              imgBuffer,
+              "",
+              items,
+              attachmentToLots,
+              fileName,
+              publicUrl,
+              lotSpecificImagesMap,
+              log,
+              lotEmbeddings,
+              lastMatched,
+            );
 
-                  // Classify page: skip parsing if it is a terms & conditions or instructional page
-                  const lowerText = ocrText.toLowerCase();
-                  const isTermsPage = 
-                    lowerText.includes("special terms") || 
-                    lowerText.includes("general terms") || 
-                    lowerText.includes("instructions to bidders") || 
-                    lowerText.includes("payment guidelines") || 
-                    lowerText.includes("how to participate") ||
-                    lowerText.includes("terms and conditions") ||
-                    lowerText.includes("terms & conditions") ||
-                    lowerText.includes("guide for making payment");
-
-                  const subItems = isTermsPage ? [] : parseSubItemsFromText(ocrText);
-                  if (subItems && subItems.length > 0) {
-                    if (!lot.subItems) {
-                      lot.subItems = [];
-                    }
-                    for (const sub of subItems) {
-                      if (!lot.subItems.some((s: any) => s.sr === sub.sr && s.description === sub.description)) {
-                        lot.subItems.push(sub);
-                      }
-                    }
-                  }
-
-                  // Only update qty from OCR when no sub-items were found
-                  if (!subItems || subItems.length === 0) {
-                    if (extracted && extracted.qty && extracted.qty !== "1" && extracted.qty !== "1.0") {
-                      const currentQtyLower = (lot.qty || "").toLowerCase().trim();
-                      const currentUnitLower = (lot.unit || "").toLowerCase().trim();
-                      const isCurrentGeneric = 
-                        currentQtyLower === "1" || 
-                        currentQtyLower === "1.0" || 
-                        currentUnitLower === "lot" || 
-                        currentUnitLower === "lots";
-
-                      if (isCurrentGeneric) {
-                        log.info(
-                          { lotSr: lot.sr, oldQty: lot.qty, newQty: extracted.qty },
-                          "Updating fallback lot quantity from OCR/scanned text"
-                        );
-                        lot.qty = extracted.qty;
-                        lot.unit = extracted.unit;
-                      }
-                    }
-                  }
-                }
-              }
+            if (matched && matched.length > 0) {
+              lastMatched = matched;
             }
           } catch (uploadErr: any) {
             log.warn(
@@ -675,23 +1010,15 @@ async function extractAndProcessLotDocuments(
     }
 
     attachmentMap[fileName] = lotImageUrls;
-  }
+  });
 
-  // Final pass: derive lot quantity from sub-items when the current qty is generic.
-  // This is more reliable than extractQuantitiesDetailed which produces garbage
-  // when scanning pages full of individual item rows.
+  // Concurrently process attachments with a limit of 3 to optimize worker performance
+  await limitConcurrency(tasks, 3);
+
+  // Final pass: derive lot quantity from sub-items when current qty is generic
   for (const item of items) {
     if (item.subItems && item.subItems.length > 0) {
-      const currentQtyLower = (item.qty || "").toLowerCase().trim();
-      const currentUnitLower = (item.unit || "").toLowerCase().trim();
-      const isGenericOrGarbage =
-        currentQtyLower === "1" ||
-        currentQtyLower === "1.0" ||
-        currentUnitLower === "lot" ||
-        currentUnitLower === "lots" ||
-        currentQtyLower.includes("+"); // e.g. "1 PLASTIC + 6 PCS + 170 NOS"
-
-      if (isGenericOrGarbage) {
+      if (isGenericQuantity(item.qty, item.unit)) {
         log.info(
           {
             lotSr: item.sr,
@@ -707,11 +1034,11 @@ async function extractAndProcessLotDocuments(
     }
   }
 
-  return { 
-    imageUrls, 
-    attachmentMap, 
-    lotSpecificImagesMap, 
-    eligibilityNotes: Array.from(new Set(eligibilityNotes)) 
+  return {
+    imageUrls,
+    attachmentMap,
+    lotSpecificImagesMap,
+    eligibilityNotes: Array.from(new Set(eligibilityNotes)),
   };
 }
 
@@ -735,7 +1062,7 @@ function loadSessionCookies(): string | null {
 }
 
 /**
- * Build HTTP headers for MSTC requests, including session cookies when available.
+ * Build HTTP headers for MSTC requests.
  */
 function buildMstcHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
@@ -750,9 +1077,6 @@ function buildMstcHeaders(): Record<string, string> {
 
   return headers;
 }
-
-
-
 
 /**
  * Process a single queue record: download, parse, extract, and update.
@@ -790,7 +1114,7 @@ export async function processRecord(record: QueueRecord): Promise<void> {
       lastFetchError = fetchErr;
       jobLog.warn(
         { attempt, errorMessage: fetchErr.message },
-        "PDF catalog fetch failed, retrying..."
+        "PDF catalog fetch failed, retrying...",
       );
       if (attempt < fetchAttempts) {
         await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -811,14 +1135,19 @@ export async function processRecord(record: QueueRecord): Promise<void> {
     throw new Error(errMessage);
   }
 
-  const fileBuffer = Buffer.from(await payloadResponse.arrayBuffer());
+  let fileBuffer: Buffer | null = Buffer.from(
+    await payloadResponse.arrayBuffer(),
+  );
 
   // Validate PDF structure
   if (fileBuffer.toString("utf-8", 0, 4) !== "%PDF") {
     const preview = fileBuffer.toString("utf-8", 0, 1000);
-    if (preview.includes("IBM_HTTP_Server") || preview.includes("Internal Server Error")) {
+    if (
+      preview.includes("IBM_HTTP_Server") ||
+      preview.includes("Internal Server Error")
+    ) {
       throw new Error(
-        "MSTC Server Error: IBM HTTP Server returned 500 (Internal Server Error) instead of a PDF catalog."
+        "MSTC Server Error: IBM HTTP Server returned 500 (Internal Server Error) instead of a PDF catalog.",
       );
     }
     if (
@@ -894,8 +1223,11 @@ export async function processRecord(record: QueueRecord): Promise<void> {
   try {
     jobLog.info({}, "Parsing PDF text content");
     const parsedPdf = await pdf(fileBuffer);
+
+    // Release main PDF buffer for GC
+    fileBuffer = null;
+
     if (parsedPdf?.text) {
-      // First, parse the main catalog text to get structured items
       const summaryObj: CatalogSummary = parseMstcCatalogText(
         parsedPdf.text,
         record.category_name || "",
@@ -903,83 +1235,48 @@ export async function processRecord(record: QueueRecord): Promise<void> {
         record.location || "",
       );
 
-      // Initialize item.images as an empty array
+      // Initialize item.images and pre-compute description embeddings
+      const lotEmbeddings = new Map<string, number[]>();
       if (summaryObj.items && Array.isArray(summaryObj.items)) {
         for (const item of summaryObj.items) {
           item.images = [];
         }
-      }
 
-      // Render and match all pages of the main catalog PDF to individual lots
-      try {
-        jobLog.info({}, "Rendering all pages of main catalog PDF for page-specific matching");
-        const catalogPages = await renderAndExtractPdfPages(fileBuffer, 20);
-        if (catalogPages.length > 0) {
-          jobLog.info(
-            { pageCount: catalogPages.length },
-            "Rendered main catalog pages, executing text matching",
-          );
+        try {
+          const uniqueLotDescriptions = Array.from(
+            new Set(summaryObj.items.map((it) => it.description || ""))
+          ).filter(Boolean);
 
-          for (const page of catalogPages) {
-            try {
-              let publicUrl = "";
-              if (page.pageNumber === 1 && previewImageUrl) {
-                publicUrl = previewImageUrl;
-              } else {
-                const imgPath = `mstc-extracted-images/${sanitizedAuctionNum}_catalog_page_${page.pageNumber}.jpg`;
-                publicUrl = await uploadToStorage(
-                  imgPath,
-                  page.imageBuffer,
-                  "image/jpeg",
-                );
-              }
+          if (uniqueLotDescriptions.length > 0) {
+            jobLog.info(
+              { count: uniqueLotDescriptions.length },
+              "Pre-computing lot description embeddings in batch for semantic matching",
+            );
+            const extractor = await getEmbeddingPipeline();
+            const output = await extractor(uniqueLotDescriptions, {
+              pooling: "mean",
+              normalize: true,
+            });
 
-              // Add to extractedImageUrls so it shows in general gallery
-              if (!extractedImageUrls.includes(publicUrl)) {
-                extractedImageUrls.push(publicUrl);
-              }
+            const batchSize = uniqueLotDescriptions.length;
+            const dim = output.dims ? output.dims[1] : (output.data.length / batchSize);
+            const data = output.data as any;
 
-              // Match page to lots using selectable text first
-              let combinedText = page.text || "";
-              let matched = matchPageToLots(combinedText, summaryObj.items || [], "catalog");
-
-              // If no match and text is empty/short, try OCR
-              if (matched.length === 0 && (!combinedText || combinedText.trim().length < 50)) {
-                const ocrText = await performOcr(page.imageBuffer);
-                combinedText = `${combinedText}\n${ocrText}`;
-                matched = matchPageToLots(combinedText, summaryObj.items || [], "catalog");
-              }
-
-              if (matched.length > 0) {
-                jobLog.info(
-                  { pageNumber: page.pageNumber, matchedLots: matched.map(m => m.sr) },
-                  "Mapped main catalog page specifically to lot(s)",
-                );
-                for (const lot of matched) {
-                  if (!lot.images) {
-                    lot.images = [];
-                  }
-                  if (!lot.images.includes(publicUrl)) {
-                    lot.images.push(publicUrl);
-                  }
-                }
-              }
-            } catch (pageErr: any) {
-              jobLog.warn(
-                { pageNumber: page.pageNumber, errorMessage: pageErr.message },
-                "Failed to process main catalog page image",
-              );
+            for (let idx = 0; idx < batchSize; idx++) {
+              const desc = uniqueLotDescriptions[idx];
+              const vector = Array.from(data.subarray(idx * dim, (idx + 1) * dim)) as number[];
+              lotEmbeddings.set(desc, vector);
             }
           }
+        } catch (err: any) {
+          jobLog.warn(
+            { errorMessage: err.message },
+            "Failed to pre-compute lot description embeddings",
+          );
         }
-      } catch (catRenderErr: any) {
-        jobLog.warn(
-          { errorMessage: catRenderErr.message },
-          "Failed to render main catalog pages",
-        );
       }
 
-      // Now extract attachment images and run OCR using the parsed items list
+      // Process attachments (passing pre-computed lotEmbeddings)
       let attachmentImageUrls: string[] = [];
       let attachmentMap: Record<string, string[]> = {};
       try {
@@ -988,6 +1285,7 @@ export async function processRecord(record: QueueRecord): Promise<void> {
           sanitizedAuctionNum,
           headers,
           summaryObj.items || [],
+          lotEmbeddings,
         );
         attachmentImageUrls = result.imageUrls;
         attachmentMap = result.attachmentMap;
@@ -1015,41 +1313,47 @@ export async function processRecord(record: QueueRecord): Promise<void> {
         );
       }
 
-      // Map lot-specific images from the attachment map to the lot item objects
+      // Map lot-specific images from the attachment map
       if (summaryObj.items && Array.isArray(summaryObj.items)) {
         for (const item of summaryObj.items) {
           if (!item.images) {
             item.images = [];
           }
           if (item.attachments && Array.isArray(item.attachments)) {
-            const itemImages: string[] = [];
             for (const attName of item.attachments) {
               const urls = attachmentMap[attName];
               if (urls && urls.length > 0) {
-                itemImages.push(...urls);
-              }
-            }
-            // Add any newly found attachment images, checking for duplicates
-            for (const imgUrl of itemImages) {
-              if (!item.images.includes(imgUrl)) {
-                item.images.push(imgUrl);
+                for (const imgUrl of urls) {
+                  if (!item.images.includes(imgUrl)) {
+                    item.images.push(imgUrl);
+                  }
+                }
               }
             }
           }
         }
       }
 
-      // Inject preview and extracted images into the summary
+      // Inject preview and extracted images
       summaryObj.preview_image_url = previewImageUrl;
       summaryObj.extracted_images = extractedImageUrls;
 
       // Calculate total market price valuation
       try {
-        const totalMarketValue = calculateTotalMarketValue(summaryObj.items || [], record.category_name || "");
+        const totalMarketValue = calculateTotalMarketValue(
+          summaryObj.items || [],
+          record.category_name || "",
+        );
         summaryObj.totalMarketValue = totalMarketValue;
-        jobLog.info({ totalMarketValue }, "Calculated total market value for catalog");
+        jobLog.info(
+          { totalMarketValue },
+          "Calculated total market value for catalog",
+        );
       } catch (valErr: any) {
-        jobLog.warn({ errorMessage: valErr.message }, "Failed to calculate total market value");
+        jobLog.warn(
+          { errorMessage: valErr.message },
+          "Failed to calculate total market value",
+        );
       }
 
       rawMaterialsText = JSON.stringify(summaryObj);
@@ -1065,24 +1369,25 @@ export async function processRecord(record: QueueRecord): Promise<void> {
     );
   }
 
-  // Generate AI Semantic Embedding vector for Hybrid Search
+  // Generate AI Semantic Embedding vector
   let embeddingStr: string | null = null;
   try {
-    const textToEmbed = `${record.category_name || ''} ${rawMaterialsText || ''}`.trim();
+    const textToEmbed =
+      `${record.category_name || ""} ${rawMaterialsText || ""}`.trim();
     if (textToEmbed.length >= 5) {
       jobLog.info({}, "Generating AI embedding vector for semantic search");
       const extractor = await getEmbeddingPipeline();
       const output = await extractor(textToEmbed, {
-        pooling: 'mean',
+        pooling: "mean",
         normalize: true,
       });
       const vector = Array.from(output.data);
-      embeddingStr = `[${vector.join(',')}]`;
+      embeddingStr = `[${vector.join(",")}]`;
     }
   } catch (embedErr: any) {
     jobLog.warn(
       { errorMessage: embedErr.message },
-      "Failed to generate AI embedding vector, skipping vector integration for this item"
+      "Failed to generate AI embedding vector",
     );
   }
 
@@ -1104,7 +1409,7 @@ export async function processRecord(record: QueueRecord): Promise<void> {
     .update(updatePayload)
     .eq("id", record.id);
 
-  // Log download event to audit logs
+  // Log download event
   await supabase.from("audit_logs").insert({
     action: "mstc_auction_downloaded",
     entity_type: "mstc_auction",
@@ -1122,70 +1427,34 @@ export async function processRecord(record: QueueRecord): Promise<void> {
  * Poll the queue for pending records and process them.
  */
 async function runAssetPipelineQueue(): Promise<void> {
-  const { data: executableQueue, error: queryError } = await supabase
-    .from("mstc_auctions")
-    .select(
-      "id, mstc_auction_number, source_pdf_url, retry_count, category_name, seller_name, location, raw_materials_text, updated_at",
-    )
-    .or("asset_status.eq.pending,asset_status.eq.failed")
-    .lt("retry_count", MAX_RETRY_COUNT)
-    .limit(100);
+  // Atomically claim a batch of eligible records via custom RPC to prevent worker claim races
+  const { data: claimedRecords, error: claimError } = await supabase
+    .rpc("claim_mstc_auctions_batch", {
+      p_worker_id: workerId,
+      p_batch_size: QUEUE_BATCH_SIZE,
+      p_max_retry_count: MAX_RETRY_COUNT,
+    });
 
-  if (queryError) {
+  if (claimError) {
     log.error(
-      { errorMessage: queryError.message },
-      "Queue query failed",
+      { errorMessage: claimError.message },
+      "Queue claiming failed via RPC",
     );
     return;
   }
 
-  if (!executableQueue || executableQueue.length === 0) {
+  if (!claimedRecords || claimedRecords.length === 0) {
     return;
   }
-
-  // Filter queue items in JS to discard those within their backoff cooldown window
-  const now = Date.now();
-  const eligibleRecords = (executableQueue as QueueRecord[]).filter((record) => {
-    if (record.retry_count === 0) {
-      return true; // brand new job, process immediately
-    }
-    const lastUpdated = record.updated_at ? new Date(record.updated_at).getTime() : 0;
-    const cooldown = getRetryDelayMs(record.retry_count);
-    const timeSinceLastUpdate = now - lastUpdated;
-    
-    const isEligible = timeSinceLastUpdate >= cooldown;
-    if (!isEligible) {
-      log.debug(
-        {
-          auctionNumber: record.mstc_auction_number,
-          retryCount: record.retry_count,
-          cooldownMs: cooldown,
-          timeRemainingMs: cooldown - timeSinceLastUpdate,
-        },
-        "Skipping record due to exponential backoff cooldown"
-      );
-    }
-    return isEligible;
-  });
-
-  if (eligibleRecords.length === 0) {
-    return;
-  }
-
-  const batchToProcess = eligibleRecords.slice(0, QUEUE_BATCH_SIZE);
 
   log.info(
-    { batchSize: batchToProcess.length, totalEligible: eligibleRecords.length },
-    "Processing queue batch",
+    {
+      batchSize: claimedRecords.length,
+    },
+    "Processing claimed queue batch",
   );
 
-  for (const record of batchToProcess) {
-    // Row-Lock: Set state to processing immediately, and update updated_at
-    await supabase
-      .from("mstc_auctions")
-      .update({ asset_status: "processing", updated_at: new Date().toISOString() })
-      .eq("id", record.id);
-
+  for (const record of claimedRecords as QueueRecord[]) {
     try {
       await processRecord(record);
     } catch (jobError: any) {
@@ -1212,7 +1481,6 @@ async function runAssetPipelineQueue(): Promise<void> {
         })
         .eq("id", record.id);
 
-      // Log failure event to audit logs
       await supabase.from("audit_logs").insert({
         action: "mstc_auction_failed",
         entity_type: "mstc_auction",
@@ -1249,10 +1517,10 @@ export async function startWorker(): Promise<void> {
 export { runAssetPipelineQueue };
 
 // Run automatically if this is the main entry file
-const isMain = process.argv[1] && (
-  process.argv[1].endsWith('assetWorker.ts') || 
-  process.argv[1].endsWith('assetWorker.js')
-);
+const isMain =
+  process.argv[1] &&
+  (process.argv[1].endsWith("assetWorker.ts") ||
+    process.argv[1].endsWith("assetWorker.js"));
 
 if (isMain) {
   startWorker();
