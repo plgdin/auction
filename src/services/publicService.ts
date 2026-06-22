@@ -2008,23 +2008,7 @@ export const MstcSearchService = {
         } as MstcSanitizedAuction;
       });
 
-      // Filter by price constraint locally (since it requires JS computation)
-      if (pConstraint) {
-        mapped = mapped.filter(item => {
-          const { preBid, totalValue, isEstimated } = estimateAuctionValues(item as any);
-          // If no real price data was found, exclude from price-filtered results
-          if (isEstimated) return false;
-          const matchValue = (val: number) => {
-            if (val <= 0) return false;
-            if (pConstraint.operator === 'less') return val <= pConstraint.value;
-            if (pConstraint.operator === 'greater') return val >= pConstraint.value;
-            return val === pConstraint.value;
-          };
-          if (pConstraint.field === 'pre_bid') return matchValue(preBid);
-          if (pConstraint.field === 'total_value') return matchValue(totalValue);
-          return matchValue(preBid) || matchValue(totalValue);
-        });
-      }
+
 
       return { data: mapped, count: totalCount };
 
