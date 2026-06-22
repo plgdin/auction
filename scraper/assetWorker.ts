@@ -1076,6 +1076,8 @@ export async function processRecord(record: QueueRecord): Promise<void> {
 
   jobLog.info({}, "Starting document processing");
 
+  const headers = buildMstcHeaders();
+
   let fileBuffer: Buffer | null = null;
   let catalogUrl = "";
   const sanitizedAuctionNum = record.id;
@@ -1108,8 +1110,6 @@ export async function processRecord(record: QueueRecord): Promise<void> {
     formData.append("auc", aucId);
     formData.append("cat", "0");
     formData.append("sell", "0");
-
-    const headers = buildMstcHeaders();
 
     let payloadResponse;
     const fetchAttempts = 3;
