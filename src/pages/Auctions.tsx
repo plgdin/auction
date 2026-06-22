@@ -141,6 +141,7 @@ export function Auctions() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
+  const [mstcTotalCount, setMstcTotalCount] = useState(0);
   const [isMstcLoading, setIsMstcLoading] = useState(false);
   const [mstcOptions, setMstcOptions] = useState<{
     categories: string[];
@@ -379,63 +380,22 @@ export function Auctions() {
     setIsMstcLoading(true);
     try {
       const qParam = searchParams.get('q') || '';
-      const data = await MstcSearchService.searchMarketplaceCatalog(qParam, {
+      const { data, count } = await MstcSearchService.searchMarketplaceCatalog(qParam, {
         categories: selectedMstcCategories.length > 0 ? selectedMstcCategories : undefined,
         subcategories: selectedMstcSubcategories.length > 0 ? selectedMstcSubcategories : undefined,
         locations: selectedMstcLocations.length > 0 ? selectedMstcLocations : undefined,
         sellers: selectedMstcSellers.length > 0 ? selectedMstcSellers : undefined,
-        regionalOffices: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined
+        regionalOffices: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined,
+        startDate,
+        endDate,
+        hasImages: mstcHasImages,
+        hasAssetDocuments: mstcHasAssetDocuments,
+        page,
+        limit
       });
 
-      let filteredData = data;
-      if (startDate) {
-        const start = new Date(startDate);
-        filteredData = filteredData.filter(item => {
-          if (!item.opening_date) return false;
-          const openDate = new Date(item.opening_date);
-          return openDate >= start;
-        });
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        filteredData = filteredData.filter(item => {
-          if (!item.opening_date) return false;
-          const openDate = new Date(item.opening_date);
-          return openDate <= end;
-        });
-      }
-
-      // Filter by asset attachments
-      if (mstcHasAssetDocuments) {
-        filteredData = filteredData.filter(item => {
-          if (!item.raw_materials_text) return false;
-          try {
-            const parsed = JSON.parse(item.raw_materials_text);
-            const images = parsed?.extracted_images || [];
-            // Asset documents are PDFs or document-type files (not actual photos)
-            return images.some((url: string) => url.toLowerCase().endsWith('.pdf'));
-          } catch { return false; }
-        });
-      }
-      if (mstcHasImages) {
-        filteredData = filteredData.filter(item => {
-          if (!item.raw_materials_text) return false;
-          try {
-            const parsed = JSON.parse(item.raw_materials_text);
-            const images = parsed?.extracted_images || [];
-            // Photos are non-PDF visual files that do not represent catalog pages or cover previews
-            return images.some((url: string) => {
-              const lower = url.toLowerCase();
-              return !lower.endsWith('.pdf') && 
-                     !lower.includes('_catalog_page_') && 
-                     !lower.includes('mstc-previews/') &&
-                     /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
-            });
-          } catch { return false; }
-        });
-      }
-
-      setMstcAuctions(filteredData);
+      setMstcAuctions(data);
+      setMstcTotalCount(count);
     } catch (error) {
       console.error('Error loading MSTC catalogs:', error);
     } finally {
@@ -451,7 +411,9 @@ export function Auctions() {
     startDate,
     endDate,
     mstcHasAssetDocuments,
-    mstcHasImages
+    mstcHasImages,
+    page,
+    limit
   ]);
 
   const loadMstcOptions = useCallback(async () => {
@@ -673,10 +635,10 @@ export function Auctions() {
 
   const totalPages = activeTab === 'commercial'
     ? Math.ceil(totalCount / limit)
-    : Math.ceil(mstcAuctions.length / limit);
+    : Math.ceil(mstcTotalCount / limit);
 
   const startIndex = (page - 1) * limit;
-  const paginatedMstcAuctions = mstcAuctions.slice(startIndex, startIndex + limit);
+  const paginatedMstcAuctions = mstcAuctions;
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -925,7 +887,7 @@ export function Auctions() {
             ) : (
               <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="text-sm text-slate-650 font-semibold flex items-center gap-2">
-                  <span>Showing {mstcAuctions.length} Government Catalogs</span>
+                  <span>Showing {mstcTotalCount} Government Catalogs</span>
                 </div>
                 <div className="flex items-center gap-4 w-full sm:w-auto">
                   <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
@@ -1139,7 +1101,7 @@ export function Auctions() {
                         <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                           <div>
                             <p className="text-sm text-slate-700">
-                              Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, mstcAuctions.length)}</span> of <span className="font-medium">{mstcAuctions.length}</span> results
+                              Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, mstcTotalCount)}</span> of <span className="font-medium">{mstcTotalCount}</span> results
                             </p>
                           </div>
                           <div>

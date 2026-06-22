@@ -1904,8 +1904,14 @@ export const MstcSearchService = {
       locations?: string[];
       regionalOffice?: string;
       regionalOffices?: string[];
+      hasImages?: boolean;
+      hasAssetDocuments?: boolean;
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      limit?: number;
     }
-  ): Promise<MstcSanitizedAuction[]> {
+  ): Promise<{ data: MstcSanitizedAuction[], count: number }> {
     try {
       const cleanedQuery = cleanQueryPriceTypos(query);
       const pConstraint = parsePriceConstraint(cleanedQuery);
@@ -1929,11 +1935,16 @@ export const MstcSearchService = {
       const { data, error } = await supabase.rpc('hybrid_search_mstc_catalog', {
         p_search_query: workingQuery || null,
         p_embedding: embeddingStr as any,
-        p_category_filter: filters?.category || null,
-        p_subcategory_filter: filters?.subcategory || null,
-        p_location_filter: filters?.location || null,
-        p_seller_filter: filters?.seller || null,
-        p_match_count: 1000
+        p_category_filter: filters?.categories?.[0] || filters?.category || null,
+        p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
+        p_location_filter: filters?.locations?.[0] || filters?.location || null,
+        p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
+        p_start_date: filters?.startDate || null,
+        p_end_date: filters?.endDate || null,
+        p_has_images: filters?.hasImages || null,
+        p_has_docs: filters?.hasAssetDocuments || null,
+        p_page: filters?.page || 1,
+        p_limit: filters?.limit || 12
       });
 
       if (error) {
@@ -1941,10 +1952,12 @@ export const MstcSearchService = {
       }
 
       if (!data || data.length === 0) {
-        return [];
+        return { data: [], count: 0 };
       }
 
-      // 2. Map Categories & Filter
+      const totalCount = Number(data[0].total_count) || 0;
+
+      // 2. Map Categories
       let mapped = (data as any[]).map(item => {
         const { category, subcategory } = mapRawCategory(item.category_name);
         return {
@@ -1953,24 +1966,7 @@ export const MstcSearchService = {
         } as MstcSanitizedAuction;
       });
 
-      // Filter by arrays
-      if (filters?.categories?.length) {
-        mapped = mapped.filter(item => filters.categories!.includes(item.category_name.split(' | ')[0]));
-      }
-      if (filters?.subcategories?.length) {
-        mapped = mapped.filter(item => filters.subcategories!.includes(item.category_name.split(' | ')[1]));
-      }
-      if (filters?.sellers?.length) {
-        mapped = mapped.filter(item => filters.sellers!.includes(item.seller_name));
-      }
-      if (filters?.locations?.length) {
-        mapped = mapped.filter(item => filters.locations!.includes(item.location));
-      }
-      if (filters?.regionalOffices?.length) {
-        mapped = mapped.filter(item => filters.regionalOffices!.some(office => item.mstc_auction_number.includes(`MSTC/${office}/`)));
-      }
-
-      // Filter by price constraint
+      // Filter by price constraint locally (since it requires JS computation)
       if (pConstraint) {
         mapped = mapped.filter(item => {
           const { preBid, totalValue } = estimateAuctionValues(item as any);
@@ -1986,11 +1982,50 @@ export const MstcSearchService = {
         });
       }
 
-      return mapped;
+      return { data: mapped, count: totalCount };
 
     } catch (error) {
       console.warn('Hybrid search failed, falling back to client-side search:', error);
-      return MstcSearchService.searchClientSide(query, filters);
+      let fallbackData = await MstcSearchService.searchClientSide(query, filters);
+      
+      // Filter by images/docs locally if RPC fails
+      if (filters?.hasImages) {
+        fallbackData = fallbackData.filter(item => {
+          if (!item.raw_materials_text) return false;
+          try {
+            const parsed = JSON.parse(item.raw_materials_text);
+            const images = parsed?.extracted_images || [];
+            return images.some((url: string) => {
+              const lower = url.toLowerCase();
+              return !lower.endsWith('.pdf') && 
+                     !lower.includes('_catalog_page_') && 
+                     !lower.includes('mstc-previews/') &&
+                     /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
+            });
+          } catch { return false; }
+        });
+      }
+      
+      if (filters?.hasAssetDocuments) {
+        fallbackData = fallbackData.filter(item => {
+          if (!item.raw_materials_text) return false;
+          try {
+            const parsed = JSON.parse(item.raw_materials_text);
+            const images = parsed?.extracted_images || [];
+            return images.some((url: string) => url.toLowerCase().endsWith('.pdf'));
+          } catch { return false; }
+        });
+      }
+
+      const totalCount = fallbackData.length;
+      
+      // Client-side pagination fallback
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 12;
+      const startIndex = (page - 1) * limit;
+      const paginatedData = fallbackData.slice(startIndex, startIndex + limit);
+
+      return { data: paginatedData, count: totalCount };
     }
   }, 'marketplaceSearch'),
 
@@ -2127,7 +2162,7 @@ export const MstcSearchService = {
       if (searchQuery) {
         // If there is an active search query, get matching items
         const results = await this.searchMarketplaceCatalog(searchQuery);
-        relatedItems = results.filter((item: MstcSanitizedAuction) => item.id !== currentItem.id);
+        relatedItems = results.data.filter((item: MstcSanitizedAuction) => item.id !== currentItem.id);
       } else {
         // If no search query, match by category/subcategory
         const categoryParts = (currentItem.category_name || '').split(' | ');
@@ -2139,14 +2174,14 @@ export const MstcSearchService = {
           subcategory: subcategory || undefined
         });
         
-        relatedItems = results.filter((item: MstcSanitizedAuction) => item.id !== currentItem.id);
+        relatedItems = results.data.filter((item: MstcSanitizedAuction) => item.id !== currentItem.id);
         
         // Relax subcategory if we have fewer items
         if (relatedItems.length < limit && mainCategory) {
           const mainResults = await this.searchMarketplaceCatalog('', {
             category: mainCategory || undefined
           });
-          const extraItems = mainResults.filter(
+          const extraItems = mainResults.data.filter(
             (item: MstcSanitizedAuction) => item.id !== currentItem.id && !relatedItems.some((r: MstcSanitizedAuction) => r.id === item.id)
           );
           relatedItems = [...relatedItems, ...extraItems];
