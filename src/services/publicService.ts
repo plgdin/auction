@@ -687,55 +687,44 @@ function buildTaxonomy(data: MstcSanitizedAuction[]): {
   return { categoryKeywords, subcategoryKeywords };
 }
 
-export function estimateAuctionValues(item: MstcSanitizedAuction): { preBid: number; totalValue: number } {
-  let preBid = 50000; // default fallback
-  let totalValue = 500000; // default fallback (preBid * 10)
-  
-  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
-  const shortIdNum = parseInt(shortId, 10);
-  if (!isNaN(shortIdNum)) {
-    if (shortIdNum % 4 === 0) preBid = 100000;
-    else if (shortIdNum % 4 === 1) preBid = 25000;
-    else if (shortIdNum % 4 === 2) preBid = 150000;
-    else preBid = 50000;
-    totalValue = preBid * 10;
-  }
+export function estimateAuctionValues(item: MstcSanitizedAuction): { preBid: number; totalValue: number; isEstimated: boolean } {
+  let preBid = 0;
+  let totalValue = 0;
+  let isEstimated = true;
 
   if (item.raw_materials_text) {
     try {
       const parsed = JSON.parse(item.raw_materials_text);
       if (parsed && typeof parsed === 'object') {
-        let emdVal = parsed.depositDetails?.emd || '';
-        let preBidDdg = parsed.depositDetails?.preBidDdg || '';
-        
+        const emdVal = parsed.depositDetails?.emd || '';
+        const preBidDdg = parsed.depositDetails?.preBidDdg || '';
+
         let parsedPreBid = 0;
         const preBidClean = preBidDdg.replace(/,/g, '');
         const preBidMatch = preBidClean.match(/₹?\s*(\d+(\.\d+)?)/);
         if (preBidMatch) {
           parsedPreBid = parseFloat(preBidMatch[1]);
         }
-        
-        let emdPercent = 0.1; // fallback is 10%
+
+        let emdPercent = 0.1;
         const emdMatch = emdVal.match(/([\d\.]+)\s*%/);
         if (emdMatch) {
           emdPercent = parseFloat(emdMatch[1]) / 100;
         }
-        
+
         if (parsedPreBid > 100) {
           preBid = parsedPreBid;
-          if (emdPercent > 0 && emdPercent <= 1) {
-            totalValue = parsedPreBid / emdPercent;
-          } else {
-            totalValue = parsedPreBid * 10;
-          }
+          totalValue = (emdPercent > 0 && emdPercent <= 1) ? parsedPreBid / emdPercent : parsedPreBid * 10;
+          isEstimated = false; // we have real data
         }
       }
     } catch (e) {
-      // ignore
+      // ignore parse errors
     }
   }
 
-  return { preBid, totalValue };
+  return { preBid, totalValue, isEstimated };
+
 }
 
 export function expandQueryToTsQuery(query: string): string {
@@ -1643,9 +1632,11 @@ export const MstcSearchService = {
         // Apply price hard-filter if present, then return
         if (priceConstraint) {
           mapped = mapped.filter(item => {
-            const { preBid, totalValue } = estimateAuctionValues(item);
+            const { preBid, totalValue, isEstimated } = estimateAuctionValues(item);
+            // If no real price data was found, exclude from price-filtered results
+            if (isEstimated) return false;
             const matchValue = (val: number) => {
-              if (val <= 0) return true;
+              if (val <= 0) return false;
               if (priceConstraint.operator === 'less') return val <= priceConstraint.value;
               if (priceConstraint.operator === 'greater') return val >= priceConstraint.value;
               return val === priceConstraint.value;
@@ -1762,9 +1753,10 @@ export const MstcSearchService = {
 
         // Apply price constraint filtering if present
         if (priceConstraint) {
-          const { preBid, totalValue } = estimateAuctionValues(item);
+          const { preBid, totalValue, isEstimated } = estimateAuctionValues(item as any);
+          if (isEstimated) return { item, score: 0 }; // no real price data — exclude
           const matchValue = (val: number) => {
-            if (val <= 0) return true;
+            if (val <= 0) return false;
             if (priceConstraint.operator === 'less') return val <= priceConstraint.value;
             if (priceConstraint.operator === 'greater') return val >= priceConstraint.value;
             return val === priceConstraint.value;
@@ -1777,6 +1769,9 @@ export const MstcSearchService = {
           if (!isMatch) {
             return { item, score: 0 };
           }
+          // Item passed price filter — give it a guaranteed positive score
+          // so it isn't accidentally excluded by the score > 0 gate below.
+          score += 10;
         }
 
         // Scoping Check: If the search matches a distinct category intent, filter out all items from other categories
@@ -1916,13 +1911,54 @@ export const MstcSearchService = {
       const cleanedQuery = cleanQueryPriceTypos(query);
       const pConstraint = parsePriceConstraint(cleanedQuery);
       const workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
+
+      // ── AUCTION NUMBER DIRECT LOOKUP ─────────────────────────────────────────
+      // If the query looks like an auction number (e.g. "MSTC/ZG/POSTMASTER/1/...")
+      // skip all NLP/embedding and do a direct ILIKE search on mstc_auction_number.
+      // Heuristic: contains 2+ slashes, OR starts with "MSTC", OR has year pattern like 25-26
+      const slashCount = (query.match(/\//g) || []).length;
+      const looksLikeAuctionNumber =
+        slashCount >= 2 ||
+        /^mstc/i.test(query.trim()) ||
+        /\b\d{2}-\d{2}\b/.test(query); // year range like 25-26
+
+      if (looksLikeAuctionNumber) {
+        const searchTerm = query.trim();
+        const page = filters?.page || 1;
+        const limit = filters?.limit || 12;
+        const { data: exactData, error: exactError, count: exactCount } = await supabase
+          .from('mstc_auctions')
+          .select('*', { count: 'exact' })
+          .eq('asset_status', 'completed')
+          .ilike('mstc_auction_number', `%${searchTerm}%`)
+          .order('opening_date', { ascending: false })
+          .range((page - 1) * limit, page * limit - 1);
+
+        if (!exactError && exactData && exactData.length > 0) {
+          const mapped = exactData.map(item => {
+            const { category, subcategory } = mapRawCategory(item.category_name);
+            return { ...item, category_name: `${category} | ${subcategory}` } as MstcSanitizedAuction;
+          });
+          return { data: mapped, count: exactCount || mapped.length };
+        }
+        // If no match found for auction number, fall through to normal NLP search
+      }
+
+      // If a price constraint exists (e.g. "more than 50k prebid"), skip the RPC entirely.
+      // Pre-bid/EMD values live inside raw_materials_text JSON blobs — SQL cannot filter
+      // or count them accurately. Server-side pagination would return wrong results and
+      // wrong totals. Client-side search filters the full dataset and paginates correctly.
+      if (pConstraint) {
+        throw new Error('PRICE_CONSTRAINT_FORCE_CLIENT_SIDE');
+      }
       
       let embeddingStr: string | null = null;
       if (workingQuery && workingQuery.length > 2) {
         try {
           const vectorPromise = embeddingService.generateEmbedding(workingQuery);
           const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Embedding generation timeout')), 800)
+            // 5s timeout — gives the model time to warm up in local dev
+            setTimeout(() => reject(new Error('Embedding generation timeout')), 5000)
           );
           const vector = await Promise.race([vectorPromise, timeoutPromise]);
           embeddingStr = `[${vector.join(',')}]`;
@@ -1951,7 +1987,13 @@ export const MstcSearchService = {
         throw error;
       }
 
+      // If the DB text/vector search returned 0 results but there was a meaningful
+      // query, fall back to client-side search which has smarter keyword/synonym matching.
       if (!data || data.length === 0) {
+        if (query && query.trim().length > 0) {
+          console.warn('RPC returned 0 results for query, falling back to client-side search:', query);
+          throw new Error('RPC_ZERO_RESULTS');
+        }
         return { data: [], count: 0 };
       }
 
@@ -1969,9 +2011,11 @@ export const MstcSearchService = {
       // Filter by price constraint locally (since it requires JS computation)
       if (pConstraint) {
         mapped = mapped.filter(item => {
-          const { preBid, totalValue } = estimateAuctionValues(item as any);
+          const { preBid, totalValue, isEstimated } = estimateAuctionValues(item as any);
+          // If no real price data was found, exclude from price-filtered results
+          if (isEstimated) return false;
           const matchValue = (val: number) => {
-            if (val <= 0) return true;
+            if (val <= 0) return false;
             if (pConstraint.operator === 'less') return val <= pConstraint.value;
             if (pConstraint.operator === 'greater') return val >= pConstraint.value;
             return val === pConstraint.value;

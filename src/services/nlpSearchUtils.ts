@@ -262,92 +262,52 @@ export function parsePriceConstraint(query: string): PriceConstraint | null {
     return val.toString();
   });
 
-  // Try pattern 1: with comparison operators, e.g. "under 25000", "pre-bid above 50000"
-  const pattern1 = /(?:(pre\s*bid|pre-bid|emd|deposit|price|value)\s+(?:(under|below|less\s+than|above|over|more\s+than|equal\s+to|is|of)\s+)?)₹?\s*(\d+)/i;
-  const match1 = q.match(pattern1);
+  const numMatch = q.match(/₹?\s*(\d+)/);
+  if (!numMatch) return null;
+  const value = parseInt(numMatch[1], 10);
   
-  if (match1) {
-    const fieldWord = match1[1] ? match1[1].toLowerCase().replace(/\s/g, '') : '';
-    const opWord = match1[2] ? match1[2].toLowerCase() : '';
-    const value = parseInt(match1[3], 10);
-    
-    let field: 'pre_bid' | 'total_value' | 'either' = 'either';
-    if (fieldWord) {
-      if (fieldWord.includes('pre') || fieldWord.includes('emd') || fieldWord.includes('deposit')) {
-        field = 'pre_bid';
-      } else {
-        field = 'total_value';
-      }
-    } else if (value < 200000 && !cleaned.includes('lakh') && !cleaned.includes('lac') && !cleaned.includes('crore') && !cleaned.includes(' l') && !cleaned.includes(' cr')) {
-      field = 'pre_bid';
+  const hasPriceWord = /(pre\s*bid|pre-bid|emd|deposit|price|value)/i.test(q);
+  const hasOpWord = /(under|below|less|above|over|more)/i.test(q);
+  
+  // If no explicit price/operator words and no multiplier/currency, ignore unless it's a very round large number
+  if (!hasPriceWord && !hasOpWord && !usedMultiplier && !q.includes('₹')) {
+    if (value < 10000 || value % 1000 !== 0) {
+      return null;
     }
-
-    let operator: 'less' | 'greater' | 'equal' = 'equal';
-    if (opWord.includes('below') || opWord.includes('under') || opWord.includes('less')) {
-      operator = 'less';
-    } else if (opWord.includes('above') || opWord.includes('over') || opWord.includes('more')) {
-      operator = 'greater';
-    } else if (!opWord && usedMultiplier) {
-      operator = 'less';
-    }
-    
-    return { field, operator, value };
   }
 
-  // Try pattern 2: standalone numbers, e.g. "25000" or "pre-bid 100000"
-  const pattern2 = /(?:(pre\s*bid|pre-bid|emd|deposit|price|value)\s+)?(₹)?\s*(\d+)/i;
-  const match2 = q.match(pattern2);
-  if (match2) {
-    const fieldWord = match2[1] ? match2[1].toLowerCase().replace(/\s/g, '') : '';
-    const hasRupee = !!match2[2];
-    const value = parseInt(match2[3], 10);
-
-    // If it's a completely naked number (no prefix, no currency symbol, no multiplier)
-    if (!fieldWord && !hasRupee && !usedMultiplier) {
-      // Ignore it unless it looks like a round price value (e.g. 10000, 50000)
-      // This prevents stripping out auction numbers like "8321" or "2024"
-      if (value < 10000 || value % 1000 !== 0) {
-        return null;
-      }
-    }
-
-    let field: 'pre_bid' | 'total_value' | 'either' = 'either';
-    if (fieldWord) {
-      if (fieldWord.includes('pre') || fieldWord.includes('emd') || fieldWord.includes('deposit')) {
-        field = 'pre_bid';
-      } else {
-        field = 'total_value';
-      }
-    } else if (value < 200000 && !cleaned.includes('lakh') && !cleaned.includes('lac') && !cleaned.includes('crore') && !cleaned.includes(' l') && !cleaned.includes(' cr')) {
-      field = 'pre_bid';
-    }
-
-    const operator = usedMultiplier ? 'less' : 'equal';
-    return { field, operator, value };
+  let field: 'pre_bid' | 'total_value' | 'either' = 'either';
+  if (/(pre\s*bid|pre-bid|emd|deposit)/i.test(q)) {
+    field = 'pre_bid';
+  } else if (/(price|value)/i.test(q)) {
+    field = 'total_value';
+  } else if (value < 200000 && !cleaned.includes('lakh') && !cleaned.includes('lac') && !cleaned.includes('crore') && !cleaned.includes(' l') && !cleaned.includes(' cr')) {
+    field = 'pre_bid'; // default small values to pre_bid
   }
 
-  return null;
+  let operator: 'less' | 'greater' | 'equal' = 'equal';
+  if (/(above|over|more)/i.test(q)) {
+    operator = 'greater';
+  } else if (/(below|under|less)/i.test(q)) {
+    operator = 'less';
+  } else if (usedMultiplier) {
+    operator = 'less'; // fallback for queries like "cars 50k" -> "cars under 50k"
+  }
+
+  return { field, operator, value };
 }
 
 export function cleanQueryFromPriceConstraint(query: string): string {
-  const cleaned = cleanQueryPriceTypos(query);
+  let result = cleanQueryPriceTypos(query);
+  const constraint = parsePriceConstraint(query);
   
-  // 1. Matches if it starts with field/operator: "under 50000", "prebid > 2000"
-  const patternWithPrefix = /(?:(?:pre\s*bid|pre-bid|emd|deposit|price|value)\s+)?(?:(?:<=|>=|<|>|=|under|below|less\s+than|above|over|more\s+than|equal\s+to|is|of)\s+)₹?\s*[\d\.,]+\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?/gi;
-  
-  // 2. Matches if it has field prefix but NO operator: "prebid 50000"
-  const patternWithField = /(?:pre\s*bid|pre-bid|emd|deposit|price|value)\s+₹?\s*[\d\.,]+\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?/gi;
-  
-  // 3. Matches if it has NO prefix but HAS currency or multiplier: "₹50000", "5 lakh"
-  const patternWithCurrencyOrMultiplier = /₹\s*[\d\.,]+\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?|[\d\.,]+\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)\b/gi;
-
-  let result = cleaned.replace(patternWithPrefix, ' ');
-  result = result.replace(patternWithField, ' ');
-  result = result.replace(patternWithCurrencyOrMultiplier, ' ');
-  
-  // 4. Finally, strip round standalone numbers that we parsed as price constraints
-  const patternRoundNumbers = /\b[1-9]\d{3,}000\b/g;
-  result = result.replace(patternRoundNumbers, ' ');
+  if (constraint) {
+    const numberPattern = /₹?\s*[\d\.,]+\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?\b/gi;
+    result = result.replace(numberPattern, ' ');
+    result = result.replace(/\b(under|below|less\s+than|less|above|over|more\s+than|more|equal\s+to|equal|is|of)\b/gi, ' ');
+    result = result.replace(/\b(pre\s*bid|pre-bid|prebid|emd|deposit|price|value)\b/gi, ' ');
+    result = result.replace(/[<>=]/g, ' ');
+  }
   
   return result.replace(/\s+/g, ' ').trim();
 }

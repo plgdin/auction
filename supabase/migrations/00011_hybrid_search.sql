@@ -8,6 +8,11 @@ ALTER TABLE mstc_auctions ADD COLUMN IF NOT EXISTS embedding vector(384);
 -- 3. Create index for fast vector searches
 CREATE INDEX IF NOT EXISTS mstc_auctions_embedding_idx ON mstc_auctions USING hnsw (embedding vector_cosine_ops);
 
+-- 4. Drop existing function first (required when changing return types in PostgreSQL)
+DROP FUNCTION IF EXISTS hybrid_search_mstc_catalog(text,vector,text,text,text,text,text,text,boolean,boolean,integer,integer);
+
+-- 5. Recreate function — all VARCHAR columns are explicitly cast to TEXT in SELECT,
+--    so the RETURNS TABLE (all TEXT) always matches regardless of actual DB column sizes.
 CREATE OR REPLACE FUNCTION hybrid_search_mstc_catalog(
   p_search_query TEXT,
   p_embedding vector(384) DEFAULT NULL,
@@ -40,25 +45,27 @@ RETURNS TABLE (
 DECLARE
   v_tsquery tsquery;
 BEGIN
+  -- Use plainto_tsquery so natural language queries (e.g. "show me cars") don't cause syntax errors.
+  -- plainto_tsquery automatically splits plain text into keywords joined by AND.
   IF p_search_query IS NOT NULL AND p_search_query != '' THEN
-    v_tsquery := to_tsquery('english', p_search_query);
+    v_tsquery := plainto_tsquery('english', p_search_query);
   ELSE
     v_tsquery := NULL;
   END IF;
 
   RETURN QUERY
-  SELECT 
+  SELECT
     m.id,
     m.mstc_auction_number::TEXT,
-    m.seller_name,
-    m.category_name,
-    m.location,
+    m.seller_name::TEXT,
+    m.category_name::TEXT,
+    m.location::TEXT,
     m.opening_date,
     m.closing_date,
-    m.sanitized_document_path,
-    m.raw_materials_text,
-    m.asset_status AS status,
-    CASE 
+    m.sanitized_document_path::TEXT,
+    m.raw_materials_text::TEXT,
+    m.asset_status::TEXT AS status,
+    CASE
       WHEN v_tsquery IS NOT NULL THEN
         ts_rank_cd(
           setweight(to_tsvector('english', coalesce(m.category_name, '')), 'A') ||
@@ -68,20 +75,20 @@ BEGIN
           v_tsquery
         )
       ELSE 0.0
-    END AS search_rank,
-    CASE 
+    END::REAL AS search_rank,
+    CASE
       WHEN p_embedding IS NOT NULL AND m.embedding IS NOT NULL THEN
         1 - (m.embedding <=> p_embedding)
       ELSE 0.0
-    END AS semantic_similarity,
-    COUNT(*) OVER() AS total_count
+    END::REAL AS semantic_similarity,
+    COUNT(*) OVER()::BIGINT AS total_count
   FROM mstc_auctions m
-  WHERE 
+  WHERE
     m.asset_status = 'completed'
     AND (
       (v_tsquery IS NULL AND p_embedding IS NULL) OR
       (
-        v_tsquery IS NOT NULL AND 
+        v_tsquery IS NOT NULL AND
         (
           setweight(to_tsvector('english', coalesce(m.category_name, '')), 'A') ||
           setweight(to_tsvector('english', coalesce(m.seller_name, '')), 'B') ||
@@ -90,7 +97,7 @@ BEGIN
         ) @@ v_tsquery
       ) OR
       (
-        p_embedding IS NOT NULL AND 
+        p_embedding IS NOT NULL AND
         m.embedding IS NOT NULL AND
         (1 - (m.embedding <=> p_embedding)) > 0.1
       )
@@ -102,14 +109,14 @@ BEGIN
     AND (p_start_date IS NULL OR m.opening_date >= p_start_date::TIMESTAMPTZ)
     AND (p_end_date IS NULL OR m.opening_date <= p_end_date::TIMESTAMPTZ)
     AND (
-      p_has_images IS NULL OR p_has_images = FALSE OR 
+      p_has_images IS NULL OR p_has_images = FALSE OR
       (m.raw_materials_text ILIKE '%"extracted_images":%' AND m.raw_materials_text NOT ILIKE '%_catalog_page_%' AND m.raw_materials_text NOT ILIKE '%mstc-previews/%')
     )
     AND (
       p_has_docs IS NULL OR p_has_docs = FALSE OR
       (m.sanitized_document_path IS NOT NULL OR m.raw_materials_text ILIKE '%.pdf%')
     )
-  ORDER BY 
+  ORDER BY
     (
       CASE WHEN v_tsquery IS NOT NULL THEN
         ts_rank_cd(
