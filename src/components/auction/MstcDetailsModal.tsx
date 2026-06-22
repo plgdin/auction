@@ -10,7 +10,7 @@ import { Dropdown } from 'antd';
 import { useQuoteStore } from '../../store/quoteStore';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../store/appStore';
-import { formatPrice, CURRENCIES } from '../../utils/currency';
+import { formatPrice, CURRENCIES, formatPriceString } from '../../utils/currency';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuationService';
 import { marketPriceService } from '../../services/marketPriceService';
@@ -76,6 +76,20 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
   const { currency } = useAppStore();
   const currencySymbol = CURRENCIES[currency]?.symbol || '₹';
+  const currencyRate = CURRENCIES[currency]?.rate || 1;
+
+  // Helper to convert internal INR value to displayed currency value
+  const toDisplayVal = (val: number | '') => {
+    if (val === '') return '';
+    return Math.round(val * currencyRate);
+  };
+
+  // Helper to convert input display value back to internal INR value
+  const toInrVal = (valStr: string) => {
+    if (valStr === '') return '';
+    const num = parseFloat(valStr);
+    return isNaN(num) ? 0 : Math.round(num / currencyRate);
+  };
 
   const [signedImages, setSignedImages] = useState<{
     displayImage: string | null;
@@ -198,15 +212,15 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [extraChargeType, setExtraChargeType] = useState<string>('none');
 
   const extraChargeLabels: Record<string, string> = {
-    none: 'None (₹0)',
+    none: `None (${formatPrice(0, currency)})`,
     customs_10: 'Customs Duty (10%)',
     customs_15: 'Customs Duty (15%)',
     customs_20: 'Customs Duty (20%)',
     local_5: 'Entry Tax / Octroi (5%)',
     env_2: 'Environmental Cess (2%)',
     brokerage_3: 'Brokerage & Clearance (3%)',
-    warehousing_5k: 'Warehousing Surcharge (fixed ₹5,000)',
-    inspection_2k: 'Inspection / Quarantine (fixed ₹2,500)',
+    warehousing_5k: `Warehousing Surcharge (fixed ${formatPrice(5000, currency)})`,
+    inspection_2k: `Inspection / Quarantine (fixed ${formatPrice(2500, currency)})`,
   };
 
   const extraChargeMenu = (
@@ -368,17 +382,19 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
 
   const summary = generateCatalogSummary(item);
-  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+  const auctionNumber = item?.mstc_auction_number || '';
+  const shortId = auctionNumber.split('/').pop() || item?.id?.substring(0, 8) || 'N/A';
+  const parts = auctionNumber.split('/');
   const regionalOfficeName = expandMstcOffice(
-    item.mstc_auction_number.split('/')[0].toUpperCase() === 'MSTC'
-      ? item.mstc_auction_number.split('/')[1]
-      : item.seller_name
+    parts.length > 1 && parts[0].toUpperCase() === 'MSTC'
+      ? parts[1]
+      : item?.seller_name || ''
   );
-  const locationName = expandMstcOffice(item.location || '');
+  const locationName = expandMstcOffice(item?.location || '');
 
   // Parse start and close dates
   const parsedStartDate = summary.auctionStartTime ? parsePdfDateTime(summary.auctionStartTime) : null;
-  const auctionDate = parsedStartDate || new Date(item.opening_date);
+  const auctionDate = parsedStartDate || new Date(item?.opening_date || Date.now());
   const parsedCloseDate = summary.auctionCloseTime ? parsePdfDateTime(summary.auctionCloseTime) : null;
   const now = new Date();
   const diffMs = auctionDate.getTime() - now.getTime();
@@ -455,7 +471,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           {/* Modal Header */}
           <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
             <div className="flex items-center gap-2.5">
-              <span className="text-base font-bold text-slate-500 font-mono">
+              <span className="text-base font-bold text-slate-500 ">
                 Ref: {shortId}
               </span>
               <button
@@ -532,26 +548,26 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   {/* Cost Input Form Card */}
                   <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-mono flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider  flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
                         Interactive Bid & Cost Estimator
                       </h4>
-                      <span className="text-[10px] text-slate-400 font-mono">Real-time ROI Calculation</span>
+                      <span className="text-[10px] text-slate-400 ">Real-time ROI Calculation</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Current Bid Amount ({currency})</label>
+                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Current Bid Amount ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                           </div>
                           <input
                             type="number"
-                            value={customCosts.currentBid}
+                            value={toDisplayVal(customCosts.currentBid)}
                             onChange={(e) => {
                               const v = e.target.value;
-                              setCustomCosts(prev => ({ ...prev, currentBid: v === '' ? '' : Math.max(0, parseFloat(v) || 0) }));
+                              setCustomCosts(prev => ({ ...prev, currentBid: toInrVal(v) }));
                             }}
                             className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
@@ -559,17 +575,17 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Transportation Cost ({currency})</label>
+                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Transportation Cost ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                           </div>
                           <input
                             type="number"
-                            value={customCosts.transportation}
+                            value={toDisplayVal(customCosts.transportation)}
                             onChange={(e) => {
                               const v = e.target.value;
-                              setCustomCosts(prev => ({ ...prev, transportation: v === '' ? '' : Math.max(0, parseFloat(v) || 0) }));
+                              setCustomCosts(prev => ({ ...prev, transportation: toInrVal(v) }));
                             }}
                             className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
@@ -577,17 +593,17 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Loading & Unloading ({currency})</label>
+                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Loading & Unloading ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                           </div>
                           <input
                             type="number"
-                            value={customCosts.loadingUnloading}
+                            value={toDisplayVal(customCosts.loadingUnloading)}
                             onChange={(e) => {
                               const v = e.target.value;
-                              setCustomCosts(prev => ({ ...prev, loadingUnloading: v === '' ? '' : Math.max(0, parseFloat(v) || 0) }));
+                              setCustomCosts(prev => ({ ...prev, loadingUnloading: toInrVal(v) }));
                             }}
                             className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
@@ -595,17 +611,17 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Refurbishment Costs ({currency})</label>
+                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Refurbishment Costs ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                           </div>
                           <input
                             type="number"
-                            value={customCosts.refurbishment}
+                            value={toDisplayVal(customCosts.refurbishment)}
                             onChange={(e) => {
                               const v = e.target.value;
-                              setCustomCosts(prev => ({ ...prev, refurbishment: v === '' ? '' : Math.max(0, parseFloat(v) || 0) }));
+                              setCustomCosts(prev => ({ ...prev, refurbishment: toInrVal(v) }));
                             }}
                             className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
@@ -613,17 +629,17 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Other Service Charges ({currency})</label>
+                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Other Service Charges ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                           </div>
                           <input
                             type="number"
-                            value={customCosts.otherFees}
+                            value={toDisplayVal(customCosts.otherFees)}
                             onChange={(e) => {
                               const v = e.target.value;
-                              setCustomCosts(prev => ({ ...prev, otherFees: v === '' ? '' : Math.max(0, parseFloat(v) || 0) }));
+                              setCustomCosts(prev => ({ ...prev, otherFees: toInrVal(v) }));
                             }}
                             className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
@@ -631,7 +647,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1.5">Customs & Extra Charges ({currency})</label>
+                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Customs & Extra Charges ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
@@ -669,16 +685,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {/* Investment & ROI metrics grid */}
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
-                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Estimated Lot Value</h5>
-                          <div className="text-lg font-black text-slate-900 font-mono">
+                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ">Estimated Lot Value</h5>
+                          <div className="text-lg font-black text-slate-900 ">
                             {valuationData.totalLotValue > 0 ? formatPrice(valuationData.totalLotValue, currency) : 'N/A'}
                           </div>
                           <p className="text-[10px] text-slate-400 font-medium">Market value of items</p>
                         </div>
 
                         <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
-                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Total Lot Cost</h5>
-                          <div className="text-lg font-black text-slate-900 font-mono">
+                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ">Total Lot Cost</h5>
+                          <div className="text-lg font-black text-slate-900 ">
                             {valuationData.totalLotValue > 0 ? formatPrice(valuationData.totalCost, currency) : 'N/A'}
                           </div>
                           <p className="text-[10px] text-slate-400 font-medium">Bid + logistics</p>
@@ -692,8 +708,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             ? "bg-emerald-50/50 border-emerald-150 text-emerald-950"
                             : "bg-rose-50/50 border-rose-150 text-rose-950"
                         )}>
-                          <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest font-mono">Projected Profit</h5>
-                          <div className="text-lg font-black font-mono">
+                          <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest ">Projected Profit</h5>
+                          <div className="text-lg font-black ">
                             {valuationData.totalLotValue > 0
                               ? `${valuationData.estimatedProfit >= 0 ? '+' : ''}${formatPrice(valuationData.estimatedProfit, currency)}`
                               : 'N/A'
@@ -703,8 +719,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
 
                         <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
-                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Break-Even Bid</h5>
-                          <div className="text-lg font-black text-slate-900 font-mono">
+                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ">Break-Even Bid</h5>
+                          <div className="text-lg font-black text-slate-900 ">
                             {valuationData.totalLotValue > 0 ? formatPrice(valuationData.breakEven, currency) : 'N/A'}
                           </div>
                           <p className="text-[10px] text-slate-400 font-medium">Includes handling</p>
@@ -713,7 +729,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                       {/* Valuation Breakdown Table */}
                       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2 flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2 flex items-center justify-between">
                           <span>Valuation Details per Item</span>
                           <span className="text-[10px] text-slate-400 font-medium normal-case font-sans">
                             Valued using live pricing analysis
@@ -722,7 +738,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
                           <table className="w-full text-left border-collapse text-xs">
                             <thead>
-                              <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
+                              <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 ">
                                 <th className="py-2.5 px-3.5 font-bold">Item Description</th>
                                 <th className="py-2.5 px-3.5 font-bold text-right w-20">Quantity</th>
                                 <th className="py-2.5 px-3.5 font-bold text-right w-32">Unit Est. Value</th>
@@ -734,14 +750,14 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               {valuationData.items.map((row, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/50">
                                   <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.name}</td>
-                                  <td className="py-2.5 px-3.5 text-right font-mono text-slate-650">{row.qty}</td>
-                                  <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">
+                                  <td className="py-2.5 px-3.5 text-right  text-slate-650">{row.qty}</td>
+                                  <td className="py-2.5 px-3.5 text-right  text-slate-950 font-bold">
                                     {row.notAvailable ? 'N/A' : formatPrice(row.unitValue, currency)}
                                   </td>
-                                  <td className="py-2.5 px-3.5 text-right font-mono text-slate-950 font-bold">
+                                  <td className="py-2.5 px-3.5 text-right  text-slate-950 font-bold">
                                     {row.notAvailable ? 'N/A' : formatPrice(row.totalValue, currency)}
                                   </td>
-                                  <td className="py-2.5 px-3.5 text-center font-mono">
+                                  <td className="py-2.5 px-3.5 text-center ">
                                     <span className={clsx(
                                       "text-[10px] font-bold px-2 py-0.5 rounded",
                                       row.notAvailable ? "bg-slate-100 text-slate-650" :
@@ -762,7 +778,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {/* Risk & Confidence Assessment Panel */}
                       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider ">
                             Risk & Confidence Assessment
                           </h4>
                           <span className={clsx(
@@ -777,7 +793,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
-                            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider ">
                               <span>Pricing Consistency</span>
                               <span className="text-slate-700">{valuationData.riskAnalysis.pricingConfidence}%</span>
                             </div>
@@ -794,7 +810,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </div>
 
                           <div className="space-y-1.5">
-                            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider ">
                               <span>Overall Confidence</span>
                               <span className="text-slate-700 font-bold">{valuationData.riskAnalysis.overallConfidence}%</span>
                             </div>
@@ -820,7 +836,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                           <div>
-                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider ">
                               Price Trend Comparison (6 Months)
                             </h4>
                             <p className="text-[10px] text-slate-400 font-medium font-sans mt-0.5">
@@ -865,11 +881,17 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                 <YAxis
                                   axisLine={false}
                                   tickLine={false}
-                                  tickFormatter={(v) => `${currencySymbol}${v >= 100000 ? (v / 100000).toFixed(1) + 'L' : v.toLocaleString('en-IN')}`}
+                                  tickFormatter={(v) => {
+                                    const converted = v * currencyRate;
+                                    return `${currencySymbol}${converted >= 100000 && currency === 'INR' ? (converted / 100000).toFixed(1) + 'L' : Math.round(converted).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')}`;
+                                  }}
                                   tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 500 }}
                                 />
                                 <Tooltip
-                                  formatter={(value: any) => [`${currencySymbol}${value.toLocaleString('en-IN')}`, 'Est. Value']}
+                                  formatter={(value: any) => {
+                                    const converted = value * currencyRate;
+                                    return [`${currencySymbol}${Math.round(converted).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')}`, 'Est. Value'];
+                                  }}
                                   contentStyle={{
                                     borderRadius: '16px',
                                     border: '1px solid #e2e8f0',
@@ -891,17 +913,17 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {valuationData.internationalTotals && valuationData.totalLotValue > 0 && (
                         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider ">
                               Average International Market Price
                             </h4>
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-[10px] text-slate-400 ">
                               Global Average Rate
                             </span>
                           </div>
 
                           <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div>
-                              <span className="text-xs font-mono font-bold text-slate-500 uppercase tracking-wider block">Average Global Value</span>
+                              <span className="text-xs  font-bold text-slate-500 uppercase tracking-wider block">Average Global Value</span>
                               <h3 className="text-2xl font-black text-slate-955 mt-1">
                                 {formatPrice(Math.round((valuationData.internationalTotals.in + valuationData.internationalTotals.us + valuationData.internationalTotals.uk) / 3), currency)}
                               </h3>
@@ -909,7 +931,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                 Computed average across India, USA, and UK market rates
                               </p>
                             </div>
-                            <div className="flex gap-3 text-xs font-mono font-semibold text-slate-655 bg-white p-3 rounded-xl border border-slate-150 shrink-0">
+                            <div className="flex gap-3 text-xs  font-semibold text-slate-655 bg-white p-3 rounded-xl border border-slate-150 shrink-0">
                               <div className="pr-3 border-r border-slate-200">
                                 <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">US Rate</span>
                                 <span>${Math.round(((valuationData.internationalTotals.in + valuationData.internationalTotals.us + valuationData.internationalTotals.uk) / 3) / 85).toLocaleString('en-US')}</span>
@@ -929,10 +951,10 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 <>
                   {/* Category & Auction Ref Title */}
               <div>
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ">Category / Item Type</h4>
                 {(() => {
-                  const parts = item.category_name.split(' | ');
-                  const mainCat = parts[0];
+                  const parts = (item?.category_name || '').split(' | ');
+                  const mainCat = parts[0] || 'Unknown';
                   const subCat = parts[1];
                   return (
                     <div className="flex flex-col gap-0.5">
@@ -952,8 +974,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               {/* Auction Reference Banner */}
               <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-3xs">
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Official Auction Reference Number</span>
-                  <span className="font-mono text-base font-bold text-slate-800 break-all select-all">{item.mstc_auction_number}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ">Official Auction Reference Number</span>
+                  <span className=" text-base font-bold text-slate-800 break-all select-all">{item.mstc_auction_number}</span>
                 </div>
                 <button
                   onClick={() => {
@@ -987,35 +1009,47 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 {/* Seller & Location Details */}
                 <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
                   <div className="flex flex-col">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Regional Office</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Seller Name</span>
+                    <span className="text-[13.5px] font-bold text-slate-800 leading-snug mt-0.5">
+                      {item.seller_name || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col border-t border-slate-100 pt-2">
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Regional Office</span>
                     <span className="text-[13.5px] font-bold text-slate-800 leading-snug mt-0.5">
                       {regionalOfficeName}
                     </span>
                   </div>
                   {item.location && (
                     <div className="flex flex-col border-t border-slate-100 pt-2">
-                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Location / State</span>
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Location / State</span>
                       <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">{locationName}</span>
                     </div>
                   )}
+                  <div className="flex flex-col border-t border-slate-100 pt-2">
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Auction Type</span>
+                    <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
+                      {summary.auctionType || 'O-General'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Dates & Countdown */}
                 <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
                   <div className="flex flex-col">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Date</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Auction Date</span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Inspection Date Range</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Inspection Date Range</span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {summary.inspectionSchedule || 'N/A'}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono mb-1">Status</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest  mb-1">Status</span>
                     <div>
                       {(() => {
                         if (isClosed) {
@@ -1043,7 +1077,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               {/* Identified Materials & Lots */}
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-2.5 gap-2">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  flex items-center gap-2">
                     <span>Identified Inventory & Materials</span>
                     <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-sans font-medium normal-case">
                       {summary.items.length} lots identified
@@ -1063,7 +1097,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
                   <table className="w-full text-left border-collapse text-[13.5px]">
                     <thead>
-                      <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
+                      <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 ">
                         <th className="py-3 px-3.5 font-bold w-12 text-center">Lot</th>
                         <th className="py-3 px-3.5 font-bold">Material Description</th>
                         <th className="py-3 px-3.5 font-bold text-right">Quantity</th>
@@ -1074,7 +1108,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     <tbody className="divide-y divide-slate-105 text-slate-700">
                       {summary.items.map((row) => (
                         <tr key={row.sr} className="hover:bg-slate-50/50 align-top">
-                          <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
+                          <td className="py-3 px-3.5 text-center  font-bold text-slate-400">{row.sr}</td>
                           <td className="py-3 px-3.5 text-slate-900">
                             <div className="font-bold">{row.description}</div>
                             {/* Lot Images */}
@@ -1121,14 +1155,14 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               );
                             })()}
                           </td>
-                          <td className="py-3 px-3.5 text-right font-mono text-slate-950 font-bold">{row.qty} {row.unit}</td>
+                          <td className="py-3 px-3.5 text-right  text-slate-950 font-bold">{row.qty} {row.unit}</td>
                           <td className={clsx(
-                            "py-3 px-3.5 text-center font-mono text-xs font-bold",
+                            "py-3 px-3.5 text-center  text-xs font-bold",
                             row.marketPrice === "Not Available"
                               ? "text-slate-500 bg-slate-100/50"
                               : "text-emerald-600 bg-emerald-50/50"
                           )}>
-                            {row.marketPrice}
+                            {formatPriceString(row.marketPrice, currency)}
                           </td>
                           <td className="py-2.5 px-3.5 text-center">
                             <button
@@ -1151,7 +1185,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Compliance Card */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2.5">
                     Buyer Eligibility & Compliance
                   </h4>
                   <ul className="list-disc pl-5 space-y-2 text-[13.5px] text-slate-705">
@@ -1163,20 +1197,20 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                 {/* Financial Charges Card */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2.5">
                     Financial Terms & Service Fees
                   </h4>
                   <div className="space-y-3">
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase font-mono tracking-wider">EMD Details</span>
+                      <span className="text-slate-500 text-[11px] uppercase  tracking-wider">EMD Details</span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
-                        {summary.depositDetails.emd}
+                        {formatPriceString(summary.depositDetails.emd, currency)}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase font-mono tracking-wider">Pre-bid EMD</span>
+                      <span className="text-slate-500 text-[11px] uppercase  tracking-wider">Pre-bid EMD</span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
-                        {summary.depositDetails.preBidDdg}
+                        {formatPriceString(summary.depositDetails.preBidDdg, currency)}
                       </span>
                     </div>
                   </div>
@@ -1184,7 +1218,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                 {/* Market Intelligence & ROI Card */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5 flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2.5 flex items-center justify-between">
                     <span>Market Analysis & ROI</span>
                   </h4>
                   {(() => {
@@ -1223,7 +1257,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                     if (finalTurnover <= 0) {
                       return (
-                        <div className="py-4 text-center text-slate-500 font-bold bg-slate-50 border border-dashed border-slate-205 rounded-xl font-mono text-xs">
+                        <div className="py-4 text-center text-slate-500 font-bold bg-slate-50 border border-dashed border-slate-205 rounded-xl  text-xs">
                           Pricing Not Available
                         </div>
                       );
@@ -1234,27 +1268,27 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Projected Turnover</span>
                           <span className="font-bold text-slate-900">
-                            ₹{finalTurnover.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatPrice(finalTurnover, currency)}
                           </span>
                         </div>
                         
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Predicted Closing Bid</span>
                           <span className="font-bold text-indigo-650">
-                            ₹{predictedClosingBid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatPrice(predictedClosingBid, currency)}
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Projected Profit</span>
                           <span className="font-bold text-emerald-605">
-                            ₹{projectedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {formatPrice(projectedProfit, currency)}
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center pb-1">
                           <span className="text-slate-500 font-semibold">Projected ROI</span>
-                          <span className="font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-xs">
+                          <span className=" font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-xs">
                             +{roi.toFixed(1)}% ROI
                           </span>
                         </div>
@@ -1266,7 +1300,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
               {/* Key Contact Personnel */}
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-5">
-                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
+                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2.5">
                   Key Contact Personnel
                 </h4>
 
@@ -1285,22 +1319,22 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {mstcContacts.length > 0 && (
                         <div className="space-y-2.5">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest font-mono bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
+                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest  bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
                               MSTC Auction Officers
                             </span>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {mstcContacts.map((contact, i) => (
                               <div key={`mstc-${i}`} className="bg-blue-50/30 border border-blue-150/50 p-3.5 rounded-xl space-y-2">
-                                <span className="text-[10px] font-mono text-blue-600 font-bold uppercase tracking-wider">{contact.role}</span>
+                                <span className="text-[10px]  text-blue-600 font-bold uppercase tracking-wider">{contact.role}</span>
                                 <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
                                 <div className="space-y-1">
-                                  <p className="text-xs text-slate-605 font-mono break-all flex items-center gap-1.5">
+                                  <p className="text-xs text-slate-605  break-all flex items-center gap-1.5">
                                     <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                                     <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">{contact.email}</a>
                                   </p>
                                   {contact.phone && contact.phone !== 'no contact info available' && (
-                                    <p className="text-xs text-slate-605 font-mono flex items-center gap-1.5">
+                                    <p className="text-xs text-slate-605  flex items-center gap-1.5">
                                       <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                                       <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="hover:text-primary transition-colors">{contact.phone}</a>
                                     </p>
@@ -1316,22 +1350,22 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {sellerContacts.length > 0 && (
                         <div className="space-y-2.5">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest font-mono bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
+                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest  bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
                               Seller / Site Contacts
                             </span>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {sellerContacts.map((contact, i) => (
                               <div key={`seller-${i}`} className="bg-emerald-50/30 border border-emerald-150/50 p-3.5 rounded-xl space-y-2">
-                                <span className="text-[10px] font-mono text-emerald-600 font-bold uppercase tracking-wider">{contact.role}</span>
+                                <span className="text-[10px]  text-emerald-600 font-bold uppercase tracking-wider">{contact.role}</span>
                                 <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
                                 <div className="space-y-1">
-                                  <p className="text-xs text-slate-605 font-mono break-all flex items-center gap-1.5">
+                                  <p className="text-xs text-slate-605  break-all flex items-center gap-1.5">
                                     <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                                     <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">{contact.email}</a>
                                   </p>
                                   {contact.phone && contact.phone !== 'no contact info available' && (
-                                    <p className="text-xs text-slate-605 font-mono flex items-center gap-1.5">
+                                    <p className="text-xs text-slate-605  flex items-center gap-1.5">
                                       <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                                       <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="hover:text-primary transition-colors">{contact.phone}</a>
                                     </p>
@@ -1370,9 +1404,9 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         if (imageUrls.length === 0) return null;
                         return (
                           <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2 flex items-center justify-between">
                               <span>Auction Images</span>
-                              <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
+                              <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded ">{imageUrls.length} Photos</span>
                             </h4>
                             <div className="grid grid-cols-2 gap-2">
                               {imageUrls.map((url: string, idx: number) => (
@@ -1396,7 +1430,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                       {displayImage ? (
                         <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2">
                             {actualPhotos.includes(displayImage) ? 'Item Photo Preview' : 'Catalog Document Preview'}
                           </h4>
                           <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">

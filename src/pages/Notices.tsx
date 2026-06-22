@@ -21,8 +21,8 @@ export function Notices() {
     <div className="bg-slate-50 min-h-screen py-16">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
         <div className="flex items-center space-x-4 mb-10 border-b border-slate-200 pb-6">
-          <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
-            <Bell className="w-8 h-8 text-primary" />
+          <div className="w-14 h-14 bg-slate-100 rounded-xl flex items-center justify-center">
+            <Bell className="w-8 h-8 text-slate-900" />
           </div>
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Official Notices</h1>
@@ -32,7 +32,7 @@ export function Notices() {
 
         {isLoading ? (
           <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900"></div>
           </div>
         ) : notices.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
@@ -49,8 +49,8 @@ export function Notices() {
                     </div>
                     <div className="flex-grow">
                       <h2 className="text-xl font-bold text-slate-900 mb-2">{notice.title}</h2>
-                      <div className="flex items-center text-sm font-medium text-primary mb-4">
-                        <Calendar className="w-4 h-4 mr-2" />
+                      <div className="flex items-center text-sm font-semibold text-slate-900 mb-4">
+                        <Calendar className="w-4 h-4 mr-2 text-slate-400" />
                         {new Date(notice.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                       </div>
                       <div className="prose prose-slate max-w-none text-slate-600">

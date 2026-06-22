@@ -473,7 +473,7 @@ export function ScraperDashboard() {
     <div className="space-y-6">
       
       {/* KPI Cards Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         
         {/* Total Scraped */}
         <div className="bg-gradient-to-br from-white to-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
@@ -511,15 +511,15 @@ export function ScraperDashboard() {
               <RefreshCw className="w-4 h-4 animate-spin" />
             </div>
           </div>
-          <div className="flex justify-between items-end">
-            <div>
+          <div className="flex flex-wrap justify-between items-end gap-2">
+            <div className="min-w-[100px]">
               <p className="text-2xl font-black text-blue-700">{stats.processing}</p>
               <p className="text-xs text-slate-400 mt-1">Active worker lock</p>
             </div>
             {stats.processing > 0 && (
               <button
                 onClick={handleUnlockAllProcessing}
-                className="px-2.5 py-1 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-xs"
+                className="px-2.5 py-1 text-xs font-bold bg-slate-900 hover:bg-black text-white rounded-lg transition-all shadow-xs shrink-0"
               >
                 Release Locks
               </button>
@@ -549,15 +549,15 @@ export function ScraperDashboard() {
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <div className="flex justify-between items-end">
-            <div>
+          <div className="flex flex-wrap justify-between items-end gap-2">
+            <div className="min-w-[100px]">
               <p className="text-2xl font-black text-rose-700">{stats.failed}</p>
               <p className="text-xs text-slate-400 mt-1">Exceeded max retries</p>
             </div>
             {stats.failed > 0 && (
               <button
                 onClick={handleResetAllFailed}
-                className="px-2.5 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-all shadow-xs"
+                className="px-2.5 py-1 text-xs font-bold bg-slate-900 hover:bg-black text-white rounded-lg transition-all shadow-xs shrink-0"
               >
                 Reset All
               </button>
@@ -609,9 +609,9 @@ export function ScraperDashboard() {
           <button
             onClick={handleGenerateVectors}
             disabled={generateVectorsRunning}
-            className="flex items-center px-4 py-2 text-xs font-bold bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-700 hover:bg-indigo-100 transition-all shadow-xs"
+            className="flex items-center px-4 py-2 text-xs font-bold bg-slate-900 border border-slate-900 text-white hover:bg-black hover:border-black transition-all shadow-xs"
           >
-            <Cpu className={`w-3.5 h-3.5 mr-2 ${generateVectorsRunning ? 'animate-pulse text-indigo-500' : 'text-indigo-600'}`} />
+            <Cpu className={`w-3.5 h-3.5 mr-2 ${generateVectorsRunning ? 'animate-pulse text-slate-300' : 'text-white'}`} />
             {generateVectorsRunning ? 'Generating...' : 'Generate Vectors'}
           </button>
           <span className="text-xs text-slate-400 font-medium hidden sm:inline ml-2">
@@ -952,7 +952,7 @@ export function ScraperDashboard() {
                 {scraperRunning && (
                   <button
                     onClick={sendEnterKey}
-                    className="flex items-center px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all shadow-sm animate-pulse"
+                    className="flex items-center px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-black text-white rounded-lg transition-all shadow-sm animate-pulse"
                     title="Solve CAPTCHA, submit filters on the browser window, then click this button to continue."
                   >
                     <CornerDownLeft className="w-3.5 h-3.5 mr-1.5" /> Solve CAPTCHA & Continue
@@ -1075,7 +1075,7 @@ export function ScraperDashboard() {
                     }
                   }}
                   disabled={!isLocalApiAvailable || clearDbRunning}
-                  className="flex items-center px-4 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-all disabled:opacity-50"
+                  className="flex items-center px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-black text-white rounded-lg transition-all disabled:opacity-50"
                 >
                   <Trash2 className="w-3.5 h-3.5 mr-1.5 fill-white" /> Clear DB & Storage
                 </button>
@@ -1137,7 +1137,7 @@ export function ScraperDashboard() {
                 <button
                   onClick={startBackfill}
                   disabled={!isLocalApiAvailable || backfillRunning}
-                  className="flex items-center px-4 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all disabled:opacity-50"
+                  className="flex items-center px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-black text-white rounded-lg transition-all disabled:opacity-50"
                 >
                   <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Backfiller
                 </button>

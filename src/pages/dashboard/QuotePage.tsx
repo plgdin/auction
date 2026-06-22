@@ -820,7 +820,7 @@ export function QuotePage() {
                         { value: '', label: '-- Choose an Auction Catalog --' },
                         ...interestedAuctions.map((auc) => ({
                           value: auc.id,
-                          label: `${auc.mstc_auction_number.split('/').pop() || 'Catalog'} - ${auc.seller_name.substring(0, 30)}`
+                          label: `${(auc.mstc_auction_number || '').split('/').pop() || 'Catalog'} - ${(auc.seller_name || '').substring(0, 30)}`
                         }))
                       ]}
                       placeholder="-- Choose an Auction Catalog --"

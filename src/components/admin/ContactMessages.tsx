@@ -88,7 +88,7 @@ export function ContactMessages() {
               className={clsx(
                 "px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all",
                 filterStatus === status
-                  ? "bg-primary text-white shadow-sm"
+                  ? "bg-slate-900 text-white shadow-sm"
                   : "text-slate-600 hover:bg-slate-100"
               )}
             >
@@ -103,7 +103,7 @@ export function ContactMessages() {
             placeholder="Search messages..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
           />
         </div>
       </div>
@@ -111,7 +111,7 @@ export function ContactMessages() {
       {/* Messages List */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-900"></div>
         </div>
       ) : filteredMessages.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-300">
@@ -141,7 +141,7 @@ export function ContactMessages() {
                 className={clsx(
                   "bg-white border rounded-xl overflow-hidden transition-all duration-200",
                   isExpanded
-                    ? "border-primary/30 shadow-md ring-1 ring-primary/10"
+                    ? "border-slate-900/30 shadow-md ring-1 ring-slate-900/10"
                     : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
                 )}
               >

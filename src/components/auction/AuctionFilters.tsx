@@ -28,6 +28,7 @@ interface AuctionFiltersProps {
     endDate?: string;
     hasAssetDocuments?: boolean;
     hasImages?: boolean;
+    isReauction?: boolean;
   }) => void;
   isOpen: boolean;
   onClose: () => void;
@@ -47,6 +48,7 @@ interface AuctionFiltersProps {
     endDate?: string;
     hasAssetDocuments?: boolean;
     hasImages?: boolean;
+    isReauction?: boolean;
   };
   activeTab?: 'commercial' | 'mstc';
   customCategories?: string[];
@@ -96,6 +98,7 @@ export function AuctionFilters({
   const [endDate, setEndDate] = useState<string>(initialFilters.endDate || '');
   const [hasAssetDocuments, setHasAssetDocuments] = useState<boolean>(initialFilters.hasAssetDocuments || false);
   const [hasImages, setHasImages] = useState<boolean>(initialFilters.hasImages || false);
+  const [isReauction, setIsReauction] = useState<boolean>(initialFilters.isReauction || false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
@@ -131,6 +134,7 @@ export function AuctionFilters({
     setEndDate(initialFilters.endDate || '');
     setHasAssetDocuments(initialFilters.hasAssetDocuments || false);
     setHasImages(initialFilters.hasImages || false);
+    setIsReauction(initialFilters.isReauction || false);
 
     if (initialFilters.startDate) {
       setCalendarMonth(new Date(initialFilters.startDate));
@@ -315,6 +319,7 @@ export function AuctionFilters({
       endDate: endDate || undefined,
       hasAssetDocuments: hasAssetDocuments || undefined,
       hasImages: hasImages || undefined,
+      isReauction: isReauction || undefined,
     });
     if (window.innerWidth < 1024) onClose();
   };
@@ -331,6 +336,7 @@ export function AuctionFilters({
     setEndDate('');
     setHasAssetDocuments(false);
     setHasImages(false);
+    setIsReauction(false);
     onFilterChange({
       categoryIds: [],
       subcategory: undefined,
@@ -347,6 +353,7 @@ export function AuctionFilters({
       endDate: undefined,
       hasAssetDocuments: undefined,
       hasImages: undefined,
+      isReauction: undefined,
     });
   };
 
@@ -548,16 +555,56 @@ export function AuctionFilters({
     return acc;
   }, {} as Record<string, string>);
 
+  const isDirty = (() => {
+    const arraysEqual = (a: string[], b: string[]) => {
+      if (a.length !== b.length) return false;
+      const sortedA = [...a].sort();
+      const sortedB = [...b].sort();
+      return sortedA.every((val, index) => val === sortedB[index]);
+    };
+
+    const initialCats = initialFilters.categoryIds || [];
+    if (!arraysEqual(selectedCategories, initialCats)) return true;
+
+    const initialSubs = initialFilters.subcategories || (initialFilters.subcategory ? [initialFilters.subcategory] : []);
+    if (!arraysEqual(selectedSubcategories, initialSubs)) return true;
+
+    const initialListing = initialFilters.listingType || 'all';
+    if (selectedListingType !== initialListing) return true;
+
+    const initialOffices = initialFilters.regionalOffices || (initialFilters.regionalOffice ? [initialFilters.regionalOffice] : []);
+    if (!arraysEqual(selectedRegionalOffices, initialOffices)) return true;
+
+    const initialSellers = initialFilters.mstcSellers || (initialFilters.mstcSeller ? [initialFilters.mstcSeller] : []);
+    if (!arraysEqual(selectedMstcSellers, initialSellers)) return true;
+
+    const initialLocs = initialFilters.locations || (initialFilters.location ? [initialFilters.location] : []);
+    if (!arraysEqual(selectedLocations, initialLocs)) return true;
+
+    const initialPreBid = initialFilters.preBid || 'all';
+    if (selectedPreBid !== initialPreBid) return true;
+
+    if (startDate !== (initialFilters.startDate || '')) return true;
+    if (endDate !== (initialFilters.endDate || '')) return true;
+
+    if (hasAssetDocuments !== (initialFilters.hasAssetDocuments || false)) return true;
+    if (hasImages !== (initialFilters.hasImages || false)) return true;
+    if (isReauction !== (initialFilters.isReauction || false)) return true;
+
+    return false;
+  })();
+
   return (
     <div 
       ref={containerRef}
       className={clsx(
-        "fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out overflow-y-auto",
-        "lg:relative lg:translate-x-0 lg:w-full lg:h-fit lg:bg-white lg:border lg:border-slate-200 lg:rounded-2xl lg:shadow-xs lg:overflow-visible",
+        "fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out flex flex-col",
+        "lg:relative lg:translate-x-0 lg:w-full lg:bg-white lg:border lg:border-slate-200 lg:rounded-2xl lg:shadow-xs lg:overflow-hidden lg:h-[calc(100vh-140px)]",
         isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:shadow-none"
       )}
     >
-      <div className="p-6">
+      {/* Scrollable Content wrapper */}
+      <div className="flex-1 overflow-y-auto p-6 pb-28 scroll-smooth custom-scrollbar" style={{ scrollbarWidth: 'thin' }}>
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-xl font-bold text-slate-900 flex items-center">
             <Filter className="w-5 h-5 mr-2 text-primary" />
@@ -714,9 +761,11 @@ export function AuctionFilters({
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Asset Attachments</h3>
             <div className="space-y-3">
-              <label className="flex items-center cursor-pointer group">
+              <label 
+                onClick={() => setHasAssetDocuments(!hasAssetDocuments)}
+                className="flex items-center cursor-pointer group"
+              >
                 <div
-                  onClick={() => setHasAssetDocuments(!hasAssetDocuments)}
                   className={clsx(
                     "w-5 h-5 rounded border-2 transition-all duration-150 flex items-center justify-center flex-shrink-0 cursor-pointer",
                     hasAssetDocuments
@@ -732,9 +781,11 @@ export function AuctionFilters({
                 </div>
                 <span className="ml-3 text-sm text-slate-700 select-none">Has Asset Documents</span>
               </label>
-              <label className="flex items-center cursor-pointer group">
+              <label 
+                onClick={() => setHasImages(!hasImages)}
+                className="flex items-center cursor-pointer group"
+              >
                 <div
-                  onClick={() => setHasImages(!hasImages)}
                   className={clsx(
                     "w-5 h-5 rounded border-2 transition-all duration-150 flex items-center justify-center flex-shrink-0 cursor-pointer",
                     hasImages
@@ -749,6 +800,35 @@ export function AuctionFilters({
                   )}
                 </div>
                 <span className="ml-3 text-sm text-slate-700 select-none">Has Photos / Images</span>
+              </label>
+            </div>
+          </div>
+        )}
+
+        {/* Auction Type - MSTC only */}
+        {activeTab === 'mstc' && (
+          <div className="mb-8">
+            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Auction Type</h3>
+            <div className="space-y-3">
+              <label 
+                onClick={() => setIsReauction(!isReauction)}
+                className="flex items-center cursor-pointer group"
+              >
+                <div
+                  className={clsx(
+                    "w-5 h-5 rounded border-2 transition-all duration-150 flex items-center justify-center flex-shrink-0 cursor-pointer",
+                    isReauction
+                      ? "border-primary bg-primary"
+                      : "border-slate-300 bg-white group-hover:border-slate-400"
+                  )}
+                >
+                  {isReauction && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3 text-white">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+                <span className="ml-3 text-sm text-slate-700 select-none">Re-auction Only</span>
               </label>
             </div>
           </div>
@@ -895,6 +975,8 @@ export function AuctionFilters({
           </div>
         </div>
 
+
+
         {/* Date Range */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Auction Date Range</h3>
@@ -963,20 +1045,29 @@ export function AuctionFilters({
           )}
         </div>
 
-        <div className="flex gap-4">
-          <button
-            onClick={handleReset}
-            className="w-full px-4 py-2.5 border border-slate-250 text-sm font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-350 transition-all duration-200 cursor-pointer"
-          >
-            Reset
-          </button>
-          <button
-            onClick={handleApply}
-            className="w-full px-4 py-2.5 text-sm font-semibold rounded-lg text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
-          >
-            Apply
-          </button>
-        </div>
+      </div>
+
+      {/* Floating Apply Changes Action Bar */}
+      <div 
+        className={clsx(
+          "absolute bottom-4 left-4 right-4 z-30 p-3 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-lg transition-all duration-300 ease-out flex items-center justify-between gap-3",
+          isDirty 
+            ? "opacity-100 translate-y-0 scale-100" 
+            : "opacity-0 translate-y-4 scale-95 pointer-events-none"
+        )}
+      >
+        <button
+          onClick={handleReset}
+          className="px-4 py-2 border border-slate-250 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 transition-all duration-200 cursor-pointer"
+        >
+          Reset
+        </button>
+        <button
+          onClick={handleApply}
+          className="px-5 py-2 text-xs font-bold rounded-lg text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+        >
+          Apply Filters
+        </button>
       </div>
     </div>
   );

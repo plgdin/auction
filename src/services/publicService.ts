@@ -691,7 +691,7 @@ export function estimateAuctionValues(item: MstcSanitizedAuction): { preBid: num
   let preBid = 50000; // default fallback
   let totalValue = 500000; // default fallback (preBid * 10)
   
-  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+  const shortId = (item?.mstc_auction_number || '').split('/').pop() || item?.id?.substring(0, 8) || '';
   const shortIdNum = parseInt(shortId, 10);
   if (!isNaN(shortIdNum)) {
     if (shortIdNum % 4 === 0) preBid = 100000;
@@ -1512,6 +1512,7 @@ export const MstcSearchService = {
       locations?: string[];
       regionalOffice?: string;
       regionalOffices?: string[];
+      isReauction?: boolean;
     }
   ): Promise<MstcSanitizedAuction[]> {
     try {
@@ -1526,6 +1527,10 @@ export const MstcSearchService = {
           .eq('asset_status', 'completed')
           .order('opening_date', { ascending: false })
           .range(from, from + pageSize - 1);
+
+        if (filters?.isReauction !== undefined) {
+          queryBuilder = queryBuilder.eq('is_reauction', filters.isReauction);
+        }
 
         if (filters?.sellers && filters.sellers.length > 0) {
           queryBuilder = queryBuilder.in('seller_name', filters.sellers);
@@ -1574,12 +1579,12 @@ export const MstcSearchService = {
       if (filters?.categories && filters.categories.length > 0) {
         const cats = filters.categories;
         mapped = mapped.filter(item => {
-          const parts = item.category_name.split(' | ');
+          const parts = (item.category_name || '').split(' | ');
           return cats.includes(parts[0]);
         });
       } else if (filters?.category) {
         mapped = mapped.filter(item => {
-          const parts = item.category_name.split(' | ');
+          const parts = (item.category_name || '').split(' | ');
           return parts[0] === filters.category;
         });
       }
@@ -1587,12 +1592,12 @@ export const MstcSearchService = {
       if (filters?.subcategories && filters.subcategories.length > 0) {
         const subcats = filters.subcategories;
         mapped = mapped.filter(item => {
-          const parts = item.category_name.split(' | ');
+          const parts = (item.category_name || '').split(' | ');
           return subcats.includes(parts[1]);
         });
       } else if (filters?.subcategory) {
         mapped = mapped.filter(item => {
-          const parts = item.category_name.split(' | ');
+          const parts = (item.category_name || '').split(' | ');
           return parts[1] === filters.subcategory;
         });
       }
@@ -1906,6 +1911,7 @@ export const MstcSearchService = {
       regionalOffices?: string[];
       hasImages?: boolean;
       hasAssetDocuments?: boolean;
+      isReauction?: boolean;
       startDate?: string;
       endDate?: string;
       page?: number;
@@ -1913,6 +1919,48 @@ export const MstcSearchService = {
     }
   ): Promise<{ data: MstcSanitizedAuction[], count: number }> {
     try {
+      if (filters?.isReauction !== undefined && (!query || query.trim() === '')) {
+        // Direct fallback to client-side search to get correct database-side filtering and pagination
+        let fallbackData = await MstcSearchService.searchClientSide(query, filters);
+        
+        // Filter by images/docs locally if needed
+        if (filters?.hasImages) {
+          fallbackData = fallbackData.filter(item => {
+            if (!item.raw_materials_text) return false;
+            try {
+              const parsed = JSON.parse(item.raw_materials_text);
+              const images = parsed?.extracted_images || [];
+              return images.some((url: string) => {
+                const lower = url.toLowerCase();
+                return !lower.endsWith('.pdf') && 
+                       !lower.includes('_catalog_page_') && 
+                       !lower.includes('mstc-previews/') &&
+                       /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
+              });
+            } catch { return false; }
+          });
+        }
+        
+        if (filters?.hasAssetDocuments) {
+          fallbackData = fallbackData.filter(item => {
+            if (!item.raw_materials_text) return false;
+            try {
+              const parsed = JSON.parse(item.raw_materials_text);
+              const images = parsed?.extracted_images || [];
+              return images.some((url: string) => url.toLowerCase().endsWith('.pdf'));
+            } catch { return false; }
+          });
+        }
+
+        const totalCount = fallbackData.length;
+        const page = filters?.page || 1;
+        const limit = filters?.limit || 12;
+        const startIndex = (page - 1) * limit;
+        const paginatedData = fallbackData.slice(startIndex, startIndex + limit);
+
+        return { data: paginatedData, count: totalCount };
+      }
+
       const cleanedQuery = cleanQueryPriceTypos(query);
       const pConstraint = parsePriceConstraint(cleanedQuery);
       const workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
@@ -1957,14 +2005,32 @@ export const MstcSearchService = {
 
       const totalCount = Number(data[0].total_count) || 0;
 
+      // Fetch is_reauction status for these items to ensure we have it in the UI and can filter by it
+      const itemIds = (data as any[]).map(item => item.id);
+      const { data: reauctionStatuses, error: statusError } = await supabase
+        .from('mstc_auctions')
+        .select('id, is_reauction')
+        .in('id', itemIds);
+
+      const reauctionMap = new Map<string, boolean>();
+      if (!statusError && reauctionStatuses) {
+        reauctionStatuses.forEach(r => reauctionMap.set(r.id, !!r.is_reauction));
+      }
+
       // 2. Map Categories
       let mapped = (data as any[]).map(item => {
         const { category, subcategory } = mapRawCategory(item.category_name);
         return {
           ...item,
+          is_reauction: reauctionMap.get(item.id) ?? false,
           category_name: `${category} | ${subcategory}`
         } as MstcSanitizedAuction;
       });
+
+      // Filter by isReauction locally if specified
+      if (filters?.isReauction !== undefined) {
+        mapped = mapped.filter(item => item.is_reauction === filters.isReauction);
+      }
 
       // Filter by price constraint locally (since it requires JS computation)
       if (pConstraint) {

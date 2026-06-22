@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { router } from './router';
 import { useAuthStore } from './store/authStore';
+import { useAppStore } from './store/appStore';
+import { fetchLatestRates } from './utils/currency';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { embeddingService } from './services/embeddingService';
 import { MstcSearchService } from './services/publicService';
@@ -20,15 +22,25 @@ const queryClient = new QueryClient({
 
 function App() {
   const { initializeAuth } = useAuthStore();
+  const { setCurrencyRates } = useAppStore();
 
   useEffect(() => {
     initializeAuth();
+    
+    // Fetch latest currency rates dynamically on load
+    fetchLatestRates()
+      .then((rates) => {
+        if (rates) {
+          setCurrencyRates(rates);
+        }
+      })
+      .catch((err) => console.warn('Dynamic exchange rate fetch failed:', err));
     
     // Background pre-warming and pre-fetching to guarantee < 1s loading times
     embeddingService.prewarmModel().catch(err => console.warn('Pre-warming model failed:', err));
     MstcSearchService.getMstcFilterOptions().catch(err => console.warn('Pre-fetching filter options failed:', err));
     auctionService.getCategories().catch(err => console.warn('Pre-fetching categories failed:', err));
-  }, [initializeAuth]);
+  }, [initializeAuth, setCurrencyRates]);
 
   return (
     <QueryClientProvider client={queryClient}>

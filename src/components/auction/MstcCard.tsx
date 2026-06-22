@@ -5,6 +5,8 @@ import type { MstcSanitizedAuction } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
 import { storageService } from '../../services/storageService';
+import { useAppStore } from '../../store/appStore';
+import { formatPriceString } from '../../utils/currency';
 
 interface MstcCardProps {
   item: MstcSanitizedAuction;
@@ -15,7 +17,8 @@ interface MstcCardProps {
 }
 
 export function MstcCard({ item, isGrid = true, onPreview, isInterested = false, onInterestedToggle }: MstcCardProps) {
-  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+  const { currency } = useAppStore();
+  const shortId = (item?.mstc_auction_number || '').split('/').pop() || item?.id?.substring(0, 8) || 'N/A';
   const summary = generateCatalogSummary(item);
   
   // Distinguish actual item photos from document page preview images
@@ -23,8 +26,10 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('_page_') && !url.toLowerCase().includes('mstc-previews/') && !url.toLowerCase().endsWith('.pdf')
   );
   
-  const hasOtherMedia = actualPhotos.length > 0;
-  const rawDisplayImage = actualPhotos.length > 0 ? actualPhotos[0] : (summary.preview_image_url || null);
+  const hasOtherMedia = (summary.extracted_images || []).length > 0;
+  const rawDisplayImage = actualPhotos.length > 0
+    ? actualPhotos[0]
+    : (summary.preview_image_url || (summary.extracted_images && summary.extracted_images.length > 0 ? summary.extracted_images[0] : null));
 
   const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
@@ -48,10 +53,10 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     return () => { cancelled = true; };
   }, [rawDisplayImage]);
 
-  const parts = item.mstc_auction_number.split('/');
-  const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item.seller_name;
+  const parts = (item?.mstc_auction_number || '').split('/');
+  const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item?.seller_name || '';
   const regionalOfficeName = expandMstcOffice(rawOffice);
-  const locationName = expandMstcOffice(item.location);
+  const locationName = expandMstcOffice(item?.location);
 
   // Parse start and close dates
   const parsedStartDate = summary.auctionStartTime ? parsePdfDateTime(summary.auctionStartTime) : null;
@@ -167,8 +172,8 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
             {cardHeader}
             
             {(() => {
-              const parts = item.category_name.split(' | ');
-              const mainCat = parts[0];
+              const parts = (item?.category_name || '').split(' | ');
+              const mainCat = parts[0] || 'Unknown';
               const subCat = parts[1];
               return (
                 <div className="mb-3">
@@ -207,11 +212,11 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               <div className="space-y-2 text-xs border-l border-slate-100 pl-4">
                 <div className="flex items-center text-slate-655">
                   <Landmark className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>EMD: <strong className="text-slate-700 font-semibold">{summary.depositDetails.emd}</strong></span>
+                  <span>EMD: <strong className="text-slate-700 font-semibold">{formatPriceString(summary.depositDetails.emd, currency)}</strong></span>
                 </div>
                 <div className="flex items-center text-slate-655">
                   <ShieldCheck className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Pre-bid: <strong className="text-slate-700 font-semibold">{summary.depositDetails.preBidDdg}</strong></span>
+                  <span>Pre-bid: <strong className="text-slate-700 font-semibold">{formatPriceString(summary.depositDetails.preBidDdg, currency)}</strong></span>
                 </div>
               </div>
 
@@ -297,8 +302,8 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
         {cardHeader}
 
         {(() => {
-          const parts = item.category_name.split(' | ');
-          const mainCat = parts[0];
+          const parts = (item?.category_name || '').split(' | ');
+          const mainCat = parts[0] || 'Unknown';
           const subCat = parts[1];
           return (
             <div className="mb-3">
@@ -333,14 +338,14 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
             <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">EMD Required</span>
-            <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.emd}>
-              {summary.depositDetails.emd}
+            <span className="font-bold text-slate-700 truncate" title={formatPriceString(summary.depositDetails.emd, currency)}>
+              {formatPriceString(summary.depositDetails.emd, currency)}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
             <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
-            <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.preBidDdg}>
-              {summary.depositDetails.preBidDdg}
+            <span className="font-bold text-slate-700 truncate" title={formatPriceString(summary.depositDetails.preBidDdg, currency)}>
+              {formatPriceString(summary.depositDetails.preBidDdg, currency)}
             </span>
           </div>
         </div>

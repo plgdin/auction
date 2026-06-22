@@ -185,6 +185,7 @@ export function Auctions() {
   const selectedMstcRegionalOffices = searchParams.getAll('mstc_regional_office');
   const mstcHasAssetDocuments = searchParams.get('has_docs') === 'true';
   const mstcHasImages = searchParams.get('has_images') === 'true';
+  const mstcIsReauction = searchParams.get('is_reauction') === 'true';
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -390,6 +391,7 @@ export function Auctions() {
         endDate,
         hasImages: mstcHasImages,
         hasAssetDocuments: mstcHasAssetDocuments,
+        isReauction: mstcIsReauction || undefined,
         page,
         limit
       });
@@ -412,6 +414,7 @@ export function Auctions() {
     endDate,
     mstcHasAssetDocuments,
     mstcHasImages,
+    mstcIsReauction,
     page,
     limit
   ]);
@@ -531,6 +534,13 @@ export function Auctions() {
           next.set('has_images', 'true');
         } else {
           next.delete('has_images');
+        }
+      }
+      if ('isReauction' in newFilters) {
+        if (newFilters.isReauction) {
+          next.set('is_reauction', 'true');
+        } else {
+          next.delete('is_reauction');
         }
       }
 
@@ -817,7 +827,8 @@ export function Auctions() {
                 startDate,
                 endDate,
                 hasAssetDocuments: mstcHasAssetDocuments,
-                hasImages: mstcHasImages
+                hasImages: mstcHasImages,
+                isReauction: mstcIsReauction
               }}
               activeTab={activeTab}
               customCategories={mstcOptions.categories}

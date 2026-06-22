@@ -117,6 +117,7 @@ export function Auctions() {
   const selectedMstcLocations = searchParams.getAll('mstc_location');
   const selectedMstcSellers = searchParams.getAll('mstc_seller');
   const selectedMstcRegionalOffices = searchParams.getAll('mstc_regional_office');
+  const mstcIsReauction = searchParams.get('is_reauction') === 'true';
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -236,12 +237,13 @@ export function Auctions() {
   const loadMstcData = useCallback(async () => {
     setIsMstcLoading(true);
     try {
-      const data = await MstcSearchService.searchMarketplaceCatalog(searchQuery, {
+      const { data } = await MstcSearchService.searchMarketplaceCatalog(searchQuery, {
         categories: selectedMstcCategories,
         subcategories: selectedMstcSubcategories,
         locations: selectedMstcLocations,
         sellers: selectedMstcSellers,
-        regionalOffices: selectedMstcRegionalOffices
+        regionalOffices: selectedMstcRegionalOffices,
+        isReauction: mstcIsReauction || undefined
       });
 
       let filteredData = data;
@@ -275,7 +277,8 @@ export function Auctions() {
     selectedMstcSellersJoined,
     selectedMstcRegionalOfficesJoined,
     startDate,
-    endDate
+    endDate,
+    mstcIsReauction
   ]);
 
   const loadMstcOptions = useCallback(async () => {
@@ -393,6 +396,15 @@ export function Auctions() {
           next.set('endDate', newFilters.endDate);
         } else {
           next.delete('endDate');
+        }
+      }
+
+      // Update isReauction
+      if ('isReauction' in newFilters) {
+        if (newFilters.isReauction) {
+          next.set('is_reauction', 'true');
+        } else {
+          next.delete('is_reauction');
         }
       }
 
@@ -548,14 +560,14 @@ export function Auctions() {
             </div>
             <input
               type="text"
-              className="block w-full pl-11 pr-24 py-4 border-0 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary sm:text-lg shadow-lg text-slate-900"
+              className="block w-full pl-11 pr-24 py-4 border-0 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 sm:text-lg shadow-lg text-slate-900"
               placeholder={activeTab === 'commercial' ? "Search by title, reference number, or keywords..." : "Search MSTC catalog numbers, categories, or sellers..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button
               type="submit"
-              className="absolute right-2 top-2 bottom-2 px-6 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
+              className="absolute right-2 top-2 bottom-2 px-6 bg-slate-900 text-white font-medium rounded-lg hover:bg-black transition-colors"
             >
               Search
             </button>
@@ -596,7 +608,8 @@ export function Auctions() {
                 regionalOffices: selectedMstcRegionalOffices,
                 mstcSellers: selectedMstcSellers,
                 startDate,
-                endDate
+                endDate,
+                isReauction: mstcIsReauction
               }}
               activeTab={activeTab}
               customCategories={mstcOptions.categories}
@@ -647,7 +660,7 @@ export function Auctions() {
                       onClick={() => setIsGridView(true)}
                       className={clsx(
                         "p-1.5 rounded-md transition-colors",
-                        isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
+                        isGridView ? "bg-white shadow-sm text-slate-900 font-bold" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
                       <LayoutGrid className="w-5 h-5" />
@@ -656,7 +669,7 @@ export function Auctions() {
                       onClick={() => setIsGridView(false)}
                       className={clsx(
                         "p-1.5 rounded-md transition-colors",
-                        !isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
+                        !isGridView ? "bg-white shadow-sm text-slate-900 font-bold" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
                       <List className="w-5 h-5" />
@@ -675,7 +688,7 @@ export function Auctions() {
                       onClick={() => setIsGridView(true)}
                       className={clsx(
                         "p-1.5 rounded-md transition-colors cursor-pointer",
-                        isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
+                        isGridView ? "bg-white shadow-sm text-slate-900 font-bold" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
                       <LayoutGrid className="w-5 h-5" />
@@ -684,7 +697,7 @@ export function Auctions() {
                       onClick={() => setIsGridView(false)}
                       className={clsx(
                         "p-1.5 rounded-md transition-colors cursor-pointer",
-                        !isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
+                        !isGridView ? "bg-white shadow-sm text-slate-900 font-bold" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
                       <List className="w-5 h-5" />
@@ -778,7 +791,7 @@ export function Auctions() {
                                   className={clsx(
                                     "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset",
                                     page === i + 1
-                                      ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
+                                      ? "z-10 bg-slate-900 text-white ring-slate-900 focus-visible:outline-slate-900"
                                       : "text-slate-900 ring-slate-300 hover:bg-slate-50"
                                   )}
                                 >

@@ -202,6 +202,7 @@ export const recommendationService = {
           const { preBid, totalValue } = estimateAuctionValues(item);
 
           return {
+            ...item,
             id: item.id,
             title: `${subCat} - ${item.seller_name}`,
             description: item.raw_materials_text || '',

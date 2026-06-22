@@ -208,7 +208,7 @@ export function FaqManagement() {
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center px-4 py-2.5 bg-primary text-white hover:bg-primary/95 rounded-lg text-sm font-bold transition-all shadow-xs cursor-pointer"
+          className="flex items-center px-4 py-2.5 bg-slate-900 text-white hover:bg-black rounded-lg text-sm font-bold transition-all shadow-xs cursor-pointer"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add FAQ Item
@@ -479,7 +479,7 @@ export function FaqManagement() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/95 transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-black transition-all shadow-xs disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? 'Saving...' : (editingId ? 'Save Changes' : 'Create FAQ')}
                 </button>

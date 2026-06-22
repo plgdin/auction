@@ -152,10 +152,12 @@
   * {
     border-color: var(--border);
   }
+  body, html, button, input, select, textarea, a, p, span, h1, h2, h3, h4, h5, h6, th, td {
+    font-family: var(--font-sans);
+  }
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: var(--font-sans);
   }
 }
 

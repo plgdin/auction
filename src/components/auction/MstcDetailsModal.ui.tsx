@@ -160,17 +160,19 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   };
 
   const summary = generateCatalogSummary(item);
-  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+  const auctionNumber = item?.mstc_auction_number || '';
+  const shortId = auctionNumber.split('/').pop() || item?.id?.substring(0, 8) || 'N/A';
+  const parts = auctionNumber.split('/');
   const regionalOfficeName = expandMstcOffice(
-    item.mstc_auction_number.split('/')[0].toUpperCase() === 'MSTC'
-      ? item.mstc_auction_number.split('/')[1]
-      : item.seller_name
+    parts.length > 1 && parts[0].toUpperCase() === 'MSTC'
+      ? parts[1]
+      : item?.seller_name || ''
   );
-  const locationName = expandMstcOffice(item.location || '');
+  const locationName = expandMstcOffice(item?.location || '');
 
   // Parse start and close dates
   const parsedStartDate = summary.auctionStartTime ? parsePdfDateTime(summary.auctionStartTime) : null;
-  const auctionDate = parsedStartDate || new Date(item.opening_date);
+  const auctionDate = parsedStartDate || new Date(item?.opening_date || Date.now());
   const parsedCloseDate = summary.auctionCloseTime ? parsePdfDateTime(summary.auctionCloseTime) : null;
   const now = new Date();
   const diffMs = auctionDate.getTime() - now.getTime();
@@ -247,7 +249,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           {/* Modal Header */}
           <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
             <div className="flex items-center gap-2.5">
-              <span className="text-base font-bold text-slate-500 font-mono">
+              <span className="text-base font-bold text-slate-500 ">
                 Ref: {shortId}
               </span>
               <button
@@ -296,10 +298,10 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
               {/* Category & Auction Ref Title */}
               <div>
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">Category / Item Type</h4>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ">Category / Item Type</h4>
                 {(() => {
-                  const parts = item.category_name.split(' | ');
-                  const mainCat = parts[0];
+                  const parts = (item?.category_name || '').split(' | ');
+                  const mainCat = parts[0] || 'Unknown';
                   const subCat = parts[1];
                   return (
                     <div className="flex flex-col gap-0.5">
@@ -319,8 +321,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               {/* Auction Reference Banner */}
               <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-3xs">
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Official Auction Reference Number</span>
-                  <span className="font-mono text-base font-bold text-slate-800 break-all select-all">{item.mstc_auction_number}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ">Official Auction Reference Number</span>
+                  <span className=" text-base font-bold text-slate-800 break-all select-all">{item.mstc_auction_number}</span>
                 </div>
                 <button
                   onClick={() => {
@@ -354,35 +356,47 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 {/* Seller & Location Details */}
                 <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
                   <div className="flex flex-col">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Regional Office</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Seller Name</span>
+                    <span className="text-[13.5px] font-bold text-slate-800 leading-snug mt-0.5">
+                      {item.seller_name || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col border-t border-slate-100 pt-2">
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Regional Office</span>
                     <span className="text-[13.5px] font-bold text-slate-800 leading-snug mt-0.5">
                       {regionalOfficeName}
                     </span>
                   </div>
                   {item.location && (
                     <div className="flex flex-col border-t border-slate-100 pt-2">
-                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Location / State</span>
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Location / State</span>
                       <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">{locationName}</span>
                     </div>
                   )}
+                  <div className="flex flex-col border-t border-slate-100 pt-2">
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Auction Type</span>
+                    <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
+                      {summary.auctionType || 'O-General'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Dates & Countdown */}
                 <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
                   <div className="flex flex-col">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Auction Date</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Auction Date</span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono">Inspection Date Range</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Inspection Date Range</span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {summary.inspectionSchedule || 'N/A'}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest font-mono mb-1">Status</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest  mb-1">Status</span>
                     <div>
                       {(() => {
                         if (isClosed) {
@@ -410,7 +424,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               {/* Identified Materials & Lots */}
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-2.5 gap-2">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  flex items-center gap-2">
                     <span>Identified Inventory & Materials</span>
                     <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-sans font-medium normal-case">
                       {summary.items.length} lots identified
@@ -430,7 +444,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
                   <table className="w-full text-left border-collapse text-[13.5px]">
                     <thead>
-                      <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 font-mono">
+                      <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 ">
                         <th className="py-3 px-3.5 font-bold w-12 text-center">Lot</th>
                         <th className="py-3 px-3.5 font-bold">Material Description</th>
                         <th className="py-3 px-3.5 font-bold text-right">Quantity</th>
@@ -441,7 +455,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     <tbody className="divide-y divide-slate-105 text-slate-700">
                       {summary.items.map((row) => (
                         <tr key={row.sr} className="hover:bg-slate-50/50 align-top">
-                          <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-400">{row.sr}</td>
+                          <td className="py-3 px-3.5 text-center  font-bold text-slate-400">{row.sr}</td>
                           <td className="py-3 px-3.5 text-slate-900">
                             <div className="font-bold">{row.description}</div>
                             {/* Lot Images */}
@@ -488,8 +502,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               );
                             })()}
                           </td>
-                          <td className="py-3 px-3.5 text-right font-mono text-slate-955 font-bold">{row.qty} {row.unit}</td>
-                          <td className="py-3 px-3.5 text-center font-mono text-xs text-emerald-600 font-bold bg-emerald-50/50">{row.marketPrice}</td>
+                          <td className="py-3 px-3.5 text-right  text-slate-955 font-bold">{row.qty} {row.unit}</td>
+                          <td className="py-3 px-3.5 text-center  text-xs text-emerald-600 font-bold bg-emerald-50/50">{row.marketPrice}</td>
                           <td className="py-2.5 px-3.5 text-center">
                             <button
                               onClick={() => handleAddItemToQuote(row)}
@@ -511,7 +525,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Compliance Card */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2.5">
                     Buyer Eligibility & Compliance
                   </h4>
                   <ul className="list-disc pl-5 space-y-2 text-[13.5px] text-slate-705">
@@ -523,18 +537,18 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                 {/* Financial Charges Card */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2.5">
                     Financial Terms & Service Fees
                   </h4>
                   <div className="space-y-3">
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase font-mono tracking-wider">EMD Details</span>
+                      <span className="text-slate-500 text-[11px] uppercase  tracking-wider">EMD Details</span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
                         {summary.depositDetails.emd}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase font-mono tracking-wider">Pre-bid EMD</span>
+                      <span className="text-slate-500 text-[11px] uppercase  tracking-wider">Pre-bid EMD</span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
                         {summary.depositDetails.preBidDdg}
                       </span>
@@ -544,7 +558,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                 {/* Market Intelligence & ROI Card */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5 flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2.5 flex items-center justify-between">
                     <span>Market Analysis & ROI</span>
                   </h4>
                   {(() => {
@@ -605,7 +619,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                         <div className="flex justify-between items-center pb-1">
                           <span className="text-slate-500 font-semibold">Projected ROI</span>
-                          <span className="font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-xs">
+                          <span className=" font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-xs">
                             +{roi.toFixed(1)}% ROI
                           </span>
                         </div>
@@ -617,7 +631,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
               {/* Key Contact Personnel */}
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-5">
-                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-100 pb-2.5">
+                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2.5">
                   Key Contact Personnel
                 </h4>
 
@@ -634,22 +648,22 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {mstcContacts.length > 0 && (
                         <div className="space-y-2.5">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest font-mono bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
+                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest  bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
                               MSTC Auction Officers
                             </span>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {mstcContacts.map((contact, i) => (
                               <div key={`mstc-${i}`} className="bg-blue-50/30 border border-blue-150/50 p-3.5 rounded-xl space-y-2">
-                                <span className="text-[10px] font-mono text-blue-600 font-bold uppercase tracking-wider">{contact.role}</span>
+                                <span className="text-[10px]  text-blue-600 font-bold uppercase tracking-wider">{contact.role}</span>
                                 <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
                                 <div className="space-y-1">
-                                  <p className="text-xs text-slate-605 font-mono break-all flex items-center gap-1.5">
+                                  <p className="text-xs text-slate-605  break-all flex items-center gap-1.5">
                                     <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                                     <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">{contact.email}</a>
                                   </p>
                                   {contact.phone && contact.phone !== 'no contact info available' && (
-                                    <p className="text-xs text-slate-605 font-mono flex items-center gap-1.5">
+                                    <p className="text-xs text-slate-605  flex items-center gap-1.5">
                                       <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                                       <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="hover:text-primary transition-colors">{contact.phone}</a>
                                     </p>
@@ -664,22 +678,22 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {sellerContacts.length > 0 && (
                         <div className="space-y-2.5">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest font-mono bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
+                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest  bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
                               Seller / Site Contacts
                             </span>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {sellerContacts.map((contact, i) => (
                               <div key={`seller-${i}`} className="bg-emerald-50/30 border border-emerald-150/50 p-3.5 rounded-xl space-y-2">
-                                <span className="text-[10px] font-mono text-emerald-600 font-bold uppercase tracking-wider">{contact.role}</span>
+                                <span className="text-[10px]  text-emerald-600 font-bold uppercase tracking-wider">{contact.role}</span>
                                 <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
                                 <div className="space-y-1">
-                                  <p className="text-xs text-slate-605 font-mono break-all flex items-center gap-1.5">
+                                  <p className="text-xs text-slate-605  break-all flex items-center gap-1.5">
                                     <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                                     <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">{contact.email}</a>
                                   </p>
                                   {contact.phone && contact.phone !== 'no contact info available' && (
-                                    <p className="text-xs text-slate-605 font-mono flex items-center gap-1.5">
+                                    <p className="text-xs text-slate-605  flex items-center gap-1.5">
                                       <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                                       <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="hover:text-primary transition-colors">{contact.phone}</a>
                                     </p>
@@ -717,9 +731,9 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         if (imageUrls.length === 0) return null;
                         return (
                           <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2 flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2 flex items-center justify-between">
                               <span>Auction Images</span>
-                              <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded font-mono">{imageUrls.length} Photos</span>
+                              <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded ">{imageUrls.length} Photos</span>
                             </h4>
                             <div className="grid grid-cols-2 gap-2">
                               {imageUrls.map((url: string, idx: number) => (
@@ -743,7 +757,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                       {displayImage ? (
                         <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-b border-slate-150 pb-2">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2">
                             {actualPhotos.includes(displayImage) ? 'Item Photo Preview' : 'Catalog Document Preview'}
                           </h4>
                           <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">

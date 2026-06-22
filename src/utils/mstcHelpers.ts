@@ -154,7 +154,51 @@ export interface CatalogSummary {
   auctionStartTime?: string;
   auctionCloseTime?: string;
   totalMarketValue?: number;
+  auctionType?: string;
 }
+
+export const parseAuctionType = (item: MstcSanitizedAuction): string => {
+  if (!item) return 'O-General';
+  
+  const text = item.raw_materials_text || '';
+  if (text) {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object') {
+        if (parsed.auctionType && typeof parsed.auctionType === 'string') {
+          return parsed.auctionType.trim();
+        }
+        if (parsed.typeOfAuction && typeof parsed.typeOfAuction === 'string') {
+          return parsed.typeOfAuction.trim();
+        }
+      }
+    } catch (e) {
+      // Ignored
+    }
+
+    const regex = /(?:auction\s+type|type\s+of\s+auction|e-auction\s+type|auction_type)\s*[:=-]?\s*([A-Za-z0-9_-]+)/i;
+    const match = text.match(regex);
+    if (match && match[1]) {
+      const val = match[1].trim();
+      if (val.length > 2) return val;
+    }
+
+    const oRegex = /\b(O-[A-Za-z0-9_-]+)\b/i;
+    const oMatch = text.match(oRegex);
+    if (oMatch && oMatch[1]) {
+      return oMatch[1].trim();
+    }
+  }
+
+  const cat = (item.category_name || '').toLowerCase();
+  if (cat.includes('coal')) return 'O-Coal';
+  if (cat.includes('general')) return 'O-General';
+  if (cat.includes('vehicle')) return 'O-Vehicle';
+  if (cat.includes('scrap')) return 'O-Scrap';
+  if (cat.includes('service')) return 'O-Service';
+
+  return 'O-General';
+};
 
 export const parsePdfDateTime = (dateTimeStr: string): Date | null => {
   if (!dateTimeStr) return null;
@@ -259,7 +303,20 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
 };
 
 export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
-  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+  if (!item) {
+    return {
+      overview: '',
+      scopeOfWork: '',
+      items: [],
+      eligibility: [],
+      depositDetails: { emd: '', preBidDdg: '', adminCharges: '' },
+      keyContacts: [],
+      inspectionSchedule: '',
+      auctionStartTime: '',
+      auctionCloseTime: ''
+    } as any;
+  }
+  const shortId = (item.mstc_auction_number || '').split('/').pop() || item.id?.substring(0, 8) || 'N/A';
   let fallbackPreBid = '₹50,000';
   const shortIdNum = parseInt(shortId, 10);
   if (!isNaN(shortIdNum)) {
@@ -270,7 +327,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
   }
 
   // Create default/mock dates
-  const mockStart = new Date(item.opening_date);
+  const mockStart = new Date(item.opening_date || Date.now());
   const mockClose = new Date(mockStart.getTime() + 6 * 60 * 60 * 1000); // +6 hours
   const mockInspStart = new Date(mockStart.getTime() - 14 * 24 * 60 * 60 * 1000);
   const mockInspEnd = new Date(mockStart.getTime() - 1 * 24 * 60 * 60 * 1000);
@@ -409,7 +466,8 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
           ...parsed,
           inspectionSchedule: formatInspectionSchedule(finalInspectionSchedule),
           auctionStartTime: finalAuctionStartTime,
-          auctionCloseTime: finalAuctionCloseTime
+          auctionCloseTime: finalAuctionCloseTime,
+          auctionType: parseAuctionType(item)
         };
       }
     } catch (e) {
@@ -507,7 +565,8 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
     keyContacts,
     inspectionSchedule: formatInspectionSchedule(defaultInspectionSchedule),
     auctionStartTime: defaultAuctionStartTime,
-    auctionCloseTime: defaultAuctionCloseTime
+    auctionCloseTime: defaultAuctionCloseTime,
+    auctionType: parseAuctionType(item)
   };
 };
 
