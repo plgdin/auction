@@ -31,3 +31,6 @@ debug_page.html
 lint_report.txt
 scratch_pdf_*.txt
 scratch_pdf_text.txt
+cookies.txt
+*.cookie
+*.session

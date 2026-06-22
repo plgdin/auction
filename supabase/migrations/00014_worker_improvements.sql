@@ -10,10 +10,12 @@ CREATE TABLE IF NOT EXISTS ocr_cache (
 ALTER TABLE ocr_cache ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access on ocr_cache
+DROP POLICY IF EXISTS "Allow public read access on ocr_cache" ON ocr_cache;
 CREATE POLICY "Allow public read access on ocr_cache" ON ocr_cache
     FOR SELECT USING (true);
 
 -- Allow complete access to service role / background workers
+DROP POLICY IF EXISTS "Allow service role complete access on ocr_cache" ON ocr_cache;
 CREATE POLICY "Allow service role complete access on ocr_cache" ON ocr_cache
     FOR ALL USING (true);
 
@@ -58,7 +60,7 @@ BEGIN
   )
   RETURNING 
     mstc_auctions.id,
-    mstc_auctions.mstc_auction_number,
+    mstc_auctions.mstc_auction_number::TEXT,
     mstc_auctions.source_pdf_url,
     mstc_auctions.retry_count,
     mstc_auctions.category_name::TEXT,

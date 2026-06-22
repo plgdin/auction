@@ -180,7 +180,7 @@ export function parseLotBlocks(
 
     // Truncate lot block at boilerplate sections
     const boilerplatePattern =
-      /(?:seller\s+specific\s+terms|special\s+terms\s+and\s+conditions|special\s+terms\s+&\s+conditions|general\s+terms\s+and\s+conditions|terms\s+&\s+conditions|terms\s+and\s+conditions|instructions\s+to\s+bidders|instructions\s+to\s+the\s+bidder|payment\s+procedure|e-payment|pre-bid\s+emd|important\s+instructions)/i;
+      /(?:seller\s+specific\s+terms|special\s+terms\s+and\s+conditions|special\s+terms\s+&\s+conditions|general\s+terms\s+and\s+conditions|terms\s+&\s+conditions|terms\s+and\s+conditions|instructions\s+to\s+bidders|instructions\s+to\s+the\s+bidder|payment\s+procedure|e-payment|important\s+instructions)/i;
     const boilerplateIdx = rawBlock.search(boilerplatePattern);
     const block =
       boilerplateIdx !== -1
@@ -230,7 +230,7 @@ export function parseLotBlocks(
     let qty = "1";
     let unit = "Lot";
 
-    const qtyRegex = /(?:QTY|Quantity|Approx\s*Qty|Approximate\s*Qty|Net\s*Qty|Qty\s*\(\s*Approx\s*\))\s*[:.-]?\s*(?:\r?\n)?\s*([\d.,]+)\s*([A-Za-z]+)?/gi;
+    const qtyRegex = /(?:QTY|Quantity|Approx\s*Qty|Approximate\s*Qty|Net\s*Qty|Qty\s*\(\s*Approx\s*\))\s*[:.-]?\s*(?:\r?\n)?\s*([\d.,]+)(?:\s+([A-Za-z]+(?:[ \t]+[A-Za-z]+)*))?/gi;
     const matches = Array.from(block.matchAll(qtyRegex));
 
     // Filter out false positives
@@ -244,8 +244,23 @@ export function parseLotBlocks(
         const valStr = match[1].replace(/,/g, "").trim();
         const val = parseFloat(valStr);
         if (!isNaN(val) && val < 5000000) {
-          const u = (match[2] || "Unit").toUpperCase().trim();
-          groups[u] = (groups[u] || 0) + val;
+          let u = (match[2] || "Unit").trim();
+          
+          // Reconstruct units split across newlines like "Per\nMonth"
+          if (u.toLowerCase() === "per" && match.index !== undefined) {
+            const remaining = block.substring(match.index + match[0].length).trim();
+            const nextWordMatch = remaining.match(/^([A-Za-z]+)\b/);
+            if (nextWordMatch) {
+              const nextWord = nextWordMatch[1];
+              const timeUnits = ["month", "annum", "day", "hour", "week", "year", "quarter"];
+              if (timeUnits.includes(nextWord.toLowerCase())) {
+                u = `Per ${nextWord}`;
+              }
+            }
+          }
+          
+          const uKey = u.toUpperCase();
+          groups[uKey] = (groups[uKey] || 0) + val;
         }
       }
 
@@ -262,13 +277,27 @@ export function parseLotBlocks(
       }
     } else {
       const qtyMatch = block.match(
-        /(?:Quantity|Approx\s*Qty|Approximate\s*Qty|Net\s*Qty|Qty\s*\(\s*Approx\s*\))\s*-\s*([\d.,]+)\s*([A-Za-z]+)?/i,
+        /(?:Quantity|Approx\s*Qty|Approximate\s*Qty|Net\s*Qty|Qty\s*\(\s*Approx\s*\))\s*-\s*([\d.,]+)(?:\s+([A-Za-z]+(?:[ \t]+[A-Za-z]+)*))?/i,
       );
       if (qtyMatch) {
         const parsedVal = parseFloat(qtyMatch[1].replace(/,/g, ""));
         if (!isNaN(parsedVal) && parsedVal < 5000000) {
           qty = qtyMatch[1].trim();
-          unit = (qtyMatch[2] || "Lot").trim();
+          let u = (qtyMatch[2] || "Lot").trim();
+          
+          // Reconstruct units split across newlines like "Per\nMonth"
+          if (u.toLowerCase() === "per" && qtyMatch.index !== undefined) {
+            const remaining = block.substring(qtyMatch.index + qtyMatch[0].length).trim();
+            const nextWordMatch = remaining.match(/^([A-Za-z]+)\b/);
+            if (nextWordMatch) {
+              const nextWord = nextWordMatch[1];
+              const timeUnits = ["month", "annum", "day", "hour", "week", "year", "quarter"];
+              if (timeUnits.includes(nextWord.toLowerCase())) {
+                u = `Per ${nextWord}`;
+              }
+            }
+          }
+          unit = u;
         }
       }
     }
