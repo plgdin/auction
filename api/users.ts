@@ -61,7 +61,8 @@ export default async function handler(req: any, res: any) {
     }
 
     // 4. Fetch all auth users to retrieve their email addresses
-    const { data: { users: authUsers } } = await supabase.auth.admin.listUsers();
+    const { data: listData } = await supabase.auth.admin.listUsers();
+    const authUsers = (listData?.users || []) as any[];
     
     // Map emails and last sign in timestamps
     const emailMap: Record<string, string> = {
@@ -70,7 +71,7 @@ export default async function handler(req: any, res: any) {
     };
     const lastSignInMap: Record<string, string> = {};
 
-    if (authUsers) {
+    if (authUsers.length > 0) {
       authUsers.forEach(u => {
         if (u.id && u.email) {
           emailMap[u.id] = u.email;

@@ -1,12 +1,12 @@
-import type { MstcSanitizedAuction } from '../services/publicService';
+import type { MstcSanitizedAuction } from '../services/publicService.js';
 import { 
   METALLIC_MODELS, 
   DEFAULT_MACRO_INPUTS, 
   predictPrice, 
   detectModelId, 
   detectGrade 
-} from './metalValuationModels';
-import { calculateLotValue } from './valuationUtils';
+} from './metalValuationModels.js';
+import { calculateLotValue } from './valuationUtils.js';
 
 export { calculateLotValue };
 

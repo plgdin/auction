@@ -21,7 +21,7 @@ export const getNumericPrice = (priceStr: string): number => {
 
 
 
-import { getEstimatedMarketPrice } from './mstcHelpers';
+import { getEstimatedMarketPrice } from './mstcHelpers.js';
 
 export { getEstimatedMarketPrice };
 
