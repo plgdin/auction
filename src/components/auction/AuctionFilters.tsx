@@ -19,8 +19,6 @@ interface AuctionFiltersProps {
     listingType?: string; 
     regionalOffice?: string; 
     regionalOffices?: string[];
-    mstcSeller?: string;
-    mstcSellers?: string[];
     location?: string; 
     locations?: string[];
     preBid?: string; 
@@ -39,8 +37,6 @@ interface AuctionFiltersProps {
     listingType?: string; 
     regionalOffice?: string; 
     regionalOffices?: string[];
-    mstcSeller?: string;
-    mstcSellers?: string[];
     location?: string; 
     locations?: string[];
     preBid?: string; 
@@ -54,7 +50,6 @@ interface AuctionFiltersProps {
   customCategories?: string[];
   customSubcategories?: Record<string, string[]>;
   customLocations?: string[];
-  customSellers?: string[];
   customRegionalOffices?: string[];
 }
 
@@ -74,7 +69,6 @@ export function AuctionFilters({
   customCategories = [],
   customSubcategories = {},
   customLocations = [],
-  customSellers = [],
   customRegionalOffices = []
 }: AuctionFiltersProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -86,9 +80,6 @@ export function AuctionFilters({
   const [selectedListingType, setSelectedListingType] = useState<string>(initialFilters.listingType || 'all');
   const [selectedRegionalOffices, setSelectedRegionalOffices] = useState<string[]>(
     initialFilters.regionalOffices || (initialFilters.regionalOffice ? [initialFilters.regionalOffice] : [])
-  );
-  const [selectedMstcSellers, setSelectedMstcSellers] = useState<string[]>(
-    initialFilters.mstcSellers || (initialFilters.mstcSeller ? [initialFilters.mstcSeller] : [])
   );
   const [selectedLocations, setSelectedLocations] = useState<string[]>(
     initialFilters.locations || (initialFilters.location ? [initialFilters.location] : [])
@@ -122,9 +113,6 @@ export function AuctionFilters({
     setSelectedListingType(initialFilters.listingType || 'all');
     setSelectedRegionalOffices(
       initialFilters.regionalOffices || (initialFilters.regionalOffice ? [initialFilters.regionalOffice] : [])
-    );
-    setSelectedMstcSellers(
-      initialFilters.mstcSellers || (initialFilters.mstcSeller ? [initialFilters.mstcSeller] : [])
     );
     setSelectedLocations(
       initialFilters.locations || (initialFilters.location ? [initialFilters.location] : [])
@@ -310,8 +298,6 @@ export function AuctionFilters({
       listingType: selectedListingType !== 'all' ? selectedListingType : undefined,
       regionalOffice: selectedRegionalOffices[0] || undefined,
       regionalOffices: selectedRegionalOffices.length > 0 ? selectedRegionalOffices : undefined,
-      mstcSeller: selectedMstcSellers[0] || undefined,
-      mstcSellers: selectedMstcSellers.length > 0 ? selectedMstcSellers : undefined,
       location: selectedLocations[0] || undefined,
       locations: selectedLocations.length > 0 ? selectedLocations : undefined,
       preBid: selectedPreBid !== 'all' ? selectedPreBid : undefined,
@@ -329,7 +315,6 @@ export function AuctionFilters({
     setSelectedSubcategories([]);
     setSelectedListingType('all');
     setSelectedRegionalOffices([]);
-    setSelectedMstcSellers([]);
     setSelectedLocations([]);
     setSelectedPreBid('all');
     setStartDate('');
@@ -344,8 +329,6 @@ export function AuctionFilters({
       listingType: 'all',
       regionalOffice: undefined,
       regionalOffices: [],
-      mstcSeller: undefined,
-      mstcSellers: [],
       location: undefined,
       locations: [],
       preBid: 'all',
@@ -539,8 +522,6 @@ export function AuctionFilters({
 
   const customSubcategoryOptions = availableSubcategories.map(sub => ({ key: sub, label: sub }));
   
-  const customSellerOptions = customSellers.map(seller => ({ key: seller, label: seller }));
-  
   const currentRegionalOffices = activeTab === 'mstc' ? customRegionalOffices : REGIONAL_OFFICES;
   const regionalOfficeOptions = currentRegionalOffices.map(office => ({
     key: office,
@@ -574,9 +555,6 @@ export function AuctionFilters({
 
     const initialOffices = initialFilters.regionalOffices || (initialFilters.regionalOffice ? [initialFilters.regionalOffice] : []);
     if (!arraysEqual(selectedRegionalOffices, initialOffices)) return true;
-
-    const initialSellers = initialFilters.mstcSellers || (initialFilters.mstcSeller ? [initialFilters.mstcSeller] : []);
-    if (!arraysEqual(selectedMstcSellers, initialSellers)) return true;
 
     const initialLocs = initialFilters.locations || (initialFilters.location ? [initialFilters.location] : []);
     if (!arraysEqual(selectedLocations, initialLocs)) return true;
@@ -834,10 +812,9 @@ export function AuctionFilters({
           </div>
         )}
 
-        {/* Regional Office / Sellers */}
+        {/* Regional Office */}
         {activeTab === 'mstc' ? (
-          <>
-            <div className="mb-8">
+          <div className="mb-8">
               <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
                 Regional Office
               </h3>
@@ -863,36 +840,7 @@ export function AuctionFilters({
                   <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
                 </button>
               </Dropdown>
-            </div>
-
-            <div className="mb-8">
-              <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
-                Sellers
-              </h3>
-              <Dropdown 
-                popupRender={() => renderMultiSelectMenu(
-                  customSellerOptions,
-                  selectedMstcSellers,
-                  setSelectedMstcSellers,
-                  'All Sellers'
-                )}
-                trigger={['click']} 
-                placement="bottomLeft"
-                align={{ overflow: { adjustX: false, adjustY: false } }}
-                getPopupContainer={() => containerRef.current || document.body}
-              >
-                <button 
-                  type="button"
-                  className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
-                >
-                  <span className="truncate">
-                    {getTriggerLabel(selectedMstcSellers, 'All Sellers')}
-                  </span>
-                  <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
-                </button>
-              </Dropdown>
-            </div>
-          </>
+          </div>
         ) : (
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">

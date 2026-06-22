@@ -176,26 +176,14 @@ export const parseAuctionType = (item: MstcSanitizedAuction): string => {
       // Ignored
     }
 
-    const regex = /(?:auction\s+type|type\s+of\s+auction|e-auction\s+type|auction_type)\s*[:=-]?\s*([A-Za-z0-9_-]+)/i;
+    const regex = /(?:auction\s+type|type\s+of\s+auction|e-auction\s+type|auction_type)\s*[:=-]?\s*(O-[A-Za-z0-9_-]+(?:\s+Auction)?)/i;
     const match = text.match(regex);
     if (match && match[1]) {
       const val = match[1].trim();
       if (val.length > 2) return val;
     }
 
-    const oRegex = /\b(O-[A-Za-z0-9_-]+)\b/i;
-    const oMatch = text.match(oRegex);
-    if (oMatch && oMatch[1]) {
-      return oMatch[1].trim();
-    }
   }
-
-  const cat = (item.category_name || '').toLowerCase();
-  if (cat.includes('coal')) return 'O-Coal';
-  if (cat.includes('general')) return 'O-General';
-  if (cat.includes('vehicle')) return 'O-Vehicle';
-  if (cat.includes('scrap')) return 'O-Scrap';
-  if (cat.includes('service')) return 'O-Service';
 
   return 'O-General';
 };
@@ -570,7 +558,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
   };
 };
 
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function getOrdinalSuffix(day: number): string {
   if (day >= 11 && day <= 13) return `${day}th`;

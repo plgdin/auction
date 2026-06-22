@@ -1917,53 +1917,122 @@ export const MstcSearchService = {
       page?: number;
       limit?: number;
     }
-  ): Promise<{ data: MstcSanitizedAuction[], count: number }> {
+  ): Promise<{ data: MstcSanitizedAuction[], count: number, hasDirectMatches?: boolean }> {
     try {
-      if (filters?.isReauction !== undefined && (!query || query.trim() === '')) {
-        // Direct fallback to client-side search to get correct database-side filtering and pagination
-        let fallbackData = await MstcSearchService.searchClientSide(query, filters);
-        
-        // Filter by images/docs locally if needed
-        if (filters?.hasImages) {
-          fallbackData = fallbackData.filter(item => {
-            if (!item.raw_materials_text) return false;
-            try {
-              const parsed = JSON.parse(item.raw_materials_text);
-              const images = parsed?.extracted_images || [];
-              return images.some((url: string) => {
-                const lower = url.toLowerCase();
-                return !lower.endsWith('.pdf') && 
-                       !lower.includes('_catalog_page_') && 
-                       !lower.includes('mstc-previews/') &&
-                       /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
-              });
-            } catch { return false; }
-          });
-        }
-        
-        if (filters?.hasAssetDocuments) {
-          fallbackData = fallbackData.filter(item => {
-            if (!item.raw_materials_text) return false;
-            try {
-              const parsed = JSON.parse(item.raw_materials_text);
-              const images = parsed?.extracted_images || [];
-              return images.some((url: string) => url.toLowerCase().endsWith('.pdf'));
-            } catch { return false; }
-          });
-        }
-
-        const totalCount = fallbackData.length;
-        const page = filters?.page || 1;
-        const limit = filters?.limit || 12;
-        const startIndex = (page - 1) * limit;
-        const paginatedData = fallbackData.slice(startIndex, startIndex + limit);
-
-        return { data: paginatedData, count: totalCount };
-      }
-
       const cleanedQuery = cleanQueryPriceTypos(query);
       const pConstraint = parsePriceConstraint(cleanedQuery);
       const workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
+
+      if (!workingQuery || workingQuery.trim() === '') {
+        // Direct querying on the table using PostgREST for fast, reliable pagination and filtering
+        const page = filters?.page || 1;
+        const limit = filters?.limit || 12;
+        const from = (page - 1) * limit;
+        const to = page * limit - 1;
+
+        let queryBuilder = supabase
+          .from('mstc_auctions')
+          .select('*', { count: pConstraint ? undefined : 'exact' })
+          .eq('asset_status', 'completed')
+          .order('opening_date', { ascending: false });
+
+        if (filters?.categories && filters.categories.length > 0) {
+          const conditions = filters.categories.flatMap(c => [
+            `category_name.eq.${c}`,
+            `category_name.like.${c} | %`
+          ]).join(',');
+          queryBuilder = queryBuilder.or(conditions);
+        } else if (filters?.category) {
+          queryBuilder = queryBuilder.or(`category_name.eq.${filters.category},category_name.like.${filters.category} | %`);
+        }
+
+        if (filters?.subcategories && filters.subcategories.length > 0) {
+          const conditions = filters.subcategories.map(s => `category_name.like.% | ${s}`).join(',');
+          queryBuilder = queryBuilder.or(conditions);
+        } else if (filters?.subcategory) {
+          queryBuilder = queryBuilder.like('category_name', `% | ${filters.subcategory}`);
+        }
+
+        if (filters?.sellers && filters.sellers.length > 0) {
+          queryBuilder = queryBuilder.in('seller_name', filters.sellers);
+        } else if (filters?.seller) {
+          queryBuilder = queryBuilder.eq('seller_name', filters.seller);
+        }
+
+        if (filters?.locations && filters.locations.length > 0) {
+          queryBuilder = queryBuilder.in('location', filters.locations);
+        } else if (filters?.location) {
+          queryBuilder = queryBuilder.eq('location', filters.location);
+        }
+
+        if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
+          const orConditions = filters.regionalOffices.map(office => `mstc_auction_number.ilike.MSTC/${office}/%`).join(',');
+          queryBuilder = queryBuilder.or(orConditions);
+        } else if (filters?.regionalOffice) {
+          queryBuilder = queryBuilder.ilike('mstc_auction_number', `MSTC/${filters.regionalOffice}/%`);
+        }
+
+        if (filters?.startDate) {
+          queryBuilder = queryBuilder.gte('opening_date', filters.startDate);
+        }
+        if (filters?.endDate) {
+          queryBuilder = queryBuilder.lte('opening_date', filters.endDate);
+        }
+
+        if (filters?.isReauction !== undefined) {
+          queryBuilder = queryBuilder.eq('is_reauction', filters.isReauction);
+        }
+
+        if (filters?.hasImages) {
+          queryBuilder = queryBuilder.ilike('raw_materials_text', '%_lot_doc_%');
+        }
+
+        if (filters?.hasAssetDocuments) {
+          queryBuilder = queryBuilder.or('sanitized_document_path.not.is.null,raw_materials_text.ilike.%.pdf%');
+        }
+
+        if (!pConstraint) {
+          queryBuilder = queryBuilder.range(from, to);
+        }
+
+        const { data, error, count } = await queryBuilder;
+
+        if (error) {
+          throw error;
+        }
+
+        if (!data || data.length === 0) {
+          return { data: [], count: 0 };
+        }
+
+        let mapped = data.map(item => {
+          const { category, subcategory } = mapRawCategory(item.category_name);
+          return {
+            ...item,
+            category_name: `${category} | ${subcategory}`
+          } as MstcSanitizedAuction;
+        });
+
+        if (pConstraint) {
+          mapped = mapped.filter(item => {
+            const { preBid, totalValue } = estimateAuctionValues(item as any);
+            const matchValue = (val: number) => {
+              if (val <= 0) return true;
+              if (pConstraint.operator === 'less') return val <= pConstraint.value;
+              if (pConstraint.operator === 'greater') return val >= pConstraint.value;
+              return val === pConstraint.value;
+            };
+            if (pConstraint.field === 'pre_bid') return matchValue(preBid);
+            if (pConstraint.field === 'total_value') return matchValue(totalValue);
+            return matchValue(preBid) || matchValue(totalValue);
+          });
+          const totalCount = mapped.length;
+          mapped = mapped.slice(from, from + limit);
+          return { data: mapped, count: totalCount };
+        }
+
+        return { data: mapped, count: count || 0 };
+      }
       
       let embeddingStr: string | null = null;
       if (workingQuery && workingQuery.length > 2) {
@@ -1979,6 +2048,10 @@ export const MstcSearchService = {
         }
       }
 
+      const isSearchWithImageFilter = !!workingQuery && filters?.hasImages;
+      const rpcPage = isSearchWithImageFilter ? 1 : (filters?.page || 1);
+      const rpcLimit = isSearchWithImageFilter ? 1000 : (filters?.limit || 12);
+
       // 1. Try Hybrid RPC
       const { data, error } = await supabase.rpc('hybrid_search_mstc_catalog', {
         p_search_query: workingQuery || null,
@@ -1989,10 +2062,10 @@ export const MstcSearchService = {
         p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
         p_start_date: filters?.startDate || null,
         p_end_date: filters?.endDate || null,
-        p_has_images: filters?.hasImages || null,
+        p_has_images: null, // Bypass DB filter due to remote DB bug
         p_has_docs: filters?.hasAssetDocuments || null,
-        p_page: filters?.page || 1,
-        p_limit: filters?.limit || 12
+        p_page: rpcPage,
+        p_limit: rpcLimit
       });
 
       if (error) {
@@ -2000,10 +2073,11 @@ export const MstcSearchService = {
       }
 
       if (!data || data.length === 0) {
-        return { data: [], count: 0 };
+        return { data: [], count: 0, hasDirectMatches: false };
       }
 
-      const totalCount = Number(data[0].total_count) || 0;
+      let totalCount = Number(data[0].total_count) || 0;
+      const hasDirectMatches = (data as any[]).some(item => Number(item.search_rank) > 0);
 
       // Fetch is_reauction status for these items to ensure we have it in the UI and can filter by it
       const itemIds = (data as any[]).map(item => item.id);
@@ -2032,6 +2106,24 @@ export const MstcSearchService = {
         mapped = mapped.filter(item => item.is_reauction === filters.isReauction);
       }
 
+      // Filter by images locally if specified
+      if (filters?.hasImages) {
+        mapped = mapped.filter(item => {
+          if (!item.raw_materials_text) return false;
+          try {
+            const parsed = JSON.parse(item.raw_materials_text);
+            const images = parsed?.extracted_images || [];
+            return images.some((url: string) => {
+              const lower = url.toLowerCase();
+              return !lower.endsWith('.pdf') && 
+                     !lower.includes('_catalog_page_') && 
+                     !lower.includes('mstc-previews/') &&
+                     /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
+            });
+          } catch { return false; }
+        });
+      }
+
       // Filter by price constraint locally (since it requires JS computation)
       if (pConstraint) {
         mapped = mapped.filter(item => {
@@ -2048,7 +2140,15 @@ export const MstcSearchService = {
         });
       }
 
-      return { data: mapped, count: totalCount };
+      if (isSearchWithImageFilter) {
+        totalCount = mapped.length;
+        const page = filters?.page || 1;
+        const limit = filters?.limit || 12;
+        const startIndex = (page - 1) * limit;
+        mapped = mapped.slice(startIndex, startIndex + limit);
+      }
+
+      return { data: mapped, count: totalCount, hasDirectMatches };
 
     } catch (error) {
       console.warn('Hybrid search failed, falling back to client-side search:', error);
@@ -2091,7 +2191,7 @@ export const MstcSearchService = {
       const startIndex = (page - 1) * limit;
       const paginatedData = fallbackData.slice(startIndex, startIndex + limit);
 
-      return { data: paginatedData, count: totalCount };
+      return { data: paginatedData, count: totalCount, hasDirectMatches: fallbackData.length > 0 };
     }
   }, 'marketplaceSearch'),
 

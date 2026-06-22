@@ -4,10 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText, Lock } from 'lucide-react';
+import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText, Lock, SlidersHorizontal } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
+import { recommendationService } from '../../services/recommendationService';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -21,6 +22,8 @@ export function ProfileSettings() {
   const { user, profile, setProfile, logout } = useAuthStore();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResettingRecommendations, setIsResettingRecommendations] = useState(false);
+  const [recommendationResetError, setRecommendationResetError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'privacy' | 'security'>('profile');
 
@@ -69,10 +72,30 @@ export function ProfileSettings() {
     }
   };
 
-  const handleClearSearchFilters = () => {
+  const handleClearSearchFilters = async () => {
+    if (user) await recommendationService.clearUserSearches(user.id);
     navigate('/auctions');
-    setSuccessMsg('Active search parameters and filters reset.');
+    setSuccessMsg('Search history and active filters cleared.');
     setTimeout(() => setSuccessMsg(null), 3000);
+  };
+
+  const handleResetRecommendations = async () => {
+    if (!user) return;
+    const confirmed = window.confirm(
+      'Reset your recommendation profile and answer the questionnaire again? Your watchlist and bids will not be deleted.'
+    );
+    if (!confirmed) return;
+
+    setIsResettingRecommendations(true);
+    setRecommendationResetError(null);
+    try {
+      await recommendationService.resetRecommendationProfile(user.id);
+      navigate('/dashboard?setup=recommendations');
+    } catch {
+      setRecommendationResetError('Could not reset recommendations. Please try again.');
+    } finally {
+      setIsResettingRecommendations(false);
+    }
   };
 
   const handleTerminateAccount = async () => {
@@ -398,6 +421,31 @@ export function ProfileSettings() {
 
       {activeTab === 'privacy' && (
         <div className="space-y-8">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-200 p-6 flex items-center">
+              <SlidersHorizontal className="w-6 h-6 text-primary mr-3" />
+              <h2 className="text-lg font-bold text-slate-900">Recommendation Settings</h2>
+            </div>
+            <div className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="font-semibold text-slate-900">Reset personalized recommendations</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Clears questionnaire answers and learned search interests, then starts the setup questionnaire again.
+                </p>
+                {recommendationResetError && (
+                  <p className="text-sm text-red-600 mt-2" role="alert">{recommendationResetError}</p>
+                )}
+              </div>
+              <button
+                onClick={handleResetRecommendations}
+                disabled={isResettingRecommendations}
+                className="shrink-0 inline-flex items-center justify-center px-4 py-2.5 bg-primary hover:bg-primary-700 text-sm font-semibold rounded-lg text-white transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {isResettingRecommendations ? 'Resetting...' : 'Reset Recommendations'}
+              </button>
+            </div>
+          </div>
+
           {/* Account Settings Panel */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="bg-slate-50 border-b border-slate-200 p-6 flex items-center">
@@ -479,14 +527,14 @@ export function ProfileSettings() {
             </div>
             <div className="p-6">
               <p className="text-slate-600 text-sm mb-4 leading-relaxed">
-                Clear or modify your local search filters directly from the global search interface. Resets categories, regional offices, locations, sellers, and dates.
+                Clear recommendation search history stored with your account and reset active marketplace filters.
               </p>
               <div className="flex space-x-3">
                 <button
                   onClick={handleClearSearchFilters}
                   className="inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                 >
-                  Clear Local Search Filters
+                  Clear Search History & Filters
                 </button>
                 <button
                   onClick={() => navigate('/auctions')}

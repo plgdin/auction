@@ -54,6 +54,7 @@ export interface CatalogSummary {
   preview_image_url?: string | null;
   extracted_images?: string[];
   totalMarketValue?: number;
+  auctionType?: string;
   inspectionDetails?: {
     time: string;
     contact: string;
@@ -73,6 +74,12 @@ export function parseMstcCatalogText(
 ): CatalogSummary {
   const lines = text.split("\n").map((l) => l.trim());
   const cleanText = lines.join("\n");
+
+  // The auction type is catalogue metadata, not the material category.
+  const auctionTypeMatch = cleanText.match(
+    /(?:auction\s+type|type\s+of\s+auction)\s*:?\s*(O-[A-Za-z0-9_-]+(?:\s+Auction)?)/i,
+  );
+  const auctionType = auctionTypeMatch?.[1]?.trim();
 
   // 1. Extract Site Contacts and Officers
   const cleanName = (name: string): string => {
@@ -663,6 +670,7 @@ export function parseMstcCatalogText(
       adminCharges: ADMIN_CHARGES,
     },
     keyContacts,
+    auctionType,
     inspectionDetails: {
       time: inspectionTime,
       contact: inspectionContact

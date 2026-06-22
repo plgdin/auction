@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart } from 'lucide-react';
+import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel } from 'lucide-react';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime } from '../../utils/mstcHelpers';
@@ -200,6 +200,12 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                     <span className="font-semibold text-slate-700 truncate">{locationName}</span>
                   </div>
                 )}
+                <div className="flex items-center text-slate-600" title={summary.auctionType || 'O-General'}>
+                  <Gavel className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                  <span className="font-semibold text-slate-700 truncate">
+                    Type: {summary.auctionType || 'O-General'}
+                  </span>
+                </div>
               </div>
 
               <div className="space-y-2 text-xs border-l border-slate-100 pl-4">
@@ -339,6 +345,12 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
             <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
             <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.preBidDdg}>
               {summary.depositDetails.preBidDdg}
+            </span>
+          </div>
+          <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5 col-span-2">
+            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Auction Type</span>
+            <span className="font-bold text-slate-700 truncate" title={summary.auctionType || 'O-General'}>
+              {summary.auctionType || 'O-General'}
             </span>
           </div>
         </div>

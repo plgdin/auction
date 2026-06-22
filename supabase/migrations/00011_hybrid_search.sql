@@ -103,7 +103,17 @@ BEGIN
     AND (p_end_date IS NULL OR m.opening_date <= p_end_date::TIMESTAMPTZ)
     AND (
       p_has_images IS NULL OR p_has_images = FALSE OR 
-      (m.raw_materials_text ILIKE '%"extracted_images":%' AND m.raw_materials_text NOT ILIKE '%_catalog_page_%' AND m.raw_materials_text NOT ILIKE '%mstc-previews/%')
+      (
+        m.raw_materials_text ILIKE '%"extracted_images":%' AND 
+        m.raw_materials_text LIKE '{%}' AND
+        EXISTS (
+          SELECT 1 
+          FROM jsonb_array_elements_text(m.raw_materials_text::jsonb -> 'extracted_images') AS img
+          WHERE img NOT ILIKE '%_catalog_page_%'
+            AND img NOT ILIKE '%mstc-previews/%'
+            AND img NOT ILIKE '%.pdf'
+        )
+      )
     )
     AND (
       p_has_docs IS NULL OR p_has_docs = FALSE OR
