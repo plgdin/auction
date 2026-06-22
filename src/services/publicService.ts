@@ -1915,22 +1915,28 @@ export const MstcSearchService = {
       // ── AUCTION NUMBER DIRECT LOOKUP ─────────────────────────────────────────
       // If the query looks like an auction number (e.g. "MSTC/ZG/POSTMASTER/1/...")
       // skip all NLP/embedding and do a direct ILIKE search on mstc_auction_number.
-      // Heuristic: contains 2+ slashes, OR starts with "MSTC", OR has year pattern like 25-26
+      // Heuristic: contains 2+ slashes, OR starts with "MSTC", OR has year pattern like 25-26, OR is a standalone Ref ID
       const slashCount = (query.match(/\//g) || []).length;
+      const cleanQ = query.trim();
+      const isExactRefId = /^\d{3,7}$/.test(cleanQ);
       const looksLikeAuctionNumber =
         slashCount >= 2 ||
-        /^mstc/i.test(query.trim()) ||
-        /\b\d{2}-\d{2}\b/.test(query); // year range like 25-26
+        /^mstc/i.test(cleanQ) ||
+        /\b\d{2}-\d{2}\b/.test(query) || // year range like 25-26
+        isExactRefId;
 
       if (looksLikeAuctionNumber) {
-        const searchTerm = query.trim();
         const page = filters?.page || 1;
         const limit = filters?.limit || 12;
+        
+        // For standalone IDs, prefix with a slash to avoid matching random middle numbers
+        const searchPattern = isExactRefId ? `%/${cleanQ}%` : `%${cleanQ}%`;
+
         const { data: exactData, error: exactError, count: exactCount } = await supabase
           .from('mstc_auctions')
           .select('*', { count: 'exact' })
           .eq('asset_status', 'completed')
-          .ilike('mstc_auction_number', `%${searchTerm}%`)
+          .ilike('mstc_auction_number', searchPattern)
           .order('opening_date', { ascending: false })
           .range((page - 1) * limit, page * limit - 1);
 
