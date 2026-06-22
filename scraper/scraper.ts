@@ -53,13 +53,15 @@ function waitForUserConfirmation(query: string): Promise<string> {
 async function executeDiscoveryScraper() {
   console.log('[Cleanup] Checking for expired auctions...');
   try {
-    const now = new Date().toISOString();
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const oneWeekAgoIso = oneWeekAgo.toISOString();
     
-    // 1. Fetch expired auctions
+    // 1. Fetch expired auctions older than 1 week
     const { data: expiredAuctions, error: fetchError } = await supabase
       .from('mstc_auctions')
       .select('id, mstc_auction_number, closing_date, sanitized_document_path')
-      .lt('closing_date', now);
+      .lt('closing_date', oneWeekAgoIso);
 
     if (fetchError) {
       console.error('[Cleanup] Error fetching expired auctions:', fetchError.message);
