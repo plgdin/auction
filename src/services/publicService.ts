@@ -1911,6 +1911,7 @@ export const MstcSearchService = {
       regionalOffices?: string[];
       hasImages?: boolean;
       hasAssetDocuments?: boolean;
+      isReauction?: boolean;
       startDate?: string;
       endDate?: string;
       page?: number;
