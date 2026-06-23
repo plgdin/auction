@@ -2,12 +2,19 @@ import { auctionService } from './auctionService';
 import { dashboardService } from './dashboardService';
 import { supabase } from '../lib/supabase';
 import { estimateAuctionValues } from './publicService';
+import { hasPersonalizationConsent } from '../utils/cookieConsent';
 
 export interface UserPreference {
   categories: string[];
   locations: string[];
   maxBudget: number;
   riskLevel: 'low' | 'medium' | 'high';
+}
+
+export interface RecommendationProfile {
+  preferences: UserPreference | null;
+  recentSearches: string[];
+  questionnaireCompleted: boolean;
 }
 
 export interface RankedAuction {
@@ -40,13 +47,101 @@ export const recommendationService = {
     return data ? JSON.parse(data) : null;
   },
 
-  saveUserPreferences(userId: string, prefs: UserPreference): void {
+  async getRecommendationProfile(userId: string): Promise<RecommendationProfile> {
+    const localPreferences = this.getUserPreferences(userId);
+    const localSearches = this.getUserSearches(userId);
+    const localCompleted = localStorage.getItem(`usr_questionnaire_completed_${userId}`) === 'true';
+
+    const { data, error } = await supabase
+      .from('user_recommendation_profiles')
+      .select('preferences, recent_searches, questionnaire_completed')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error({ error }, 'Failed to load recommendation profile');
+      return {
+        preferences: localPreferences,
+        recentSearches: localSearches,
+        questionnaireCompleted: localCompleted
+      };
+    }
+
+    if (data) {
+      const preferences = data.preferences as UserPreference | null;
+      const recentSearches = Array.isArray(data.recent_searches) ? data.recent_searches : [];
+      if (preferences) localStorage.setItem(`usr_prefs_${userId}`, JSON.stringify(preferences));
+      localStorage.setItem(`usr_searches_${userId}`, JSON.stringify(recentSearches));
+      if (data.questionnaire_completed) {
+        localStorage.setItem(`usr_questionnaire_completed_${userId}`, 'true');
+      }
+      return {
+        preferences,
+        recentSearches,
+        questionnaireCompleted: data.questionnaire_completed
+      };
+    }
+
+    const localProfile = {
+      user_id: userId,
+      preferences: localPreferences,
+      recent_searches: localSearches,
+      questionnaire_completed: localCompleted
+    };
+    const { error: migrationError } = await supabase
+      .from('user_recommendation_profiles')
+      .upsert(localProfile, { onConflict: 'user_id' });
+    if (migrationError) {
+      console.error({ error: migrationError }, 'Failed to migrate recommendation profile');
+    }
+
+    return {
+      preferences: localPreferences,
+      recentSearches: localSearches,
+      questionnaireCompleted: localCompleted
+    };
+  },
+
+  async saveUserPreferences(userId: string, prefs: UserPreference): Promise<void> {
     const key = `usr_prefs_${userId}`;
     localStorage.setItem(key, JSON.stringify(prefs));
+    localStorage.setItem(`usr_questionnaire_completed_${userId}`, 'true');
+
+    const { error } = await supabase
+      .from('user_recommendation_profiles')
+      .upsert({
+        user_id: userId,
+        preferences: prefs,
+        questionnaire_completed: true
+      }, { onConflict: 'user_id' });
+    if (error) {
+      console.error({ error }, 'Failed to save recommendation preferences');
+      throw error;
+    }
+  },
+
+  async resetRecommendationProfile(userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('user_recommendation_profiles')
+      .upsert({
+        user_id: userId,
+        preferences: null,
+        recent_searches: [],
+        questionnaire_completed: false
+      }, { onConflict: 'user_id' });
+    if (error) {
+      console.error({ error }, 'Failed to reset recommendation profile');
+      throw error;
+    }
+
+    localStorage.removeItem(`usr_prefs_${userId}`);
+    localStorage.removeItem(`usr_searches_${userId}`);
+    localStorage.removeItem(`usr_questionnaire_completed_${userId}`);
   },
 
   // --- SEARCH HISTORY LOGGING ---
   logUserSearch(userId: string, query: string): void {
+    if (!hasPersonalizationConsent()) return;
     if (!query || query.trim().length < 3) return;
     const key = `usr_searches_${userId}`;
     const data = localStorage.getItem(key);
@@ -58,6 +153,12 @@ export const recommendationService = {
       searches.unshift(cleanQuery);
       if (searches.length > 10) searches.pop();
       localStorage.setItem(key, JSON.stringify(searches));
+      void supabase
+        .from('user_recommendation_profiles')
+        .upsert({ user_id: userId, recent_searches: searches }, { onConflict: 'user_id' })
+        .then(({ error }) => {
+          if (error) console.error({ error }, 'Failed to save recommendation search history');
+        });
     }
   },
 
@@ -65,6 +166,16 @@ export const recommendationService = {
     const key = `usr_searches_${userId}`;
     const data = localStorage.getItem(key);
     return data ? JSON.parse(data) : [];
+  },
+
+  async clearUserSearches(userId: string): Promise<void> {
+    localStorage.removeItem(`usr_searches_${userId}`);
+    const { error } = await supabase
+      .from('user_recommendation_profiles')
+      .upsert({ user_id: userId, recent_searches: [] }, { onConflict: 'user_id' });
+    if (error) {
+      console.error({ error }, 'Failed to clear recommendation search history');
+    }
   },
 
   // --- ANALYSIS: PROFITABILITY & RISK ASSESSMENT ---
@@ -117,62 +228,6 @@ export const recommendationService = {
     return { profitability, riskScore, riskLevel };
   },
 
-  // --- SEARCH DYNAMIC INTEREST EXTRACTION ---
-  getSearchInterests(userId: string): { categories: string[], locations: string[] } {
-    const searches = this.getUserSearches(userId);
-    const categories: string[] = [];
-    const locations: string[] = [];
-
-    const categoryKeywords: Record<string, string[]> = {
-      'scrap & scrap material': ['scrap', 'metal', 'copper', 'aluminum', 'aluminium', 'iron', 'steel', 'brass', 'lead', 'zinc', 'cable', 'wire', 'battery', 'surplus', 'waste'],
-      'plant & machinery': ['plant', 'machinery', 'machineries', 'transformer', 'turbine', 'boiler', 'generator', 'compressor', 'pump', 'engine', 'industrial', 'equipment'],
-      'vehicles': ['vehicle', 'vehicles', 'car', 'truck', 'bus', 'tractor', 'vessel', 'vessels', 'tempo', 'dumper', 'tipper'],
-      'real estate': ['property', 'land', 'building', 'office', 'flat', 'apartment', 'plot', 'immovable', 'estate'],
-      'e-waste': ['e-waste', 'electronic', 'electronics', 'computer', 'laptop', 'monitor', 'printer', 'ups', 'server'],
-      'minerals & ores': ['mineral', 'minerals', 'ore', 'ores', 'coal', 'lignite', 'bauxite', 'limestone', 'mine', 'blocks']
-    };
-
-    const locationKeywords = [
-      'Delhi', 'Maharashtra', 'West Bengal', 'Tamil Nadu', 'Karnataka', 'Gujarat', 'Uttar Pradesh', 'Kerala', 'Rajasthan',
-      'Mumbai', 'Kolkata', 'Chennai', 'Nagpur', 'Bangalore', 'Bengaluru', 'Pune', 'Ahmedabad', 'Hyderabad'
-    ];
-
-    searches.forEach(search => {
-      const lowerSearch = search.toLowerCase();
-
-      // Check category keywords
-      Object.entries(categoryKeywords).forEach(([cat, keywords]) => {
-        if (keywords.some(kw => lowerSearch.includes(kw))) {
-          categories.push(cat);
-        }
-      });
-
-      // Check location keywords
-      locationKeywords.forEach(loc => {
-        if (lowerSearch.includes(loc.toLowerCase())) {
-          if (loc === 'Mumbai' || loc === 'Nagpur' || loc === 'Pune') {
-            locations.push('Maharashtra');
-          } else if (loc === 'Bangalore' || loc === 'Bengaluru') {
-            locations.push('Karnataka');
-          } else if (loc === 'Kolkata') {
-            locations.push('West Bengal');
-          } else if (loc === 'Chennai') {
-            locations.push('Tamil Nadu');
-          } else if (loc === 'Ahmedabad') {
-            locations.push('Gujarat');
-          } else {
-            locations.push(loc);
-          }
-        }
-      });
-    });
-
-    return {
-      categories: Array.from(new Set(categories)),
-      locations: Array.from(new Set(locations))
-    };
-  },
-
   // --- HYBRID RECOMMENDATION ENGINE ---
   async getAllAvailableAuctions(categories: any[]): Promise<any[]> {
     // Get all commercial auctions
@@ -202,6 +257,7 @@ export const recommendationService = {
           const { preBid, totalValue } = estimateAuctionValues(item);
 
           return {
+            ...item,
             id: item.id,
             title: `${subCat} - ${item.seller_name}`,
             description: item.raw_materials_text || '',
@@ -232,123 +288,179 @@ export const recommendationService = {
   },
 
   async getRecommendedAuctions(userId: string, limit: number = 6): Promise<any[]> {
-    // 1. Fetch all categories to resolve category names from category_id
     const categories = await auctionService.getCategories();
     const categoryMap = new Map(categories.map(c => [c.id, c]));
-
-    // 2. Get all active upcoming auctions (merged commercial and MSTC)
     const allAuctions = await this.getAllAvailableAuctions(categories);
     if (allAuctions.length === 0) return [];
 
-    // 3. Fetch User Context
-    const prefs = this.getUserPreferences(userId) || DEFAULT_PREFS;
-    const searches = this.getUserSearches(userId);
-    const searchInterests = this.getSearchInterests(userId);
-    
-    // Combine explicit preferences with implicit search interests
-    const combinedCategories = Array.from(new Set([...prefs.categories, ...searchInterests.categories]));
-    const combinedLocations = Array.from(new Set([...prefs.locations, ...searchInterests.locations]));
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+    const [profile, dbWatchlist, userBids, globalBidResult] = await Promise.all([
+      this.getRecommendationProfile(userId),
+      auctionService.getUserWatchlistIds(userId),
+      auctionService.getUserBids(userId),
+      supabase.from('bids').select('auction_id, bidder_id, created_at').gte('created_at', thirtyDaysAgo).limit(5000)
+    ]);
 
-    const dbWatchlist = await auctionService.getUserWatchlistIds(userId);
+    if (globalBidResult.error) {
+      console.error({ error: globalBidResult.error }, 'Failed to load recommendation popularity signals');
+    }
+
+    const prefs = profile.preferences;
+    const searches = hasPersonalizationConsent() ? profile.recentSearches : [];
     const localWatchlist = dashboardService.getInterestedAuctions(userId);
     const watchlistIds = Array.from(new Set([...dbWatchlist, ...localWatchlist]));
+    const watchlistAuctions = allAuctions.filter(a => watchlistIds.includes(a.id));
+    const auctionById = new Map(allAuctions.map(auction => [auction.id, auction]));
 
-    // 4. Compute scores for each auction
-    const scored = allAuctions.map((auction: any) => {
-      // Don't recommend auctions already on the watchlist
-      if (watchlistIds.includes(auction.id)) {
-        return { auction, score: -1 };
-      }
+    const categoryAliases: Record<string, string[]> = {
+      'scrap & scrap material': ['scrap', 'metal', 'miscellaneous'],
+      'plant & machinery': ['plant', 'machinery', 'machineries', 'equipment'],
+      'vehicles': ['vehicle', 'transport vehicles', 'vessel'],
+      'real estate': ['real estate', 'immovable property', 'property'],
+      'e-waste': ['e-waste', 'electrical items', 'electronics items', 'electronics'],
+      'minerals & ores': ['mineral', 'minerals', 'ore', 'mine block']
+    };
 
-      let score = 0;
-      const titleLower = (auction.title || '').toLowerCase();
-      const descLower = (auction.description || '').toLowerCase();
-      
-      const catObj = auction.category_id ? categoryMap.get(auction.category_id) : null;
-      const categoryName = (catObj?.name || auction.category?.name || '').toLowerCase();
-      const parentCatObj = catObj?.parent_id ? categoryMap.get(catObj.parent_id) : null;
-      const parentCategoryName = (parentCatObj?.name || '').toLowerCase();
-      const locationName = (auction.location || '').toLowerCase();
+    const categoryOf = (auction: any): string => {
+      const category = auction.category_id ? categoryMap.get(auction.category_id) : null;
+      return (category?.name || auction.category?.name || '').toLowerCase();
+    };
+    const locationOf = (auction: any): string => (auction.location || '').toLowerCase();
+    const addSignal = (signals: Map<string, number>, key: string, weight: number) => {
+      const normalized = key.trim().toLowerCase();
+      if (normalized) signals.set(normalized, (signals.get(normalized) || 0) + weight);
+    };
+    const matchesCategory = (preference: string, category: string, text: string): boolean => {
+      const aliases = categoryAliases[preference.toLowerCase()] || [preference.toLowerCase()];
+      return aliases.some(alias => category.includes(alias) || text.includes(alias));
+    };
 
-      // A. Knowledge-Based Component (Rules matching preference questionnaire & search interests)
-      // Category match
-      const hasCatPref = combinedCategories.some(prefCat => {
-        const pLower = prefCat.toLowerCase();
-        const HOME_PAGE_CATEGORY_MAPPING: Record<string, string[]> = {
-          'scrap & scrap material': ['metal', 'miscellaneous'],
-          'plant & machinery': ['plant/machineries'],
-          'vehicles': ['transport vehicles', 'vessels'],
-          'real estate': ['immovable property'],
-          'e-waste': ['electrical items', 'electronics items'],
-          'minerals & ores': ['minerals', 'mine block']
-        };
-        const mappedNames = HOME_PAGE_CATEGORY_MAPPING[pLower] || [pLower];
-        return mappedNames.some(mName => 
-          categoryName.includes(mName) || 
-          parentCategoryName.includes(mName) ||
-          titleLower.includes(mName)
-        );
+    // Knowledge signals evolve from the user's searches, watchlist, and bidding history.
+    const categoryAffinity = new Map<string, number>();
+    const locationAffinity = new Map<string, number>();
+    const termAffinity = new Map<string, number>();
+
+    const ignoredSearchTerms = new Set(['and', 'the', 'for', 'with', 'from', 'near', 'auction', 'auctions']);
+    searches.forEach((query, index) => {
+      const recencyWeight = Math.max(1, 5 - index * 0.4);
+      query.split(/\s+/).filter(term => term.length > 2 && !ignoredSearchTerms.has(term)).forEach(term => {
+        addSignal(termAffinity, term, recencyWeight);
       });
-      if (hasCatPref) score += 45;
-
-      // Location match
-      const hasLocPref = combinedLocations.some(prefLoc => 
-        locationName.includes(prefLoc.toLowerCase())
-      );
-      if (hasLocPref) score += 40;
-
-      // Budget match
-      if (auction.starting_price <= prefs.maxBudget) {
-        score += 25;
-      } else if (auction.starting_price > prefs.maxBudget * 1.5) {
-        score -= 40; // Penalize heavy budget overshoot
-      }
-
-      // Risk preference match
-      const { riskLevel } = this.assessAuction(auction, prefs.maxBudget);
-      if (riskLevel.toLowerCase() === prefs.riskLevel) {
-        score += 20;
-      }
-
-      // B. Content-Based Component (Watchlist and searches)
-      // Search matching: check if auction contains logged search keywords
-      if (searches.length > 0) {
-        searches.forEach(searchQuery => {
-          if (titleLower.includes(searchQuery) || descLower.includes(searchQuery)) {
-            score += 25; // boost search match score
-          }
-        });
-      }
-
-      // Watchlist overlap (Find category/locations of what they already watchlisted)
-      const watchlistAuctions = allAuctions.filter(a => watchlistIds.includes(a.id));
-      if (watchlistAuctions.length > 0) {
-        watchlistAuctions.forEach(watched => {
-          if (watched.category_id === auction.category_id) score += 15;
-          if (watched.location === auction.location) score += 10;
-        });
-      }
-
-      // C. Collaborative Component (Simulated Global Popularity / Active Bidding)
-      if (auction.bids && auction.bids.length > 0) {
-        score += Math.min(auction.bids.length * 5, 20); // Popularity boost
-      }
-
-      return { auction, score };
+      Object.entries(categoryAliases).forEach(([category, aliases]) => {
+        if (aliases.some(alias => query.includes(alias))) addSignal(categoryAffinity, category, recencyWeight * 1.5);
+      });
     });
 
-    // 5. Filter, sort and return top items. 
-    // We allow score >= 0 so we always have fallback recommendations displayed instead of nothing.
-    return scored
+    watchlistAuctions.forEach(auction => {
+      addSignal(categoryAffinity, categoryOf(auction), 7);
+      addSignal(locationAffinity, locationOf(auction), 4);
+    });
+
+    const latestUserBidByAuction = new Map<string, any>();
+    userBids.forEach((bid: any) => {
+      const current = latestUserBidByAuction.get(bid.auction_id);
+      if (!current || new Date(bid.created_at) > new Date(current.created_at)) {
+        latestUserBidByAuction.set(bid.auction_id, bid);
+      }
+    });
+    latestUserBidByAuction.forEach((bid: any) => {
+      if (!bid.auction) return;
+      const ageDays = Math.max(0, (Date.now() - new Date(bid.created_at).getTime()) / 86400000);
+      const recencyWeight = Math.max(2, 10 * Math.exp(-ageDays / 120));
+      addSignal(categoryAffinity, categoryOf(bid.auction), recencyWeight);
+      addSignal(locationAffinity, locationOf(bid.auction), recencyWeight * 0.5);
+    });
+
+    // Collaborative signals use real recent bidding activity across the marketplace.
+    const auctionPopularity = new Map<string, number>();
+    const auctionBidders = new Map<string, Set<string>>();
+    const categoryPopularity = new Map<string, number>();
+    (globalBidResult.data || []).forEach((bid: any) => {
+      auctionPopularity.set(bid.auction_id, (auctionPopularity.get(bid.auction_id) || 0) + 1);
+      if (!auctionBidders.has(bid.auction_id)) auctionBidders.set(bid.auction_id, new Set());
+      auctionBidders.get(bid.auction_id)?.add(bid.bidder_id);
+      const auction = auctionById.get(bid.auction_id);
+      if (auction) addSignal(categoryPopularity, categoryOf(auction), 1);
+    });
+
+    const scored = allAuctions.map((auction: any) => {
+      if (watchlistIds.includes(auction.id)) return { auction, score: -1 };
+
+      const titleLower = (auction.title || '').toLowerCase();
+      const descLower = (auction.description || '').toLowerCase();
+      const categoryName = categoryOf(auction);
+      const locationName = locationOf(auction);
+      const searchableText = `${titleLower} ${descLower} ${categoryName} ${locationName}`;
+
+      let knowledgeScore = 0;
+      categoryAffinity.forEach((weight, category) => {
+        if (matchesCategory(category, categoryName, searchableText)) knowledgeScore += weight * 2.5;
+      });
+      locationAffinity.forEach((weight, location) => {
+        if (locationName.includes(location)) knowledgeScore += weight * 1.5;
+      });
+      termAffinity.forEach((weight, term) => {
+        if (searchableText.includes(term)) knowledgeScore += weight;
+      });
+      knowledgeScore = Math.min(70, knowledgeScore);
+
+      // Content-based cold start uses explicit questionnaire features.
+      let contentScore = 0;
+      if (prefs) {
+        if (prefs.categories.some(category => matchesCategory(category, categoryName, searchableText))) contentScore += 35;
+        if (prefs.locations.some(location => locationName.includes(location.toLowerCase()))) contentScore += 20;
+
+        const price = Number(auction.starting_price) || 0;
+        if (price > 0 && price <= prefs.maxBudget) contentScore += 15;
+        else if (price > prefs.maxBudget * 1.5) contentScore -= 15;
+
+        const { riskLevel } = this.assessAuction(auction, prefs.maxBudget);
+        if (riskLevel.toLowerCase() === prefs.riskLevel) contentScore += 10;
+      }
+
+      const directPopularity = auctionPopularity.get(auction.id) || 0;
+      const distinctBidders = auctionBidders.get(auction.id)?.size || 0;
+      const categoryTrend = categoryPopularity.get(categoryName) || 0;
+      const collaborativeScore = Math.min(
+        35,
+        Math.log1p(directPopularity) * 7 + Math.log1p(distinctBidders) * 10
+      )
+        + Math.min(15, Math.log1p(categoryTrend) * 5);
+
+      const daysUntilClose = (new Date(auction.end_time).getTime() - Date.now()) / 86400000;
+      const timeRelevance = daysUntilClose > 0 && daysUntilClose <= 7 ? 6 : daysUntilClose <= 30 ? 3 : 0;
+      const score = knowledgeScore + contentScore + collaborativeScore + timeRelevance;
+
+      return { auction, score, knowledgeScore, contentScore, collaborativeScore };
+    });
+
+    const sorted = scored
       .filter(item => item.score >= 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-      .map(item => item.auction);
+      .sort((a, b) => b.score - a.score || new Date(a.auction.end_time).getTime() - new Date(b.auction.end_time).getTime());
+
+    const selected: typeof sorted = [];
+    const categoryCounts = new Map<string, number>();
+    for (const item of sorted) {
+      const category = item.auction.category?.name || item.auction.category_id || 'uncategorized';
+      if ((categoryCounts.get(category) || 0) >= 2) continue;
+      selected.push(item);
+      categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+      if (selected.length === limit) break;
+    }
+    if (selected.length < limit) {
+      for (const item of sorted) {
+        if (!selected.includes(item)) selected.push(item);
+        if (selected.length === limit) break;
+      }
+    }
+
+    return selected.map(item => item.auction);
   },
 
   // --- COMPARE AND RANK INTERESTED + SUGGESTED AUCTIONS ---
   async getRankedAuctions(userId: string): Promise<RankedAuction[]> {
-    const prefs = this.getUserPreferences(userId) || DEFAULT_PREFS;
+    const profile = await this.getRecommendationProfile(userId);
+    const prefs = profile.preferences || DEFAULT_PREFS;
     const categories = await auctionService.getCategories();
     const allAuctions = await this.getAllAvailableAuctions(categories);
 

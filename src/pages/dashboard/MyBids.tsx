@@ -125,7 +125,7 @@ export function MyBids() {
                         </div>
                         <Link 
                           to={`/auctions/${bid.auction.id}`}
-                          className="sm:mt-3 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-primary transition-colors"
+                          className="sm:mt-3 px-4 py-2 bg-primary hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors"
                         >
                           View Auction
                         </Link>

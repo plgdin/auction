@@ -158,7 +158,7 @@ export function RegisterForm() {
             id="acceptTerms"
             type="checkbox"
             {...register('acceptTerms')}
-            className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded-md cursor-pointer"
+            className="h-4 w-4 accent-primary checked:bg-primary checked:border-primary focus:ring-primary border-slate-300 rounded-md cursor-pointer"
           />
         </div>
         <div className="ml-2 text-xs">

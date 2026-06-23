@@ -60,8 +60,8 @@ export const router = createBrowserRouter([
       { path: 'privacy', element: <Privacy /> },
       { path: 'terms', element: <Terms /> },
       { path: 'cookies', element: <Cookies /> },
-      { path: 'quotes', element: <Navigate to="/dashboard/quotes" replace /> },
-      { path: 'quote', element: <Navigate to="/dashboard/quotes" replace /> },
+      { path: 'quotes', element: <QuotePage /> },
+      { path: 'quote', element: <Navigate to="/quotes" replace /> },
     ],
   },
   {

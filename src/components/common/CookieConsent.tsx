@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Cookie, X } from 'lucide-react';
+import { readCookieConsent, writeCookieConsent } from '../../utils/cookieConsent';
 
 export function CookieConsent() {
   const [showConsent, setShowConsent] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem('cookie-consent');
+    let consent = readCookieConsent();
+
+    // Preserve a previous explicit choice while migrating away from localStorage.
+    const legacyConsent = localStorage.getItem('cookie-consent');
+    if (!consent && (legacyConsent === 'accepted' || legacyConsent === 'declined')) {
+      writeCookieConsent(legacyConsent);
+      consent = legacyConsent;
+    }
+    localStorage.removeItem('cookie-consent');
+
     if (!consent) {
       // Small delay for clean entrance animation
       const timer = setTimeout(() => {
@@ -16,17 +26,16 @@ export function CookieConsent() {
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem('cookie-consent', 'accepted');
+    writeCookieConsent('accepted');
     setShowConsent(false);
   };
 
   const handleDecline = () => {
-    localStorage.setItem('cookie-consent', 'declined');
+    writeCookieConsent('declined');
     setShowConsent(false);
   };
 
   const handleDismiss = () => {
-    localStorage.setItem('cookie-consent', 'dismissed');
     setShowConsent(false);
   };
 
@@ -51,7 +60,7 @@ export function CookieConsent() {
             </button>
           </div>
           <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-            We use cookies to analyze site traffic, personalize content, and enhance your user experience.
+            Essential storage keeps your account signed in. Accept to use recent searches for personalized auction recommendations.
           </p>
           <div className="flex gap-2.5 mt-4">
             <button

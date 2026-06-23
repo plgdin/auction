@@ -100,7 +100,7 @@ export function ReportsAnalytics() {
           <button 
             onClick={handlePdfExport}
             disabled={isExporting}
-            className="px-4 py-2 bg-primary hover:bg-primary-700 text-white font-bold text-sm rounded-lg flex items-center transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-slate-900 hover:bg-black text-white font-bold text-sm rounded-lg flex items-center transition-colors disabled:opacity-50"
           >
             {isExporting ? 'Generating...' : <><FileText className="w-4 h-4 mr-2" /> PDF Report</>}
           </button>

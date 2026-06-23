@@ -143,16 +143,19 @@ export function Auctions() {
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
   const [mstcTotalCount, setMstcTotalCount] = useState(0);
   const [isMstcLoading, setIsMstcLoading] = useState(false);
+  const [isShowingSimilarMstc, setIsShowingSimilarMstc] = useState(false);
   const [mstcOptions, setMstcOptions] = useState<{
     categories: string[];
     subcategories: Record<string, string[]>;
     sellers: string[];
     locations: string[];
+    regionalOffices: string[];
   }>({
     categories: [],
     subcategories: {},
     sellers: [],
-    locations: []
+    locations: [],
+    regionalOffices: []
   });
 
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<MstcSanitizedAuction | null>(null);
@@ -181,10 +184,11 @@ export function Auctions() {
   const selectedMstcCategories = searchParams.getAll('mstc_category');
   const selectedMstcSubcategories = searchParams.getAll('mstc_subcategory');
   const selectedMstcLocations = searchParams.getAll('mstc_location');
-  const selectedMstcSellers = searchParams.getAll('mstc_seller');
   const selectedMstcRegionalOffices = searchParams.getAll('mstc_regional_office');
   const mstcHasAssetDocuments = searchParams.get('has_docs') === 'true';
   const mstcHasImages = searchParams.get('has_images') === 'true';
+  const mstcIsReauction = searchParams.get('is_reauction') === 'true';
+  const submittedSearchQuery = (searchParams.get('q') || '').trim();
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -311,6 +315,19 @@ export function Auctions() {
     endDate,
   };
 
+  const mstcActiveFilters = [
+    ...(submittedSearchQuery ? [{ label: 'Search', value: submittedSearchQuery }] : []),
+    ...(selectedMstcCategories.length ? [{ label: 'Category', value: selectedMstcCategories.join(', ') }] : []),
+    ...(selectedMstcSubcategories.length ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
+    ...(selectedMstcLocations.length ? [{ label: 'Location', value: selectedMstcLocations.join(', ') }] : []),
+    ...(selectedMstcRegionalOffices.length ? [{ label: 'Regional office', value: selectedMstcRegionalOffices.join(', ') }] : []),
+    ...(startDate ? [{ label: 'From', value: startDate }] : []),
+    ...(endDate ? [{ label: 'To', value: endDate }] : []),
+    ...(mstcHasAssetDocuments ? [{ label: 'Documents', value: 'Available' }] : []),
+    ...(mstcHasImages ? [{ label: 'Images', value: 'Available' }] : []),
+    ...(mstcIsReauction ? [{ label: 'Auction status', value: 'Re-auction' }] : []),
+  ];
+
   const isAnyFilterActive = !!(
     (filters.categoryIds && filters.categoryIds.length > 0) ||
     filters.listingType ||
@@ -373,31 +390,40 @@ export function Auctions() {
   const selectedMstcCategoriesJoined = selectedMstcCategories.join(',');
   const selectedMstcSubcategoriesJoined = selectedMstcSubcategories.join(',');
   const selectedMstcLocationsJoined = selectedMstcLocations.join(',');
-  const selectedMstcSellersJoined = selectedMstcSellers.join(',');
   const selectedMstcRegionalOfficesJoined = selectedMstcRegionalOffices.join(',');
 
   const loadMstcData = useCallback(async () => {
     setIsMstcLoading(true);
     try {
       const qParam = searchParams.get('q') || '';
-      const { data, count } = await MstcSearchService.searchMarketplaceCatalog(qParam, {
+      const searchFilters = {
         categories: selectedMstcCategories.length > 0 ? selectedMstcCategories : undefined,
         subcategories: selectedMstcSubcategories.length > 0 ? selectedMstcSubcategories : undefined,
         locations: selectedMstcLocations.length > 0 ? selectedMstcLocations : undefined,
-        sellers: selectedMstcSellers.length > 0 ? selectedMstcSellers : undefined,
         regionalOffices: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined,
         startDate,
         endDate,
         hasImages: mstcHasImages,
         hasAssetDocuments: mstcHasAssetDocuments,
+        isReauction: mstcIsReauction || undefined,
         page,
         limit
-      });
+      };
 
-      setMstcAuctions(data);
-      setMstcTotalCount(count);
+      let result = await MstcSearchService.searchMarketplaceCatalog(qParam, searchFilters);
+      let showingSimilar = !!qParam.trim() && result.data.length > 0 && result.hasDirectMatches === false;
+
+      if (qParam.trim() && result.data.length === 0) {
+        result = await MstcSearchService.searchMarketplaceCatalog('', searchFilters);
+        showingSimilar = result.data.length > 0;
+      }
+
+      setMstcAuctions(result.data);
+      setMstcTotalCount(result.count);
+      setIsShowingSimilarMstc(showingSimilar);
     } catch (error) {
       console.error('Error loading MSTC catalogs:', error);
+      setIsShowingSimilarMstc(false);
     } finally {
       setIsMstcLoading(false);
     }
@@ -406,12 +432,12 @@ export function Auctions() {
     selectedMstcCategoriesJoined,
     selectedMstcSubcategoriesJoined,
     selectedMstcLocationsJoined,
-    selectedMstcSellersJoined,
     selectedMstcRegionalOfficesJoined,
     startDate,
     endDate,
     mstcHasAssetDocuments,
     mstcHasImages,
+    mstcIsReauction,
     page,
     limit
   ]);
@@ -491,13 +517,12 @@ export function Auctions() {
         }
       }
 
-      // Update Seller (mapped to regionalOffice)
-      if ('regionalOffice' in newFilters) {
-        if (newFilters.regionalOffice) {
-          next.set('mstc_seller', newFilters.regionalOffice);
-        } else {
-          next.delete('mstc_seller');
-        }
+      // Update Regional Offices
+      if ('regionalOffices' in newFilters) {
+        next.delete('mstc_regional_office');
+        newFilters.regionalOffices?.forEach((office: string) => {
+          next.append('mstc_regional_office', office);
+        });
       }
 
       // Update startDate
@@ -531,6 +556,13 @@ export function Auctions() {
           next.set('has_images', 'true');
         } else {
           next.delete('has_images');
+        }
+      }
+      if ('isReauction' in newFilters) {
+        if (newFilters.isReauction) {
+          next.set('is_reauction', 'true');
+        } else {
+          next.delete('is_reauction');
         }
       }
 
@@ -652,36 +684,7 @@ export function Auctions() {
 
         <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-white mb-2">Auctions Marketplace</h1>
-          <p className="text-slate-400 mb-6">Browse live commercial auctions and official government catalogs.</p>
-
-          <div className="flex space-x-6 mb-6 border-b border-slate-800 pb-2">
-            <button
-              onClick={() => {
-                setSearchParams({ tab: 'mstc' });
-              }}
-              className={clsx(
-                "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none cursor-pointer",
-                activeTab === 'mstc'
-                  ? "border-primary text-white font-bold"
-                  : "border-transparent text-slate-300 hover:text-white"
-              )}
-            >
-              MSTC Government Catalogs
-            </button>
-            <button
-              onClick={() => {
-                setSearchParams({ tab: 'commercial' });
-              }}
-              className={clsx(
-                "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none cursor-pointer",
-                activeTab === 'commercial'
-                  ? "border-primary text-white font-bold"
-                  : "border-transparent text-slate-300 hover:text-white"
-              )}
-            >
-              Commercial Auctions
-            </button>
-          </div>
+          <p className="text-slate-400 mb-6">Browse official government catalogs and MSTC eAuctions.</p>
 
           <form onSubmit={handleSearch} className="max-w-3xl relative" onKeyDown={handleKeyDown}>
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -690,33 +693,13 @@ export function Auctions() {
             <input
               ref={inputRef}
               type="text"
-              className="block w-full pl-11 pr-[135px] py-4 border-0 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary sm:text-lg shadow-lg text-slate-900"
+              className="block w-full pl-11 pr-24 py-4 border-0 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary sm:text-lg shadow-lg text-slate-900"
               placeholder={activeTab === 'commercial' ? "Search by title, reference number, or keywords..." : "Search MSTC catalog numbers, categories, or sellers..."}
               value={searchQuery}
               onChange={handleInputChange}
               onFocus={() => setShowSuggestions(true)}
               autoComplete="off"
             />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  setSearchParams(prev => {
-                    const next = new URLSearchParams(prev);
-                    next.delete('q');
-                    next.set('page', '1');
-                    return next;
-                  });
-                  if (inputRef.current) {
-                    inputRef.current.focus();
-                  }
-                }}
-                className="absolute right-[105px] top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            )}
             <button
               type="submit"
               className="absolute right-2 top-2 bottom-2 px-6 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
@@ -813,17 +796,17 @@ export function Auctions() {
                 subcategories: selectedMstcSubcategories,
                 locations: selectedMstcLocations,
                 regionalOffices: selectedMstcRegionalOffices,
-                mstcSellers: selectedMstcSellers,
                 startDate,
                 endDate,
                 hasAssetDocuments: mstcHasAssetDocuments,
-                hasImages: mstcHasImages
+                hasImages: mstcHasImages,
+                isReauction: mstcIsReauction
               }}
               activeTab={activeTab}
               customCategories={mstcOptions.categories}
               customSubcategories={mstcOptions.subcategories}
               customLocations={mstcOptions.locations}
-              customSellers={mstcOptions.sellers}
+              customRegionalOffices={mstcOptions.regionalOffices}
             />
             {/* Overlay for mobile filters */}
             {isFiltersOpen && (
@@ -885,9 +868,26 @@ export function Auctions() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div className="text-sm text-slate-650 font-semibold flex items-center gap-2">
-                  <span>Showing {mstcTotalCount} Government Catalogs</span>
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between sm:items-start gap-4">
+                <div className="min-w-0 space-y-2">
+                  <div className="text-sm text-slate-700 font-semibold">
+                    Showing {mstcTotalCount} Government Catalogs
+                  </div>
+                  {mstcActiveFilters.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5" aria-label="Applied filters">
+                      <span className="text-xs font-medium text-slate-500 mr-0.5">Applied filters:</span>
+                      {mstcActiveFilters.map(filter => (
+                        <span
+                          key={`${filter.label}-${filter.value}`}
+                          className="max-w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"
+                          title={`${filter.label}: ${filter.value}`}
+                        >
+                          <span className="font-semibold text-slate-700">{filter.label}:</span>{' '}
+                          <span className="break-words">{filter.value}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-4 w-full sm:w-auto">
                   <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
@@ -1063,6 +1063,16 @@ export function Auctions() {
                   </div>
                 ) : (
                   <>
+                    {isShowingSimilarMstc && submittedSearchQuery && (
+                      <div className="mb-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3" role="status">
+                        <p className="text-sm font-semibold text-slate-900">
+                          We couldn't find exactly what you're looking for.
+                        </p>
+                        <p className="mt-0.5 text-sm text-slate-600">
+                          Here are similar listings for &ldquo;{submittedSearchQuery}&rdquo;.
+                        </p>
+                      </div>
+                    )}
                     <div className={clsx(
                       "gap-6",
                       isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"

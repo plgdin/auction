@@ -134,10 +134,10 @@ export function QuotePage() {
 
   React.useEffect(() => {
     const loadInterestedAuctions = async () => {
-      if (!user) return;
+      const userId = user ? user.id : 'anonymous';
       setIsAuctionsLoading(true);
       try {
-        const ids = dashboardService.getInterestedAuctions(user.id);
+        const ids = dashboardService.getInterestedAuctions(userId);
         if (ids.length > 0) {
           const items = await Promise.all(
             ids.map(id => MstcSearchService.getMstcAuctionById(id))
@@ -440,7 +440,7 @@ export function QuotePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* LEFT COLUMN: EDITOR CONTROL PANEL */}
-          <div className="lg:col-span-5 space-y-6 print:hidden">
+          <div className="lg:col-span-5 space-y-6 print:hidden lg:h-[calc(100vh-240px)] lg:overflow-y-auto lg:pr-2 pb-10 custom-scrollbar" style={{ scrollbarWidth: 'thin' }}>
             
             {/* Template customization */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-5">
@@ -820,7 +820,7 @@ export function QuotePage() {
                         { value: '', label: '-- Choose an Auction Catalog --' },
                         ...interestedAuctions.map((auc) => ({
                           value: auc.id,
-                          label: `${auc.mstc_auction_number.split('/').pop() || 'Catalog'} - ${auc.seller_name.substring(0, 30)}`
+                          label: `${(auc.mstc_auction_number || '').split('/').pop() || 'Catalog'} - ${(auc.seller_name || '').substring(0, 30)}`
                         }))
                       ]}
                       placeholder="-- Choose an Auction Catalog --"
@@ -1015,7 +1015,7 @@ export function QuotePage() {
           </div>
 
           {/* RIGHT COLUMN: PREVIEW SHEET */}
-          <div className="lg:col-span-7 space-y-6 lg:sticky lg:top-6 lg:self-start">
+          <div className="lg:col-span-7 space-y-6 lg:h-[calc(100vh-240px)] lg:overflow-y-auto lg:pr-2 pb-10 custom-scrollbar" style={{ scrollbarWidth: 'thin' }}>
             
             {/* Editor Top Bar for Preview actions */}
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-end print:hidden bg-white p-4 border border-slate-200 rounded-2xl shadow-xs">

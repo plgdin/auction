@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { 
   Gavel, Trophy, Heart, ArrowRight, Activity, 
   TrendingUp, Sparkles, MapPin, Shield, CreditCard,
-  Sliders, AlertTriangle, HelpCircle, CheckCircle,
+  AlertTriangle, HelpCircle, CheckCircle,
   ChevronRight
 } from 'lucide-react';
 import { 
@@ -75,13 +75,13 @@ export function Dashboard() {
       setDynamicChartData(newChartData);
 
       // Load preferences and recommendations
-      const prefs = recommendationService.getUserPreferences(userId);
+      const recommendationProfile = await recommendationService.getRecommendationProfile(userId);
+      const prefs = recommendationProfile.preferences;
       setUserPrefs(prefs);
       setInterestedIds(allInterested);
 
       // If preferences are not configured and questionnaire was never completed/dismissed, trigger questionnaire for onboarding
-      const hasCompletedQuestionnaire = localStorage.getItem(`usr_questionnaire_completed_${userId}`);
-      if (!prefs && !hasCompletedQuestionnaire) {
+      if (!prefs && !recommendationProfile.questionnaireCompleted) {
         setIsQuestionnaireOpen(true);
       }
 
@@ -104,21 +104,13 @@ export function Dashboard() {
     loadDashboardAndRecs(user.id);
   }, [user]);
 
-  const handleSavePreferences = (prefs: UserPreference) => {
+  const handleSavePreferences = async (prefs: UserPreference) => {
     if (!user) return;
-    recommendationService.saveUserPreferences(user.id, prefs);
-    localStorage.setItem(`usr_questionnaire_completed_${user.id}`, 'true');
+    await recommendationService.saveUserPreferences(user.id, prefs);
     setUserPrefs(prefs);
     setIsQuestionnaireOpen(false);
     setIsLoading(true);
     loadDashboardAndRecs(user.id);
-  };
-
-  const handleCloseQuestionnaire = () => {
-    if (user) {
-      localStorage.setItem(`usr_questionnaire_completed_${user.id}`, 'true');
-    }
-    setIsQuestionnaireOpen(false);
   };
 
   const handleToggleWatchlist = async (auctionId: string) => {
@@ -167,7 +159,7 @@ export function Dashboard() {
       {/* Welcome Section */}
       <div className="bg-foreground rounded-lg p-8 text-white relative overflow-hidden shadow">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-transparent"></div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="relative z-10">
           <div>
             <h1 className="text-3xl font-extrabold mb-2">
               Welcome back, {profile?.first_name || 'User'}
@@ -176,13 +168,6 @@ export function Dashboard() {
               Here is your bidding overview. You have {stats.activeBids} active bids across the marketplace.
             </p>
           </div>
-          <button
-            onClick={() => setIsQuestionnaireOpen(true)}
-            className="self-start md:self-auto bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2.5 rounded-lg flex items-center gap-2 border border-blue-600 transition-colors shadow-sm cursor-pointer"
-          >
-            <Sliders className="w-4 h-4" />
-            Adjust Feed Preferences
-          </button>
         </div>
       </div>
 
@@ -506,7 +491,6 @@ export function Dashboard() {
       {user && (
         <PreferenceQuestionnaireModal
           isOpen={isQuestionnaireOpen}
-          onClose={handleCloseQuestionnaire}
           onSave={handleSavePreferences}
         />
       )}

@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Sparkles, MapPin, Shield, CreditCard, ChevronRight, Check, X } from 'lucide-react';
+import { Sparkles, MapPin, Shield, CreditCard, ChevronRight, Check } from 'lucide-react';
 import type { UserPreference } from '../../services/recommendationService';
 
 interface PreferenceQuestionnaireModalProps {
   isOpen: boolean;
-  onClose: () => void;
-  onSave: (prefs: UserPreference) => void;
+  onSave: (prefs: UserPreference) => Promise<void>;
 }
 
 const INDIAN_STATES = [
@@ -29,12 +28,14 @@ const BUDGET_OPTIONS = [
   { value: 50000000, label: 'Over 1 Crore' }
 ];
 
-export function PreferenceQuestionnaireModal({ isOpen, onClose, onSave }: PreferenceQuestionnaireModalProps) {
+export function PreferenceQuestionnaireModal({ isOpen, onSave }: PreferenceQuestionnaireModalProps) {
   const [step, setStep] = useState(1);
   const [selectedCats, setSelectedCats] = useState<string[]>(['scrap & scrap material']);
   const [selectedLocs, setSelectedLocs] = useState<string[]>(['Maharashtra', 'Delhi']);
   const [budget, setBudget] = useState<number>(2500000);
   const [risk, setRisk] = useState<'low' | 'medium' | 'high'>('medium');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -50,7 +51,7 @@ export function PreferenceQuestionnaireModal({ isOpen, onClose, onSave }: Prefer
     );
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < 4) {
       setStep(prev => prev + 1);
     } else {
@@ -60,7 +61,15 @@ export function PreferenceQuestionnaireModal({ isOpen, onClose, onSave }: Prefer
         maxBudget: budget,
         riskLevel: risk
       };
-      onSave(preferences);
+      setIsSaving(true);
+      setSaveError(null);
+      try {
+        await onSave(preferences);
+      } catch {
+        setSaveError('Could not save your recommendation profile. Please try again.');
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -75,13 +84,6 @@ export function PreferenceQuestionnaireModal({ isOpen, onClose, onSave }: Prefer
       <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col transform transition-all">
         {/* Header Banner */}
         <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 p-6 text-white relative">
-          <button 
-            onClick={onClose}
-            className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          
           <div className="absolute top-0 right-0 p-4 opacity-10">
             <Sparkles className="w-24 h-24" />
           </div>
@@ -278,15 +280,18 @@ export function PreferenceQuestionnaireModal({ isOpen, onClose, onSave }: Prefer
           
           <button
             onClick={handleNext}
-            disabled={step === 1 && selectedCats.length === 0}
+            disabled={isSaving || (step === 1 && selectedCats.length === 0)}
             className={`text-sm font-semibold px-5 py-2.5 rounded-lg bg-blue-700 text-white hover:bg-blue-800 flex items-center gap-1.5 shadow-sm transition-all ${
               step === 1 && selectedCats.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
-            {step === 4 ? 'Save & Build Feed' : 'Continue'}
+            {isSaving ? 'Saving...' : step === 4 ? 'Save & Build Feed' : 'Continue'}
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
+        {saveError && (
+          <div className="px-6 pb-4 bg-slate-50 text-sm text-red-600" role="alert">{saveError}</div>
+        )}
       </div>
     </div>
   );
