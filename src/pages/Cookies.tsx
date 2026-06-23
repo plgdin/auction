@@ -14,7 +14,7 @@ export function Cookies() {
       <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-xs space-y-8 text-slate-700 leading-relaxed">
         <section className="space-y-3">
           <p>
-            <strong>Lelam (Auction Central)</strong> uses cookies and similar technologies to deliver, measure, and improve your user experience.
+            <strong>Lelam (Auction Central)</strong> uses essential browser storage for account sessions and a consent cookie to remember your personalization choice.
           </p>
         </section>
 
@@ -32,9 +32,9 @@ export function Cookies() {
           </p>
           <ul className="list-disc pl-5 space-y-2 text-sm">
             <li><strong>Authentication & Session Management:</strong> We use essential session cookies (powered by Supabase) to keep you logged in as you navigate between pages.</li>
-            <li><strong>Preferences & State:</strong> To remember your theme, layout choices, and active search filters.</li>
+            <li><strong>Consent:</strong> We store your Accept or Decline choice for one year so the banner does not repeatedly interrupt you.</li>
+            <li><strong>Personalization:</strong> If you accept, recent auction searches may be saved to your account to improve recommendations across devices.</li>
             <li><strong>Security:</strong> To protect your account from unauthorized hijacking and to prevent CSRF (Cross-Site Request Forgery) attacks.</li>
-            <li><strong>Analytics:</strong> To understand how users interact with our search index and catalog downloads.</li>
           </ul>
         </section>
 
@@ -46,6 +46,7 @@ export function Cookies() {
           <ul className="list-disc pl-5 space-y-2 text-sm">
             <li>Disabling essential cookies may prevent you from logging in or maintaining a watchlist on the platform.</li>
             <li>You can configure your browser to alert you when cookies are set or to refuse them entirely.</li>
+            <li>Declining personalization does not prevent normal marketplace search or account access.</li>
           </ul>
         </section>
       </div>

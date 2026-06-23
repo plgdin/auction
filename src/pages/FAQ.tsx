@@ -12,7 +12,7 @@ export function FAQ() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    document.title = 'eAuctions Help & FAQ | Lelam';
+    document.title = 'MSTC & eAuctions Help & FAQ | Lelam';
     async function loadFaqs() {
       const data = await publicService.getActiveFaqs();
       setFaqs(data);
@@ -69,7 +69,7 @@ export function FAQ() {
           <div className="inline-flex items-center justify-center p-3 bg-blue-50 text-primary rounded-2xl mb-4 shadow-xs">
             <HelpCircle className="w-8 h-8" />
           </div>
-          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight sm:text-5xl">eAuctions Help & FAQ</h1>
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight sm:text-5xl">MSTC & eAuctions Help & FAQ</h1>
           <p className="mt-4 text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto">
             Find answers to frequently asked questions about MSTC eAuctions and the Lelam eAuction bidding assistant platform.
           </p>

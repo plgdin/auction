@@ -52,5 +52,6 @@ export interface CatalogSummary {
   preview_image_url?: string | null;
   extracted_images?: string[];
   totalMarketValue?: number;
+  auctionType?: string;
   inspectionDetails?: InspectionDetails;
 }

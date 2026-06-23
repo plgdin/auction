@@ -56,7 +56,7 @@ export function Sidebar() {
     <aside className="w-64 bg-white border-r border-border min-h-screen text-foreground flex flex-col hidden lg:flex sticky top-0 h-screen">
       <div className="h-16 flex items-center px-6 border-b border-border shrink-0">
         <Link to="/" className="flex items-center gap-2.5">
-          <img src="/png_lelam_1.png" alt="Lelam Logo" className="h-8 w-auto object-contain" />
+          <img src="/png_lelam_1.webp" alt="Lelam Logo" className="h-8 w-auto object-contain" />
         </Link>
       </div>
 

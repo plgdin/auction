@@ -3,7 +3,7 @@ import { ServiceCategoriesSection } from '../components/home/ServiceCategoriesSe
 import { FeaturedAuctionsSection } from '../components/home/FeaturedAuctionsSection';
 import { HowItWorksSection } from '../components/home/HowItWorksSection';
 import { StatisticsSection } from '../components/home/StatisticsSection';
-import { AnnouncementsSection } from '../components/home/AnnouncementsSection';
+// import { AnnouncementsSection } from '../components/home/AnnouncementsSection';
 import { FaqSection } from '../components/home/FaqSection';
 
 export function Home() {
@@ -14,7 +14,7 @@ export function Home() {
       <FeaturedAuctionsSection />
       <HowItWorksSection />
       <StatisticsSection />
-      <AnnouncementsSection />
+      {/* <AnnouncementsSection /> */}
       <FaqSection />
     </div>
   );

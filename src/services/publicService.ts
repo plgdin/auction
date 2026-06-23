@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase';
-import { embeddingService } from './embeddingService';
 import type { ContactMessage, FaqItem, Announcement, NewsUpdate } from '../types/database.types';
 import { PageCache } from '../utils/pageCache';
 import {
@@ -687,11 +686,12 @@ function buildTaxonomy(data: MstcSanitizedAuction[]): {
   return { categoryKeywords, subcategoryKeywords };
 }
 
-export function estimateAuctionValues(item: MstcSanitizedAuction): { preBid: number; totalValue: number } {
+export function estimateAuctionValues(item: MstcSanitizedAuction): { preBid: number; totalValue: number; isEstimated: boolean } {
   let preBid = 50000; // default fallback
   let totalValue = 500000; // default fallback (preBid * 10)
-  
-  const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
+  let isEstimated = true;
+
+  const shortId = (item?.mstc_auction_number || '').split('/').pop() || item?.id?.substring(0, 8) || '';
   const shortIdNum = parseInt(shortId, 10);
   if (!isNaN(shortIdNum)) {
     if (shortIdNum % 4 === 0) preBid = 100000;
@@ -705,37 +705,35 @@ export function estimateAuctionValues(item: MstcSanitizedAuction): { preBid: num
     try {
       const parsed = JSON.parse(item.raw_materials_text);
       if (parsed && typeof parsed === 'object') {
-        let emdVal = parsed.depositDetails?.emd || '';
-        let preBidDdg = parsed.depositDetails?.preBidDdg || '';
-        
+        const emdVal = parsed.depositDetails?.emd || '';
+        const preBidDdg = parsed.depositDetails?.preBidDdg || '';
+
         let parsedPreBid = 0;
         const preBidClean = preBidDdg.replace(/,/g, '');
         const preBidMatch = preBidClean.match(/₹?\s*(\d+(\.\d+)?)/);
         if (preBidMatch) {
           parsedPreBid = parseFloat(preBidMatch[1]);
         }
-        
-        let emdPercent = 0.1; // fallback is 10%
+
+        let emdPercent = 0.1;
         const emdMatch = emdVal.match(/([\d\.]+)\s*%/);
         if (emdMatch) {
           emdPercent = parseFloat(emdMatch[1]) / 100;
         }
-        
+
         if (parsedPreBid > 100) {
           preBid = parsedPreBid;
-          if (emdPercent > 0 && emdPercent <= 1) {
-            totalValue = parsedPreBid / emdPercent;
-          } else {
-            totalValue = parsedPreBid * 10;
-          }
+          totalValue = (emdPercent > 0 && emdPercent <= 1) ? parsedPreBid / emdPercent : parsedPreBid * 10;
+          isEstimated = false; // we have real data
         }
       }
     } catch (e) {
-      // ignore
+      // ignore parse errors
     }
   }
 
-  return { preBid, totalValue };
+  return { preBid, totalValue, isEstimated };
+
 }
 
 export function expandQueryToTsQuery(query: string): string {
@@ -1643,9 +1641,11 @@ export const MstcSearchService = {
         // Apply price hard-filter if present, then return
         if (priceConstraint) {
           mapped = mapped.filter(item => {
-            const { preBid, totalValue } = estimateAuctionValues(item);
+            const { preBid, totalValue, isEstimated } = estimateAuctionValues(item);
+            // If no real price data was found, exclude from price-filtered results
+            if (isEstimated) return false;
             const matchValue = (val: number) => {
-              if (val <= 0) return true;
+              if (val <= 0) return false;
               if (priceConstraint.operator === 'less') return val <= priceConstraint.value;
               if (priceConstraint.operator === 'greater') return val >= priceConstraint.value;
               return val === priceConstraint.value;
@@ -1762,9 +1762,10 @@ export const MstcSearchService = {
 
         // Apply price constraint filtering if present
         if (priceConstraint) {
-          const { preBid, totalValue } = estimateAuctionValues(item);
+          const { preBid, totalValue, isEstimated } = estimateAuctionValues(item as any);
+          if (isEstimated) return { item, score: 0 }; // no real price data — exclude
           const matchValue = (val: number) => {
-            if (val <= 0) return true;
+            if (val <= 0) return false;
             if (priceConstraint.operator === 'less') return val <= priceConstraint.value;
             if (priceConstraint.operator === 'greater') return val >= priceConstraint.value;
             return val === priceConstraint.value;
@@ -1777,6 +1778,9 @@ export const MstcSearchService = {
           if (!isMatch) {
             return { item, score: 0 };
           }
+          // Item passed price filter — give it a guaranteed positive score
+          // so it isn't accidentally excluded by the score > 0 gate below.
+          score += 10;
         }
 
         // Scoping Check: If the search matches a distinct category intent, filter out all items from other categories
@@ -1906,23 +1910,78 @@ export const MstcSearchService = {
       regionalOffices?: string[];
       hasImages?: boolean;
       hasAssetDocuments?: boolean;
+      isReauction?: boolean;
       startDate?: string;
       endDate?: string;
       page?: number;
       limit?: number;
     }
-  ): Promise<{ data: MstcSanitizedAuction[], count: number }> {
+  ): Promise<{ data: MstcSanitizedAuction[], count: number, correctedQuery?: string, hasDirectMatches?: boolean }> {
     try {
       const cleanedQuery = cleanQueryPriceTypos(query);
       const pConstraint = parsePriceConstraint(cleanedQuery);
       const workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
+
+      // ── AUCTION NUMBER DIRECT LOOKUP ─────────────────────────────────────────
+      // If the query looks like an auction number (e.g. "MSTC/ZG/POSTMASTER/1/...")
+      // skip all NLP/embedding and do a direct ILIKE search on mstc_auction_number.
+      // Heuristic: contains 2+ slashes, OR starts with "MSTC", OR has year pattern like 25-26, OR is a standalone Ref ID
+      const slashCount = (query.match(/\//g) || []).length;
+      const cleanQ = query.trim();
+      const isExactRefId = /^\d{3,7}$/.test(cleanQ);
+      const looksLikeAuctionNumber =
+        slashCount >= 2 ||
+        /^mstc/i.test(cleanQ) ||
+        /\b\d{2}-\d{2}\b/.test(query) || // year range like 25-26
+        isExactRefId;
+
+      if (looksLikeAuctionNumber) {
+        const page = filters?.page || 1;
+        const limit = filters?.limit || 12;
+        
+        // For standalone IDs, prefix with a slash to avoid matching random middle numbers
+        const searchPattern = isExactRefId ? `%/${cleanQ}%` : `%${cleanQ}%`;
+
+        const { data: exactData, error: exactError, count: exactCount } = await supabase
+          .from('mstc_auctions')
+          .select('*', { count: 'exact' })
+          .eq('asset_status', 'completed')
+          .ilike('mstc_auction_number', searchPattern)
+          .order('opening_date', { ascending: false })
+          .range((page - 1) * limit, page * limit - 1);
+
+        if (!exactError && exactData && exactData.length > 0) {
+          const mapped = exactData.map(item => {
+            const { category, subcategory } = mapRawCategory(item.category_name);
+            return { ...item, category_name: `${category} | ${subcategory}` } as MstcSanitizedAuction;
+          });
+          return { data: mapped, count: exactCount || mapped.length };
+        }
+        // If no match found for auction number, fall through to normal NLP search
+      }
+
+      let p_min_pre_bid: number | undefined = undefined;
+      let p_max_pre_bid: number | undefined = undefined;
+
+      if (pConstraint) {
+        if (pConstraint.field === 'pre_bid' || pConstraint.field === 'either') {
+          if (pConstraint.operator === 'greater') p_min_pre_bid = pConstraint.value;
+          if (pConstraint.operator === 'less') p_max_pre_bid = pConstraint.value;
+          if (pConstraint.operator === 'equal') {
+            p_min_pre_bid = pConstraint.value;
+            p_max_pre_bid = pConstraint.value;
+          }
+        }
+      }
       
       let embeddingStr: string | null = null;
       if (workingQuery && workingQuery.length > 2) {
         try {
+          const { embeddingService } = await import('./embeddingService');
           const vectorPromise = embeddingService.generateEmbedding(workingQuery);
           const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Embedding generation timeout')), 800)
+            // 5s timeout — gives the model time to warm up in local dev
+            setTimeout(() => reject(new Error('Embedding generation timeout')), 5000)
           );
           const vector = await Promise.race([vectorPromise, timeoutPromise]);
           embeddingStr = `[${vector.join(',')}]`;
@@ -1930,6 +1989,10 @@ export const MstcSearchService = {
           console.warn('Failed to generate embedding:', e);
         }
       }
+
+      const isSearchWithImageFilter = !!workingQuery && filters?.hasImages;
+      const rpcPage = isSearchWithImageFilter ? 1 : (filters?.page || 1);
+      const rpcLimit = isSearchWithImageFilter ? 1000 : (filters?.limit || 12);
 
       // 1. Try Hybrid RPC
       const { data, error } = await supabase.rpc('hybrid_search_mstc_catalog', {
@@ -1941,30 +2004,110 @@ export const MstcSearchService = {
         p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
         p_start_date: filters?.startDate || null,
         p_end_date: filters?.endDate || null,
-        p_has_images: filters?.hasImages || null,
+        p_has_images: null, // Bypass DB filter due to remote DB bug
         p_has_docs: filters?.hasAssetDocuments || null,
-        p_page: filters?.page || 1,
-        p_limit: filters?.limit || 12
+        p_min_pre_bid: p_min_pre_bid || null,
+        p_max_pre_bid: p_max_pre_bid || null,
+        p_page: rpcPage,
+        p_limit: rpcLimit
       });
 
       if (error) {
         throw error;
       }
 
-      if (!data || data.length === 0) {
-        return { data: [], count: 0 };
+      let searchData = data;
+      let totalCount = 0;
+      let returnedCorrectedQuery: string | undefined = undefined;
+
+      // If the DB text/vector search returned 0 results but there was a meaningful
+      // query, ask the backend for a spell-check auto-correction!
+      if (!searchData || searchData.length === 0) {
+        if (workingQuery && workingQuery.trim().length > 0) {
+          const { data: correctedQuery, error: correctionError } = await supabase.rpc('suggest_search_correction', {
+            p_query: workingQuery
+          });
+
+          if (!correctionError && correctedQuery && correctedQuery !== workingQuery) {
+            console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
+            const { data: retryData, error: retryError } = await supabase.rpc('hybrid_search_mstc_catalog', {
+              p_search_query: correctedQuery,
+              p_embedding: embeddingStr as any,
+              p_category_filter: filters?.categories?.[0] || filters?.category || null,
+              p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
+              p_location_filter: filters?.locations?.[0] || filters?.location || null,
+              p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
+              p_start_date: filters?.startDate || null,
+              p_end_date: filters?.endDate || null,
+              p_has_images: null, // Bypass DB filter due to remote DB bug
+              p_has_docs: filters?.hasAssetDocuments || null,
+              p_min_pre_bid: p_min_pre_bid || null,
+              p_max_pre_bid: p_max_pre_bid || null,
+              p_page: rpcPage,
+              p_limit: rpcLimit
+            });
+
+            if (!retryError && retryData && retryData.length > 0) {
+              searchData = retryData;
+              returnedCorrectedQuery = correctedQuery;
+            } else {
+              throw new Error('RPC_ZERO_RESULTS');
+            }
+          } else {
+            throw new Error('RPC_ZERO_RESULTS');
+          }
+        } else {
+          return { data: [], count: 0, hasDirectMatches: false };
+        }
       }
 
-      const totalCount = Number(data[0].total_count) || 0;
+      totalCount = Number(searchData[0].total_count) || 0;
+      const hasDirectMatches = (searchData as any[]).some(item => Number(item.search_rank) > 0);
+
+      // Fetch is_reauction status for these items to ensure we have it in the UI and can filter by it
+      const itemIds = (searchData as any[]).map(item => item.id);
+      const { data: reauctionStatuses, error: statusError } = await supabase
+        .from('mstc_auctions')
+        .select('id, is_reauction')
+        .in('id', itemIds);
+
+      const reauctionMap = new Map<string, boolean>();
+      if (!statusError && reauctionStatuses) {
+        reauctionStatuses.forEach(r => reauctionMap.set(r.id, !!r.is_reauction));
+      }
 
       // 2. Map Categories
-      let mapped = (data as any[]).map(item => {
+      let mapped = (searchData as any[]).map(item => {
         const { category, subcategory } = mapRawCategory(item.category_name);
         return {
           ...item,
+          is_reauction: reauctionMap.get(item.id) ?? false,
           category_name: `${category} | ${subcategory}`
         } as MstcSanitizedAuction;
       });
+
+      // Filter by isReauction locally if specified
+      if (filters?.isReauction !== undefined) {
+        mapped = mapped.filter(item => item.is_reauction === filters.isReauction);
+      }
+
+      // Filter by images locally if specified
+      if (filters?.hasImages) {
+        mapped = mapped.filter(item => {
+          if (!item.raw_materials_text) return false;
+          try {
+            const parsed = JSON.parse(item.raw_materials_text);
+            const images = parsed?.extracted_images || [];
+            return images.some((url: string) => {
+              const lower = url.toLowerCase();
+              return !lower.endsWith('.pdf') && 
+                     !lower.includes('_catalog_page_') && 
+                     !lower.includes('mstc-previews/') &&
+                     /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
+            });
+          } catch { return false; }
+        });
+      }
 
       // Filter by price constraint locally (since it requires JS computation)
       if (pConstraint) {
@@ -1982,7 +2125,15 @@ export const MstcSearchService = {
         });
       }
 
-      return { data: mapped, count: totalCount };
+      if (isSearchWithImageFilter) {
+        totalCount = mapped.length;
+        const page = filters?.page || 1;
+        const limit = filters?.limit || 12;
+        const startIndex = (page - 1) * limit;
+        mapped = mapped.slice(startIndex, startIndex + limit);
+      }
+
+      return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery, hasDirectMatches };
 
     } catch (error) {
       console.warn('Hybrid search failed, falling back to client-side search:', error);
@@ -2025,7 +2176,7 @@ export const MstcSearchService = {
       const startIndex = (page - 1) * limit;
       const paginatedData = fallbackData.slice(startIndex, startIndex + limit);
 
-      return { data: paginatedData, count: totalCount };
+      return { data: paginatedData, count: totalCount, hasDirectMatches: fallbackData.length > 0 };
     }
   }, 'marketplaceSearch'),
 

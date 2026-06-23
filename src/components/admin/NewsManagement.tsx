@@ -111,14 +111,14 @@ export function NewsManagement() {
           <button
             onClick={handleSyncNews}
             disabled={isSyncing}
-            className="flex items-center px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="flex items-center px-4 py-2 bg-slate-900 text-white hover:bg-black rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             <RefreshCw className={clsx("w-4 h-4 mr-2", isSyncing && "animate-spin")} />
             {isSyncing ? 'Fetching...' : 'Sync Latest News'}
           </button>
           <button
             onClick={() => handleOpenModal()}
-            className="flex items-center px-4 py-2 bg-primary text-white hover:bg-primary-600 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center px-4 py-2 bg-slate-900 text-white hover:bg-black rounded-lg text-sm font-medium transition-colors"
           >
             <Plus className="w-4 h-4 mr-2" />
             Manual Entry
@@ -186,14 +186,14 @@ export function NewsManagement() {
                   {activeTab === 'drafts' ? (
                     <button 
                       onClick={() => togglePublishStatus(news)}
-                      className="flex items-center justify-center px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
+                      className="flex items-center justify-center px-4 py-2 bg-slate-900 text-white hover:bg-black rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
                     >
                       <CheckCircle className="w-4 h-4 mr-2" /> Approve & Publish
                     </button>
                   ) : (
                     <button 
                       onClick={() => togglePublishStatus(news)}
-                      className="flex items-center justify-center px-4 py-2 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
+                      className="flex items-center justify-center px-4 py-2 bg-slate-900 text-white hover:bg-black rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
                     >
                       <XCircle className="w-4 h-4 mr-2" /> Unpublish (Draft)
                     </button>
@@ -288,7 +288,7 @@ export function NewsManagement() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-600 transition-colors disabled:opacity-50"
+                  className="px-5 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-black transition-colors disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : (editingId ? 'Save Changes' : 'Save as Draft')}
                 </button>

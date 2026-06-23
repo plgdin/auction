@@ -111,7 +111,7 @@ export function SystemManagement() {
             {!isCreating && (
               <button 
                 onClick={() => setIsCreating(true)}
-                className="inline-flex items-center px-4 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-700 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-black transition-colors"
               >
                 <Plus className="w-4 h-4 mr-2" /> New Announcement
               </button>
@@ -166,7 +166,7 @@ export function SystemManagement() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2 text-sm font-bold text-white bg-primary rounded-lg hover:bg-primary-700 flex items-center disabled:opacity-50"
+                  className="px-6 py-2 text-sm font-bold text-white bg-slate-900 rounded-lg hover:bg-black flex items-center disabled:opacity-50"
                 >
                   {isSubmitting ? 'Publishing...' : <><Save className="w-4 h-4 mr-2" /> Publish Now</>}
                 </button>

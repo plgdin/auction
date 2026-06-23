@@ -72,7 +72,7 @@ export function Privacy() {
           <ul className="list-disc pl-5 space-y-2 text-sm">
             <li><strong>Account Settings:</strong> You can edit your profile information at any time through the Profile Settings page.</li>
             <li><strong>Data Deletion:</strong> You can delete your watchlist items, remove documents from your vault, or request account termination.</li>
-            <li><strong>Search History:</strong> Clear or modify your local search filters directly from the global search interface.</li>
+            <li><strong>Search History:</strong> When personalization is accepted, recent searches are associated with your account to improve recommendations across devices.</li>
           </ul>
         </section>
       </div>

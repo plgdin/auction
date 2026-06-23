@@ -45,6 +45,12 @@ export function parseMstcCatalogText(
   const lines = text.split("\n").map((l) => l.trim());
   const cleanText = lines.join("\n");
 
+  // The auction type is catalogue metadata, not the material category.
+  const auctionTypeMatch = cleanText.match(
+    /(?:auction\s+type|type\s+of\s+auction)\s*:?\s*(O-[A-Za-z0-9_-]+(?:\s+Auction)?)/i,
+  );
+  const auctionType = auctionTypeMatch?.[1]?.trim();
+
   // 1. Extract contacts
   const keyContacts = extractKeyContacts(lines, text);
 
@@ -109,6 +115,7 @@ export function parseMstcCatalogText(
     depositDetails,
     keyContacts,
     inspectionDetails,
+    auctionType,
   };
 }
 
