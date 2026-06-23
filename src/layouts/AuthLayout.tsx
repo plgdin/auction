@@ -20,7 +20,7 @@ export function AuthLayout() {
           </div>
 
           <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center">
-            <img src="/png_lelam_1.png" alt="Lelam Logo" className="h-16 w-auto object-contain brightness-0 invert filter drop-shadow-md mb-8" />
+            <img src="/png_lelam_1.webp" alt="Lelam Logo" className="h-16 w-auto object-contain brightness-0 invert filter drop-shadow-md mb-8" />
 
             <p className="text-2xl font-bold text-primary-400 max-w-md leading-relaxed">
               {subtitlePhrase}
@@ -43,7 +43,7 @@ export function AuthLayout() {
           <div className="w-full max-w-md">
             {/* Small branding for mobile views only */}
             <div className="md:hidden flex flex-col items-center mb-8">
-              <img src="/png_lelam_1.png" alt="Lelam Logo" className="h-12 w-auto object-contain filter drop-shadow-md" />
+              <img src="/png_lelam_1.webp" alt="Lelam Logo" className="h-12 w-auto object-contain filter drop-shadow-md" />
             </div>
 
             <Outlet />

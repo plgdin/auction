@@ -242,4 +242,28 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@xenova') || id.includes('onnxruntime')) {
+              return 'transformers';
+            }
+            if (id.includes('antd') || id.includes('@ant-design')) {
+              return 'antd-vendor';
+            }
+            if (id.includes('recharts') || id.includes('d3')) {
+              return 'recharts-vendor';
+            }
+            if (id.includes('lucide-react')) {
+              return 'lucide-vendor';
+            }
+            return 'vendor';
+          }
+        }
+      }
+    }
+  }
 })

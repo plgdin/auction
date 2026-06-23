@@ -7,9 +7,6 @@ import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 import { fetchLatestRates } from './utils/currency';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-import { embeddingService } from './services/embeddingService';
-import { MstcSearchService } from './services/publicService';
-import { auctionService } from './services/auctionService';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,10 +33,32 @@ function App() {
       })
       .catch((err) => console.warn('Dynamic exchange rate fetch failed:', err));
 
-    // Background pre-warming and pre-fetching to guarantee < 1s loading times
-    embeddingService.prewarmModel().catch(err => console.warn('Pre-warming model failed:', err));
-    MstcSearchService.getMstcFilterOptions().catch(err => console.warn('Pre-fetching filter options failed:', err));
-    auctionService.getCategories().catch(err => console.warn('Pre-fetching categories failed:', err));
+    // Delay heavy embedding model pre-warming so it doesn't block the main thread during initial load/FCP/LCP
+    const timer = setTimeout(async () => {
+      try {
+        const { embeddingService } = await import('./services/embeddingService');
+        embeddingService.prewarmModel().catch(err => console.warn('Pre-warming model failed:', err));
+      } catch (e) {
+        console.warn('Failed to load embedding service dynamically:', e);
+      }
+    }, 6000);
+
+    // Lazy load the pre-fetching to keep initial load lightweight
+    const prefetchTimer = setTimeout(async () => {
+      try {
+        const { MstcSearchService } = await import('./services/publicService');
+        const { auctionService } = await import('./services/auctionService');
+        MstcSearchService.getMstcFilterOptions().catch(err => console.warn('Pre-fetching filter options failed:', err));
+        auctionService.getCategories().catch(err => console.warn('Pre-fetching categories failed:', err));
+      } catch (e) {
+        console.warn('Failed to load search/auction services dynamically:', e);
+      }
+    }, 2000);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(prefetchTimer);
+    };
   }, [initializeAuth, setCurrencyRates]);
 
   return (

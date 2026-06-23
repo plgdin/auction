@@ -602,12 +602,14 @@ export function DocumentVault() {
                   open={docTypeDropdownOpen}
                   onOpenChange={setDocTypeDropdownOpen}
                   popupRender={() => (
-                    <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[200px] max-h-[280px] overflow-y-auto custom-scrollbar flex flex-col gap-0.5" style={{ scrollbarWidth: 'thin' }}>
+                    <div role="listbox" aria-label="Document Category" className="bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[200px] max-h-[280px] overflow-y-auto custom-scrollbar flex flex-col gap-0.5" style={{ scrollbarWidth: 'thin' }}>
                       {STANDARD_DOC_TYPES.map((type) => {
                         const isSelected = docType === type;
                         return (
                           <div
                             key={type}
+                            role="option"
+                            aria-selected={isSelected}
                             onClick={() => { setDocType(type); setDocTypeDropdownOpen(false); }}
                             className={`flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium transition-colors select-none ${
                               isSelected
@@ -638,6 +640,8 @@ export function DocumentVault() {
                 >
                   <button
                     type="button"
+                    aria-haspopup="listbox"
+                    aria-expanded={docTypeDropdownOpen}
                     className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
                   >
                     <span className="truncate">{docType}</span>
@@ -682,9 +686,9 @@ export function DocumentVault() {
                       })),
                       { key: 'Custom Entity Name (Specify below)', label: 'Custom Entity Name (Specify below)...' },
                     ];
-                    let lastGroup;
+                    let lastGroup: string | undefined;
                     return (
-                      <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[200px] max-h-[280px] overflow-y-auto custom-scrollbar flex flex-col gap-0.5" style={{ scrollbarWidth: 'thin' }}>
+                      <div role="listbox" aria-label="Associated Entity" className="bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[200px] max-h-[280px] overflow-y-auto custom-scrollbar flex flex-col gap-0.5" style={{ scrollbarWidth: 'thin' }}>
                         {allEntityOptions.map((opt, idx) => {
                           const isSelected = entityType === opt.key;
                           let showGroupHeader = false;
@@ -701,6 +705,8 @@ export function DocumentVault() {
                                 </>
                               )}
                               <div
+                                role="option"
+                                aria-selected={isSelected}
                                 onClick={() => { setEntityType(opt.key); setEntityDropdownOpen(false); }}
                                 className={`flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium transition-colors select-none ${
                                   isSelected
@@ -733,6 +739,8 @@ export function DocumentVault() {
                 >
                   <button
                     type="button"
+                    aria-haspopup="listbox"
+                    aria-expanded={entityDropdownOpen}
                     className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
                   >
                     <span className="truncate">

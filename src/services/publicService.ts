@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase';
-import { embeddingService } from './embeddingService';
 import type { ContactMessage, FaqItem, Announcement, NewsUpdate } from '../types/database.types';
 import { PageCache } from '../utils/pageCache';
 import {
@@ -1978,6 +1977,7 @@ export const MstcSearchService = {
       let embeddingStr: string | null = null;
       if (workingQuery && workingQuery.length > 2) {
         try {
+          const { embeddingService } = await import('./embeddingService');
           const vectorPromise = embeddingService.generateEmbedding(workingQuery);
           const timeoutPromise = new Promise<never>((_, reject) =>
             // 5s timeout — gives the model time to warm up in local dev

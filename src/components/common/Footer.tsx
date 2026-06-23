@@ -15,7 +15,7 @@ export function Footer() {
           {/* Brand */}
           <div className="space-y-4">
             <Link to="/" className="flex items-center">
-              <img src="/png_lelam_1.png" alt="Lelam Logo" className="h-8 w-auto object-contain brightness-0 invert" />
+              <img src="/png_lelam_1.webp" alt="Lelam Logo" className="h-8 w-auto object-contain brightness-0 invert" />
             </Link>
             <p className="text-sm text-slate-400 leading-relaxed mt-4">
               An independent, data-driven assistive intelligence platform for registered MSTC auction buyers. Track market prices, analyze trends, and estimate bids.
