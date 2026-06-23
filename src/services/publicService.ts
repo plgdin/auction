@@ -2004,12 +2004,12 @@ export const MstcSearchService = {
         p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
         p_start_date: filters?.startDate || null,
         p_end_date: filters?.endDate || null,
-        p_has_images: filters?.hasImages || null,
+        p_has_images: null, // Bypass DB filter due to remote DB bug
         p_has_docs: filters?.hasAssetDocuments || null,
         p_min_pre_bid: p_min_pre_bid || null,
         p_max_pre_bid: p_max_pre_bid || null,
-        p_page: filters?.page || 1,
-        p_limit: filters?.limit || 12
+        p_page: rpcPage,
+        p_limit: rpcLimit
       });
 
       if (error) {
@@ -2039,7 +2039,7 @@ export const MstcSearchService = {
               p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
               p_start_date: filters?.startDate || null,
               p_end_date: filters?.endDate || null,
-              p_has_images: filters?.hasImages || null,
+              p_has_images: null, // Bypass DB filter due to remote DB bug
               p_has_docs: filters?.hasAssetDocuments || null,
               p_min_pre_bid: p_min_pre_bid || null,
               p_max_pre_bid: p_max_pre_bid || null,
