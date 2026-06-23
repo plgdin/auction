@@ -45,6 +45,7 @@ import type { CatalogSummary } from "./parsers/mstcParser.js";
 import { performOcr, shouldPerformOcr } from "./utils/ocrUtils.js";
 import { isTermsOrInstructionPage } from "./parsers/documentClassifier.js";
 import { calculateTotalMarketValue } from "../src/utils/valuationUtils.js";
+import { validateCatalogDescriptions } from "../src/utils/mstcHelpers.js";
 
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
@@ -1365,6 +1366,27 @@ export async function processRecord(record: QueueRecord): Promise<void> {
         jobLog.warn(
           { errorMessage: valErr.message },
           "Failed to calculate total market value",
+        );
+      }
+
+      // Run catalog validation check for improper/confusing lot descriptions
+      try {
+        const validation = validateCatalogDescriptions(summaryObj.items || [], record.category_name || "");
+        if (validation.needsReview) {
+          summaryObj.needsReview = true;
+          summaryObj.reviewReason = validation.reason;
+          jobLog.warn(
+            { reason: validation.reason },
+            "Catalog flagged for admin review due to improper/confusing lot descriptions",
+          );
+        } else {
+          summaryObj.needsReview = false;
+          summaryObj.reviewReason = "";
+        }
+      } catch (validationErr: any) {
+        jobLog.warn(
+          { errorMessage: validationErr.message },
+          "Failed to validate catalog descriptions",
         );
       }
 

@@ -156,6 +156,8 @@ export interface CatalogSummary {
   totalMarketValue?: number;
   auctionType?: string;
   complianceInfo?: ComplianceInfo;
+  needsReview?: boolean;
+  reviewReason?: string;
 }
 
 export interface ComplianceDocument {
@@ -548,6 +550,25 @@ export function cleanMaterialDescription(desc: string): string {
   if (!desc) return '';
   let cleaned = desc;
 
+  // New cleanups (Run specific warnings first to prevent generic split issues):
+  // Remove Bidders Inspection & Caveat Emptor warnings
+  cleaned = cleaned.replace(/\bBidders\s+are\s+required\s+to\s+inspect\s+the\s+site[\s\S]{1,180}?\bcaveat\s+emptor\s+shall\s+apply\s*(?:for\s+this\s+e[- ]auction)?\.?\b/gi, '');
+
+  // Remove Standard "Sale is on as is where is" clause in brackets
+  cleaned = cleaned.replace(/\[\s*Sale\s+is\s+on\s+as\s+is\s+where\s+is[\s\S]{1,250}?\bno\s+sorting\s+of\s+items\s+shall\s+be\s+allowed\s*\.?\s*\]/gi, '');
+
+  // Remove Annual Rate Contract details in brackets
+  cleaned = cleaned.replace(/\[\s*ARC\s*\(Annual\s+Rate\s+Contract\)[^\]]*\]/gi, '');
+  cleaned = cleaned.replace(/\[\s*Annual\s+Rate\s+Contract\s*\(ARC\)[^\]]*\]/gi, '');
+
+  // Remove Pre-bid EMD amounts in brackets
+  cleaned = cleaned.replace(/\[\s*pre-bid\/EMD\s+amount\s*-[^\]]*\]/gi, '');
+
+  // Remove details/FDT/IT warnings at the end (place it/ before it\b)
+  cleaned = cleaned.replace(/\b(?:Complete\s+)?details\s+as\s+per\s+(?:lot\s+)?annexure\s*(?:applicable)?\s*(?:it\/|it\b)?/gi, '');
+  cleaned = cleaned.replace(/\b(?:Details\s+)?FDT\s+(?:and|&)\s+IT\/?\s*$/gi, '');
+  cleaned = cleaned.replace(/\b(?:Applicable\s+)?FDT\s+(?:and|&)\s+IT\/?\s*$/gi, '');
+
   // 1. Remove "Note: ..." / "Note- ..." and everything after it
   cleaned = cleaned.replace(/\bNote\s*[:.-].*$/gi, '');
 
@@ -574,6 +595,9 @@ export function cleanMaterialDescription(desc: string): string {
   cleaned = cleaned.replace(/Lot State\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, '');
   cleaned = cleaned.replace(/State\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, '');
 
+  // 7b. Remove contact details / complete details / inspection details at the end
+  cleaned = cleaned.replace(/\b(?:Contact\s*Person|Contact|Inspection|Contact\s*No|Complete\s+details)\b.*$/gi, '');
+
   // Clean up punctuation, spaces, etc.
   cleaned = cleaned
     .replace(/\s+/g, ' ')
@@ -581,6 +605,7 @@ export function cleanMaterialDescription(desc: string): string {
     .replace(/,\s*,/g, ',')
     .replace(/^\s*[,:-]\s*/, '')
     .replace(/\s*[,:-]\s*$/, '')
+    .replace(/\s*[.,:\-/]\s*$/, '') // Strip trailing dots, dashes, commas, slashes
     .trim();
 
   // 8. Strip stray words at the start
@@ -589,6 +614,7 @@ export function cleanMaterialDescription(desc: string): string {
   // Clean again after stripping leading word
   cleaned = cleaned
     .replace(/^\s*[,:-]\s*/, '')
+    .replace(/\s*[.,:\-/]\s*$/, '')
     .trim();
 
   return cleaned;
@@ -950,4 +976,64 @@ export function formatDateTimeOrdinal(dateInput: string | Date | null | undefine
   hours = hours ? hours : 12;
   
   return `${datePart}, ${hours}:${minutes} ${ampm}`;
+}
+
+export interface CatalogValidationResult {
+  needsReview: boolean;
+  reason: string;
+}
+
+export function validateCatalogDescriptions(
+  items: any[],
+  categoryName: string
+): CatalogValidationResult {
+  if (!items || items.length === 0) {
+    return { needsReview: true, reason: 'No items parsed from catalog PDF' };
+  }
+
+  const issues: string[] = [];
+  for (const item of items) {
+    const desc = (item.description || '').trim();
+    const subItemsCount = item.subItems?.length || 0;
+
+    if (desc.length === 0) {
+      issues.push(`Lot ${item.sr} description is empty`);
+      continue;
+    }
+
+    if (desc.length < 8) {
+      if (/^\d+$/.test(desc)) {
+        issues.push(`Lot ${item.sr} description contains only numbers ("${desc}")`);
+      } else {
+        issues.push(`Lot ${item.sr} description is too short ("${desc}")`);
+      }
+      continue;
+    }
+
+    const lowerDesc = desc.toLowerCase();
+    const lowerCat = (categoryName || '').toLowerCase();
+    if (lowerDesc === 'auction lot items' || lowerDesc === 'vehicles' || lowerDesc === 'tenders') {
+      issues.push(`Lot ${item.sr} description is a generic placeholder ("${desc}")`);
+      continue;
+    }
+
+    if (lowerDesc === lowerCat && subItemsCount === 0) {
+      issues.push(`Lot ${item.sr} has fallback description matching category exactly, with no sub-items`);
+      continue;
+    }
+
+    if (/\b(?:pcb group|product type|lot state)\b/i.test(desc)) {
+      issues.push(`Lot ${item.sr} description contains metadata residue`);
+      continue;
+    }
+  }
+
+  if (issues.length > 0) {
+    return {
+      needsReview: true,
+      reason: issues.slice(0, 3).join(', ') + (issues.length > 3 ? ` (+${issues.length - 3} more)` : '')
+    };
+  }
+
+  return { needsReview: false, reason: '' };
 }

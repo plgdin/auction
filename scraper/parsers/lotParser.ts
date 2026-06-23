@@ -147,6 +147,25 @@ export function cleanMaterialDescription(desc: string): string {
   if (!desc) return "";
   let cleaned = desc;
 
+  // New cleanups (Run specific warnings first to prevent generic split issues):
+  // Remove Bidders Inspection & Caveat Emptor warnings
+  cleaned = cleaned.replace(/\bBidders\s+are\s+required\s+to\s+inspect\s+the\s+site[\s\S]{1,180}?\bcaveat\s+emptor\s+shall\s+apply\s*(?:for\s+this\s+e[- ]auction)?\.?\b/gi, '');
+
+  // Remove Standard "Sale is on as is where is" clause in brackets
+  cleaned = cleaned.replace(/\[\s*Sale\s+is\s+on\s+as\s+is\s+where\s+is[\s\S]{1,250}?\bno\s+sorting\s+of\s+items\s+shall\s+be\s+allowed\s*\.?\s*\]/gi, '');
+
+  // Remove Annual Rate Contract details in brackets
+  cleaned = cleaned.replace(/\[\s*ARC\s*\(Annual\s+Rate\s+Contract\)[^\]]*\]/gi, '');
+  cleaned = cleaned.replace(/\[\s*Annual\s+Rate\s+Contract\s*\(ARC\)[^\]]*\]/gi, '');
+
+  // Remove Pre-bid EMD amounts in brackets
+  cleaned = cleaned.replace(/\[\s*pre-bid\/EMD\s+amount\s*-[^\]]*\]/gi, '');
+
+  // Remove details/FDT/IT warnings at the end (place it/ before it\b)
+  cleaned = cleaned.replace(/\b(?:Complete\s+)?details\s+as\s+per\s+(?:lot\s+)?annexure\s*(?:applicable)?\s*(?:it\/|it\b)?/gi, '');
+  cleaned = cleaned.replace(/\b(?:Details\s+)?FDT\s+(?:and|&)\s+IT\/?\s*$/gi, '');
+  cleaned = cleaned.replace(/\b(?:Applicable\s+)?FDT\s+(?:and|&)\s+IT\/?\s*$/gi, '');
+
   // 1. Remove "Note: ..." / "Note- ..." and everything after it
   cleaned = cleaned.replace(/\bNote\s*[:.-].*$/gi, "");
 
@@ -173,6 +192,9 @@ export function cleanMaterialDescription(desc: string): string {
   cleaned = cleaned.replace(/Lot State\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, "");
   cleaned = cleaned.replace(/State\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, "");
 
+  // 7b. Remove contact details / complete details / inspection details at the end
+  cleaned = cleaned.replace(/\b(?:Contact\s*Person|Contact|Inspection|Contact\s*No|Complete\s+details)\b.*$/gi, "");
+
   // Clean up punctuation, spaces, etc.
   cleaned = cleaned
     .replace(/\s+/g, " ")
@@ -180,6 +202,7 @@ export function cleanMaterialDescription(desc: string): string {
     .replace(/,\s*,/g, ",")
     .replace(/^\s*[,:-]\s*/, "")
     .replace(/\s*[,:-]\s*$/, "")
+    .replace(/\s*[.,:\-/]\s*$/, "") // Strip trailing dots, dashes, commas, slashes
     .trim();
 
   // 8. Strip stray words at the start that are leftover category parts
@@ -188,6 +211,7 @@ export function cleanMaterialDescription(desc: string): string {
   // Clean again after stripping leading word
   cleaned = cleaned
     .replace(/^\s*[,:-]\s*/, "")
+    .replace(/\s*[.,:\-/]\s*$/, "")
     .trim();
 
   return cleaned;
