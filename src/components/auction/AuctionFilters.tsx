@@ -536,41 +536,7 @@ export function AuctionFilters({
     return acc;
   }, {} as Record<string, string>);
 
-  const isDirty = (() => {
-    const arraysEqual = (a: string[], b: string[]) => {
-      if (a.length !== b.length) return false;
-      const sortedA = [...a].sort();
-      const sortedB = [...b].sort();
-      return sortedA.every((val, index) => val === sortedB[index]);
-    };
 
-    const initialCats = initialFilters.categoryIds || [];
-    if (!arraysEqual(selectedCategories, initialCats)) return true;
-
-    const initialSubs = initialFilters.subcategories || (initialFilters.subcategory ? [initialFilters.subcategory] : []);
-    if (!arraysEqual(selectedSubcategories, initialSubs)) return true;
-
-    const initialListing = initialFilters.listingType || 'all';
-    if (selectedListingType !== initialListing) return true;
-
-    const initialOffices = initialFilters.regionalOffices || (initialFilters.regionalOffice ? [initialFilters.regionalOffice] : []);
-    if (!arraysEqual(selectedRegionalOffices, initialOffices)) return true;
-
-    const initialLocs = initialFilters.locations || (initialFilters.location ? [initialFilters.location] : []);
-    if (!arraysEqual(selectedLocations, initialLocs)) return true;
-
-    const initialPreBid = initialFilters.preBid || 'all';
-    if (selectedPreBid !== initialPreBid) return true;
-
-    if (startDate !== (initialFilters.startDate || '')) return true;
-    if (endDate !== (initialFilters.endDate || '')) return true;
-
-    if (hasAssetDocuments !== (initialFilters.hasAssetDocuments || false)) return true;
-    if (hasImages !== (initialFilters.hasImages || false)) return true;
-    if (isReauction !== (initialFilters.isReauction || false)) return true;
-
-    return false;
-  })();
 
   return (
     <div 
@@ -997,12 +963,7 @@ export function AuctionFilters({
 
       {/* Floating Apply Changes Action Bar */}
       <div 
-        className={clsx(
-          "absolute bottom-4 left-4 right-4 z-30 p-3 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-lg transition-all duration-300 ease-out flex items-center justify-between gap-3",
-          isDirty 
-            ? "opacity-100 translate-y-0 scale-100" 
-            : "opacity-0 translate-y-4 scale-95 pointer-events-none"
-        )}
+        className="absolute bottom-4 left-4 right-4 z-30 p-3 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-lg flex items-center justify-between gap-3"
       >
         <button
           onClick={handleReset}

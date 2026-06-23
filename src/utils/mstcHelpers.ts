@@ -155,7 +155,255 @@ export interface CatalogSummary {
   auctionCloseTime?: string;
   totalMarketValue?: number;
   auctionType?: string;
+  complianceInfo?: ComplianceInfo;
 }
+
+export interface ComplianceDocument {
+  name: string;
+  description: string;
+  type: 'mandatory' | 'conditional';
+}
+
+export interface ComplianceInfo {
+  requiredDocuments: ComplianceDocument[];
+  gstStatus: {
+    isRcm: boolean;
+    type: string;
+    description: string;
+  };
+}
+
+export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?: string[]): ComplianceInfo => {
+  const requiredDocuments: ComplianceDocument[] = [
+    {
+      name: 'Valid MSTC Buyer Registration',
+      description: 'Active, verified buyer account on the official MSTC e-commerce portal.',
+      type: 'mandatory'
+    },
+    {
+      name: 'Income Tax PAN Card',
+      description: 'Permanent Account Number matching the bidding entity.',
+      type: 'mandatory'
+    }
+  ];
+
+  const sellerUpper = (item.seller_name || '').toUpperCase();
+  const categoryUpper = (item.category_name || '').toUpperCase();
+  const textUpper = (item.raw_materials_text || '').toUpperCase();
+
+  const isRcm = 
+    sellerUpper.includes('BSNL') || 
+    sellerUpper.includes('BHARAT SANCHAR') ||
+    sellerUpper.includes('RAILWAY') || 
+    sellerUpper.includes('POLICE') || 
+    sellerUpper.includes('COURT') || 
+    sellerUpper.includes('MINISTRY') || 
+    sellerUpper.includes('MUNICIPAL') || 
+    sellerUpper.includes('FOREST') || 
+    sellerUpper.includes('GOVERNMENT') || 
+    sellerUpper.includes('PORT') || 
+    sellerUpper.includes('DEFENSE') || 
+    sellerUpper.includes('DEFENCE') || 
+    sellerUpper.includes('ORDNANCE') || 
+    sellerUpper.includes('COMMISSIONER') || 
+    sellerUpper.includes('AUTHORITY') || 
+    sellerUpper.includes('CORPORATION') || 
+    textUpper.includes('RCM') || 
+    textUpper.includes('REVERSE CHARGE') || 
+    textUpper.includes('REVERSE-CHARGE') ||
+    !!(parsedEligibility && parsedEligibility.some(el => {
+      const elUpper = el.toUpperCase();
+      return elUpper.includes('RCM') || elUpper.includes('REVERSE CHARGE') || elUpper.includes('REVERSE-CHARGE');
+    }));
+
+  if (!isRcm) {
+    requiredDocuments.push({
+      name: 'GSTIN Registration Certificate',
+      description: 'Active Goods and Services Tax Identification Number (GSTIN) certificate matching buyer profile.',
+      type: 'mandatory'
+    });
+  }
+
+  // SPCB Consent to Operate
+  const needsSpcb = 
+    categoryUpper.includes('WASTE') || 
+    categoryUpper.includes('BATTERY') || 
+    categoryUpper.includes('OIL') || 
+    categoryUpper.includes('HAZARDOUS') || 
+    categoryUpper.includes('CHEMICAL') || 
+    categoryUpper.includes('METAL') || 
+    categoryUpper.includes('PLASTIC') || 
+    categoryUpper.includes('RUBBER') ||
+    textUpper.includes('WASTE') || 
+    textUpper.includes('BATTERY') || 
+    textUpper.includes('OIL') || 
+    textUpper.includes('HAZARDOUS') || 
+    textUpper.includes('CHEMICAL') || 
+    textUpper.includes('SMELTER') || 
+    textUpper.includes('TRANSFORMER') || 
+    textUpper.includes('COPPER') || 
+    textUpper.includes('ZINC') || 
+    textUpper.includes('CABLE') || 
+    textUpper.includes('PLASTIC') || 
+    textUpper.includes('RUBBER') || 
+    textUpper.includes('PCB') || 
+    textUpper.includes('SPCB') || 
+    textUpper.includes('POLLUTION') ||
+    (parsedEligibility && parsedEligibility.some(el => {
+      const elUpper = el.toUpperCase();
+      return elUpper.includes('SPCB') || elUpper.includes('PCB') || elUpper.includes('POLLUTION') || elUpper.includes('CONSENT TO OPERATE');
+    }));
+
+  if (needsSpcb) {
+    requiredDocuments.push({
+      name: 'SPCB Consent to Operate (CTO)',
+      description: 'State Pollution Control Board authorization/consent required for purchasing hazardous or regulated scrap.',
+      type: 'conditional'
+    });
+  }
+
+  // CPCB Registration
+  const needsCpcb = 
+    categoryUpper.includes('E-WASTE') || 
+    categoryUpper.includes('ELECTRONIC') || 
+    categoryUpper.includes('TELECOM') || 
+    textUpper.includes('E-WASTE') || 
+    textUpper.includes('EWASTE') || 
+    textUpper.includes('COMPUTER') || 
+    textUpper.includes('LAPTOP') || 
+    textUpper.includes('ELECTRONIC') || 
+    textUpper.includes('TELECOM') || 
+    textUpper.includes('CPCB') ||
+    (parsedEligibility && parsedEligibility.some(el => {
+      const elUpper = el.toUpperCase();
+      return elUpper.includes('CPCB') || elUpper.includes('E-WASTE') || elUpper.includes('EWASTE');
+    }));
+
+  if (needsCpcb) {
+    requiredDocuments.push({
+      name: 'CPCB Recycler Registration',
+      description: 'Central Pollution Control Board registration certificate for authorized e-waste recycling.',
+      type: 'conditional'
+    });
+  }
+
+  // ELV (End-Of-Life Vehicle)
+  const needsElv = 
+    categoryUpper.includes('VEHICLE') || 
+    categoryUpper.includes('CAR') || 
+    categoryUpper.includes('BUS') || 
+    categoryUpper.includes('TRUCK') || 
+    categoryUpper.includes('DUMPER') || 
+    categoryUpper.includes('AUTOMOBILE') || 
+    textUpper.includes('VEHICLE') || 
+    textUpper.includes('CAR') || 
+    textUpper.includes('BUS') || 
+    textUpper.includes('TRUCK') || 
+    textUpper.includes('DUMPER') || 
+    textUpper.includes('AUTOMOBILE') || 
+    textUpper.includes('TRACTOR') || 
+    textUpper.includes('RTO') || 
+    textUpper.includes('ELV') ||
+    (parsedEligibility && parsedEligibility.some(el => {
+      const elUpper = el.toUpperCase();
+      return elUpper.includes('ELV') || elUpper.includes('VEHICLE') || elUpper.includes('RTO') || elUpper.includes('DISMANTLING');
+    }));
+
+  if (needsElv) {
+    requiredDocuments.push({
+      name: 'ELV Dismantling License / RVSF',
+      description: 'Registered Vehicle Scrapping Facility (RVSF) or ELV license required for scrap vehicle dismantling.',
+      type: 'conditional'
+    });
+  }
+
+  // Timber / Forest Pass
+  const needsTimber = 
+    categoryUpper.includes('TIMBER') || 
+    categoryUpper.includes('WOOD') || 
+    categoryUpper.includes('FOREST') || 
+    textUpper.includes('TIMBER') || 
+    textUpper.includes('WOOD') || 
+    textUpper.includes('TEAK') || 
+    textUpper.includes('ROSEWOOD') || 
+    textUpper.includes('LOG') || 
+    textUpper.includes('FOREST') ||
+    (parsedEligibility && parsedEligibility.some(el => {
+      const elUpper = el.toUpperCase();
+      return elUpper.includes('TIMBER') || elUpper.includes('TRANSIT PASS') || elUpper.includes('FOREST');
+    }));
+
+  if (needsTimber) {
+    requiredDocuments.push({
+      name: 'Forest Division Timber Transit Pass',
+      description: 'Transit Pass (TP) or license issued by the Forest Department for timber purchase and transportation.',
+      type: 'conditional'
+    });
+  }
+
+  // Chartered Engineer Certificate
+  const needsChartered = 
+    textUpper.includes('DISMANTLING') || 
+    textUpper.includes('DEMOLITION') || 
+    textUpper.includes('MACHINERY') || 
+    textUpper.includes('STRUCTURAL') || 
+    textUpper.includes('DECOMMISSIONED') ||
+    (parsedEligibility && parsedEligibility.some(el => {
+      const elUpper = el.toUpperCase();
+      return elUpper.includes('CHARTERED ENGINEER') || elUpper.includes('STABILITY CERTIFICATE') || elUpper.includes('DEMOLITION');
+    }));
+
+  if (needsChartered) {
+    requiredDocuments.push({
+      name: 'Chartered Engineer Safety Certificate',
+      description: 'Safety / stability certificate from a certified Chartered Engineer for demolition or dismantling.',
+      type: 'conditional'
+    });
+  }
+
+  // General conditional parser check for any custom lines in parsedEligibility
+  if (parsedEligibility && Array.isArray(parsedEligibility)) {
+    parsedEligibility.forEach(el => {
+      const lower = el.toLowerCase();
+      if (
+        lower.includes('license') || 
+        lower.includes('certificate') || 
+        lower.includes('permit') || 
+        lower.includes('registration') || 
+        lower.includes('passbook') || 
+        lower.includes('consent')
+      ) {
+        // Avoid duplicate documents by checking standard words
+        const standardWords = ['mstc', 'pan', 'gst', 'spcb', 'cpcb', 'elv', 'forest', 'chartered'];
+        const isStandard = standardWords.some(w => lower.includes(w));
+        if (!isStandard) {
+          let docName = el;
+          if (docName.length > 60) {
+            docName = docName.substring(0, 57) + '...';
+          }
+          requiredDocuments.push({
+            name: docName,
+            description: el,
+            type: 'conditional'
+          });
+        }
+      }
+    });
+  }
+
+  const gstStatus = {
+    isRcm,
+    type: isRcm ? 'Reverse Charge Mechanism (RCM)' : 'Regular GST Scheme',
+    description: isRcm 
+      ? 'GST is applicable under Reverse Charge Mechanism (RCM). Buyer (registered business) pays GST directly to the Government instead of the seller.'
+      : 'GST is collected by the seller. Regular tax invoices will be issued post-auction.'
+  };
+
+  return {
+    requiredDocuments,
+    gstStatus
+  };
+};
 
 export const parseAuctionType = (item: MstcSanitizedAuction): string => {
   if (!item) return 'O-General';
@@ -455,7 +703,8 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
           inspectionSchedule: formatInspectionSchedule(finalInspectionSchedule),
           auctionStartTime: finalAuctionStartTime,
           auctionCloseTime: finalAuctionCloseTime,
-          auctionType: parseAuctionType(item)
+          auctionType: parseAuctionType(item),
+          complianceInfo: deriveCompliance(item, parsed.eligibility)
         };
       }
     } catch (e) {
@@ -554,7 +803,8 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
     inspectionSchedule: formatInspectionSchedule(defaultInspectionSchedule),
     auctionStartTime: defaultAuctionStartTime,
     auctionCloseTime: defaultAuctionCloseTime,
-    auctionType: parseAuctionType(item)
+    auctionType: parseAuctionType(item),
+    complianceInfo: deriveCompliance(item, eligibility)
   };
 };
 

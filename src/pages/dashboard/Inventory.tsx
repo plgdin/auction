@@ -35,10 +35,12 @@ export function Inventory() {
       setIsLoading(true);
       try {
         const wonData = await auctionService.getWonAuctions(user.id);
-        
-        // If there are no won auctions in database, let's create a couple of realistic mock ones 
-        // to make sure the dashboard is fully testable and rich out of the box!
-        if (wonData.length === 0) {
+        const localKey = `usr_won_auctions_${user.id}`;
+        const localData = localStorage.getItem(localKey);
+        const localWon = localData ? JSON.parse(localData) : [];
+        const combined = [...localWon, ...wonData];
+
+        if (combined.length === 0) {
           const mockWon: Auction[] = [
             {
               id: 'mock_won_1',
@@ -62,8 +64,13 @@ export function Inventory() {
           setWonAuctions(mockWon);
           setSelectedAuction(mockWon[0]);
         } else {
-          setWonAuctions(wonData);
-          setSelectedAuction(wonData[0]);
+          setWonAuctions(combined);
+          
+          // Support loading specific auction via URL query parameter for accessibility
+          const urlParams = new URLSearchParams(window.location.search);
+          const queryAuctionId = urlParams.get('auctionId');
+          const found = combined.find(a => a.id === queryAuctionId);
+          setSelectedAuction(found || combined[0]);
         }
       } catch (err) {
         console.error('Error loading won auctions', err);
@@ -402,7 +409,7 @@ export function Inventory() {
                     </div>
                     <button
                       onClick={handleLockVerification}
-                      className="w-full sm:w-auto px-5 py-2.5 bg-slate-950 hover:bg-slate-800 active:bg-black text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer hover:shadow-md duration-150 active:scale-[0.98]"
+                      className="w-full sm:w-auto px-5 py-2.5 bg-primary hover:bg-primary-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer hover:shadow-md duration-150 active:scale-[0.98]"
                     >
                       <CheckCircle className="w-4 h-4 text-emerald-400" />
                       Lock & Save Verification

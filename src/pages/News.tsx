@@ -25,7 +25,7 @@ export function News() {
           </div>
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">News & Updates</h1>
-            <p className="mt-2 text-lg text-slate-600">Latest platform features, press releases, and industry news regarding market trends and material pricing impacting eAuctions.</p>
+            <p className="mt-2 text-lg text-slate-600">Latest platform features, press releases, and industry news regarding market trends and material pricing impacting eAuctions and MSTC auctions.</p>
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, Heart } from 'lucide-react';
+import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, Heart, FileText } from 'lucide-react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
 import { AuctionFilters } from '../components/auction/AuctionFilters';
@@ -86,7 +86,7 @@ export function Auctions() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
 
-  const activeTab = searchParams.get('tab') === 'commercial' ? 'commercial' : 'mstc';
+  const activeTab = 'mstc';
 
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -129,20 +129,19 @@ export function Auctions() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
-    } else {
-      setInterestedMstcIds([]);
-    }
+    const userId = isAuthenticated && user ? user.id : 'anonymous';
+    setInterestedMstcIds(dashboardService.getInterestedAuctions(userId));
   }, [isAuthenticated, user]);
 
   const handleMstcInterestedToggle = (itemId: string) => {
-    if (!isAuthenticated || !user) {
-      navigate('/auth/login', { state: { from: `/auctions?tab=mstc` } });
-      return;
+    const userId = isAuthenticated && user ? user.id : 'anonymous';
+    const isNowInterested = dashboardService.toggleInterestedAuction(userId, itemId);
+    setInterestedMstcIds(dashboardService.getInterestedAuctions(userId));
+    if (isNowInterested) {
+      toast.success('Added to interested list');
+    } else {
+      toast.success('Removed from interested list');
     }
-    dashboardService.toggleInterestedAuction(user.id, itemId);
-    setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
   };
 
   // Derived filter and paging variables from URL query parameters
@@ -523,36 +522,7 @@ export function Auctions() {
 
         <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-white mb-2">Auctions Marketplace</h1>
-          <p className="text-slate-400 mb-6">Browse live commercial auctions and official government catalogs.</p>
-
-          <div className="flex space-x-6 mb-6 border-b border-slate-800 pb-2">
-            <button
-              onClick={() => {
-                setSearchParams({ tab: 'mstc' });
-              }}
-              className={clsx(
-                "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none cursor-pointer",
-                activeTab === 'mstc'
-                  ? "border-primary text-white font-bold"
-                  : "border-transparent text-slate-300 hover:text-white"
-              )}
-            >
-              MSTC Government Catalogs
-            </button>
-            <button
-              onClick={() => {
-                setSearchParams({ tab: 'commercial' });
-              }}
-              className={clsx(
-                "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none cursor-pointer",
-                activeTab === 'commercial'
-                  ? "border-primary text-white font-bold"
-                  : "border-transparent text-slate-300 hover:text-white"
-              )}
-            >
-              Commercial Auctions
-            </button>
-          </div>
+          <p className="text-slate-400 mb-6">Browse official government catalogs and MSTC eAuctions.</p>
 
           <form onSubmit={handleSearch} className="max-w-3xl relative">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -642,6 +612,13 @@ export function Auctions() {
                 </div>
 
                 <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <button
+                    onClick={() => navigate(isAuthenticated ? '/dashboard/quotes' : '/quotes')}
+                    className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Build a Quote
+                  </button>
                   <select
                     value={sortBy}
                     onChange={(e) => {
@@ -683,6 +660,13 @@ export function Auctions() {
                   <span>Showing {mstcAuctions.length} Government Catalogs</span>
                 </div>
                 <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <button
+                    onClick={() => navigate(isAuthenticated ? '/dashboard/quotes' : '/quotes')}
+                    className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Build a Quote
+                  </button>
                   <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
                     <button
                       onClick={() => setIsGridView(true)}

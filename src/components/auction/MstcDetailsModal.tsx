@@ -11,6 +11,7 @@ import { useQuoteStore } from '../../store/quoteStore';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice, CURRENCIES, formatPriceString } from '../../utils/currency';
+import { useNavigate } from 'react-router-dom';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuationService';
 import { marketPriceService } from '../../services/marketPriceService';
@@ -41,6 +42,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const { isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
 
   const handleDownloadPdf = async () => {
@@ -434,13 +436,13 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     toast.success(`Added "${row.description}" to quote`);
   };
 
-  const handleAddAllItemsToQuote = () => {
+  const handleBuildQuote = () => {
     if (!summary.items || summary.items.length === 0) return;
     
     summary.items.forEach(row => {
       const qty = parseFloat(row.qty.replace(/,/g, '')) || 1;
       let price = 0;
-      const priceMatch = (row.marketPrice || '').match(/Ôé╣([\d,]+)/);
+      const priceMatch = (row.marketPrice || '').match(/₹([\d,]+)/) || (row.marketPrice || '').match(/Ôé╣([\d,]+)/);
       if (priceMatch) {
         price = parseFloat(priceMatch[1].replace(/,/g, ''));
       }
@@ -461,6 +463,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     });
 
     toast.success(`Added all ${summary.items.length} items to quote`);
+    onClose();
+    navigate(isAuthenticated ? '/dashboard/quotes' : '/quotes');
   };
 
   return (
@@ -1085,11 +1089,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   </h4>
                   {summary.items.length > 0 && (
                     <button
-                      onClick={handleAddAllItemsToQuote}
+                      onClick={handleBuildQuote}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/10 bg-primary/5 border border-primary/20 rounded-lg transition-colors cursor-pointer"
                     >
                       <FilePlus className="w-3.5 h-3.5" />
-                      Add All to Quote
+                      Build a Quote
                     </button>
                   )}
                 </div>
@@ -1184,35 +1188,80 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               {/* Eligibility, Compliance & Financial Terms */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Compliance Card */}
-                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2.5">
-                    Buyer Eligibility & Compliance
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+                  <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2.5">
+                    MSTC eAuctions Compliance & Documents
                   </h4>
-                  <ul className="list-disc pl-5 space-y-2 text-[13.5px] text-slate-705">
-                    {summary.eligibility.map((el, i) => (
-                      <li key={i} className="leading-relaxed">{el}</li>
-                    ))}
-                  </ul>
+                  <div className="space-y-2">
+                    {summary.complianceInfo?.requiredDocuments && summary.complianceInfo.requiredDocuments.length > 0 ? (
+                      summary.complianceInfo.requiredDocuments.map((doc, idx) => (
+                        <div key={idx} className="flex gap-2 items-start p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                          <span className="mt-0.5 shrink-0">
+                            {doc.type === 'mandatory' ? (
+                              <span className="text-emerald-600 text-sm font-bold">✓</span>
+                            ) : (
+                              <span className="text-amber-500 text-sm font-bold">⚠</span>
+                            )}
+                          </span>
+                          <div>
+                            <p className="text-xs font-bold text-slate-850 flex items-center gap-1.5 flex-wrap">
+                              <span>{doc.name}</span>
+                              {doc.type === 'conditional' && (
+                                <span className="bg-amber-100 text-amber-800 text-[9px] px-1 py-0.2 rounded font-semibold uppercase tracking-wider">
+                                  Conditional
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[11px] text-slate-500 leading-normal mt-0.5">{doc.description}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <ul className="list-disc pl-5 space-y-2 text-[13.5px] text-slate-705">
+                        {summary.eligibility.map((el, i) => (
+                          <li key={i} className="leading-relaxed">{el}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
 
                 {/* Financial Charges Card */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2.5">
+                  <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2.5">
                     Financial Terms & Service Fees
                   </h4>
                   <div className="space-y-3">
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase  tracking-wider">EMD Details</span>
+                      <span className="text-slate-500 text-[11px] uppercase tracking-wider">EMD Details</span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
                         {formatPriceString(summary.depositDetails.emd, currency)}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase  tracking-wider">Pre-bid EMD</span>
+                      <span className="text-slate-500 text-[11px] uppercase tracking-wider">Pre-bid EMD</span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
                         {formatPriceString(summary.depositDetails.preBidDdg, currency)}
                       </span>
                     </div>
+                    {summary.complianceInfo?.gstStatus && (
+                      <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <span className="text-slate-500 text-[11px] uppercase tracking-wider">GST Tax Scheme</span>
+                        <div className="mt-1 flex flex-col gap-1">
+                          <span className="font-bold text-slate-850 text-[13.5px] flex items-center gap-1.5">
+                            {summary.complianceInfo.gstStatus.type}
+                            {summary.complianceInfo.gstStatus.isRcm && (
+                              <span className="bg-red-100 text-red-800 text-[9px] px-1 py-0.2 rounded font-semibold uppercase tracking-wider">
+                                RCM
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-[11px] text-slate-500 leading-normal">
+                            {summary.complianceInfo.gstStatus.description}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

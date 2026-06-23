@@ -684,36 +684,7 @@ export function Auctions() {
 
         <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-white mb-2">Auctions Marketplace</h1>
-          <p className="text-slate-400 mb-6">Browse live commercial auctions and official government catalogs.</p>
-
-          <div className="flex space-x-6 mb-6 border-b border-slate-800 pb-2">
-            <button
-              onClick={() => {
-                setSearchParams({ tab: 'mstc' });
-              }}
-              className={clsx(
-                "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none cursor-pointer",
-                activeTab === 'mstc'
-                  ? "border-primary text-white font-bold"
-                  : "border-transparent text-slate-300 hover:text-white"
-              )}
-            >
-              MSTC Government Catalogs
-            </button>
-            <button
-              onClick={() => {
-                setSearchParams({ tab: 'commercial' });
-              }}
-              className={clsx(
-                "pb-2 text-lg font-semibold border-b-2 transition-colors focus:outline-none cursor-pointer",
-                activeTab === 'commercial'
-                  ? "border-primary text-white font-bold"
-                  : "border-transparent text-slate-300 hover:text-white"
-              )}
-            >
-              Commercial Auctions
-            </button>
-          </div>
+          <p className="text-slate-400 mb-6">Browse official government catalogs and MSTC eAuctions.</p>
 
           <form onSubmit={handleSearch} className="max-w-3xl relative" onKeyDown={handleKeyDown}>
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">

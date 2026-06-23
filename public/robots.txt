@@ -1,4 +1,4 @@
-# User-agent directives for Lelam.co (Assistive B2B eAuctions & bidding platform)
+# User-agent directives for Lelam.co (Assistive B2B MSTC eAuctions & bidding platform)
 # Optimized for maximum crawl efficiency, Lighthouse validation, and search engine visibility.
 
 # Define rules for all crawlers
