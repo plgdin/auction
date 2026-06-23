@@ -139,6 +139,60 @@ function formatQuantity(totalVal: number): string {
       });
 }
 
+/**
+ * Cleans a lot's material description by stripping out metadata fields,
+ * conditions, quantity phrases, and other noise.
+ */
+export function cleanMaterialDescription(desc: string): string {
+  if (!desc) return "";
+  let cleaned = desc;
+
+  // 1. Remove "Note: ..." / "Note- ..." and everything after it
+  cleaned = cleaned.replace(/\bNote\s*[:.-].*$/gi, "");
+
+  // 2. Remove "Location: ..." and everything after it
+  cleaned = cleaned.replace(/\bLocation\s*[:.-].*$/gi, "");
+  cleaned = cleaned.replace(/\bLot Location\s*[:.-].*$/gi, "");
+
+  // 3. Remove "Total Qty: ... No" / "Qty- 250 Nos" / "Quantity ..."
+  cleaned = cleaned.replace(/\b(?:Approx\s*)?(?:Qty|Quantity|QTY|Total\s*Qty)\s*[:.-]?\s*\d+[\d,.]*\s*(?:Nos?|No|Items?|Lots?|Units?|Kgs?|MT|Tons?|Pcs?|[a-zA-Z]+)?/gi, "");
+
+  // 4. Remove "Cond: ..." or "Condition: ..."
+  cleaned = cleaned.replace(/\bCond(?:ition)?\s*[:.-]?\s*[a-zA-Z0-9-+/]+/gi, "");
+
+  // 5. Remove "As per Lot Annexure" or "As per Annexure" or "As per ... Annexure"
+  cleaned = cleaned.replace(/As per\s+(?:Lot\s+)?Annexure(?:\s+\S+)?/gi, "");
+
+  // 6. Remove "CLICK HERE FOR ITEMS PHOTOGRAPH" / "CLICK HERE FOR ITEMS PHOTOGRAP H" / "CLICK HERE"
+  cleaned = cleaned.replace(/\bCLICK\s*HERE\s*(?:FOR\s+[A-Za-z0-9\s-]{1,30})?/gi, "");
+
+  // 7. Strip known metadata prefixes/fields and their values (strict word-count limits or specific matches)
+  cleaned = cleaned.replace(/PCB Group\s*[:.-]\s*[A-Za-z0-9&/–—-]+/gi, "");
+  cleaned = cleaned.replace(/Product Type\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, "");
+  cleaned = cleaned.replace(/Category\s*[:.-]\s*(?:End of life vehicles|Ferro-Alloys\s*&\s*Metal Scrap|Batteries\s*&\s*Electrical Scrap|[A-Za-z0-9&/–—-]+\s*){1,4}/gi, "");
+  cleaned = cleaned.replace(/Lot State\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, "");
+  cleaned = cleaned.replace(/State\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, "");
+
+  // Clean up punctuation, spaces, etc.
+  cleaned = cleaned
+    .replace(/\s+/g, " ")
+    .replace(/\s*-\s*-\s*/g, " - ")
+    .replace(/,\s*,/g, ",")
+    .replace(/^\s*[,:-]\s*/, "")
+    .replace(/\s*[,:-]\s*$/, "")
+    .trim();
+
+  // 8. Strip stray words at the start that are leftover category parts
+  cleaned = cleaned.replace(/^vehicles\b/gi, "");
+
+  // Clean again after stripping leading word
+  cleaned = cleaned
+    .replace(/^\s*[,:-]\s*/, "")
+    .trim();
+
+  return cleaned;
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
@@ -223,7 +277,13 @@ export function parseLotBlocks(
       /Category\s*-[^\n]*\n([\s\S]*?)(?=Quantity\s*-|Start\s*Price|Post\s*Bid|Bid\s*Increment|TCS|GST|Lot Location|State)/i,
     );
     if (descTextMatch) {
-      lotDescription = descTextMatch[1].replace(/\r?\n/g, " ").trim();
+      let rawDesc = descTextMatch[1];
+      // Clean multiline metadata fields before replacing newlines
+      rawDesc = rawDesc.replace(/PCB Group\s*[-:]\s*[^\r\n]*/gi, "");
+      rawDesc = rawDesc.replace(/Product Type\s*[-:]\s*[^\r\n]*/gi, "");
+      rawDesc = rawDesc.replace(/Category\s*[-:]\s*[^\r\n]*/gi, "");
+      
+      lotDescription = rawDesc.replace(/\r?\n/g, " ").trim();
     }
 
     // ── Extract quantity & unit (with false-positive guards) ──────────────
@@ -403,15 +463,20 @@ export function parseLotBlocks(
       }
     }
 
-    let finalDescription = lotDescription;
+    const normLotName = lotName.replace(/\s+/g, " ").trim();
+    const normLotDescription = lotDescription.replace(/\s+/g, " ").trim();
+
+    let finalDescription = normLotDescription;
     if (!finalDescription) {
-      finalDescription = lotName || categoryName || "Auction Lot Items";
+      finalDescription = normLotName || categoryName || "Auction Lot Items";
     } else if (
-      lotName &&
-      !finalDescription.toLowerCase().includes(lotName.toLowerCase())
+      normLotName &&
+      !normLotDescription.toLowerCase().includes(normLotName.toLowerCase())
     ) {
-      finalDescription = `${lotName} - ${finalDescription}`;
+      finalDescription = `${normLotName} - ${normLotDescription}`;
     }
+
+    finalDescription = cleanMaterialDescription(finalDescription);
 
     items.push({
       sr,

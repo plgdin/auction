@@ -212,7 +212,8 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
       item.subItems.forEach((sub: any, idx: number) => {
         if (isInstruction(sub.description)) return;
         
-        const subDesc = expandAbbreviations(sub.description || '');
+        let subDesc = expandAbbreviations(sub.description || '');
+        subDesc = cleanMaterialDescription(subDesc);
         const subQty = sub.qty || '1';
         const subUnit = sub.unit || 'Nos';
         const subTax = tax || '18% GST';
@@ -234,6 +235,7 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
         desc = categoryName || 'Auction Lot Items';
       }
       desc = expandAbbreviations(desc);
+      desc = cleanMaterialDescription(desc);
 
       let mPrice = item.marketPrice || '';
       let parsedPrice = 0;
@@ -257,6 +259,60 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
 
   return flattened;
 };
+
+/**
+ * Cleans a lot's material description by stripping out metadata fields,
+ * conditions, quantity phrases, and other noise.
+ */
+export function cleanMaterialDescription(desc: string): string {
+  if (!desc) return '';
+  let cleaned = desc;
+
+  // 1. Remove "Note: ..." / "Note- ..." and everything after it
+  cleaned = cleaned.replace(/\bNote\s*[:.-].*$/gi, '');
+
+  // 2. Remove "Location: ..." and everything after it
+  cleaned = cleaned.replace(/\bLocation\s*[:.-].*$/gi, '');
+  cleaned = cleaned.replace(/\bLot Location\s*[:.-].*$/gi, '');
+
+  // 3. Remove "Total Qty: ... No" / "Qty- 250 Nos" / "Quantity ..."
+  cleaned = cleaned.replace(/\b(?:Approx\s*)?(?:Qty|Quantity|QTY|Total\s*Qty)\s*[:.-]?\s*\d+[\d,.]*\s*(?:Nos?|No|Items?|Lots?|Units?|Kgs?|MT|Tons?|Pcs?|[a-zA-Z]+)?/gi, '');
+
+  // 4. Remove "Cond: ..." or "Condition: ..."
+  cleaned = cleaned.replace(/\bCond(?:ition)?\s*[:.-]?\s*[a-zA-Z0-9-+/]+/gi, '');
+
+  // 5. Remove "As per Lot Annexure" or "As per Annexure" or "As per ... Annexure"
+  cleaned = cleaned.replace(/As per\s+(?:Lot\s+)?Annexure(?:\s+\S+)?/gi, '');
+
+  // 6. Remove "CLICK HERE FOR ITEMS PHOTOGRAPH" / "CLICK HERE FOR ITEMS PHOTOGRAP H" / "CLICK HERE"
+  cleaned = cleaned.replace(/\bCLICK\s*HERE\s*(?:FOR\s+[A-Za-z0-9\s-]{1,30})?/gi, '');
+
+  // 7. Strip known metadata prefixes/fields and their values (strict word-count limits or specific matches)
+  cleaned = cleaned.replace(/PCB Group\s*[:.-]\s*[A-Za-z0-9&/–—-]+/gi, '');
+  cleaned = cleaned.replace(/Product Type\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, '');
+  cleaned = cleaned.replace(/Category\s*[:.-]\s*(?:End of life vehicles|Ferro-Alloys\s*&\s*Metal Scrap|Batteries\s*&\s*Electrical Scrap|[A-Za-z0-9&/–—-]+\s*){1,4}/gi, '');
+  cleaned = cleaned.replace(/Lot State\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, '');
+  cleaned = cleaned.replace(/State\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, '');
+
+  // Clean up punctuation, spaces, etc.
+  cleaned = cleaned
+    .replace(/\s+/g, ' ')
+    .replace(/\s*-\s*-\s*/g, ' - ')
+    .replace(/,\s*,/g, ',')
+    .replace(/^\s*[,:-]\s*/, '')
+    .replace(/\s*[,:-]\s*$/, '')
+    .trim();
+
+  // 8. Strip stray words at the start
+  cleaned = cleaned.replace(/^vehicles\b/gi, '');
+
+  // Clean again after stripping leading word
+  cleaned = cleaned
+    .replace(/^\s*[,:-]\s*/, '')
+    .trim();
+
+  return cleaned;
+}
 
 export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSummary => {
   const shortId = item.mstc_auction_number.split('/').pop() || item.id.substring(0, 8);
@@ -343,16 +399,29 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
               });
 
               if (validSubs.length > 0) {
-                const subDesc = validSubs[0].description;
+                const subDesc = cleanMaterialDescription(validSubs[0].description);
                 // Only merge if they are different and subDesc is not just a tiny generic string
                 if (subDesc.length > 3) {
-                  if (desc.toLowerCase() !== subDesc.toLowerCase() && !subDesc.toLowerCase().includes(desc.toLowerCase())) {
-                     desc = `${desc} - ${subDesc}`;
-                  } else if (subDesc.length > desc.length) {
+                  const cleanedDesc = cleanMaterialDescription(desc);
+                  const normCleaned = cleanedDesc.toLowerCase().replace(/&/g, 'and').replace(/\s+/g, ' ').trim();
+                  const normSub = subDesc.toLowerCase().replace(/&/g, 'and').replace(/\s+/g, ' ').trim();
+
+                  const isDuplicate = 
+                    normCleaned === normSub || 
+                    normSub.includes(normCleaned) || 
+                    normCleaned.includes(normSub);
+
+                  if (!isDuplicate) {
+                     desc = `${cleanedDesc} - ${subDesc}`;
+                  } else if (subDesc.length > cleanedDesc.length) {
                      desc = subDesc;
+                  } else {
+                     desc = cleanedDesc;
                   }
                 }
               }
+            } else {
+              desc = cleanMaterialDescription(desc);
             }
 
             desc = expandAbbreviations(desc);

@@ -1,0 +1,520 @@
+[L317] Applicable
+[L318] Lot Location -
+[L319] Ordnance Depot,
+[L320] Prayagraj State :Uttar
+[L321] Pradesh
+[L322] Lot State - Uttar
+[L323] Pradesh
+[L324] Bid Valid Till - 27-08-
+[L325] 2026
+[L326] Pre-Bid EMD
+[L327] Amount - Rs 3000
+[L328] Annexure for Lot
+[L329] no 08/ALD -
+[L330] Annex_7_15142_833
+[L331] 9220.pdf
+[L332] Lot No - 09/ALD
+[L333] Lot Name - Tata
+[L334] Sumo Amb
+[L335] Product Type -
+[L336] Transport Vehicles
+[L337] Category - End of life
+[L338] vehicles
+[L339] PCB Group - RVSF
+[L340] Tata Sumo Amb
+[L341] Total Qty:15 No
+[L342] Cond: CL-V
+[L343]  As per Lot
+[L344] Annexure
+[L345] Quantity - 1.0 LOT
+[L346] Start Price in INR - 1
+[L347] Bid Increment in INR -
+[L348] 1.0
+[L349] Post Bid EMD % -
+[L350] 25.0
+[L351] TCS (%) - 0.0
+[L352] GST (%) - As
+[L353] Applicable
+[L354] Lot Location -
+[L355] Ordnance Depot,
+[L356] Prayagraj State :Uttar
+[L357] Pradesh
+[L358] Lot State - Uttar
+[L359] Pradesh
+[L360] Bid Valid Till - 27-08-
+[L361] 2026
+[L362] Pre-Bid EMD
+[L363] Amount - Rs 15000
+[L364] Annexure for Lot
+[L365] no 09/ALD -
+[L366] Annex_7_15142_833
+[L367] 9223.pdf
+==================================================
+[L350] 25.0
+[L351] TCS (%) - 0.0
+[L352] GST (%) - As
+[L353] Applicable
+[L354] Lot Location -
+[L355] Ordnance Depot,
+[L356] Prayagraj State :Uttar
+[L357] Pradesh
+[L358] Lot State - Uttar
+[L359] Pradesh
+[L360] Bid Valid Till - 27-08-
+[L361] 2026
+[L362] Pre-Bid EMD
+[L363] Amount - Rs 15000
+[L364] Annexure for Lot
+[L365] no 09/ALD -
+[L366] Annex_7_15142_833
+[L367] 9223.pdf
+[L368] Lot No - 10/ALD
+[L369] Lot Name - Tata
+[L370] Sumo Amb
+[L371] Product Type -
+[L372] Transport Vehicles
+[L373] Category - End of life
+[L374] vehicles
+[L375] PCB Group - RVSF
+[L376] Tata Sumo Amb
+[L377] Total Qty:1 No
+[L378] Cond: CL-V
+[L379]  As per Lot
+[L380] Annexure
+[L381] Quantity - 1.0 LOT
+[L382] Start Price in INR - 1
+[L383] Bid Increment in INR -
+[L384] 1.0
+[L385] Post Bid EMD % -
+[L386] 25.0
+[L387] TCS (%) - 0.0
+[L388] GST (%) - As
+[L389] Applicable
+[L390] Lot Location -
+[L391] Ordnance Depot,
+[L392] Prayagraj State :Uttar
+[L393] Pradesh
+[L394] Lot State - Uttar
+[L395] Pradesh
+[L396] Bid Valid Till - 27-08-
+[L397] 2026
+[L398] Pre-Bid EMD
+[L399] Amount - Rs 1000
+[L400] Annexure for Lot
+==================================================
+[L353] Applicable
+[L354] Lot Location -
+[L355] Ordnance Depot,
+[L356] Prayagraj State :Uttar
+[L357] Pradesh
+[L358] Lot State - Uttar
+[L359] Pradesh
+[L360] Bid Valid Till - 27-08-
+[L361] 2026
+[L362] Pre-Bid EMD
+[L363] Amount - Rs 15000
+[L364] Annexure for Lot
+[L365] no 09/ALD -
+[L366] Annex_7_15142_833
+[L367] 9223.pdf
+[L368] Lot No - 10/ALD
+[L369] Lot Name - Tata
+[L370] Sumo Amb
+[L371] Product Type -
+[L372] Transport Vehicles
+[L373] Category - End of life
+[L374] vehicles
+[L375] PCB Group - RVSF
+[L376] Tata Sumo Amb
+[L377] Total Qty:1 No
+[L378] Cond: CL-V
+[L379]  As per Lot
+[L380] Annexure
+[L381] Quantity - 1.0 LOT
+[L382] Start Price in INR - 1
+[L383] Bid Increment in INR -
+[L384] 1.0
+[L385] Post Bid EMD % -
+[L386] 25.0
+[L387] TCS (%) - 0.0
+[L388] GST (%) - As
+[L389] Applicable
+[L390] Lot Location -
+[L391] Ordnance Depot,
+[L392] Prayagraj State :Uttar
+[L393] Pradesh
+[L394] Lot State - Uttar
+[L395] Pradesh
+[L396] Bid Valid Till - 27-08-
+[L397] 2026
+[L398] Pre-Bid EMD
+[L399] Amount - Rs 1000
+[L400] Annexure for Lot
+[L401] no 10/ALD -
+[L402] Annex_7_15142_833
+[L403] 9224.pdf
+==================================================
+[L386] 25.0
+[L387] TCS (%) - 0.0
+[L388] GST (%) - As
+[L389] Applicable
+[L390] Lot Location -
+[L391] Ordnance Depot,
+[L392] Prayagraj State :Uttar
+[L393] Pradesh
+[L394] Lot State - Uttar
+[L395] Pradesh
+[L396] Bid Valid Till - 27-08-
+[L397] 2026
+[L398] Pre-Bid EMD
+[L399] Amount - Rs 1000
+[L400] Annexure for Lot
+[L401] no 10/ALD -
+[L402] Annex_7_15142_833
+[L403] 9224.pdf
+[L404] Lot No - 11/ALD
+[L405] Lot Name - Omni Van
+[L406] Product Type -
+[L407] Transport Vehicles
+[L408] Category - End of life
+[L409] vehicles
+[L410] PCB Group - RVSF
+[L411] Omni Van
+[L412] Total Qty:2 No
+[L413] Cond: CL-V
+[L414]  As per Lot
+[L415] Annexure
+[L416] Quantity - 1.0 LOT
+[L417] Start Price in INR - 1
+[L418] Bid Increment in INR -
+[L419] 1.0
+[L420] Post Bid EMD % -
+[L421] 25.0
+[L422] TCS (%) - 0.0
+[L423] GST (%) - As
+[L424] Applicable
+[L425] Lot Location -
+[L426] Ordnance Depot,
+[L427] Prayagraj State :Uttar
+[L428] Pradesh
+[L429] Lot State - Uttar
+[L430] Pradesh
+[L431] Bid Valid Till - 27-08-
+[L432] 2026
+[L433] Pre-Bid EMD
+[L434] Amount - Rs 2000
+[L435] Annexure for Lot
+[L436] no 11/ALD -
+==================================================
+[L389] Applicable
+[L390] Lot Location -
+[L391] Ordnance Depot,
+[L392] Prayagraj State :Uttar
+[L393] Pradesh
+[L394] Lot State - Uttar
+[L395] Pradesh
+[L396] Bid Valid Till - 27-08-
+[L397] 2026
+[L398] Pre-Bid EMD
+[L399] Amount - Rs 1000
+[L400] Annexure for Lot
+[L401] no 10/ALD -
+[L402] Annex_7_15142_833
+[L403] 9224.pdf
+[L404] Lot No - 11/ALD
+[L405] Lot Name - Omni Van
+[L406] Product Type -
+[L407] Transport Vehicles
+[L408] Category - End of life
+[L409] vehicles
+[L410] PCB Group - RVSF
+[L411] Omni Van
+[L412] Total Qty:2 No
+[L413] Cond: CL-V
+[L414]  As per Lot
+[L415] Annexure
+[L416] Quantity - 1.0 LOT
+[L417] Start Price in INR - 1
+[L418] Bid Increment in INR -
+[L419] 1.0
+[L420] Post Bid EMD % -
+[L421] 25.0
+[L422] TCS (%) - 0.0
+[L423] GST (%) - As
+[L424] Applicable
+[L425] Lot Location -
+[L426] Ordnance Depot,
+[L427] Prayagraj State :Uttar
+[L428] Pradesh
+[L429] Lot State - Uttar
+[L430] Pradesh
+[L431] Bid Valid Till - 27-08-
+[L432] 2026
+[L433] Pre-Bid EMD
+[L434] Amount - Rs 2000
+[L435] Annexure for Lot
+[L436] no 11/ALD -
+[L437] Annex_7_15142_833
+[L438] 9226.pdf
+[L439] Lot No - 12/ALD
+==================================================
+[L421] 25.0
+[L422] TCS (%) - 0.0
+[L423] GST (%) - As
+[L424] Applicable
+[L425] Lot Location -
+[L426] Ordnance Depot,
+[L427] Prayagraj State :Uttar
+[L428] Pradesh
+[L429] Lot State - Uttar
+[L430] Pradesh
+[L431] Bid Valid Till - 27-08-
+[L432] 2026
+[L433] Pre-Bid EMD
+[L434] Amount - Rs 2000
+[L435] Annexure for Lot
+[L436] no 11/ALD -
+[L437] Annex_7_15142_833
+[L438] 9226.pdf
+[L439] Lot No - 12/ALD
+[L440] Lot Name - Bus TATA
+[L441] Long Chasis
+[L442] Product Type -
+[L443] Transport Vehicles
+[L444] Category - End of life
+[L445] vehicles
+[L446] PCB Group - RVSF
+[L447] Bus TATA Long
+[L448] Chasis
+[L449] Total Qty: 1No
+[L450] Cond: CL-V
+[L451]  As per Lot
+[L452] Annexure
+[L453] Quantity - 1.0 LOT
+[L454] Start Price in INR - 1
+[L455] Bid Increment in INR -
+[L456] 1.0
+[L457] Post Bid EMD % -
+[L458] 25.0
+[L459] TCS (%) - 0.0
+[L460] GST (%) - As
+[L461] Applicable
+[L462] Lot Location -
+[L463] Ordnance Depot,
+[L464] Prayagraj State :Uttar
+[L465] Pradesh
+[L466] Lot State - Uttar
+[L467] Pradesh
+[L468] Bid Valid Till - 27-08-
+[L469] 2026
+[L470] Pre-Bid EMD
+[L471] Amount - Rs 3000
+==================================================
+[L488] 1. Guide for making payment to MSTC through e-Payment in Bidders login is available at (Link)
+[L489] 2. No cognizance will be taken if payment is not received in line with defined terms & conditions of
+[L490] e-auction. In such cases buyer will be required to make fresh payment according to the terms of
+[L491] auction. Seller/MSTC will not entertain any request for extension of free time period for payments
+[L492] due. For auctions under RCM, all payment of balance sale value may be deposited by the buyers
+[L493] with MSTC.
+[L494] Inspection Details
+[L495] 1. Prospective Bidders may contact the stockholder/principal and visit the site for inspection as per
+[L496] inspection schedule given in the auction catalogue. Bidder, if himself/herself visits the site for
+[L497] inspection, must carry his/her Photo ID Card issued by MSTC. In case inspection is made by
+[L498] bidder s representatives then they should carry with them proper authorisation of their Identity &
+[L499] Signature on bidder s letter head under bidder s signature along with certified copy of MSTC ID
+[L500] Card.
+[L501] 2. Bidder must satisfy themselves about the nature, quality, quantity, physical conditions, technical
+[L502] specifications, taxes-duties and other legalities of the materials prior to submission of bid.
+[L503] Lot No - 13/ALD
+[L504] Lot Name - TATA 10
+[L505] TON
+[L506] Product Type -
+[L507] Transport Vehicles
+[L508] Category - End of life
+[L509] vehicles
+[L510] PCB Group - RVSF
+[L511] TATA 10 TON
+[L512] Total Qty: 1 No
+[L513] Cond: CL-V
+[L514]  As per Lot
+[L515] Annexure
+[L516] Quantity - 1.0 LOT
+[L517] Start Price in INR - 1
+[L518] Bid Increment in INR -
+[L519] 1.0
+[L520] Post Bid EMD % -
+[L521] 25.0
+[L522] TCS (%) - 0.0
+[L523] GST (%) - As
+[L524] Applicable
+[L525] Lot Location -
+[L526] Ordnance Depot,
+[L527] Prayagraj State :Uttar
+[L528] Pradesh
+[L529] Lot State - Uttar
+[L530] Pradesh
+[L531] Bid Valid Till - 27-08-
+[L532] 2026
+[L533] Pre-Bid EMD
+[L534] Amount - Rs 3000
+[L535] Annexure for Lot
+[L536] no 13/ALD -
+[L537] Annex_7_15142_833
+[L538] 9228.pdf
+==================================================
+[L521] 25.0
+[L522] TCS (%) - 0.0
+[L523] GST (%) - As
+[L524] Applicable
+[L525] Lot Location -
+[L526] Ordnance Depot,
+[L527] Prayagraj State :Uttar
+[L528] Pradesh
+[L529] Lot State - Uttar
+[L530] Pradesh
+[L531] Bid Valid Till - 27-08-
+[L532] 2026
+[L533] Pre-Bid EMD
+[L534] Amount - Rs 3000
+[L535] Annexure for Lot
+[L536] no 13/ALD -
+[L537] Annex_7_15142_833
+[L538] 9228.pdf
+[L539] Lot No - 14/ALD
+[L540] Lot Name - EICHER
+[L541] CANTER
+[L542] Product Type -
+[L543] Transport Vehicles
+[L544] Category - End of life
+[L545] vehicles
+[L546] PCB Group - RVSF
+[L547] EICHER CANTER
+[L548] Total Qty: 1 No
+[L549] Cond: CL-V
+[L550]  As per Lot
+[L551] Annexure
+[L552] Quantity - 1.0 LOT
+[L553] Start Price in INR - 1
+[L554] Bid Increment in INR -
+[L555] 1.0
+[L556] Post Bid EMD % -
+[L557] 25.0
+[L558] TCS (%) - 0.0
+[L559] GST (%) - As
+[L560] Applicable
+[L561] Lot Location -
+[L562] Ordnance Depot,
+[L563] Prayagraj State :Uttar
+[L564] Pradesh
+[L565] Lot State - Uttar
+[L566] Pradesh
+[L567] Bid Valid Till - 27-08-
+[L568] 2026
+[L569] Pre-Bid EMD
+[L570] Amount - Rs 3000
+[L571] Annexure for Lot
+==================================================
+[L524] Applicable
+[L525] Lot Location -
+[L526] Ordnance Depot,
+[L527] Prayagraj State :Uttar
+[L528] Pradesh
+[L529] Lot State - Uttar
+[L530] Pradesh
+[L531] Bid Valid Till - 27-08-
+[L532] 2026
+[L533] Pre-Bid EMD
+[L534] Amount - Rs 3000
+[L535] Annexure for Lot
+[L536] no 13/ALD -
+[L537] Annex_7_15142_833
+[L538] 9228.pdf
+[L539] Lot No - 14/ALD
+[L540] Lot Name - EICHER
+[L541] CANTER
+[L542] Product Type -
+[L543] Transport Vehicles
+[L544] Category - End of life
+[L545] vehicles
+[L546] PCB Group - RVSF
+[L547] EICHER CANTER
+[L548] Total Qty: 1 No
+[L549] Cond: CL-V
+[L550]  As per Lot
+[L551] Annexure
+[L552] Quantity - 1.0 LOT
+[L553] Start Price in INR - 1
+[L554] Bid Increment in INR -
+[L555] 1.0
+[L556] Post Bid EMD % -
+[L557] 25.0
+[L558] TCS (%) - 0.0
+[L559] GST (%) - As
+[L560] Applicable
+[L561] Lot Location -
+[L562] Ordnance Depot,
+[L563] Prayagraj State :Uttar
+[L564] Pradesh
+[L565] Lot State - Uttar
+[L566] Pradesh
+[L567] Bid Valid Till - 27-08-
+[L568] 2026
+[L569] Pre-Bid EMD
+[L570] Amount - Rs 3000
+[L571] Annexure for Lot
+[L572] no 14/ALD -
+[L573] Annex_7_15142_833
+[L574] 9230.pdf
+==================================================
+[L557] 25.0
+[L558] TCS (%) - 0.0
+[L559] GST (%) - As
+[L560] Applicable
+[L561] Lot Location -
+[L562] Ordnance Depot,
+[L563] Prayagraj State :Uttar
+[L564] Pradesh
+[L565] Lot State - Uttar
+[L566] Pradesh
+[L567] Bid Valid Till - 27-08-
+[L568] 2026
+[L569] Pre-Bid EMD
+[L570] Amount - Rs 3000
+[L571] Annexure for Lot
+[L572] no 14/ALD -
+[L573] Annex_7_15142_833
+[L574] 9230.pdf
+[L575] Terms and Conditions
+[L576] -
+[L577] Auction No: MSTC/LKO/Ordnance Depot /4/Allahabad/26-27/15142Date/Time of Download: 22-06-2026 16:06:25
+[L578] 
+[L579] Discrepancy if any found may be brought to the notice of Seller/MSTC at least 3 days prior to the
+[L580] auction start date. Submission of bid would lead to draw a presumption that Bidder has inspected
+[L581] the material physically & thoroughly and has satisfied himself with respect to all aspects. No
+[L582] complaint, whatsoever, with respect to any aspects of the material would be entertained after
+[L583] submission of the bid. 
+[L584] 3. Photos of the lots, if any, forms part of the auction catalogue and its annexure would be strictly
+[L585] for reference purpose only and no inference whatsoever may be drawn with respect to any
+[L586] aspects of the material. Bidder has to inspect the material physically & thoroughly to satisfy
+[L587] themselves about the nature, quality, quantity and other properties, if any, before submitting the
+[L588] bid. MSTC/Seller will not be responsible for any complaint in this regard.
+[L589] Pre-Bid EMD (PEMD)
+[L590] 1. To deposit Pre-Bid EMD (herein after referred to as PEMD) amount as mentioned in the auction
+[L591] catalogue or under lot details, a registered bidder has to login and go to Pay Pre-Bid EMD Link in
+[L592] his home page. 
+[L593] 2. Bidder s EMD ledger will be given effect of the deposited PEMD amount only on actual credit of
+[L594] the PEMD amount into MSTC bank account. Therefore, Bidders are advised to make Pre-Bid
+[L595] EMD payment well in advance of the Auction start date to avoid any last-minute hassles. Seller/
+[L596] MSTC shall not be responsible for any delay in receipt of Pre-Bid EMD amount.
+[L597] 3. Each bidder has been assigned a specific Virtual Account number. Same can be re-used by the
+[L598] bidder any number of times. Only the amount needs to be changed by the bidder while making the
+[L599] payment (based on their requirement). It may be noted that the provision of fixed VAN is
+[L600] applicable only in case of Pre-Bid EMD payment. For post auction payments bidder has to use e-
+[L601] Payment link or as per instructions in the Auction Catalogue.
+[L602] 4. For successful bidder (Highest bidder) PEMD amount corresponding to the Lot/auction, as
+[L603] defined in the auction terms, will be blocked and retained with MSTC and will be available for
+[L604] adjustment with Post Bid EMD or will be dealt with as per relevant terms mentioned, if any.
+[L605] 5. For unsuccessful bidder his PEMD amount will be available in his EMD Ledger for seeking
+[L606] refund. FAQs for Pre-Bid EMD Payment are available on the link Pay Pre-Bid EMD in the login of
+[L607] Bidder. 
+==================================================
