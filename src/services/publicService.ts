@@ -1511,7 +1511,6 @@ export const MstcSearchService = {
       locations?: string[];
       regionalOffice?: string;
       regionalOffices?: string[];
-      isReauction?: boolean;
     }
   ): Promise<MstcSanitizedAuction[]> {
     try {
@@ -1526,10 +1525,6 @@ export const MstcSearchService = {
           .eq('asset_status', 'completed')
           .order('opening_date', { ascending: false })
           .range(from, from + pageSize - 1);
-
-        if (filters?.isReauction !== undefined) {
-          queryBuilder = queryBuilder.eq('is_reauction', filters.isReauction);
-        }
 
         if (filters?.sellers && filters.sellers.length > 0) {
           queryBuilder = queryBuilder.in('seller_name', filters.sellers);
@@ -1578,12 +1573,12 @@ export const MstcSearchService = {
       if (filters?.categories && filters.categories.length > 0) {
         const cats = filters.categories;
         mapped = mapped.filter(item => {
-          const parts = (item.category_name || '').split(' | ');
+          const parts = item.category_name.split(' | ');
           return cats.includes(parts[0]);
         });
       } else if (filters?.category) {
         mapped = mapped.filter(item => {
-          const parts = (item.category_name || '').split(' | ');
+          const parts = item.category_name.split(' | ');
           return parts[0] === filters.category;
         });
       }
@@ -1591,12 +1586,12 @@ export const MstcSearchService = {
       if (filters?.subcategories && filters.subcategories.length > 0) {
         const subcats = filters.subcategories;
         mapped = mapped.filter(item => {
-          const parts = (item.category_name || '').split(' | ');
+          const parts = item.category_name.split(' | ');
           return subcats.includes(parts[1]);
         });
       } else if (filters?.subcategory) {
         mapped = mapped.filter(item => {
-          const parts = (item.category_name || '').split(' | ');
+          const parts = item.category_name.split(' | ');
           return parts[1] === filters.subcategory;
         });
       }
@@ -1916,23 +1911,17 @@ export const MstcSearchService = {
       regionalOffices?: string[];
       hasImages?: boolean;
       hasAssetDocuments?: boolean;
-      isReauction?: boolean;
       startDate?: string;
       endDate?: string;
       page?: number;
       limit?: number;
     }
-<<<<<<< HEAD
-  ): Promise<{ data: MstcSanitizedAuction[], count: number, correctedQuery?: string }> {
-=======
-  ): Promise<{ data: MstcSanitizedAuction[], count: number, hasDirectMatches?: boolean }> {
->>>>>>> origin/anshaj/rework
+  ): Promise<{ data: MstcSanitizedAuction[], count: number, correctedQuery?: string, hasDirectMatches?: boolean }> {
     try {
       const cleanedQuery = cleanQueryPriceTypos(query);
       const pConstraint = parsePriceConstraint(cleanedQuery);
       const workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
 
-<<<<<<< HEAD
       // ── AUCTION NUMBER DIRECT LOOKUP ─────────────────────────────────────────
       // If the query looks like an auction number (e.g. "MSTC/ZG/POSTMASTER/1/...")
       // skip all NLP/embedding and do a direct ILIKE search on mstc_auction_number.
@@ -1983,117 +1972,6 @@ export const MstcSearchService = {
             p_max_pre_bid = pConstraint.value;
           }
         }
-=======
-      if (!workingQuery || workingQuery.trim() === '') {
-        // Direct querying on the table using PostgREST for fast, reliable pagination and filtering
-        const page = filters?.page || 1;
-        const limit = filters?.limit || 12;
-        const from = (page - 1) * limit;
-        const to = page * limit - 1;
-
-        let queryBuilder = supabase
-          .from('mstc_auctions')
-          .select('*', { count: pConstraint ? undefined : 'exact' })
-          .eq('asset_status', 'completed')
-          .order('opening_date', { ascending: false });
-
-        if (filters?.categories && filters.categories.length > 0) {
-          const conditions = filters.categories.flatMap(c => [
-            `category_name.eq.${c}`,
-            `category_name.like.${c} | %`
-          ]).join(',');
-          queryBuilder = queryBuilder.or(conditions);
-        } else if (filters?.category) {
-          queryBuilder = queryBuilder.or(`category_name.eq.${filters.category},category_name.like.${filters.category} | %`);
-        }
-
-        if (filters?.subcategories && filters.subcategories.length > 0) {
-          const conditions = filters.subcategories.map(s => `category_name.like.% | ${s}`).join(',');
-          queryBuilder = queryBuilder.or(conditions);
-        } else if (filters?.subcategory) {
-          queryBuilder = queryBuilder.like('category_name', `% | ${filters.subcategory}`);
-        }
-
-        if (filters?.sellers && filters.sellers.length > 0) {
-          queryBuilder = queryBuilder.in('seller_name', filters.sellers);
-        } else if (filters?.seller) {
-          queryBuilder = queryBuilder.eq('seller_name', filters.seller);
-        }
-
-        if (filters?.locations && filters.locations.length > 0) {
-          queryBuilder = queryBuilder.in('location', filters.locations);
-        } else if (filters?.location) {
-          queryBuilder = queryBuilder.eq('location', filters.location);
-        }
-
-        if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
-          const orConditions = filters.regionalOffices.map(office => `mstc_auction_number.ilike.MSTC/${office}/%`).join(',');
-          queryBuilder = queryBuilder.or(orConditions);
-        } else if (filters?.regionalOffice) {
-          queryBuilder = queryBuilder.ilike('mstc_auction_number', `MSTC/${filters.regionalOffice}/%`);
-        }
-
-        if (filters?.startDate) {
-          queryBuilder = queryBuilder.gte('opening_date', filters.startDate);
-        }
-        if (filters?.endDate) {
-          queryBuilder = queryBuilder.lte('opening_date', filters.endDate);
-        }
-
-        if (filters?.isReauction !== undefined) {
-          queryBuilder = queryBuilder.eq('is_reauction', filters.isReauction);
-        }
-
-        if (filters?.hasImages) {
-          queryBuilder = queryBuilder.ilike('raw_materials_text', '%_lot_doc_%');
-        }
-
-        if (filters?.hasAssetDocuments) {
-          queryBuilder = queryBuilder.or('sanitized_document_path.not.is.null,raw_materials_text.ilike.%.pdf%');
-        }
-
-        if (!pConstraint) {
-          queryBuilder = queryBuilder.range(from, to);
-        }
-
-        const { data, error, count } = await queryBuilder;
-
-        if (error) {
-          throw error;
-        }
-
-        if (!data || data.length === 0) {
-          return { data: [], count: 0 };
-        }
-
-        let mapped = data.map(item => {
-          const { category, subcategory } = mapRawCategory(item.category_name);
-          return {
-            ...item,
-            category_name: `${category} | ${subcategory}`
-          } as MstcSanitizedAuction;
-        });
-
-        if (pConstraint) {
-          mapped = mapped.filter(item => {
-            const { preBid, totalValue } = estimateAuctionValues(item as any);
-            const matchValue = (val: number) => {
-              if (val <= 0) return true;
-              if (pConstraint.operator === 'less') return val <= pConstraint.value;
-              if (pConstraint.operator === 'greater') return val >= pConstraint.value;
-              return val === pConstraint.value;
-            };
-            if (pConstraint.field === 'pre_bid') return matchValue(preBid);
-            if (pConstraint.field === 'total_value') return matchValue(totalValue);
-            return matchValue(preBid) || matchValue(totalValue);
-          });
-          const totalCount = mapped.length;
-          mapped = mapped.slice(from, from + limit);
-          return { data: mapped, count: totalCount };
-        }
-
-        return { data: mapped, count: count || 0 };
->>>>>>> origin/anshaj/rework
       }
       
       let embeddingStr: string | null = null;
@@ -2125,24 +2003,18 @@ export const MstcSearchService = {
         p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
         p_start_date: filters?.startDate || null,
         p_end_date: filters?.endDate || null,
-        p_has_images: null, // Bypass DB filter due to remote DB bug
+        p_has_images: filters?.hasImages || null,
         p_has_docs: filters?.hasAssetDocuments || null,
-<<<<<<< HEAD
         p_min_pre_bid: p_min_pre_bid || null,
         p_max_pre_bid: p_max_pre_bid || null,
         p_page: filters?.page || 1,
         p_limit: filters?.limit || 12
-=======
-        p_page: rpcPage,
-        p_limit: rpcLimit
->>>>>>> origin/anshaj/rework
       });
 
       if (error) {
         throw error;
       }
 
-<<<<<<< HEAD
       let searchData = data;
       let totalCount = 0;
       let returnedCorrectedQuery: string | undefined = undefined;
@@ -2170,8 +2042,8 @@ export const MstcSearchService = {
               p_has_docs: filters?.hasAssetDocuments || null,
               p_min_pre_bid: p_min_pre_bid || null,
               p_max_pre_bid: p_max_pre_bid || null,
-              p_page: filters?.page || 1,
-              p_limit: filters?.limit || 12
+              p_page: rpcPage,
+              p_limit: rpcLimit
             });
 
             if (!retryError && retryData && retryData.length > 0) {
@@ -2184,21 +2056,15 @@ export const MstcSearchService = {
             throw new Error('RPC_ZERO_RESULTS');
           }
         } else {
-          return { data: [], count: 0 };
+          return { data: [], count: 0, hasDirectMatches: false };
         }
       }
 
       totalCount = Number(searchData[0].total_count) || 0;
-=======
-      if (!data || data.length === 0) {
-        return { data: [], count: 0, hasDirectMatches: false };
-      }
-
-      let totalCount = Number(data[0].total_count) || 0;
-      const hasDirectMatches = (data as any[]).some(item => Number(item.search_rank) > 0);
+      const hasDirectMatches = (searchData as any[]).some(item => Number(item.search_rank) > 0);
 
       // Fetch is_reauction status for these items to ensure we have it in the UI and can filter by it
-      const itemIds = (data as any[]).map(item => item.id);
+      const itemIds = (searchData as any[]).map(item => item.id);
       const { data: reauctionStatuses, error: statusError } = await supabase
         .from('mstc_auctions')
         .select('id, is_reauction')
@@ -2208,7 +2074,6 @@ export const MstcSearchService = {
       if (!statusError && reauctionStatuses) {
         reauctionStatuses.forEach(r => reauctionMap.set(r.id, !!r.is_reauction));
       }
->>>>>>> origin/anshaj/rework
 
       // 2. Map Categories
       let mapped = (searchData as any[]).map(item => {
@@ -2220,11 +2085,6 @@ export const MstcSearchService = {
         } as MstcSanitizedAuction;
       });
 
-<<<<<<< HEAD
-
-
-      return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery };
-=======
       // Filter by isReauction locally if specified
       if (filters?.isReauction !== undefined) {
         mapped = mapped.filter(item => item.is_reauction === filters.isReauction);
@@ -2272,8 +2132,7 @@ export const MstcSearchService = {
         mapped = mapped.slice(startIndex, startIndex + limit);
       }
 
-      return { data: mapped, count: totalCount, hasDirectMatches };
->>>>>>> origin/anshaj/rework
+      return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery, hasDirectMatches };
 
     } catch (error) {
       console.warn('Hybrid search failed, falling back to client-side search:', error);
