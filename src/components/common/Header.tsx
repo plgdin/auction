@@ -30,7 +30,7 @@ export function Header() {
         <div className="flex justify-between items-center h-20">
           <div className="flex-shrink-0 flex items-center -ml-4">
             <Link to="/" className="flex items-center">
-              <img src="/png_lelam_1.png" alt="Lelam Logo" className="w-auto object-contain" style={{ height: '38px' }} />
+              <img src="/png_lelam_1.webp" alt="Lelam Logo" className="w-auto object-contain" style={{ height: '38px' }} />
             </Link>
           </div>
 
