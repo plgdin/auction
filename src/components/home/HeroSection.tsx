@@ -8,8 +8,9 @@ export function HeroSection() {
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
         <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-800/20 to-transparent" />
-        <div className="hero-orb hero-orb-1 absolute -top-40 -left-40 w-96 h-96 bg-primary/25 rounded-full blur-[120px]" />
-        <div className="hero-orb hero-orb-2 absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-[140px]" />
+        {/* Replaced heavy blur-[120px] filters with fast radial-gradients */}
+        <div className="hero-orb hero-orb-1 absolute -top-40 -left-40 w-96 h-96 bg-[radial-gradient(circle_at_center,_rgba(37,99,235,0.25)_0%,_rgba(37,99,235,0)_70%)] rounded-full" />
+        <div className="hero-orb hero-orb-2 absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-[radial-gradient(circle_at_center,_rgba(37,99,235,0.15)_0%,_rgba(37,99,235,0)_70%)] rounded-full" />
       </div>
 
       <div className="relative z-10 w-full px-4 sm:px-8 lg:px-12 flex flex-col items-center">

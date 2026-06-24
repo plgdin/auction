@@ -243,7 +243,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     });
   }, [extraChargeType, customCosts.currentBid]);
 
-  const getChartData = () => {
+  const chartData = React.useMemo(() => {
     if (!valuationData) return [];
 
     let currentVal = valuationData.totalLotValue;
@@ -271,9 +271,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     // Generate 6 months of historical prices by varying LME index slightly
     // Jan (-5 months) to Jun (current)
     for (let i = -5; i <= 0; i++) {
+      // Use deterministic pseudo-randomness based on month index and item string length
+      const pseudoRandom = Math.sin(i * 12.345 + targetTitle.length) * 2.5;
       const tempInputs = {
         ...DEFAULT_MACRO_INPUTS,
-        LME_Steel_Scrap_USD: baseLME + (i * 12) + (Math.random() * 5 - 2.5) // Adds slight variation
+        LME_Steel_Scrap_USD: baseLME + (i * 12) + pseudoRandom
       };
       const pricePoint = predictPrice(modelId, grade, region, tempInputs, targetTitle);
       modelPoints.push(pricePoint);
@@ -290,7 +292,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
         value: Math.round(currentVal * multiplier)
       };
     });
-  };
+  }, [valuationData, selectedChartItemId, item]);
 
   useEffect(() => {
     if (item) {
@@ -441,7 +443,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs p-4 sm:p-6 md:p-8 animate-fade-in">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 p-4 sm:p-6 md:p-8 animate-fade-in">
         <div className="relative w-full max-w-7xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-205 animate-scale-up animate-duration-200">
           
           {/* Modal Header */}
@@ -835,7 +837,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             </div>
                           ) : (
                             <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={getChartData()} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                                 <defs>
                                   <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
@@ -1510,7 +1512,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/90 backdrop-blur-md p-4 cursor-zoom-out animate-fade-in"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/90 p-4 cursor-zoom-out animate-fade-in"
           onClick={() => setLightboxImage(null)}
         >
           <button

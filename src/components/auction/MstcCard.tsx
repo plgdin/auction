@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel } from 'lucide-react';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
@@ -19,17 +19,36 @@ interface MstcCardProps {
 export function MstcCard({ item, isGrid = true, onPreview, isInterested = false, onInterestedToggle }: MstcCardProps) {
   const { currency } = useAppStore();
   const shortId = (item?.mstc_auction_number || '').split('/').pop() || item?.id?.substring(0, 8) || 'N/A';
-  const summary = generateCatalogSummary(item);
+  // Calculate summary asynchronously to prevent main-thread blocking when rendering many cards
+  const [summary, setSummary] = useState<ReturnType<typeof generateCatalogSummary> | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    // Defer the heavy parsing task to allow the UI to paint first
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        setSummary(generateCatalogSummary(item));
+      }
+    }, 10); // Small delay to let React commit the initial DOM
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [item]);
   
   // Distinguish actual item photos from document page preview images
-  const actualPhotos = (summary.extracted_images || []).filter(
-    (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('_page_') && !url.toLowerCase().includes('mstc-previews/') && !url.toLowerCase().endsWith('.pdf')
-  );
+  const actualPhotos = useMemo(() => {
+    if (!summary) return [];
+    return (summary.extracted_images || []).filter(
+      (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('_page_') && !url.toLowerCase().includes('mstc-previews/') && !url.toLowerCase().endsWith('.pdf')
+    );
+  }, [summary?.extracted_images]);
   
-  const hasOtherMedia = (summary.extracted_images || []).length > 0;
+  const hasOtherMedia = (summary?.extracted_images || []).length > 0;
   const rawDisplayImage = actualPhotos.length > 0
     ? actualPhotos[0]
-    : (summary.preview_image_url || (summary.extracted_images && summary.extracted_images.length > 0 ? summary.extracted_images[0] : null));
+    : (summary?.preview_image_url || (summary?.extracted_images && summary.extracted_images.length > 0 ? summary.extracted_images[0] : null));
 
   const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
@@ -59,10 +78,10 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
   const locationName = expandMstcOffice(item?.location);
 
   // Parse start and close dates
-  const parsedStartDate = summary.auctionStartTime ? parsePdfDateTime(summary.auctionStartTime) : null;
+  const parsedStartDate = summary?.auctionStartTime ? parsePdfDateTime(summary.auctionStartTime) : null;
   const auctionDate = parsedStartDate || new Date(item.opening_date);
   
-  const parsedCloseDate = summary.auctionCloseTime ? parsePdfDateTime(summary.auctionCloseTime) : null;
+  const parsedCloseDate = summary?.auctionCloseTime ? parsePdfDateTime(summary.auctionCloseTime) : null;
   
   const now = new Date();
   const diffMs = auctionDate.getTime() - now.getTime();
@@ -130,7 +149,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
             Re-auction
           </span>
         )}
-        {(item.sanitized_document_path || (summary.extracted_images && summary.extracted_images.some(url => url.toLowerCase().includes('.pdf')))) && (
+        {(item.sanitized_document_path || (summary?.extracted_images && summary.extracted_images.some(url => url.toLowerCase().includes('.pdf')))) && (
           <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
             Asset documents available
           </span>
@@ -209,10 +228,10 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                     <span className="font-semibold text-slate-700 truncate">{locationName}</span>
                   </div>
                 )}
-                <div className="flex items-center text-slate-600" title={summary.auctionType || 'O-General'}>
+                <div className="flex items-center text-slate-600" title={summary?.auctionType || 'O-General'}>
                   <Gavel className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                   <span className="font-semibold text-slate-700 truncate">
-                    Type: {summary.auctionType || 'O-General'}
+                    Type: {summary?.auctionType || 'O-General'}
                   </span>
                 </div>
               </div>
@@ -220,11 +239,11 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               <div className="space-y-2 text-xs border-l border-slate-100 pl-4">
                 <div className="flex items-center text-slate-655">
                   <Landmark className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>EMD: <strong className="text-slate-700 font-semibold">{formatPriceString(summary.depositDetails.emd, currency)}</strong></span>
+                  <span>EMD: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}</strong></span>
                 </div>
                 <div className="flex items-center text-slate-655">
                   <ShieldCheck className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Pre-bid: <strong className="text-slate-700 font-semibold">{formatPriceString(summary.depositDetails.preBidDdg, currency)}</strong></span>
+                  <span>Pre-bid: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}</strong></span>
                 </div>
               </div>
 
@@ -235,7 +254,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                 </div>
                 <div className="flex items-center text-slate-655">
                   <Eye className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Inspection: <strong className="text-slate-700 font-semibold">{summary.inspectionSchedule || 'N/A'}</strong></span>
+                  <span>Inspection: <strong className="text-slate-700 font-semibold">{summary?.inspectionSchedule || 'Loading...'}</strong></span>
                 </div>
               </div>
             </div>
@@ -348,20 +367,20 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
             <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">EMD Required</span>
-            <span className="font-bold text-slate-700 truncate" title={formatPriceString(summary.depositDetails.emd, currency)}>
-              {formatPriceString(summary.depositDetails.emd, currency)}
+            <span className="font-bold text-slate-700 truncate" title={summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}>
+              {summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
             <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
-            <span className="font-bold text-slate-700 truncate" title={formatPriceString(summary.depositDetails.preBidDdg, currency)}>
-              {formatPriceString(summary.depositDetails.preBidDdg, currency)}
+            <span className="font-bold text-slate-700 truncate" title={summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}>
+              {summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5 col-span-2">
             <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Auction Type</span>
-            <span className="font-bold text-slate-700 truncate" title={summary.auctionType || 'O-General'}>
-              {summary.auctionType || 'O-General'}
+            <span className="font-bold text-slate-700 truncate" title={summary?.auctionType || 'O-General'}>
+              {summary?.auctionType || 'O-General'}
             </span>
           </div>
         </div>
@@ -375,7 +394,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           </div>
           <div className="flex justify-between">
             <span>Inspection:</span>
-            <span className="font-semibold text-slate-700">{summary.inspectionSchedule || 'N/A'}</span>
+            <span className="font-semibold text-slate-700">{summary?.inspectionSchedule || 'Loading...'}</span>
           </div>
         </div>
       </div>

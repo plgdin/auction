@@ -127,10 +127,10 @@ export function FeaturedAuctionsSection() {
 
             {/* Auth Gate Overlay */}
             {!isAuthenticated && (
-              <div className="absolute inset-0 flex items-center justify-center z-10 px-4 bg-white/30 backdrop-blur-xs rounded-2xl">
+              <div className="absolute inset-0 flex items-center justify-center z-10 px-4 bg-white/70 rounded-2xl">
                 <div className="max-w-md w-full bg-slate-900 text-white p-8 rounded-3xl shadow-2xl text-center border border-slate-800 relative overflow-hidden">
-                  {/* Decorative Glowing Circle */}
-                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-slate-850 rounded-full blur-2xl pointer-events-none" />
+                  {/* Decorative Glowing Circle - Replaced heavy blur-2xl with a fast radial-gradient */}
+                  <div className="absolute -top-20 -right-20 w-48 h-48 bg-[radial-gradient(circle_at_center,_rgba(30,41,59,0.8)_0%,_rgba(15,23,42,0)_70%)] pointer-events-none" />
                   
                   <div className="w-16 h-16 bg-slate-800 text-white rounded-2xl flex items-center justify-center mx-auto mb-6">
                     <Lock className="w-8 h-8" />
