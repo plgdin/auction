@@ -1,4 +1,3 @@
-import { Shield } from 'lucide-react';
 import { AdminOverview } from '../components/admin/AdminOverview';
 import { UserManagement } from '../components/admin/UserManagement';
 import { SystemManagement } from '../components/admin/SystemManagement';
@@ -42,23 +41,7 @@ export function Admin() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-20">
-      
-      {/* Admin Header */}
-      <div className="bg-slate-900 rounded-2xl p-8 text-white relative overflow-hidden shadow-lg">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-          <Shield className="w-32 h-32" />
-        </div>
-        <div className="relative z-10">
-          <h1 className="text-3xl font-extrabold mb-2 flex items-center">
-            Enterprise Control Panel
-          </h1>
-          <p className="text-slate-300 max-w-2xl text-lg">
-            Global system administration, user moderation, and platform analytics.
-          </p>
-        </div>
-      </div>
-
+    <div className="w-full max-w-7xl mx-auto space-y-6 pb-20 px-4 sm:px-6 lg:px-8">
       {/* Content Area */}
       <div className="mt-6">
         {renderContent()}
