@@ -73,8 +73,26 @@ export function FeaturedAuctionsSection() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col h-[420px] animate-pulse shadow-sm p-4">
+                <div className="h-40 bg-slate-100 rounded-xl mb-4 shrink-0" />
+                <div className="flex-grow flex flex-col space-y-3">
+                  <div className="h-3 bg-slate-200 rounded w-1/4" />
+                  <div className="space-y-2 flex-grow">
+                    <div className="h-5 bg-slate-200 rounded w-3/4" />
+                    <div className="h-5 bg-slate-200 rounded w-1/2" />
+                  </div>
+                  <div className="pt-4 border-t border-slate-100 flex justify-between items-end mt-auto">
+                    <div className="space-y-1.5 w-1/2">
+                      <div className="h-2.5 bg-slate-200 rounded w-16" />
+                      <div className="h-5 bg-slate-200 rounded w-24" />
+                    </div>
+                    <div className="h-8 bg-slate-200 rounded w-20" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : isAuthenticated && auctions.length === 0 ? (
           <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-8">
