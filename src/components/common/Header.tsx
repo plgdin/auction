@@ -1,16 +1,83 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { Menu, X, ChevronDown, Check } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
-import { Dropdown } from 'antd';
-import { DownOutlined } from '@ant-design/icons';
 import clsx from 'clsx';
+
+const CURRENCIES = [
+  { code: 'INR', label: 'INR (₹)' },
+  { code: 'USD', label: 'USD ($)' },
+  { code: 'EUR', label: 'EUR (€)' },
+  { code: 'GBP', label: 'GBP (£)' },
+];
+
+function CurrencyDropdown() {
+  const { currency, setCurrency } = useAppStore();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const selected = CURRENCIES.find(c => c.code === currency) || CURRENCIES[0];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 px-3.5 py-2 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-mono font-bold"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <span>{selected.label}</span>
+        <ChevronDown className={clsx('w-3 h-3 text-slate-450 transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute right-0 mt-2 bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[160px] flex flex-col gap-0.5 z-50"
+        >
+          {CURRENCIES.map(opt => (
+            <div
+              key={opt.code}
+              role="option"
+              aria-selected={currency === opt.code}
+              onClick={() => { setCurrency(opt.code); setOpen(false); }}
+              className={clsx(
+                'flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium transition-colors select-none',
+                currency === opt.code
+                  ? 'bg-primary-50/70 text-primary font-semibold'
+                  : 'hover:bg-slate-50 text-slate-600 hover:text-slate-900'
+              )}
+            >
+              <span className={clsx(
+                'w-4 h-4 rounded border transition-colors flex items-center justify-center flex-shrink-0',
+                currency === opt.code ? 'border-primary bg-primary' : 'border-slate-300 bg-white'
+              )}>
+                {currency === opt.code && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+              </span>
+              <span className="font-mono">{opt.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isAuthenticated } = useAuthStore();
-  const { currency, setCurrency } = useAppStore();
   const location = useLocation();
 
   const navigation = [
@@ -30,7 +97,15 @@ export function Header() {
         <div className="flex justify-between items-center h-20">
           <div className="flex-shrink-0 flex items-center -ml-4">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/png_lelam_1.webp" alt="Lelam Logo" className="w-auto object-contain" style={{ height: '38px' }} />
+              {/* Explicit width/height to prevent CLS */}
+              <img
+                src="/png_lelam_1.webp"
+                alt="Lelam Logo"
+                width="120"
+                height="38"
+                className="w-auto object-contain"
+                style={{ height: '38px' }}
+              />
               <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase tracking-widest mt-1">Beta</span>
             </Link>
           </div>
@@ -42,10 +117,10 @@ export function Header() {
                 key={item.name}
                 to={item.href}
                 className={clsx(
-                  "px-4 py-2.5 rounded-md text-base font-medium transition-all duration-300",
+                  'px-4 py-2.5 rounded-md text-base font-medium transition-all duration-300',
                   isActive(item.href)
-                    ? "text-primary-700 bg-primary-100 shadow-sm"
-                    : "text-slate-800 hover:text-primary-700 hover:bg-primary-100/70 hover:shadow-sm hover:-translate-y-0.5"
+                    ? 'text-primary-700 bg-primary-100 shadow-sm'
+                    : 'text-slate-800 hover:text-primary-700 hover:bg-primary-100/70 hover:shadow-sm hover:-translate-y-0.5'
                 )}
               >
                 {item.name}
@@ -53,54 +128,7 @@ export function Header() {
             ))}
 
             <div className="pl-4 ml-4 border-l border-slate-200 flex items-center space-x-4">
-              {/* Currency Dropdown */}
-              <Dropdown
-                popupRender={() => (
-                  <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[160px] flex flex-col gap-0.5">
-                    {[
-                      { code: 'INR', label: 'INR (₹)' },
-                      { code: 'USD', label: 'USD ($)' },
-                      { code: 'EUR', label: 'EUR (€)' },
-                      { code: 'GBP', label: 'GBP (£)' },
-                    ].map(opt => (
-                      <div
-                        key={opt.code}
-                        onClick={() => setCurrency(opt.code)}
-                        className={clsx(
-                          "flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium transition-colors select-none",
-                          currency === opt.code
-                            ? "bg-primary-50/70 text-primary font-semibold"
-                            : "hover:bg-slate-50 text-slate-600 hover:text-slate-900"
-                        )}
-                      >
-                        <span className={clsx(
-                          "w-4 h-4 rounded border transition-colors flex items-center justify-center flex-shrink-0",
-                          currency === opt.code
-                            ? "border-primary bg-primary"
-                            : "border-slate-300 bg-white"
-                        )}>
-                          {currency === opt.code && (
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-2.5 h-2.5 text-white">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          )}
-                        </span>
-                        <span className="font-mono">{opt.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                trigger={['click']}
-                placement="bottomRight"
-              >
-                <button
-                  type="button"
-                  className="flex items-center gap-2 px-3.5 py-2 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-mono font-bold"
-                >
-                  <span>{currency === 'INR' ? 'INR (₹)' : currency === 'USD' ? 'USD ($)' : currency === 'EUR' ? 'EUR (€)' : 'GBP (£)'}</span>
-                  <DownOutlined className="w-3 h-3 text-slate-450" />
-                </button>
-              </Dropdown>
+              <CurrencyDropdown />
 
               {isAuthenticated ? (
                 <Link
@@ -146,17 +174,17 @@ export function Header() {
                 key={item.name}
                 to={item.href}
                 className={clsx(
-                  "block px-3 py-2 rounded-md text-base font-medium transition-all duration-200",
+                  'block px-3 py-2 rounded-md text-base font-medium transition-all duration-200',
                   isActive(item.href)
-                    ? "text-primary-700 bg-primary-100"
-                    : "text-slate-800 hover:text-primary-700 hover:bg-primary-100/70"
+                    ? 'text-primary-700 bg-primary-100'
+                    : 'text-slate-800 hover:text-primary-700 hover:bg-primary-100/70'
                 )}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {item.name}
               </Link>
             ))}
-            
+
             <div className="pt-4 mt-4 border-t border-slate-200">
               {isAuthenticated ? (
                 <Link

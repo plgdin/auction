@@ -47,7 +47,7 @@ function App() {
       } catch (e) {
         console.warn('Failed to load search/auction services dynamically:', e);
       }
-    }, 2000);
+    }, 5000);
 
     return () => {
       clearTimeout(prefetchTimer);

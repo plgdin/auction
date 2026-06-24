@@ -257,6 +257,9 @@ export default defineConfig({
             if (id.includes('recharts') || id.includes('d3')) {
               return 'recharts-vendor';
             }
+            if (id.includes('framer-motion')) {
+              return 'framer-vendor';
+            }
             if (id.includes('lucide-react')) {
               return 'lucide-vendor';
             }
