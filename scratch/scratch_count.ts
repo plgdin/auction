@@ -6,26 +6,18 @@ dotenv.config({ path: path.resolve('.env.local') });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
-
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function run() {
-  console.log('Querying completed auctions...');
-  const { data, error } = await supabase
+  const { count, error } = await supabase
     .from('mstc_auctions')
-    .select('*')
-    .like('mstc_auction_number', '%11626')
-    .limit(1);
+    .select('*', { count: 'exact', head: true })
+    .eq('asset_status', 'completed');
 
   if (error) {
-    console.error('Error:', error);
-    return;
-  }
-
-  if (data && data.length > 0) {
-    console.log('Record found:', JSON.stringify(data[0], null, 2));
+    console.error('Error counting completed:', error);
   } else {
-    console.log('No records found for 11626.');
+    console.log('Total completed auctions count:', count);
   }
 }
 

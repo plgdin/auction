@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown, Mail, Phone } from 'lucide-react';
+import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown, Mail, Phone, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice } from '../../services/publicService';
 import { useAuthStore } from '../../store/authStore';
@@ -39,6 +39,58 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+
+  useEffect(() => {
+    if (!lightboxImage) {
+      setZoomLevel(1);
+    }
+  }, [lightboxImage]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (lightboxImage) {
+          setLightboxImage(null);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [lightboxImage, onClose]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoomLevel <= 1 || !wrapperRef.current) return;
+    setIsDragging(true);
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: wrapperRef.current.scrollLeft,
+      scrollTop: wrapperRef.current.scrollTop
+    };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || zoomLevel <= 1 || !wrapperRef.current) return;
+    e.preventDefault();
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    wrapperRef.current.scrollLeft = dragStart.current.scrollLeft - dx;
+    wrapperRef.current.scrollTop = dragStart.current.scrollTop - dy;
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsDragging(false);
+  };
 
   const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
@@ -95,11 +147,13 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [signedImages, setSignedImages] = useState<{
     displayImage: string | null;
     imageUrls: string[];
+    catalogPages: string[];
     actualPhotos: string[];
     urlMap: Record<string, string>;
   }>({
     displayImage: null,
     imageUrls: [],
+    catalogPages: [],
     actualPhotos: [],
     urlMap: {}
   });
@@ -145,7 +199,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
       
       if (pathsToSign.length === 0) {
         if (isMounted) {
-          setSignedImages({ displayImage: null, imageUrls: [], actualPhotos: [], urlMap: {} });
+          setSignedImages({ displayImage: null, imageUrls: [], catalogPages: [], actualPhotos: [], urlMap: {} });
           setImagesLoading(false);
         }
         return;
@@ -164,13 +218,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
         const resolvedActualPhotos = rawActualPhotos.map(p => signedMap[p]).filter(Boolean);
         const resolvedCatalogPages = rawCatalogPages.map(p => signedMap[p]).filter(Boolean);
         
-        // Show actual photos first, then catalog pages.
-        const resolvedImageUrls = [...resolvedActualPhotos, ...resolvedCatalogPages];
-        
         if (isMounted) {
           setSignedImages({
             displayImage: resolvedDisplayImage,
-            imageUrls: resolvedImageUrls,
+            imageUrls: resolvedActualPhotos,
+            catalogPages: resolvedCatalogPages,
             actualPhotos: resolvedActualPhotos,
             urlMap: signedMap
           });
@@ -1424,9 +1476,9 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
             {/* Right Side: Image/Preview Panel */}
             {(() => {
+              const imageUrls = signedImages.imageUrls; // representing actualPhotos
+              const catalogPages = signedImages.catalogPages; // representing catalog document pages
               const displayImage = signedImages.displayImage;
-              const imageUrls = signedImages.imageUrls;
-              const actualPhotos = signedImages.actualPhotos;
 
               return (
                 <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
@@ -1437,7 +1489,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     </div>
                   ) : (
                     <>
-                      {/* Image Gallery */}
+                      {/* Image Gallery: Actual Photos Only */}
                       {(() => {
                         if (imageUrls.length === 0) return null;
                         return (
@@ -1466,10 +1518,39 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         );
                       })()}
 
-                      {displayImage ? (
+                      {/* Catalog Preview: Scrollable list of catalog pages */}
+                      {catalogPages.length > 0 ? (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2 flex items-center justify-between">
+                            <span>Catalog Document Preview</span>
+                            <span className="text-[9.5px] bg-slate-150 text-slate-700 border border-slate-255 font-bold px-2 py-0.5 rounded ">{catalogPages.length} Pages</span>
+                          </h4>
+                          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                            {catalogPages.map((url: string, idx: number) => (
+                              <div key={idx} className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setLightboxImage(url)}
+                                  className="block w-full text-left cursor-zoom-in relative focus:outline-none"
+                                >
+                                  <img
+                                    src={url}
+                                    alt={`Catalog page ${idx + 1}`}
+                                    className="w-full h-auto object-contain rounded-lg group-hover:scale-[1.01] transition-transform duration-250"
+                                    loading="lazy"
+                                  />
+                                </button>
+                                <div className="absolute bottom-2.5 right-2.5 bg-slate-900/70 backdrop-blur-xs text-[10px] text-white px-2 py-0.5 rounded-md select-none font-bold">
+                                  Page {idx + 1}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : displayImage && !imageUrls.includes(displayImage) ? (
                         <div className="space-y-3">
                           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2">
-                            {actualPhotos.includes(displayImage) ? 'Item Photo Preview' : 'Catalog Document Preview'}
+                            <span>Catalog Document Preview</span>
                           </h4>
                           <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
                             <button
@@ -1532,22 +1613,88 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/90 p-4 cursor-zoom-out animate-fade-in"
+          className="fixed inset-0 z-[100] flex flex-col bg-slate-950/95 backdrop-blur-md animate-fade-in"
           onClick={() => setLightboxImage(null)}
         >
+          {/* Floating Controls Bar */}
+          <div 
+            className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 bg-slate-900/80 backdrop-blur-md rounded-full border border-white/10 shadow-lg text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setZoomLevel(prev => Math.max(1, prev - 0.5))}
+              disabled={zoomLevel <= 1}
+              className="p-1.5 rounded-full hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-5 h-5" />
+            </button>
+            
+            <span className="text-sm font-medium min-w-[3.5rem] text-center select-none">
+              {Math.round(zoomLevel * 100)}%
+            </span>
+            
+            <button
+              onClick={() => setZoomLevel(prev => Math.min(4, prev + 0.5))}
+              disabled={zoomLevel >= 4}
+              className="p-1.5 rounded-full hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-5 h-5" />
+            </button>
+
+            <div className="w-[1px] h-5 bg-white/10 mx-1" />
+
+            <button
+              onClick={() => setZoomLevel(1)}
+              disabled={zoomLevel === 1}
+              className="p-1.5 rounded-full hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
+              title="Reset Zoom"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Close Button */}
           <button
             onClick={() => setLightboxImage(null)}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-10"
-            title="Close image"
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-50"
+            title="Close preview (Esc)"
           >
             <X className="w-6 h-6" />
           </button>
-          <img
-            src={lightboxImage}
-            alt="Large Catalog Preview"
-            className="max-w-full max-h-[90vh] object-contain rounded-lg border border-white/10 shadow-2xl select-none animate-scale-up"
-            onClick={(e) => e.stopPropagation()}
-          />
+
+          {/* Image Container */}
+          <div
+            ref={wrapperRef}
+            className={clsx(
+              "flex-1 w-full h-full flex items-center justify-center p-4",
+              zoomLevel > 1 ? "overflow-auto cursor-grab active:cursor-grabbing" : "overflow-hidden cursor-zoom-in"
+            )}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUpOrLeave}
+            onMouseLeave={handleMouseUpOrLeave}
+            onClick={() => setLightboxImage(null)}
+          >
+            <img
+              src={lightboxImage}
+              alt="Large Catalog Preview"
+              className={clsx(
+                "rounded-lg border border-white/5 shadow-2xl select-none transition-all duration-200 ease-out",
+                zoomLevel === 1 ? "max-w-full max-h-[85vh] object-contain" : "max-w-none max-h-none"
+              )}
+              style={zoomLevel > 1 ? {
+                width: `${zoomLevel * 100}%`,
+                maxWidth: 'none',
+                maxHeight: 'none',
+              } : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                setZoomLevel(prev => prev > 1 ? 1 : 2);
+              }}
+            />
+          </div>
         </div>
       )}
     </>

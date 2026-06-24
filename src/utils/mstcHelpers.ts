@@ -250,7 +250,7 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
     }
   }
 
-  const isRcm = 
+  const isRcm = !!(
     sellerUpper.includes('BSNL') || 
     sellerUpper.includes('BHARAT SANCHAR') ||
     sellerUpper.includes('RAILWAY') || 
@@ -272,7 +272,8 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
     (parsedEligibility && parsedEligibility.some(el => {
       const elUpper = el.toUpperCase();
       return elUpper.includes('RCM') || elUpper.includes('REVERSE CHARGE') || elUpper.includes('REVERSE-CHARGE');
-    }));
+    }))
+  );
 
   if (!isRcm) {
     requiredDocuments.push({
