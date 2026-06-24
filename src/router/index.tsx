@@ -8,18 +8,42 @@ import { AuthLayout } from '../layouts/AuthLayout';
 // Components
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 
-// Custom lazy-loader wrapper with Suspense fallback
+// Slim top progress-bar fallback — feels instant, doesn't block the page
+function PageLoadingBar() {
+  const [width, setWidth] = useState(10);
+
+  useEffect(() => {
+    // Animate the bar from 10% → 85% quickly, then hold until content loads
+    const t1 = setTimeout(() => setWidth(40), 80);
+    const t2 = setTimeout(() => setWidth(70), 250);
+    const t3 = setTimeout(() => setWidth(85), 500);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        height: '3px',
+        width: `${width}%`,
+        background: 'linear-gradient(90deg, #0284c7, #38bdf8)',
+        transition: 'width 0.3s ease',
+        zIndex: 9999,
+        borderRadius: '0 2px 2px 0',
+      }}
+    />
+  );
+}
+
+// Custom lazy-loader wrapper with slim progress-bar instead of full-page spinner
 const lazyWithSuspense = (importFn: () => Promise<{ default: React.ComponentType<any> }>) => {
   const LazyComponent = lazy(importFn);
   return (props: any) => (
-    <Suspense fallback={
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
-        <p className="text-xs text-slate-450 mt-4 font-semibold tracking-wider uppercase">Loading Lelam Page...</p>
-      </div>
-    }>
+    <Suspense fallback={<PageLoadingBar />}>
       <LazyComponent {...props} />
     </Suspense>
   );
