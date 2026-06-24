@@ -25,8 +25,9 @@ const lazyWithSuspense = (importFn: () => Promise<{ default: React.ComponentType
   );
 };
 
+import { Home } from '../pages/Home';
+
 // Lazy-loaded Pages
-const Home = lazyWithSuspense(() => import('../pages/Home').then(m => ({ default: m.Home })));
 const Auctions = lazyWithSuspense(() => import('../pages/Auctions').then(m => ({ default: m.Auctions })));
 const Login = lazyWithSuspense(() => import('../pages/Login').then(m => ({ default: m.Login })));
 const Register = lazyWithSuspense(() => import('../pages/Register').then(m => ({ default: m.Register })));
