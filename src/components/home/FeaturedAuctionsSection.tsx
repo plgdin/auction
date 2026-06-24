@@ -7,9 +7,11 @@ import type { Auction } from '../../types/database.types';
 import { recommendationService } from '../../services/recommendationService';
 import { auctionService } from '../../services/auctionService';
 import { dashboardService } from '../../services/dashboardService';
+import { lazy, Suspense } from 'react';
 import { MstcCard } from '../auction/MstcCard';
 import { AuctionCard } from '../auction/AuctionCard';
-import { MstcDetailsModal } from '../auction/MstcDetailsModal';
+
+const MstcDetailsModal = lazy(() => import('../auction/MstcDetailsModal').then(module => ({ default: module.MstcDetailsModal })));
 
 export function FeaturedAuctionsSection() {
   const [auctions, setAuctions] = useState<Auction[]>([]);
@@ -153,12 +155,18 @@ export function FeaturedAuctionsSection() {
       </div>
 
       {selectedPreviewItem && (
-        <MstcDetailsModal
-          item={selectedPreviewItem}
-          onClose={() => setSelectedPreviewItem(null)}
-          isInterested={interestedMstcIds.includes(selectedPreviewItem.id)}
-          onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
-        />
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+          </div>
+        }>
+          <MstcDetailsModal
+            item={selectedPreviewItem}
+            onClose={() => setSelectedPreviewItem(null)}
+            isInterested={interestedMstcIds.includes(selectedPreviewItem.id)}
+            onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
+          />
+        </Suspense>
       )}
     </section>
   );

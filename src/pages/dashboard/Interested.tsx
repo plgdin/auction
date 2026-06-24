@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { MstcCard } from '../../components/auction/MstcCard';
-import { MstcDetailsModal } from '../../components/auction/MstcDetailsModal';
+import { lazy, Suspense } from 'react';
+const MstcDetailsModal = lazy(() => import('../../components/auction/MstcDetailsModal').then(module => ({ default: module.MstcDetailsModal })));
 import { MstcSearchService } from '../../services/publicService';
 import { dashboardService } from '../../services/dashboardService';
 import { storageService } from '../../services/storageService';
@@ -418,12 +419,18 @@ export function Interested() {
 
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
-        <MstcDetailsModal
-          item={selectedPreviewItem}
-          onClose={() => setSelectedPreviewItem(null)}
-          isInterested={true}
-          onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
-        />
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+          </div>
+        }>
+          <MstcDetailsModal
+            item={selectedPreviewItem}
+            onClose={() => setSelectedPreviewItem(null)}
+            isInterested={true}
+            onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
+          />
+        </Suspense>
       )}
 
       {/* Add/Edit Won Auction Modal */}

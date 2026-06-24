@@ -2,9 +2,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, MapPin, Tag, CornerDownLeft, FileText } from 'lucide-react';
+import { lazy, Suspense } from 'react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
-import { MstcDetailsModal } from '../components/auction/MstcDetailsModal';
+const MstcDetailsModal = lazy(() => import('../components/auction/MstcDetailsModal').then(module => ({ default: module.MstcDetailsModal })));
 import { AuctionFilters } from '../components/auction/AuctionFilters';
 import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
@@ -1176,12 +1177,18 @@ export function Auctions() {
 
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
-        <MstcDetailsModal
-          item={selectedPreviewItem}
-          onClose={() => setSelectedPreviewItem(null)}
-          isInterested={interestedMstcIds.includes(selectedPreviewItem.id)}
-          onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
-        />
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+          </div>
+        }>
+          <MstcDetailsModal
+            item={selectedPreviewItem}
+            onClose={() => setSelectedPreviewItem(null)}
+            isInterested={interestedMstcIds.includes(selectedPreviewItem.id)}
+            onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
+          />
+        </Suspense>
       )}
     </div>
   );

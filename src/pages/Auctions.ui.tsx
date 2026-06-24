@@ -13,8 +13,9 @@ import { MstcSearchService, expandMstcOffice } from '../services/publicService';
 import type { MstcSanitizedAuction } from '../services/publicService';
 import clsx from 'clsx';
 import { toast } from 'react-hot-toast';
+import { lazy, Suspense } from 'react';
 import { dashboardService } from '../services/dashboardService';
-import { MstcDetailsModal } from '../components/auction/MstcDetailsModal';
+const MstcDetailsModal = lazy(() => import('../components/auction/MstcDetailsModal').then(module => ({ default: module.MstcDetailsModal })));
 import { 
   getEstimatedMarketPrice, 
   getNumericQty, 
@@ -848,12 +849,18 @@ export function Auctions() {
 
           {/* Catalog Details Modal */}
       {selectedPreviewItem && (
-        <MstcDetailsModal
-          item={selectedPreviewItem}
-          onClose={() => setSelectedPreviewItem(null)}
-          isInterested={interestedMstcIds.includes(selectedPreviewItem.id)}
-          onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
-        />
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+          </div>
+        }>
+          <MstcDetailsModal
+            item={selectedPreviewItem}
+            onClose={() => setSelectedPreviewItem(null)}
+            isInterested={interestedMstcIds.includes(selectedPreviewItem.id)}
+            onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
+          />
+        </Suspense>
       )}
             </div>
           </div>
