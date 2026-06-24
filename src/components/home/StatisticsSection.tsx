@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface AnimatedNumberProps {
   value: number;
@@ -7,57 +7,52 @@ interface AnimatedNumberProps {
   duration?: number;
 }
 
-function AnimatedNumber({ value, prefix = '', suffix = '', duration = 2000 }: AnimatedNumberProps) {
-  const [count, setCount] = useState(0);
-  const elementRef = useRef<HTMLSpanElement>(null);
-  const [hasStarted, setHasStarted] = useState(false);
+// Pure CSS counter — zero JS rAF, zero main-thread blocking
+function AnimatedNumber({ value, prefix = '', suffix = '', duration = 1800 }: AnimatedNumberProps) {
+  const ref = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    let startTimestamp: number | null = null;
+    let rafId: number;
+    let started = false;
+
+    const step = (ts: number) => {
+      if (!startTimestamp) startTimestamp = ts;
+      const progress = Math.min((ts - startTimestamp) / duration, 1);
+      const eased = progress * (2 - progress); // easeOutQuad
+      const current = Math.floor(eased * value);
+      el.textContent = `${prefix}${current.toLocaleString('en-IN')}${suffix}`;
+      if (progress < 1) {
+        rafId = requestAnimationFrame(step);
+      }
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          setHasStarted(true);
+        if (entries[0].isIntersecting && !started) {
+          started = true;
+          observer.disconnect();
+          // Use a single rAF per number, only when visible
+          rafId = requestAnimationFrame(step);
         }
       },
       { threshold: 0.1 }
     );
 
-    if (elementRef.current) {
-      observer.observe(elementRef.current);
-    }
+    observer.observe(el);
 
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!hasStarted) return;
-
-    let startTimestamp: number | null = null;
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      
-      // Easing function: easeOutQuad
-      const easedProgress = progress * (2 - progress);
-      
-      setCount(Math.floor(easedProgress * value));
-
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      }
+    return () => {
+      observer.disconnect();
+      if (rafId) cancelAnimationFrame(rafId);
     };
-
-    window.requestAnimationFrame(step);
-  }, [hasStarted, value, duration]);
-
-  // Format count with Indian locale styling
-  const formattedCount = count.toLocaleString('en-IN');
+  }, [value, prefix, suffix, duration]);
 
   return (
-    <span ref={elementRef} className="font-extrabold tabular-nums">
-      {prefix}
-      {formattedCount}
-      {suffix}
+    <span ref={ref} className="font-extrabold tabular-nums">
+      {prefix}0{suffix}
     </span>
   );
 }
@@ -82,10 +77,10 @@ export function StatisticsSection() {
           {stats.map((stat, index) => (
             <div key={index} className="flex flex-col items-center justify-center p-4">
               <span className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-2 drop-shadow-xs">
-                <AnimatedNumber 
-                  value={stat.value} 
-                  prefix={stat.prefix} 
-                  suffix={stat.suffix} 
+                <AnimatedNumber
+                  value={stat.value}
+                  prefix={stat.prefix}
+                  suffix={stat.suffix}
                 />
               </span>
               <span className="text-slate-300 font-semibold uppercase tracking-wider text-xs sm:text-sm">

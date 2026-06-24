@@ -6,7 +6,6 @@ import { useAuthStore } from '../../store/authStore';
 import { storageService } from '../../services/storageService';
 import { generateCatalogSummary, parsePdfDateTime, calculateLotValue } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
-import { Dropdown } from 'antd';
 import { useQuoteStore } from '../../store/quoteStore';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../store/appStore';
@@ -225,33 +224,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     inspection_2k: `Inspection / Quarantine (fixed ${formatPrice(2500, currency)})`,
   };
 
-  const extraChargeMenu = (
-    <div 
-      className="bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[220px] max-h-[280px] overflow-y-auto flex flex-col gap-0.5 z-90"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {Object.entries(extraChargeLabels).map(([key, label]) => {
-        const isSelected = extraChargeType === key;
-        return (
-          <div
-            key={key}
-            onClick={() => {
-              setExtraChargeType(key);
-            }}
-            className={clsx(
-              "flex items-center justify-between py-2 px-3 rounded-lg cursor-pointer text-xs font-bold transition-colors select-none",
-              isSelected
-                ? "bg-primary-50/70 text-primary"
-                : "hover:bg-slate-50 text-slate-700 hover:text-slate-900"
-            )}
-          >
-            <span>{label}</span>
-            {isSelected && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
-          </div>
-        );
-      })}
-    </div>
-  );
 
   useEffect(() => {
     let charge = 0;
@@ -656,21 +628,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                           </div>
-                          <Dropdown
-                            popupRender={() => extraChargeMenu}
-                            trigger={['click']}
-                            placement="bottomLeft"
+                          <select
+                            value={extraChargeType}
+                            onChange={(e) => setExtraChargeType(e.target.value)}
+                            className="w-full pl-7 pr-8 py-2 border border-slate-250 rounded-xl bg-white text-sm font-bold text-slate-900 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer h-[38px] appearance-none"
                           >
-                            <button
-                              type="button"
-                              className="w-full flex justify-between items-center pl-7 pr-8 py-2 border border-slate-250 rounded-xl bg-white text-sm font-bold text-slate-900 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-left cursor-pointer h-[38px]"
-                            >
-                              <span className="truncate">
-                                {extraChargeLabels[extraChargeType]}
-                              </span>
-                              <ChevronDown className="w-4 h-4 text-slate-500 shrink-0 ml-2" />
-                            </button>
-                          </Dropdown>
+                            {Object.entries(extraChargeLabels).map(([key, label]) => (
+                              <option key={key} value={key}>{label}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                         </div>
                       </div>
                     </div>
