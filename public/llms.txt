@@ -12,7 +12,7 @@ Detailed features and capabilities:
 AI Agent and Crawler Information:
 * Allowed Directories: /faq, /auctions, /about, /contact, /news, /cookies are open to crawling.
 * Disallowed Directories: /auth/, /admin/, /dashboard/, /api/ are blocked for privacy and user data protection.
-* Data Freshness: Government eAuction schedules are scraped, processed, and updated multiple times daily.
+* Data Freshness: Government eAuction schedules are uploaded on the platform, processed, and updated regularly.
 
 ## Site Structure & Navigation
 
