@@ -26,9 +26,14 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
   const hasOtherMedia = (summary.extracted_images || []).length > 0;
   
   // Prioritize actual photos first
+  const fallbackPreview = item.sanitized_document_path ? `mstc-previews/${item.id}.jpg` : null;
+  const catalogPages = (summary.extracted_images || []).filter(
+    (url: string) => (url.toLowerCase().includes('_catalog_page_') || url.toLowerCase().includes('_page_') || url.toLowerCase().includes('mstc-previews/')) && !url.toLowerCase().endsWith('.pdf')
+  );
+  
   const rawDisplayImage = actualPhotos.length > 0
     ? actualPhotos[0]
-    : (summary.preview_image_url || (summary.extracted_images && summary.extracted_images.length > 0 ? summary.extracted_images[0] : null));
+    : (summary.preview_image_url || (catalogPages.length > 0 ? catalogPages[0] : fallbackPreview));
 
   const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);

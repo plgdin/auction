@@ -175,9 +175,14 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
         (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('_page_') && !url.toLowerCase().includes('mstc-previews/') && !url.toLowerCase().endsWith('.pdf')
       );
       
-      const rawCatalogPages = rawExtImages.filter(
+      let rawCatalogPages = rawExtImages.filter(
         (url: string) => (url.toLowerCase().includes('_catalog_page_') || url.toLowerCase().includes('_page_') || url.toLowerCase().includes('mstc-previews/')) && !url.toLowerCase().endsWith('.pdf')
       );
+
+      const fallbackPreview = item.sanitized_document_path ? `mstc-previews/${item.id}.jpg` : null;
+      if (rawCatalogPages.length === 0 && fallbackPreview) {
+        rawCatalogPages = [fallbackPreview];
+      }
       
       const rawDisplayImage = rawActualPhotos.length > 0
         ? rawActualPhotos[0]

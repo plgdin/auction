@@ -46,9 +46,19 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
   }, [summary?.extracted_images]);
   
   const hasOtherMedia = (summary?.extracted_images || []).length > 0;
-  const rawDisplayImage = actualPhotos.length > 0
-    ? actualPhotos[0]
-    : (summary?.preview_image_url || (summary?.extracted_images && summary.extracted_images.length > 0 ? summary.extracted_images[0] : null));
+  const fallbackPreview = item.sanitized_document_path ? `mstc-previews/${item.id}.jpg` : null;
+  const rawDisplayImage = useMemo(() => {
+    if (actualPhotos.length > 0) return actualPhotos[0];
+    if (summary?.preview_image_url) return summary.preview_image_url;
+    
+    // Look for any catalog pages inside extracted_images
+    const catalogPages = (summary?.extracted_images || []).filter(
+      (url: string) => (url.toLowerCase().includes('_catalog_page_') || url.toLowerCase().includes('_page_') || url.toLowerCase().includes('mstc-previews/')) && !url.toLowerCase().endsWith('.pdf')
+    );
+    if (catalogPages.length > 0) return catalogPages[0];
+    
+    return fallbackPreview;
+  }, [actualPhotos, summary, fallbackPreview]);
 
   const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
