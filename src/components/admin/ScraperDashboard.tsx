@@ -27,7 +27,10 @@ import type { AuditLog } from '../../types/database.types';
 import toast from 'react-hot-toast';
 import { storageService } from '../../services/storageService';
 import { MstcEditModal } from './MstcEditModal';
-import { Edit } from 'lucide-react';
+import { Edit, Columns, Table } from 'lucide-react';
+import { InlineCatalogEditor } from './InlineCatalogEditor';
+import { Dropdown } from 'antd';
+import { DownOutlined } from '@ant-design/icons';
 
 interface ScraperStats {
   total: number;
@@ -44,9 +47,28 @@ export function ScraperDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [reviewTab, setReviewTab] = useState<'needs-review' | 'accepted' | 'all-catalogs'>('needs-review');
+  const [searchType, setSearchType] = useState<'all' | 'ref'>('all');
   const [activeSubTab, setActiveSubTab] = useState<'auctions' | 'logs' | 'console'>('auctions');
   const [selectedEditAuction, setSelectedEditAuction] = useState<any | null>(null);
+  const [viewMode, setViewMode] = useState<'split' | 'table'>('split');
+  const [selectedAuctionId, setSelectedAuctionId] = useState<string | null>(null);
+
+  const searchMenu = {
+    items: [
+      {
+        key: 'all',
+        label: 'Search All Fields',
+      },
+      {
+        key: 'ref',
+        label: 'Search Reference No Only',
+      }
+    ],
+    onClick: ({ key }: { key: string }) => {
+      setSearchType(key as 'all' | 'ref');
+    }
+  };
 
   // Real-time local API states
   const [scraperRunning, setScraperRunning] = useState(false);
@@ -73,7 +95,7 @@ export function ScraperDashboard() {
     try {
       const [statsData, auctionsData, logsData] = await Promise.all([
         adminService.getScraperAnalytics(),
-        adminService.getScraperAuctions(150),
+        adminService.getScraperAuctions(3000),
         adminService.getScraperLogs(100)
       ]);
 
@@ -386,13 +408,17 @@ export function ScraperDashboard() {
   };
 
   const filteredAuctions = auctions.filter(auc => {
-    const matchesSearch = 
-      auc.mstc_auction_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      auc.seller_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      auc.category_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (auc.location && auc.location.toLowerCase().includes(searchTerm.toLowerCase()));
+    let matchesSearch = false;
+    if (searchType === 'ref') {
+      matchesSearch = auc.mstc_auction_number.toLowerCase().includes(searchTerm.toLowerCase());
+    } else {
+      matchesSearch = 
+        auc.mstc_auction_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        auc.seller_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        auc.category_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (auc.location && auc.location.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
 
-    let matchesStatus = false;
     let isFlagged = false;
     if (auc.raw_materials_text) {
       try {
@@ -403,16 +429,23 @@ export function ScraperDashboard() {
       } catch (e) {}
     }
 
-    if (statusFilter === 'all') {
-      matchesStatus = true;
-    } else if (statusFilter === 'needs-review') {
-      matchesStatus = isFlagged;
-    } else {
-      matchesStatus = auc.asset_status === statusFilter;
-    }
+    const matchesTab = 
+      reviewTab === 'all-catalogs' ? true :
+      reviewTab === 'needs-review' ? isFlagged : !isFlagged;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesTab;
   });
+
+  useEffect(() => {
+    if (activeSubTab === 'auctions' && filteredAuctions.length > 0) {
+      const currentSelectedExists = filteredAuctions.some(auc => auc.id === selectedAuctionId);
+      if (!selectedAuctionId || !currentSelectedExists) {
+        setSelectedAuctionId(filteredAuctions[0].id);
+      }
+    } else {
+      setSelectedAuctionId(null);
+    }
+  }, [filteredAuctions, selectedAuctionId, activeSubTab]);
 
   const getLogBadge = (action: string) => {
     switch (action) {
@@ -499,129 +532,21 @@ export function ScraperDashboard() {
     return false;
   }).length;
 
+  const acceptedCount = auctions.filter(auc => {
+    if (auc.raw_materials_text) {
+      try {
+        const parsed = JSON.parse(auc.raw_materials_text);
+        return parsed && !parsed.needsReview;
+      } catch (e) {}
+    }
+    return true;
+  }).length;
+
   return (
     <div className="space-y-6">
       
-      {/* Review Alert Banner */}
-      {reviewCount > 0 && (
-        <div className="bg-amber-50 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-900/50 p-4 rounded-xl shadow-xs flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-550 dark:text-amber-400 shrink-0" />
-            <div>
-              <p className="text-sm font-extrabold text-amber-800 dark:text-amber-300">
-                Action Required: {reviewCount} Catalogs need description reviews
-              </p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
-                Some catalog lots have empty, short, or placeholder descriptions. Please review and correct them.
-              </p>
-            </div>
-          </div>
-          <button 
-            onClick={() => setStatusFilter('needs-review')}
-            className="px-4 py-2 bg-amber-550 hover:bg-amber-605 text-white font-extrabold text-xs rounded-lg shadow-xs hover:shadow-sm transition-all shrink-0 ml-4 cursor-pointer"
-          >
-            Filter Review List
-          </button>
-        </div>
-      )}
-      
-      {/* KPI Cards Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        
-        {/* Total Scraped */}
-        <div className="bg-gradient-to-br from-white to-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Scraped</span>
-            <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
-              <Database className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <p className="text-2xl font-black text-slate-800">{stats.total}</p>
-            <p className="text-xs text-slate-400 mt-1">Auctions discovered</p>
-          </div>
-        </div>
-
-        {/* Completed */}
-        <div className="bg-gradient-to-br from-white to-emerald-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Downloaded</span>
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-              <FileCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <p className="text-2xl font-black text-emerald-700">{stats.completed}</p>
-            <p className="text-xs text-slate-400 mt-1">PDFs stored securely</p>
-          </div>
-        </div>
-
-        {/* Processing */}
-        <div className="bg-gradient-to-br from-white to-blue-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Processing</span>
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            </div>
-          </div>
-          <div className="flex flex-wrap justify-between items-end gap-2">
-            <div className="min-w-[100px]">
-              <p className="text-2xl font-black text-blue-700">{stats.processing}</p>
-              <p className="text-xs text-slate-400 mt-1">Active worker lock</p>
-            </div>
-            {stats.processing > 0 && (
-              <button
-                onClick={handleUnlockAllProcessing}
-                className="px-2.5 py-1 text-xs font-bold bg-slate-900 hover:bg-black text-white rounded-lg transition-all shadow-xs shrink-0"
-              >
-                Release Locks
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Pending */}
-        <div className="bg-gradient-to-br from-white to-amber-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Pending</span>
-            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <p className="text-2xl font-black text-amber-700">{stats.pending}</p>
-            <p className="text-xs text-slate-400 mt-1">Awaiting queue slot</p>
-          </div>
-        </div>
-
-        {/* Failed */}
-        <div className="bg-gradient-to-br from-white to-rose-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Failed</span>
-            <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex flex-wrap justify-between items-end gap-2">
-            <div className="min-w-[100px]">
-              <p className="text-2xl font-black text-rose-700">{stats.failed}</p>
-              <p className="text-xs text-slate-400 mt-1">Exceeded max retries</p>
-            </div>
-            {stats.failed > 0 && (
-              <button
-                onClick={handleResetAllFailed}
-                className="px-2.5 py-1 text-xs font-bold bg-slate-900 hover:bg-black text-white rounded-lg transition-all shadow-xs shrink-0"
-              >
-                Reset All
-              </button>
-            )}
-          </div>
-        </div>
-
-      </div>
-
       {/* Control Actions & Tabs */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         
         {/* Navigation Sub-tabs */}
         <div className="flex gap-2">
@@ -662,7 +587,7 @@ export function ScraperDashboard() {
           <button
             onClick={handleGenerateVectors}
             disabled={generateVectorsRunning}
-            className="flex items-center px-4 py-2 text-xs font-bold bg-slate-900 border border-slate-900 text-white hover:bg-black hover:border-black transition-all shadow-xs"
+            className="flex items-center px-4 py-2 text-xs font-bold bg-primary border border-primary text-white rounded-lg hover:bg-primary-700 hover:border-primary-700 transition-all shadow-xs"
           >
             <Cpu className={`w-3.5 h-3.5 mr-2 ${generateVectorsRunning ? 'animate-pulse text-slate-300' : 'text-white'}`} />
             {generateVectorsRunning ? 'Generating...' : 'Generate Vectors'}
@@ -678,50 +603,236 @@ export function ScraperDashboard() {
             <RefreshCw className={`w-3.5 h-3.5 mr-2 text-slate-500 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh Board
           </button>
+          {activeSubTab === 'auctions' && (
+            <div className="flex items-center gap-1 border border-slate-200 rounded-lg p-0.5 bg-slate-50">
+              <button
+                onClick={() => setViewMode('split')}
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                  viewMode === 'split' 
+                    ? 'bg-white text-slate-900 shadow-xs' 
+                    : 'text-slate-500 hover:text-slate-950'
+                }`}
+                title="Split Review Mode"
+              >
+                <Columns className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                  viewMode === 'table' 
+                    ? 'bg-white text-slate-900 shadow-xs' 
+                    : 'text-slate-500 hover:text-slate-950'
+                }`}
+                title="Table Grid Mode"
+              >
+                <Table className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
       </div>
 
+      {/* KPI Cards Section */}
+      {activeSubTab === 'console' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          
+          {/* Total Scraped */}
+          <div className="bg-gradient-to-br from-white to-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Scraped</span>
+              <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
+                <Database className="w-4 h-4" />
+              </div>
+            </div>
+            <div>
+              <p className="text-2xl font-black text-slate-800">{stats.total}</p>
+              <p className="text-xs text-slate-400 mt-1">Auctions discovered</p>
+            </div>
+          </div>
+
+          {/* Downloaded */}
+          <div className="bg-gradient-to-br from-white to-emerald-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Downloaded</span>
+              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                <FileCheck className="w-4 h-4" />
+              </div>
+            </div>
+            <div>
+              <p className="text-2xl font-black text-emerald-700">{stats.completed}</p>
+              <p className="text-xs text-slate-400 mt-1">PDFs stored securely</p>
+            </div>
+          </div>
+
+          {/* Processing */}
+          <div className="bg-gradient-to-br from-white to-blue-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Processing</span>
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-between items-end gap-2">
+              <div className="min-w-[100px]">
+                <p className="text-2xl font-black text-blue-700">{stats.processing}</p>
+                <p className="text-xs text-slate-400 mt-1">Active worker lock</p>
+              </div>
+              {stats.processing > 0 && (
+                <button
+                  onClick={handleUnlockAllProcessing}
+                  className="px-2.5 py-1 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all shadow-xs shrink-0"
+                >
+                  Release Locks
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Pending */}
+          <div className="bg-gradient-to-br from-white to-amber-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Pending</span>
+              <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                <Clock className="w-4 h-4" />
+              </div>
+            </div>
+            <div>
+              <p className="text-2xl font-black text-amber-700">{stats.pending}</p>
+              <p className="text-xs text-slate-400 mt-1">Awaiting queue slot</p>
+            </div>
+          </div>
+
+          {/* Failed */}
+          <div className="bg-gradient-to-br from-white to-rose-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Failed</span>
+              <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-between items-end gap-2">
+              <div className="min-w-[100px]">
+                <p className="text-2xl font-black text-rose-700">{stats.failed}</p>
+                <p className="text-xs text-slate-400 mt-1">Exceeded max retries</p>
+              </div>
+              {stats.failed > 0 && (
+                <button
+                  onClick={handleResetAllFailed}
+                  className="px-2.5 py-1 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all shadow-xs shrink-0"
+                >
+                  Reset All
+                </button>
+              )}
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* Main Tab Contents */}
       {/* Main Tab Contents */}
       {activeSubTab === 'auctions' && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="space-y-6">
           
+          {/* Review Status Tabs */}
+          <div className="flex border-b border-slate-200 gap-6">
+            <button
+              onClick={() => {
+                setReviewTab('needs-review');
+                setSelectedAuctionId(null);
+              }}
+              className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+                reviewTab === 'needs-review'
+                  ? 'border-primary text-primary font-extrabold'
+                  : 'border-transparent text-slate-400 hover:text-slate-655'
+              }`}
+            >
+              Needs Review
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                reviewTab === 'needs-review'
+                  ? 'bg-primary/10 text-primary font-bold'
+                  : 'bg-slate-100 text-slate-500'
+              }`}>
+                {reviewCount}
+              </span>
+            </button>
+            <button
+              onClick={() => {
+                setReviewTab('accepted');
+                setSelectedAuctionId(null);
+              }}
+              className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+                reviewTab === 'accepted'
+                  ? 'border-primary text-primary font-extrabold'
+                  : 'border-transparent text-slate-400 hover:text-slate-655'
+              }`}
+            >
+              Accepted / Resolved
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                reviewTab === 'accepted'
+                  ? 'bg-primary/10 text-primary font-bold'
+                  : 'bg-slate-100 text-slate-500'
+              }`}>
+                {acceptedCount}
+              </span>
+            </button>
+            <button
+              onClick={() => {
+                setReviewTab('all-catalogs');
+                setSelectedAuctionId(null);
+              }}
+              className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+                reviewTab === 'all-catalogs'
+                  ? 'border-primary text-primary font-extrabold'
+                  : 'border-transparent text-slate-400 hover:text-slate-655'
+              }`}
+            >
+              All Catalogs
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                reviewTab === 'all-catalogs'
+                  ? 'bg-primary/10 text-primary font-bold'
+                  : 'bg-slate-100 text-slate-500'
+              }`}>
+                {auctions.length}
+              </span>
+            </button>
+          </div>
+
           {/* Table Filters */}
-          <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center gap-4 bg-slate-50/50">
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 bg-slate-50/50">
             
             {/* Search Input */}
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search by Auction No, Seller Name, Category, Location..."
+                placeholder={searchType === 'ref' ? "Enter Reference No (e.g. MSTC/PTN/...)" : "Search by Auction No, Seller Name, Category, Location..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-primary/25 focus:border-primary text-sm placeholder:text-slate-400 bg-white shadow-xs"
               />
             </div>
 
-            {/* Status Dropdown */}
-            <div className="w-full sm:w-48">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-primary/25 focus:border-primary text-sm bg-white shadow-xs"
-              >
-                <option value="all">All Statuses</option>
-                <option value="needs-review">Needs Review ⚠️</option>
-                <option value="completed">Completed</option>
-                <option value="pending">Pending</option>
-                <option value="processing">Processing</option>
-                <option value="failed">Failed</option>
-              </select>
+            {/* Search Type Selector Dropdown */}
+            <div className="w-full sm:w-60">
+              <Dropdown menu={searchMenu} trigger={['click']}>
+                <button 
+                  type="button"
+                  className="w-full flex justify-between items-center px-4 py-2.5 border border-slate-200 rounded-xl shadow-xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-hidden focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer font-semibold"
+                >
+                  <span className="truncate">
+                    {searchType === 'ref' ? 'Search Reference No Only' : 'Search All Fields'}
+                  </span>
+                  <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+                </button>
+              </Dropdown>
             </div>
 
           </div>
 
-          {/* Auctions Table */}
           {filteredAuctions.length === 0 ? (
-            <div className="p-16 text-center">
+            <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center shadow-sm">
               <div className="max-w-md mx-auto space-y-3">
                 <p className="text-slate-800 font-bold text-lg">No Matching Records Found</p>
                 <p className="text-slate-400 text-sm">
@@ -729,154 +840,230 @@ export function ScraperDashboard() {
                 </p>
               </div>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider font-extrabold text-slate-500">
-                    <th className="px-6 py-4">Auction Ref</th>
-                    <th className="px-6 py-4">Category & Seller</th>
-                    <th className="px-6 py-4">Location</th>
-                    <th className="px-6 py-4">Closing Date</th>
-                    <th className="px-6 py-4">Ingestion Status</th>
-                    <th className="px-6 py-4 text-center">Assets</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
+          ) : viewMode === 'split' ? (
+            <div className="flex flex-col lg:flex-row gap-6">
+              
+              {/* Left Column: List of Catalogs */}
+              <div className="w-full lg:w-96 shrink-0 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-[750px]">
+                <div className="p-4 border-b border-slate-150 bg-slate-50/50 flex items-center justify-between shrink-0">
+                  <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                    Catalogs ({filteredAuctions.length})
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto divide-y divide-slate-150 min-h-0">
                   {filteredAuctions.map((auc) => {
                     let isFlagged = false;
-                    let reviewReason = '';
                     if (auc.raw_materials_text) {
                       try {
                         const parsed = JSON.parse(auc.raw_materials_text);
-                        if (parsed && parsed.needsReview) {
-                          isFlagged = true;
-                          reviewReason = parsed.reviewReason || '';
-                        }
+                        if (parsed && parsed.needsReview) isFlagged = true;
                       } catch (e) {}
                     }
+                    const isSelected = selectedAuctionId === auc.id;
                     return (
-                      <tr key={auc.id} className="hover:bg-slate-50/50 transition-colors">
-                        
-                        {/* Auction Number */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-slate-900">{auc.mstc_auction_number}</span>
-                            <button 
-                              onClick={() => handleCopy(auc.mstc_auction_number)}
-                              className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded transition-colors"
-                              title="Copy Auction Number"
-                            >
-                              <Clipboard className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-
-                        {/* Category & Seller */}
-                        <td className="px-6 py-4">
-                          <div className="max-w-xs md:max-w-sm truncate">
-                            <p className="font-semibold text-slate-800 leading-tight truncate">{auc.category_name}</p>
-                            <p className="text-xs text-slate-400 font-medium truncate mt-0.5">{auc.seller_name}</p>
-                          </div>
-                        </td>
-
-                        {/* Location */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-slate-600 font-medium">{auc.location || 'India'}</span>
-                        </td>
-
-                        {/* Closing Date */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-slate-600 font-medium">
-                            {new Date(auc.closing_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                            {new Date(auc.closing_date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              {getStatusBadge(auc.asset_status)}
-                              {isFlagged && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title={reviewReason}>
-                                  ⚠️ Review
-                                </span>
-                              )}
-                            </div>
-                            {auc.asset_status === 'failed' && (
-                              <div className="flex items-center gap-2 mt-1">
-                                <p className="text-[10px] text-rose-500 max-w-[140px] truncate" title={auc.error_log}>
-                                  {auc.error_log}
-                                </p>
-                                <button
-                                  onClick={() => handleResetSingleFailed(auc.id)}
-                                  className="px-1.5 py-0.5 text-[9px] font-bold bg-rose-100 hover:bg-rose-200 text-rose-800 rounded transition-all cursor-pointer"
-                                >
-                                  Retry
-                                </button>
-                              </div>
-                            )}
-                            {auc.asset_status === 'pending' && auc.retry_count > 0 && (
-                              <p className="text-[10px] text-amber-500 mt-1">
-                                Retried {auc.retry_count} times
-                              </p>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Public Assets & Edit Action */}
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {/* source pdf (external link) */}
-                            <a 
-                              href={auc.source_pdf_url} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg transition-colors inline-block"
-                              title="Open MSTC Original URL"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-
-                            {/* downloaded pdf (internal supabase storage link) */}
-                            {auc.sanitized_document_path ? (
-                              <button 
-                                onClick={(e) => handleViewPrivateAsset(e, auc.sanitized_document_path)}
-                                className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg transition-colors inline-block cursor-pointer"
-                                title="Open Downloaded Cloud Storage Document"
-                              >
-                                <FileCheck className="w-3.5 h-3.5" />
-                              </button>
-                            ) : (
-                              <span 
-                                className="p-1.5 bg-slate-50 text-slate-300 border border-slate-100 rounded-lg cursor-not-allowed inline-block"
-                                title="Cloud File Awaiting Sync"
-                              >
-                                <FileCheck className="w-3.5 h-3.5" />
-                              </span>
-                            )}
-
-                            {/* Edit button */}
-                            {auc.asset_status === 'completed' && (
-                              <button
-                                onClick={() => setSelectedEditAuction(auc)}
-                                className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-800 border border-indigo-200 rounded-lg transition-colors inline-block cursor-pointer"
-                                title="Edit Catalog Details & Descriptions"
-                              >
-                                <Edit className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-
-                      </tr>
+                      <div
+                        key={auc.id}
+                        onClick={() => setSelectedAuctionId(auc.id)}
+                        className={`p-4 cursor-pointer transition-all border-l-4 text-left flex flex-col gap-1.5 ${
+                          isSelected 
+                            ? 'bg-primary/5 border-primary shadow-xs' 
+                            : 'border-transparent hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono font-bold text-xs text-slate-900">{auc.mstc_auction_number}</span>
+                          {isFlagged && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              Review
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] font-semibold text-slate-800 leading-snug truncate">
+                          {auc.category_name}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-medium flex items-center justify-between mt-1">
+                          <span className="truncate max-w-[150px]">{auc.seller_name}</span>
+                          <span>{new Date(auc.closing_date).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          {getStatusBadge(auc.asset_status)}
+                          <span className="text-[9px] text-slate-400 font-semibold">{auc.location || 'India'}</span>
+                        </div>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              </div>
+
+              {/* Right Column: Detailed Editor */}
+              <div className="flex-1 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-[750px]">
+                {selectedAuctionId && auctions.find(a => a.id === selectedAuctionId) ? (
+                  <InlineCatalogEditor
+                    auction={auctions.find(a => a.id === selectedAuctionId)}
+                    onSaveSuccess={() => {
+                      loadDashboardData(true);
+                    }}
+                  />
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-slate-50/20">
+                    <FileCheck className="w-12 h-12 text-slate-300 mb-3" />
+                    <p className="font-bold text-slate-650 text-sm">Select a catalog to view and edit</p>
+                    <p className="text-xs text-slate-400 mt-1">Click any item on the left list to review and correct lot details.</p>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider font-extrabold text-slate-500">
+                      <th className="px-6 py-4">Auction Ref</th>
+                      <th className="px-6 py-4">Category & Seller</th>
+                      <th className="px-6 py-4">Location</th>
+                      <th className="px-6 py-4">Closing Date</th>
+                      <th className="px-6 py-4">Ingestion Status</th>
+                      <th className="px-6 py-4 text-center">Assets</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-sm">
+                    {filteredAuctions.map((auc) => {
+                      let isFlagged = false;
+                      let reviewReason = '';
+                      if (auc.raw_materials_text) {
+                        try {
+                          const parsed = JSON.parse(auc.raw_materials_text);
+                          if (parsed && parsed.needsReview) {
+                            isFlagged = true;
+                            reviewReason = parsed.reviewReason || '';
+                          }
+                        } catch (e) {}
+                      }
+                      return (
+                        <tr key={auc.id} className="hover:bg-slate-50/50 transition-colors">
+                          
+                          {/* Auction Number */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-slate-900">{auc.mstc_auction_number}</span>
+                              <button 
+                                onClick={() => handleCopy(auc.mstc_auction_number)}
+                                className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded transition-colors"
+                                title="Copy Auction Number"
+                              >
+                                <Clipboard className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* Category & Seller */}
+                          <td className="px-6 py-4">
+                            <div className="max-w-xs md:max-w-sm truncate">
+                              <p className="font-semibold text-slate-800 leading-tight truncate">{auc.category_name}</p>
+                              <p className="text-xs text-slate-400 font-medium truncate mt-0.5">{auc.seller_name}</p>
+                            </div>
+                          </td>
+
+                          {/* Location */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-slate-600 font-medium">{auc.location || 'India'}</span>
+                          </td>
+
+                          {/* Closing Date */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-slate-600 font-medium">
+                              {new Date(auc.closing_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                              {new Date(auc.closing_date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                {getStatusBadge(auc.asset_status)}
+                                {isFlagged && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title={reviewReason}>
+                                    Review
+                                  </span>
+                                )}
+                              </div>
+                              {auc.asset_status === 'failed' && (
+                                <div className="flex items-center gap-2 mt-1">
+                                  <p className="text-[10px] text-rose-500 max-w-[140px] truncate" title={auc.error_log}>
+                                    {auc.error_log}
+                                  </p>
+                                  <button
+                                    onClick={() => handleResetSingleFailed(auc.id)}
+                                    className="px-1.5 py-0.5 text-[9px] font-bold bg-rose-100 hover:bg-rose-200 text-rose-800 rounded transition-all cursor-pointer"
+                                  >
+                                    Retry
+                                  </button>
+                                </div>
+                              )}
+                              {auc.asset_status === 'pending' && auc.retry_count > 0 && (
+                                <p className="text-[10px] text-amber-500 mt-1">
+                                  Retried {auc.retry_count} times
+                                </p>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Public Assets & Edit Action */}
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {/* source pdf (external link) */}
+                              <a 
+                                href={auc.source_pdf_url} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg transition-colors inline-block"
+                                title="Open MSTC Original URL"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+
+                              {/* downloaded pdf (internal supabase storage link) */}
+                              {auc.sanitized_document_path ? (
+                                <button 
+                                  onClick={(e) => handleViewPrivateAsset(e, auc.sanitized_document_path)}
+                                  className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg transition-colors inline-block cursor-pointer"
+                                  title="Open Downloaded Cloud Storage Document"
+                                >
+                                  <FileCheck className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <span 
+                                  className="p-1.5 bg-slate-50 text-slate-300 border border-slate-100 rounded-lg cursor-not-allowed inline-block"
+                                  title="Cloud File Awaiting Sync"
+                                >
+                                  <FileCheck className="w-3.5 h-3.5" />
+                                </span>
+                              )}
+
+                              {/* Edit button */}
+                              {auc.asset_status === 'completed' && (
+                                <button
+                                  onClick={() => setSelectedEditAuction(auc)}
+                                  className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-800 border border-indigo-200 rounded-lg transition-colors inline-block cursor-pointer"
+                                  title="Edit Catalog Details & Descriptions"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -1023,7 +1210,7 @@ export function ScraperDashboard() {
                 <button
                   onClick={startScraper}
                   disabled={!isLocalApiAvailable || scraperRunning}
-                  className="flex items-center px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition-all disabled:opacity-50"
+                  className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50"
                 >
                   <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Scraper
                 </button>
@@ -1037,7 +1224,7 @@ export function ScraperDashboard() {
                 {scraperRunning && (
                   <button
                     onClick={sendEnterKey}
-                    className="flex items-center px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-black text-white rounded-lg transition-all shadow-sm animate-pulse"
+                    className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all shadow-sm animate-pulse"
                     title="Solve CAPTCHA, submit filters on the browser window, then click this button to continue."
                   >
                     <CornerDownLeft className="w-3.5 h-3.5 mr-1.5" /> Solve CAPTCHA & Continue
@@ -1094,7 +1281,7 @@ export function ScraperDashboard() {
                 <button
                   onClick={startWorker}
                   disabled={!isLocalApiAvailable || workerRunning}
-                  className="flex items-center px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition-all disabled:opacity-50"
+                  className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50"
                 >
                   <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Worker
                 </button>
@@ -1160,7 +1347,7 @@ export function ScraperDashboard() {
                     }
                   }}
                   disabled={!isLocalApiAvailable || clearDbRunning}
-                  className="flex items-center px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-black text-white rounded-lg transition-all disabled:opacity-50"
+                  className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50"
                 >
                   <Trash2 className="w-3.5 h-3.5 mr-1.5 fill-white" /> Clear DB & Storage
                 </button>
@@ -1222,7 +1409,7 @@ export function ScraperDashboard() {
                 <button
                   onClick={startBackfill}
                   disabled={!isLocalApiAvailable || backfillRunning}
-                  className="flex items-center px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-black text-white rounded-lg transition-all disabled:opacity-50"
+                  className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50"
                 >
                   <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Backfiller
                 </button>

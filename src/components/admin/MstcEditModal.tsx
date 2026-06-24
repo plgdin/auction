@@ -270,7 +270,7 @@ export const MstcEditModal: React.FC<MstcEditModalProps> = ({
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="flex items-center px-5 py-2.5 bg-slate-900 hover:bg-black text-white text-sm font-bold shadow-xs hover:shadow-sm transition-all"
+              className="flex items-center px-5 py-2.5 bg-primary hover:bg-primary-700 text-white text-sm font-bold shadow-xs hover:shadow-md transition-all rounded-lg"
             >
               <Save className="w-4 h-4 mr-2" />
               {isSaving ? 'Saving Changes...' : 'Save Catalog Changes'}
