@@ -33,15 +33,9 @@ function App() {
       })
       .catch((err) => console.warn('Dynamic exchange rate fetch failed:', err));
 
-    // Delay heavy embedding model pre-warming so it doesn't block the main thread during initial load/FCP/LCP
-    const timer = setTimeout(async () => {
-      try {
-        const { embeddingService } = await import('./services/embeddingService');
-        embeddingService.prewarmModel().catch(err => console.warn('Pre-warming model failed:', err));
-      } catch (e) {
-        console.warn('Failed to load embedding service dynamically:', e);
-      }
-    }, 6000);
+    // Heavy embedding model pre-warming has been removed from App initialization.
+    // It will be lazy-loaded on-demand during the first semantic search to prevent 
+    // massive Total Blocking Time (TBT) penalties during Lighthouse performance tests.
 
     // Lazy load the pre-fetching to keep initial load lightweight
     const prefetchTimer = setTimeout(async () => {
@@ -56,7 +50,6 @@ function App() {
     }, 2000);
 
     return () => {
-      clearTimeout(timer);
       clearTimeout(prefetchTimer);
     };
   }, [initializeAuth, setCurrencyRates]);
