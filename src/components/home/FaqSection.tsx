@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
-import { publicService } from '../../services/publicService';
 import type { FaqItem } from '../../types/database.types';
 import clsx from 'clsx';
 
@@ -11,10 +10,16 @@ export function FaqSection() {
 
   useEffect(() => {
     async function fetchFaqs() {
-      // Fetch limited FAQs for the homepage
-      const data = await publicService.getActiveFaqs();
-      setFaqs(data.slice(0, 5));
-      setIsLoading(false);
+      try {
+        // Dynamic import to avoid parsing the full publicService + NLP search chain on initial load
+        const { publicService } = await import('../../services/publicService');
+        const data = await publicService.getActiveFaqs();
+        setFaqs(data.slice(0, 5));
+      } catch (e) {
+        console.error('Error fetching FAQs:', e);
+      } finally {
+        setIsLoading(false);
+      }
     }
     fetchFaqs();
   }, []);
@@ -23,7 +28,28 @@ export function FaqSection() {
     setOpenIndex(openIndex === index ? null : index);
   };
 
-  if (isLoading || faqs.length === 0) return null;
+  // Show skeleton while loading to prevent CLS (returning null would cause layout shift)
+  if (isLoading) {
+    return (
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
+          <div className="text-center mb-12">
+            <div className="h-10 w-80 bg-slate-100 rounded-lg mx-auto animate-pulse" />
+            <div className="h-5 w-96 bg-slate-50 rounded mx-auto mt-4 animate-pulse" />
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="border border-slate-200 rounded-xl p-6">
+                <div className="h-5 bg-slate-100 rounded w-3/4 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (faqs.length === 0) return null;
 
   return (
     <section className="py-20 bg-white">
@@ -80,3 +106,4 @@ export function FaqSection() {
     </section>
   );
 }
+

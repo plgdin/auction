@@ -47,7 +47,7 @@ export function HeroSection() {
           50% { transform: scale(1.25) translate(-40px, 40px); }
         }
         @keyframes hero-fade-slide {
-          from { opacity: 0; transform: translateY(20px); }
+          from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .hero-orb-1 {
@@ -59,11 +59,10 @@ export function HeroSection() {
           will-change: transform;
         }
         .hero-slide-up {
-          opacity: 0;
-          animation: hero-fade-slide 0.7s ease-out forwards;
+          animation: hero-fade-slide 0.5s ease-out forwards;
         }
         .hero-fade-in {
-          animation: hero-fade-slide 0.8s ease-out forwards;
+          animation: hero-fade-slide 0.6s ease-out forwards;
         }
       `}</style>
     </div>

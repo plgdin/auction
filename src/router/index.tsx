@@ -2,8 +2,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 // Layouts
 import { MainLayout } from '../layouts/MainLayout';
-import { DashboardLayout } from '../layouts/DashboardLayout';
-import { AuthLayout } from '../layouts/AuthLayout';
 
 // Components
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
@@ -48,6 +46,10 @@ const lazyWithSuspense = (importFn: () => Promise<{ default: React.ComponentType
     </Suspense>
   );
 };
+
+// Lazy-loaded Layouts
+const DashboardLayout = lazyWithSuspense(() => import('../layouts/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
+const AuthLayout = lazyWithSuspense(() => import('../layouts/AuthLayout').then(m => ({ default: m.AuthLayout })));
 
 // Lazy-loaded Pages
 const Home = lazyWithSuspense(() => import('../pages/Home').then(m => ({ default: m.Home })));

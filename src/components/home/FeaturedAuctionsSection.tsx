@@ -4,12 +4,11 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Lock } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import type { Auction } from '../../types/database.types';
-import { recommendationService } from '../../services/recommendationService';
-import { auctionService } from '../../services/auctionService';
-import { dashboardService } from '../../services/dashboardService';
 import { lazy, Suspense } from 'react';
-import { MstcCard } from '../auction/MstcCard';
-import { AuctionCard } from '../auction/AuctionCard';
+
+// Lazy-load card components to keep them out of the initial chunk
+const MstcCard = lazy(() => import('../auction/MstcCard').then(m => ({ default: m.MstcCard })));
+const AuctionCard = lazy(() => import('../auction/AuctionCard').then(m => ({ default: m.AuctionCard })));
 
 const MstcDetailsModal = lazy(() => import('../auction/MstcDetailsModal').then(module => ({ default: module.MstcDetailsModal })));
 
@@ -21,15 +20,20 @@ export function FeaturedAuctionsSection() {
   const [interestedMstcIds, setInterestedMstcIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (user) {
-      setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
-    } else {
-      setInterestedMstcIds([]);
+    async function loadInterested() {
+      if (user) {
+        const { dashboardService } = await import('../../services/dashboardService');
+        setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
+      } else {
+        setInterestedMstcIds([]);
+      }
     }
+    loadInterested();
   }, [user]);
 
-  const handleMstcInterestedToggle = (itemId: string) => {
+  const handleMstcInterestedToggle = async (itemId: string) => {
     if (!user) return;
+    const { dashboardService } = await import('../../services/dashboardService');
     dashboardService.toggleInterestedAuction(user.id, itemId);
     setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
   };
@@ -39,9 +43,11 @@ export function FeaturedAuctionsSection() {
       try {
         let recs = [];
         if (isAuthenticated && user) {
+          const { recommendationService } = await import('../../services/recommendationService');
           recs = await recommendationService.getRecommendedAuctions(user.id, 4);
         }
         if (recs.length === 0) {
+          const { auctionService } = await import('../../services/auctionService');
           const response = await auctionService.getAuctions({});
           if (response && Array.isArray(response.data)) {
             recs = response.data.slice(0, 4);
@@ -75,7 +81,7 @@ export function FeaturedAuctionsSection() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-12">
+          <div className="flex justify-center py-12 min-h-[400px] items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900"></div>
           </div>
         ) : isAuthenticated && auctions.length === 0 ? (
@@ -86,7 +92,8 @@ export function FeaturedAuctionsSection() {
         ) : (
           <div className="relative">
             {/* Grid of Auctions */}
-            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 transition-all duration-300 ${!isAuthenticated ? 'filter blur-sm select-none pointer-events-none' : ''}`}>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 transition-all duration-300 min-h-[400px] ${!isAuthenticated ? 'filter blur-sm select-none pointer-events-none' : ''}`}>
+              <Suspense fallback={null}>
               {/* If empty or not authenticated, we can show mock cards to look premium */}
               {(auctions.length > 0 ? auctions : [
                 { id: '1', title: 'Industrial Heavy Machinery Lot', description: 'Surplus plant manufacturing machinery including CNC routers, lathes, and high capacity air compressors.', starting_price: 4500000, end_time: new Date().toISOString() },
@@ -115,6 +122,7 @@ export function FeaturedAuctionsSection() {
                   );
                 }
               })}
+              </Suspense>
             </div>
 
             {/* Auth Gate Overlay */}

@@ -242,28 +242,39 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  esbuild: {
+    drop: ['console', 'debugger'],
+  },
   build: {
+    target: 'es2020', // Modern browsers — avoid unnecessary polyfills
     chunkSizeWarningLimit: 1000,
+    cssCodeSplit: true, // Split CSS per chunk for better caching
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('@xenova') || id.includes('onnxruntime')) {
+            const normalizedId = id.replace(/\\/g, '/');
+            
+            // ML/AI models — huge, only used on-demand for semantic search
+            if (normalizedId.includes('@xenova') || normalizedId.includes('onnxruntime')) {
               return 'transformers';
             }
-            if (id.includes('antd') || id.includes('@ant-design')) {
+            // UI framework — only used in admin/dashboard pages
+            if (normalizedId.includes('antd') || normalizedId.includes('@ant-design')) {
               return 'antd-vendor';
             }
-            if (id.includes('recharts') || id.includes('d3')) {
+            // Charting — only used in dashboard/analytics
+            if (normalizedId.includes('recharts') || normalizedId.includes('d3')) {
               return 'recharts-vendor';
             }
-            if (id.includes('framer-motion')) {
+            // Animation library — lazy-loaded with components that use it
+            if (normalizedId.includes('framer-motion')) {
               return 'framer-vendor';
             }
-            if (id.includes('lucide-react')) {
+            // Icon library — only icons actually imported are tree-shaken
+            if (normalizedId.includes('lucide-react')) {
               return 'lucide-vendor';
             }
-            return 'vendor';
           }
         }
       }

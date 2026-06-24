@@ -5,7 +5,6 @@ import { Toaster } from 'react-hot-toast';
 import { router } from './router';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
-import { fetchLatestRates } from './utils/currency';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 const queryClient = new QueryClient({
@@ -24,14 +23,16 @@ function App() {
   useEffect(() => {
     initializeAuth();
 
-    // Fetch latest currency rates dynamically on load
-    fetchLatestRates()
-      .then((rates) => {
-        if (rates) {
-          setCurrencyRates(rates);
-        }
-      })
-      .catch((err) => console.warn('Dynamic exchange rate fetch failed:', err));
+    // Fetch latest currency rates dynamically on load (lazy-imported to reduce TBT)
+    import('./utils/currency').then(({ fetchLatestRates }) => {
+      fetchLatestRates()
+        .then((rates) => {
+          if (rates) {
+            setCurrencyRates(rates);
+          }
+        })
+        .catch((err) => console.warn('Dynamic exchange rate fetch failed:', err));
+    });
 
     // Heavy embedding model pre-warming has been removed from App initialization.
     // It will be lazy-loaded on-demand during the first semantic search to prevent 

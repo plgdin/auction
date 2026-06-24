@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase';
 import type { Profile, Organization } from '../types/database.types';
-import { logUserActivity } from './auditService';
 
 export const authService = {
   // --------------------------------------------------------
@@ -21,7 +20,9 @@ export const authService = {
     });
     if (error) throw error;
     if (data.user) {
-      logUserActivity('user_register', 'profile', data.user.id, { email, firstName, lastName });
+      import('./auditService').then(({ logUserActivity }) => {
+        logUserActivity('user_register', 'profile', data.user!.id, { email, firstName, lastName });
+      });
     }
     return data;
   },
@@ -33,7 +34,9 @@ export const authService = {
     });
     if (error) throw error;
     if (data.user) {
-      logUserActivity('user_login', 'profile', data.user.id, { email });
+      import('./auditService').then(({ logUserActivity }) => {
+        logUserActivity('user_login', 'profile', data.user!.id, { email });
+      });
     }
     return data;
   },
@@ -42,6 +45,7 @@ export const authService = {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        const { logUserActivity } = await import('./auditService');
         await logUserActivity('user_logout', 'profile', user.id, { email: user.email });
       }
     } catch (e) {

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Megaphone, X } from 'lucide-react';
-import { adminService } from '../../services/adminService';
 import type { Announcement } from '../../types/database.types';
 import clsx from 'clsx';
 
@@ -19,6 +18,8 @@ export function AnnouncementBanner() {
 
     async function fetchLatestAnnouncement() {
       try {
+        // Dynamic import to avoid pulling admin service code into initial bundle
+        const { adminService } = await import('../../services/adminService');
         const announcements = await adminService.getActiveAnnouncements();
         if (announcements.length > 0) {
           const latest = announcements[0];

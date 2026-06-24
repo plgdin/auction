@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { logUserActivity } from '../../services/auditService';
 
 export function PageTracker() {
   const location = useLocation();
@@ -77,10 +76,14 @@ export function PageTracker() {
       metaDesc.setAttribute('content', description);
     }
 
-    // Log the page view action
-    logUserActivity('page_view', 'page', undefined, {
-      pathname: location.pathname,
-      search: location.search
+    // Log the page view action (lazy-loaded to avoid pulling supabase into initial bundle)
+    import('../../services/auditService').then(({ logUserActivity }) => {
+      logUserActivity('page_view', 'page', undefined, {
+        pathname: location.pathname,
+        search: location.search
+      });
+    }).catch(() => {
+      // Non-critical — silently fail
     });
   }, [location.pathname, location.search]);
 
