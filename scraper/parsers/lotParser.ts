@@ -147,53 +147,245 @@ export function cleanMaterialDescription(desc: string): string {
   if (!desc) return "";
   let cleaned = desc;
 
-  // New cleanups (Run specific warnings first to prevent generic split issues):
-  // Remove Bidders Inspection & Caveat Emptor warnings
-  cleaned = cleaned.replace(/\bBidders\s+are\s+required\s+to\s+inspect\s+the\s+site[\s\S]{1,180}?\bcaveat\s+emptor\s+shall\s+apply\s*(?:for\s+this\s+e[- ]auction)?\.?\b/gi, '');
+  // Helper function to find a delimiter at a word boundary
+  function findDelimiterWithBoundary(text: string, delim: string, startPos: number): number {
+    let pos = startPos;
+    while (pos < text.length) {
+      const idx = text.indexOf(delim, pos);
+      if (idx === -1) return -1;
+      
+      const charBefore = idx > 0 ? text[idx - 1] : " ";
+      const charAfter = idx + delim.length < text.length ? text[idx + delim.length] : " ";
+      
+      const isWordStart = !/[a-zA-Z0-9]/.test(charBefore);
+      const isWordEnd = !/[a-zA-Z0-9]/.test(charAfter);
+      
+      if (isWordStart && isWordEnd) {
+        return idx;
+      }
+      pos = idx + 1;
+    }
+    return -1;
+  }
 
-  // Remove Standard "Sale is on as is where is" clause in brackets
-  cleaned = cleaned.replace(/\[\s*Sale\s+is\s+on\s+as\s+is\s+where\s+is[\s\S]{1,250}?\bno\s+sorting\s+of\s+items\s+shall\s+be\s+allowed\s*\.?\s*\]/gi, '');
+  // 1. Remove Bidders Inspection & Caveat Emptor warnings deterministically
+  while (true) {
+    const lower = cleaned.toLowerCase();
+    const startIdx = findDelimiterWithBoundary(lower, "bidders are required to inspect", 0);
+    if (startIdx === -1) break;
+    const endIdx = lower.indexOf("caveat emptor", startIdx);
+    if (endIdx !== -1 && endIdx - startIdx < 300) {
+      let sliceEnd = endIdx + "caveat emptor".length;
+      const rest = lower.substring(sliceEnd);
+      // Consume " shall apply" and optional " for this e-auction" and a period
+      const restMatch = rest.match(/^\s*shall\s+apply\s*(?:for\s+this\s+e[- ]auction)?\.?/i);
+      if (restMatch) {
+        sliceEnd += restMatch[0].length;
+      }
+      cleaned = cleaned.substring(0, startIdx) + cleaned.substring(sliceEnd);
+    } else {
+      break;
+    }
+  }
 
-  // Remove Annual Rate Contract details in brackets
-  cleaned = cleaned.replace(/\[\s*ARC\s*\(Annual\s+Rate\s+Contract\)[^\]]*\]/gi, '');
-  cleaned = cleaned.replace(/\[\s*Annual\s+Rate\s+Contract\s*\(ARC\)[^\]]*\]/gi, '');
+  // 2. Remove boilerplate bracket contents ([Sale is on as is where is], [ARC], [pre-bid/EMD])
+  let bracketIdx = 0;
+  while (true) {
+    const lower = cleaned.toLowerCase();
+    const startIdx = lower.indexOf("[", bracketIdx);
+    if (startIdx === -1) break;
+    const endIdx = lower.indexOf("]", startIdx);
+    if (endIdx !== -1 && endIdx - startIdx < 450) {
+      const bracketContent = lower.substring(startIdx + 1, endIdx);
+      if (
+        bracketContent.includes("sale is on as is where is") ||
+        bracketContent.includes("no sorting of items") ||
+        (bracketContent.includes("arc") && bracketContent.includes("annual rate contract")) ||
+        bracketContent.includes("annual rate contract") ||
+        bracketContent.includes("pre-bid/emd amount")
+      ) {
+        cleaned = cleaned.substring(0, startIdx) + cleaned.substring(endIdx + 1);
+        continue;
+      }
+    }
+    bracketIdx = startIdx + 1;
+  }
 
-  // Remove Pre-bid EMD amounts in brackets
-  cleaned = cleaned.replace(/\[\s*pre-bid\/EMD\s+amount\s*-[^\]]*\]/gi, '');
+  // 3. Remove "complete details as per lot annexure..." deterministically
+  for (const detailsKeyword of ["complete details as per", "details as per"]) {
+    while (true) {
+      const lower = cleaned.toLowerCase();
+      const matchIdx = findDelimiterWithBoundary(lower, detailsKeyword, 0);
+      if (matchIdx === -1) break;
+      
+      let endIdx = matchIdx + detailsKeyword.length;
+      let remaining = lower.substring(endIdx).trim();
+      if (remaining.startsWith("lot")) {
+        const nextIdx = lower.indexOf("lot", endIdx);
+        if (nextIdx !== -1) {
+          endIdx = nextIdx + 3;
+        }
+      }
+      
+      remaining = lower.substring(endIdx).trim();
+      if (remaining.startsWith("annexure")) {
+        const nextIdx = lower.indexOf("annexure", endIdx);
+        if (nextIdx !== -1) {
+          endIdx = nextIdx + "annexure".length;
+        }
+        
+        remaining = lower.substring(endIdx).trim();
+        if (remaining.startsWith("applicable")) {
+          const nextIdx = lower.indexOf("applicable", endIdx);
+          if (nextIdx !== -1) {
+            endIdx = nextIdx + "applicable".length;
+          }
+        }
+        
+        remaining = lower.substring(endIdx).trim();
+        const itMatch = remaining.match(/^it\/?\b/i);
+        if (itMatch) {
+          const nextIdx = lower.indexOf("it", endIdx);
+          if (nextIdx !== -1) {
+            endIdx = nextIdx + itMatch[0].length;
+          }
+        }
+        
+        cleaned = cleaned.substring(0, matchIdx) + cleaned.substring(endIdx);
+      } else {
+        break;
+      }
+    }
+  }
 
-  // Remove details/FDT/IT warnings at the end (place it/ before it\b)
-  cleaned = cleaned.replace(/\b(?:Complete\s+)?details\s+as\s+per\s+(?:lot\s+)?annexure\s*(?:applicable)?\s*(?:it\/|it\b)?/gi, '');
-  cleaned = cleaned.replace(/\b(?:Details\s+)?FDT\s+(?:and|&)\s+IT\/?\s*$/gi, '');
-  cleaned = cleaned.replace(/\b(?:Applicable\s+)?FDT\s+(?:and|&)\s+IT\/?\s*$/gi, '');
+  // 4. Remove FDT and IT warnings at the end of description
+  const cleanEndings = [
+    "fdt and it",
+    "fdt & it",
+    "details fdt and it",
+    "details fdt & it",
+    "applicable fdt and it",
+    "applicable fdt & it",
+  ];
+  for (const ending of cleanEndings) {
+    const lowerCleaned = cleaned.toLowerCase().trim();
+    if (lowerCleaned.endsWith(ending)) {
+      cleaned = cleaned.substring(0, cleaned.length - ending.length).trim();
+    } else if (lowerCleaned.endsWith(ending + "/")) {
+      cleaned = cleaned.substring(0, cleaned.length - ending.length - 1).trim();
+    }
+  }
 
-  // 1. Remove "Note: ..." / "Note- ..." and everything after it
-  cleaned = cleaned.replace(/\bNote\s*[:.-].*$/gi, "");
+  // 5. Remove "Note: ..." / "Note- ..." and everything after it
+  const noteIdx = findDelimiterWithBoundary(cleaned.toLowerCase(), "note", 0);
+  if (noteIdx !== -1) {
+    const afterNote = cleaned.substring(noteIdx + 4).trim();
+    if (afterNote.startsWith(":") || afterNote.startsWith("-") || afterNote.startsWith(".")) {
+      cleaned = cleaned.substring(0, noteIdx);
+    }
+  }
 
-  // 2. Remove "Location: ..." and everything after it
-  cleaned = cleaned.replace(/\bLocation\s*[:.-].*$/gi, "");
-  cleaned = cleaned.replace(/\bLot Location\s*[:.-].*$/gi, "");
+  // 6. Remove "Location: ..." and everything after it
+  for (const locKeyword of ["lot location", "location"]) {
+    const locIdx = findDelimiterWithBoundary(cleaned.toLowerCase(), locKeyword, 0);
+    if (locIdx !== -1) {
+      const afterLoc = cleaned.substring(locIdx + locKeyword.length).trim();
+      if (afterLoc.startsWith(":") || afterLoc.startsWith("-") || afterLoc.startsWith(".")) {
+        cleaned = cleaned.substring(0, locIdx);
+        break;
+      }
+    }
+  }
 
-  // 3. Remove "Total Qty: ... No" / "Qty- 250 Nos" / "Quantity ..."
-  cleaned = cleaned.replace(/\b(?:Approx\s*)?(?:Qty|Quantity|QTY|Total\s*Qty)\s*[:.-]?\s*\d+[\d,.]*\s*(?:Nos?|No|Items?|Lots?|Units?|Kgs?|MT|Tons?|Pcs?|[a-zA-Z]+)?/gi, "");
+  // 7. Remove "Total Qty: ... No" / "Qty- 250 Nos" / "Quantity ..."
+  cleaned = cleaned.replace(/\b(?:approx\s*)?(?:qty|quantity|qty|total\s*qty)\s*[:.-]?\s*\d+[\d,.]*(?:\s*[a-z]{1,10})?/gi, "");
 
-  // 4. Remove "Cond: ..." or "Condition: ..."
-  cleaned = cleaned.replace(/\bCond(?:ition)?\s*[:.-]?\s*[a-zA-Z0-9-+/]+/gi, "");
+  // 8. Remove "Cond: ..." or "Condition: ..."
+  cleaned = cleaned.replace(/\bcond(?:ition)?\s*[:.-]?\s*[a-z0-9-+/]+/gi, "");
 
-  // 5. Remove "As per Lot Annexure" or "As per Annexure" or "As per ... Annexure"
-  cleaned = cleaned.replace(/As per\s+(?:Lot\s+)?Annexure(?:\s+\S+)?/gi, "");
+  // 9. Remove "As per Lot Annexure" or "As per Annexure"
+  cleaned = cleaned.replace(/\bas\s+per\s+(?:lot\s+)?annexure(?:\s+[a-z0-9]+)?/gi, "");
 
-  // 6. Remove "CLICK HERE FOR ITEMS PHOTOGRAPH" / "CLICK HERE FOR ITEMS PHOTOGRAP H" / "CLICK HERE"
-  cleaned = cleaned.replace(/\bCLICK\s*HERE\s*(?:FOR\s+[A-Za-z0-9\s-]{1,30})?/gi, "");
+  // 10. Remove "CLICK HERE FOR ITEMS PHOTOGRAPH" / "CLICK HERE" deterministically
+  while (true) {
+    const lower = cleaned.toLowerCase();
+    const startIdx = lower.indexOf("click here");
+    if (startIdx === -1) break;
+    
+    let endIdx = startIdx + "click here".length;
+    const rest = lower.substring(endIdx);
+    const forMatch = rest.match(/^\s*for\s+[a-z0-9\s-]{1,30}/i);
+    if (forMatch) {
+      endIdx += forMatch[0].length;
+    }
+    cleaned = cleaned.substring(0, startIdx) + cleaned.substring(endIdx);
+  }
 
-  // 7. Strip known metadata prefixes/fields and their values (strict word-count limits or specific matches)
-  cleaned = cleaned.replace(/PCB Group\s*[:.-]\s*[A-Za-z0-9&/–—-]+/gi, "");
-  cleaned = cleaned.replace(/Product Type\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, "");
-  cleaned = cleaned.replace(/Category\s*[:.-]\s*(?:End of life vehicles|Ferro-Alloys\s*&\s*Metal Scrap|Batteries\s*&\s*Electrical Scrap|[A-Za-z0-9&/–—-]+\s*){1,4}/gi, "");
-  cleaned = cleaned.replace(/Lot State\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, "");
-  cleaned = cleaned.replace(/State\s*[:.-]\s*(?:[A-Za-z0-9&/–—-]+\s*){1,2}/gi, "");
+  // 11. Strip known metadata prefixes/fields and their values deterministically using headers & delimiters
+  const metadataHeaders = [
+    "pcb group",
+    "product type",
+    "category",
+    "lot state",
+    "state"
+  ];
+  
+  const delimiters = [
+    ...metadataHeaders,
+    "note",
+    "location",
+    "lot location",
+    "qty",
+    "quantity",
+    "total qty",
+    "cond",
+    "condition",
+    "as per",
+    "click here",
+    "contact"
+  ];
 
-  // 7b. Remove contact details / complete details / inspection details at the end
-  cleaned = cleaned.replace(/\b(?:Contact\s*Person|Contact|Inspection|Contact\s*No|Complete\s+details)\b.*$/gi, "");
+  for (const header of metadataHeaders) {
+    while (true) {
+      const lower = cleaned.toLowerCase();
+      const startIdx = findDelimiterWithBoundary(lower, header, 0);
+      if (startIdx === -1) break;
+      
+      let endIdx = cleaned.length;
+      let valStartIdx = startIdx + header.length;
+      const separatorMatch = cleaned.substring(valStartIdx, valStartIdx + 5).match(/^\s*[:.-]\s*/);
+      if (separatorMatch) {
+        valStartIdx += separatorMatch[0].length;
+      }
+      
+      let nextDelimOffset = -1;
+      for (const delim of delimiters) {
+        const delimIdx = findDelimiterWithBoundary(lower, delim, valStartIdx);
+        if (delimIdx !== -1) {
+          const offset = delimIdx - valStartIdx;
+          if (nextDelimOffset === -1 || offset < nextDelimOffset) {
+            nextDelimOffset = offset;
+          }
+        }
+      }
+      
+      if (nextDelimOffset !== -1) {
+        endIdx = valStartIdx + nextDelimOffset;
+      }
+      
+      cleaned = cleaned.substring(0, startIdx) + cleaned.substring(endIdx);
+    }
+  }
+
+  // 12. Remove contact details / complete details / inspection details at the end
+  const contactKeywords = ["contact person", "contact no", "contact", "inspection", "complete details"];
+  for (const contactKeyword of contactKeywords) {
+    const contactIdx = findDelimiterWithBoundary(cleaned.toLowerCase(), contactKeyword, 0);
+    if (contactIdx !== -1) {
+      cleaned = cleaned.substring(0, contactIdx);
+      break;
+    }
+  }
 
   // Clean up punctuation, spaces, etc.
   cleaned = cleaned
@@ -205,8 +397,11 @@ export function cleanMaterialDescription(desc: string): string {
     .replace(/\s*[.,:\-/]\s*$/, "") // Strip trailing dots, dashes, commas, slashes
     .trim();
 
-  // 8. Strip stray words at the start that are leftover category parts
-  cleaned = cleaned.replace(/^vehicles\b/gi, "");
+  // 13. Strip stray words at the start that are leftover category parts
+  const categoryPrefixMatch = cleaned.match(/^vehicles\b/i);
+  if (categoryPrefixMatch) {
+    cleaned = cleaned.substring(categoryPrefixMatch[0].length);
+  }
 
   // Clean again after stripping leading word
   cleaned = cleaned

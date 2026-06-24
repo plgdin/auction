@@ -382,24 +382,45 @@ export function parseSubItemsFromText(text: string): SubItem[] {
     const sr = parseInt(srStr, 10);
     const normalizedDesc = desc.toLowerCase().replace(/\s+/g, " ").trim();
 
-    // Fast Levenshtein distance to compute edit-distance similarity
+    // Two-row space optimized Levenshtein distance similarity calculation
     const getLevenshteinSimilarity = (s1: string, s2: string): number => {
       const m = s1.length;
       const n = s2.length;
       if (m === 0 || n === 0) return 0;
-      const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-      for (let i = 0; i <= m; i++) dp[i][0] = i;
-      for (let j = 0; j <= n; j++) dp[0][j] = j;
-      for (let i = 1; i <= m; i++) {
-        for (let j = 1; j <= n; j++) {
-          if (s1[i - 1] === s2[j - 1]) {
-            dp[i][j] = dp[i - 1][j - 1];
+
+      let str1 = s1;
+      let str2 = s2;
+      let len1 = m;
+      let len2 = n;
+      if (len2 > len1) {
+        str1 = s2;
+        str2 = s1;
+        len1 = n;
+        len2 = m;
+      }
+
+      let prev = new Array(len2 + 1);
+      let curr = new Array(len2 + 1);
+
+      for (let j = 0; j <= len2; j++) {
+        prev[j] = j;
+      }
+
+      for (let i = 1; i <= len1; i++) {
+        curr[0] = i;
+        for (let j = 1; j <= len2; j++) {
+          if (str1[i - 1] === str2[j - 1]) {
+            curr[j] = prev[j - 1];
           } else {
-            dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+            curr[j] = 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
           }
         }
+        const temp = prev;
+        prev = curr;
+        curr = temp;
       }
-      return 1 - dp[m][n] / Math.max(m, n);
+
+      return 1 - prev[len2] / Math.max(m, n);
     };
 
     const isDuplicate = subItems.some((existing) => {

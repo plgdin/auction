@@ -12,9 +12,13 @@
  * - Memory management: null out buffers after processing.
  * - Improved lot matching: stricter sequential fallback, higher keyword threshold.
  * - Expanded attachment detection beyond photo_/annex_ prefixes.
+ * - Performance/Memory: Separate embedding generation from concurrent attachment processing,
+ *   pre-computing page embeddings in batch chunks outside the concurrent loop and freeing
+ *   ONNX runtime tensor memory explicitly.
+ * - Scalability: Replaced local cookies.txt file with database-driven session sharing pattern
+ *   via Supabase ocr_cache lookup to eliminate single point of failure.
  */
 import fetch from "node-fetch";
-import * as fs from "fs";
 import { createRequire } from "module";
 import { randomUUID } from "crypto";
 import { pipeline, env } from "@xenova/transformers";
@@ -90,8 +94,6 @@ async function getEmbeddingPipeline() {
   return embeddingPipelineCache;
 }
 
-
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface QueueRecord {
@@ -104,6 +106,15 @@ export interface QueueRecord {
   location: string | null;
   raw_materials_text: string | null;
   updated_at?: string;
+}
+
+interface ExtractedPage {
+  fileName: string;
+  pageNumber: number;
+  publicUrl: string;
+  combinedText: string;
+  ocrText: string;
+  embedding?: number[];
 }
 
 // ─── Shared Helpers (Deduplicated) ───────────────────────────────────────────
@@ -191,8 +202,7 @@ function mergeSubItems(lot: any, subItems: any[]): void {
  * Previously the same 30-line block was duplicated 3× across the worker.
  */
 export async function processPageForLotEnrichment(
-  imageBuffer: Buffer,
-  selectableText: string,
+  combinedText: string,
   items: any[],
   attachmentToLots: Map<string, any[]>,
   fileName: string,
@@ -201,18 +211,12 @@ export async function processPageForLotEnrichment(
   jobLog: any,
   lotEmbeddings?: Map<string, number[]>,
   lastMatched?: any[],
-): Promise<{ matched: any[]; ocrText: string }> {
-  // Smart OCR: only run OCR when selectable text is insufficient
-  let ocrText = "";
-  if (shouldPerformOcr(selectableText)) {
-    ocrText = await performOcr(imageBuffer);
-  }
-  const combinedText = `${selectableText || ""}\n${ocrText}`;
-
+  pageVector?: number[] | null,
+): Promise<{ matched: any[] }> {
   // Use pre-assigned lot mapping first, fall back to text-based matching
   let matched = attachmentToLots.get(fileName) || [];
   if (matched.length === 0) {
-    matched = await matchPageToLots(combinedText, items, fileName, lotEmbeddings, lastMatched);
+    matched = await matchPageToLots(combinedText, items, fileName, lotEmbeddings, lastMatched, pageVector);
   }
 
   if (matched.length > 1) {
@@ -310,7 +314,7 @@ export async function processPageForLotEnrichment(
     tryUpdateLotQuantity(lot, extracted, subItems, jobLog);
   }
 
-  return { matched, ocrText };
+  return { matched };
 }
 
 // ─── Attachment Processing ───────────────────────────────────────────────────
@@ -382,37 +386,53 @@ export function getLevenshteinSimilarity(s1: string, s2: string): number {
   const m = s1.length;
   const n = s2.length;
   if (m === 0 || n === 0) return 0;
-  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (s1[i - 1] === s2[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1];
+
+  let str1 = s1;
+  let str2 = s2;
+  let len1 = m;
+  let len2 = n;
+  if (len2 > len1) {
+    str1 = s2;
+    str2 = s1;
+    len1 = n;
+    len2 = m;
+  }
+
+  let prev = new Array(len2 + 1);
+  let curr = new Array(len2 + 1);
+
+  for (let j = 0; j <= len2; j++) {
+    prev[j] = j;
+  }
+
+  for (let i = 1; i <= len1; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= len2; j++) {
+      if (str1[i - 1] === str2[j - 1]) {
+        curr[j] = prev[j - 1];
       } else {
-        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        curr[j] = 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
       }
     }
+    const temp = prev;
+    prev = curr;
+    curr = temp;
   }
-  return 1 - dp[m][n] / Math.max(m, n);
+
+  return 1 - prev[len2] / Math.max(m, n);
 }
+
 
 /**
  * Disambiguate multiple keyword/description matches using semantic similarity.
  */
 export async function disambiguateLots(
-  pageText: string,
+  pageVector: number[] | null,
   matchedLots: any[],
   lotEmbeddings: Map<string, number[]>,
 ): Promise<any | null> {
+  if (!pageVector) return null;
   try {
-    const extractor = await getEmbeddingPipeline();
-    const pageOutput = await extractor(pageText, {
-      pooling: "mean",
-      normalize: true,
-    });
-    const pageVector = Array.from(pageOutput.data) as number[];
-
     const cosineSimilarity = (v1: number[], v2: number[]) => {
       let dot = 0;
       for (let idx = 0; idx < v1.length; idx++) {
@@ -473,6 +493,7 @@ export async function matchPageToLots(
   attachmentName: string,
   lotEmbeddings?: Map<string, number[]>,
   lastMatched?: any[],
+  pageVector?: number[] | null,
 ): Promise<any[]> {
   const matchedLots: any[] = [];
   
@@ -570,7 +591,7 @@ export async function matchPageToLots(
 
   // Disambiguation for description keyword matches
   if (matchedLots.length > 1 && lotEmbeddings && lotEmbeddings.size > 0) {
-    const bestMatch = await disambiguateLots(cleanOcrText, matchedLots, lotEmbeddings);
+    const bestMatch = await disambiguateLots(pageVector ?? null, matchedLots, lotEmbeddings);
     if (bestMatch) {
       return [bestMatch];
     }
@@ -590,15 +611,8 @@ export async function matchPageToLots(
   }
 
   // 5. Semantic Similarity fallback matching
-  if (lotEmbeddings && lotEmbeddings.size > 0 && cleanOcrText.trim().length > 10) {
+  if (pageVector && lotEmbeddings && lotEmbeddings.size > 0 && cleanOcrText.trim().length > 10) {
     try {
-      const extractor = await getEmbeddingPipeline();
-      const pageOutput = await extractor(cleanOcrText, {
-        pooling: "mean",
-        normalize: true,
-      });
-      const pageVector = Array.from(pageOutput.data) as number[];
-
       const cosineSimilarity = (v1: number[], v2: number[]) => {
         let dot = 0;
         for (let idx = 0; idx < v1.length; idx++) {
@@ -821,9 +835,11 @@ async function extractAndProcessLotDocuments(
     }
   }
 
-  // Create concurrent tasks for attachment processing
+  // Pass 1: Extract text, upload images, and release buffers concurrently
+  const extractedPagesMap = new Map<string, ExtractedPage[]>();
+
   const tasks = uniqueAttachments.map((fileName, i) => async () => {
-    const lotImageUrls: string[] = [];
+    const pagesForAttachment: ExtractedPage[] = [];
 
     // Determine doc_type
     const primaryType = fileName.toLowerCase().startsWith("photo_")
@@ -859,10 +875,6 @@ async function extractAndProcessLotDocuments(
         "Rendered attachment pages",
       );
 
-      const pageUrls: string[] = [];
-      const pageMatches: any[][] = [];
-      let lastMatched: any[] = [];
-
       for (let pIdx = 0; pIdx < renderedPages.length; pIdx++) {
         const page = renderedPages[pIdx];
         try {
@@ -873,37 +885,20 @@ async function extractAndProcessLotDocuments(
             "image/jpeg",
           );
 
-          imageUrls.push(publicUrl);
-          lotImageUrls.push(publicUrl);
-          pageUrls.push(publicUrl);
+          // Smart OCR: only run OCR when selectable text is insufficient
+          let ocrText = "";
+          if (shouldPerformOcr(page.text)) {
+            ocrText = await performOcr(page.imageBuffer);
+          }
+          const combinedText = `${page.text || ""}\n${ocrText}`;
 
-          const { matched } = await processPageForLotEnrichment(
-            page.imageBuffer,
-            page.text,
-            items,
-            attachmentToLots,
+          pagesForAttachment.push({
             fileName,
+            pageNumber: page.pageNumber,
             publicUrl,
-            lotSpecificImagesMap,
-            log,
-            lotEmbeddings,
-            lastMatched,
-          );
-          pageMatches.push(matched);
-
-          if (matched && matched.length > 0) {
-            lastMatched = matched;
-          }
-
-          if (matched.length > 0) {
-            log.info(
-              {
-                pageNumber: page.pageNumber,
-                matchedLots: matched.map((m) => m.sr),
-              },
-              "Mapped rendered page to lot(s)",
-            );
-          }
+            combinedText,
+            ocrText,
+          });
 
           // Memory management: null out buffer and text after processing
           (page as any).imageBuffer = null;
@@ -912,41 +907,6 @@ async function extractAndProcessLotDocuments(
           log.warn(
             { errorMessage: uploadErr.message, pageNumber: page.pageNumber },
             "Failed to process rendered page image",
-          );
-        }
-      }
-
-      // Improved sequential fallback:
-      const hasSpecificMatches = pageMatches.some((m) => m.length > 0);
-      if (
-        !hasSpecificMatches &&
-        renderedPages.length === items.length &&
-        items.length > 0
-      ) {
-        const hasLotReferences = renderedPages.some(
-          (p) => p.text && /lot\s*no/i.test(p.text),
-        );
-        if (!hasLotReferences) {
-          log.info(
-            {
-              fileName,
-              pageCount: renderedPages.length,
-              itemsCount: items.length,
-            },
-            "No matches found, mapping pages sequentially (standalone photos confirmed)",
-          );
-          for (let pIdx = 0; pIdx < pageUrls.length; pIdx++) {
-            const item = items[pIdx];
-            const srStr = String(item.sr);
-            if (!lotSpecificImagesMap[srStr]) {
-              lotSpecificImagesMap[srStr] = [];
-            }
-            lotSpecificImagesMap[srStr].push(pageUrls[pIdx]);
-          }
-        } else {
-          log.info(
-            { fileName },
-            "Skipping sequential fallback — pages contain mixed lot references",
           );
         }
       }
@@ -961,7 +921,6 @@ async function extractAndProcessLotDocuments(
           { fileName, imageCount: embeddedJpegs.length },
           "Extracted embedded images from attachment (fallback)",
         );
-        let lastMatched: any[] = [];
         for (let j = 0; j < embeddedJpegs.length; j++) {
           try {
             const imgBuffer = embeddedJpegs[j];
@@ -971,25 +930,18 @@ async function extractAndProcessLotDocuments(
               imgBuffer,
               "image/jpeg",
             );
-            imageUrls.push(publicUrl);
-            lotImageUrls.push(publicUrl);
 
-            const { matched } = await processPageForLotEnrichment(
-              imgBuffer,
-              "",
-              items,
-              attachmentToLots,
+            // Always run OCR on embedded image fallbacks (no selectable text exists)
+            const ocrText = await performOcr(imgBuffer);
+            const combinedText = ocrText;
+
+            pagesForAttachment.push({
               fileName,
+              pageNumber: j + 1,
               publicUrl,
-              lotSpecificImagesMap,
-              log,
-              lotEmbeddings,
-              lastMatched,
-            );
-
-            if (matched && matched.length > 0) {
-              lastMatched = matched;
-            }
+              combinedText,
+              ocrText,
+            });
           } catch (uploadErr: any) {
             log.warn(
               { errorMessage: uploadErr.message },
@@ -1000,11 +952,137 @@ async function extractAndProcessLotDocuments(
       }
     }
 
-    attachmentMap[fileName] = lotImageUrls;
+    extractedPagesMap.set(fileName, pagesForAttachment);
   });
 
   // Concurrently process attachments with a limit of 3 to optimize worker performance
   await limitConcurrency(tasks, 3);
+
+  // Pass 2: Batch generate embeddings for all extracted page texts outside concurrent loop, in chunks
+  const allFlatPages: ExtractedPage[] = [];
+  for (const fileName of uniqueAttachments) {
+    const pages = extractedPagesMap.get(fileName) || [];
+    allFlatPages.push(...pages);
+  }
+
+  const pagesToEmbed = allFlatPages.filter(p => p.combinedText.trim().length > 10);
+  if (pagesToEmbed.length > 0 && lotEmbeddings && lotEmbeddings.size > 0) {
+    try {
+      const texts = pagesToEmbed.map(p => p.combinedText.toLowerCase().replace(/\s+/g, " "));
+      log.info(
+        { count: texts.length },
+        "Batch generating embeddings for attachment pages in chunked sequence",
+      );
+      const extractor = await getEmbeddingPipeline();
+      
+      const chunkSize = 16;
+      for (let i = 0; i < texts.length; i += chunkSize) {
+        const chunkTexts = texts.slice(i, i + chunkSize);
+        let chunkOutput = await extractor(chunkTexts, {
+          pooling: "mean",
+          normalize: true,
+        });
+
+        const batchSize = chunkTexts.length;
+        const dim = chunkOutput.dims ? chunkOutput.dims[1] : (chunkOutput.data.length / batchSize);
+        const data = chunkOutput.data as any;
+
+        for (let idx = 0; idx < batchSize; idx++) {
+          const vector = Array.from(data.subarray(idx * dim, (idx + 1) * dim)) as number[];
+          pagesToEmbed[i + idx].embedding = vector;
+        }
+
+        // Null out chunk-specific tensor references to allow GC immediately
+        chunkOutput = null;
+      }
+    } catch (embedErr: any) {
+      log.warn(
+        { errorMessage: embedErr.message },
+        "Failed to batch generate embeddings for attachment pages",
+      );
+    }
+  }
+
+  // Pass 3: Process the pages using pre-computed embeddings
+  for (const fileName of uniqueAttachments) {
+    const pages = extractedPagesMap.get(fileName) || [];
+    const lotImageUrls: string[] = [];
+    const pageUrls: string[] = [];
+    const pageMatches: any[][] = [];
+    let lastMatched: any[] = [];
+
+    for (let pIdx = 0; pIdx < pages.length; pIdx++) {
+      const page = pages[pIdx];
+      imageUrls.push(page.publicUrl);
+      lotImageUrls.push(page.publicUrl);
+      pageUrls.push(page.publicUrl);
+
+      const { matched } = await processPageForLotEnrichment(
+        page.combinedText,
+        items,
+        attachmentToLots,
+        fileName,
+        page.publicUrl,
+        lotSpecificImagesMap,
+        log,
+        lotEmbeddings,
+        lastMatched,
+        page.embedding || null,
+      );
+      pageMatches.push(matched);
+
+      if (matched && matched.length > 0) {
+        lastMatched = matched;
+      }
+
+      if (matched.length > 0) {
+        log.info(
+          {
+            pageNumber: page.pageNumber,
+            matchedLots: matched.map((m) => m.sr),
+          },
+          "Mapped rendered page to lot(s)",
+        );
+      }
+    }
+
+    // Improved sequential fallback:
+    const hasSpecificMatches = pageMatches.some((m) => m.length > 0);
+    if (
+      !hasSpecificMatches &&
+      pages.length === items.length &&
+      items.length > 0
+    ) {
+      const hasLotReferences = pages.some(
+        (p) => p.combinedText && /lot\s*no/i.test(p.combinedText),
+      );
+      if (!hasLotReferences) {
+        log.info(
+          {
+            fileName,
+            pageCount: pages.length,
+            itemsCount: items.length,
+          },
+          "No matches found, mapping pages sequentially (standalone photos confirmed)",
+        );
+        for (let pIdx = 0; pIdx < pageUrls.length; pIdx++) {
+          const item = items[pIdx];
+          const srStr = String(item.sr);
+          if (!lotSpecificImagesMap[srStr]) {
+            lotSpecificImagesMap[srStr] = [];
+          }
+          lotSpecificImagesMap[srStr].push(pageUrls[pIdx]);
+        }
+      } else {
+        log.info(
+          { fileName },
+          "Skipping sequential fallback — pages contain mixed lot references",
+        );
+      }
+    }
+
+    attachmentMap[fileName] = lotImageUrls;
+  }
 
   // Final pass: derive lot quantity from sub-items when current qty is generic
   for (const item of items) {
@@ -1036,18 +1114,25 @@ async function extractAndProcessLotDocuments(
 // ─── Queue Pipeline ──────────────────────────────────────────────────────────
 
 /**
- * Read session cookies from disk (if available) for MSTC authentication.
+ * Read session cookies from database (ocr_cache) for MSTC authentication.
  */
-function loadSessionCookies(): string | null {
+async function loadSessionCookies(): Promise<string | null> {
   try {
-    if (fs.existsSync("cookies.txt")) {
-      const cookieString = fs.readFileSync("cookies.txt", "utf-8");
-      if (cookieString.trim()) {
-        return cookieString.trim();
-      }
+    const { data, error } = await supabase
+      .from("ocr_cache")
+      .select("ocr_text")
+      .eq("buffer_hash", "SYSTEM_SESSION_COOKIES")
+      .maybeSingle();
+
+    if (error) {
+      log.warn({ errorMessage: error.message }, "Failed to query session cookies from database");
+      return null;
+    }
+    if (data?.ocr_text) {
+      return data.ocr_text.trim();
     }
   } catch (cookieErr: any) {
-    log.warn({ errorMessage: cookieErr.message }, "Failed to read cookies.txt");
+    log.warn({ errorMessage: cookieErr.message }, "Failed to read session cookies");
   }
   return null;
 }
@@ -1055,13 +1140,13 @@ function loadSessionCookies(): string | null {
 /**
  * Build HTTP headers for MSTC requests.
  */
-function buildMstcHeaders(): Record<string, string> {
+async function buildMstcHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     "User-Agent": DEFAULT_USER_AGENT,
     "Content-Type": "application/x-www-form-urlencoded",
   };
 
-  const cookies = loadSessionCookies();
+  const cookies = await loadSessionCookies();
   if (cookies) {
     headers["Cookie"] = cookies;
   }
@@ -1077,7 +1162,7 @@ export async function processRecord(record: QueueRecord): Promise<void> {
 
   jobLog.info({}, "Starting document processing");
 
-  const headers = buildMstcHeaders();
+  const headers = await buildMstcHeaders();
 
   let fileBuffer: Buffer | null = null;
   let catalogUrl = "";
@@ -1266,20 +1351,24 @@ export async function processRecord(record: QueueRecord): Promise<void> {
               "Pre-computing lot description embeddings in batch for semantic matching",
             );
             const extractor = await getEmbeddingPipeline();
-            const output = await extractor(uniqueLotDescriptions, {
+            let output = await extractor(uniqueLotDescriptions, {
               pooling: "mean",
               normalize: true,
             });
 
             const batchSize = uniqueLotDescriptions.length;
             const dim = output.dims ? output.dims[1] : (output.data.length / batchSize);
-            const data = output.data as any;
+            let data = output.data as any;
 
             for (let idx = 0; idx < batchSize; idx++) {
               const desc = uniqueLotDescriptions[idx];
               const vector = Array.from(data.subarray(idx * dim, (idx + 1) * dim)) as number[];
               lotEmbeddings.set(desc, vector);
             }
+
+            // Explicitly clear references
+            output = null;
+            data = null;
           }
         } catch (err: any) {
           jobLog.warn(
@@ -1411,12 +1500,15 @@ export async function processRecord(record: QueueRecord): Promise<void> {
     if (textToEmbed.length >= 5) {
       jobLog.info({}, "Generating AI embedding vector for semantic search");
       const extractor = await getEmbeddingPipeline();
-      const output = await extractor(textToEmbed, {
+      let output = await extractor(textToEmbed, {
         pooling: "mean",
         normalize: true,
       });
       const vector = Array.from(output.data);
       embeddingStr = `[${vector.join(",")}]`;
+
+      // Null out tensor reference to allow GC
+      output = null;
     }
   } catch (embedErr: any) {
     jobLog.warn(
