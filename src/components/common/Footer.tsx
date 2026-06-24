@@ -95,8 +95,9 @@ export function Footer() {
 
         <div className="border-t border-slate-800 pt-8 mt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex flex-col gap-1">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 flex items-center">
               &copy; {new Date().getFullYear()} Lelam. All rights reserved.
+              <span className="ml-3 px-2 py-0.5 rounded-md bg-slate-800 text-xs text-slate-400 font-medium">v1.0</span>
             </p>
             <p className="text-[11px] text-slate-650 max-w-lg">
               Lelam Company is an independent assistive platform and is not affiliated with MSTC Limited.
