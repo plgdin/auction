@@ -63,6 +63,7 @@ function App() {
           position="top-right"
           containerClassName="print:hidden"
           toastOptions={{
+            className: "print:hidden",
             duration: 3000,
             success: {
               iconTheme: {

@@ -326,7 +326,13 @@ export function QuotePage() {
   };
 
   const handlePrint = () => {
-    window.print();
+    // Dismiss any active toast notifications so they don't get captured in the PDF print DOM
+    toast.dismiss();
+    
+    // Small delay to ensure React commits the DOM removal before printing
+    setTimeout(() => {
+      window.print();
+    }, 50);
   };
 
   const themes = [
