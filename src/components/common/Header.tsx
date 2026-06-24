@@ -97,15 +97,7 @@ export function Header() {
         <div className="flex justify-between items-center h-20">
           <div className="flex-shrink-0 flex items-center -ml-4">
             <Link to="/" className="flex items-center gap-2">
-              {/* Explicit width/height to prevent CLS */}
-              <img
-                src="/png_lelam_1.webp"
-                alt="Lelam Logo"
-                width="120"
-                height="38"
-                className="w-auto object-contain"
-                style={{ height: '38px' }}
-              />
+              <img src="/png_lelam_1.webp" alt="Lelam Logo" width={188} height={38} className="w-auto object-contain" style={{ height: '38px' }} />
               <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase tracking-widest mt-1">Beta</span>
             </Link>
           </div>

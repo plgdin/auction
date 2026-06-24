@@ -129,6 +129,7 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
           <button
             onClick={handleWatchlistToggle}
             disabled={isToggling}
+            aria-label="Toggle watchlist"
             className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors"
           >
             <Heart className={clsx("w-5 h-5", isWatchlisted ? "fill-red-500 text-red-500" : "text-slate-500")} />
@@ -220,6 +221,7 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
         <button
           onClick={handleWatchlistToggle}
           disabled={isToggling}
+          aria-label="Toggle watchlist"
           className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors"
         >
           <Heart className={clsx("w-5 h-5", isWatchlisted ? "fill-red-500 text-red-500" : "text-slate-500")} />

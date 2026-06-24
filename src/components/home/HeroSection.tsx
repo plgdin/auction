@@ -14,25 +14,22 @@ export function HeroSection() {
       </div>
 
       <div className="relative z-10 w-full px-4 sm:px-8 lg:px-12 flex flex-col items-center">
-        <div className="max-w-4xl flex flex-col items-center hero-fade-in">
-          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-7xl mb-8 leading-tight max-w-3xl hero-slide-up" style={{ animationDelay: '0.1s' }}>
+        <div className="max-w-4xl flex flex-col items-center">
+          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-7xl mb-8 leading-tight max-w-3xl">
             Bringing Auctions <br />to the Masses
           </h1>
-
-          <p
-            className="text-lg sm:text-xl md:text-2xl text-slate-300 leading-relaxed mb-12 max-w-2xl font-light hero-slide-up"
-            style={{ animationDelay: '0.25s' }}
-          >
+          
+          <p className="text-lg sm:text-xl md:text-2xl text-slate-300 leading-relaxed mb-12 max-w-2xl font-light">
             Empowering everyone with simple, secure, and transparent eAuctions and MSTC auctions—one bid at a time.
           </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 hero-slide-up" style={{ animationDelay: '0.4s' }}>
+          
+          <div className="flex flex-col sm:flex-row gap-4">
             <Link
               to="/auctions"
               className="inline-flex items-center justify-center px-10 py-5 border border-transparent text-lg font-semibold rounded-xl text-white bg-primary hover:bg-primary/95 transition-all duration-200 shadow-lg shadow-primary/20 hover:shadow-primary/45 hover:-translate-y-0.5 cursor-pointer"
             >
               View Auctions
-              <ArrowRight className="ml-2 w-5 h-5 animate-pulse" />
+              <ArrowRight className="ml-2 w-5 h-5" />
             </Link>
           </div>
         </div>
