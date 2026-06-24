@@ -61,6 +61,7 @@ function App() {
         <RouterProvider router={router} />
         <Toaster
           position="top-right"
+          containerClassName="print:hidden"
           toastOptions={{
             duration: 3000,
             success: {
