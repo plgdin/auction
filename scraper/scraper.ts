@@ -150,11 +150,23 @@ async function executeDiscoveryScraper() {
     // Wait for the user to press Enter in the terminal
     await waitForUserConfirmation('\nPress [Enter] here once the search results page has finished loading...\n');
 
-    // Save session cookies to a local file for the background worker
+    // Save session cookies to Supabase database for the background worker
     const cookies = await page.cookies();
     const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
-    fs.writeFileSync('cookies.txt', cookieString, 'utf-8');
-    console.log('Session cookies saved to cookies.txt for background worker.');
+    
+    const { error: cookieError } = await supabase
+      .from('ocr_cache')
+      .upsert({
+        buffer_hash: 'SYSTEM_SESSION_COOKIES',
+        ocr_text: cookieString,
+        created_at: new Date().toISOString()
+      }, { onConflict: 'buffer_hash' });
+
+    if (cookieError) {
+      console.error('Failed to save session cookies to database:', cookieError.message);
+    } else {
+      console.log('Session cookies saved to database (ocr_cache) for background worker.');
+    }
 
     console.log('[Diagnostics] Dumping page HTML to debug_page.html for inspection...');
     const mainHtml = await page.content();
