@@ -83,24 +83,56 @@ export function parseMstcCatalogText(
     "GSTIN Registration Certificate matching the buyer profile.",
   ];
 
-  const textLower = text.toLowerCase();
-  if (
-    textLower.includes("hazardous") ||
-    textLower.includes("waste") ||
-    textLower.includes("battery") ||
-    textLower.includes("oil")
-  ) {
+  let hasHazardous = false;
+  let hasEWaste = false;
+  let hasRVSF = false;
+
+  for (const it of items) {
+    const descLower = (it.description || "").toLowerCase();
+    const pcbLower = (it.pcbGroup || "").toLowerCase();
+
+    if (
+      descLower.includes("hazardous") ||
+      descLower.includes("battery") ||
+      descLower.includes("used oil") ||
+      descLower.includes("waste oil") ||
+      pcbLower.includes("hazardous")
+    ) {
+      hasHazardous = true;
+    }
+
+    if (
+      descLower.includes("e-waste") ||
+      descLower.includes("ewaste") ||
+      descLower.includes("telecom") ||
+      descLower.includes("cable") ||
+      pcbLower.includes("e-waste") ||
+      pcbLower.includes("ewaste")
+    ) {
+      hasEWaste = true;
+    }
+
+    if (
+      pcbLower.includes("rvsf") ||
+      descLower.includes("rvsf")
+    ) {
+      hasRVSF = true;
+    }
+  }
+
+  if (hasHazardous) {
     eligibility.push(
       "Hazardous waste/smelter authorization from State Pollution Control Board (SPCB) is mandatory.",
     );
   }
-  if (
-    textLower.includes("telecom") ||
-    textLower.includes("cable") ||
-    textLower.includes("e-waste")
-  ) {
+  if (hasEWaste) {
     eligibility.push(
       "CPCB/SPCB E-Waste recycler registration required for e-waste lots.",
+    );
+  }
+  if (hasRVSF) {
+    eligibility.push(
+      "Registered Vehicle Scrapping Facility (RVSF) authorization is mandatory for End-of-Life Vehicles (ELV).",
     );
   }
 

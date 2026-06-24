@@ -140,6 +140,8 @@ export interface CatalogSummary {
     marketPrice: string;
     images?: string[];
     subItems?: { sr: number | string; description: string; qty: string; unit: string }[];
+    pcbGroup?: string;
+    productType?: string;
   }[];
   eligibility: string[];
   depositDetails: {
@@ -193,6 +195,61 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   const categoryUpper = (item.category_name || '').toUpperCase();
   const textUpper = (item.raw_materials_text || '').toUpperCase();
 
+  let hasHazardous = false;
+  let hasEWaste = false;
+  let hasRVSF = false;
+  let hasItems = false;
+
+  let itemsList: any[] = [];
+  if (item.raw_materials_text) {
+    try {
+      const parsed = JSON.parse(item.raw_materials_text);
+      if (parsed && Array.isArray(parsed.items)) {
+        itemsList = parsed.items;
+        hasItems = itemsList.length > 0;
+      }
+    } catch (e) {}
+  }
+
+  if (hasItems) {
+    for (const lot of itemsList) {
+      const descLower = (lot.description || '').toLowerCase();
+      const pcbLower = (lot.pcbGroup || '').toLowerCase();
+      
+      if (
+        descLower.includes('hazardous') || 
+        descLower.includes('battery') || 
+        descLower.includes('used oil') || 
+        descLower.includes('waste oil') ||
+        pcbLower.includes('hazardous')
+      ) {
+        hasHazardous = true;
+      }
+      if (
+        descLower.includes('e-waste') || 
+        descLower.includes('ewaste') || 
+        descLower.includes('telecom') || 
+        descLower.includes('cable') ||
+        pcbLower.includes('e-waste') ||
+        pcbLower.includes('ewaste')
+      ) {
+        hasEWaste = true;
+      }
+      if (
+        pcbLower.includes('rvsf') ||
+        descLower.includes('rvsf') ||
+        descLower.includes('vehicle') ||
+        descLower.includes('car ') ||
+        descLower.includes('bus ') ||
+        descLower.includes('truck') ||
+        descLower.includes('sumo') ||
+        descLower.includes('gypsy')
+      ) {
+        hasRVSF = true;
+      }
+    }
+  }
+
   const isRcm = 
     sellerUpper.includes('BSNL') || 
     sellerUpper.includes('BHARAT SANCHAR') ||
@@ -210,10 +267,9 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
     sellerUpper.includes('COMMISSIONER') || 
     sellerUpper.includes('AUTHORITY') || 
     sellerUpper.includes('CORPORATION') || 
-    textUpper.includes('RCM') || 
-    textUpper.includes('REVERSE CHARGE') || 
-    textUpper.includes('REVERSE-CHARGE') ||
-    !!(parsedEligibility && parsedEligibility.some(el => {
+    textUpper.includes('GST REQUIREMENT UNDER RCM') ||
+    textUpper.includes('UNDER REVERSE CHARGE') ||
+    (parsedEligibility && parsedEligibility.some(el => {
       const elUpper = el.toUpperCase();
       return elUpper.includes('RCM') || elUpper.includes('REVERSE CHARGE') || elUpper.includes('REVERSE-CHARGE');
     }));
@@ -227,34 +283,22 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // SPCB Consent to Operate
-  const needsSpcb = 
-    categoryUpper.includes('WASTE') || 
-    categoryUpper.includes('BATTERY') || 
-    categoryUpper.includes('OIL') || 
-    categoryUpper.includes('HAZARDOUS') || 
-    categoryUpper.includes('CHEMICAL') || 
-    categoryUpper.includes('METAL') || 
-    categoryUpper.includes('PLASTIC') || 
-    categoryUpper.includes('RUBBER') ||
-    textUpper.includes('WASTE') || 
-    textUpper.includes('BATTERY') || 
-    textUpper.includes('OIL') || 
-    textUpper.includes('HAZARDOUS') || 
-    textUpper.includes('CHEMICAL') || 
-    textUpper.includes('SMELTER') || 
-    textUpper.includes('TRANSFORMER') || 
-    textUpper.includes('COPPER') || 
-    textUpper.includes('ZINC') || 
-    textUpper.includes('CABLE') || 
-    textUpper.includes('PLASTIC') || 
-    textUpper.includes('RUBBER') || 
-    textUpper.includes('PCB') || 
-    textUpper.includes('SPCB') || 
-    textUpper.includes('POLLUTION') ||
-    (parsedEligibility && parsedEligibility.some(el => {
-      const elUpper = el.toUpperCase();
-      return elUpper.includes('SPCB') || elUpper.includes('PCB') || elUpper.includes('POLLUTION') || elUpper.includes('CONSENT TO OPERATE');
-    }));
+  const needsSpcb = hasItems 
+    ? hasHazardous 
+    : (
+        categoryUpper.includes('WASTE') || 
+        categoryUpper.includes('BATTERY') || 
+        categoryUpper.includes('OIL') || 
+        categoryUpper.includes('HAZARDOUS') || 
+        categoryUpper.includes('CHEMICAL') || 
+        categoryUpper.includes('METAL') || 
+        categoryUpper.includes('PLASTIC') || 
+        categoryUpper.includes('RUBBER') ||
+        (parsedEligibility && parsedEligibility.some(el => {
+          const elUpper = el.toUpperCase();
+          return elUpper.includes('SPCB') || elUpper.includes('PCB') || elUpper.includes('POLLUTION') || elUpper.includes('CONSENT TO OPERATE');
+        }))
+      );
 
   if (needsSpcb) {
     requiredDocuments.push({
@@ -265,21 +309,17 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // CPCB Registration
-  const needsCpcb = 
-    categoryUpper.includes('E-WASTE') || 
-    categoryUpper.includes('ELECTRONIC') || 
-    categoryUpper.includes('TELECOM') || 
-    textUpper.includes('E-WASTE') || 
-    textUpper.includes('EWASTE') || 
-    textUpper.includes('COMPUTER') || 
-    textUpper.includes('LAPTOP') || 
-    textUpper.includes('ELECTRONIC') || 
-    textUpper.includes('TELECOM') || 
-    textUpper.includes('CPCB') ||
-    (parsedEligibility && parsedEligibility.some(el => {
-      const elUpper = el.toUpperCase();
-      return elUpper.includes('CPCB') || elUpper.includes('E-WASTE') || elUpper.includes('EWASTE');
-    }));
+  const needsCpcb = hasItems 
+    ? hasEWaste 
+    : (
+        categoryUpper.includes('E-WASTE') || 
+        categoryUpper.includes('ELECTRONIC') || 
+        categoryUpper.includes('TELECOM') || 
+        (parsedEligibility && parsedEligibility.some(el => {
+          const elUpper = el.toUpperCase();
+          return elUpper.includes('CPCB') || elUpper.includes('E-WASTE') || elUpper.includes('EWASTE');
+        }))
+      );
 
   if (needsCpcb) {
     requiredDocuments.push({
@@ -290,26 +330,21 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // ELV (End-Of-Life Vehicle)
-  const needsElv = 
-    categoryUpper.includes('VEHICLE') || 
-    categoryUpper.includes('CAR') || 
-    categoryUpper.includes('BUS') || 
-    categoryUpper.includes('TRUCK') || 
-    categoryUpper.includes('DUMPER') || 
-    categoryUpper.includes('AUTOMOBILE') || 
-    textUpper.includes('VEHICLE') || 
-    textUpper.includes('CAR') || 
-    textUpper.includes('BUS') || 
-    textUpper.includes('TRUCK') || 
-    textUpper.includes('DUMPER') || 
-    textUpper.includes('AUTOMOBILE') || 
-    textUpper.includes('TRACTOR') || 
-    textUpper.includes('RTO') || 
-    textUpper.includes('ELV') ||
-    (parsedEligibility && parsedEligibility.some(el => {
-      const elUpper = el.toUpperCase();
-      return elUpper.includes('ELV') || elUpper.includes('VEHICLE') || elUpper.includes('RTO') || elUpper.includes('DISMANTLING');
-    }));
+  const needsElv = hasItems 
+    ? hasRVSF 
+    : (
+        categoryUpper.includes('VEHICLE') || 
+        categoryUpper.includes('CAR') || 
+        categoryUpper.includes('BUS') || 
+        categoryUpper.includes('TRUCK') || 
+        categoryUpper.includes('DUMPER') || 
+        categoryUpper.includes('AUTOMOBILE') || 
+        categoryUpper.includes('RVSF') ||
+        (parsedEligibility && parsedEligibility.some(el => {
+          const elUpper = el.toUpperCase();
+          return elUpper.includes('ELV') || elUpper.includes('VEHICLE') || elUpper.includes('RTO') || elUpper.includes('DISMANTLING') || elUpper.includes('RVSF');
+        }))
+      );
 
   if (needsElv) {
     requiredDocuments.push({

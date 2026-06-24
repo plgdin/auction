@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import path from "path";
-import fetch from "node-fetch";
 import { createRequire } from "module";
+import { parseMstcCatalogText } from "../scraper/parsers/mstcParser.js";
 
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
@@ -55,8 +55,14 @@ async function processBatch(records: any[]): Promise<number> {
           // Not JSON, or empty/malformed
         }
 
-        // If it already has both start and close time, we can skip downloading/parsing
-        if (parsedSummary.auctionStartTime && parsedSummary.auctionCloseTime) {
+        // Check if we already processed it with the new parser (check if first lot contains pcbGroup property)
+        const firstItem = parsedSummary.items && parsedSummary.items[0];
+        const isAlreadyProcessedWithNewParser = firstItem && (
+          Object.prototype.hasOwnProperty.call(firstItem, 'pcbGroup') || 
+          Object.prototype.hasOwnProperty.call(firstItem, 'productType')
+        );
+
+        if (isAlreadyProcessedWithNewParser) {
           return false;
         }
 
@@ -100,35 +106,28 @@ async function processBatch(records: any[]): Promise<number> {
           .map((l: string) => l.trim())
           .join("\n");
 
-        // Extract scheduled start and close date/time
-        const startMatch = cleanText.match(/(?:Scheduled\s+Auction\s+Start\s+Date\s*(?:and|&)\s*Time|Scheduled\s+Start\s+Date\s*(?:and|&)\s*Time|Auction\s+Start\s+Date\s*(?:and|&)\s*Time|Scheduled\s+Auction\s+Start\s+Date|Auction\s+Start\s+Date)\s*[:|.-]?\s*(\d{2}[-/]\d{2}[-/]\d{2,4}\s+\d{2}:\d{2}(?::\d{2})?)/i);
-        const auctionStartTime = startMatch ? startMatch[1].trim() : undefined;
-
-        const closeMatch = cleanText.match(/(?:Scheduled\s+Auction\s+Close\s+Date\s*(?:and|&)\s*Time|Scheduled\s+Close\s+Date\s*(?:and|&)\s*Time|Auction\s+Close\s+Date\s*(?:and|&)\s*Time|Scheduled\s+Auction\s+Close\s+Date|Auction\s+Close\s+Date)\s*[:|.-]?\s*(\d{2}[-/]\d{2}[-/]\d{2,4}\s+\d{2}:\d{2}(?::\d{2})?)/i);
-        const auctionCloseTime = closeMatch ? closeMatch[1].trim() : undefined;
-
-        if (!auctionStartTime && !auctionCloseTime) {
-          return false;
-        }
-
-        // Update the JSON object
-        parsedSummary.auctionStartTime = auctionStartTime || parsedSummary.auctionStartTime;
-        parsedSummary.auctionCloseTime = auctionCloseTime || parsedSummary.auctionCloseTime;
+        // Parse with the new parser logic
+        const newSummary = parseMstcCatalogText(
+          cleanText,
+          record.category_name,
+          record.seller_name,
+          record.location || ""
+        );
 
         const updatePayload: any = {
-          raw_materials_text: JSON.stringify(parsedSummary),
+          raw_materials_text: JSON.stringify(newSummary),
           updated_at: new Date().toISOString(),
         };
 
-        if (auctionStartTime) {
-          const isoStart = parsePdfDateTimeToISO(auctionStartTime);
+        if (newSummary.auctionStartTime) {
+          const isoStart = parsePdfDateTimeToISO(newSummary.auctionStartTime);
           if (isoStart) {
             updatePayload.opening_date = isoStart;
           }
         }
 
-        if (auctionCloseTime) {
-          const isoClose = parsePdfDateTimeToISO(auctionCloseTime);
+        if (newSummary.auctionCloseTime) {
+          const isoClose = parsePdfDateTimeToISO(newSummary.auctionCloseTime);
           if (isoClose) {
             updatePayload.closing_date = isoClose;
           }
@@ -143,7 +142,7 @@ async function processBatch(records: any[]): Promise<number> {
           console.error(`Failed to update DB for ${record.mstc_auction_number}:`, updateError.message);
           return false;
         } else {
-          console.log(`[UPDATED] ${record.mstc_auction_number} -> Start: ${auctionStartTime || "N/A"}, Close: ${auctionCloseTime || "N/A"}`);
+          console.log(`[UPDATED] ${record.mstc_auction_number} -> Start: ${newSummary.auctionStartTime || "N/A"}, Close: ${newSummary.auctionCloseTime || "N/A"}`);
           return true;
         }
       } catch (err: any) {
@@ -174,7 +173,7 @@ async function run() {
     // Fetch completed records
     const { data: records, error } = await supabase
       .from("mstc_auctions")
-      .select("id, mstc_auction_number, sanitized_document_path, raw_materials_text")
+      .select("id, mstc_auction_number, sanitized_document_path, raw_materials_text, category_name, seller_name, location")
       .eq("asset_status", "completed")
       .order("scraped_at", { ascending: false })
       .range(page * pageSize, (page + 1) * pageSize - 1);

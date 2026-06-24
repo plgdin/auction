@@ -464,6 +464,20 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <td className="py-3 px-3.5 text-center  font-bold text-slate-400">{row.sr}</td>
                           <td className="py-3 px-3.5 text-slate-900">
                             <div className="font-bold">{row.description}</div>
+                            {(row.pcbGroup || row.productType) && (
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {row.pcbGroup && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                                    PCB Group: {row.pcbGroup}
+                                  </span>
+                                )}
+                                {row.productType && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-50 text-slate-700 border border-slate-100">
+                                    Type: {row.productType}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                             {/* Lot Images */}
                             {(() => {
                               const rawRowImages = (row.images || []).filter((img: string) => !img.toLowerCase().endsWith('.pdf'));

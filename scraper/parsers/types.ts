@@ -22,6 +22,8 @@ export interface CatalogItem {
   images?: string[];
   marketPrice?: string;
   subItems?: SubItem[];
+  pcbGroup?: string;
+  productType?: string;
 }
 
 export interface KeyContact {

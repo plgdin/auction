@@ -492,17 +492,32 @@ export function parseLotBlocks(
 
     // ── Extract lot description ───────────────────────────────────────────
     let lotDescription = "";
+    let pcbGroup: string | undefined = undefined;
+    let productType: string | undefined = undefined;
+
     const descTextMatch = block.match(
       /Category\s*-[^\n]*\n([\s\S]*?)(?=Quantity\s*-|Start\s*Price|Post\s*Bid|Bid\s*Increment|TCS|GST|Lot Location|State)/i,
     );
     if (descTextMatch) {
-      let rawDesc = descTextMatch[1];
+      const rawDesc = descTextMatch[1];
+
+      const pcbGroupMatch = rawDesc.match(/PCB Group\s*[-:]\s*([^\r\n]+)/i);
+      if (pcbGroupMatch) {
+        pcbGroup = pcbGroupMatch[1].replace(/^[\s-:]+/, "").trim();
+      }
+
+      const productTypeMatch = rawDesc.match(/Product Type\s*[-:]\s*([^\r\n]+)/i);
+      if (productTypeMatch) {
+        productType = productTypeMatch[1].replace(/^[\s-:]+/, "").trim();
+      }
+
+      let cleanDesc = rawDesc;
       // Clean multiline metadata fields before replacing newlines
-      rawDesc = rawDesc.replace(/PCB Group\s*[-:]\s*[^\r\n]*/gi, "");
-      rawDesc = rawDesc.replace(/Product Type\s*[-:]\s*[^\r\n]*/gi, "");
-      rawDesc = rawDesc.replace(/Category\s*[-:]\s*[^\r\n]*/gi, "");
+      cleanDesc = cleanDesc.replace(/PCB Group\s*[-:]\s*[^\r\n]*/gi, "");
+      cleanDesc = cleanDesc.replace(/Product Type\s*[-:]\s*[^\r\n]*/gi, "");
+      cleanDesc = cleanDesc.replace(/Category\s*[-:]\s*[^\r\n]*/gi, "");
       
-      lotDescription = rawDesc.replace(/\r?\n/g, " ").trim();
+      lotDescription = cleanDesc.replace(/\r?\n/g, " ").trim();
     }
 
     // ── Extract quantity & unit (with false-positive guards) ──────────────
@@ -706,6 +721,8 @@ export function parseLotBlocks(
       attachments: attachments.length > 0 ? attachments : undefined,
       marketPrice: lotMarketPrice,
       subItems: subItems.length > 0 ? subItems : undefined,
+      pcbGroup,
+      productType,
     });
   }
 
