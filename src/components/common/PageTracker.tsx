@@ -10,7 +10,7 @@ export function PageTracker() {
 
     // Dynamic SEO Titles & Meta Descriptions
     let title = 'Lelam | MSTC eAuctions Bidding Assistant & Analytics';
-    let description = 'Lelam is an advanced bidding assistant and analytics platform for MSTC eAuctions, offering asset valuation, cost calculations, and procurement tools.';
+    let description = 'Lelam is an assistive consultancy tool for MSTC eAuctions that calculates total costs, tracks live lots, builds quotes, and manages document compliance.';
 
     const path = location.pathname;
     if (path === '/') {
