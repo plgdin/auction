@@ -312,6 +312,74 @@ export const storageService = {
   },
 
   /**
+   * Securely views a private file by opening a new tab and rendering a local Blob URL
+   */
+  async viewPrivateFile(bucketName: string, storagePath: string): Promise<boolean> {
+    let newWindow: Window | null = null;
+    try {
+      // Open the window immediately to prevent popup blockers
+      newWindow = window.open('', '_blank');
+      if (!newWindow) {
+        return false;
+      }
+      
+      newWindow.document.title = 'Loading Catalog PDF...';
+      newWindow.document.body.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; background-color: #f8fafc; margin: 0; padding: 24px; box-sizing: border-box; text-align: center;">
+          <div style="border: 3.5px solid #e2e8f0; border-top: 3.5px solid #0f172a; border-radius: 50%; width: 38px; height: 38px; animation: spin 0.8s linear infinite; margin-bottom: 18px;"></div>
+          <p style="font-size: 15px; font-weight: 600; margin: 0;">Loading secure catalog document</p>
+          <p style="font-size: 13px; color: #64748b; margin: 6px 0 0 0;">Verifying credentials and retrieving file...</p>
+          <style>
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          </style>
+        </div>
+      `;
+
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .download(storagePath);
+
+      if (error) {
+        console.error('Error downloading private file for viewing:', error);
+        if (newWindow) {
+          newWindow.document.body.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background-color: #f8fafc; margin: 0; padding: 24px; box-sizing: border-box; text-align: center;">
+              <div style="color: #ef4444; margin-bottom: 16px;">
+                <svg style="width: 48px; height: 48px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+              </div>
+              <h2 style="font-size: 18px; font-weight: 700; margin: 0;">Failed to load catalog</h2>
+              <p style="font-size: 14px; color: #64748b; margin: 8px 0 0 0; max-width: 320px; line-height: 1.5;">The document could not be securely retrieved or you do not have permission to view it.</p>
+            </div>
+          `;
+        }
+        return false;
+      }
+
+      const blobUrl = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
+      if (newWindow) {
+        newWindow.location.href = blobUrl;
+      }
+      return true;
+    } catch (err) {
+      console.error('Unexpected error viewing private file:', err);
+      if (newWindow) {
+        newWindow.document.body.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; background-color: #f8fafc; margin: 0; padding: 24px; box-sizing: border-box; text-align: center;">
+            <h2 style="font-size: 18px; font-weight: 700; margin: 0;">An error occurred</h2>
+            <p style="font-size: 14px; color: #64748b; margin: 8px 0 0 0;">An unexpected error occurred while loading the catalog document.</p>
+          </div>
+        `;
+      }
+      return false;
+    }
+  },
+
+  /**
    * Generates a temporary signed URL for a private file
    */
   async getSignedUrlForBucket(bucketName: string, storagePath: string, expiresIn: number = 60): Promise<string | null> {

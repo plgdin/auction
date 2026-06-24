@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown, Mail, Phone, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice } from '../../services/publicService';
 import { useAuthStore } from '../../store/authStore';
@@ -95,6 +95,33 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
+  const [viewing, setViewing] = useState(false);
+
+  const handleViewPdf = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please log in to view the catalog PDF.');
+      return;
+    }
+
+    if (!item.sanitized_document_path) {
+      toast.error('No document path available.');
+      return;
+    }
+
+    setViewing(true);
+    try {
+      const storagePath = storageService.extractStoragePath(item.sanitized_document_path);
+      const success = await storageService.viewPrivateFile('auction_documents', storagePath);
+      if (!success) {
+        toast.error('Failed to open the catalog PDF.');
+      }
+    } catch (error) {
+      console.error('View PDF error:', error);
+      toast.error('An error occurred while opening the catalog.');
+    } finally {
+      setViewing(false);
+    }
+  };
 
   const handleDownloadPdf = async () => {
     if (!isAuthenticated) {
@@ -1593,6 +1620,23 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               className="w-full sm:w-auto px-6 py-3 rounded-xl text-[15px] font-bold text-slate-650 hover:text-slate-850 hover:bg-slate-200 transition-all cursor-pointer text-center"
             >
               Close Details
+            </button>
+            <button
+              onClick={handleViewPdf}
+              disabled={viewing}
+              className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {viewing ? (
+                <>
+                  <div className="w-4 h-4 mr-2 border-2 border-slate-850 border-t-transparent rounded-full animate-spin"></div>
+                  Opening...
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4 mr-2" />
+                  View Catalog
+                </>
+              )}
             </button>
             <button
               onClick={handleDownloadPdf}
