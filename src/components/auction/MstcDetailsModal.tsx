@@ -1010,9 +1010,15 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 {/* Dates & Countdown */}
                 <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
                   <div className="flex flex-col">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Auction Date</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Bid Opening Time</span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                    </span>
+                  </div>
+                  <div className="flex flex-col border-t border-slate-100 pt-2">
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Bid Closing Time</span>
+                    <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
+                      {parsedCloseDate ? parsedCloseDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : new Date(item?.closing_date || Date.now()).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
@@ -1026,7 +1032,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     <div>
                       {(() => {
                         if (isClosed) {
-                          return <span className="inline-block font-bold text-xs px-2.5 py-1 rounded border border-slate-200 text-slate-500 bg-slate-50">Bidding Closed</span>;
+                          return <span className="inline-block font-bold text-xs px-2.5 py-1 rounded border border-slate-200 text-slate-500 bg-slate-50">Bid Closed</span>;
                         }
                         if (isStarted) {
                           return <span className="inline-block font-bold text-xs px-2.5 py-1 rounded border border-rose-200 text-rose-700 bg-rose-50 animate-pulse">Bidding Started</span>;

@@ -48,6 +48,26 @@ import { parseMstcCatalogText, parseSubItemsFromText } from "./parsers/mstcParse
 import type { CatalogSummary } from "./parsers/mstcParser.js";
 import { performOcr, shouldPerformOcr } from "./utils/ocrUtils.js";
 import { isTermsOrInstructionPage } from "./parsers/documentClassifier.js";
+
+function parsePdfDateTimeToISO(dateTimeStr: string | undefined): string | null {
+  if (!dateTimeStr) return null;
+  const match = dateTimeStr.trim().match(/^(\d{2})[-/](\d{2})[-/](\d{2,4})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (match) {
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    let year = parseInt(match[3], 10);
+    if (year < 100) {
+      year += 2000;
+    }
+    const hours = parseInt(match[4], 10);
+    const minutes = parseInt(match[5], 10);
+    const seconds = match[6] ? parseInt(match[6], 10) : 0;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${year}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:${pad(seconds)}+05:30`;
+  }
+  return null;
+}
+
 import { calculateTotalMarketValue } from "../src/utils/valuationUtils.js";
 import { validateCatalogDescriptions } from "../src/utils/mstcHelpers.js";
 
@@ -1318,6 +1338,8 @@ export async function processRecord(record: QueueRecord): Promise<void> {
 
   // 3. Parse PDF text and generate structured catalog summary
   let rawMaterialsText = record.raw_materials_text;
+  let parsedStartTime: string | undefined;
+  let parsedCloseTime: string | undefined;
   try {
     jobLog.info({}, "Parsing PDF text content");
     const parsedPdf = await pdf(fileBuffer);
@@ -1332,6 +1354,8 @@ export async function processRecord(record: QueueRecord): Promise<void> {
         record.seller_name || "",
         record.location || "",
       );
+      parsedStartTime = summaryObj.auctionStartTime;
+      parsedCloseTime = summaryObj.auctionCloseTime;
 
       // Initialize item.images and pre-compute description embeddings
       const lotEmbeddings = new Map<string, number[]>();
@@ -1525,6 +1549,19 @@ export async function processRecord(record: QueueRecord): Promise<void> {
     error_log: null,
     updated_at: new Date().toISOString(),
   };
+
+  if (parsedStartTime) {
+    const isoStart = parsePdfDateTimeToISO(parsedStartTime);
+    if (isoStart) {
+      updatePayload.opening_date = isoStart;
+    }
+  }
+  if (parsedCloseTime) {
+    const isoClose = parsePdfDateTimeToISO(parsedCloseTime);
+    if (isoClose) {
+      updatePayload.closing_date = isoClose;
+    }
+  }
 
   if (embeddingStr) {
     updatePayload.embedding = embeddingStr;

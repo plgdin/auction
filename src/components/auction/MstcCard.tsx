@@ -95,7 +95,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
 
   const timeLeftBadge = isClosed ? (
     <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-slate-200 text-slate-500 bg-slate-50">
-      Bidding Closed
+      Bid Closed
     </span>
   ) : isStarted ? (
     <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-rose-200 text-rose-700 bg-rose-50 animate-pulse">
@@ -250,7 +250,11 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               <div className="space-y-2 text-xs border-l border-slate-100 pl-4">
                 <div className="flex items-center text-slate-655">
                   <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Date: <strong className="text-slate-700 font-semibold">{parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
+                  <span>Opening: <strong className="text-slate-700 font-semibold">{parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
+                </div>
+                <div className="flex items-center text-slate-655">
+                  <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                  <span>Closing: <strong className="text-slate-700 font-semibold">{parsedCloseDate ? parsedCloseDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : new Date(item.closing_date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</strong></span>
                 </div>
                 <div className="flex items-center text-slate-655">
                   <Eye className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
@@ -387,9 +391,15 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
 
         <div className="space-y-1.5 mb-4 text-xs text-slate-500 border-t border-slate-50 pt-3">
           <div className="flex justify-between">
-            <span>Auction Date:</span>
+            <span>Bid Opening:</span>
             <span className="font-semibold text-slate-700">
               {parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Bid Closing:</span>
+            <span className="font-semibold text-slate-700">
+              {parsedCloseDate ? parsedCloseDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : new Date(item.closing_date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
             </span>
           </div>
           <div className="flex justify-between">

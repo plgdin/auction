@@ -149,7 +149,7 @@ export function BiddingPanel({ auction, bids, currentMaxBid }: BiddingPanelProps
             <div className="pt-6">
               {!isActive ? (
                 <button disabled className="w-full flex justify-center items-center px-8 py-4 border border-transparent text-lg font-bold rounded-xl text-slate-500 bg-slate-100 cursor-not-allowed">
-                  Bidding Closed
+                  Bid Closed
                 </button>
               ) : (
                 <div className="space-y-3">

@@ -107,6 +107,13 @@ export function parseMstcCatalogText(
   // 6. Inspection details
   const inspectionDetails = extractInspectionDetails(text, keyContacts);
 
+  // 7. Extract scheduled start and close date/time
+  const startMatch = cleanText.match(/(?:Scheduled\s+Auction\s+Start\s+Date\s*(?:and|&)\s*Time|Scheduled\s+Start\s+Date\s*(?:and|&)\s*Time|Auction\s+Start\s+Date\s*(?:and|&)\s*Time|Scheduled\s+Auction\s+Start\s+Date|Auction\s+Start\s+Date)\s*[:|.-]?\s*(\d{2}[-/]\d{2}[-/]\d{2,4}\s+\d{2}:\d{2}(?::\d{2})?)/i);
+  const auctionStartTime = startMatch ? startMatch[1].trim() : undefined;
+
+  const closeMatch = cleanText.match(/(?:Scheduled\s+Auction\s+Close\s+Date\s*(?:and|&)\s*Time|Scheduled\s+Close\s+Date\s*(?:and|&)\s*Time|Auction\s+Close\s+Date\s*(?:and|&)\s*Time|Scheduled\s+Auction\s+Close\s+Date|Auction\s+Close\s+Date)\s*[:|.-]?\s*(\d{2}[-/]\d{2}[-/]\d{2,4}\s+\d{2}:\d{2}(?::\d{2})?)/i);
+  const auctionCloseTime = closeMatch ? closeMatch[1].trim() : undefined;
+
   return {
     overview,
     scopeOfWork,
@@ -116,6 +123,8 @@ export function parseMstcCatalogText(
     keyContacts,
     inspectionDetails,
     auctionType,
+    auctionStartTime,
+    auctionCloseTime,
   };
 }
 

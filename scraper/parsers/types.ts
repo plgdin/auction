@@ -56,4 +56,6 @@ export interface CatalogSummary {
   inspectionDetails?: InspectionDetails;
   needsReview?: boolean;
   reviewReason?: string;
+  auctionStartTime?: string;
+  auctionCloseTime?: string;
 }
