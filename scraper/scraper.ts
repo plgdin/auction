@@ -390,7 +390,7 @@ async function executeDiscoveryScraper() {
       .from('mstc_auctions')
       .upsert(finalRows, { 
         onConflict: 'mstc_auction_number',
-        ignoreDuplicates: false 
+        ignoreDuplicates: true 
       });
 
     if (upsertError) {

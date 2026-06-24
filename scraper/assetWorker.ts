@@ -45,6 +45,7 @@ import type { CatalogSummary } from "./parsers/mstcParser.js";
 import { performOcr, shouldPerformOcr } from "./utils/ocrUtils.js";
 import { isTermsOrInstructionPage } from "./parsers/documentClassifier.js";
 import { calculateTotalMarketValue } from "../src/utils/valuationUtils.js";
+import { validateCatalogDescriptions } from "../src/utils/mstcHelpers.js";
 
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
@@ -1076,90 +1077,112 @@ export async function processRecord(record: QueueRecord): Promise<void> {
 
   jobLog.info({}, "Starting document processing");
 
-  const url = new URL(record.source_pdf_url);
-  const aucId = url.searchParams.get("auc") || "";
-
-  const formData = new URLSearchParams();
-  formData.append("auc", aucId);
-  formData.append("cat", "0");
-  formData.append("sell", "0");
-
   const headers = buildMstcHeaders();
 
-  let payloadResponse;
-  const fetchAttempts = 3;
-  let lastFetchError: any = null;
+  let fileBuffer: Buffer | null = null;
+  let catalogUrl = "";
+  const sanitizedAuctionNum = record.id;
+  const storagePath = `mstc-catalogs/${sanitizedAuctionNum}.pdf`;
 
-  for (let attempt = 1; attempt <= fetchAttempts; attempt++) {
-    try {
-      payloadResponse = await fetch(MSTC_CATALOG_PDF_ENDPOINT, {
-        method: "POST",
-        body: formData,
-        headers,
-        timeout: CATALOG_DOWNLOAD_TIMEOUT_MS,
-      } as any);
-      lastFetchError = null;
-      break;
-    } catch (fetchErr: any) {
-      lastFetchError = fetchErr;
-      jobLog.warn(
-        { attempt, errorMessage: fetchErr.message },
-        "PDF catalog fetch failed, retrying...",
-      );
-      if (attempt < fetchAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+  // 1. Try to download catalog PDF from storage cache first to save bandwidth and prevent rate-limits
+  try {
+    jobLog.info({ storagePath }, "Checking storage cache for existing catalog PDF");
+    const { data: downloadData, error: downloadError } = await supabase.storage
+      .from("auction_documents")
+      .download(storagePath);
+
+    if (!downloadError && downloadData) {
+      fileBuffer = Buffer.from(await downloadData.arrayBuffer());
+      catalogUrl = supabase.storage
+        .from("auction_documents")
+        .getPublicUrl(storagePath).data.publicUrl;
+      jobLog.info({}, "Catalog PDF successfully retrieved from Supabase Storage cache");
+    }
+  } catch (err: any) {
+    jobLog.warn({ errorMessage: err.message }, "Error checking Storage cache, falling back to MSTC");
+  }
+
+  // 2. If not found in cache, download from MSTC
+  if (!fileBuffer) {
+    const url = new URL(record.source_pdf_url);
+    const aucId = url.searchParams.get("auc") || "";
+
+    const formData = new URLSearchParams();
+    formData.append("auc", aucId);
+    formData.append("cat", "0");
+    formData.append("sell", "0");
+
+    let payloadResponse;
+    const fetchAttempts = 3;
+    let lastFetchError: any = null;
+
+    for (let attempt = 1; attempt <= fetchAttempts; attempt++) {
+      try {
+        payloadResponse = await fetch(MSTC_CATALOG_PDF_ENDPOINT, {
+          method: "POST",
+          body: formData,
+          headers,
+          timeout: CATALOG_DOWNLOAD_TIMEOUT_MS,
+        } as any);
+        lastFetchError = null;
+        break;
+      } catch (fetchErr: any) {
+        lastFetchError = fetchErr;
+        jobLog.warn(
+          { attempt, errorMessage: fetchErr.message },
+          "PDF catalog fetch failed, retrying...",
+        );
+        if (attempt < fetchAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+        }
       }
     }
-  }
 
-  if (lastFetchError) {
-    throw lastFetchError;
-  }
-
-  if (!payloadResponse || !payloadResponse.ok) {
-    const status = payloadResponse ? payloadResponse.status : 0;
-    let errMessage = `Catalog download failed with status ${status}`;
-    if (status >= 500) {
-      errMessage = `MSTC Server Error: MSTC returned HTTP ${status} (Internal Server Error / IBM HTTP Server)`;
+    if (lastFetchError) {
+      throw lastFetchError;
     }
-    throw new Error(errMessage);
-  }
 
-  let fileBuffer: Buffer | null = Buffer.from(
-    await payloadResponse.arrayBuffer(),
-  );
-
-  // Validate PDF structure
-  if (fileBuffer.toString("utf-8", 0, 4) !== "%PDF") {
-    const preview = fileBuffer.toString("utf-8", 0, 1000);
-    if (
-      preview.includes("IBM_HTTP_Server") ||
-      preview.includes("Internal Server Error")
-    ) {
-      throw new Error(
-        "MSTC Server Error: IBM HTTP Server returned 500 (Internal Server Error) instead of a PDF catalog.",
-      );
+    if (!payloadResponse || !payloadResponse.ok) {
+      const status = payloadResponse ? payloadResponse.status : 0;
+      let errMessage = `Catalog download failed with status ${status}`;
+      if (status >= 500) {
+        errMessage = `MSTC Server Error: MSTC returned HTTP ${status} (Internal Server Error / IBM HTTP Server)`;
+      }
+      throw new Error(errMessage);
     }
-    if (
-      preview.includes("session") ||
-      preview.includes("timeout") ||
-      preview.includes("login")
-    ) {
-      throw new Error(
-        "Session expired or invalid. Please run the scraper again to renew cookies.",
-      );
+
+    fileBuffer = Buffer.from(await payloadResponse.arrayBuffer());
+
+    // Validate PDF structure
+    if (fileBuffer.toString("utf-8", 0, 4) !== "%PDF") {
+      const preview = fileBuffer.toString("utf-8", 0, 1000);
+      if (
+        preview.includes("IBM_HTTP_Server") ||
+        preview.includes("Internal Server Error")
+      ) {
+        throw new Error(
+          "MSTC Server Error: IBM HTTP Server returned 500 (Internal Server Error) instead of a PDF catalog.",
+        );
+      }
+      if (
+        preview.includes("session") ||
+        preview.includes("timeout") ||
+        preview.includes("login")
+      ) {
+        throw new Error(
+          "Session expired or invalid. Please run the scraper again to renew cookies.",
+        );
+      }
+      throw new Error("Downloaded file is not a valid PDF.");
     }
-    throw new Error("Downloaded file is not a valid PDF.");
+
+    // Upload catalog PDF to storage
+    catalogUrl = await uploadToStorage(
+      storagePath,
+      fileBuffer,
+      "application/pdf",
+    );
   }
-
-  const sanitizedAuctionNum = record.id;
-
-  // Upload catalog PDF
-  const catalogUrl = await uploadToStorage(
-    `mstc-catalogs/${sanitizedAuctionNum}.pdf`,
-    fileBuffer,
-    "application/pdf",
-  );
 
   // 1. Render First Page Preview
   jobLog.info({}, "Rendering PDF first page preview");
@@ -1343,6 +1366,27 @@ export async function processRecord(record: QueueRecord): Promise<void> {
         jobLog.warn(
           { errorMessage: valErr.message },
           "Failed to calculate total market value",
+        );
+      }
+
+      // Run catalog validation check for improper/confusing lot descriptions
+      try {
+        const validation = validateCatalogDescriptions(summaryObj.items || [], record.category_name || "");
+        if (validation.needsReview) {
+          summaryObj.needsReview = true;
+          summaryObj.reviewReason = validation.reason;
+          jobLog.warn(
+            { reason: validation.reason },
+            "Catalog flagged for admin review due to improper/confusing lot descriptions",
+          );
+        } else {
+          summaryObj.needsReview = false;
+          summaryObj.reviewReason = "";
+        }
+      } catch (validationErr: any) {
+        jobLog.warn(
+          { errorMessage: validationErr.message },
+          "Failed to validate catalog descriptions",
         );
       }
 

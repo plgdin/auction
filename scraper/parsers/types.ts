@@ -54,4 +54,6 @@ export interface CatalogSummary {
   totalMarketValue?: number;
   auctionType?: string;
   inspectionDetails?: InspectionDetails;
+  needsReview?: boolean;
+  reviewReason?: string;
 }

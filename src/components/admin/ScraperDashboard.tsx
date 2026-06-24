@@ -26,6 +26,8 @@ import { supabase } from '../../lib/supabase';
 import type { AuditLog } from '../../types/database.types';
 import toast from 'react-hot-toast';
 import { storageService } from '../../services/storageService';
+import { MstcEditModal } from './MstcEditModal';
+import { Edit } from 'lucide-react';
 
 interface ScraperStats {
   total: number;
@@ -44,6 +46,7 @@ export function ScraperDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeSubTab, setActiveSubTab] = useState<'auctions' | 'logs' | 'console'>('auctions');
+  const [selectedEditAuction, setSelectedEditAuction] = useState<any | null>(null);
 
   // Real-time local API states
   const [scraperRunning, setScraperRunning] = useState(false);
@@ -389,7 +392,24 @@ export function ScraperDashboard() {
       auc.category_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (auc.location && auc.location.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const matchesStatus = statusFilter === 'all' || auc.asset_status === statusFilter;
+    let matchesStatus = false;
+    let isFlagged = false;
+    if (auc.raw_materials_text) {
+      try {
+        const parsed = JSON.parse(auc.raw_materials_text);
+        if (parsed && parsed.needsReview) {
+          isFlagged = true;
+        }
+      } catch (e) {}
+    }
+
+    if (statusFilter === 'all') {
+      matchesStatus = true;
+    } else if (statusFilter === 'needs-review') {
+      matchesStatus = isFlagged;
+    } else {
+      matchesStatus = auc.asset_status === statusFilter;
+    }
 
     return matchesSearch && matchesStatus;
   });
@@ -469,8 +489,41 @@ export function ScraperDashboard() {
     );
   }
 
+  const reviewCount = auctions.filter(auc => {
+    if (auc.raw_materials_text) {
+      try {
+        const parsed = JSON.parse(auc.raw_materials_text);
+        return parsed && !!parsed.needsReview;
+      } catch (e) {}
+    }
+    return false;
+  }).length;
+
   return (
     <div className="space-y-6">
+      
+      {/* Review Alert Banner */}
+      {reviewCount > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-900/50 p-4 rounded-xl shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-550 dark:text-amber-400 shrink-0" />
+            <div>
+              <p className="text-sm font-extrabold text-amber-800 dark:text-amber-300">
+                Action Required: {reviewCount} Catalogs need description reviews
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
+                Some catalog lots have empty, short, or placeholder descriptions. Please review and correct them.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setStatusFilter('needs-review')}
+            className="px-4 py-2 bg-amber-550 hover:bg-amber-605 text-white font-extrabold text-xs rounded-lg shadow-xs hover:shadow-sm transition-all shrink-0 ml-4 cursor-pointer"
+          >
+            Filter Review List
+          </button>
+        </div>
+      )}
       
       {/* KPI Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -656,6 +709,7 @@ export function ScraperDashboard() {
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-primary/25 focus:border-primary text-sm bg-white shadow-xs"
               >
                 <option value="all">All Statuses</option>
+                <option value="needs-review">Needs Review ⚠️</option>
                 <option value="completed">Completed</option>
                 <option value="pending">Pending</option>
                 <option value="processing">Processing</option>
@@ -689,107 +743,138 @@ export function ScraperDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
-                  {filteredAuctions.map((auc) => (
-                    <tr key={auc.id} className="hover:bg-slate-50/50 transition-colors">
-                      
-                      {/* Auction Number */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-slate-900">{auc.mstc_auction_number}</span>
-                          <button 
-                            onClick={() => handleCopy(auc.mstc_auction_number)}
-                            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded transition-colors"
-                            title="Copy Auction Number"
-                          >
-                            <Clipboard className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-
-                      {/* Category & Seller */}
-                      <td className="px-6 py-4">
-                        <div className="max-w-xs md:max-w-sm truncate">
-                          <p className="font-semibold text-slate-800 leading-tight truncate">{auc.category_name}</p>
-                          <p className="text-xs text-slate-400 font-medium truncate mt-0.5">{auc.seller_name}</p>
-                        </div>
-                      </td>
-
-                      {/* Location */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-slate-600 font-medium">{auc.location || 'India'}</span>
-                      </td>
-
-                      {/* Closing Date */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-slate-600 font-medium">
-                          {new Date(auc.closing_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                          {new Date(auc.closing_date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          {getStatusBadge(auc.asset_status)}
-                          {auc.asset_status === 'failed' && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <p className="text-[10px] text-rose-500 max-w-[140px] truncate" title={auc.error_log}>
-                                {auc.error_log}
-                              </p>
-                              <button
-                                onClick={() => handleResetSingleFailed(auc.id)}
-                                className="px-1.5 py-0.5 text-[9px] font-bold bg-rose-100 hover:bg-rose-200 text-rose-800 rounded transition-all cursor-pointer"
-                              >
-                                Retry
-                              </button>
-                            </div>
-                          )}
-                          {auc.asset_status === 'pending' && auc.retry_count > 0 && (
-                            <p className="text-[10px] text-amber-500 mt-1">
-                              Retried {auc.retry_count} times
-                            </p>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Public Assets */}
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center gap-3">
-                          {/* source pdf (external link) */}
-                          <a 
-                            href={auc.source_pdf_url} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg transition-colors inline-block"
-                            title="Open MSTC Original URL"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-
-                          {/* downloaded pdf (internal supabase storage link) */}
-                          {auc.sanitized_document_path ? (
+                  {filteredAuctions.map((auc) => {
+                    let isFlagged = false;
+                    let reviewReason = '';
+                    if (auc.raw_materials_text) {
+                      try {
+                        const parsed = JSON.parse(auc.raw_materials_text);
+                        if (parsed && parsed.needsReview) {
+                          isFlagged = true;
+                          reviewReason = parsed.reviewReason || '';
+                        }
+                      } catch (e) {}
+                    }
+                    return (
+                      <tr key={auc.id} className="hover:bg-slate-50/50 transition-colors">
+                        
+                        {/* Auction Number */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-slate-900">{auc.mstc_auction_number}</span>
                             <button 
-                              onClick={(e) => handleViewPrivateAsset(e, auc.sanitized_document_path)}
-                              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg transition-colors inline-block cursor-pointer"
-                              title="Open Downloaded Cloud Storage Document"
+                              onClick={() => handleCopy(auc.mstc_auction_number)}
+                              className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded transition-colors"
+                              title="Copy Auction Number"
                             >
-                              <FileCheck className="w-3.5 h-3.5" />
+                              <Clipboard className="w-3.5 h-3.5" />
                             </button>
-                          ) : (
-                            <span 
-                              className="p-1.5 bg-slate-50 text-slate-300 border border-slate-100 rounded-lg cursor-not-allowed inline-block"
-                              title="Cloud File Awaiting Sync"
-                            >
-                              <FileCheck className="w-3.5 h-3.5" />
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                          </div>
+                        </td>
 
-                    </tr>
-                  ))}
+                        {/* Category & Seller */}
+                        <td className="px-6 py-4">
+                          <div className="max-w-xs md:max-w-sm truncate">
+                            <p className="font-semibold text-slate-800 leading-tight truncate">{auc.category_name}</p>
+                            <p className="text-xs text-slate-400 font-medium truncate mt-0.5">{auc.seller_name}</p>
+                          </div>
+                        </td>
+
+                        {/* Location */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-slate-600 font-medium">{auc.location || 'India'}</span>
+                        </td>
+
+                        {/* Closing Date */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-slate-600 font-medium">
+                            {new Date(auc.closing_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                            {new Date(auc.closing_date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              {getStatusBadge(auc.asset_status)}
+                              {isFlagged && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title={reviewReason}>
+                                  ⚠️ Review
+                                </span>
+                              )}
+                            </div>
+                            {auc.asset_status === 'failed' && (
+                              <div className="flex items-center gap-2 mt-1">
+                                <p className="text-[10px] text-rose-500 max-w-[140px] truncate" title={auc.error_log}>
+                                  {auc.error_log}
+                                </p>
+                                <button
+                                  onClick={() => handleResetSingleFailed(auc.id)}
+                                  className="px-1.5 py-0.5 text-[9px] font-bold bg-rose-100 hover:bg-rose-200 text-rose-800 rounded transition-all cursor-pointer"
+                                >
+                                  Retry
+                                </button>
+                              </div>
+                            )}
+                            {auc.asset_status === 'pending' && auc.retry_count > 0 && (
+                              <p className="text-[10px] text-amber-500 mt-1">
+                                Retried {auc.retry_count} times
+                              </p>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Public Assets & Edit Action */}
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {/* source pdf (external link) */}
+                            <a 
+                              href={auc.source_pdf_url} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg transition-colors inline-block"
+                              title="Open MSTC Original URL"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+
+                            {/* downloaded pdf (internal supabase storage link) */}
+                            {auc.sanitized_document_path ? (
+                              <button 
+                                onClick={(e) => handleViewPrivateAsset(e, auc.sanitized_document_path)}
+                                className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg transition-colors inline-block cursor-pointer"
+                                title="Open Downloaded Cloud Storage Document"
+                              >
+                                <FileCheck className="w-3.5 h-3.5" />
+                              </button>
+                            ) : (
+                              <span 
+                                className="p-1.5 bg-slate-50 text-slate-300 border border-slate-100 rounded-lg cursor-not-allowed inline-block"
+                                title="Cloud File Awaiting Sync"
+                              >
+                                <FileCheck className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+
+                            {/* Edit button */}
+                            {auc.asset_status === 'completed' && (
+                              <button
+                                onClick={() => setSelectedEditAuction(auc)}
+                                className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-800 border border-indigo-200 rounded-lg transition-colors inline-block cursor-pointer"
+                                title="Edit Catalog Details & Descriptions"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1172,6 +1257,14 @@ export function ScraperDashboard() {
           </div>
 
         </div>
+      )}
+
+      {selectedEditAuction && (
+        <MstcEditModal
+          auction={selectedEditAuction}
+          onClose={() => setSelectedEditAuction(null)}
+          onSaveSuccess={() => loadDashboardData(true)}
+        />
       )}
 
     </div>
