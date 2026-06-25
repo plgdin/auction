@@ -1994,43 +1994,66 @@ export const MstcSearchService = {
       const rpcPage = isSearchWithImageFilter ? 1 : (filters?.page || 1);
       const rpcLimit = isSearchWithImageFilter ? 1000 : (filters?.limit || 12);
 
-      // 1. Try Hybrid RPC
-      const { data, error } = await supabase.rpc('hybrid_search_mstc_catalog', {
-        p_search_query: workingQuery || null,
-        p_embedding: embeddingStr as any,
-        p_category_filter: filters?.categories?.[0] || filters?.category || null,
-        p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
-        p_location_filter: filters?.locations?.[0] || filters?.location || null,
-        p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
-        p_start_date: filters?.startDate || null,
-        p_end_date: filters?.endDate || null,
-        p_has_images: null, // Bypass DB filter due to remote DB bug
-        p_has_docs: filters?.hasAssetDocuments || null,
-        p_min_pre_bid: p_min_pre_bid || null,
-        p_max_pre_bid: p_max_pre_bid || null,
-        p_page: rpcPage,
-        p_limit: rpcLimit
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      let searchData = data;
+      // 1. Fetch data
+      let searchData: any[] | null = null;
       let totalCount = 0;
       let returnedCorrectedQuery: string | undefined = undefined;
+      let error: any = null;
+      
+      // If no query is provided, skip the AI/Hybrid search (which requires a >0 match score)
+      // and directly fetch all completed auctions.
+      if (!workingQuery || workingQuery.trim() === '') {
+        let queryBuilder = supabase
+          .from('mstc_auctions')
+          .select('*', { count: 'exact' })
+          .eq('asset_status', 'completed');
+          
+        if (filters?.categories?.[0] || filters?.category) queryBuilder = queryBuilder.like('category_name', `${filters?.categories?.[0] || filters?.category}%`);
+        if (filters?.subcategories?.[0] || filters?.subcategory) queryBuilder = queryBuilder.like('category_name', `%| ${filters?.subcategories?.[0] || filters?.subcategory}`);
+        if (filters?.locations?.[0] || filters?.location) queryBuilder = queryBuilder.eq('location', filters?.locations?.[0] || filters?.location);
+        if (filters?.sellers?.[0] || filters?.seller) queryBuilder = queryBuilder.eq('seller_name', filters?.sellers?.[0] || filters?.seller);
+        if (filters?.startDate) queryBuilder = queryBuilder.gte('opening_date', filters.startDate);
+        if (filters?.endDate) queryBuilder = queryBuilder.lte('opening_date', filters.endDate);
+        
+        const { data: rawData, error: qError, count } = await queryBuilder
+          .order('opening_date', { ascending: false })
+          .range((rpcPage - 1) * rpcLimit, rpcPage * rpcLimit - 1);
+          
+        searchData = rawData;
+        totalCount = count || 0;
+        error = qError;
+      } else {
+        // Run Hybrid RPC
+        const rpcResult = await supabase.rpc('hybrid_search_mstc_catalog', {
+          p_search_query: workingQuery || null,
+          p_embedding: embeddingStr as any,
+          p_category_filter: filters?.categories?.[0] || filters?.category || null,
+          p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
+          p_location_filter: filters?.locations?.[0] || filters?.location || null,
+          p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
+          p_start_date: filters?.startDate || null,
+          p_end_date: filters?.endDate || null,
+          p_has_images: null, // Bypass DB filter due to remote DB bug
+          p_has_docs: filters?.hasAssetDocuments || null,
+          p_min_pre_bid: p_min_pre_bid || null,
+          p_max_pre_bid: p_max_pre_bid || null,
+          p_page: rpcPage,
+          p_limit: rpcLimit
+        });
+        
+        searchData = rpcResult.data;
+        error = rpcResult.error;
 
-      // If the DB text/vector search returned 0 results but there was a meaningful
-      // query, ask the backend for a spell-check auto-correction!
-      if (!searchData || searchData.length === 0) {
-        if (workingQuery && workingQuery.trim().length > 0) {
+        // If the DB text/vector search returned 0 results but there was a meaningful
+        // query, ask the backend for a spell-check auto-correction!
+        if (!searchData || searchData.length === 0) {
           const { data: correctedQuery, error: correctionError } = await supabase.rpc('suggest_search_correction', {
             p_query: workingQuery
           });
 
           if (!correctionError && correctedQuery && correctedQuery !== workingQuery) {
             console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
-            const { data: retryData, error: retryError } = await supabase.rpc('hybrid_search_mstc_catalog', {
+            const retryResult = await supabase.rpc('hybrid_search_mstc_catalog', {
               p_search_query: correctedQuery,
               p_embedding: embeddingStr as any,
               p_category_filter: filters?.categories?.[0] || filters?.category || null,
@@ -2047,22 +2070,28 @@ export const MstcSearchService = {
               p_limit: rpcLimit
             });
 
-            if (!retryError && retryData && retryData.length > 0) {
-              searchData = retryData;
+            if (!retryResult.error && retryResult.data && retryResult.data.length > 0) {
+              searchData = retryResult.data;
               returnedCorrectedQuery = correctedQuery;
+              error = null;
             } else {
               throw new Error('RPC_ZERO_RESULTS');
             }
           } else {
             throw new Error('RPC_ZERO_RESULTS');
           }
-        } else {
-          return { data: [], count: 0, hasDirectMatches: false };
+        }
+        
+        if (searchData && searchData.length > 0) {
+          totalCount = Number(searchData[0].total_count) || 0;
         }
       }
 
-      totalCount = Number(searchData[0].total_count) || 0;
-      const hasDirectMatches = (searchData as any[]).some(item => Number(item.search_rank) > 0);
+      if (error) {
+        throw error;
+      }
+
+      const hasDirectMatches = searchData && searchData.length > 0 && (searchData[0].search_rank !== undefined);
 
       // Fetch is_reauction status for these items to ensure we have it in the UI and can filter by it
       const itemIds = (searchData as any[]).map(item => item.id);
