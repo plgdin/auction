@@ -2261,10 +2261,26 @@ export const MstcSearchService = {
 
       // Fetch is_reauction status for these items to ensure we have it in the UI and can filter by it
       const itemIds = (searchData as any[]).map(item => item.id);
-      const { data: reauctionStatuses, error: statusError } = await supabase
-        .from('mstc_auctions')
-        .select('id, is_reauction')
-        .in('id', itemIds);
+      
+      const reauctionStatuses: any[] = [];
+      let statusError: any = null;
+      const chunkSize = 100;
+      
+      for (let i = 0; i < itemIds.length; i += chunkSize) {
+        const chunk = itemIds.slice(i, i + chunkSize);
+        const { data, error: err } = await supabase
+          .from('mstc_auctions')
+          .select('id, is_reauction')
+          .in('id', chunk);
+        
+        if (err) {
+          statusError = err;
+          break;
+        }
+        if (data) {
+          reauctionStatuses.push(...data);
+        }
+      }
 
       const reauctionMap = new Map<string, boolean>();
       if (!statusError && reauctionStatuses) {
