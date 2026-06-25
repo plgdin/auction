@@ -15,6 +15,78 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+async function getSecurityAttemptContext() {
+  let ipAddress = 'Unknown';
+  let geoData: any = {};
+
+  try {
+    const res = await fetch('https://ipapi.co/json/');
+    if (res.ok) {
+      const data = await res.json();
+      ipAddress = data.ip || 'Unknown';
+      geoData = {
+        city: data.city,
+        region: data.region,
+        country: data.country_name,
+        countryCode: data.country_code,
+        postal: data.postal,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        timezone: data.timezone,
+        org: data.org,
+        asn: data.asn
+      };
+    }
+  } catch (_) {
+    try {
+      const res2 = await fetch('https://api.ipify.org?format=json');
+      if (res2.ok) {
+        const data2 = await res2.json();
+        ipAddress = data2.ip || 'Unknown';
+      }
+    } catch (__) {}
+  }
+
+  const nav = navigator as Navigator & {
+    deviceMemory?: number;
+    connection?: {
+      effectiveType?: string;
+      downlink?: number;
+      rtt?: number;
+      saveData?: boolean;
+    };
+  };
+
+  return {
+    ipAddress,
+    systemInfo: {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      screen: `${window.screen.width}x${window.screen.height}`,
+      viewport: `${window.innerWidth}x${window.innerHeight}`,
+      language: navigator.language,
+      languages: navigator.languages,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      referrer: document.referrer || 'Direct',
+      page: window.location.pathname,
+      cookieEnabled: navigator.cookieEnabled,
+      online: navigator.onLine,
+      deviceMemory: nav.deviceMemory,
+      hardwareConcurrency: navigator.hardwareConcurrency,
+      maxTouchPoints: navigator.maxTouchPoints,
+      colorDepth: window.screen.colorDepth,
+      pixelRatio: window.devicePixelRatio,
+      connection: nav.connection ? {
+        effectiveType: nav.connection.effectiveType,
+        downlink: nav.connection.downlink,
+        rtt: nav.connection.rtt,
+        saveData: nav.connection.saveData
+      } : undefined,
+      geo: geoData
+    }
+  };
+}
+
 export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,6 +105,7 @@ export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) 
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     setAuthError(null);
+    let didLogSecurityAttempt = false;
     try {
       const { session } = await authService.signIn(data.email, data.password);
       
@@ -44,39 +117,7 @@ export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) 
         // Sign out immediately to avoid establishing session
         await authService.signOut();
 
-        let ipAddress = 'Unknown';
-        let geoData: any = {};
-        try {
-          const res = await fetch('https://ipapi.co/json/');
-          if (res.ok) {
-            const data = await res.json();
-            ipAddress = data.ip || 'Unknown';
-            geoData = {
-              city: data.city,
-              region: data.region,
-              country: data.country_name,
-              postal: data.postal,
-              org: data.org
-            };
-          }
-        } catch (_) {
-          try {
-            const res2 = await fetch('https://api.ipify.org?format=json');
-            if (res2.ok) {
-              const data2 = await res2.json();
-              ipAddress = data2.ip || 'Unknown';
-            }
-          } catch (__) {}
-        }
-
-        const systemInfo = {
-          userAgent: navigator.userAgent,
-          platform: navigator.platform,
-          screen: `${window.screen.width}x${window.screen.height}`,
-          viewport: `${window.innerWidth}x${window.innerHeight}`,
-          language: navigator.language,
-          geo: geoData
-        };
+        const { ipAddress, systemInfo } = await getSecurityAttemptContext();
 
         try {
           await publicService.logUnauthorizedLogin({
@@ -86,6 +127,7 @@ export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) 
             user_agent: navigator.userAgent,
             system_info: systemInfo
           });
+          didLogSecurityAttempt = true;
         } catch (logErr) {
           console.error('Failed to log security audit:', logErr);
         }
@@ -101,6 +143,22 @@ export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) 
         navigate('/dashboard');
       }
     } catch (error: any) {
+      if (isAdminLogin && !didLogSecurityAttempt) {
+        try {
+          const { ipAddress, systemInfo } = await getSecurityAttemptContext();
+          await publicService.logUnauthorizedLogin({
+            email: data.email,
+            ip_address: ipAddress,
+            user_agent: navigator.userAgent,
+            system_info: {
+              ...systemInfo,
+              failureReason: error.message || 'Sign in failed'
+            }
+          });
+        } catch (logErr) {
+          console.error('Failed to log security audit:', logErr);
+        }
+      }
       setAuthError(error.message || 'Failed to sign in');
     } finally {
       setIsLoading(false);
