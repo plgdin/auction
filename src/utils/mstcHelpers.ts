@@ -1073,3 +1073,36 @@ export function validateCatalogDescriptions(
 
   return { needsReview: false, reason: '' };
 }
+
+export const hasConfirmedAssetDocuments = (rawMaterialsText: string | null): boolean => {
+  if (!rawMaterialsText) return false;
+  try {
+    const parsed = JSON.parse(rawMaterialsText);
+    if (!parsed || !Array.isArray(parsed.items)) return false;
+    
+    return parsed.items.some((lot: any) => {
+      if (!lot.attachments || !Array.isArray(lot.attachments)) return false;
+      return lot.attachments.some((fileName: any) => {
+        if (typeof fileName !== 'string') return false;
+        const lower = fileName.toLowerCase();
+        
+        // Must end with or contain .pdf
+        const isPdf = lower.includes('.pdf');
+        
+        // Must NOT contain words like photo, image, pic, picture, catalog, preview
+        const isPhotoOrCatalog = 
+          lower.includes('photo') || 
+          lower.includes('image') || 
+          lower.includes('pic') || 
+          lower.includes('picture') || 
+          lower.includes('catalog') || 
+          lower.includes('preview');
+          
+        return isPdf && !isPhotoOrCatalog;
+      });
+    });
+  } catch {
+    return false;
+  }
+};
+

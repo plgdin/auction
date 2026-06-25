@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { ContactMessage, FaqItem, Announcement, NewsUpdate } from '../types/database.types';
 import { PageCache } from '../utils/pageCache';
+import { hasConfirmedAssetDocuments } from '../utils/mstcHelpers';
 import {
   INVERTED_SYNONYM_MAP,
   CONCEPT_MAP,
@@ -2035,7 +2036,7 @@ export const MstcSearchService = {
         }
       }
 
-      const isSearchWithImageFilter = !!workingQuery && filters?.hasImages;
+      const isSearchWithImageFilter = !!(filters?.hasImages || filters?.hasAssetDocuments);
       const rpcPage = isSearchWithImageFilter ? 1 : (filters?.page || 1);
       const rpcLimit = isSearchWithImageFilter ? 1000 : (filters?.limit || 12);
 
@@ -2048,24 +2049,64 @@ export const MstcSearchService = {
       // If no query is provided, skip the AI/Hybrid search (which requires a >0 match score)
       // and directly fetch all completed auctions.
       if (!workingQuery || workingQuery.trim() === '') {
-        let queryBuilder = supabase
-          .from('mstc_auctions')
-          .select('*', { count: 'exact' })
-          .eq('asset_status', 'completed');
-          
-        if (filters?.categories?.[0] || filters?.category) queryBuilder = queryBuilder.like('category_name', `${filters?.categories?.[0] || filters?.category}%`);
-        if (filters?.subcategories?.[0] || filters?.subcategory) queryBuilder = queryBuilder.like('category_name', `%| ${filters?.subcategories?.[0] || filters?.subcategory}`);
-        if (filters?.locations?.[0] || filters?.location) queryBuilder = queryBuilder.eq('location', filters?.locations?.[0] || filters?.location);
-        if (filters?.sellers?.[0] || filters?.seller) queryBuilder = queryBuilder.eq('seller_name', filters?.sellers?.[0] || filters?.seller);
-        if (filters?.startDate) queryBuilder = queryBuilder.gte('opening_date', filters.startDate);
-        if (filters?.endDate) queryBuilder = queryBuilder.lte('opening_date', filters.endDate);
-        
-        const { data: rawData, error: qError, count } = await queryBuilder
-          .order('opening_date', { ascending: false })
-          .range((rpcPage - 1) * rpcLimit, rpcPage * rpcLimit - 1);
-          
+        let rawData: any[] = [];
+        let count = 0;
+        let qError: any = null;
+
+        if (isSearchWithImageFilter) {
+          let from = 0;
+          const pageSize = 1000;
+          while (true) {
+            let queryBuilder = supabase
+              .from('mstc_auctions')
+              .select('*')
+              .eq('asset_status', 'completed');
+
+            if (filters?.categories?.[0] || filters?.category) queryBuilder = queryBuilder.like('category_name', `${filters?.categories?.[0] || filters?.category}%`);
+            if (filters?.subcategories?.[0] || filters?.subcategory) queryBuilder = queryBuilder.like('category_name', `%| ${filters?.subcategories?.[0] || filters?.subcategory}`);
+            if (filters?.locations?.[0] || filters?.location) queryBuilder = queryBuilder.eq('location', filters?.locations?.[0] || filters?.location);
+            if (filters?.sellers?.[0] || filters?.seller) queryBuilder = queryBuilder.eq('seller_name', filters?.sellers?.[0] || filters?.seller);
+            if (filters?.startDate) queryBuilder = queryBuilder.gte('opening_date', filters.startDate);
+            if (filters?.endDate) queryBuilder = queryBuilder.lte('opening_date', filters.endDate);
+
+            const { data, error: err } = await queryBuilder
+              .order('opening_date', { ascending: false })
+              .range(from, from + pageSize - 1);
+
+            if (err) {
+              qError = err;
+              break;
+            }
+            if (!data || data.length === 0) break;
+            rawData = rawData.concat(data);
+            if (data.length < pageSize) break;
+            from += pageSize;
+          }
+          count = rawData.length;
+        } else {
+          let queryBuilder = supabase
+            .from('mstc_auctions')
+            .select('*', { count: 'exact' })
+            .eq('asset_status', 'completed');
+
+          if (filters?.categories?.[0] || filters?.category) queryBuilder = queryBuilder.like('category_name', `${filters?.categories?.[0] || filters?.category}%`);
+          if (filters?.subcategories?.[0] || filters?.subcategory) queryBuilder = queryBuilder.like('category_name', `%| ${filters?.subcategories?.[0] || filters?.subcategory}`);
+          if (filters?.locations?.[0] || filters?.location) queryBuilder = queryBuilder.eq('location', filters?.locations?.[0] || filters?.location);
+          if (filters?.sellers?.[0] || filters?.seller) queryBuilder = queryBuilder.eq('seller_name', filters?.sellers?.[0] || filters?.seller);
+          if (filters?.startDate) queryBuilder = queryBuilder.gte('opening_date', filters.startDate);
+          if (filters?.endDate) queryBuilder = queryBuilder.lte('opening_date', filters.endDate);
+
+          const { data, error: err, count: totalCountVal } = await queryBuilder
+            .order('opening_date', { ascending: false })
+            .range((rpcPage - 1) * rpcLimit, rpcPage * rpcLimit - 1);
+
+          rawData = data || [];
+          count = totalCountVal || 0;
+          qError = err;
+        }
+
         searchData = rawData;
-        totalCount = count || 0;
+        totalCount = count;
         error = qError;
       } else {
         // Run Hybrid RPC
@@ -2079,7 +2120,7 @@ export const MstcSearchService = {
           p_start_date: filters?.startDate || null,
           p_end_date: filters?.endDate || null,
           p_has_images: null, // Bypass DB filter due to remote DB bug
-          p_has_docs: filters?.hasAssetDocuments || null,
+          p_has_docs: null, // Bypass DB filter to handle strictly and cleanly client-side
           p_min_pre_bid: p_min_pre_bid || null,
           p_max_pre_bid: p_max_pre_bid || null,
           p_page: rpcPage,
@@ -2108,7 +2149,7 @@ export const MstcSearchService = {
               p_start_date: filters?.startDate || null,
               p_end_date: filters?.endDate || null,
               p_has_images: null, // Bypass DB filter due to remote DB bug
-              p_has_docs: filters?.hasAssetDocuments || null,
+              p_has_docs: null, // Bypass DB filter to handle strictly and cleanly client-side
               p_min_pre_bid: p_min_pre_bid || null,
               p_max_pre_bid: p_max_pre_bid || null,
               p_page: rpcPage,
@@ -2182,6 +2223,11 @@ export const MstcSearchService = {
           } catch { return false; }
         });
       }
+      
+      // Filter by documents locally if specified
+      if (filters?.hasAssetDocuments) {
+        mapped = mapped.filter(item => hasConfirmedAssetDocuments(item.raw_materials_text));
+      }
 
       // Filter by price constraint locally (since it requires JS computation)
       if (pConstraint) {
@@ -2232,14 +2278,7 @@ export const MstcSearchService = {
       }
       
       if (filters?.hasAssetDocuments) {
-        fallbackData = fallbackData.filter(item => {
-          if (!item.raw_materials_text) return false;
-          try {
-            const parsed = JSON.parse(item.raw_materials_text);
-            const images = parsed?.extracted_images || [];
-            return images.some((url: string) => url.toLowerCase().endsWith('.pdf'));
-          } catch { return false; }
-        });
+        fallbackData = fallbackData.filter(item => hasConfirmedAssetDocuments(item.raw_materials_text));
       }
 
       const totalCount = fallbackData.length;

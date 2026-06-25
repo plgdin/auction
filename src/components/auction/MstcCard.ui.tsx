@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel } from 'lucide-react';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
-import { generateCatalogSummary, parsePdfDateTime } from '../../utils/mstcHelpers';
+import { generateCatalogSummary, parsePdfDateTime, hasConfirmedAssetDocuments } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
 import { storageService } from '../../services/storageService';
 
@@ -68,6 +68,26 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
   
   const parsedCloseDate = summary.auctionCloseTime ? parsePdfDateTime(summary.auctionCloseTime) : null;
   
+  const biddingPeriodStr = (() => {
+    const startDate = parsedStartDate || new Date(item.opening_date);
+    const endDate = parsedCloseDate || new Date(item.closing_date);
+    
+    const dateOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+    const timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
+    
+    const startDayStr = startDate.toLocaleDateString(undefined, dateOptions);
+    const endDayStr = endDate.toLocaleDateString(undefined, dateOptions);
+    
+    const startTimeStr = startDate.toLocaleTimeString(undefined, timeOptions);
+    const endTimeStr = endDate.toLocaleTimeString(undefined, timeOptions);
+    
+    if (startDayStr === endDayStr) {
+      return `${startDayStr}, ${startTimeStr} - ${endTimeStr}`;
+    } else {
+      return `${startDayStr}, ${startTimeStr} - ${endDayStr}, ${endTimeStr}`;
+    }
+  })();
+  
   const now = new Date();
   const diffMs = auctionDate.getTime() - now.getTime();
   const isStarted = diffMs <= 0;
@@ -128,7 +148,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
         </div>
       </div>
       <div className="flex flex-col items-end gap-1.5">
-        {(item.sanitized_document_path || (summary.extracted_images && summary.extracted_images.some(url => url.toLowerCase().includes('.pdf')))) && (
+        {hasConfirmedAssetDocuments(item.raw_materials_text) && (
           <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
             Asset documents available
           </span>
@@ -194,7 +214,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
             })()}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="space-y-2 text-xs">
+              <div className="space-y-2 text-sm">
                 <div className="flex items-center text-slate-600" title={regionalOfficeName}>
                   <Building2 className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                   <span className="font-semibold text-slate-700 truncate">
@@ -215,7 +235,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                 </div>
               </div>
 
-              <div className="space-y-2 text-xs border-l border-slate-100 pl-4">
+              <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
                 <div className="flex items-center text-slate-655">
                   <Landmark className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                   <span>EMD: <strong className="text-slate-700 font-semibold">{summary.depositDetails.emd}</strong></span>
@@ -226,14 +246,10 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                 </div>
               </div>
 
-              <div className="space-y-2 text-xs border-l border-slate-100 pl-4">
+              <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
                 <div className="flex items-center text-slate-655">
                   <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Opening: <strong className="text-slate-700 font-semibold">{parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
-                </div>
-                <div className="flex items-center text-slate-655">
-                  <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Closing: <strong className="text-slate-700 font-semibold">{parsedCloseDate ? parsedCloseDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : new Date(item.closing_date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</strong></span>
+                  <span>Bidding Period: <strong className="text-slate-700 font-semibold">{biddingPeriodStr}</strong></span>
                 </div>
                 <div className="flex items-center text-slate-655">
                   <Eye className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
@@ -368,17 +384,11 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
            </div>
          </div>
 
-        <div className="space-y-1.5 mb-4 text-xs text-slate-500 border-t border-slate-50 pt-3">
+        <div className="space-y-1.5 mb-4 text-sm text-slate-500 border-t border-slate-50 pt-3">
           <div className="flex justify-between">
-            <span>Bid Opening:</span>
+            <span>Bidding Period:</span>
             <span className="font-semibold text-slate-700">
-              {parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Bid Closing:</span>
-            <span className="font-semibold text-slate-700">
-              {parsedCloseDate ? parsedCloseDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : new Date(item.closing_date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+              {biddingPeriodStr}
             </span>
           </div>
           <div className="flex justify-between">
