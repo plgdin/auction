@@ -2110,37 +2110,13 @@ export const MstcSearchService = {
         error = qError;
       } else {
         // Run Hybrid RPC
-        const rpcResult = await supabase.rpc('hybrid_search_mstc_catalog', {
-          p_search_query: workingQuery || null,
-          p_embedding: embeddingStr as any,
-          p_category_filter: filters?.categories?.[0] || filters?.category || null,
-          p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
-          p_location_filter: filters?.locations?.[0] || filters?.location || null,
-          p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
-          p_start_date: filters?.startDate || null,
-          p_end_date: filters?.endDate || null,
-          p_has_images: null, // Bypass DB filter due to remote DB bug
-          p_has_docs: null, // Bypass DB filter to handle strictly and cleanly client-side
-          p_min_pre_bid: p_min_pre_bid || null,
-          p_max_pre_bid: p_max_pre_bid || null,
-          p_page: rpcPage,
-          p_limit: rpcLimit
-        });
-        
-        searchData = rpcResult.data;
-        error = rpcResult.error;
-
-        // If the DB text/vector search returned 0 results but there was a meaningful
-        // query, ask the backend for a spell-check auto-correction!
-        if (!searchData || searchData.length === 0) {
-          const { data: correctedQuery, error: correctionError } = await supabase.rpc('suggest_search_correction', {
-            p_query: workingQuery
-          });
-
-          if (!correctionError && correctedQuery && correctedQuery !== workingQuery) {
-            console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
-            const retryResult = await supabase.rpc('hybrid_search_mstc_catalog', {
-              p_search_query: correctedQuery,
+        if (isSearchWithImageFilter) {
+          let currentPage = 1;
+          const pageSize = 1000;
+          let allData: any[] = [];
+          while (true) {
+            const rpcResult = await supabase.rpc('hybrid_search_mstc_catalog', {
+              p_search_query: workingQuery || null,
               p_embedding: embeddingStr as any,
               p_category_filter: filters?.categories?.[0] || filters?.category || null,
               p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
@@ -2152,19 +2128,123 @@ export const MstcSearchService = {
               p_has_docs: null, // Bypass DB filter to handle strictly and cleanly client-side
               p_min_pre_bid: p_min_pre_bid || null,
               p_max_pre_bid: p_max_pre_bid || null,
-              p_page: rpcPage,
-              p_limit: rpcLimit
+              p_page: currentPage,
+              p_limit: pageSize
             });
 
-            if (!retryResult.error && retryResult.data && retryResult.data.length > 0) {
-              searchData = retryResult.data;
-              returnedCorrectedQuery = correctedQuery;
-              error = null;
+            if (rpcResult.error) {
+              error = rpcResult.error;
+              break;
+            }
+
+            const pageData = rpcResult.data || [];
+            if (pageData.length === 0) {
+              // Try spelling suggestion retry if it was first page and empty
+              if (currentPage === 1) {
+                const { data: correctedQuery, error: correctionError } = await supabase.rpc('suggest_search_correction', {
+                  p_query: workingQuery
+                });
+
+                if (!correctionError && correctedQuery && correctedQuery !== workingQuery) {
+                  console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
+                  let subPage = 1;
+                  while (true) {
+                    const retryResult = await supabase.rpc('hybrid_search_mstc_catalog', {
+                      p_search_query: correctedQuery,
+                      p_embedding: embeddingStr as any,
+                      p_category_filter: filters?.categories?.[0] || filters?.category || null,
+                      p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
+                      p_location_filter: filters?.locations?.[0] || filters?.location || null,
+                      p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
+                      p_start_date: filters?.startDate || null,
+                      p_end_date: filters?.endDate || null,
+                      p_has_images: null,
+                      p_has_docs: null,
+                      p_min_pre_bid: p_min_pre_bid || null,
+                      p_max_pre_bid: p_max_pre_bid || null,
+                      p_page: subPage,
+                      p_limit: pageSize
+                    });
+
+                    if (retryResult.error) {
+                      error = retryResult.error;
+                      break;
+                    }
+
+                    const subData = retryResult.data || [];
+                    if (subData.length === 0) break;
+                    allData = allData.concat(subData);
+                    returnedCorrectedQuery = correctedQuery;
+                    if (subData.length < pageSize) break;
+                    subPage++;
+                  }
+                }
+              }
+              break;
+            }
+
+            allData = allData.concat(pageData);
+            if (pageData.length < pageSize) break;
+            currentPage++;
+          }
+          searchData = allData;
+        } else {
+          const rpcResult = await supabase.rpc('hybrid_search_mstc_catalog', {
+            p_search_query: workingQuery || null,
+            p_embedding: embeddingStr as any,
+            p_category_filter: filters?.categories?.[0] || filters?.category || null,
+            p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
+            p_location_filter: filters?.locations?.[0] || filters?.location || null,
+            p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
+            p_start_date: filters?.startDate || null,
+            p_end_date: filters?.endDate || null,
+            p_has_images: null, // Bypass DB filter due to remote DB bug
+            p_has_docs: null, // Bypass DB filter to handle strictly and cleanly client-side
+            p_min_pre_bid: p_min_pre_bid || null,
+            p_max_pre_bid: p_max_pre_bid || null,
+            p_page: rpcPage,
+            p_limit: rpcLimit
+          });
+          
+          searchData = rpcResult.data;
+          error = rpcResult.error;
+
+          // If the DB text/vector search returned 0 results but there was a meaningful
+          // query, ask the backend for a spell-check auto-correction!
+          if (!searchData || searchData.length === 0) {
+            const { data: correctedQuery, error: correctionError } = await supabase.rpc('suggest_search_correction', {
+              p_query: workingQuery
+            });
+
+            if (!correctionError && correctedQuery && correctedQuery !== workingQuery) {
+              console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
+              const retryResult = await supabase.rpc('hybrid_search_mstc_catalog', {
+                p_search_query: correctedQuery,
+                p_embedding: embeddingStr as any,
+                p_category_filter: filters?.categories?.[0] || filters?.category || null,
+                p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
+                p_location_filter: filters?.locations?.[0] || filters?.location || null,
+                p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
+                p_start_date: filters?.startDate || null,
+                p_end_date: filters?.endDate || null,
+                p_has_images: null, // Bypass DB filter due to remote DB bug
+                p_has_docs: null, // Bypass DB filter to handle strictly and cleanly client-side
+                p_min_pre_bid: p_min_pre_bid || null,
+                p_max_pre_bid: p_max_pre_bid || null,
+                p_page: rpcPage,
+                p_limit: rpcLimit
+              });
+
+              if (!retryResult.error && retryResult.data && retryResult.data.length > 0) {
+                searchData = retryResult.data;
+                returnedCorrectedQuery = correctedQuery;
+                error = null;
+              } else {
+                throw new Error('RPC_ZERO_RESULTS');
+              }
             } else {
               throw new Error('RPC_ZERO_RESULTS');
             }
-          } else {
-            throw new Error('RPC_ZERO_RESULTS');
           }
         }
         
