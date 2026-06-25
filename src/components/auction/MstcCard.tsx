@@ -366,33 +366,33 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           );
         })()}
 
-        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs">
+        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-4 gap-y-3.5 text-sm">
           <div className="flex flex-col min-w-0">
-            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Office</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Office</span>
             <span className="font-bold text-slate-700 truncate" title={regionalOfficeName}>
               {regionalOfficeName}
             </span>
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Location</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Location</span>
             <span className="font-bold text-slate-700 truncate" title={locationName || 'N/A'}>
               {locationName || 'N/A'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
-            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">EMD Required</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">EMD Required</span>
             <span className="font-bold text-slate-700 truncate" title={summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}>
               {summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
-            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
             <span className="font-bold text-slate-700 truncate" title={summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}>
               {summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5 col-span-2">
-            <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Auction Type</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Auction Type</span>
             <span className="font-bold text-slate-700 truncate" title={summary?.auctionType || 'O-General'}>
               {summary?.auctionType || 'O-General'}
             </span>
