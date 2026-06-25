@@ -97,19 +97,41 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     const startDate = parsedStartDate || new Date(item.opening_date);
     const endDate = parsedCloseDate || new Date(item.closing_date);
     
-    const dateOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
-    const timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
+    const formatDateOrdinal = (d: Date) => {
+      const day = d.getDate();
+      const month = d.toLocaleDateString(undefined, { month: 'short' });
+      const year = d.getFullYear();
+      
+      let suffix = 'th';
+      if (day < 11 || day > 13) {
+        switch (day % 10) {
+          case 1: suffix = 'st'; break;
+          case 2: suffix = 'nd'; break;
+          case 3: suffix = 'rd'; break;
+        }
+      }
+      return `${day}${suffix} ${month} ${year}`;
+    };
+
+    const formatTimeAmpm = (d: Date) => {
+      let hours = d.getHours();
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      return `${hours}:${minutes} ${ampm}`;
+    };
+
+    const startDayStr = formatDateOrdinal(startDate);
+    const endDayStr = formatDateOrdinal(endDate);
     
-    const startDayStr = startDate.toLocaleDateString(undefined, dateOptions);
-    const endDayStr = endDate.toLocaleDateString(undefined, dateOptions);
-    
-    const startTimeStr = startDate.toLocaleTimeString(undefined, timeOptions);
-    const endTimeStr = endDate.toLocaleTimeString(undefined, timeOptions);
+    const startTimeStr = formatTimeAmpm(startDate);
+    const endTimeStr = formatTimeAmpm(endDate);
     
     if (startDayStr === endDayStr) {
-      return `${startDayStr}, ${startTimeStr} - ${endTimeStr}`;
+      return `${startDayStr} ${startTimeStr} - ${endTimeStr}`;
     } else {
-      return `${startDayStr}, ${startTimeStr} - ${endDayStr}, ${endTimeStr}`;
+      return `${startDayStr} ${startTimeStr} - ${endDayStr} ${endTimeStr}`;
     }
   })();
   
@@ -248,19 +270,19 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               <div className="space-y-2 text-sm">
                 <div className="flex items-center text-slate-600" title={regionalOfficeName}>
                   <Building2 className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span className="font-semibold text-slate-700 truncate">
+                  <span className="font-semibold text-slate-700 truncate text-base">
                     Office: {regionalOfficeName}
                   </span>
                 </div>
                 {item.location && (
                   <div className="flex items-center text-slate-600" title={locationName}>
                     <MapPin className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                    <span className="font-semibold text-slate-700 truncate">{locationName}</span>
+                    <span className="font-semibold text-slate-700 truncate text-base">{locationName}</span>
                   </div>
                 )}
                 <div className="flex items-center text-slate-600" title={summary?.auctionType || 'O-General'}>
                   <Gavel className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span className="font-semibold text-slate-700 truncate">
+                  <span className="font-semibold text-slate-700 truncate text-base">
                     Type: {summary?.auctionType || 'O-General'}
                   </span>
                 </div>
@@ -284,7 +306,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                 </div>
                 <div className="flex items-center text-slate-655">
                   <Eye className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Inspection: <strong className="text-slate-700 font-semibold">{summary?.inspectionSchedule || 'Loading...'}</strong></span>
+                  <span>Inspection Period: <strong className="text-slate-700 font-semibold">{summary?.inspectionSchedule || 'Loading...'}</strong></span>
                 </div>
               </div>
             </div>
@@ -385,13 +407,13 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
         <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-4 gap-y-3.5 text-sm">
           <div className="flex flex-col min-w-0">
             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Office</span>
-            <span className="font-bold text-slate-700 truncate" title={regionalOfficeName}>
+            <span className="font-bold text-slate-700 truncate text-base" title={regionalOfficeName}>
               {regionalOfficeName}
             </span>
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Location</span>
-            <span className="font-bold text-slate-700 truncate" title={locationName || 'N/A'}>
+            <span className="font-bold text-slate-700 truncate text-base" title={locationName || 'N/A'}>
               {locationName || 'N/A'}
             </span>
           </div>
@@ -409,7 +431,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5 col-span-2">
             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Auction Type</span>
-            <span className="font-bold text-slate-700 truncate" title={summary?.auctionType || 'O-General'}>
+            <span className="font-bold text-slate-700 truncate text-base" title={summary?.auctionType || 'O-General'}>
               {summary?.auctionType || 'O-General'}
             </span>
           </div>
@@ -423,7 +445,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
             </span>
           </div>
           <div className="flex justify-between">
-            <span>Inspection:</span>
+            <span>Inspection Period:</span>
             <span className="font-semibold text-slate-700">{summary?.inspectionSchedule || 'Loading...'}</span>
           </div>
         </div>

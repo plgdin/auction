@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Copy, Check, Download, Heart, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice } from '../../services/publicService';
-import { generateCatalogSummary, parsePdfDateTime, calculateLotValue } from '../../utils/mstcHelpers';
+import { generateCatalogSummary, parsePdfDateTime, calculateLotValue, formatSellerName } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
 import { useQuoteStore } from '../../store/quoteStore';
 import { toast } from 'react-hot-toast';
@@ -442,7 +442,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   <div className="flex flex-col">
                     <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Seller Name</span>
                     <span className="text-[13.5px] font-bold text-slate-800 leading-snug mt-0.5">
-                      {item.seller_name || 'N/A'}
+                      {formatSellerName(item.seller_name)}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">

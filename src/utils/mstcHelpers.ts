@@ -446,32 +446,44 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
 export const parseAuctionType = (item: MstcSanitizedAuction): string => {
   if (!item) return 'O-General';
   
+  let type = 'O-General';
   const text = item.raw_materials_text || '';
   if (text) {
     try {
       const parsed = JSON.parse(text);
       if (parsed && typeof parsed === 'object') {
         if (parsed.auctionType && typeof parsed.auctionType === 'string') {
-          return parsed.auctionType.trim();
-        }
-        if (parsed.typeOfAuction && typeof parsed.typeOfAuction === 'string') {
-          return parsed.typeOfAuction.trim();
+          type = parsed.auctionType.trim();
+        } else if (parsed.typeOfAuction && typeof parsed.typeOfAuction === 'string') {
+          type = parsed.typeOfAuction.trim();
         }
       }
     } catch (e) {
       // Ignored
     }
 
-    const regex = /(?:auction\s+type|type\s+of\s+auction|e-auction\s+type|auction_type)\s*[:=-]?\s*(O-[A-Za-z0-9_-]+(?:\s+Auction)?)/i;
-    const match = text.match(regex);
-    if (match && match[1]) {
-      const val = match[1].trim();
-      if (val.length > 2) return val;
+    if (type === 'O-General') {
+      const regex = /(?:auction\s+type|type\s+of\s+auction|e-auction\s+type|auction_type)\s*[:=-]?\s*(O-[A-Za-z0-9_-]+(?:\s+Auction)?)/i;
+      const match = text.match(regex);
+      if (match && match[1]) {
+        const val = match[1].trim();
+        if (val.length > 2) type = val;
+      }
     }
-
   }
 
-  return 'O-General';
+  // Normalize spelling and formatting:
+  let cleaned = type.replace(/\s*[Aa]uction\s*$/i, '').trim();
+  cleaned = cleaned.replace(/\s+/g, ' '); // collapse spaces
+  
+  if (/^O-\s*[Gg]e[rn]e?r?a?l$/i.test(cleaned) || /^O-\s*[Gg]erenal$/i.test(cleaned) || /^O-\s*[Gg]eral$/i.test(cleaned)) {
+    cleaned = 'O-General';
+  } else {
+    // Standardize other types starting with O- if there is a space after hyphen
+    cleaned = cleaned.replace(/^O-\s+/i, 'O-');
+  }
+
+  return cleaned || 'O-General';
 };
 
 export const parsePdfDateTime = (dateTimeStr: string): Date | null => {
@@ -1078,19 +1090,7 @@ export const hasConfirmedAssetDocuments = (rawMaterialsText: string | null): boo
   if (!rawMaterialsText) return false;
   try {
     const parsed = JSON.parse(rawMaterialsText);
-    if (!parsed) return false;
-
-    // Check extracted_images for lot document page previews
-    const images = parsed.extracted_images || [];
-    if (images.some((url: string) => {
-      if (typeof url !== 'string') return false;
-      const lower = url.toLowerCase();
-      return lower.includes('_lot_doc_') || lower.includes('_lot_document_');
-    })) {
-      return true;
-    }
-
-    if (!Array.isArray(parsed.items)) return false;
+    if (!parsed || !Array.isArray(parsed.items)) return false;
     
     return parsed.items.some((lot: any) => {
       if (!lot.attachments || !Array.isArray(lot.attachments)) return false;
@@ -1117,4 +1117,16 @@ export const hasConfirmedAssetDocuments = (rawMaterialsText: string | null): boo
     return false;
   }
 };
+
+export function formatSellerName(name: string | null | undefined): string {
+  if (!name) return 'N/A';
+  const isLower = name === name.toLowerCase();
+  if (isLower) {
+    return name
+      .split(/\s+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+  return name;
+}
 
