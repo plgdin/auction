@@ -2314,6 +2314,8 @@ export const MstcSearchService = {
               return !lower.endsWith('.pdf') && 
                      !lower.includes('_catalog_page_') && 
                      !lower.includes('mstc-previews/') &&
+                     !lower.includes('_lot_doc_') &&
+                     !lower.includes('_lot_document_') &&
                      /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
             });
           } catch { return false; }
@@ -2367,6 +2369,8 @@ export const MstcSearchService = {
               return !lower.endsWith('.pdf') && 
                      !lower.includes('_catalog_page_') && 
                      !lower.includes('mstc-previews/') &&
+                     !lower.includes('_lot_doc_') &&
+                     !lower.includes('_lot_document_') &&
                      /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
             });
           } catch { return false; }

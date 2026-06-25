@@ -1078,7 +1078,19 @@ export const hasConfirmedAssetDocuments = (rawMaterialsText: string | null): boo
   if (!rawMaterialsText) return false;
   try {
     const parsed = JSON.parse(rawMaterialsText);
-    if (!parsed || !Array.isArray(parsed.items)) return false;
+    if (!parsed) return false;
+
+    // Check extracted_images for lot document page previews
+    const images = parsed.extracted_images || [];
+    if (images.some((url: string) => {
+      if (typeof url !== 'string') return false;
+      const lower = url.toLowerCase();
+      return lower.includes('_lot_doc_') || lower.includes('_lot_document_');
+    })) {
+      return true;
+    }
+
+    if (!Array.isArray(parsed.items)) return false;
     
     return parsed.items.some((lot: any) => {
       if (!lot.attachments || !Array.isArray(lot.attachments)) return false;
