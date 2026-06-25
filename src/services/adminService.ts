@@ -467,5 +467,45 @@ export const adminService = {
       console.error('Error unlocking processing auctions:', error);
       return false;
     }
+  },
+
+  async toggleMaintenanceMode(enabled: boolean): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({
+          key: 'maintenance_mode',
+          value: enabled,
+          updated_at: new Date().toISOString(),
+          updated_by: (await supabase.auth.getUser()).data.user?.id
+        });
+      
+      if (error) {
+        console.error('Error toggling maintenance mode:', error);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error('Error toggling maintenance mode:', e);
+      return false;
+    }
+  },
+
+  async getSecurityLogs(limit: number = 50): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('security_audit_logs')
+        .select('*')
+        .order('attempted_at', { ascending: false })
+        .limit(limit);
+      if (error) {
+        console.error('Error fetching security logs:', error);
+        return [];
+      }
+      return data || [];
+    } catch (e) {
+      console.error('Error fetching security logs:', e);
+      return [];
+    }
   }
 };

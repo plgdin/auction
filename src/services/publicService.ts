@@ -591,7 +591,52 @@ export const publicService = {
       return [];
     }
     return data;
-  }, 'publishedNews')
+  }, 'publishedNews'),
+
+  async getMaintenanceMode(): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'maintenance_mode')
+        .single();
+      
+      if (error) {
+        return false;
+      }
+      return !!data?.value;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  async logUnauthorizedLogin(logData: {
+    email: string;
+    user_id?: string;
+    ip_address?: string;
+    user_agent?: string;
+    system_info?: any;
+  }): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('security_audit_logs')
+        .insert({
+          email: logData.email,
+          user_id: logData.user_id || null,
+          ip_address: logData.ip_address || 'Unknown',
+          user_agent: logData.user_agent || 'Unknown',
+          system_info: logData.system_info || {}
+        });
+      if (error) {
+        console.error('Error logging unauthorized access:', error);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error('Error logging unauthorized access:', e);
+      return false;
+    }
+  }
 };
 
 export interface MstcSanitizedAuction {

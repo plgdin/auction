@@ -120,6 +120,13 @@ export const router = createBrowserRouter([
     ],
   },
   {
+    path: '/adminlogin',
+    element: <AuthLayout />,
+    children: [
+      { index: true, element: <Login /> },
+    ],
+  },
+  {
     path: '/dashboard',
     element: (
       <ProtectedRoute>

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Megaphone, Plus, Save, Clock, CheckCircle2 } from 'lucide-react';
+import { Megaphone, Plus, Save, Clock, CheckCircle2, ShieldAlert, Power, Settings } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import type { Announcement } from '../../types/database.types';
 
@@ -26,8 +26,12 @@ export function SystemManagement() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'announcements' | 'direct'>('announcements');
+  const [activeTab, setActiveTab] = useState<'announcements' | 'direct' | 'maintenance' | 'security'>('announcements');
   const [dmSuccess, setDmSuccess] = useState(false);
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
+  const [isUpdatingMaintenance, setIsUpdatingMaintenance] = useState(false);
+  const [securityLogs, setSecurityLogs] = useState<any[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
   const { register: registerAnnounce, handleSubmit: handleAnnounceSubmit, reset: resetAnnounce, formState: { errors: errorsAnnounce } } = useForm<AnnouncementValues>({
     resolver: zodResolver(announcementSchema),
@@ -43,9 +47,38 @@ export function SystemManagement() {
     setAnnouncements(data);
   };
 
+  const loadMaintenanceState = async () => {
+    const { publicService } = await import('../../services/publicService');
+    const state = await publicService.getMaintenanceMode();
+    setMaintenanceEnabled(state);
+  };
+
+  const loadSecurityLogs = async () => {
+    setIsLoadingLogs(true);
+    const data = await adminService.getSecurityLogs(50);
+    setSecurityLogs(data);
+    setIsLoadingLogs(false);
+  };
+
   useEffect(() => {
     loadAnnouncements();
+    loadMaintenanceState();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'security') {
+      loadSecurityLogs();
+    }
+  }, [activeTab]);
+
+  const handleToggleMaintenance = async () => {
+    setIsUpdatingMaintenance(true);
+    const success = await adminService.toggleMaintenanceMode(!maintenanceEnabled);
+    if (success) {
+      setMaintenanceEnabled(!maintenanceEnabled);
+    }
+    setIsUpdatingMaintenance(false);
+  };
 
   const onAnnounceSubmit = async (data: AnnouncementValues) => {
     setIsSubmitting(true);
@@ -99,6 +132,18 @@ export function SystemManagement() {
           className={`px-4 py-2 font-bold text-sm border-b-2 transition-colors ${activeTab === 'direct' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
         >
           Direct User Messages
+        </button>
+        <button 
+          onClick={() => setActiveTab('maintenance')}
+          className={`px-4 py-2 font-bold text-sm border-b-2 transition-colors ${activeTab === 'maintenance' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          Maintenance Mode
+        </button>
+        <button 
+          onClick={() => setActiveTab('security')}
+          className={`px-4 py-2 font-bold text-sm border-b-2 transition-colors ${activeTab === 'security' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          Security Logs
         </button>
       </div>
 
@@ -262,6 +307,140 @@ export function SystemManagement() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'maintenance' && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+          <div className="max-w-2xl">
+            <h2 className="text-lg font-bold text-slate-900 mb-2 flex items-center">
+              <ShieldAlert className="w-5 h-5 mr-2 text-red-500" /> System Maintenance Mode
+            </h2>
+            <p className="text-slate-500 text-sm mb-6">
+              When Maintenance Mode is active, all normal users will see a maintenance message and won't be able to access the site. Admins and superadmins will bypass this and can continue testing.
+            </p>
+
+            <div className={`p-6 rounded-2xl border ${maintenanceEnabled ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'} transition-colors duration-300`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`relative flex h-3 w-3 ${maintenanceEnabled ? 'visible' : 'hidden'}`}>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </div>
+                  {!maintenanceEnabled && (
+                    <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                  )}
+                  <div>
+                    <h3 className="font-bold text-slate-900">
+                      Status: {maintenanceEnabled ? 'Active (Offline for users)' : 'Inactive (Online)'}
+                    </h3>
+                    <p className="text-slate-500 text-xs mt-0.5">
+                      {maintenanceEnabled 
+                        ? 'Users will see the maintenance page. Admins can bypass.' 
+                        : 'All features are fully operational.'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleToggleMaintenance}
+                  disabled={isUpdatingMaintenance}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                    maintenanceEnabled ? 'bg-red-600' : 'bg-slate-300'
+                  } disabled:opacity-50 cursor-pointer`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
+                      maintenanceEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'security' && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 flex items-center">
+                <ShieldAlert className="w-5 h-5 mr-2 text-red-500" /> Security & Access Logs
+              </h2>
+              <p className="text-slate-500 text-xs mt-0.5">
+                Unauthorized login attempts at the admin/moderator terminal.
+              </p>
+            </div>
+            <button 
+              onClick={loadSecurityLogs}
+              disabled={isLoadingLogs}
+              className="px-4 py-2 border border-slate-200 text-sm font-bold rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              Refresh Logs
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            {isLoadingLogs ? (
+              <div className="py-20 flex justify-center items-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+              </div>
+            ) : securityLogs.length === 0 ? (
+              <div className="py-16 text-center text-slate-500 text-sm">
+                No unauthorized login attempts logged.
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider border-b border-slate-150">
+                    <th className="px-6 py-4">Time</th>
+                    <th className="px-6 py-4">Email</th>
+                    <th className="px-6 py-4">IP Address</th>
+                    <th className="px-6 py-4">Location</th>
+                    <th className="px-6 py-4">System Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-sm">
+                  {securityLogs.map((log) => {
+                    const sys = log.system_info || {};
+                    const geo = sys.geo || {};
+                    
+                    return (
+                      <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-slate-500 text-xs font-mono">
+                          {new Date(log.attempted_at).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-slate-800">
+                          {log.email}
+                        </td>
+                        <td className="px-6 py-4 font-mono text-xs text-slate-650">
+                          {log.ip_address}
+                        </td>
+                        <td className="px-6 py-4 text-slate-600 text-xs">
+                          {geo.city || geo.country ? (
+                            <span>
+                              {geo.city && `${geo.city}, `}{geo.country || 'Unknown'}
+                              {geo.org && <span className="block text-[10px] text-slate-400 font-medium truncate max-w-xs">{geo.org}</span>}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">Unavailable</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-[11px] space-y-0.5 text-slate-500">
+                            <div><span className="font-semibold text-slate-700">OS/Platform:</span> {sys.platform || 'Unknown'}</div>
+                            <div><span className="font-semibold text-slate-700">Screen:</span> {sys.screen || 'Unknown'} (VP: {sys.viewport || 'Unknown'})</div>
+                            <div className="truncate max-w-xs" title={log.user_agent}><span className="font-semibold text-slate-700">Agent:</span> {sys.userAgent || log.user_agent}</div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}

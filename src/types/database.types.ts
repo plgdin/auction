@@ -230,3 +230,11 @@ export interface ContactMessage {
   status: string;
   created_at: string;
 }
+
+export interface SystemSetting {
+  key: string;
+  value: any;
+  updated_at?: string;
+  updated_by?: string;
+}
+

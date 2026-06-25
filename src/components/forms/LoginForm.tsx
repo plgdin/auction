@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
+import { publicService } from '../../services/publicService';
 import { Mail, Lock, Loader2, LogIn, Eye, EyeOff } from 'lucide-react';
 
 const loginSchema = z.object({
@@ -14,7 +15,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -34,8 +35,71 @@ export function LoginForm() {
     setAuthError(null);
     try {
       const { session } = await authService.signIn(data.email, data.password);
+      
+      // Fetch profile to verify role
+      const profile = await authService.getProfile(session.user.id);
+      const isAuthorized = profile?.role === 'admin' || profile?.role === 'superadmin';
+
+      if (isAdminLogin && !isAuthorized) {
+        // Sign out immediately to avoid establishing session
+        await authService.signOut();
+
+        let ipAddress = 'Unknown';
+        let geoData: any = {};
+        try {
+          const res = await fetch('https://ipapi.co/json/');
+          if (res.ok) {
+            const data = await res.json();
+            ipAddress = data.ip || 'Unknown';
+            geoData = {
+              city: data.city,
+              region: data.region,
+              country: data.country_name,
+              postal: data.postal,
+              org: data.org
+            };
+          }
+        } catch (_) {
+          try {
+            const res2 = await fetch('https://api.ipify.org?format=json');
+            if (res2.ok) {
+              const data2 = await res2.json();
+              ipAddress = data2.ip || 'Unknown';
+            }
+          } catch (__) {}
+        }
+
+        const systemInfo = {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          screen: `${window.screen.width}x${window.screen.height}`,
+          viewport: `${window.innerWidth}x${window.innerHeight}`,
+          language: navigator.language,
+          geo: geoData
+        };
+
+        try {
+          await publicService.logUnauthorizedLogin({
+            email: data.email,
+            user_id: session.user.id,
+            ip_address: ipAddress,
+            user_agent: navigator.userAgent,
+            system_info: systemInfo
+          });
+        } catch (logErr) {
+          console.error('Failed to log security audit:', logErr);
+        }
+
+        throw new Error('Access denied. Only administrators are allowed.');
+      }
+
       setSession(session);
-      navigate('/dashboard');
+      
+      if (isAuthorized) {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error: any) {
       setAuthError(error.message || 'Failed to sign in');
     } finally {
