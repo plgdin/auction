@@ -2091,7 +2091,7 @@ export const MstcSearchService = {
         throw error;
       }
 
-      const hasDirectMatches = searchData && searchData.length > 0 && (searchData[0].search_rank !== undefined);
+      const hasDirectMatches = !!(searchData && searchData.length > 0 && searchData[0].search_rank !== undefined);
 
       // Fetch is_reauction status for these items to ensure we have it in the UI and can filter by it
       const itemIds = (searchData as any[]).map(item => item.id);
