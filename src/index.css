@@ -285,3 +285,6 @@
     page-break-inside: avoid !important;
   }
 }
+
+.wysiwyg-container .rsw-editor { min-height: 300px; height: auto !important; }
+

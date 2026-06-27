@@ -84,6 +84,7 @@ export function Header() {
     { name: 'Home', href: '/' },
     { name: 'Auctions', href: '/auctions' },
     { name: 'News', href: '/news' },
+    { name: 'Blog', href: '/blog' },
     { name: 'FAQ', href: '/faq' },
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },

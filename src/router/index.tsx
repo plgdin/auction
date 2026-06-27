@@ -64,6 +64,8 @@ const Admin = lazyWithSuspense(() => import('../pages/Admin').then(m => ({ defau
 const Contact = lazyWithSuspense(() => import('../pages/Contact').then(m => ({ default: m.Contact })));
 const About = lazyWithSuspense(() => import('../pages/About').then(m => ({ default: m.About })));
 const NotFound = lazyWithSuspense(() => import('../pages/NotFound').then(m => ({ default: m.NotFound })));
+const Blog = lazyWithSuspense(() => import('../pages/Blog').then(m => ({ default: m.Blog })));
+const BlogDetail = lazyWithSuspense(() => import('../pages/BlogDetail').then(m => ({ default: m.BlogDetail })));
 
 const FAQ = lazyWithSuspense(() => import('../pages/FAQ').then(m => ({ default: m.FAQ })));
 const Notices = lazyWithSuspense(() => import('../pages/Notices').then(m => ({ default: m.Notices })));
@@ -101,6 +103,8 @@ export const router = createBrowserRouter([
       { path: 'faq', element: <FAQ /> },
       { path: 'notices', element: <Notices /> },
       { path: 'news', element: <News /> },
+      { path: 'blog', element: <Blog /> },
+      { path: 'blog/:id', element: <BlogDetail /> },
       { path: 'privacy', element: <Privacy /> },
       { path: 'terms', element: <Terms /> },
       { path: 'cookies', element: <Cookies /> },

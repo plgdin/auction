@@ -8,6 +8,7 @@ import { ContactMessages } from '../components/admin/ContactMessages';
 import { AuditLogsView } from '../components/admin/AuditLogsView';
 import { MarketPriceManagement } from '../components/admin/MarketPriceManagement';
 import { FaqManagement } from '../components/admin/FaqManagement';
+import { BlogManagement } from '../components/admin/BlogManagement';
 import { useAppStore } from '../store/appStore';
 
 export function Admin() {
@@ -33,6 +34,8 @@ export function Admin() {
         return <SystemManagement />;
       case 'news':
         return <NewsManagement />;
+      case 'blogs':
+        return <BlogManagement />;
       case 'messages':
         return <ContactMessages />;
       default:

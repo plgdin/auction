@@ -238,3 +238,18 @@ export interface SystemSetting {
   updated_by?: string;
 }
 
+export interface Blog {
+  id: string;
+  title: string;
+  content: string;
+  image_url?: string;
+  is_featured: boolean;
+  display_order: number;
+  is_published: boolean;
+  author_id?: string;
+  author_name?: string;
+  published_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+

@@ -41,6 +41,7 @@ export function Sidebar() {
     { name: 'FAQ Manager', id: 'faq', icon: HelpCircle },
     { name: 'News & Media Manager', id: 'news', icon: FileText },
     { name: 'Advanced Reports', id: 'reports', icon: BarChart3 },
+    { name: 'Blog Manager', id: 'blogs', icon: FileText },
     { name: 'User Management', id: 'users', icon: Users },
     { name: 'System Announcements', id: 'system', icon: Megaphone },
     { name: 'Contact Messages', id: 'messages', icon: Mail },

@@ -71,11 +71,15 @@ export const storageService = {
     }
   },
 
-  /**
-   * Upload an auction image specifically
-   */
   async uploadAuctionImage(file: File): Promise<string | null> {
     return this.uploadFile(file, 'auction_images');
+  },
+
+  /**
+   * Upload a blog cover image specifically
+   */
+  async uploadBlogImage(file: File): Promise<string | null> {
+    return this.uploadFile(file, 'blog_images');
   },
 
   /**
