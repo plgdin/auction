@@ -3,7 +3,7 @@ import {
   Plus, Edit, Trash2, CheckCircle, XCircle, 
   ArrowUp, ArrowDown, Image as ImageIcon, Save, X, FileText, UploadCloud, Loader2
 } from 'lucide-react';
-import { DefaultEditor } from 'react-simple-wysiwyg';
+import JoditEditor from 'jodit-react';
 import { blogService } from '../../services/blogService';
 import { storageService } from '../../services/storageService';
 import type { Blog } from '../../types/database.types';
@@ -389,10 +389,27 @@ export function BlogManagement() {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Content</label>
-                <div className="border border-slate-300 rounded-lg overflow-hidden wysiwyg-container min-h-[300px]">
-                  <DefaultEditor
+                <div className="border border-slate-300 rounded-lg overflow-hidden relative z-0">
+                  <JoditEditor
                     value={currentBlog.content || ''} 
-                    onChange={(e) => setCurrentBlog({...currentBlog, content: e.target.value})}
+                    config={{
+                      readonly: false,
+                      height: 400,
+                      askBeforePasteHTML: false,
+                      askBeforePasteFromWord: false,
+                      defaultActionOnPaste: 'insert_as_html',
+                      buttons: [
+                        'source', '|',
+                        'bold', 'strikethrough', 'underline', 'italic', '|',
+                        'ul', 'ol', '|',
+                        'outdent', 'indent',  '|',
+                        'font', 'fontsize', 'brush', 'paragraph', '|',
+                        'image', 'video', 'table', 'link', '|',
+                        'align', 'undo', 'redo', '|',
+                        'hr', 'eraser', 'copyformat', 'fullsize'
+                      ]
+                    }}
+                    onBlur={(newContent) => setCurrentBlog({...currentBlog, content: newContent})}
                   />
                 </div>
               </div>
