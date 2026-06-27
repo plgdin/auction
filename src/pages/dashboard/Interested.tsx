@@ -6,6 +6,7 @@ import {
   Upload, Download, Calendar, DollarSign, FileText, CheckCircle, X
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
 import { MstcCard } from '../../components/auction/MstcCard';
 import { lazy, Suspense } from 'react';
 const MstcDetailsModal = lazy(() => import('../../components/auction/MstcDetailsModal').then(module => ({ default: module.MstcDetailsModal })));
@@ -36,14 +37,15 @@ export function Interested() {
   const [wonFile, setWonFile] = useState<File | null>(null);
   const [isSavingWon, setIsSavingWon] = useState(false);
 
+  const { interestedMstcIds, toggleInterestedMstcId } = useAppStore();
+
   const loadMstcWatchlist = async () => {
     if (!user) return;
     setIsLoading(true);
     try {
-      const ids = dashboardService.getInterestedAuctions(user.id);
-      if (ids.length > 0) {
+      if (interestedMstcIds.length > 0) {
         const items = await Promise.all(
-          ids.map(id => MstcSearchService.getMstcAuctionById(id))
+          interestedMstcIds.map(id => MstcSearchService.getMstcAuctionById(id))
         );
         setMstcWatchlist(items.filter((item): item is MstcSanitizedAuction => item !== null));
       } else {
@@ -84,12 +86,11 @@ export function Interested() {
     } else {
       loadWonAuctions();
     }
-  }, [user, activeTab]);
+  }, [user, activeTab, interestedMstcIds]);
 
   const handleMstcInterestedToggle = (itemId: string) => {
     if (!user) return;
-    dashboardService.toggleInterestedAuction(user.id, itemId);
-    loadMstcWatchlist();
+    toggleInterestedMstcId(user.id, itemId);
     if (selectedPreviewItem?.id === itemId) {
       setSelectedPreviewItem(null);
     }

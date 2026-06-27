@@ -21,7 +21,7 @@ import { PreferenceQuestionnaireModal } from '../components/dashboard/Preference
 
 export function Dashboard() {
   const { user, profile } = useAuthStore();
-  const { currency } = useAppStore();
+  const { currency, interestedMstcIds, toggleInterestedMstcId } = useAppStore();
   const [stats, setStats] = useState({
     activeBids: 0,
     wonAuctions: 0,
@@ -47,8 +47,7 @@ export function Dashboard() {
       ]);
 
       const activeBids = bids.filter(b => b.auction.status === 'active').length;
-      const mstcInterested = dashboardService.getInterestedAuctions(userId);
-      const allInterested = Array.from(new Set([...mstcInterested, ...dbWatchlist]));
+      const allInterested = Array.from(new Set([...interestedMstcIds, ...dbWatchlist]));
 
       setStats({
         activeBids,
@@ -104,6 +103,20 @@ export function Dashboard() {
     loadDashboardAndRecs(user.id);
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    async function syncInterested() {
+      const dbWatchlist = await auctionService.getUserWatchlistIds(user.id);
+      const allInterested = Array.from(new Set([...interestedMstcIds, ...dbWatchlist]));
+      setInterestedIds(allInterested);
+      setStats(prev => ({
+        ...prev,
+        interestedAuctions: allInterested.length
+      }));
+    }
+    syncInterested();
+  }, [interestedMstcIds, user]);
+
   const handleSavePreferences = async (prefs: UserPreference) => {
     if (!user) return;
     await recommendationService.saveUserPreferences(user.id, prefs);
@@ -115,31 +128,26 @@ export function Dashboard() {
 
   const handleToggleWatchlist = async (auctionId: string) => {
     if (!user) return;
-    dashboardService.toggleInterestedAuction(user.id, auctionId);
     
-    // Refresh stats and updates
-    const mstcInterested = dashboardService.getInterestedAuctions(user.id);
-    const dbWatchlist = await auctionService.getUserWatchlistIds(user.id);
-    const allInterested = Array.from(new Set([...mstcInterested, ...dbWatchlist]));
-    setInterestedIds(allInterested);
-    
-    setStats(prev => ({
-      ...prev,
-      interestedAuctions: allInterested.length
-    }));
-
-    // Toggle in Supabase in background ONLY if not MSTC
     const isMstc = recommendedAuctions.some(a => a.id === auctionId && a.is_mstc) ||
                     rankedAuctions.some(a => a.id === auctionId && a.isMstc);
-    if (!isMstc) {
+    if (isMstc) {
+      toggleInterestedMstcId(user.id, auctionId);
+    } else {
       try {
         await auctionService.toggleWatchlist(user.id, auctionId);
+        const dbWatchlist = await auctionService.getUserWatchlistIds(user.id);
+        const allInterested = Array.from(new Set([...interestedMstcIds, ...dbWatchlist]));
+        setInterestedIds(allInterested);
+        setStats(prev => ({
+          ...prev,
+          interestedAuctions: allInterested.length
+        }));
       } catch (e) {
         console.error('Failed to toggle Supabase watchlist', e);
       }
     }
 
-    // Refresh recommendations list and yield ranks
     const recs = await recommendationService.getRecommendedAuctions(user.id, 4);
     const ranked = await recommendationService.getRankedAuctions(user.id);
     setRecommendedAuctions(recs);

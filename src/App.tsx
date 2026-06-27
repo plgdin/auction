@@ -17,12 +17,22 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const { initializeAuth } = useAuthStore();
-  const { setCurrencyRates } = useAppStore();
+  const { initializeAuth, user } = useAuthStore();
+  const { setCurrencyRates, fetchInterestedMstcIds } = useAppStore();
 
   useEffect(() => {
     initializeAuth();
+  }, [initializeAuth]);
 
+  useEffect(() => {
+    if (user) {
+      fetchInterestedMstcIds(user.id);
+    } else {
+      fetchInterestedMstcIds('');
+    }
+  }, [user, fetchInterestedMstcIds]);
+
+  useEffect(() => {
     // Fetch latest currency rates dynamically on load (lazy-imported to reduce TBT)
     import('./utils/currency').then(({ fetchLatestRates }) => {
       fetchLatestRates()

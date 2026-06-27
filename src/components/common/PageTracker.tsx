@@ -35,6 +35,9 @@ export function PageTracker() {
     } else if (path === '/contact') {
       title = 'Contact Support & Helpdesk | Lelam';
       description = 'Reach out to the Lelam support team for help with your auction analytics account, billing, or custom valuation reports.';
+    } else if (path === '/blog') {
+      title = 'Lelam Blog | Insights on MSTC eAuctions & Metal Scrap Trading';
+      description = 'Read comprehensive guides, tips, and strategies for participating in MSTC eAuctions and managing scrap procurement on Lelam.';
     } else if (path === '/privacy') {
       title = 'Privacy Policy | Lelam';
     } else if (path === '/terms') {
@@ -75,6 +78,18 @@ export function PageTracker() {
     if (metaDesc) {
       metaDesc.setAttribute('content', description);
     }
+
+    // Update canonical link
+    let canonicalLink = document.querySelector('link[rel="canonical"]');
+    if (!canonicalLink) {
+      canonicalLink = document.createElement('link');
+      canonicalLink.setAttribute('rel', 'canonical');
+      document.head.appendChild(canonicalLink);
+    }
+    const cleanPath = location.pathname.endsWith('/') && location.pathname !== '/'
+      ? location.pathname.slice(0, -1)
+      : location.pathname;
+    canonicalLink.setAttribute('href', `https://www.lelam.co${cleanPath}`);
 
     // Log the page view action (lazy-loaded to avoid pulling supabase into initial bundle)
     import('../../services/auditService').then(({ logUserActivity }) => {
