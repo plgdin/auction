@@ -46,6 +46,7 @@ export const LinkPreview = ({
       meta: false,
       embed: "screenshot.url",
       colorScheme: "dark",
+      waitFor: 3000,
       "viewport.isMobile": true,
       "viewport.deviceScaleFactor": 1,
       "viewport.width": width * 3,
