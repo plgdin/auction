@@ -12,6 +12,8 @@ Allow: /contact
 Allow: /faq
 Allow: /notices
 Allow: /news
+Allow: /blog
+Allow: /blog/*
 Allow: /privacy
 Allow: /terms
 Allow: /cookies
