@@ -72,7 +72,7 @@ export function Blog() {
               <span className="flex items-center"><User className="w-4 h-4 mr-2" /> {blog.author_name || 'Admin'}</span>
             </div>
             <div className="prose prose-lg mx-auto text-left prose-slate prose-img:rounded-xl prose-a:text-primary line-clamp-6" dangerouslySetInnerHTML={{ __html: blog.content }} />
-            <Link to={`/blog/${blog.id}`} className="mt-8 inline-flex items-center px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-600 transition-colors">
+            <Link to={`/blog/${blog.slug || blog.id}`} className="mt-8 inline-flex items-center px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-600 transition-colors">
               Read Full Article <ArrowRight className="w-4 h-4 ml-2" />
             </Link>
           </div>
@@ -104,7 +104,7 @@ export function Blog() {
               key={topBlog.id}
               className={`transition-opacity duration-500 ${index === currentSlide ? 'opacity-100 relative z-10' : 'opacity-0 absolute inset-0 z-0 pointer-events-none'}`}
             >
-              <Link to={`/blog/${topBlog.id}`} className="block group">
+              <Link to={`/blog/${topBlog.slug || topBlog.id}`} className="block group">
                 <div className="bg-white rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col md:flex-row transition-transform duration-300 hover:shadow-2xl hover:-translate-y-1 h-full">
                   {topBlog.image_url && (
                     <div className="md:w-1/2 relative overflow-hidden h-[300px] md:h-auto">
@@ -170,7 +170,7 @@ export function Blog() {
           <h3 className="text-2xl font-bold text-slate-900 mb-8 border-b border-slate-200 pb-4">Latest Articles</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {remainingBlogs.map(blog => (
-              <Link to={`/blog/${blog.id}`} key={blog.id} className="bg-white rounded-2xl overflow-hidden shadow-md border border-slate-100 flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group">
+              <Link to={`/blog/${blog.slug || blog.id}`} key={blog.id} className="bg-white rounded-2xl overflow-hidden shadow-md border border-slate-100 flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group">
                 {blog.image_url && (
                   <div className="relative h-48 overflow-hidden">
                      <img src={blog.image_url} alt={blog.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />

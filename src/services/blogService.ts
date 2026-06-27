@@ -19,12 +19,18 @@ export const blogService = {
     return data as Blog[];
   },
 
-  async getBlogById(id: string): Promise<Blog | null> {
-    const { data, error } = await supabase
-      .from('blogs')
-      .select('*')
-      .eq('id', id)
-      .single();
+  async getBlogBySlugOrId(identifier: string): Promise<Blog | null> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+    
+    let query = supabase.from('blogs').select('*');
+    
+    if (isUuid) {
+      query = query.eq('id', identifier);
+    } else {
+      query = query.eq('slug', identifier);
+    }
+
+    const { data, error } = await query.single();
     
     if (error && error.code !== 'PGRST116') throw error;
     return data as Blog | null;

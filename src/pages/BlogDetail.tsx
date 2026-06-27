@@ -6,20 +6,20 @@ import { format } from 'date-fns';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 
 export function BlogDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [blog, setBlog] = useState<BlogType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (id) {
-      loadBlog(id);
+    if (slug) {
+      loadBlog(slug);
     }
-  }, [id]);
+  }, [slug]);
 
-  const loadBlog = async (blogId: string) => {
+  const loadBlog = async (identifier: string) => {
     try {
-      const data = await blogService.getBlogById(blogId);
+      const data = await blogService.getBlogBySlugOrId(identifier);
       if (data && data.is_published) {
         setBlog(data);
       } else {

@@ -104,7 +104,7 @@ export const router = createBrowserRouter([
       { path: 'notices', element: <Notices /> },
       { path: 'news', element: <News /> },
       { path: 'blog', element: <Blog /> },
-      { path: 'blog/:id', element: <BlogDetail /> },
+      { path: 'blog/:slug', element: <BlogDetail /> },
       { path: 'privacy', element: <Privacy /> },
       { path: 'terms', element: <Terms /> },
       { path: 'cookies', element: <Cookies /> },

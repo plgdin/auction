@@ -67,19 +67,32 @@ export function BlogManagement() {
     }
   };
 
+  const generateSlug = (title: string, id?: string) => {
+    const base = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    if (id) {
+      return `${base}-${id.substring(0, 5)}`;
+    }
+    return `${base}-${Math.random().toString(36).substring(2, 7)}`;
+  };
+
   const handleSave = async () => {
     if (!currentBlog?.title || !currentBlog?.content) {
       toast.error('Title and content are required');
       return;
     }
 
+    const blogToSave = {
+      ...currentBlog,
+      slug: generateSlug(currentBlog.title, currentBlog.id)
+    };
+
     setIsSaving(true);
     try {
       if (currentBlog.id) {
-        await blogService.updateBlog(currentBlog.id, currentBlog);
+        await blogService.updateBlog(currentBlog.id, blogToSave);
         toast.success('Blog updated successfully');
       } else {
-        await blogService.createBlog(currentBlog);
+        await blogService.createBlog(blogToSave);
         toast.success('Blog created successfully');
       }
       setIsModalOpen(false);

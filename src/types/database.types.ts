@@ -240,6 +240,7 @@ export interface SystemSetting {
 
 export interface Blog {
   id: string;
+  slug?: string;
   title: string;
   content: string;
   image_url?: string;
