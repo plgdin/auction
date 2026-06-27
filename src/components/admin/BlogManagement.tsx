@@ -88,7 +88,7 @@ export function BlogManagement() {
       'ul', 'ol', '|',
       'outdent', 'indent',  '|',
       'font', 'fontsize', 'brush', 'paragraph', '|',
-      'image', 'video', 'table', 'link', '|',
+      'image', 'video', 'table', 'link', 'previewLink', '|',
       'align', 'undo', 'redo', '|',
       'hr', 'eraser', 'copyformat', 'fullsize'
     ],
