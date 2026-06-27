@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { 
   Plus, Edit, Trash2, CheckCircle, XCircle, 
   ArrowUp, ArrowDown, Image as ImageIcon, Save, X, FileText, UploadCloud, Loader2
@@ -19,6 +19,26 @@ export function BlogManagement() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Memoize Jodit config to prevent re-renders that break internal dialogs like the link popup
+  const editorConfig = useMemo(() => ({
+    readonly: false,
+    height: 400,
+    zIndex: 99999, // Ensure popups are above other elements
+    askBeforePasteHTML: false,
+    askBeforePasteFromWord: false,
+    defaultActionOnPaste: 'insert_as_html' as const,
+    buttons: [
+      'source', '|',
+      'bold', 'strikethrough', 'underline', 'italic', '|',
+      'ul', 'ol', '|',
+      'outdent', 'indent',  '|',
+      'font', 'fontsize', 'brush', 'paragraph', '|',
+      'image', 'video', 'table', 'link', '|',
+      'align', 'undo', 'redo', '|',
+      'hr', 'eraser', 'copyformat', 'fullsize'
+    ]
+  }), []);
 
   useEffect(() => {
     loadBlogs();
@@ -389,26 +409,10 @@ export function BlogManagement() {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Content</label>
-                <div className="border border-slate-300 rounded-lg overflow-hidden relative z-0">
+                <div className="border border-slate-300 rounded-lg">
                   <JoditEditor
                     value={currentBlog.content || ''} 
-                    config={{
-                      readonly: false,
-                      height: 400,
-                      askBeforePasteHTML: false,
-                      askBeforePasteFromWord: false,
-                      defaultActionOnPaste: 'insert_as_html',
-                      buttons: [
-                        'source', '|',
-                        'bold', 'strikethrough', 'underline', 'italic', '|',
-                        'ul', 'ol', '|',
-                        'outdent', 'indent',  '|',
-                        'font', 'fontsize', 'brush', 'paragraph', '|',
-                        'image', 'video', 'table', 'link', '|',
-                        'align', 'undo', 'redo', '|',
-                        'hr', 'eraser', 'copyformat', 'fullsize'
-                      ]
-                    }}
+                    config={editorConfig}
                     onBlur={(newContent) => setCurrentBlog({...currentBlog, content: newContent})}
                   />
                 </div>
