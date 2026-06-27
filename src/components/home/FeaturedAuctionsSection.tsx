@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Lock } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
 import type { Auction } from '../../types/database.types';
 import { lazy, Suspense } from 'react';
 
@@ -17,25 +18,11 @@ export function FeaturedAuctionsSection() {
   const [isLoading, setIsLoading] = useState(true);
   const { isAuthenticated, user } = useAuthStore();
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<any | null>(null);
-  const [interestedMstcIds, setInterestedMstcIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    async function loadInterested() {
-      if (user) {
-        const { dashboardService } = await import('../../services/dashboardService');
-        setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
-      } else {
-        setInterestedMstcIds([]);
-      }
-    }
-    loadInterested();
-  }, [user]);
+  const { interestedMstcIds, toggleInterestedMstcId } = useAppStore();
 
   const handleMstcInterestedToggle = async (itemId: string) => {
     if (!user) return;
-    const { dashboardService } = await import('../../services/dashboardService');
-    dashboardService.toggleInterestedAuction(user.id, itemId);
-    setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
+    toggleInterestedMstcId(user.id, itemId);
   };
 
   useEffect(() => {

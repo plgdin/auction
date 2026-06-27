@@ -10,6 +10,7 @@ import { AuctionFilters } from '../components/auction/AuctionFilters';
 import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
+import { useAppStore } from '../store/appStore';
 import { dashboardService } from '../services/dashboardService';
 import type { Auction } from '../types/database.types';
 import { MstcSearchService, expandMstcOffice } from '../services/publicService';
@@ -165,20 +166,11 @@ export function Auctions() {
   const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
-  const [interestedMstcIds, setInterestedMstcIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (user) {
-      setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
-    } else {
-      setInterestedMstcIds([]);
-    }
-  }, [user]);
+  const { interestedMstcIds, toggleInterestedMstcId } = useAppStore();
 
   const handleMstcInterestedToggle = (itemId: string) => {
     if (!user) return;
-    dashboardService.toggleInterestedAuction(user.id, itemId);
-    setInterestedMstcIds(dashboardService.getInterestedAuctions(user.id));
+    toggleInterestedMstcId(user.id, itemId);
   };
 
 
@@ -493,37 +485,57 @@ export function Auctions() {
 
       // Update Category
       if ('categoryIds' in newFilters) {
+        next.delete('mstc_category');
         if (newFilters.categoryIds && newFilters.categoryIds.length > 0) {
-          next.set('mstc_category', newFilters.categoryIds[0]);
-        } else {
-          next.delete('mstc_category');
+          newFilters.categoryIds.forEach((cat: string) => {
+            next.append('mstc_category', cat);
+          });
         }
       }
 
       // Update Subcategory
-      if ('subcategory' in newFilters) {
+      if ('subcategories' in newFilters) {
+        next.delete('mstc_subcategory');
+        if (newFilters.subcategories && newFilters.subcategories.length > 0) {
+          newFilters.subcategories.forEach((sub: string) => {
+            next.append('mstc_subcategory', sub);
+          });
+        }
+      } else if ('subcategory' in newFilters) {
+        next.delete('mstc_subcategory');
         if (newFilters.subcategory) {
           next.set('mstc_subcategory', newFilters.subcategory);
-        } else {
-          next.delete('mstc_subcategory');
         }
       }
 
       // Update Location
-      if ('location' in newFilters) {
+      if ('locations' in newFilters) {
+        next.delete('mstc_location');
+        if (newFilters.locations && newFilters.locations.length > 0) {
+          newFilters.locations.forEach((loc: string) => {
+            next.append('mstc_location', loc);
+          });
+        }
+      } else if ('location' in newFilters) {
+        next.delete('mstc_location');
         if (newFilters.location) {
           next.set('mstc_location', newFilters.location);
-        } else {
-          next.delete('mstc_location');
         }
       }
 
       // Update Regional Offices
       if ('regionalOffices' in newFilters) {
         next.delete('mstc_regional_office');
-        newFilters.regionalOffices?.forEach((office: string) => {
-          next.append('mstc_regional_office', office);
-        });
+        if (newFilters.regionalOffices && newFilters.regionalOffices.length > 0) {
+          newFilters.regionalOffices.forEach((office: string) => {
+            next.append('mstc_regional_office', office);
+          });
+        }
+      } else if ('regionalOffice' in newFilters) {
+        next.delete('mstc_regional_office');
+        if (newFilters.regionalOffice) {
+          next.set('mstc_regional_office', newFilters.regionalOffice);
+        }
       }
 
       // Update startDate
@@ -787,7 +799,7 @@ export function Auctions() {
           </div>
 
           {/* Sidebar Filters */}
-          <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:overflow-visible z-20">
+          <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:self-start lg:overflow-visible z-20">
             <AuctionFilters
               isOpen={isFiltersOpen}
               onClose={() => setIsFiltersOpen(false)}

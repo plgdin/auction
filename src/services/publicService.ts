@@ -2036,7 +2036,19 @@ export const MstcSearchService = {
         }
       }
 
-      const isSearchWithImageFilter = !!(filters?.hasImages || filters?.hasAssetDocuments);
+      const hasMultiSelectFilters = !!(
+        (filters?.categories && filters.categories.length > 0) ||
+        (filters?.subcategories && filters.subcategories.length > 0) ||
+        (filters?.locations && filters.locations.length > 0) ||
+        (filters?.sellers && filters.sellers.length > 0) ||
+        (filters?.regionalOffices && filters.regionalOffices.length > 0)
+      );
+      const isSearchWithImageFilter = !!(
+        filters?.hasImages || 
+        filters?.hasAssetDocuments || 
+        filters?.isReauction !== undefined ||
+        hasMultiSelectFilters
+      );
       const rpcPage = isSearchWithImageFilter ? 1 : (filters?.page || 1);
       const rpcLimit = isSearchWithImageFilter ? 1000 : (filters?.limit || 12);
 
@@ -2062,12 +2074,39 @@ export const MstcSearchService = {
               .select('*')
               .eq('asset_status', 'completed');
 
-            if (filters?.categories?.[0] || filters?.category) queryBuilder = queryBuilder.like('category_name', `${filters?.categories?.[0] || filters?.category}%`);
-            if (filters?.subcategories?.[0] || filters?.subcategory) queryBuilder = queryBuilder.like('category_name', `%| ${filters?.subcategories?.[0] || filters?.subcategory}`);
-            if (filters?.locations?.[0] || filters?.location) queryBuilder = queryBuilder.eq('location', filters?.locations?.[0] || filters?.location);
-            if (filters?.sellers?.[0] || filters?.seller) queryBuilder = queryBuilder.eq('seller_name', filters?.sellers?.[0] || filters?.seller);
+            if (filters?.categories && filters.categories.length > 0) {
+              queryBuilder = queryBuilder.or(filters.categories.map(c => `category_name.like.${c}%`).join(','));
+            } else if (filters?.category) {
+              queryBuilder = queryBuilder.like('category_name', `${filters.category}%`);
+            }
+
+            if (filters?.subcategories && filters.subcategories.length > 0) {
+              queryBuilder = queryBuilder.or(filters.subcategories.map(s => `category_name.like.%| ${s}`).join(','));
+            } else if (filters?.subcategory) {
+              queryBuilder = queryBuilder.like('category_name', `%| ${filters.subcategory}`);
+            }
+
+            if (filters?.locations && filters.locations.length > 0) {
+              queryBuilder = queryBuilder.in('location', filters.locations);
+            } else if (filters?.location) {
+              queryBuilder = queryBuilder.eq('location', filters.location);
+            }
+
+            if (filters?.sellers && filters.sellers.length > 0) {
+              queryBuilder = queryBuilder.in('seller_name', filters.sellers);
+            } else if (filters?.seller) {
+              queryBuilder = queryBuilder.eq('seller_name', filters.seller);
+            }
+
+            if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
+              queryBuilder = queryBuilder.or(filters.regionalOffices.map(o => `mstc_auction_number.ilike.MSTC/${o}/%`).join(','));
+            } else if (filters?.regionalOffice) {
+              queryBuilder = queryBuilder.ilike('mstc_auction_number', `MSTC/${filters.regionalOffice}/%`);
+            }
+
             if (filters?.startDate) queryBuilder = queryBuilder.gte('opening_date', filters.startDate);
             if (filters?.endDate) queryBuilder = queryBuilder.lte('opening_date', filters.endDate);
+            if (filters?.isReauction !== undefined) queryBuilder = queryBuilder.eq('is_reauction', filters.isReauction);
 
             const { data, error: err } = await queryBuilder
               .order('opening_date', { ascending: false })
@@ -2085,16 +2124,43 @@ export const MstcSearchService = {
           count = rawData.length;
         } else {
           let queryBuilder = supabase
-            .from('mstc_auctions')
-            .select('*', { count: 'exact' })
-            .eq('asset_status', 'completed');
+              .from('mstc_auctions')
+              .select('*', { count: 'exact' })
+              .eq('asset_status', 'completed');
 
-          if (filters?.categories?.[0] || filters?.category) queryBuilder = queryBuilder.like('category_name', `${filters?.categories?.[0] || filters?.category}%`);
-          if (filters?.subcategories?.[0] || filters?.subcategory) queryBuilder = queryBuilder.like('category_name', `%| ${filters?.subcategories?.[0] || filters?.subcategory}`);
-          if (filters?.locations?.[0] || filters?.location) queryBuilder = queryBuilder.eq('location', filters?.locations?.[0] || filters?.location);
-          if (filters?.sellers?.[0] || filters?.seller) queryBuilder = queryBuilder.eq('seller_name', filters?.sellers?.[0] || filters?.seller);
+          if (filters?.categories && filters.categories.length > 0) {
+            queryBuilder = queryBuilder.or(filters.categories.map(c => `category_name.like.${c}%`).join(','));
+          } else if (filters?.category) {
+            queryBuilder = queryBuilder.like('category_name', `${filters.category}%`);
+          }
+
+          if (filters?.subcategories && filters.subcategories.length > 0) {
+            queryBuilder = queryBuilder.or(filters.subcategories.map(s => `category_name.like.%| ${s}`).join(','));
+          } else if (filters?.subcategory) {
+            queryBuilder = queryBuilder.like('category_name', `%| ${filters.subcategory}`);
+          }
+
+          if (filters?.locations && filters.locations.length > 0) {
+            queryBuilder = queryBuilder.in('location', filters.locations);
+          } else if (filters?.location) {
+            queryBuilder = queryBuilder.eq('location', filters.location);
+          }
+
+          if (filters?.sellers && filters.sellers.length > 0) {
+            queryBuilder = queryBuilder.in('seller_name', filters.sellers);
+          } else if (filters?.seller) {
+            queryBuilder = queryBuilder.eq('seller_name', filters.seller);
+          }
+
+          if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
+            queryBuilder = queryBuilder.or(filters.regionalOffices.map(o => `mstc_auction_number.ilike.MSTC/${o}/%`).join(','));
+          } else if (filters?.regionalOffice) {
+            queryBuilder = queryBuilder.ilike('mstc_auction_number', `MSTC/${filters.regionalOffice}/%`);
+          }
+
           if (filters?.startDate) queryBuilder = queryBuilder.gte('opening_date', filters.startDate);
           if (filters?.endDate) queryBuilder = queryBuilder.lte('opening_date', filters.endDate);
+          if (filters?.isReauction !== undefined) queryBuilder = queryBuilder.eq('is_reauction', filters.isReauction);
 
           const { data, error: err, count: totalCountVal } = await queryBuilder
             .order('opening_date', { ascending: false })
@@ -2113,10 +2179,10 @@ export const MstcSearchService = {
         const rpcResult = await supabase.rpc('hybrid_search_mstc_catalog', {
           p_search_query: workingQuery || null,
           p_embedding: embeddingStr as any,
-          p_category_filter: filters?.categories?.[0] || filters?.category || null,
-          p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
-          p_location_filter: filters?.locations?.[0] || filters?.location || null,
-          p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
+          p_category_filter: isSearchWithImageFilter ? null : (filters?.categories?.[0] || filters?.category || null),
+          p_subcategory_filter: isSearchWithImageFilter ? null : (filters?.subcategories?.[0] || filters?.subcategory || null),
+          p_location_filter: isSearchWithImageFilter ? null : (filters?.locations?.[0] || filters?.location || null),
+          p_seller_filter: isSearchWithImageFilter ? null : (filters?.sellers?.[0] || filters?.seller || null),
           p_start_date: filters?.startDate || null,
           p_end_date: filters?.endDate || null,
           p_has_images: null, // Bypass DB filter due to remote DB bug
@@ -2142,10 +2208,10 @@ export const MstcSearchService = {
             const retryResult = await supabase.rpc('hybrid_search_mstc_catalog', {
               p_search_query: correctedQuery,
               p_embedding: embeddingStr as any,
-              p_category_filter: filters?.categories?.[0] || filters?.category || null,
-              p_subcategory_filter: filters?.subcategories?.[0] || filters?.subcategory || null,
-              p_location_filter: filters?.locations?.[0] || filters?.location || null,
-              p_seller_filter: filters?.sellers?.[0] || filters?.seller || null,
+              p_category_filter: isSearchWithImageFilter ? null : (filters?.categories?.[0] || filters?.category || null),
+              p_subcategory_filter: isSearchWithImageFilter ? null : (filters?.subcategories?.[0] || filters?.subcategory || null),
+              p_location_filter: isSearchWithImageFilter ? null : (filters?.locations?.[0] || filters?.location || null),
+              p_seller_filter: isSearchWithImageFilter ? null : (filters?.sellers?.[0] || filters?.seller || null),
               p_start_date: filters?.startDate || null,
               p_end_date: filters?.endDate || null,
               p_has_images: null, // Bypass DB filter due to remote DB bug
@@ -2200,6 +2266,77 @@ export const MstcSearchService = {
           category_name: `${category} | ${subcategory}`
         } as MstcSanitizedAuction;
       });
+
+      // Filter by categories locally if specified
+      if (filters?.categories && filters.categories.length > 0) {
+        mapped = mapped.filter(item => {
+          return filters.categories!.some(c => item.category_name.toLowerCase().startsWith(c.toLowerCase()));
+        });
+      } else if (filters?.category) {
+        mapped = mapped.filter(item => {
+          return item.category_name.toLowerCase().startsWith(filters.category!.toLowerCase());
+        });
+      }
+
+      // Filter by subcategories locally if specified
+      if (filters?.subcategories && filters.subcategories.length > 0) {
+        mapped = mapped.filter(item => {
+          const parts = item.category_name.split(' | ');
+          const sub = parts[1] || '';
+          return filters.subcategories!.some(s => sub.toLowerCase() === s.toLowerCase());
+        });
+      } else if (filters?.subcategory) {
+        mapped = mapped.filter(item => {
+          const parts = item.category_name.split(' | ');
+          const sub = parts[1] || '';
+          return sub.toLowerCase() === filters.subcategory!.toLowerCase();
+        });
+      }
+
+      // Filter by locations locally if specified
+      if (filters?.locations && filters.locations.length > 0) {
+        mapped = mapped.filter(item => {
+          return filters.locations!.some(loc => item.location && item.location.toLowerCase() === loc.toLowerCase());
+        });
+      } else if (filters?.location) {
+        mapped = mapped.filter(item => {
+          return item.location && item.location.toLowerCase() === filters.location!.toLowerCase();
+        });
+      }
+
+      // Filter by sellers locally if specified
+      if (filters?.sellers && filters.sellers.length > 0) {
+        mapped = mapped.filter(item => {
+          return filters.sellers!.some(sel => item.seller_name && item.seller_name.toLowerCase() === sel.toLowerCase());
+        });
+      } else if (filters?.seller) {
+        mapped = mapped.filter(item => {
+          return item.seller_name && item.seller_name.toLowerCase() === filters.seller!.toLowerCase();
+        });
+      }
+
+      // Filter by regional offices locally if specified
+      if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
+        mapped = mapped.filter(item => {
+          if (!item.mstc_auction_number) return false;
+          const parts = item.mstc_auction_number.split('/');
+          if (parts.length > 1 && parts[0].toUpperCase() === 'MSTC') {
+            const office = parts[1].trim();
+            return filters.regionalOffices!.some(o => office.toLowerCase() === o.toLowerCase());
+          }
+          return false;
+        });
+      } else if (filters?.regionalOffice) {
+        mapped = mapped.filter(item => {
+          if (!item.mstc_auction_number) return false;
+          const parts = item.mstc_auction_number.split('/');
+          if (parts.length > 1 && parts[0].toUpperCase() === 'MSTC') {
+            const office = parts[1].trim();
+            return office.toLowerCase() === filters.regionalOffice!.toLowerCase();
+          }
+          return false;
+        });
+      }
 
       // Filter by isReauction locally if specified
       if (filters?.isReauction !== undefined) {

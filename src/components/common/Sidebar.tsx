@@ -105,17 +105,19 @@ export function Sidebar() {
                 key={item.name}
                 to={item.path}
                 className={clsx(
-                  "flex items-center px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group",
+                  "flex items-center justify-between px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group",
                   isActive 
                     ? "bg-primary/10 text-primary font-semibold" 
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                <Icon className={clsx(
-                  "w-5 h-5 mr-3 shrink-0 transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-                )} />
-                {item.name}
+                <div className="flex items-center">
+                  <Icon className={clsx(
+                    "w-5 h-5 mr-3 shrink-0 transition-colors",
+                    isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                  )} />
+                  <span>{item.name}</span>
+                </div>
               </Link>
             );
           })
