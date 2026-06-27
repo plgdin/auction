@@ -8,6 +8,7 @@ import {
   useSpring,
 } from "framer-motion";
 import { Link } from "react-router-dom";
+import { Link as LinkIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 type LinkPreviewProps = {
@@ -31,10 +32,16 @@ export const LinkPreview = ({
   isStatic = false,
   imageSrc = "",
 }: LinkPreviewProps) => {
-  let src;
-  if (!isStatic) {
+  let src = "";
+  const isExternalUrl = url.startsWith('http://') || url.startsWith('https://') || url.includes('.co') || url.includes('.com') || url.includes('.org') || url.includes('.in');
+  
+  if (!isStatic && isExternalUrl) {
+    let validUrl = url;
+    if (!validUrl.startsWith('http')) {
+      validUrl = `https://${validUrl}`;
+    }
     const params = encode({
-      url,
+      url: validUrl,
       screenshot: true,
       meta: false,
       embed: "screenshot.url",
@@ -45,12 +52,14 @@ export const LinkPreview = ({
       "viewport.height": height * 3,
     });
     src = `https://api.microlink.io/?${params}`;
-  } else {
+  } else if (isStatic) {
     src = imageSrc;
   }
 
   const [isOpen, setOpen] = React.useState(false);
   const [isMounted, setIsMounted] = React.useState(false);
+  // If we don't have a src, we should immediately show the fallback
+  const [imageError, setImageError] = React.useState(!src);
 
   React.useEffect(() => {
     setIsMounted(true);
@@ -145,14 +154,24 @@ export const LinkPreview = ({
                     className="block p-1 bg-white dark:bg-slate-800 hover:border-neutral-200 dark:hover:border-neutral-700"
                     style={{ fontSize: 0 }}
                   >
-                    <img
-                      src={isStatic ? imageSrc : src}
-                      width={width}
-                      height={height}
-                      className="rounded-lg object-cover"
-                      alt="preview image"
-                      style={{ width: `${width}px`, height: `${height}px` }}
-                    />
+                    {imageError ? (
+                      <div 
+                        className="rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400"
+                        style={{ width: `${width}px`, height: `${height}px` }}
+                      >
+                        <LinkIcon className="w-8 h-8 opacity-50" />
+                      </div>
+                    ) : (
+                      <img
+                        src={isStatic ? imageSrc : src}
+                        width={width}
+                        height={height}
+                        className="rounded-lg object-cover"
+                        alt="preview image"
+                        style={{ width: `${width}px`, height: `${height}px` }}
+                        onError={() => setImageError(true)}
+                      />
+                    )}
                   </a>
                 ) : (
                   <Link
@@ -160,14 +179,24 @@ export const LinkPreview = ({
                     className="block p-1 bg-white dark:bg-slate-800 hover:border-neutral-200 dark:hover:border-neutral-700"
                     style={{ fontSize: 0 }}
                   >
-                    <img
-                      src={isStatic ? imageSrc : src}
-                      width={width}
-                      height={height}
-                      className="rounded-lg object-cover"
-                      alt="preview image"
-                      style={{ width: `${width}px`, height: `${height}px` }}
-                    />
+                    {imageError ? (
+                      <div 
+                        className="rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400"
+                        style={{ width: `${width}px`, height: `${height}px` }}
+                      >
+                        <LinkIcon className="w-8 h-8 opacity-50" />
+                      </div>
+                    ) : (
+                      <img
+                        src={isStatic ? imageSrc : src}
+                        width={width}
+                        height={height}
+                        className="rounded-lg object-cover"
+                        alt="preview image"
+                        style={{ width: `${width}px`, height: `${height}px` }}
+                        onError={() => setImageError(true)}
+                      />
+                    )}
                   </Link>
                 )}
               </motion.div>
