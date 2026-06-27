@@ -75,14 +75,8 @@ export function BlogManagement() {
   };
 
   // Memoize Jodit config to prevent re-renders that break internal dialogs like the link popup
-  const editorConfig = useMemo(() => ({
-    readonly: false,
-    height: 400,
-    zIndex: 99999, // Ensure popups are above other elements
-    askBeforePasteHTML: false,
-    askBeforePasteFromWord: false,
-    defaultActionOnPaste: 'insert_as_html' as const,
-    buttons: [
+  const editorConfig = useMemo(() => {
+    const customButtons = [
       'source', '|',
       'bold', 'strikethrough', 'underline', 'italic', '|',
       'ul', 'ol', '|',
@@ -91,7 +85,19 @@ export function BlogManagement() {
       'image', 'video', 'table', 'link', 'previewLink', '|',
       'align', 'undo', 'redo', '|',
       'hr', 'eraser', 'copyformat', 'fullsize'
-    ],
+    ];
+    
+    return {
+      readonly: false,
+      height: 400,
+      zIndex: 99999, // Ensure popups are above other elements
+      askBeforePasteHTML: false,
+      askBeforePasteFromWord: false,
+      defaultActionOnPaste: 'insert_as_html' as const,
+      buttons: customButtons,
+      buttonsMD: customButtons,
+      buttonsSM: customButtons,
+      buttonsXS: customButtons,
     extraButtons: [
       {
         name: 'previewLink',
@@ -110,7 +116,8 @@ export function BlogManagement() {
         }
       }
     ]
-  }), []);
+  };
+  }, []);
 
   useEffect(() => {
     loadBlogs();
