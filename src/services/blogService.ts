@@ -19,18 +19,29 @@ export const blogService = {
     return data as Blog[];
   },
 
-  async getBlogById(id: string): Promise<Blog | null> {
-    const { data, error } = await supabase
-      .from('blogs')
-      .select('*')
-      .eq('id', id)
-      .single();
+  async getBlogById(idOrSlug: string): Promise<Blog | null> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+    let query = supabase.from('blogs').select('*');
+    
+    if (isUuid) {
+      query = query.eq('id', idOrSlug);
+    } else {
+      query = query.eq('slug', idOrSlug);
+    }
+
+    const { data, error } = await query.single();
     
     if (error && error.code !== 'PGRST116') throw error;
     return data as Blog | null;
   },
 
   async createBlog(blog: Partial<Blog>): Promise<Blog> {
+    if (blog.title) {
+      blog.slug = blog.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-+|-+$)/g, '');
+    }
     const { data, error } = await supabase
       .from('blogs')
       .insert([blog])
@@ -42,6 +53,12 @@ export const blogService = {
   },
 
   async updateBlog(id: string, updates: Partial<Blog>): Promise<Blog> {
+    if (updates.title) {
+      updates.slug = updates.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-+|-+$)/g, '');
+    }
     const { data, error } = await supabase
       .from('blogs')
       .update(updates)

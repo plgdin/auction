@@ -5,6 +5,7 @@ import { MainLayout } from '../layouts/MainLayout';
 
 // Components
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
+import { RouteErrorBoundary } from '../components/common/RouteErrorBoundary';
 
 import { lazy, Suspense, useEffect, useState } from 'react';
 
@@ -63,7 +64,6 @@ const Dashboard = lazyWithSuspense(() => import('../pages/Dashboard').then(m => 
 const Admin = lazyWithSuspense(() => import('../pages/Admin').then(m => ({ default: m.Admin })));
 const Contact = lazyWithSuspense(() => import('../pages/Contact').then(m => ({ default: m.Contact })));
 const About = lazyWithSuspense(() => import('../pages/About').then(m => ({ default: m.About })));
-const NotFound = lazyWithSuspense(() => import('../pages/NotFound').then(m => ({ default: m.NotFound })));
 const Blog = lazyWithSuspense(() => import('../pages/Blog').then(m => ({ default: m.Blog })));
 const BlogDetail = lazyWithSuspense(() => import('../pages/BlogDetail').then(m => ({ default: m.BlogDetail })));
 
@@ -93,7 +93,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <MainLayout />,
-    errorElement: <NotFound />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <Home /> },
       { path: 'auctions', element: <Auctions /> },
@@ -115,6 +115,7 @@ export const router = createBrowserRouter([
   {
     path: '/auth',
     element: <AuthLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { path: 'login', element: <Login /> },
       { path: 'register', element: <Register /> },
@@ -126,6 +127,7 @@ export const router = createBrowserRouter([
   {
     path: '/adminlogin',
     element: <AuthLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <Login /> },
     ],
@@ -137,6 +139,7 @@ export const router = createBrowserRouter([
         <DashboardLayout />
       </ProtectedRoute>
     ),
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <Dashboard /> },
       { path: 'bids', element: <MyBids /> },
@@ -158,6 +161,7 @@ export const router = createBrowserRouter([
         <DashboardLayout />
       </ProtectedRoute>
     ),
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <Admin /> },
     ],
@@ -169,6 +173,7 @@ export const router = createBrowserRouter([
         <DashboardLayout />
       </ProtectedRoute>
     ),
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <SellerDashboard /> },
       { path: 'auctions', element: <ManageAuctions /> },

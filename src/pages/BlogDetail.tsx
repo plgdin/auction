@@ -4,6 +4,8 @@ import { blogService } from '../services/blogService';
 import type { Blog as BlogType } from '../types/database.types';
 import { format } from 'date-fns';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
+import { parseHtmlWithLinkPreviews } from '../utils/blogHtmlParser';
+
 
 export function BlogDetail() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +24,27 @@ export function BlogDetail() {
       const data = await blogService.getBlogById(blogId);
       if (data && data.is_published) {
         setBlog(data);
+        document.title = `${data.title} | Lelam Blog`;
+        
+        // Extract plain text snippet from HTML content for meta description
+        const temp = document.createElement('div');
+        temp.innerHTML = data.content;
+        const plainText = temp.textContent || temp.innerText || '';
+        const snippet = plainText.trim().replace(/\s+/g, ' ').substring(0, 155) + '...';
+        
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) {
+          metaDesc.setAttribute('content', snippet);
+        }
+
+        // Set canonical link specifically to this blog's slug-based URL
+        let canonicalLink = document.querySelector('link[rel="canonical"]');
+        if (!canonicalLink) {
+          canonicalLink = document.createElement('link');
+          canonicalLink.setAttribute('rel', 'canonical');
+          document.head.appendChild(canonicalLink);
+        }
+        canonicalLink.setAttribute('href', `https://www.lelam.co/blog/${data.slug || data.id}`);
       } else {
         // If not found or not published, redirect back to blog index
         navigate('/blog');
@@ -89,8 +112,9 @@ export function BlogDetail() {
 
       {/* Content Section */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="prose prose-lg md:prose-xl mx-auto text-slate-800 prose-img:rounded-2xl prose-img:shadow-lg prose-a:text-primary hover:prose-a:text-primary-600 prose-headings:text-slate-900" 
-             dangerouslySetInnerHTML={{ __html: blog.content }} />
+        <div className="prose prose-lg md:prose-xl mx-auto text-slate-800 prose-img:rounded-2xl prose-img:shadow-lg prose-a:text-primary hover:prose-a:text-primary-600 prose-headings:text-slate-900">
+          {parseHtmlWithLinkPreviews(blog.content)}
+        </div>
       </div>
     </div>
   );

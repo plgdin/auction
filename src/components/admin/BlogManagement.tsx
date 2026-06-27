@@ -413,6 +413,26 @@ export function BlogManagement() {
                   />
                 </div>
               </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-2 text-xs text-slate-600">
+                <p className="font-semibold text-slate-800 flex items-center">
+                  <span className="mr-1">💡</span> Dynamic Link Preview & Custom Image Guide
+                </p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>
+                    To add a link preview, simply insert a normal link using the link button in the editor.
+                  </li>
+                  <li>
+                    To use a <strong>custom preview image</strong>, switch the editor to HTML code view (click the <strong>Source</strong> / <strong>&lt;&gt;</strong> button) and add <code>data-image-src="IMAGE_URL"</code> to the <code>&lt;a&gt;</code> tag.
+                  </li>
+                  <li>
+                    Example: <code>&lt;a href="https://lelam.co" data-image-src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809"&gt;Lelam&lt;/a&gt;</code>
+                  </li>
+                  <li>
+                    If no custom image is provided, a live screenshot of the target page will be loaded automatically!
+                  </li>
+                </ul>
+              </div>
               
             </div>
             

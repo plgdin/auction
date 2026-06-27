@@ -14,6 +14,7 @@
   "dependencies": {
     "@ant-design/icons": "^6.2.5",
     "@hookform/resolvers": "^5.4.0",
+    "@radix-ui/react-hover-card": "^1.1.17",
     "@radix-ui/react-label": "^2.1.9",
     "@radix-ui/react-popover": "^1.1.16",
     "@radix-ui/react-slot": "^1.2.5",
@@ -35,6 +36,7 @@
     "puppeteer": "^25.1.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "qss": "^3.0.0",
     "react": "^19.2.6",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.6",

@@ -242,6 +242,7 @@ export interface Blog {
   id: string;
   title: string;
   content: string;
+  slug?: string;
   image_url?: string;
   is_featured: boolean;
   display_order: number;
@@ -252,4 +253,5 @@ export interface Blog {
   created_at: string;
   updated_at: string;
 }
+
 
