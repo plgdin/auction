@@ -12,7 +12,7 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, profile } = useAuthStore();
-  const { activeAdminTab, setActiveAdminTab, interestedMstcIds } = useAppStore();
+  const { activeAdminTab, setActiveAdminTab } = useAppStore();
 
   const handleAdminItemClick = (itemId: string) => {
     setActiveAdminTab(itemId);
