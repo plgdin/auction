@@ -37,19 +37,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initializeAuth: () => {
     if (get().isInitialized) return;
+    set({ isInitialized: true }); // Prevent strict mode double execution
 
-
+    // Fallback timeout to prevent infinite loading screen if Supabase hangs (common on first load/incognito)
+    const timeoutId = setTimeout(() => {
+      if (get().isLoading) {
+        console.warn('Supabase auth initialization timed out. Unlocking UI.');
+        set({ isLoading: false });
+      }
+    }, 3000);
 
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeoutId);
       if (session) {
         get().setSession(session);
         authService.getProfile(session.user.id).then((profile) => {
-          set({ profile, isLoading: false, isInitialized: true });
+          set({ profile, isLoading: false });
         });
       } else {
-        set({ isLoading: false, isInitialized: true });
+        set({ isLoading: false });
       }
+    }).catch((err) => {
+      clearTimeout(timeoutId);
+      console.error('Session check failed:', err);
+      set({ isLoading: false });
     });
 
     // Listen to auth changes

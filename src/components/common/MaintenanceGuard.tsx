@@ -12,9 +12,14 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     let isMounted = true;
 
     const fetchMaintenanceState = async () => {
-      const mode = await publicService.getMaintenanceMode();
-      if (isMounted) {
-        setMaintenanceEnabled(mode);
+      try {
+        const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000));
+        const mode = await Promise.race([publicService.getMaintenanceMode(), timeoutPromise]);
+        if (isMounted) {
+          setMaintenanceEnabled(mode);
+        }
+      } catch (e) {
+        if (isMounted) setMaintenanceEnabled(false);
       }
     };
     fetchMaintenanceState();
