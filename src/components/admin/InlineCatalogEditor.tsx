@@ -172,7 +172,7 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
 
       const updatedRawText = JSON.stringify(finalJsonObj);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('mstc_auctions')
         .update({
           mstc_auction_number: mstcAuctionNumber,
@@ -186,9 +186,13 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
           raw_materials_text: updatedRawText,
           updated_at: new Date().toISOString()
         })
-        .eq('id', auction.id);
+        .eq('id', auction.id)
+        .select();
 
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Update was blocked by database Row Level Security (RLS) policies. Please check admin permissions.");
+      }
 
       await supabase.from('audit_logs').insert({
         action: 'mstc_auction_edited_by_admin',
@@ -237,15 +241,19 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
 
       const updatedRawText = JSON.stringify(finalJsonObj);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('mstc_auctions')
         .update({
           raw_materials_text: updatedRawText,
           updated_at: new Date().toISOString()
         })
-        .eq('id', auction.id);
+        .eq('id', auction.id)
+        .select();
 
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Update was blocked by database Row Level Security (RLS) policies. Please check admin permissions.");
+      }
 
       await supabase.from('audit_logs').insert({
         action: 'mstc_auction_edited_by_admin',
@@ -270,9 +278,33 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
   const handleViewPrivateAsset = async (e: React.MouseEvent, path: string) => {
     e.preventDefault();
     try {
+      let bucket = 'auction_documents';
+      let storagePath = path;
+
+      try {
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+          const url = new URL(path);
+          // Handle public storage URL structure
+          const publicParts = url.pathname.split('/storage/v1/object/public/');
+          const signParts = url.pathname.split('/storage/v1/object/sign/');
+          const parts = publicParts.length > 1 ? publicParts : signParts;
+          
+          if (parts.length > 1) {
+            const bucketAndPath = parts[1];
+            const firstSlash = bucketAndPath.indexOf('/');
+            if (firstSlash !== -1) {
+              bucket = bucketAndPath.substring(0, firstSlash);
+              storagePath = bucketAndPath.substring(firstSlash + 1);
+            }
+          }
+        }
+      } catch (urlErr) {
+        console.warn('Failed to parse storage URL, falling back to raw path:', urlErr);
+      }
+
       const { data, error } = await supabase.storage
-        .from('mstc-catalogs')
-        .createSignedUrl(path, 60);
+        .from(bucket)
+        .createSignedUrl(storagePath, 60);
 
       if (error) throw error;
       if (data?.signedUrl) {

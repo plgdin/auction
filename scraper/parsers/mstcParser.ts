@@ -267,7 +267,7 @@ export function parseSubItemsFromText(text: string): SubItem[] {
     const match = line.match(/^(\d+)([\s.-]+)?(.*)$/);
     if (!match) return false;
     const num = parseInt(match[1], 10);
-    if (num > 150) return false;
+    if (num === 0 || num > 150) return false;
     const rest = match[3].trim();
     if (unitsRegex.test(rest)) return false;
     return true;
@@ -421,6 +421,7 @@ export function parseSubItemsFromText(text: string): SubItem[] {
     if (!isNaN(numQty) && numQty > 5000000) return;
 
     const sr = parseInt(srStr, 10);
+    if (isNaN(sr) || sr <= 0) return;
     const normalizedDesc = desc.toLowerCase().replace(/\s+/g, " ").trim();
 
     // Two-row space optimized Levenshtein distance similarity calculation
