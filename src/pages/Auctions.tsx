@@ -181,6 +181,7 @@ export function Auctions() {
   const mstcHasAssetDocuments = searchParams.get('has_docs') === 'true';
   const mstcHasImages = searchParams.get('has_images') === 'true';
   const mstcIsReauction = searchParams.get('is_reauction') === 'true';
+  const mstcPreBid = searchParams.get('mstc_pre_bid') || undefined;
   const submittedSearchQuery = (searchParams.get('q') || '').trim();
 
   const [isGridView, setIsGridView] = useState(true);
@@ -399,6 +400,7 @@ export function Auctions() {
         hasImages: mstcHasImages,
         hasAssetDocuments: mstcHasAssetDocuments,
         isReauction: mstcIsReauction || undefined,
+        preBid: mstcPreBid,
         page,
         limit
       };
@@ -431,6 +433,7 @@ export function Auctions() {
     mstcHasAssetDocuments,
     mstcHasImages,
     mstcIsReauction,
+    mstcPreBid,
     page,
     limit
   ]);
@@ -576,6 +579,13 @@ export function Auctions() {
           next.set('is_reauction', 'true');
         } else {
           next.delete('is_reauction');
+        }
+      }
+      if ('preBid' in newFilters) {
+        if (newFilters.preBid) {
+          next.set('mstc_pre_bid', newFilters.preBid);
+        } else {
+          next.delete('mstc_pre_bid');
         }
       }
 
@@ -813,7 +823,8 @@ export function Auctions() {
                 endDate,
                 hasAssetDocuments: mstcHasAssetDocuments,
                 hasImages: mstcHasImages,
-                isReauction: mstcIsReauction
+                isReauction: mstcIsReauction,
+                preBid: mstcPreBid
               }}
               activeTab={activeTab}
               customCategories={mstcOptions.categories}

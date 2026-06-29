@@ -866,32 +866,30 @@ export function AuctionFilters({
           </Dropdown>
         </div>
 
-        {/* Pre-bid Requirement - Commercial Only */}
-        {activeTab === 'commercial' && (
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Pre-Bid Requirement</h3>
-            <div className="space-y-3">
-              {[
-                { label: 'All', value: 'all' },
-                { label: 'Pre-bid Required', value: 'yes' },
-                { label: 'No Pre-bid Required', value: 'no' },
-              ].map((option) => (
-                <label key={option.value} className="flex items-center cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="preBid" 
-                    checked={selectedPreBid === option.value}
-                    onChange={() => setSelectedPreBid(option.value)}
-                    className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
-                  />
-                  <span className="ml-3 text-sm text-slate-700">
-                    {option.label}
-                  </span>
-                </label>
-              ))}
-            </div>
+        {/* Pre-bid Requirement */}
+        <div className="mb-8">
+          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Pre-Bid Requirement</h3>
+          <div className="space-y-3">
+            {[
+              { label: 'All', value: 'all' },
+              { label: 'Pre-bid Required', value: 'yes' },
+              { label: 'No Pre-bid Required', value: 'no' },
+            ].map((option) => (
+              <label key={option.value} className="flex items-center cursor-pointer">
+                <input 
+                  type="radio" 
+                  name="preBid" 
+                  checked={selectedPreBid === option.value}
+                  onChange={() => setSelectedPreBid(option.value)}
+                  className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
+                />
+                <span className="ml-3 text-sm text-slate-700">
+                  {option.label}
+                </span>
+              </label>
+            ))}
           </div>
-        )}
+        </div>
 
 
 

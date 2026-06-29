@@ -1957,6 +1957,7 @@ export const MstcSearchService = {
       hasImages?: boolean;
       hasAssetDocuments?: boolean;
       isReauction?: boolean;
+      preBid?: string;
       startDate?: string;
       endDate?: string;
       page?: number;
@@ -2018,6 +2019,15 @@ export const MstcSearchService = {
             p_max_pre_bid = pConstraint.value;
           }
         }
+      }
+
+      // Explicit UI filter overrides NLP constraint
+      if (filters?.preBid === 'yes') {
+        p_min_pre_bid = 1;
+        p_max_pre_bid = undefined;
+      } else if (filters?.preBid === 'no') {
+        p_min_pre_bid = undefined;
+        p_max_pre_bid = 0;
       }
       
       let embeddingStr: string | null = null;
