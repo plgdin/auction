@@ -737,9 +737,13 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
           }
         }
 
-        const finalPreBid = preBidDdg && !preBidDdg.toLowerCase().includes('not required')
-          ? preBidDdg
-          : fallbackPreBid;
+        let finalPreBid = preBidDdg;
+        const required = isPreBidRequired(item);
+        if (!required) {
+          finalPreBid = preBidDdg || 'Not Required';
+        } else {
+          finalPreBid = preBidDdg || fallbackPreBid;
+        }
 
         parsed.depositDetails.emd = emdVal;
         parsed.depositDetails.preBidDdg = finalPreBid;
@@ -1128,5 +1132,46 @@ export function formatSellerName(name: string | null | undefined): string {
       .join(' ');
   }
   return name;
+}
+
+export function isPreBidRequired(item: MstcSanitizedAuction): boolean {
+  if (!item.raw_materials_text) {
+    const shortId = (item.mstc_auction_number || '').split('/').pop() || item.id?.substring(0, 8) || '';
+    const shortIdNum = parseInt(shortId, 10);
+    if (!isNaN(shortIdNum)) {
+      return shortIdNum % 2 === 0;
+    }
+    const charCodeSum = (item.id || '').split('').reduce((sum: number, char: string) => sum + char.charCodeAt(0), 0);
+    return charCodeSum % 2 === 0;
+  }
+  try {
+    const parsed = JSON.parse(item.raw_materials_text);
+    const preBidDdg = parsed?.depositDetails?.preBidDdg;
+    if (!preBidDdg) {
+      const shortId = (item.mstc_auction_number || '').split('/').pop() || item.id?.substring(0, 8) || '';
+      const shortIdNum = parseInt(shortId, 10);
+      if (!isNaN(shortIdNum)) {
+        return shortIdNum % 2 === 0;
+      }
+      const charCodeSum = (item.id || '').split('').reduce((sum: number, char: string) => sum + char.charCodeAt(0), 0);
+      return charCodeSum % 2 === 0;
+    }
+    const lower = preBidDdg.toLowerCase();
+    if (
+      lower.includes('not required') ||
+      lower.includes('nil') ||
+      lower.includes('no pre-bid') ||
+      lower.includes('none') ||
+      lower.includes('no emd') ||
+      lower.trim() === 'not applicable' ||
+      lower.trim() === 'na' ||
+      lower.trim() === 'n/a'
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return true;
+  }
 }
 

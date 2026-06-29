@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { ContactMessage, FaqItem, Announcement, NewsUpdate } from '../types/database.types';
 import { PageCache } from '../utils/pageCache';
-import { hasConfirmedAssetDocuments } from '../utils/mstcHelpers';
+import { hasConfirmedAssetDocuments, isPreBidRequired } from '../utils/mstcHelpers';
 import {
   INVERTED_SYNONYM_MAP,
   CONCEPT_MAP,
@@ -733,6 +733,11 @@ function buildTaxonomy(data: MstcSanitizedAuction[]): {
 }
 
 export function estimateAuctionValues(item: MstcSanitizedAuction): { preBid: number; totalValue: number; isEstimated: boolean } {
+  const required = isPreBidRequired(item);
+  if (!required) {
+    return { preBid: 0, totalValue: 500000, isEstimated: false };
+  }
+
   let preBid = 50000; // default fallback
   let totalValue = 500000; // default fallback (preBid * 10)
   let isEstimated = true;
@@ -779,7 +784,6 @@ export function estimateAuctionValues(item: MstcSanitizedAuction): { preBid: num
   }
 
   return { preBid, totalValue, isEstimated };
-
 }
 
 export function expandQueryToTsQuery(query: string): string {
@@ -2057,6 +2061,7 @@ export const MstcSearchService = {
         filters?.hasImages || 
         filters?.hasAssetDocuments || 
         filters?.isReauction !== undefined ||
+        (filters?.preBid === 'yes' || filters?.preBid === 'no') ||
         hasMultiSelectFilters
       );
       const rpcPage = isSearchWithImageFilter ? 1 : (filters?.page || 1);
@@ -2197,8 +2202,8 @@ export const MstcSearchService = {
           p_end_date: filters?.endDate || null,
           p_has_images: null, // Bypass DB filter due to remote DB bug
           p_has_docs: null, // Bypass DB filter to handle strictly and cleanly client-side
-          p_min_pre_bid: p_min_pre_bid || null,
-          p_max_pre_bid: p_max_pre_bid || null,
+          p_min_pre_bid: isSearchWithImageFilter ? null : (p_min_pre_bid || null),
+          p_max_pre_bid: isSearchWithImageFilter ? null : (p_max_pre_bid || null),
           p_page: rpcPage,
           p_limit: rpcLimit
         });
@@ -2226,8 +2231,8 @@ export const MstcSearchService = {
               p_end_date: filters?.endDate || null,
               p_has_images: null, // Bypass DB filter due to remote DB bug
               p_has_docs: null, // Bypass DB filter to handle strictly and cleanly client-side
-              p_min_pre_bid: p_min_pre_bid || null,
-              p_max_pre_bid: p_max_pre_bid || null,
+              p_min_pre_bid: isSearchWithImageFilter ? null : (p_min_pre_bid || null),
+              p_max_pre_bid: isSearchWithImageFilter ? null : (p_max_pre_bid || null),
               p_page: rpcPage,
               p_limit: rpcLimit
             });
@@ -2390,6 +2395,13 @@ export const MstcSearchService = {
           if (pConstraint.field === 'total_value') return matchValue(totalValue);
           return matchValue(preBid) || matchValue(totalValue);
         });
+      }
+
+      // Filter by preBid locally if specified
+      if (filters?.preBid === 'yes') {
+        mapped = mapped.filter(item => isPreBidRequired(item));
+      } else if (filters?.preBid === 'no') {
+        mapped = mapped.filter(item => !isPreBidRequired(item));
       }
 
       if (isSearchWithImageFilter) {

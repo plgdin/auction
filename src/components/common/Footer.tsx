@@ -17,10 +17,10 @@ export function Footer() {
             <Link to="/" className="flex items-center">
               <img src="/png_lelam_1.webp" alt="Lelam Logo" width={158} height={32} className="h-8 w-auto object-contain brightness-0 invert" />
             </Link>
-            <p className="text-sm text-slate-400 leading-relaxed mt-4">
+            <p className="text-sm text-slate-300 leading-relaxed mt-4">
               An independent, data-driven assistive intelligence platform for registered MSTC auction buyers. Track market prices, analyze trends, and estimate bids.
             </p>
-            <p className="text-xs text-slate-500 italic mt-2">
+            <p className="text-xs text-slate-400 italic mt-2">
               Disclaimer: Lelam is an independent assistive tool and is not affiliated with MSTC or any government agency.
             </p>
           </div>
@@ -73,18 +73,18 @@ export function Footer() {
             <ul className="space-y-4 text-sm">
               <li className="flex items-start gap-3">
                 <MapPin className="text-primary shrink-0" size={20} />
-                <span className="text-slate-400">
+                <span className="text-slate-305">
                   No: 2, 20th Cross Lakshimpuram,<br />
                   Halasuru, Bangalore 560008
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="text-primary shrink-0" size={20} />
-                <span className="text-slate-400">+91 94477 53889</span>
+                <span className="text-slate-305">+91 94477 53889</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="text-primary shrink-0" size={20} />
-                <a href="mailto:Support@lelam.co" className="text-slate-400 hover:text-white transition-colors">
+                <a href="mailto:Support@lelam.co" className="text-slate-305 hover:text-white transition-colors">
                   Support@lelam.co
                 </a>
               </li>
@@ -95,11 +95,11 @@ export function Footer() {
 
         <div className="border-t border-slate-800 pt-8 mt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex flex-col gap-1">
-            <p className="text-sm text-slate-500 flex items-center">
+            <p className="text-sm text-slate-400 flex items-center">
               &copy; {new Date().getFullYear()} Lelam. All rights reserved.
               <span className="ml-3 px-2 py-0.5 rounded-md bg-slate-800 text-xs text-slate-400 font-medium">v1.0</span>
             </p>
-            <p className="text-[11px] text-slate-650 max-w-lg">
+            <p className="text-[11px] text-slate-400 max-w-lg">
               Lelam Company is an independent assistive platform and is not affiliated with MSTC Limited.
             </p>
           </div>
