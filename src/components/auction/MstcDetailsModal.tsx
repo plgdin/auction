@@ -292,6 +292,160 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     extraCharge: 0,
   });
   const [valuationData, setValuationData] = useState<ValuationOutput | null>(null);
+  const [customItemPrices, setCustomItemPrices] = useState<Record<number, number>>({});
+
+  const handleCustomItemPriceChange = (idx: number, newVal: number) => {
+    setCustomItemPrices(prev => {
+      const next = { ...prev };
+      if (newVal <= 0 || isNaN(newVal)) {
+        delete next[idx];
+      } else {
+        next[idx] = newVal;
+      }
+      return next;
+    });
+  };
+
+  const finalValuationData = React.useMemo<ValuationOutput | null>(() => {
+    if (!valuationData) return null;
+
+    let totalLotValue = 0;
+    let totalConfidenceSum = 0;
+
+    const updatedItems = valuationData.items.map((row, idx) => {
+      if (row.notAvailable) return row;
+
+      const customPrice = customItemPrices[idx];
+      if (customPrice !== undefined && customPrice > 0) {
+        const totalValue = Math.round(customPrice * row.qty);
+        totalLotValue += totalValue;
+        totalConfidenceSum += 95;
+        return {
+          ...row,
+          unitValue: customPrice,
+          totalValue,
+          confidence: 95,
+          internationalPrices: {
+            in: { price: customPrice, convertedPrice: totalValue, sources: 1 },
+            us: { price: Math.round((customPrice * 0.95) / 85), convertedPrice: Math.round(totalValue * 0.95), sources: 1 },
+            uk: { price: Math.round((customPrice * 0.90) / 108), convertedPrice: Math.round(totalValue * 0.90), sources: 1 }
+          }
+        };
+      } else {
+        totalLotValue += row.totalValue;
+        totalConfidenceSum += row.confidence;
+        return row;
+      }
+    });
+
+    totalLotValue = Math.round(totalLotValue);
+    const avgItemConfidence = Math.round(totalConfidenceSum / (updatedItems.filter(v => !v.notAvailable).length || 1));
+
+    const totalCost = Math.round(
+      (customCosts.currentBid || 0) +
+      (customCosts.transportation || 0) +
+      (customCosts.loadingUnloading || 0) +
+      (customCosts.refurbishment || 0) +
+      (customCosts.otherFees || 0) +
+      (customCosts.extraCharge || 0)
+    );
+
+    const estimatedProfit = totalLotValue - totalCost;
+    const roiPercent = totalCost > 0 ? Math.round((estimatedProfit / totalCost) * 100) : 0;
+    const breakEven = totalCost;
+
+    const dataConfidence = 85; 
+    const pricingConfidence = avgItemConfidence;
+    const overallConfidence = Math.round((dataConfidence + pricingConfidence) / 2);
+
+    let riskLevel: 'Low Risk' | 'Medium Risk' | 'High Risk' = 'Medium Risk';
+    let riskReasoning = '';
+    
+    if (overallConfidence < 55) {
+      riskLevel = 'High Risk';
+      riskReasoning = 'High risk due to limited matching pricing points.';
+    } else if (roiPercent < 10) {
+      riskLevel = 'High Risk';
+      riskReasoning = 'High risk because the estimated return on investment is extremely low or negative.';
+    } else if (overallConfidence >= 75 && roiPercent >= 30) {
+      riskLevel = 'Low Risk';
+      riskReasoning = 'Low risk due to robust catalog details, high verification confidence, and strong margins.';
+    } else {
+      riskLevel = 'Medium Risk';
+      riskReasoning = 'Medium risk. Solid margins but watch out for transport logistics costs and potential quality variations.';
+    }
+
+    let closingBidMultiplier = marketPriceService.getCommodityMultiplier('default');
+    let metalCount = 0;
+    let vehicleCount = 0;
+    let ewasteCount = 0;
+    updatedItems.forEach(item => {
+      const desc = (item.name || '').toLowerCase();
+      if (desc.includes('steel') || desc.includes('iron') || desc.includes('copper') || desc.includes('metal') || desc.includes('brass')) {
+        metalCount++;
+      } else if (desc.includes('vehicle') || desc.includes('car') || desc.includes('bus') || desc.includes('truck') || desc.includes('motorcycle')) {
+        vehicleCount++;
+      } else if (desc.includes('computer') || desc.includes('laptop') || desc.includes('battery') || desc.includes('e-waste') || desc.includes('electronic')) {
+        ewasteCount++;
+      }
+    });
+    
+    const totalItemsCount = updatedItems.length || 1;
+    if (metalCount / totalItemsCount > 0.5) {
+      closingBidMultiplier = marketPriceService.getCommodityMultiplier('steel_iron_ferrous');
+    } else if (vehicleCount / totalItemsCount > 0.5) {
+      closingBidMultiplier = marketPriceService.getCommodityMultiplier('vehicle');
+    } else if (ewasteCount / totalItemsCount > 0.5) {
+      closingBidMultiplier = marketPriceService.getCommodityMultiplier('e_waste');
+    }
+
+    let recommendation: ValuationOutput['recommendation'] = 'Watch Carefully';
+    let recommendationReasoning = '';
+
+    if (riskLevel === 'Low Risk' && roiPercent >= 40) {
+      recommendation = 'Strong Buy';
+      recommendationReasoning = `Excellent bidding opportunity with a high projected ROI of ${roiPercent}%. Data verification is strong.`;
+    } else if (roiPercent >= 20 && riskLevel !== 'High Risk') {
+      recommendation = 'Buy';
+      recommendationReasoning = `Solid potential returns (${roiPercent}% ROI) with manageable risk levels. Recommended to place bids up to ${formatPrice(Math.round(totalLotValue * closingBidMultiplier), currency)}.`;
+    } else if (riskLevel === 'High Risk' || roiPercent < 0) {
+      recommendation = 'High Risk';
+      recommendationReasoning = `Not recommended. The projected ROI is negative or extremely low (${roiPercent}%), making it likely unprofitable.`;
+    } else if (roiPercent < 15) {
+      recommendation = 'High Risk';
+      recommendationReasoning = `Bidding margin is tight. Proceed only if loading/refurbishment costs can be optimized.`;
+    } else {
+      recommendation = 'Watch Carefully';
+      recommendationReasoning = `Decent margins but confidence is moderate. Monitor bidding action closely and do not exceed the break-even value of ${formatPrice(breakEven, currency)}.`;
+    }
+
+    const totalUsInr = totalLotValue * 0.95;
+    const totalUkInr = totalLotValue * 0.90;
+
+    return {
+      items: updatedItems,
+      totalLotValue,
+      totalCost,
+      estimatedProfit,
+      roiPercent,
+      breakEven,
+      riskAnalysis: {
+        dataConfidence,
+        pricingConfidence,
+        overallConfidence,
+        riskLevel,
+        reasoning: riskReasoning
+      },
+      recommendation,
+      recommendationReasoning,
+      internationalTotals: {
+        in: totalLotValue,
+        us: Math.round(totalUsInr),
+        uk: Math.round(totalUkInr)
+      }
+    };
+  }, [valuationData, customItemPrices, customCosts, currency]);
+
   const [isValuating, setIsValuating] = useState(false);
   const [selectedChartItemId, setSelectedChartItemId] = useState<string>('total');
   const [extraChargeType, setExtraChargeType] = useState<string>('none');
@@ -398,6 +552,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
         otherFees: 1000,
         extraCharge: 0,
       });
+      setCustomItemPrices({});
       setExtraChargeType('none');
       setModalTab('catalog');
       setSelectedChartItemId('total');
@@ -729,7 +884,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     </div>
                   </div>
 
-                  {isValuating || !valuationData ? (
+                  {isValuating || !finalValuationData ? (
                     <div className="bg-white rounded-3xl p-12 border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
                       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
                       <div>
@@ -744,7 +899,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ">Estimated Lot Value</h5>
                           <div className="text-lg font-black text-slate-900 ">
-                            {valuationData.totalLotValue > 0 ? formatPrice(valuationData.totalLotValue, currency) : 'N/A'}
+                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalLotValue, currency) : 'N/A'}
                           </div>
                           <p className="text-[10px] text-slate-400 font-medium">Market value of items</p>
                         </div>
@@ -752,23 +907,23 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ">Total Lot Cost</h5>
                           <div className="text-lg font-black text-slate-900 ">
-                            {valuationData.totalLotValue > 0 ? formatPrice(valuationData.totalCost, currency) : 'N/A'}
+                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalCost, currency) : 'N/A'}
                           </div>
                           <p className="text-[10px] text-slate-400 font-medium">Bid + logistics</p>
                         </div>
 
                         <div className={clsx(
                           "rounded-2xl p-4.5 border shadow-2xs space-y-1",
-                          valuationData.totalLotValue <= 0
+                          finalValuationData.totalLotValue <= 0
                             ? "bg-slate-50 border-slate-200 text-slate-500"
-                            : valuationData.estimatedProfit >= 0
+                            : finalValuationData.estimatedProfit >= 0
                             ? "bg-emerald-50/50 border-emerald-150 text-emerald-950"
                             : "bg-rose-50/50 border-rose-150 text-rose-950"
                         )}>
                           <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest ">Projected Profit</h5>
                           <div className="text-lg font-black ">
-                            {valuationData.totalLotValue > 0
-                              ? `${valuationData.estimatedProfit >= 0 ? '+' : ''}${formatPrice(valuationData.estimatedProfit, currency)}`
+                            {finalValuationData.totalLotValue > 0
+                              ? `${finalValuationData.estimatedProfit >= 0 ? '+' : ''}${formatPrice(finalValuationData.estimatedProfit, currency)}`
                               : 'N/A'
                             }
                           </div>
@@ -778,7 +933,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-1">
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ">Break-Even Bid</h5>
                           <div className="text-lg font-black text-slate-900 ">
-                            {valuationData.totalLotValue > 0 ? formatPrice(valuationData.breakEven, currency) : 'N/A'}
+                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.breakEven, currency) : 'N/A'}
                           </div>
                           <p className="text-[10px] text-slate-400 font-medium">Includes handling</p>
                         </div>
@@ -789,7 +944,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2 flex items-center justify-between">
                           <span>Valuation Details per Item</span>
                           <span className="text-[10px] text-slate-400 font-medium normal-case font-sans">
-                            Valued using live pricing analysis
+                            Valued using live pricing analysis (edit unit values to manually override)
                           </span>
                         </h4>
                         <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
@@ -798,18 +953,53 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 ">
                                 <th className="py-2.5 px-3.5 font-bold">Item Description</th>
                                 <th className="py-2.5 px-3.5 font-bold text-right w-20">Quantity</th>
-                                <th className="py-2.5 px-3.5 font-bold text-right w-32">Unit Est. Value</th>
+                                <th className="py-2.5 px-3.5 font-bold text-right w-44">Unit Est. Value</th>
                                 <th className="py-2.5 px-3.5 font-bold text-right w-36">Total Est. Value</th>
                                 <th className="py-2.5 px-3.5 font-bold text-center w-24">Confidence</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-105 text-slate-700">
-                              {valuationData.items.map((row, idx) => (
+                              {finalValuationData.items.map((row, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/50">
                                   <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.name}</td>
                                   <td className="py-2.5 px-3.5 text-right  text-slate-650">{row.qty}</td>
-                                  <td className="py-2.5 px-3.5 text-right  text-slate-950 font-bold">
-                                    {row.notAvailable ? 'N/A' : formatPrice(row.unitValue, currency)}
+                                  <td className="py-2.5 px-3.5 text-right text-slate-950 font-bold w-44">
+                                    {row.notAvailable ? (
+                                      'N/A'
+                                    ) : (
+                                      <div className="flex items-center justify-end gap-1.5">
+                                        {customItemPrices[idx] !== undefined && (
+                                          <button
+                                            onClick={() => handleCustomItemPriceChange(idx, 0)}
+                                            className="p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-slate-100 transition-colors"
+                                            title="Reset to automated estimate"
+                                          >
+                                            <RotateCcw className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                        <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
+                                        <input
+                                          type="number"
+                                          value={
+                                            customItemPrices[idx] !== undefined
+                                              ? Math.round(customItemPrices[idx] * currencyRate)
+                                              : Math.round(row.unitValue * currencyRate)
+                                          }
+                                          onChange={(e) => {
+                                            const enteredVal = parseFloat(e.target.value);
+                                            const valInInr = isNaN(enteredVal) ? 0 : enteredVal / currencyRate;
+                                            handleCustomItemPriceChange(idx, valInInr);
+                                          }}
+                                          className={clsx(
+                                            "w-24 text-right p-1 px-1.5 border rounded-lg focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary font-bold text-xs transition-all",
+                                            customItemPrices[idx] !== undefined
+                                              ? "border-amber-300 bg-amber-50/30 text-amber-900"
+                                              : "border-slate-250 bg-slate-50 hover:bg-white focus:bg-white text-slate-900"
+                                          )}
+                                          placeholder="Price"
+                                        />
+                                      </div>
+                                    )}
                                   </td>
                                   <td className="py-2.5 px-3.5 text-right  text-slate-950 font-bold">
                                     {row.notAvailable ? 'N/A' : formatPrice(row.totalValue, currency)}
@@ -840,11 +1030,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </h4>
                           <span className={clsx(
                             "text-xs font-bold px-3 py-1 rounded-full",
-                            valuationData.riskAnalysis.riskLevel === 'Low Risk' ? "bg-emerald-50 text-emerald-700 border border-emerald-150" :
-                              valuationData.riskAnalysis.riskLevel === 'Medium Risk' ? "bg-amber-50 text-amber-700 border border-amber-150" :
+                            finalValuationData.riskAnalysis.riskLevel === 'Low Risk' ? "bg-emerald-50 text-emerald-700 border border-emerald-150" :
+                              finalValuationData.riskAnalysis.riskLevel === 'Medium Risk' ? "bg-amber-50 text-amber-700 border border-amber-150" :
                                 "bg-rose-50 text-rose-700 border border-rose-150"
                           )}>
-                            {valuationData.riskAnalysis.riskLevel}
+                            {finalValuationData.riskAnalysis.riskLevel}
                           </span>
                         </div>
 
@@ -852,16 +1042,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <div className="space-y-1.5">
                             <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider ">
                               <span>Pricing Consistency</span>
-                              <span className="text-slate-700">{valuationData.riskAnalysis.pricingConfidence}%</span>
+                              <span className="text-slate-700">{finalValuationData.riskAnalysis.pricingConfidence}%</span>
                             </div>
                             <div className="h-2 bg-slate-105 rounded-full overflow-hidden">
                               <div
                                   className={clsx(
                                       "h-full rounded-full transition-all duration-500",
-                                      valuationData.riskAnalysis.pricingConfidence >= 70 ? "bg-emerald-500" :
-                                          valuationData.riskAnalysis.pricingConfidence >= 40 ? "bg-amber-500" : "bg-rose-500"
+                                      finalValuationData.riskAnalysis.pricingConfidence >= 70 ? "bg-emerald-500" :
+                                          finalValuationData.riskAnalysis.pricingConfidence >= 40 ? "bg-amber-500" : "bg-rose-500"
                                   )}
-                                  style={{ width: `${valuationData.riskAnalysis.pricingConfidence}%` }}
+                                  style={{ width: `${finalValuationData.riskAnalysis.pricingConfidence}%` }}
                               />
                             </div>
                           </div>
@@ -869,23 +1059,23 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <div className="space-y-1.5">
                             <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider ">
                               <span>Overall Confidence</span>
-                              <span className="text-slate-700 font-bold">{valuationData.riskAnalysis.overallConfidence}%</span>
+                              <span className="text-slate-700 font-bold">{finalValuationData.riskAnalysis.overallConfidence}%</span>
                             </div>
                             <div className="h-2 bg-slate-105 rounded-full overflow-hidden">
                               <div
                                   className={clsx(
                                       "h-full rounded-full transition-all duration-500",
-                                      valuationData.riskAnalysis.overallConfidence >= 70 ? "bg-emerald-600" :
-                                          valuationData.riskAnalysis.overallConfidence >= 45 ? "bg-amber-600" : "bg-rose-600"
+                                      finalValuationData.riskAnalysis.overallConfidence >= 70 ? "bg-emerald-600" :
+                                          finalValuationData.riskAnalysis.overallConfidence >= 45 ? "bg-amber-600" : "bg-rose-600"
                                   )}
-                                  style={{ width: `${valuationData.riskAnalysis.overallConfidence}%` }}
+                                  style={{ width: `${finalValuationData.riskAnalysis.overallConfidence}%` }}
                               />
                             </div>
                           </div>
                         </div>
 
                         <p className="text-xs text-slate-655 leading-relaxed bg-slate-50 p-3.5 rounded-2xl border border-slate-100 font-medium">
-                          {valuationData.riskAnalysis.reasoning}
+                          {finalValuationData.riskAnalysis.reasoning}
                         </p>
                       </div>
 
@@ -906,7 +1096,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             className="bg-slate-50 border border-slate-250 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium text-slate-700 cursor-pointer"
                           >
                             <option value="total">Total Lot Value</option>
-                            {valuationData.items.map((item, idx) => (
+                            {finalValuationData.items.map((item, idx) => (
                               <option key={idx} value={String(idx)}>
                                 {item.name} (Qty: {item.qty})
                               </option>
@@ -915,7 +1105,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
 
                         <div className="h-[220px] w-full">
-                          {valuationData.totalLotValue <= 0 ? (
+                          {finalValuationData.totalLotValue <= 0 ? (
                             <div className="h-full flex items-center justify-center text-slate-400 font-medium text-xs bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl select-none">
                               No trend data available for this item
                             </div>
@@ -967,7 +1157,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       </div>
 
                       {/* International Market Comparison Panel */}
-                      {valuationData.internationalTotals && valuationData.totalLotValue > 0 && (
+                      {finalValuationData.internationalTotals && finalValuationData.totalLotValue > 0 && (
                         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider ">
@@ -982,7 +1172,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             <div>
                               <span className="text-xs  font-bold text-slate-500 uppercase tracking-wider block">Average Global Value</span>
                               <h3 className="text-2xl font-black text-slate-955 mt-1">
-                                {formatPrice(Math.round((valuationData.internationalTotals.in + valuationData.internationalTotals.us + valuationData.internationalTotals.uk) / 3), currency)}
+                                {formatPrice(Math.round((finalValuationData.internationalTotals.in + finalValuationData.internationalTotals.us + finalValuationData.internationalTotals.uk) / 3), currency)}
                               </h3>
                               <p className="text-[10px] text-slate-400 font-medium mt-1">
                                 Computed average across India, USA, and UK market rates
@@ -991,11 +1181,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             <div className="flex gap-3 text-xs  font-semibold text-slate-655 bg-white p-3 rounded-xl border border-slate-150 shrink-0">
                               <div className="pr-3 border-r border-slate-200">
                                 <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">US Rate</span>
-                                <span>${Math.round(((valuationData.internationalTotals.in + valuationData.internationalTotals.us + valuationData.internationalTotals.uk) / 3) / 85).toLocaleString('en-US')}</span>
+                                <span>${Math.round(((finalValuationData.internationalTotals.in + finalValuationData.internationalTotals.us + finalValuationData.internationalTotals.uk) / 3) / 85).toLocaleString('en-US')}</span>
                               </div>
                               <div>
                                 <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">UK Rate</span>
-                                <span>£{Math.round(((valuationData.internationalTotals.in + valuationData.internationalTotals.us + valuationData.internationalTotals.uk) / 3) / 108).toLocaleString('en-GB')}</span>
+                                <span>£{Math.round(((finalValuationData.internationalTotals.in + finalValuationData.internationalTotals.us + finalValuationData.internationalTotals.uk) / 3) / 108).toLocaleString('en-GB')}</span>
                               </div>
                             </div>
                           </div>
