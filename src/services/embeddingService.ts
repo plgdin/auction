@@ -1,53 +1,28 @@
-import { pipeline, env } from '@xenova/transformers';
-
-// Skip local model check and fetch directly from HF Hub
-env.allowLocalModels = false;
-env.useBrowserCache = true;
-
-class EmbeddingPipeline {
-  static task: any = 'feature-extraction';
-  static model = 'Xenova/all-MiniLM-L6-v2';
-  static instance: any = null;
-
-  static async getInstance(progress_callback?: any) {
-    if (this.instance === null) {
-      this.instance = await pipeline(this.task, this.model, { progress_callback });
-    }
-    return this.instance;
-  }
-}
+import { supabase } from '../lib/supabase';
 
 export const embeddingService = {
   /**
-   * Generates a 384-dimensional vector embedding for a given text string.
+   * Generates a 384-dimensional vector embedding for a given text string using Supabase Edge Functions.
    */
-  async generateEmbedding(text: string, progressCallback?: (progress: any) => void): Promise<number[]> {
+  async generateEmbedding(text: string): Promise<number[]> {
     try {
-      const extractor = await EmbeddingPipeline.getInstance(progressCallback);
-      
-      // Compute the embedding
-      const output = await extractor(text, {
-        pooling: 'mean',
-        normalize: true,
+      const { data, error } = await supabase.functions.invoke('get-embedding', {
+        body: { text }
       });
-
-      // output.data is a Float32Array, convert to standard JS array
-      return Array.from(output.data);
+      if (error) throw error;
+      return data.embedding;
     } catch (error) {
-      console.error('Failed to generate embedding:', error);
-      throw error;
+      console.error('Edge Function embedding failed, using zero fallback:', error);
+      // Fallback to zero-vector if edge function fails to prevent UI blocking
+      return new Array(384).fill(0);
     }
   },
 
   /**
    * Pre-warm the model by loading it in the background
+   * (No-op since server-side execution doesn't require local model loading)
    */
   async prewarmModel() {
-    try {
-      await EmbeddingPipeline.getInstance();
-      console.log('Embedding model loaded successfully.');
-    } catch (e) {
-      console.warn('Failed to pre-warm embedding model:', e);
-    }
+    // No-op
   }
 };

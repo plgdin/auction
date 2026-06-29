@@ -21,11 +21,6 @@
 import fetch from "node-fetch";
 import { createRequire } from "module";
 import { randomUUID } from "crypto";
-import { pipeline, env } from "@xenova/transformers";
-
-// Configure transformers for Node.js environment
-env.allowLocalModels = false;
-env.useBrowserCache = false;
 
 import {
   MAX_RETRY_COUNT,
@@ -102,16 +97,25 @@ async function limitConcurrency<T>(
   return Promise.all(results);
 }
 
-// Global cache for the embedding pipeline model
-let embeddingPipelineCache: any = null;
-async function getEmbeddingPipeline() {
-  if (!embeddingPipelineCache) {
-    embeddingPipelineCache = await pipeline(
-      "feature-extraction",
-      "Xenova/all-MiniLM-L6-v2",
-    );
-  }
-  return embeddingPipelineCache;
+// Call Supabase Edge Function to get embeddings
+async function getEmbeddingsFromEdgeFunction(inputs: string | string[]): Promise<number[][]> {
+  const texts = Array.isArray(inputs) ? inputs : [inputs];
+  
+  // The Edge Function expects a single string.
+  // We use Promise.all to fetch embeddings for each text concurrently.
+  const vectors = await Promise.all(
+    texts.map(async (text) => {
+      const { data, error } = await supabase.functions.invoke('get-embedding', {
+        body: { text }
+      });
+      if (error) {
+        throw error;
+      }
+      return data.embedding;
+    })
+  );
+  
+  return vectors;
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -993,27 +997,14 @@ async function extractAndProcessLotDocuments(
         { count: texts.length },
         "Batch generating embeddings for attachment pages in chunked sequence",
       );
-      const extractor = await getEmbeddingPipeline();
-      
       const chunkSize = 16;
       for (let i = 0; i < texts.length; i += chunkSize) {
         const chunkTexts = texts.slice(i, i + chunkSize);
-        let chunkOutput = await extractor(chunkTexts, {
-          pooling: "mean",
-          normalize: true,
-        });
+        let vectors = await getEmbeddingsFromEdgeFunction(chunkTexts);
 
-        const batchSize = chunkTexts.length;
-        const dim = chunkOutput.dims ? chunkOutput.dims[1] : (chunkOutput.data.length / batchSize);
-        const data = chunkOutput.data as any;
-
-        for (let idx = 0; idx < batchSize; idx++) {
-          const vector = Array.from(data.subarray(idx * dim, (idx + 1) * dim)) as number[];
-          pagesToEmbed[i + idx].embedding = vector;
+        for (let idx = 0; idx < chunkTexts.length; idx++) {
+          pagesToEmbed[i + idx].embedding = vectors[idx];
         }
-
-        // Null out chunk-specific tensor references to allow GC immediately
-        chunkOutput = null;
       }
     } catch (embedErr: any) {
       log.warn(
@@ -1374,25 +1365,12 @@ export async function processRecord(record: QueueRecord): Promise<void> {
               { count: uniqueLotDescriptions.length },
               "Pre-computing lot description embeddings in batch for semantic matching",
             );
-            const extractor = await getEmbeddingPipeline();
-            let output = await extractor(uniqueLotDescriptions, {
-              pooling: "mean",
-              normalize: true,
-            });
-
-            const batchSize = uniqueLotDescriptions.length;
-            const dim = output.dims ? output.dims[1] : (output.data.length / batchSize);
-            let data = output.data as any;
-
-            for (let idx = 0; idx < batchSize; idx++) {
-              const desc = uniqueLotDescriptions[idx];
-              const vector = Array.from(data.subarray(idx * dim, (idx + 1) * dim)) as number[];
-              lotEmbeddings.set(desc, vector);
+            
+            const vectors = await getEmbeddingsFromEdgeFunction(uniqueLotDescriptions);
+            
+            for (let idx = 0; idx < uniqueLotDescriptions.length; idx++) {
+              lotEmbeddings.set(uniqueLotDescriptions[idx], vectors[idx]);
             }
-
-            // Explicitly clear references
-            output = null;
-            data = null;
           }
         } catch (err: any) {
           jobLog.warn(
@@ -1523,16 +1501,9 @@ export async function processRecord(record: QueueRecord): Promise<void> {
       `${record.category_name || ""} ${rawMaterialsText || ""}`.trim();
     if (textToEmbed.length >= 5) {
       jobLog.info({}, "Generating AI embedding vector for semantic search");
-      const extractor = await getEmbeddingPipeline();
-      let output = await extractor(textToEmbed, {
-        pooling: "mean",
-        normalize: true,
-      });
-      const vector = Array.from(output.data);
+      const vectors = await getEmbeddingsFromEdgeFunction(textToEmbed);
+      const vector = vectors[0];
       embeddingStr = `[${vector.join(",")}]`;
-
-      // Null out tensor reference to allow GC
-      output = null;
     }
   } catch (embedErr: any) {
     jobLog.warn(
