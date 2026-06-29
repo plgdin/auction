@@ -42,7 +42,11 @@ export function CookieConsent() {
   if (!showConsent) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-55 max-w-sm w-full bg-card border border-border rounded-xl shadow-xl animate-fade-in p-5 print:hidden">
+    <div 
+      className="fixed bottom-6 right-6 z-55 max-w-sm w-full bg-card border border-border rounded-xl shadow-xl animate-fade-in p-5 print:hidden"
+      role="region"
+      aria-label="Cookie consent banner"
+    >
       <div className="flex items-start gap-4">
         <div className="p-2.5 bg-primary/10 text-primary rounded-lg shrink-0">
           <Cookie className="w-5 h-5" />
@@ -55,6 +59,7 @@ export function CookieConsent() {
             <button 
               onClick={handleDismiss}
               className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted transition-colors cursor-pointer"
+              aria-label="Dismiss cookie banner"
             >
               <X className="w-4 h-4" />
             </button>
