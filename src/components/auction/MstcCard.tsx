@@ -185,6 +185,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
             onClick={handleCopy}
             className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
             title="Copy full reference number to clipboard"
+            aria-label="Copy reference number"
           >
             {copied ? (
               <Check className="w-3.5 h-3.5 text-emerald-605 animate-scaleIn" />
@@ -345,6 +346,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                   }}
                   className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
                   title={isInterested ? "Remove from interested list" : "Add to interested list"}
+                  aria-label={isInterested ? "Remove from interested list" : "Add to interested list"}
                 >
                   <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
                 </button>
@@ -485,6 +487,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               }}
               className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
               title={isInterested ? "Remove from interested list" : "Add to interested list"}
+              aria-label={isInterested ? "Remove from interested list" : "Add to interested list"}
             >
               <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
             </button>
