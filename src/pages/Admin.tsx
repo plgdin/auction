@@ -43,7 +43,7 @@ export function Admin() {
     }
   };
 
-  const containerWidth = activeAdminTab === 'system' ? 'max-w-[96rem]' : 'max-w-7xl';
+  const containerWidth = (activeAdminTab === 'system' || activeAdminTab === 'reports') ? 'max-w-[120rem]' : 'max-w-7xl';
 
   return (
     <div className={`w-full ${containerWidth} mx-auto space-y-6 pb-20 px-4 sm:px-6 lg:px-8`}>
