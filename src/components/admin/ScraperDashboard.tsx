@@ -386,11 +386,17 @@ export function ScraperDashboard() {
             const vector = await embeddingService.generateEmbedding(textToEmbed);
             const embeddingStr = `[${vector.join(',')}]`;
             
-            await supabase
+            const { data: updateData, error: updateError } = await supabase
               .from('mstc_auctions')
               .update({ embedding: embeddingStr as any })
-              .eq('id', item.id);
+              .eq('id', item.id)
+              .select();
               
+            if (updateError) throw updateError;
+            if (!updateData || updateData.length === 0) {
+              throw new Error("Update was blocked by database Row Level Security (RLS) policies.");
+            }
+            
             processedCount++;
           } catch (e) {
             console.warn(`Failed to generate embedding for ${item.id}`, e);

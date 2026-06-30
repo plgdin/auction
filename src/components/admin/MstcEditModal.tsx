@@ -63,8 +63,7 @@ export const MstcEditModal: React.FC<MstcEditModalProps> = ({
 
       const updatedRawText = JSON.stringify(rawMaterialsObj);
 
-      // Perform update to Supabase
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('mstc_auctions')
         .update({
           category_name: categoryName,
@@ -73,10 +72,14 @@ export const MstcEditModal: React.FC<MstcEditModalProps> = ({
           raw_materials_text: updatedRawText,
           updated_at: new Date().toISOString()
         })
-        .eq('id', auction.id);
+        .eq('id', auction.id)
+        .select();
 
       if (error) {
         throw error;
+      }
+      if (!data || data.length === 0) {
+        throw new Error("Update was blocked by database Row Level Security (RLS) policies. Please check admin permissions.");
       }
 
       // Log audit trail event

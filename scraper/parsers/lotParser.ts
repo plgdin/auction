@@ -34,25 +34,39 @@ const DESC_UNITS =
 function extractQuantitiesFromDescriptionBlock(
   block: string,
 ): { qty: string; unit: string } | null {
-  const descMatch = block.match(
-    /Category\s*-[^\n]*\n([\s\S]*?)(?=Quantity\s*-|Start\s*Price|Post\s*Bid|Bid\s*Increment|TCS\s*\()/i,
-  );
-
-  if (!descMatch) return null;
-
-  const descText = descMatch[1];
-  const descUnitRegex = new RegExp(
-    `\\b(\\d+[\\d,.]*)\\s+(${DESC_UNITS})\\b`,
-    "gi",
-  );
+  // Split block by Quantity parameter to isolate description
+  const descText = block.split(/Quantity\s*-/i)[0];
+  if (!descText) return null;
 
   const groups: { [unit: string]: number } = {};
-  let match;
-  while ((match = descUnitRegex.exec(descText)) !== null) {
-    const val = parseFloat(match[1].replace(/,/g, ""));
+
+  // Pattern 1: <qty> <unit> (e.g. 1797 NOS)
+  const pattern1 = new RegExp(
+    `\\b(\\d+[\\d,.]*)\\s+(${DESC_UNITS})\\b`,
+    "gi"
+  );
+  let m1;
+  while ((m1 = pattern1.exec(descText)) !== null) {
+    const val = parseFloat(m1[1].replace(/,/g, ""));
     if (!isNaN(val) && val > 0) {
-      const u = match[2].toUpperCase().trim();
+      const u = m1[2].toUpperCase().trim();
       groups[u] = (groups[u] || 0) + val;
+    }
+  }
+
+  // Pattern 2: <unit> : <qty> (e.g. KGS: 4000)
+  const pattern2 = new RegExp(
+    `\\b(${DESC_UNITS})\\b\\s*[:.-]\\s*(\\d+[\\d,.]*)\\b`,
+    "gi"
+  );
+  let m2;
+  while ((m2 = pattern2.exec(descText)) !== null) {
+    const val = parseFloat(m2[2].replace(/,/g, ""));
+    if (!isNaN(val) && val > 0) {
+      const u = m2[1].toUpperCase().trim();
+      if (!groups[u]) {
+        groups[u] = val;
+      }
     }
   }
 
@@ -429,7 +443,7 @@ export function parseLotBlocks(
 
   // Strip boilerplate BEFORE splitting to prevent phantom lots
   const safeText = stripBoilerplateSections(cleanText);
-  const lotBlocks = safeText.split(/Lot\s*(?:No|Number|#)\s*[-:]?\s*/gi);
+  const lotBlocks = safeText.split(/\bLot\s*(?:No|Number|#)\s*[-:]?\s*/gi);
 
   if (lotBlocks.length <= 1) {
     // Fallback: no lots found
@@ -447,7 +461,7 @@ export function parseLotBlocks(
     const rawBlock = lotBlocks[i];
 
     // Validate if this block is a real lot block by checking for standard headers
-    if (!/Lot Name\s*-/i.test(rawBlock) && !/Lot Location\s*-/i.test(rawBlock)) {
+    if (!/\bLot Name\s*-/i.test(rawBlock) && !/\bLot Location\s*-/i.test(rawBlock)) {
       continue; // Skip phantom lot
     }
 
@@ -461,7 +475,7 @@ export function parseLotBlocks(
         : rawBlock;
 
     // ── Extract lot identifier ────────────────────────────────────────────
-    const lotNameIdx = block.search(/Lot Name\s*-/i);
+    const lotNameIdx = block.search(/\bLot Name\s*-/i);
     let lotId: string;
     if (lotNameIdx > 0) {
       lotId = block
@@ -484,7 +498,7 @@ export function parseLotBlocks(
     // ── Extract lot name ──────────────────────────────────────────────────
     let lotName = "";
     const nameMatch = block.match(
-      /Lot Name\s*-\s*([\s\S]*?)(?=Product Type|Lot Location|State|Lot State|GST|TCS|Bid Valid|$)/i,
+      /\bLot Name\s*-\s*([\s\S]*?)(?=Product Type|Lot Location|State|Lot State|GST|TCS|Bid Valid|$)/i,
     );
     if (nameMatch) {
       lotName = nameMatch[1].replace(/\r?\n/g, " ").trim();
@@ -558,6 +572,20 @@ export function parseLotBlocks(
         }
       }
 
+      // Discard generic fallback LOT/UNIT if other units are present
+      const keys = Object.keys(groups);
+      if (keys.length > 1) {
+        const hasOtherUnits = keys.some(
+          (k) => k !== "LOT" && k !== "LOTS" && k !== "LOT/S" && k !== "UNIT",
+        );
+        if (hasOtherUnits) {
+          delete groups["LOT"];
+          delete groups["LOTS"];
+          delete groups["LOT/S"];
+          delete groups["UNIT"];
+        }
+      }
+
       const groupEntries = Object.entries(groups);
       if (groupEntries.length === 1) {
         const [u, totalVal] = groupEntries[0];
@@ -571,7 +599,7 @@ export function parseLotBlocks(
       }
     } else {
       const qtyMatch = block.match(
-        /(?:Quantity|Approx\s*Qty|Approximate\s*Qty|Net\s*Qty|Qty\s*\(\s*Approx\s*\))\s*-\s*([\d.,]+)(?:\s+([A-Za-z]+(?:[ \t]+[A-Za-z]+)*))?/i,
+        /(?:Quantity|Approx\s*Qty|Approximate\s*Qty|Net\s*Qty|Qty\s*\(\s*Approx\s*\))\s*[-:]\s*([\d.,]+)(?:\s+([A-Za-z]+(?:[ \t]+[A-Za-z]+)*))?/i,
       );
       if (qtyMatch) {
         const parsedVal = parseFloat(qtyMatch[1].replace(/,/g, ""));
@@ -596,8 +624,9 @@ export function parseLotBlocks(
       }
     }
 
-    // ── Fallback: description-level quantities (forestry catalogs) ────────
-    if ((qty === "1" || qty === "1.0") && unit.toLowerCase() === "lot") {
+    // ── Fallback: description-level quantities (forestry and unit-first catalogs) ────────
+    const isGenericUnit = !unit || ["lot", "lots", "lot/s", "unit"].includes(unit.toLowerCase().trim());
+    if (isGenericUnit) {
       const descQty = extractQuantitiesFromDescriptionBlock(block);
       if (descQty) {
         qty = descQty.qty;
