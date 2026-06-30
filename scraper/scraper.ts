@@ -398,6 +398,51 @@ async function executeDiscoveryScraper() {
       }
     }
 
+    const newNumbers = finalRows.map(r => r.mstc_auction_number);
+    const { data: existingAuctions } = await supabase
+      .from('mstc_auctions')
+      .select('mstc_auction_number')
+      .in('mstc_auction_number', newNumbers);
+    const existingSet = new Set(existingAuctions?.map(a => a.mstc_auction_number) || []);
+    const actuallyNewRows = finalRows.filter(r => !existingSet.has(r.mstc_auction_number));
+
+    if (actuallyNewRows.length > 0) {
+      console.log(`[Analytics] Recording historical category stats for ${actuallyNewRows.length} new auctions...`);
+      const statsMap: Record<string, number> = {};
+      actuallyNewRows.forEach(row => {
+        const cat = row.category_name || 'Uncategorized';
+        statsMap[cat] = (statsMap[cat] || 0) + 1;
+      });
+      
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Upsert into the new daily stats table
+      for (const [category, count] of Object.entries(statsMap)) {
+        // First try to select existing row
+        const { data: existingStat } = await supabase
+          .from('category_daily_stats')
+          .select('id, items_added')
+          .eq('date', today)
+          .eq('category_name', category)
+          .maybeSingle();
+          
+        if (existingStat) {
+          await supabase
+            .from('category_daily_stats')
+            .update({ items_added: existingStat.items_added + count })
+            .eq('id', existingStat.id);
+        } else {
+          await supabase
+            .from('category_daily_stats')
+            .insert({
+              date: today,
+              category_name: category,
+              items_added: count
+            });
+        }
+      }
+    }
+
     const { error: upsertError } = await supabase
       .from('mstc_auctions')
       .upsert(finalRows, { 

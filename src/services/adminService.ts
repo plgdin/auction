@@ -309,12 +309,82 @@ export const adminService = {
       .from('tenders')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'open');
+      
+    // Stats to match the website's real database numbers
+    const { count: activeListings } = await supabase
+      .from('mstc_auctions')
+      .select('*', { count: 'exact', head: true })
+      .eq('asset_status', 'completed');
+
+    const now = new Date().toISOString();
+    const { count: upcomingAuctions } = await supabase
+      .from('mstc_auctions')
+      .select('*', { count: 'exact', head: true })
+      .gt('opening_date', now);
 
     return {
       totalUsers: userCount || 0,
       activeAuctions: auctionCount || 0,
-      activeTenders: tenderCount || 0
+      activeTenders: tenderCount || 0,
+      activeListings: activeListings || 0,
+      upcomingAuctions: upcomingAuctions || 0
     };
+  },
+
+  // Category Analytics
+  async getCategoryAnalytics() {
+    try {
+      // 1. Fetch current totals via the highly optimized RPC function
+      const { data: currentData, error: currentError } = await supabase
+        .rpc('get_current_category_totals');
+
+      // 2. Fetch historical/daily totals directly from the lightweight stats table
+      // We don't need limits here because it's aggregated strictly by day
+      const { data: historicalData, error: historicalError } = await supabase
+        .from('category_daily_stats')
+        .select('date, category_name, items_added');
+
+      if (currentError || historicalError) {
+        console.error('Error fetching category analytics', currentError || historicalError);
+        return { currentTotals: [], historicalTotals: [], daily: [] };
+      }
+
+      // Process Current Totals (RPC already returned aggregated counts!)
+      const currentTotals = (currentData || [])
+        .map((item: any) => ({ name: item.category_name, count: item.count }))
+        .sort((a: any, b: any) => b.count - a.count);
+
+      // Process Historical & Daily Totals
+      const historicalTotalsMap: Record<string, number> = {};
+      const dailyMap: Record<string, Record<string, number>> = {};
+
+      historicalData?.forEach(stat => {
+        const cat = stat.category_name || 'Uncategorized';
+        const count = stat.items_added || 0;
+        const date = stat.date;
+
+        historicalTotalsMap[cat] = (historicalTotalsMap[cat] || 0) + count;
+
+        if (!dailyMap[date]) dailyMap[date] = {};
+        dailyMap[date][cat] = (dailyMap[date][cat] || 0) + count;
+      });
+
+      const historicalTotals = Object.entries(historicalTotalsMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+      const daily = Object.entries(dailyMap)
+        .map(([date, categories]) => ({
+          date,
+          ...categories
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      return { currentTotals, historicalTotals, daily };
+    } catch (e) {
+      console.error(e);
+      return { currentTotals: [], historicalTotals: [], daily: [] };
+    }
   },
 
   // Scraper & Asset Worker Dashboard Services
