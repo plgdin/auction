@@ -207,7 +207,7 @@ export function AdminOverview() {
             {displayTotals.length === 0 ? (
               <p className="text-slate-500 text-sm text-center py-4">No categories found in this period.</p>
             ) : (
-              displayTotals.map((cat, idx) => (
+              displayTotals.map((cat) => (
                 <div key={cat.name} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors">
                   <div className="flex items-center gap-3">
                     <div 
