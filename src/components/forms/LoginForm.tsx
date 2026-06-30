@@ -20,7 +20,10 @@ async function getSecurityAttemptContext() {
   let geoData: any = {};
 
   try {
-    const res = await fetch('https://ipapi.co/json/');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
       ipAddress = data.ip || 'Unknown';
@@ -39,7 +42,10 @@ async function getSecurityAttemptContext() {
     }
   } catch (_) {
     try {
-      const res2 = await fetch('https://api.ipify.org?format=json');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const res2 = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (res2.ok) {
         const data2 = await res2.json();
         ipAddress = data2.ip || 'Unknown';
@@ -136,6 +142,7 @@ export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) 
       }
 
       setSession(session);
+      useAuthStore.getState().setProfile(profile);
       
       if (isAuthorized) {
         navigate('/admin');

@@ -2050,208 +2050,79 @@ export const MstcSearchService = {
         }
       }
 
-      const hasMultiSelectFilters = !!(
-        (filters?.categories && filters.categories.length > 0) ||
-        (filters?.subcategories && filters.subcategories.length > 0) ||
-        (filters?.locations && filters.locations.length > 0) ||
-        (filters?.sellers && filters.sellers.length > 0) ||
-        (filters?.regionalOffices && filters.regionalOffices.length > 0)
-      );
-      const isSearchWithImageFilter = !!(
-        filters?.hasImages || 
-        filters?.hasAssetDocuments || 
-        filters?.isReauction !== undefined ||
-        (filters?.preBid === 'yes' || filters?.preBid === 'no') ||
-        hasMultiSelectFilters
-      );
-      const rpcPage = isSearchWithImageFilter ? 1 : (filters?.page || 1);
-      const rpcLimit = isSearchWithImageFilter ? 1000 : (filters?.limit || 12);
+      const rpcPage = filters?.page || 1;
+      const rpcLimit = filters?.limit || 12;
 
-      // 1. Fetch data
       let searchData: any[] | null = null;
       let totalCount = 0;
       let returnedCorrectedQuery: string | undefined = undefined;
       let error: any = null;
+
+      // Run Hybrid RPC for EVERYTHING (empty query acts as pure filter)
+      const rpcResult = await supabase.rpc('hybrid_search_mstc_catalog', {
+        p_search_query: workingQuery || null,
+        p_embedding: embeddingStr as any,
+        p_categories: filters?.categories?.length ? filters.categories : (filters?.category ? [filters.category] : null),
+        p_subcategories: filters?.subcategories?.length ? filters.subcategories : (filters?.subcategory ? [filters.subcategory] : null),
+        p_locations: filters?.locations?.length ? filters.locations : (filters?.location ? [filters.location] : null),
+        p_sellers: filters?.sellers?.length ? filters.sellers : (filters?.seller ? [filters.seller] : null),
+        p_regional_offices: filters?.regionalOffices?.length ? filters.regionalOffices : (filters?.regionalOffice ? [filters.regionalOffice] : null),
+        p_start_date: filters?.startDate || null,
+        p_end_date: filters?.endDate || null,
+        p_has_images: filters?.hasImages || null,
+        p_has_docs: filters?.hasAssetDocuments || null,
+        p_min_pre_bid: p_min_pre_bid ?? null,
+        p_max_pre_bid: p_max_pre_bid ?? null,
+        p_is_reauction: filters?.isReauction ?? null,
+        p_page: rpcPage,
+        p_limit: rpcLimit
+      });
       
-      // If no query is provided, skip the AI/Hybrid search (which requires a >0 match score)
-      // and directly fetch all completed auctions.
-      if (!workingQuery || workingQuery.trim() === '') {
-        let rawData: any[] = [];
-        let count = 0;
-        let qError: any = null;
+      searchData = rpcResult.data;
+      error = rpcResult.error;
 
-        if (isSearchWithImageFilter) {
-          let from = 0;
-          const pageSize = 1000;
-          while (true) {
-            let queryBuilder = supabase
-              .from('mstc_auctions')
-              .select('*')
-              .eq('asset_status', 'completed');
-
-            if (filters?.categories && filters.categories.length > 0) {
-              queryBuilder = queryBuilder.or(filters.categories.map(c => `category_name.like.${c}%`).join(','));
-            } else if (filters?.category) {
-              queryBuilder = queryBuilder.like('category_name', `${filters.category}%`);
-            }
-
-            if (filters?.subcategories && filters.subcategories.length > 0) {
-              queryBuilder = queryBuilder.or(filters.subcategories.map(s => `category_name.like.%| ${s}`).join(','));
-            } else if (filters?.subcategory) {
-              queryBuilder = queryBuilder.like('category_name', `%| ${filters.subcategory}`);
-            }
-
-            if (filters?.locations && filters.locations.length > 0) {
-              queryBuilder = queryBuilder.in('location', filters.locations);
-            } else if (filters?.location) {
-              queryBuilder = queryBuilder.eq('location', filters.location);
-            }
-
-            if (filters?.sellers && filters.sellers.length > 0) {
-              queryBuilder = queryBuilder.in('seller_name', filters.sellers);
-            } else if (filters?.seller) {
-              queryBuilder = queryBuilder.eq('seller_name', filters.seller);
-            }
-
-            if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
-              queryBuilder = queryBuilder.or(filters.regionalOffices.map(o => `mstc_auction_number.ilike.MSTC/${o}/%`).join(','));
-            } else if (filters?.regionalOffice) {
-              queryBuilder = queryBuilder.ilike('mstc_auction_number', `MSTC/${filters.regionalOffice}/%`);
-            }
-
-            if (filters?.startDate) queryBuilder = queryBuilder.gte('opening_date', filters.startDate);
-            if (filters?.endDate) queryBuilder = queryBuilder.lte('opening_date', filters.endDate);
-            if (filters?.isReauction !== undefined) queryBuilder = queryBuilder.eq('is_reauction', filters.isReauction);
-
-            const { data, error: err } = await queryBuilder
-              .order('opening_date', { ascending: false })
-              .range(from, from + pageSize - 1);
-
-            if (err) {
-              qError = err;
-              break;
-            }
-            if (!data || data.length === 0) break;
-            rawData = rawData.concat(data);
-            if (data.length < pageSize) break;
-            from += pageSize;
-          }
-          count = rawData.length;
-        } else {
-          let queryBuilder = supabase
-              .from('mstc_auctions')
-              .select('*', { count: 'exact' })
-              .eq('asset_status', 'completed');
-
-          if (filters?.categories && filters.categories.length > 0) {
-            queryBuilder = queryBuilder.or(filters.categories.map(c => `category_name.like.${c}%`).join(','));
-          } else if (filters?.category) {
-            queryBuilder = queryBuilder.like('category_name', `${filters.category}%`);
-          }
-
-          if (filters?.subcategories && filters.subcategories.length > 0) {
-            queryBuilder = queryBuilder.or(filters.subcategories.map(s => `category_name.like.%| ${s}`).join(','));
-          } else if (filters?.subcategory) {
-            queryBuilder = queryBuilder.like('category_name', `%| ${filters.subcategory}`);
-          }
-
-          if (filters?.locations && filters.locations.length > 0) {
-            queryBuilder = queryBuilder.in('location', filters.locations);
-          } else if (filters?.location) {
-            queryBuilder = queryBuilder.eq('location', filters.location);
-          }
-
-          if (filters?.sellers && filters.sellers.length > 0) {
-            queryBuilder = queryBuilder.in('seller_name', filters.sellers);
-          } else if (filters?.seller) {
-            queryBuilder = queryBuilder.eq('seller_name', filters.seller);
-          }
-
-          if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
-            queryBuilder = queryBuilder.or(filters.regionalOffices.map(o => `mstc_auction_number.ilike.MSTC/${o}/%`).join(','));
-          } else if (filters?.regionalOffice) {
-            queryBuilder = queryBuilder.ilike('mstc_auction_number', `MSTC/${filters.regionalOffice}/%`);
-          }
-
-          if (filters?.startDate) queryBuilder = queryBuilder.gte('opening_date', filters.startDate);
-          if (filters?.endDate) queryBuilder = queryBuilder.lte('opening_date', filters.endDate);
-          if (filters?.isReauction !== undefined) queryBuilder = queryBuilder.eq('is_reauction', filters.isReauction);
-
-          const { data, error: err, count: totalCountVal } = await queryBuilder
-            .order('opening_date', { ascending: false })
-            .range((rpcPage - 1) * rpcLimit, rpcPage * rpcLimit - 1);
-
-          rawData = data || [];
-          count = totalCountVal || 0;
-          qError = err;
-        }
-
-        searchData = rawData;
-        totalCount = count;
-        error = qError;
-      } else {
-        // Run Hybrid RPC
-        const rpcResult = await supabase.rpc('hybrid_search_mstc_catalog', {
-          p_search_query: workingQuery || null,
-          p_embedding: embeddingStr as any,
-          p_category_filter: isSearchWithImageFilter ? null : (filters?.categories?.[0] || filters?.category || null),
-          p_subcategory_filter: isSearchWithImageFilter ? null : (filters?.subcategories?.[0] || filters?.subcategory || null),
-          p_location_filter: isSearchWithImageFilter ? null : (filters?.locations?.[0] || filters?.location || null),
-          p_seller_filter: isSearchWithImageFilter ? null : (filters?.sellers?.[0] || filters?.seller || null),
-          p_start_date: filters?.startDate || null,
-          p_end_date: filters?.endDate || null,
-          p_has_images: null, // Bypass DB filter due to remote DB bug
-          p_has_docs: null, // Bypass DB filter to handle strictly and cleanly client-side
-          p_min_pre_bid: isSearchWithImageFilter ? null : (p_min_pre_bid || null),
-          p_max_pre_bid: isSearchWithImageFilter ? null : (p_max_pre_bid || null),
-          p_page: rpcPage,
-          p_limit: rpcLimit
+      // If the DB text/vector search returned 0 results but there was a meaningful
+      // query, ask the backend for a spell-check auto-correction!
+      if ((!searchData || searchData.length === 0) && workingQuery && workingQuery.trim() !== '') {
+        const { data: correctedQuery, error: correctionError } = await supabase.rpc('suggest_search_correction', {
+          p_query: workingQuery
         });
-        
-        searchData = rpcResult.data;
-        error = rpcResult.error;
 
-        // If the DB text/vector search returned 0 results but there was a meaningful
-        // query, ask the backend for a spell-check auto-correction!
-        if (!searchData || searchData.length === 0) {
-          const { data: correctedQuery, error: correctionError } = await supabase.rpc('suggest_search_correction', {
-            p_query: workingQuery
+        if (!correctionError && correctedQuery && correctedQuery !== workingQuery) {
+          console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
+          const retryResult = await supabase.rpc('hybrid_search_mstc_catalog', {
+            p_search_query: correctedQuery,
+            p_embedding: embeddingStr as any,
+            p_categories: filters?.categories?.length ? filters.categories : (filters?.category ? [filters.category] : null),
+            p_subcategories: filters?.subcategories?.length ? filters.subcategories : (filters?.subcategory ? [filters.subcategory] : null),
+            p_locations: filters?.locations?.length ? filters.locations : (filters?.location ? [filters.location] : null),
+            p_sellers: filters?.sellers?.length ? filters.sellers : (filters?.seller ? [filters.seller] : null),
+            p_regional_offices: filters?.regionalOffices?.length ? filters.regionalOffices : (filters?.regionalOffice ? [filters.regionalOffice] : null),
+            p_start_date: filters?.startDate || null,
+            p_end_date: filters?.endDate || null,
+            p_has_images: filters?.hasImages || null,
+            p_has_docs: filters?.hasAssetDocuments || null,
+            p_min_pre_bid: p_min_pre_bid ?? null,
+            p_max_pre_bid: p_max_pre_bid ?? null,
+            p_is_reauction: filters?.isReauction ?? null,
+            p_page: rpcPage,
+            p_limit: rpcLimit
           });
 
-          if (!correctionError && correctedQuery && correctedQuery !== workingQuery) {
-            console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
-            const retryResult = await supabase.rpc('hybrid_search_mstc_catalog', {
-              p_search_query: correctedQuery,
-              p_embedding: embeddingStr as any,
-              p_category_filter: isSearchWithImageFilter ? null : (filters?.categories?.[0] || filters?.category || null),
-              p_subcategory_filter: isSearchWithImageFilter ? null : (filters?.subcategories?.[0] || filters?.subcategory || null),
-              p_location_filter: isSearchWithImageFilter ? null : (filters?.locations?.[0] || filters?.location || null),
-              p_seller_filter: isSearchWithImageFilter ? null : (filters?.sellers?.[0] || filters?.seller || null),
-              p_start_date: filters?.startDate || null,
-              p_end_date: filters?.endDate || null,
-              p_has_images: null, // Bypass DB filter due to remote DB bug
-              p_has_docs: null, // Bypass DB filter to handle strictly and cleanly client-side
-              p_min_pre_bid: isSearchWithImageFilter ? null : (p_min_pre_bid || null),
-              p_max_pre_bid: isSearchWithImageFilter ? null : (p_max_pre_bid || null),
-              p_page: rpcPage,
-              p_limit: rpcLimit
-            });
-
-            if (!retryResult.error && retryResult.data && retryResult.data.length > 0) {
-              searchData = retryResult.data;
-              returnedCorrectedQuery = correctedQuery;
-              error = null;
-            } else {
-              throw new Error('RPC_ZERO_RESULTS');
-            }
+          if (!retryResult.error && retryResult.data && retryResult.data.length > 0) {
+            searchData = retryResult.data;
+            returnedCorrectedQuery = correctedQuery;
+            error = null;
           } else {
             throw new Error('RPC_ZERO_RESULTS');
           }
+        } else {
+          throw new Error('RPC_ZERO_RESULTS');
         }
-        
-        if (searchData && searchData.length > 0) {
-          totalCount = Number(searchData[0].total_count) || 0;
-        }
+      }
+      
+      if (searchData && searchData.length > 0) {
+        totalCount = Number(searchData[0].total_count) || 0;
       }
 
       if (error) {
@@ -2260,157 +2131,15 @@ export const MstcSearchService = {
 
       const hasDirectMatches = !!(searchData && searchData.length > 0 && searchData[0].search_rank !== undefined);
 
-      // Fetch is_reauction status for these items to ensure we have it in the UI and can filter by it
-      const itemIds = (searchData as any[]).map(item => item.id);
-      const { data: reauctionStatuses, error: statusError } = await supabase
-        .from('mstc_auctions')
-        .select('id, is_reauction')
-        .in('id', itemIds);
-
-      const reauctionMap = new Map<string, boolean>();
-      if (!statusError && reauctionStatuses) {
-        reauctionStatuses.forEach(r => reauctionMap.set(r.id, !!r.is_reauction));
-      }
-
-      // 2. Map Categories
+      // Map Categories (is_reauction is returned natively by RPC)
       let mapped = (searchData as any[]).map(item => {
         const { category, subcategory } = mapRawCategory(item.category_name);
         return {
           ...item,
-          is_reauction: reauctionMap.get(item.id) ?? false,
+          is_reauction: !!item.is_reauction,
           category_name: `${category} | ${subcategory}`
         } as MstcSanitizedAuction;
       });
-
-      // Filter by categories locally if specified
-      if (filters?.categories && filters.categories.length > 0) {
-        mapped = mapped.filter(item => {
-          return filters.categories!.some(c => item.category_name.toLowerCase().startsWith(c.toLowerCase()));
-        });
-      } else if (filters?.category) {
-        mapped = mapped.filter(item => {
-          return item.category_name.toLowerCase().startsWith(filters.category!.toLowerCase());
-        });
-      }
-
-      // Filter by subcategories locally if specified
-      if (filters?.subcategories && filters.subcategories.length > 0) {
-        mapped = mapped.filter(item => {
-          const parts = item.category_name.split(' | ');
-          const sub = parts[1] || '';
-          return filters.subcategories!.some(s => sub.toLowerCase() === s.toLowerCase());
-        });
-      } else if (filters?.subcategory) {
-        mapped = mapped.filter(item => {
-          const parts = item.category_name.split(' | ');
-          const sub = parts[1] || '';
-          return sub.toLowerCase() === filters.subcategory!.toLowerCase();
-        });
-      }
-
-      // Filter by locations locally if specified
-      if (filters?.locations && filters.locations.length > 0) {
-        mapped = mapped.filter(item => {
-          return filters.locations!.some(loc => item.location && item.location.toLowerCase() === loc.toLowerCase());
-        });
-      } else if (filters?.location) {
-        mapped = mapped.filter(item => {
-          return item.location && item.location.toLowerCase() === filters.location!.toLowerCase();
-        });
-      }
-
-      // Filter by sellers locally if specified
-      if (filters?.sellers && filters.sellers.length > 0) {
-        mapped = mapped.filter(item => {
-          return filters.sellers!.some(sel => item.seller_name && item.seller_name.toLowerCase() === sel.toLowerCase());
-        });
-      } else if (filters?.seller) {
-        mapped = mapped.filter(item => {
-          return item.seller_name && item.seller_name.toLowerCase() === filters.seller!.toLowerCase();
-        });
-      }
-
-      // Filter by regional offices locally if specified
-      if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
-        mapped = mapped.filter(item => {
-          if (!item.mstc_auction_number) return false;
-          const parts = item.mstc_auction_number.split('/');
-          if (parts.length > 1 && parts[0].toUpperCase() === 'MSTC') {
-            const office = parts[1].trim();
-            return filters.regionalOffices!.some(o => office.toLowerCase() === o.toLowerCase());
-          }
-          return false;
-        });
-      } else if (filters?.regionalOffice) {
-        mapped = mapped.filter(item => {
-          if (!item.mstc_auction_number) return false;
-          const parts = item.mstc_auction_number.split('/');
-          if (parts.length > 1 && parts[0].toUpperCase() === 'MSTC') {
-            const office = parts[1].trim();
-            return office.toLowerCase() === filters.regionalOffice!.toLowerCase();
-          }
-          return false;
-        });
-      }
-
-      // Filter by isReauction locally if specified
-      if (filters?.isReauction !== undefined) {
-        mapped = mapped.filter(item => item.is_reauction === filters.isReauction);
-      }
-
-      // Filter by images locally if specified
-      if (filters?.hasImages) {
-        mapped = mapped.filter(item => {
-          if (!item.raw_materials_text) return false;
-          try {
-            const parsed = JSON.parse(item.raw_materials_text);
-            const images = parsed?.extracted_images || [];
-            return images.some((url: string) => {
-              const lower = url.toLowerCase();
-              return !lower.endsWith('.pdf') && 
-                     !lower.includes('_catalog_page_') && 
-                     !lower.includes('mstc-previews/') &&
-                     /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
-            });
-          } catch { return false; }
-        });
-      }
-      
-      // Filter by documents locally if specified
-      if (filters?.hasAssetDocuments) {
-        mapped = mapped.filter(item => hasConfirmedAssetDocuments(item.raw_materials_text));
-      }
-
-      // Filter by price constraint locally (since it requires JS computation)
-      if (pConstraint) {
-        mapped = mapped.filter(item => {
-          const { preBid, totalValue } = estimateAuctionValues(item as any);
-          const matchValue = (val: number) => {
-            if (val <= 0) return true;
-            if (pConstraint.operator === 'less') return val <= pConstraint.value;
-            if (pConstraint.operator === 'greater') return val >= pConstraint.value;
-            return val === pConstraint.value;
-          };
-          if (pConstraint.field === 'pre_bid') return matchValue(preBid);
-          if (pConstraint.field === 'total_value') return matchValue(totalValue);
-          return matchValue(preBid) || matchValue(totalValue);
-        });
-      }
-
-      // Filter by preBid locally if specified
-      if (filters?.preBid === 'yes') {
-        mapped = mapped.filter(item => isPreBidRequired(item));
-      } else if (filters?.preBid === 'no') {
-        mapped = mapped.filter(item => !isPreBidRequired(item));
-      }
-
-      if (isSearchWithImageFilter) {
-        totalCount = mapped.length;
-        const page = filters?.page || 1;
-        const limit = filters?.limit || 12;
-        const startIndex = (page - 1) * limit;
-        mapped = mapped.slice(startIndex, startIndex + limit);
-      }
 
       return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery, hasDirectMatches };
 
@@ -2488,77 +2217,23 @@ export const MstcSearchService = {
     regionalOffices: string[];
   }> {
     try {
-      let allData: any[] = [];
-      let pageIndex = 0;
-      const pageSize = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('mstc_auctions')
-          .select('category_name, seller_name, location, mstc_auction_number')
-          .eq('asset_status', 'completed')
-          .range(pageIndex * pageSize, (pageIndex + 1) * pageSize - 1);
-          
-        if (error) throw error;
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData.push(...data);
-          if (data.length < pageSize) {
-            hasMore = false;
-          } else {
-            pageIndex++;
-          }
-        }
-      }
-
-      const data = allData;
+      const { data, error } = await supabase.rpc('get_mstc_filter_options');
+      if (error) throw error;
       
-      const categories = new Set<string>();
-      const subcategoriesMap: Record<string, Set<string>> = {};
-      const sellers = new Set<string>();
-      const locations = new Set<string>();
-      const regionalOffices = new Set<string>();
+      // Known standard offices used frequently
+      const standardOffices = ['BBR','BLR','BPL','CDG','ERO','GHY','HYD','JPR','LKO','NRO','SRO','WRO','TVC','VSP','PTN','VAD','CO'];
       
-      data?.forEach(row => {
-        if (row.category_name) {
-          const { category, subcategory } = mapRawCategory(row.category_name);
-          categories.add(category);
-          if (subcategory) {
-            if (!subcategoriesMap[category]) {
-              subcategoriesMap[category] = new Set<string>();
-            }
-            subcategoriesMap[category].add(subcategory);
-          }
-        }
-        if (row.seller_name) sellers.add(row.seller_name);
-        if (row.location) locations.add(row.location);
-        
-        if (row.mstc_auction_number) {
-          const parts = row.mstc_auction_number.split('/');
-          if (parts.length > 1 && parts[0].toUpperCase() === 'MSTC') {
-            regionalOffices.add(parts[1].trim());
-          }
-        }
-      });
-
-      const subcategories: Record<string, string[]> = {};
-      for (const [cat, subSet] of Object.entries(subcategoriesMap)) {
-        subcategories[cat] = Array.from(subSet).sort();
-      }
-
-      const sortedOffices = Array.from(regionalOffices).sort((a, b) => {
+      const sortedOffices = standardOffices.sort((a, b) => {
         const nameA = expandMstcOffice(a);
         const nameB = expandMstcOffice(b);
         return nameA.localeCompare(nameB);
       });
       
       return {
-        categories: Array.from(categories).sort(),
-        subcategories,
-        sellers: Array.from(sellers).sort(),
-        locations: Array.from(locations).sort(),
+        categories: (data?.categories || []).sort(),
+        subcategories: data?.subcategories || {},
+        sellers: (data?.sellers || []).sort(),
+        locations: (data?.locations || []).sort(),
         regionalOffices: sortedOffices
       };
     } catch (error) {

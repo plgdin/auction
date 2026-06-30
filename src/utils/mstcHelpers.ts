@@ -1135,27 +1135,15 @@ export function formatSellerName(name: string | null | undefined): string {
 }
 
 export function isPreBidRequired(item: MstcSanitizedAuction): boolean {
-  if (!item.raw_materials_text) {
-    const shortId = (item.mstc_auction_number || '').split('/').pop() || item.id?.substring(0, 8) || '';
-    const shortIdNum = parseInt(shortId, 10);
-    if (!isNaN(shortIdNum)) {
-      return shortIdNum % 2 === 0;
+    if (!item.raw_materials_text) {
+      return false;
     }
-    const charCodeSum = (item.id || '').split('').reduce((sum: number, char: string) => sum + char.charCodeAt(0), 0);
-    return charCodeSum % 2 === 0;
-  }
   try {
     const parsed = JSON.parse(item.raw_materials_text);
     const preBidDdg = parsed?.depositDetails?.preBidDdg;
-    if (!preBidDdg) {
-      const shortId = (item.mstc_auction_number || '').split('/').pop() || item.id?.substring(0, 8) || '';
-      const shortIdNum = parseInt(shortId, 10);
-      if (!isNaN(shortIdNum)) {
-        return shortIdNum % 2 === 0;
+      if (!preBidDdg) {
+        return false;
       }
-      const charCodeSum = (item.id || '').split('').reduce((sum: number, char: string) => sum + char.charCodeAt(0), 0);
-      return charCodeSum % 2 === 0;
-    }
     const lower = preBidDdg.toLowerCase();
     if (
       lower.includes('not required') ||
