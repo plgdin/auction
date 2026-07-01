@@ -1,5 +1,4 @@
-import { Search, Calculator, FileText, FolderClosed, CheckCircle } from 'lucide-react';
-
+import { Target, Eye } from 'lucide-react';
 
 export function About() {
   return (
@@ -7,183 +6,84 @@ export function About() {
       {/* Hero Section */}
       <div className="relative bg-slate-900 text-white overflow-hidden py-28 border-b border-slate-800">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-950 via-slate-900 to-slate-950 opacity-90 z-0"></div>
-        
-        {/* Subtle grid pattern overlay */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-35 z-0"></div>
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center max-w-4xl">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-full mb-6 uppercase tracking-wider animate-pulse">
-            B2B Auction Companion
+            Our Story
           </span>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight mb-6 bg-gradient-to-r from-white via-slate-100 to-blue-200 bg-clip-text text-transparent leading-none">
-            The Intelligent Companion for MSTC eAuctions
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-8 bg-gradient-to-r from-white via-slate-100 to-blue-200 bg-clip-text text-transparent leading-snug">
+            We didn't come from finance. We didn't come from government. We came from a small office in Trivandrum with one simple question:
           </h1>
-          <p className="text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed font-light">
-            We don't replace the official auction platform. We make it smarter. Lelam helps buyers, scrap traders, and industrial recyclers navigate, estimate, and win listings.
+          <p className="text-xl sm:text-2xl text-blue-300 max-w-3xl mx-auto leading-relaxed font-semibold">
+            Why do thousands of government auctions worth crores of rupees take place every year, yet most businesses and entrepreneurs never know they exist?
+          </p>
+          <p className="mt-8 text-lg sm:text-xl text-slate-400 italic">
+            "We were young, we were restless and honestly we were a little annoyed."
           </p>
         </div>
       </div>
 
       {/* Main Philosophy Section */}
       <div className="py-20 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-855">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-6">
-              <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-                What is Lelam?
-              </h2>
-              <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                Navigating official government and industrial portals like MSTC can be overwhelming. Buyers are forced to sift through unstructured catalogs, download bulky PDF tender terms, and perform complex math to find out what they will actually pay.
-              </p>
-              <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                <strong>Lelam</strong> was built to solve these exact friction points. It is a dedicated analytics and bidding workflow platform that acts as an intelligent layer over raw catalog listings.
-              </p>
-              <div className="pt-4 flex flex-col sm:flex-row gap-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-6 h-6 text-emerald-500 shrink-0 mt-1" />
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white">Smart Calculations</h4>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Includes GST, TCS, EMD, and logistics.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-6 h-6 text-emerald-500 shrink-0 mt-1" />
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white">Workflow Efficiency</h4>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Export client quotes instantly to PDFs.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
+          <div className="prose prose-lg dark:prose-invert prose-blue mx-auto">
+            <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
+              Across India, valuable assets are sold every day through MSTC eAuctions, Customs auctions, public sector auctions, and other government eAuction platforms. These include scrap metal, machinery, vehicles, electronics, minerals, industrial equipment, confiscated goods, warehouse stock, and surplus government assets. Yet this information is often scattered across multiple websites, hidden behind complex portals, and presented in ways that make it difficult for new buyers to discover and understand.
+            </p>
             
-            <div className="relative p-8 rounded-3xl bg-slate-900 text-white shadow-xl overflow-hidden border border-slate-800">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
-              <h3 className="text-2xl font-bold mb-6 text-blue-400">The Lelam Advantage</h3>
-              
-              <div className="space-y-6 relative z-10">
-                <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full bg-blue-900/50 border border-blue-500/30 flex items-center justify-center font-bold text-blue-300 shrink-0">1</div>
-                  <div>
-                    <h4 className="font-semibold text-white">Official MSTC eAuctions</h4>
-                    <p className="text-sm text-slate-400">Acts as the official secure system of record for final bids, registrations, and official tenders.</p>
-                  </div>
-                </div>
-                
-                <div className="border-l-2 border-dashed border-slate-700 h-6 ml-4"></div>
-                
-                <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full bg-emerald-900/50 border border-emerald-500/30 flex items-center justify-center font-bold text-emerald-300 shrink-0">2</div>
-                  <div>
-                    <h4 className="font-semibold text-emerald-400">Lelam Analytics (Companion)</h4>
-                    <p className="text-sm text-slate-400">Automatically parses PDF terms, updates listings, tracks market values, and estimates total landed costs.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+            <p className="text-2xl font-bold text-slate-800 dark:text-slate-200 my-10 text-center border-y border-slate-200 dark:border-slate-800 py-8">
+              Experienced bidders know where to look. Most others don't.<br/>
+              <span className="text-blue-600 dark:text-blue-400 mt-2 block">That's why we built Lelam.</span>
+            </p>
 
-      {/* Core Pillars / Toolsets */}
-      <div className="py-24 bg-slate-50 dark:bg-slate-955">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white sm:text-4xl">
-              Powerful Features Designed for Buyers
-            </h2>
-            <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">
-              Eliminate guesswork. Save hours of parsing PDF catalogs and calculating scrap taxes manually.
+            <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
+              <strong>Lelam</strong> is an auction intelligence platform that makes MSTC eAuctions, Indian Customs auctions, and other government auction opportunities easier to discover, compare, and analyze. Instead of manually searching multiple portals, buyers can access auction listings from a single platform, compare opportunities, track historical trends, estimate transportation and procurement costs, calculate return on investment (ROI), and make informed bidding decisions with confidence.
+            </p>
+
+            <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
+              We are not another auction platform—we are the layer that makes government auctions accessible. Our mission is to remove complexity from the buying process so that businesses of every size, first-time bidders, traders, recyclers, manufacturers, exporters, and entrepreneurs all have equal access to opportunities that were once difficult to find.
+            </p>
+
+            <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
+              We believe that transparency creates opportunity. When auction information becomes easy to access, markets become more competitive, businesses make better decisions, and government assets reach a wider pool of qualified buyers.
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Pillar 1 */}
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 group">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/5 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6 group-hover:scale-110 transition-transform">
-                <Search className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Catalog Intelligence</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-                No more confusing interfaces. Browse daily scrap catalogs, industrial items, and vehicle lots with autocomplete searches, status filters, and image indicators.
-              </p>
-            </div>
-
-            {/* Pillar 2 */}
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 group">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/5 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6 group-hover:scale-110 transition-transform">
-                <Calculator className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Landed Cost Calculator</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-                Tame the complex taxes. Calculate exact values with GST (18%), TCS (1%), state taxes, pre-bid deposits, and transport allowances so you see the true final price before bidding.
-              </p>
-            </div>
-
-            {/* Pillar 3 */}
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 group">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/5 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6 group-hover:scale-110 transition-transform">
-                <FileText className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Bidding Quote Builder</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-                Compile professional quotations in seconds. Pick multiple lots from active auctions, adjust margins, and export a clean PDF document for vendor or manager signature.
-              </p>
-            </div>
-
-            {/* Pillar 4 */}
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 group">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/5 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6 group-hover:scale-110 transition-transform">
-                <FolderClosed className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Document Compliance</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-                Keep registration details, pre-bid EMDs, and terms sheets organized by auction number. Secure document vault built specifically for scrap trader compliance.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Simple Infographic Steps */}
-      <div className="py-20 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-850">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">How It Works</h2>
-            <p className="mt-3 text-slate-500 dark:text-slate-400">Streamlining your auction bidding cycle in four simple steps</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
-            <div className="text-center flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-white font-extrabold text-xl mb-4 shadow-md">
-                1
-              </div>
-              <h4 className="font-bold text-slate-900 dark:text-white mb-2">Discover</h4>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">Filter through active catalogues by material type and seller state.</p>
-            </div>
+      {/* Vision & Mission */}
+      <div className="py-24 bg-slate-50 dark:bg-slate-955">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             
-            <div className="text-center flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-white font-extrabold text-xl mb-4 shadow-md">
-                2
+            {/* Vision */}
+            <div className="bg-white dark:bg-slate-900 p-10 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:-translate-y-1 transition-transform">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-transform group-hover:scale-150"></div>
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-8">
+                <Eye className="w-7 h-7" />
               </div>
-              <h4 className="font-bold text-slate-900 dark:text-white mb-2">Analyze</h4>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">Run calculations for GST, TCS, and EMD to understand landed cost.</p>
+              <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-6">Vision</h3>
+              <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed relative z-10">
+                To build a future where every MSTC eAuction, Customs auction, and government auction in India is as easy to discover, understand, compare, and participate in as booking a flight—creating a transparent marketplace where opportunity is accessible to everyone.
+              </p>
             </div>
-            
-            <div className="text-center flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-white font-extrabold text-xl mb-4 shadow-md">
-                3
+
+            {/* Mission */}
+            <div className="bg-white dark:bg-slate-900 p-10 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:-translate-y-1 transition-transform">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-transform group-hover:scale-150"></div>
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-8">
+                <Target className="w-7 h-7" />
               </div>
-              <h4 className="font-bold text-slate-900 dark:text-white mb-2">Compile</h4>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">Build a customized quotation matching your target profit margins.</p>
+              <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-6">Mission</h3>
+              <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed relative z-10 mb-6">
+                To build India's most comprehensive government auction discovery and auction intelligence platform, empowering buyers to search MSTC eAuctions, Customs auctions, and other public auctions through powerful search, analytics, market insights, historical pricing, ROI estimation, and auction comparison tools.
+              </p>
+              <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed relative z-10">
+                By making government auctions easier to discover and understand, Lelam aims to modernize India's public auction ecosystem, increase participation, improve transparency, and help businesses make smarter, data-driven procurement decisions.
+              </p>
             </div>
-            
-            <div className="text-center flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-blue-600 border border-blue-500 flex items-center justify-center text-white font-extrabold text-xl mb-4 shadow-md">
-                4
-              </div>
-              <h4 className="font-bold text-blue-600 dark:text-blue-400 mb-2">Bid Smart</h4>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">Participate on official portals equipped with complete price clarity.</p>
-            </div>
+
           </div>
         </div>
       </div>
