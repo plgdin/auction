@@ -18,6 +18,7 @@ Allow: /blog/*
 Allow: /privacy
 Allow: /terms
 Allow: /cookies
+Allow: /tenders
 Allow: /assets/
 
 # Block crawlers from indexing authentication, administration, and user-specific workspace areas
