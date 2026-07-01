@@ -18,11 +18,11 @@ export function HeroSection() {
           <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-7xl mb-8 leading-tight max-w-3xl">
             Bringing Auctions <br />to the Masses
           </h1>
-          
+
           <p className="text-lg sm:text-xl md:text-2xl text-slate-300 leading-relaxed mb-12 max-w-2xl font-light">
             Empowering everyone with simple, secure, and transparent eAuctions and MSTC auctions—one bid at a time.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4">
             <Link
               to="/auctions"

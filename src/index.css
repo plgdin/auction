@@ -5,34 +5,34 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-container: var(--primary-container);
   --color-on-primary-container: var(--on-primary-container);
-  
+
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary-container: var(--secondary-container);
   --color-on-secondary-container: var(--on-secondary-container);
-  
+
   --color-tertiary: var(--tertiary);
   --color-tertiary-container: var(--tertiary-container);
   --color-on-tertiary-container: var(--on-tertiary-container);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  
+
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  
+
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  
+
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  
+
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  
+
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  
+
   --color-border: var(--border);
   --color-outline: var(--outline);
   --color-input: var(--input);
@@ -56,7 +56,7 @@
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-mono: 'Geist Mono', monospace;
   --font-mono-data: 'Geist Mono', monospace;
-  
+
   --radius-sm: 0.125rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
@@ -67,37 +67,40 @@
   :root {
     /* Stitch: Lochmara Institutional / B2B Precision */
     --background: #faf8ff;
-    --foreground: #1f466d; /* Neutral navy */
-    
+    --foreground: #1f466d;
+    /* Neutral navy */
+
     --card: #ffffff;
     --card-foreground: #1f466d;
-    
+
     --popover: #ffffff;
     --popover-foreground: #1f466d;
-    
-    --primary: #2563eb; /* Primary Bright Blue */
+
+    --primary: #2563eb;
+    /* Primary Bright Blue */
     --primary-foreground: #ffffff;
     --primary-container: #3b82f6;
     --on-primary-container: #faf8ff;
-    
+
     --secondary: #5c9dd4;
     --secondary-foreground: #ffffff;
     --secondary-container: #e6f0fa;
     --on-secondary-container: #1f466d;
-    
-    --tertiary: #8f5600; /* Tertiary Amber Accent */
+
+    --tertiary: #8f5600;
+    /* Tertiary Amber Accent */
     --tertiary-container: #ffdcc3;
     --on-tertiary-container: #2e1500;
-    
+
     --muted: #f2f3ff;
     --muted-foreground: #5c748e;
-    
+
     --accent: #e6f0fa;
     --accent-foreground: #1f466d;
-    
+
     --destructive: #ba1a1a;
     --destructive-foreground: #ffffff;
-    
+
     --border: #c3c6d7;
     --outline: #737686;
     --input: #c3c6d7;
@@ -109,36 +112,36 @@
     /* Lochmara Dark Palette */
     --background: #0f1c2a;
     --foreground: #eeefff;
-    
+
     --card: #172d42;
     --card-foreground: #eeefff;
-    
+
     --popover: #172d42;
     --popover-foreground: #eeefff;
-    
+
     --primary: #3b82f6;
     --primary-foreground: #0f1c2a;
     --primary-container: #1d4ed8;
     --on-primary-container: #faf8ff;
-    
+
     --secondary: #97a8c3;
     --secondary-foreground: #0f1c2a;
     --secondary-container: #1f334a;
     --on-secondary-container: #eeefff;
-    
+
     --tertiary: #ffb77c;
     --tertiary-container: #6a3a00;
     --on-tertiary-container: #ffdcc3;
-    
+
     --muted: #132435;
     --muted-foreground: #8d92a6;
-    
+
     --accent: #1f334a;
     --accent-foreground: #eeefff;
-    
+
     --destructive: #ffb4ab;
     --destructive-foreground: #690005;
-    
+
     --border: #38485d;
     --outline: #8d92a6;
     --input: #38485d;
@@ -150,9 +153,27 @@
   * {
     border-color: var(--border);
   }
-  body, html, button, input, select, textarea, a, p, span, h1, h2, h3, h4, h5, h6, th, td {
+
+  body,
+  html,
+  button,
+  input,
+  select,
+  textarea,
+  a,
+  p,
+  span,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  th,
+  td {
     font-family: var(--font-sans);
   }
+
   body {
     background-color: var(--background);
     color: var(--foreground);
@@ -160,13 +181,25 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleUp {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @utility animate-fade-in {
@@ -181,13 +214,16 @@
   &::-webkit-scrollbar {
     width: 6px;
   }
+
   &::-webkit-scrollbar-track {
     background: transparent;
   }
+
   &::-webkit-scrollbar-thumb {
     background-color: var(--border);
     border-radius: 9999px;
   }
+
   &::-webkit-scrollbar-thumb:hover {
     background-color: var(--outline);
   }
@@ -208,6 +244,7 @@
 }
 
 @media print {
+
   /* Strict hiding of layout blocks, headers, controls, and print-hidden elements */
   aside,
   header,
@@ -223,7 +260,8 @@
   }
 
   /* Reset body and html for seamless print boundaries */
-  body, html {
+  body,
+  html {
     background: #ffffff !important;
     color: #000000 !important;
     height: auto !important;
@@ -235,9 +273,9 @@
 
   /* Specific structure overrides to ensure descendants flow blocks naturally */
   #root,
-  #root > div,
-  #root > div > div,
-  #root > div > div > div,
+  #root>div,
+  #root>div>div,
+  #root>div>div>div,
   main,
   .max-w-7xl,
   .grid,
@@ -268,7 +306,8 @@
     max-width: 100% !important;
     height: auto !important;
     min-height: 100% !important;
-    padding: 16mm 20mm !important; /* Safe margins for A4 printing */
+    padding: 16mm 20mm !important;
+    /* Safe margins for A4 printing */
     margin: 0 !important;
     border: none !important;
     box-shadow: none !important;
@@ -285,5 +324,3 @@
     page-break-inside: avoid !important;
   }
 }
-
-

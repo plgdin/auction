@@ -3,7 +3,7 @@
   <!-- Homepage -->
   <url>
     <loc>https://www.lelam.co/</loc>
-    <lastmod>2026-06-24</lastmod>
+    <lastmod>2026-07-01</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.00</priority>
   </url>
@@ -11,7 +11,7 @@
   <!-- Auctions Marketplace / Catalogs -->
   <url>
     <loc>https://www.lelam.co/auctions</loc>
-    <lastmod>2026-06-24</lastmod>
+    <lastmod>2026-07-01</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.90</priority>
   </url>
@@ -19,7 +19,7 @@
   <!-- About Us -->
   <url>
     <loc>https://www.lelam.co/about</loc>
-    <lastmod>2026-06-17</lastmod>
+    <lastmod>2026-07-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.60</priority>
   </url>
@@ -27,7 +27,7 @@
   <!-- Contact Page -->
   <url>
     <loc>https://www.lelam.co/contact</loc>
-    <lastmod>2026-06-18</lastmod>
+    <lastmod>2026-07-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.60</priority>
   </url>
@@ -35,7 +35,7 @@
   <!-- FAQ Page -->
   <url>
     <loc>https://www.lelam.co/faq</loc>
-    <lastmod>2026-06-23</lastmod>
+    <lastmod>2026-07-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.50</priority>
   </url>
@@ -43,7 +43,7 @@
   <!-- Official Notices -->
   <url>
     <loc>https://www.lelam.co/notices</loc>
-    <lastmod>2026-06-22</lastmod>
+    <lastmod>2026-07-01</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.70</priority>
   </url>
@@ -51,7 +51,7 @@
   <!-- News & Market Insights -->
   <url>
     <loc>https://www.lelam.co/news</loc>
-    <lastmod>2026-06-23</lastmod>
+    <lastmod>2026-07-01</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.70</priority>
   </url>
@@ -59,7 +59,7 @@
   <!-- Blog -->
   <url>
     <loc>https://www.lelam.co/blog</loc>
-    <lastmod>2026-06-27</lastmod>
+    <lastmod>2026-07-01</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.80</priority>
   </url>

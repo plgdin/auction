@@ -1,6 +1,6 @@
 # Lelam eAuctions Assistant
 
-> An advanced, assistive B2B intelligence platform that indexes, normalizes, and analyzes government eAuctions (like MSTC India) to help bidders make informed, data-driven decisions.
+> An independent government auction intelligence platform that indexes, normalizes, and analyzes government eAuctions (like MSTC India) to help bidders make informed, data-driven decisions.
 
 Detailed features and capabilities:
 * eAuctions Catalog Search: NLP-powered search that parses technical metal grades, locations, and scrap types.

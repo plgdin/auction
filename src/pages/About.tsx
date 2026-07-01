@@ -1,92 +1,196 @@
 import { Target, Eye } from 'lucide-react';
 
 export function About() {
+
   return (
-    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100">
-      {/* Hero Section */}
-      <div className="relative bg-slate-900 text-white overflow-hidden py-28 border-b border-slate-800">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-950 via-slate-900 to-slate-950 opacity-90 z-0"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-35 z-0"></div>
-
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center max-w-4xl">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-full mb-6 uppercase tracking-wider animate-pulse">
-            Our Story
+    <div className="bg-slate-50/50 min-h-screen text-slate-800 font-sans">
+      {/* Intro Animation Header Container */}
+      <div className="max-w-5xl mx-auto px-6 pt-10 sm:pt-14 mb-12 flex justify-center text-center">
+        <h1 className="text-7xl sm:text-8xl md:text-9xl tracking-tight text-slate-900 flex flex-wrap md:flex-nowrap items-baseline justify-center gap-x-4 gap-y-4 select-none w-full">
+          {/* Word "We" */}
+          <span className="relative inline-block whitespace-nowrap">
+            <span className="inline-block overflow-hidden">
+              <span
+                className="inline-block animate-slide-up-word font-archivo text-slate-900 leading-none italic pr-4 py-1"
+                style={{ animationDelay: '100ms' }}
+              >
+                We
+              </span>
+            </span>
           </span>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-8 bg-gradient-to-r from-white via-slate-100 to-blue-200 bg-clip-text text-transparent leading-snug">
-            We didn't come from finance. We didn't come from government. We came from a small office in Trivandrum with one simple question:
-          </h1>
-          <p className="text-xl sm:text-2xl text-blue-300 max-w-3xl mx-auto leading-relaxed font-semibold">
-            Why do thousands of government auctions worth crores of rupees take place every year, yet most businesses and entrepreneurs never know they exist?
-          </p>
-          <p className="mt-8 text-lg sm:text-xl text-slate-400 italic">
-            "We were young, we were restless and honestly we were a little annoyed."
-          </p>
-        </div>
+
+          {/* Word "are," */}
+          <span className="relative inline-block whitespace-nowrap">
+            <span className="inline-block overflow-hidden">
+              <span
+                className="inline-block animate-slide-up-word font-archivo text-slate-900 leading-none italic pr-4 py-1"
+                style={{ animationDelay: '400ms' }}
+              >
+                are,
+              </span>
+            </span>
+          </span>
+
+          {/* Logo "lelam.co" */}
+          <span className="relative inline-block whitespace-nowrap">
+            <span className="inline-block overflow-hidden">
+              <span
+                className="inline-block animate-slide-up-word leading-none"
+                style={{ animationDelay: '700ms' }}
+              >
+                <img
+                  src="/png_lelam_1.webp"
+                  alt="lelam.co"
+                  className="h-14 sm:h-20 md:h-[108px] w-auto object-contain inline-block align-baseline"
+                  style={{ transform: 'translateY(3%)' }}
+                />
+              </span>
+            </span>
+          </span>
+        </h1>
       </div>
 
-      {/* Main Philosophy Section */}
-      <div className="py-20 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-855">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
-          <div className="prose prose-lg dark:prose-invert prose-blue mx-auto">
-            <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
-              Across India, valuable assets are sold every day through MSTC eAuctions, Customs auctions, public sector auctions, and other government eAuction platforms. These include scrap metal, machinery, vehicles, electronics, minerals, industrial equipment, confiscated goods, warehouse stock, and surplus government assets. Yet this information is often scattered across multiple websites, hidden behind complex portals, and presented in ways that make it difficult for new buyers to discover and understand.
-            </p>
-            
-            <p className="text-2xl font-bold text-slate-800 dark:text-slate-200 my-10 text-center border-y border-slate-200 dark:border-slate-800 py-8">
-              Experienced bidders know where to look. Most others don't.<br/>
-              <span className="text-blue-600 dark:text-blue-400 mt-2 block">That's why we built Lelam.</span>
-            </p>
+      <div className="max-w-5xl mx-auto px-6 pb-20 sm:pb-28">
 
-            <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
-              <strong>Lelam</strong> is an auction intelligence platform that makes MSTC eAuctions, Indian Customs auctions, and other government auction opportunities easier to discover, compare, and analyze. Instead of manually searching multiple portals, buyers can access auction listings from a single platform, compare opportunities, track historical trends, estimate transportation and procurement costs, calculate return on investment (ROI), and make informed bidding decisions with confidence.
-            </p>
+        {/* Grid layout for balanced columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
 
-            <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
-              We are not another auction platform—we are the layer that makes government auctions accessible. Our mission is to remove complexity from the buying process so that businesses of every size, first-time bidders, traders, recyclers, manufacturers, exporters, and entrepreneurs all have equal access to opportunities that were once difficult to find.
-            </p>
+          {/* Left Column - Quote & Vision & Mission */}
+          <div className="lg:col-span-1 space-y-6 text-left">
+            <div className="space-y-4">
+              <h2 className="text-2xl sm:text-3xl font-light text-slate-700 leading-snug tracking-tight">
+                &ldquo;We didn&apos;t come from finance. We didn&apos;t come from government. We came from a small office in Trivandrum with one simple question&rdquo;
+              </h2>
 
-            <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-              We believe that transparency creates opportunity. When auction information becomes easy to access, markets become more competitive, businesses make better decisions, and government assets reach a wider pool of qualified buyers.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Vision & Mission */}
-      <div className="py-24 bg-slate-50 dark:bg-slate-955">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            
-            {/* Vision */}
-            <div className="bg-white dark:bg-slate-900 p-10 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:-translate-y-1 transition-transform">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-transform group-hover:scale-150"></div>
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-8">
-                <Eye className="w-7 h-7" />
+              <div
+                className="border-l-4 border-primary pl-6 py-2 my-4 text-left animate-slide-in-right"
+                style={{ animationDelay: '1400ms' }}
+              >
+                <p className="text-xl sm:text-2xl font-medium text-slate-950 leading-relaxed">
+                  Why do thousands of government auctions worth crores of rupees take place every year, yet most businesses and entrepreneurs never know they exist?
+                </p>
               </div>
-              <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-6">Vision</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed relative z-10">
-                To build a future where every MSTC eAuction, Customs auction, and government auction in India is as easy to discover, understand, compare, and participate in as booking a flight—creating a transparent marketplace where opportunity is accessible to everyone.
+            </div>
+
+            {/* Vision & Mission sections (on the left, no card styling) */}
+            <div className="pt-6 border-t border-slate-200 space-y-6">
+
+              {/* Vision Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Eye className="w-5 h-5 text-slate-400" />
+                  <h3 className="text-xl font-bold text-slate-900">Vision</h3>
+                </div>
+                <div className="space-y-3 text-slate-650 font-medium text-base sm:text-lg leading-relaxed">
+                  <p>
+                    To build a future where every MSTC eAuction, Customs auction, and government auction in India is as easy to discover, compare, and participate in as booking a flight. We envision a transparent marketplace where valuable public assets are accessible to every buyer.
+                  </p>
+                  <p>
+                    By breaking down information barriers, we aim to build India's most trusted gateway for public tenders, scrap sales, and government surplus catalog listings, helping first-time bidders and large enterprises find new opportunities nationwide.
+                  </p>
+                </div>
+              </div>
+
+              {/* Mission Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Target className="w-5 h-5 text-slate-400" />
+                  <h3 className="text-xl font-bold text-slate-900">Mission</h3>
+                </div>
+                <div className="space-y-3 text-slate-650 font-medium text-base sm:text-lg leading-relaxed">
+                  <p>
+                    To build India's most comprehensive government auction discovery and auction intelligence platform, empowering buyers to search MSTC eAuctions, Customs auctions, and other public auctions with robust analytical tools.
+                  </p>
+                  <p>
+                    By offering historical pricing, transportation cost calculation, ROI estimation, and auction comparison metrics, we help businesses make data-driven decisions and modernize the public procurement ecosystem.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Right Column - Core Narrative with Long-Tail Keywords */}
+          <div className="lg:col-span-1 space-y-4 text-slate-850 font-medium text-lg leading-relaxed text-left lg:border-l lg:border-slate-200 lg:pl-10">
+            <p>
+              Across India, valuable commercial assets and industrial goods are sold daily through official channels like MSTC eAuctions, Indian Customs auctions, railway scrap sales, and public sector surplus auctions. These catalog listings include industrial scrap metal, heavy machinery, commercial vehicles, used electronics, and warehouse stock. Yet, this high-value inventory remains scattered across antiquated government websites and obscure PDF catalogs, making it hard for prospective bidders to track upcoming events.
+            </p>
+
+            <div className="my-2 p-6 bg-white rounded-2xl border border-slate-200/80 shadow-xs text-left">
+              <p className="text-xl font-bold text-slate-900">
+                Experienced bidders know where to look. Most others don&apos;t.
+              </p>
+              <p className="text-primary font-bold mt-1">
+                That&apos;s why we built lelam.co
               </p>
             </div>
 
-            {/* Mission */}
-            <div className="bg-white dark:bg-slate-900 p-10 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:-translate-y-1 transition-transform">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-transform group-hover:scale-150"></div>
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-8">
-                <Target className="w-7 h-7" />
-              </div>
-              <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-6">Mission</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed relative z-10 mb-6">
-                To build India's most comprehensive government auction discovery and auction intelligence platform, empowering buyers to search MSTC eAuctions, Customs auctions, and other public auctions through powerful search, analytics, market insights, historical pricing, ROI estimation, and auction comparison tools.
-              </p>
-              <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed relative z-10">
-                By making government auctions easier to discover and understand, Lelam aims to modernize India's public auction ecosystem, increase participation, improve transparency, and help businesses make smarter, data-driven procurement decisions.
-              </p>
-            </div>
+            <p>
+              <strong className="text-slate-950 font-bold">lelam.co</strong> serves as a independant government auction intelligence platform that simplifies MSTC scrap auction tracking and Customs lot discovery. Instead of manually logging into multiple portals, scrap buyers, recyclers, and enterprises can query aggregated auction listings from a centralized search engine, set real-time bidding alerts, and analyze historical tender data to predict winning margins.
+            </p>
 
+            <p>
+              By offering tools like a transport cost calculator, tax estimations, and historical price trackers for railway scrap, we empower bidders to calculate accurate ROI before participating in live bidding. We aim to democratize access to the public procurement market by removing the information asymmetry that has historically favored veteran bidders.
+            </p>
+
+            <p>
+              We believe that open access to historical pricing databases and structured catalogs drives fair competition. By lowering entry barriers for MSTC online bidding and Customs clearances, we help build a transparent ecosystem where every buyer has an equal shot at valuable public assets.
+            </p>
           </div>
         </div>
+
       </div>
+
+      <style>{`
+        @keyframes slide-up-word {
+          0% {
+            transform: translateY(110%);
+            opacity: 0;
+          }
+          100% {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        @keyframes draw-stripe {
+          0% {
+            transform: scaleX(0);
+          }
+          100% {
+            transform: scaleX(1);
+          }
+        }
+        @keyframes slide-in-right {
+          0% {
+            transform: translateX(100px);
+            opacity: 0;
+          }
+          100% {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        .font-archivo {
+          font-family: 'Archivo', sans-serif;
+          font-weight: 400;
+        }
+        .animate-slide-up-word {
+          animation: slide-up-word 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+          will-change: transform, opacity;
+        }
+        .animate-draw-stripe {
+          animation: draw-stripe 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          transform-origin: left;
+          transform: scaleX(0);
+          will-change: transform;
+        }
+        .animate-slide-in-right {
+          animation: slide-in-right 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+          will-change: transform, opacity;
+        }
+      `}</style>
     </div>
   );
 }
