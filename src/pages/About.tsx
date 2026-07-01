@@ -134,7 +134,7 @@ export function About() {
             </p>
 
             <p>
-              We believe that open access to historical pricing databases and structured catalogs drives fair competition. By lowering entry barriers for MSTC online bidding and Customs clearances, we help build a transparent ecosystem where every buyer has an equal shot at valuable public assets.
+              We believe that open access to historical pricing databases and structured catalogs drives fair competition. By centralizing information on MSTC eAuctions, we help build a transparent ecosystem where every buyer has an equal shot at valuable public assets.
             </p>
           </div>
         </div>

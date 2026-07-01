@@ -63,14 +63,6 @@
     <changefreq>daily</changefreq>
     <priority>0.80</priority>
   </url>
-
-  <!-- Tenders Directory -->
-  <url>
-    <loc>https://www.lelam.co/tenders</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.80</priority>
-  </url>
   
   <!-- Privacy Policy -->
   <url>
