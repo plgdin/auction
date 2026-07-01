@@ -26,6 +26,7 @@ dist-ssr
 *.sw?
 
 # Scratch & Temporary files
+scratch/
 cookies.txt
 debug_page.html
 lint_report.txt
