@@ -29,7 +29,14 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [isDragging, setIsDragging] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+  const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0, hasDragged: false });
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   useEffect(() => {
     if (!lightboxImage) {
@@ -55,6 +62,25 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     };
   }, [lightboxImage, onClose]);
 
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper || !lightboxImage) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (e.deltaY < 0) {
+        setZoomLevel(prev => Math.min(4, prev + 0.1));
+      } else if (e.deltaY > 0) {
+        setZoomLevel(prev => Math.max(1, prev - 0.1));
+      }
+    };
+
+    wrapper.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      wrapper.removeEventListener('wheel', handleWheel);
+    };
+  }, [lightboxImage]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (zoomLevel <= 1 || !wrapperRef.current) return;
     setIsDragging(true);
@@ -62,7 +88,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
       x: e.clientX,
       y: e.clientY,
       scrollLeft: wrapperRef.current.scrollLeft,
-      scrollTop: wrapperRef.current.scrollTop
+      scrollTop: wrapperRef.current.scrollTop,
+      hasDragged: false
     };
   };
 
@@ -71,6 +98,9 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     e.preventDefault();
     const dx = e.clientX - dragStart.current.x;
     const dy = e.clientY - dragStart.current.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      dragStart.current.hasDragged = true;
+    }
     wrapperRef.current.scrollLeft = dragStart.current.scrollLeft - dx;
     wrapperRef.current.scrollTop = dragStart.current.scrollTop - dy;
   };
@@ -1033,9 +1063,20 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               <ZoomOut className="w-5 h-5" />
             </button>
             
-            <span className="text-sm font-medium min-w-[3.5rem] text-center select-none">
-              {Math.round(zoomLevel * 100)}%
-            </span>
+            <div className="flex items-center gap-3 px-2">
+              <input 
+                type="range" 
+                min="1" 
+                max="4" 
+                step="0.1" 
+                value={zoomLevel}
+                onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
+                className="w-24 accent-primary cursor-pointer h-1.5 bg-white/20 rounded-lg appearance-none"
+              />
+              <span className="text-sm font-medium min-w-[3rem] text-right select-none">
+                {Math.round(zoomLevel * 100)}%
+              </span>
+            </div>
             
             <button
               onClick={() => setZoomLevel(prev => Math.min(4, prev + 0.5))}
@@ -1071,7 +1112,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           <div
             ref={wrapperRef}
             className={clsx(
-              "flex-1 w-full h-full flex items-center justify-center p-4",
+              "flex-1 w-full h-full flex p-4",
               zoomLevel > 1 ? "overflow-auto cursor-grab active:cursor-grabbing" : "overflow-hidden cursor-zoom-in"
             )}
             onMouseDown={handleMouseDown}
@@ -1083,18 +1124,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
             <img
               src={lightboxImage}
               alt="Large Catalog Preview"
-              className={clsx(
-                "rounded-lg border border-white/5 shadow-2xl select-none transition-all duration-200 ease-out",
-                zoomLevel === 1 ? "max-w-full max-h-[85vh] object-contain" : "max-w-none max-h-none"
-              )}
-              style={zoomLevel > 1 ? {
-                width: `${zoomLevel * 100}%`,
-                maxWidth: 'none',
-                maxHeight: 'none',
-              } : undefined}
+              draggable={false}
+              className="m-auto rounded-lg border border-white/5 shadow-2xl select-none transition-all duration-200 ease-out max-w-full max-h-[85vh] object-contain shrink-0"
+              style={{ zoom: zoomLevel } as React.CSSProperties}
               onClick={(e) => {
                 e.stopPropagation();
-                setZoomLevel(prev => prev > 1 ? 1 : 2);
+                if (dragStart.current.hasDragged) {
+                  dragStart.current.hasDragged = false;
+                  return;
+                }
+                setZoomLevel(prev => prev > 1 ? 1 : 1.5);
               }}
             />
           </div>
