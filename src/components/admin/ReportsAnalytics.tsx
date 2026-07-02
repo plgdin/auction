@@ -305,26 +305,14 @@ export function ReportsAnalytics() {
     return () => document.removeEventListener('mousedown', handler);
   }, [categoryDropdownOpen]);
 
-  const handleCsvExport = () => {
-    const csvContent = "data:text/csv;charset=utf-8,Date,Active Subscriptions,Trial Signups\n" 
-      + liveReportData.subscriptions.map(row => `${row.date},${row.active},${row.trial}`).join('\n');
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "subscriptions_report.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+
 
   const handlePdfExport = () => {
     setIsExporting(true);
     setTimeout(() => {
       setIsExporting(false);
-      setExportMessage('PDF Report generated and emailed successfully!');
-      setTimeout(() => setExportMessage(null), 3000);
-    }, 1500);
+      window.print();
+    }, 150);
   };
 
   // Date filtering logic
@@ -408,10 +396,10 @@ export function ReportsAnalytics() {
           </h2>
           <p className="text-slate-500 text-sm mt-1">Platform performance metrics and data exports.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 print:hidden">
           <button 
             type="button"
-            onClick={handleCsvExport}
+            onClick={downloadCategoryCSV}
             className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-lg flex items-center transition-colors cursor-pointer"
           >
             <Download className="w-4 h-4 mr-2" /> CSV Export
@@ -428,7 +416,7 @@ export function ReportsAnalytics() {
       </div>
 
       {exportMessage && (
-        <div className="bg-green-50 text-green-700 p-4 rounded-xl text-sm font-bold border border-green-200 flex items-center">
+        <div className="bg-green-50 text-green-700 p-4 rounded-xl text-sm font-bold border border-green-200 flex items-center print:hidden">
           <CheckCircle2 className="w-5 h-5 mr-2" /> {exportMessage}
         </div>
       )}
@@ -446,7 +434,7 @@ export function ReportsAnalytics() {
                 <TrendingUp className="w-5 h-5 mr-2 text-primary" /> Category Analysis
               </h2>
               {/* Chart Switcher */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl print:hidden">
                 <button
                   type="button"
                   onClick={() => setChartType('line')}
@@ -470,7 +458,7 @@ export function ReportsAnalytics() {
               </div>
             </div>
             
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 print:hidden">
               {dateFilter === 'custom' && (
                 <div className="flex items-center gap-2">
                   <input
@@ -753,14 +741,14 @@ export function ReportsAnalytics() {
               <button
                 type="button"
                 onClick={downloadCategoryCSV}
-                className="p-2 text-slate-500 hover:text-primary hover:bg-slate-50 rounded-xl transition-all cursor-pointer flex items-center justify-center border border-slate-200 shadow-2xs"
+                className="p-2 text-slate-500 hover:text-primary hover:bg-slate-50 rounded-xl transition-all cursor-pointer flex items-center justify-center border border-slate-200 shadow-2xs print:hidden"
                 title="Download CSV"
               >
                 <Download className="w-4 h-4" />
               </button>
             </div>
             
-            <div className="flex bg-slate-100 p-1 rounded-lg mb-4">
+            <div className="flex bg-slate-100 p-1 rounded-lg mb-4 print:hidden">
               <button
                 type="button"
                 onClick={() => setTotalsTab('current')}
@@ -784,7 +772,7 @@ export function ReportsAnalytics() {
             </div>
 
             {/* Search box inside category totals list */}
-            <div className="relative mb-4">
+            <div className="relative mb-4 print:hidden">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <input
                 type="text"
@@ -795,7 +783,7 @@ export function ReportsAnalytics() {
               />
             </div>
 
-            <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[190px] custom-scrollbar">
+            <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[190px] print:max-h-none custom-scrollbar">
               {filteredDisplayTotals.length === 0 ? (
                 <p className="text-slate-500 text-sm text-center py-4">No categories found.</p>
               ) : (
