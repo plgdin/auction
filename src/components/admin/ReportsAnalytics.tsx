@@ -633,6 +633,11 @@ export function ReportsAnalytics() {
     });
 
     const result: Record<string, { avgPreBid: number, avgEmdPct: number }> = {};
+    const allParents = Array.from(new Set([
+      ...categoryStats.currentTotals.map(c => c.name),
+      ...categoryStats.historicalTotals.map(c => c.name)
+    ]));
+
     allParents.forEach(parent => {
       const stats = parentAverages[parent];
       result[parent] = {
