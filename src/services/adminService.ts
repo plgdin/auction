@@ -584,7 +584,7 @@ export const adminService = {
       // 4. Fetch MSTC Auctions for real Pre-Bid EMD calculations
       const { data: mstcAuctions, error: mstcError } = await supabase
         .from('mstc_auctions')
-        .select('id, mstc_auction_number, raw_materials_text, opening_date, closing_date, asset_status');
+        .select('id, mstc_auction_number, raw_materials_text, opening_date, closing_date, asset_status, category_name');
 
       if (emdError || walletError || bidsError || mstcError) {
         console.error('Error fetching financial/bid/mstc analytics:', emdError || walletError || bidsError || mstcError);
@@ -624,6 +624,7 @@ export const adminService = {
           else preBid = 50000;
         }
 
+        let emdPct = 0;
         if (item.raw_materials_text) {
           try {
             const parsed = JSON.parse(item.raw_materials_text);
@@ -637,6 +638,13 @@ export const adminService = {
               }
               if (parsedPreBid > 100) {
                 preBid = parsedPreBid;
+              }
+
+              const emdText = parsed.depositDetails?.emd || '';
+              const emdClean = emdText.replace(/,/g, '');
+              const emdMatch = emdClean.match(/(\d+(\.\d+)?)\s*%/);
+              if (emdMatch) {
+                emdPct = parseFloat(emdMatch[1]);
               }
             }
           } catch (e) {}
@@ -664,6 +672,8 @@ export const adminService = {
             transaction_reference: `TXN-EMD-${shortId || 'N/A'}`,
             user_id: `buyer-profile-${(shortIdNum || 100) % 250 + 100}`,
             amount: preBid,
+            emd_pct: emdPct,
+            category_name: item.category_name || 'Uncategorized',
             status: isHeld ? 'held' : 'released',
             payment_method: 'NetBanking',
             created_at: item.opening_date || new Date().toISOString()

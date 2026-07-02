@@ -63,26 +63,36 @@ const groupStatsByParent = (rawStats: {
   historicalTotals: {name: string, count: number}[], 
   daily: any[] 
 }) => {
+  // Build parent-level aggregation maps
   const currentMap: Record<string, number> = {};
   rawStats.currentTotals.forEach(item => {
     const parent = getParentCategory(item.name);
     currentMap[parent] = (currentMap[parent] || 0) + item.count;
   });
-  const currentTotals = Object.entries(currentMap)
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
 
   const historicalMap: Record<string, number> = {};
   rawStats.historicalTotals.forEach(item => {
     const parent = getParentCategory(item.name);
     historicalMap[parent] = (historicalMap[parent] || 0) + item.count;
   });
-  const historicalTotals = Object.entries(historicalMap)
-    .map(([name, count]) => ({ name, count }))
+
+  // Union of all parent categories across both sets
+  const allParents = Array.from(new Set([
+    ...Object.keys(currentMap),
+    ...Object.keys(historicalMap)
+  ]));
+
+  const currentTotals = allParents
+    .map(name => ({ name, count: currentMap[name] || 0 }))
+    .sort((a, b) => b.count - a.count);
+
+  const historicalTotals = allParents
+    .map(name => ({ name, count: historicalMap[name] || 0 }))
     .sort((a, b) => b.count - a.count);
 
   const daily = rawStats.daily.map(day => {
     const groupedDay: any = { date: day.date };
+    allParents.forEach(p => { groupedDay[p] = 0; });
     Object.keys(day).forEach(key => {
       if (key !== 'date') {
         const parent = getParentCategory(key);
@@ -92,7 +102,18 @@ const groupStatsByParent = (rawStats: {
     return groupedDay;
   });
 
-  return { currentTotals, historicalTotals, daily };
+  // Build raw subcategory breakdown grouped under each parent
+  const subcategoryMap: Record<string, {name: string, count: number}[]> = {};
+  rawStats.currentTotals.forEach(item => {
+    const parent = getParentCategory(item.name);
+    const subName = item.name.includes('|') ? item.name.split('|')[1].trim() : item.name.trim();
+    if (!subcategoryMap[parent]) subcategoryMap[parent] = [];
+    subcategoryMap[parent].push({ name: subName, count: item.count });
+  });
+  // Sort subcategories within each parent by count descending
+  Object.values(subcategoryMap).forEach(subs => subs.sort((a, b) => b.count - a.count));
+
+  return { currentTotals, historicalTotals, daily, rawSubcategories: subcategoryMap, dailyRaw: rawStats.daily };
 };
 
 // Custom Tooltip component to avoid giant popup listing all active categories
@@ -164,7 +185,13 @@ export function ReportsAnalytics() {
   });
 
   // Category stats state
-  const [categoryStats, setCategoryStats] = useState<{ currentTotals: {name: string, count: number}[], historicalTotals: {name: string, count: number}[], daily: any[] }>({ currentTotals: [], historicalTotals: [], daily: [] });
+  const [categoryStats, setCategoryStats] = useState<{
+    currentTotals: {name: string, count: number}[],
+    historicalTotals: {name: string, count: number}[],
+    daily: any[],
+    rawSubcategories: Record<string, {name: string, count: number}[]>,
+    dailyRaw: any[]
+  }>({ currentTotals: [], historicalTotals: [], daily: [], rawSubcategories: {}, dailyRaw: [] });
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
   // Financial stats state
@@ -478,22 +505,38 @@ export function ReportsAnalytics() {
   };
 
   // Date filtering logic
-  const now = new Date();
-  const filterDate = new Date();
-  if (dateFilter === '7d') filterDate.setDate(now.getDate() - 7);
-  if (dateFilter === '30d') filterDate.setDate(now.getDate() - 30);
+  const getLocalDateString = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const filterDateStr = (() => {
+    const d = new Date();
+    if (dateFilter === '7d') d.setDate(d.getDate() - 7);
+    else if (dateFilter === '30d') d.setDate(d.getDate() - 30);
+    return getLocalDateString(d);
+  })();
 
   const filteredDaily = categoryStats.daily.filter(d => {
     if (dateFilter === 'all') return true;
-    
-    const dDate = new Date(d.date);
     if (dateFilter === 'custom') {
-      if (customStartDate && dDate < new Date(customStartDate)) return false;
-      if (customEndDate && dDate > new Date(customEndDate)) return false;
+      if (customStartDate && d.date < customStartDate) return false;
+      if (customEndDate && d.date > customEndDate) return false;
       return true;
     }
-    
-    return dDate >= filterDate;
+    return d.date >= filterDateStr;
+  });
+
+  const filteredDailyRaw = categoryStats.dailyRaw.filter(d => {
+    if (dateFilter === 'all') return true;
+    if (dateFilter === 'custom') {
+      if (customStartDate && d.date < customStartDate) return false;
+      if (customEndDate && d.date > customEndDate) return false;
+      return true;
+    }
+    return d.date >= filterDateStr;
   });
 
   const filteredTotalsMap: Record<string, number> = {};
@@ -533,111 +576,257 @@ export function ReportsAnalytics() {
       value: cat.count
     }));
 
-  const downloadCategoryCSV = () => {
-    const headers = ['Category Name', 'Item Count', 'Percentage Share'];
-    const totalItems = displayTotals.reduce((sum, c) => sum + c.count, 0);
-    const rows = displayTotals.map(cat => {
-      const pct = totalItems > 0 ? ((cat.count / totalItems) * 100).toFixed(1) : '0.0';
-      return [
-        `"${cat.name.replace(/"/g, '""')}"`,
-        cat.count,
-        `"${pct}%"`
-      ];
+  // Build subcategory map for the selected date filter
+  const filteredSubcategoriesMap: Record<string, number> = {};
+  filteredDailyRaw.forEach(day => {
+    Object.keys(day).forEach(key => {
+      if (key !== 'date') {
+        filteredSubcategoriesMap[key] = (filteredSubcategoriesMap[key] || 0) + day[key];
+      }
     });
-    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+  });
+
+  const filteredSubcategoryMap: Record<string, {name: string, count: number}[]> = {};
+  Object.entries(filteredSubcategoriesMap).forEach(([fullName, count]) => {
+    const parent = getParentCategory(fullName);
+    const subName = fullName.includes('|') ? fullName.split('|')[1].trim() : fullName.trim();
+    if (!filteredSubcategoryMap[parent]) filteredSubcategoryMap[parent] = [];
+    filteredSubcategoryMap[parent].push({ name: subName, count });
+  });
+  Object.values(filteredSubcategoryMap).forEach(subs => subs.sort((a, b) => b.count - a.count));
+
+  // Get filtered EMD transactions based on date filter
+  const getFilteredEmdTransactions = () => {
+    return financialData.emdTransactions.filter((tx: any) => {
+      if (dateFilter === 'all') return true;
+      const txDate = tx.created_at ? tx.created_at.split('T')[0] : '';
+      if (dateFilter === 'custom') {
+        if (customStartDate && txDate < customStartDate) return false;
+        if (customEndDate && txDate > customEndDate) return false;
+        return true;
+      }
+      return txDate >= filterDateStr;
+    });
+  };
+
+  const filteredEmdTx = getFilteredEmdTransactions();
+
+  // Calculate average pre-bid EMD and average EMD percentage for each parent category
+  const categoryAverages = (() => {
+    const parentAverages: Record<string, { preBidSum: number, preBidCount: number, emdPctSum: number, emdPctCount: number }> = {};
+    
+    filteredEmdTx.forEach((tx: any) => {
+      const parent = getParentCategory(tx.category_name);
+      if (!parentAverages[parent]) {
+        parentAverages[parent] = { preBidSum: 0, preBidCount: 0, emdPctSum: 0, emdPctCount: 0 };
+      }
+      
+      const stats = parentAverages[parent];
+      if (tx.amount > 0) {
+        stats.preBidSum += tx.amount;
+        stats.preBidCount += 1;
+      }
+      if (tx.emd_pct !== undefined && tx.emd_pct > 0) {
+        stats.emdPctSum += tx.emd_pct;
+        stats.emdPctCount += 1;
+      }
+    });
+
+    const result: Record<string, { avgPreBid: number, avgEmdPct: number }> = {};
+    allParents.forEach(parent => {
+      const stats = parentAverages[parent];
+      result[parent] = {
+        avgPreBid: stats && stats.preBidCount > 0 ? Math.round(stats.preBidSum / stats.preBidCount) : 0,
+        avgEmdPct: stats && stats.emdPctCount > 0 ? parseFloat((stats.emdPctSum / stats.emdPctCount).toFixed(2)) : 0
+      };
+    });
+    return result;
+  })();
+
+  // Helper to trigger CSV download
+  const triggerCsvDownload = (csvContent: string, filename: string) => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `category_stats_${totalsTab}_${dateFilter}.csv`);
+    link.setAttribute('download', filename);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const handleExportCSV = () => {
-    // 1. Platform Summary Section
-    const summaryLines = [
-      '=== PLATFORM SUMMARY METRICS ===,',
-      'Metric,Value',
-      `Total Users,${financialData.summary.totalUsers}`,
-      `Active Listings,${financialData.summary.activeListings}`,
-      `Pre-Bid EMD Held,₹${financialData.summary.emdHeld}`,
-      `Total Pre-Bid EMD Volume,₹${financialData.summary.emdVolume}`,
-      `Total Bids Count,${financialData.summary.totalBids}`,
-      `Average Bid Size,₹${financialData.summary.avgBidAmount}`,
-      `Highest Bid Placed,₹${financialData.summary.maxBidAmount}`,
-      ''
-    ];
+  // Escape and quote a CSV cell value
+  const csvCell = (val: string | number) => {
+    const str = String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
 
-    // 2. Category Share Section
-    const categoryHeaders = ['Category Name', 'Item Count', 'Percentage Share'];
+  const downloadCategoryCSV = () => {
     const totalItems = displayTotals.reduce((sum, c) => sum + c.count, 0);
-    const categoryRows = displayTotals.map(cat => {
-      const pct = totalItems > 0 ? ((cat.count / totalItems) * 105).toFixed(1) : '0.0'; // scaling slightly to account for small exclusions
-      const pctVal = totalItems > 0 ? ((cat.count / totalItems) * 100).toFixed(1) : '0.0';
-      return [
-        `"${cat.name.replace(/"/g, '""')}"`,
-        cat.count,
-        `"${pctVal}%"`
-      ];
+    const lines: string[] = [
+      'Parent Category,Subcategory,Item Count,Share of Total,Avg Pre-Bid EMD (₹),Avg EMD (%)'
+    ];
+
+    const currentSubMap = totalsTab === 'current' && dateFilter === 'all' 
+      ? categoryStats.rawSubcategories 
+      : filteredSubcategoryMap;
+
+    displayTotals.forEach(parent => {
+      const subs = currentSubMap[parent.name] || [];
+      const parentPct = totalItems > 0 ? ((parent.count / totalItems) * 100).toFixed(2) : '0.00';
+      const avgPreBid = categoryAverages[parent.name]?.avgPreBid || 0;
+      const avgEmdPct = categoryAverages[parent.name]?.avgEmdPct || 0;
+
+      if (subs.length <= 1) {
+        lines.push([
+          csvCell(parent.name), 
+          csvCell(subs[0]?.name || parent.name), 
+          parent.count, 
+          `${parentPct}%`,
+          avgPreBid,
+          `${avgEmdPct}%`
+        ].join(','));
+      } else {
+        lines.push([
+          csvCell(parent.name), 
+          csvCell('(All Subcategories)'), 
+          parent.count, 
+          `${parentPct}%`,
+          avgPreBid,
+          `${avgEmdPct}%`
+        ].join(','));
+        subs.forEach(sub => {
+          const subPct = totalItems > 0 ? ((sub.count / totalItems) * 100).toFixed(2) : '0.00';
+          const subEmds = filteredEmdTx.filter((t: any) => t.category_name === `${parent.name} | ${sub.name}` || (parent.name === sub.name && t.category_name === parent.name));
+          const subPreBidSum = subEmds.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+          const subPreBidCount = subEmds.filter((t: any) => (t.amount || 0) > 0).length;
+          const subEmdPctSum = subEmds.reduce((sum: number, t: any) => sum + (t.emd_pct || 0), 0);
+          const subEmdPctCount = subEmds.filter((t: any) => t.emd_pct !== undefined && t.emd_pct > 0).length;
+          
+          const subAvgPreBid = subPreBidCount > 0 ? Math.round(subPreBidSum / subPreBidCount) : 0;
+          const subAvgEmdPct = subEmdPctCount > 0 ? parseFloat((subEmdPctSum / subEmdPctCount).toFixed(2)) : 0;
+
+          lines.push([
+            csvCell(''), 
+            csvCell(sub.name), 
+            sub.count, 
+            `${subPct}%`,
+            subAvgPreBid,
+            `${subAvgEmdPct}%`
+          ].join(','));
+        });
+      }
     });
-    const categoryLines = [
-      '=== CATEGORY INVENTORY COUNTS ===,,',
-      categoryHeaders.join(','),
-      ...categoryRows.map(r => r.join(',')),
-      ''
-    ];
 
-    // 3. Pre-Bid EMD Ledger Section
-    const emdHeaders = ['Transaction Reference', 'User ID', 'Amount (₹)', 'Status', 'Payment Method', 'Date'];
-    const emdRows = financialData.emdTransactions.map((tx: any) => [
-      `"${tx.transaction_reference || 'N/A'}"`,
-      `"${tx.user_id || ''}"`,
-      tx.amount,
-      `"${tx.status || ''}"`,
-      `"${tx.payment_method || 'NetBanking'}"`,
-      `"${new Date(tx.created_at).toLocaleString()}"`
-    ]);
-    const emdLines = [
-      '=== PRE-BID EMD LEDGER ===,,,,,',
-      emdHeaders.join(','),
-      ...emdRows.map(r => r.join(',')),
-      ''
-    ];
+    const filterLabel = dateFilter === 'all' ? totalsTab : dateFilter;
+    triggerCsvDownload(lines.join('\n'), `category_inventory_${filterLabel}_${new Date().toISOString().split('T')[0]}.csv`);
+  };
 
-    // 4. Bidding Performance Timeline Section
-    const bidsHeaders = ['Date', 'Bids Placed Count', 'Valuation Volume Amount (₹)'];
-    const bidsRows = financialData.bidsTimeline.map((day: any) => [
-      `"${day.date}"`,
-      day.count,
-      day.volume
-    ]);
-    const bidsLines = [
-      '=== BIDDING PERFORMANCE TIMELINE ===,,',
-      bidsHeaders.join(','),
-      ...bidsRows.map(r => r.join(',')),
-      ''
-    ];
+  const downloadEmdCSV = () => {
+    const headers = ['Transaction Reference', 'User ID', 'Amount (₹)', 'Status', 'Payment Method', 'Date'];
+    const rows = financialData.emdTransactions.map((tx: any) =>
+      [csvCell(tx.transaction_reference || 'N/A'), csvCell(tx.user_id || ''), tx.amount, csvCell(tx.status || ''), csvCell(tx.payment_method || 'NetBanking'), csvCell(new Date(tx.created_at).toLocaleString())].join(',')
+    );
+    triggerCsvDownload([headers.join(','), ...rows].join('\n'), `emd_ledger_${new Date().toISOString().split('T')[0]}.csv`);
+  };
 
-    // Combine all sections
-    const fullCsvContent = [
-      ...summaryLines,
-      ...categoryLines,
-      ...emdLines,
-      ...bidsLines
-    ].join('\n');
+  const handleExportCSV = () => {
+    const lines: string[] = [];
 
-    const blob = new Blob([fullCsvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `platform_analytics_report_${dateFilter}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // ── Section 1: Platform Summary ──
+    lines.push('PLATFORM SUMMARY METRICS');
+    lines.push('Metric,Value');
+    lines.push(`Total Users,${financialData.summary.totalUsers}`);
+    lines.push(`Active Listings,${financialData.summary.activeListings}`);
+    lines.push(`Pre-Bid EMD Currently Held,${financialData.summary.emdHeld}`);
+    lines.push(`Total Pre-Bid EMD Volume,${financialData.summary.emdVolume}`);
+    lines.push(`Total Bids Count,${financialData.summary.totalBids}`);
+    lines.push(`Average Bid Size,${financialData.summary.avgBidAmount}`);
+    lines.push(`Highest Bid Placed,${financialData.summary.maxBidAmount}`);
+    lines.push('');
+
+    // ── Section 2: Category Inventory ──
+    const totalItems = displayTotals.reduce((sum, c) => sum + c.count, 0);
+
+    lines.push('CATEGORY INVENTORY BREAKDOWN');
+    lines.push('Parent Category,Subcategory,Item Count,Share of Total,Avg Pre-Bid EMD (₹),Avg EMD (%)');
+
+    const currentSubMap = totalsTab === 'current' && dateFilter === 'all' 
+      ? categoryStats.rawSubcategories 
+      : filteredSubcategoryMap;
+
+    displayTotals.forEach(parent => {
+      const subs = currentSubMap[parent.name] || [];
+      const parentPct = totalItems > 0 ? ((parent.count / totalItems) * 100).toFixed(2) : '0.00';
+      const avgPreBid = categoryAverages[parent.name]?.avgPreBid || 0;
+      const avgEmdPct = categoryAverages[parent.name]?.avgEmdPct || 0;
+
+      if (subs.length <= 1) {
+        lines.push([
+          csvCell(parent.name), 
+          csvCell(subs[0]?.name || parent.name), 
+          parent.count, 
+          `${parentPct}%`,
+          avgPreBid,
+          `${avgEmdPct}%`
+        ].join(','));
+      } else {
+        lines.push([
+          csvCell(parent.name), 
+          csvCell('(All Subcategories)'), 
+          parent.count, 
+          `${parentPct}%`,
+          avgPreBid,
+          `${avgEmdPct}%`
+        ].join(','));
+        subs.forEach(sub => {
+          const subPct = totalItems > 0 ? ((sub.count / totalItems) * 100).toFixed(2) : '0.00';
+          const subEmds = filteredEmdTx.filter((t: any) => t.category_name === `${parent.name} | ${sub.name}` || (parent.name === sub.name && t.category_name === parent.name));
+          const subPreBidSum = subEmds.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+          const subPreBidCount = subEmds.filter((t: any) => (t.amount || 0) > 0).length;
+          const subEmdPctSum = subEmds.reduce((sum: number, t: any) => sum + (t.emd_pct || 0), 0);
+          const subEmdPctCount = subEmds.filter((t: any) => t.emd_pct !== undefined && t.emd_pct > 0).length;
+          
+          const subAvgPreBid = subPreBidCount > 0 ? Math.round(subPreBidSum / subPreBidCount) : 0;
+          const subAvgEmdPct = subEmdPctCount > 0 ? parseFloat((subEmdPctSum / subEmdPctCount).toFixed(2)) : 0;
+
+          lines.push([
+            csvCell(''), 
+            csvCell(sub.name), 
+            sub.count, 
+            `${subPct}%`,
+            subAvgPreBid,
+            `${subAvgEmdPct}%`
+          ].join(','));
+        });
+      }
+    });
+    lines.push('');
+    lines.push(`Total Items,,${totalItems},100.00%`);
+    lines.push('');
+
+    // ── Section 3: Pre-Bid EMD Ledger ──
+    lines.push('PRE-BID EMD LEDGER');
+    lines.push('Transaction Reference,User ID,Amount,Status,Payment Method,Date');
+    financialData.emdTransactions.forEach((tx: any) => {
+      lines.push([csvCell(tx.transaction_reference || 'N/A'), csvCell(tx.user_id || ''), tx.amount, csvCell(tx.status || ''), csvCell(tx.payment_method || 'NetBanking'), csvCell(new Date(tx.created_at).toLocaleString())].join(','));
+    });
+    lines.push('');
+
+    // ── Section 4: Bidding Performance Timeline ──
+    lines.push('BIDDING PERFORMANCE TIMELINE');
+    lines.push('Date,Bids Placed,Volume Amount');
+    financialData.bidsTimeline.forEach((day: any) => {
+      lines.push([csvCell(day.date), day.count, day.volume].join(','));
+    });
+    lines.push('');
+
+    const filterLabel = dateFilter === 'all' ? totalsTab : dateFilter;
+    triggerCsvDownload(lines.join('\n'), `platform_analytics_report_${filterLabel}_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   return (
@@ -1101,16 +1290,21 @@ export function ReportsAnalytics() {
                     ) : (
                       filteredDisplayTotals.map((cat) => (
                         <div key={cat.name} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors">
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
                             <div 
                               className="w-2.5 h-2.5 rounded-full shrink-0" 
                               style={{ backgroundColor: getCategoryColor(cat.name) }}
                             />
-                            <span className="text-xs font-semibold text-slate-700 truncate max-w-[150px]" title={cat.name}>
-                              {cat.name}
-                            </span>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-xs font-semibold text-slate-700 truncate max-w-[150px]" title={cat.name}>
+                                {cat.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-medium mt-0.5 truncate">
+                                Avg Pre-Bid: ₹{(categoryAverages[cat.name]?.avgPreBid || 0).toLocaleString()} | EMD: {(categoryAverages[cat.name]?.avgEmdPct || 0)}%
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-xs font-bold text-slate-900 bg-white px-2 py-0.5 rounded-md shadow-sm border border-slate-100 shrink-0">
+                          <span className="text-xs font-bold text-slate-900 bg-white px-2 py-0.5 rounded-md shadow-sm border border-slate-100 shrink-0 ml-2">
                             {cat.count}
                           </span>
                         </div>
