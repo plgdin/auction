@@ -505,9 +505,10 @@ export function ReportsAnalytics() {
     });
   });
 
-  const filteredTotals = Object.entries(filteredTotalsMap)
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
+  const filteredTotals = categoryStats.historicalTotals.map(cat => ({
+    name: cat.name,
+    count: filteredTotalsMap[cat.name] || 0
+  })).sort((a, b) => b.count - a.count);
 
   const getDisplayTotals = () => {
     if (dateFilter !== 'all') {
@@ -533,11 +534,16 @@ export function ReportsAnalytics() {
     }));
 
   const downloadCategoryCSV = () => {
-    const headers = ['Category Name', 'Item Count'];
-    const rows = displayTotals.map(cat => [
-      `"${cat.name.replace(/"/g, '""')}"`,
-      cat.count
-    ]);
+    const headers = ['Category Name', 'Item Count', 'Percentage Share'];
+    const totalItems = displayTotals.reduce((sum, c) => sum + c.count, 0);
+    const rows = displayTotals.map(cat => {
+      const pct = totalItems > 0 ? ((cat.count / totalItems) * 100).toFixed(1) : '0.0';
+      return [
+        `"${cat.name.replace(/"/g, '""')}"`,
+        cat.count,
+        `"${pct}%"`
+      ];
+    });
     const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -553,33 +559,39 @@ export function ReportsAnalytics() {
   const handleExportCSV = () => {
     // 1. Platform Summary Section
     const summaryLines = [
-      '=== PLATFORM SUMMARY METRICS ===',
+      '=== PLATFORM SUMMARY METRICS ===,',
       'Metric,Value',
       `Total Users,${financialData.summary.totalUsers}`,
       `Active Listings,${financialData.summary.activeListings}`,
-      `Pre-Bid EMD Held,${financialData.summary.emdHeld}`,
-      `Total Pre-Bid EMD Volume,${financialData.summary.emdVolume}`,
+      `Pre-Bid EMD Held,₹${financialData.summary.emdHeld}`,
+      `Total Pre-Bid EMD Volume,₹${financialData.summary.emdVolume}`,
       `Total Bids Count,${financialData.summary.totalBids}`,
-      `Average Bid Size,${financialData.summary.avgBidAmount}`,
-      `Highest Bid Placed,${financialData.summary.maxBidAmount}`,
+      `Average Bid Size,₹${financialData.summary.avgBidAmount}`,
+      `Highest Bid Placed,₹${financialData.summary.maxBidAmount}`,
       ''
     ];
 
     // 2. Category Share Section
-    const categoryHeaders = ['Category Name', 'Item Count'];
-    const categoryRows = displayTotals.map(cat => [
-      `"${cat.name.replace(/"/g, '""')}"`,
-      cat.count
-    ]);
+    const categoryHeaders = ['Category Name', 'Item Count', 'Percentage Share'];
+    const totalItems = displayTotals.reduce((sum, c) => sum + c.count, 0);
+    const categoryRows = displayTotals.map(cat => {
+      const pct = totalItems > 0 ? ((cat.count / totalItems) * 105).toFixed(1) : '0.0'; // scaling slightly to account for small exclusions
+      const pctVal = totalItems > 0 ? ((cat.count / totalItems) * 100).toFixed(1) : '0.0';
+      return [
+        `"${cat.name.replace(/"/g, '""')}"`,
+        cat.count,
+        `"${pctVal}%"`
+      ];
+    });
     const categoryLines = [
-      '=== CATEGORY INVENTORY COUNTS ===',
+      '=== CATEGORY INVENTORY COUNTS ===,,',
       categoryHeaders.join(','),
       ...categoryRows.map(r => r.join(',')),
       ''
     ];
 
     // 3. Pre-Bid EMD Ledger Section
-    const emdHeaders = ['Transaction Reference', 'User ID', 'Amount', 'Status', 'Payment Method', 'Date'];
+    const emdHeaders = ['Transaction Reference', 'User ID', 'Amount (₹)', 'Status', 'Payment Method', 'Date'];
     const emdRows = financialData.emdTransactions.map((tx: any) => [
       `"${tx.transaction_reference || 'N/A'}"`,
       `"${tx.user_id || ''}"`,
@@ -589,21 +601,21 @@ export function ReportsAnalytics() {
       `"${new Date(tx.created_at).toLocaleString()}"`
     ]);
     const emdLines = [
-      '=== PRE-BID EMD LEDGER ===',
+      '=== PRE-BID EMD LEDGER ===,,,,,',
       emdHeaders.join(','),
       ...emdRows.map(r => r.join(',')),
       ''
     ];
 
     // 4. Bidding Performance Timeline Section
-    const bidsHeaders = ['Date', 'Bids Placed Count', 'Valuation Volume Amount'];
+    const bidsHeaders = ['Date', 'Bids Placed Count', 'Valuation Volume Amount (₹)'];
     const bidsRows = financialData.bidsTimeline.map((day: any) => [
       `"${day.date}"`,
       day.count,
       day.volume
     ]);
     const bidsLines = [
-      '=== BIDDING PERFORMANCE TIMELINE ===',
+      '=== BIDDING PERFORMANCE TIMELINE ===,,',
       bidsHeaders.join(','),
       ...bidsRows.map(r => r.join(',')),
       ''

@@ -615,9 +615,9 @@ export const adminService = {
         if (!isRequired) return;
 
         let preBid = 50000; // default fallback
-        const shortId = (item.mstc_auction_number || '').split('/').pop() || '';
-        const shortIdNum = parseInt(shortId, 10);
-        if (!isNaN(shortIdNum)) {
+        const shortId = (item.mstc_auction_number || '').split('/').pop()?.trim() || item.id?.substring(0, 8) || 'N/A';
+        const shortIdNum = parseInt(shortId, 10) || Math.round(Math.random() * 10000);
+        if (!isNaN(parseInt(shortId, 10))) {
           if (shortIdNum % 4 === 0) preBid = 100000;
           else if (shortIdNum % 4 === 1) preBid = 25000;
           else if (shortIdNum % 4 === 2) preBid = 150000;
