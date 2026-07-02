@@ -814,23 +814,6 @@ export function ReportsAnalytics() {
     lines.push(`Total Items,,${totalItems},100.00%`);
     lines.push('');
 
-    // ── Section 3: Pre-Bid EMD Ledger ──
-    lines.push('PRE-BID EMD LEDGER');
-    lines.push('Transaction Reference,User ID,Amount,Status,Payment Method,Date');
-    financialData.emdTransactions.forEach((tx: any) => {
-      lines.push([csvCell(tx.transaction_reference || 'N/A'), csvCell(tx.user_id || ''), tx.amount, csvCell(tx.status || ''), csvCell(tx.payment_method || 'NetBanking'), csvCell(new Date(tx.created_at).toLocaleString())].join(','));
-    });
-    lines.push('');
-
-    // ── Section 4: Bidding Performance Timeline ──
-    lines.push('BIDDING PERFORMANCE TIMELINE');
-    lines.push('Date,Bids Placed,Volume Amount');
-    financialData.bidsTimeline.forEach((day: any) => {
-      lines.push([csvCell(day.date), day.count, day.volume].join(','));
-    });
-    lines.push('');
-
-    const filterLabel = dateFilter === 'all' ? totalsTab : dateFilter;
     triggerCsvDownload(lines.join('\n'), `platform_analytics_report_${filterLabel}_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
@@ -868,33 +851,6 @@ export function ReportsAnalytics() {
           <CheckCircle2 className="w-5 h-5 mr-2" /> {exportMessage}
         </div>
       )}
-
-      {/* Tab Switcher */}
-      <div className="flex border-b border-slate-200 print:hidden overflow-x-auto gap-2">
-        {[
-          { id: 'overview', label: 'Overview & Categories', icon: BarChart3 },
-          { id: 'emd', label: 'Pre-Bid EMD Tracker', icon: Lock },
-          { id: 'bids', label: 'Bidding Performance', icon: Gavel },
-        ].map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={clsx(
-                "flex items-center gap-2 px-4 py-3 border-b-2 font-semibold text-sm whitespace-nowrap transition-all cursor-pointer select-none",
-                isActive
-                  ? "border-primary text-primary"
-                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-              )}
-            >
-              <Icon className="w-4.5 h-4.5" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
 
       {/* Loading State */}
       {isLoadingCategories || isLoadingFinancial ? (
@@ -936,579 +892,400 @@ export function ReportsAnalytics() {
             </div>
           </div>
 
-          {/* Render Active Tab Panel */}
-          {activeTab === 'overview' && (
-            <>
-              {/* Category Analysis Panel */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6 animate-fade-in">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <h2 className="text-lg font-bold text-slate-900 flex items-center">
-                      <TrendingUp className="w-5 h-5 mr-2 text-primary" /> Category Analysis
-                    </h2>
-                    {/* Chart Switcher */}
-                    <div className="flex items-center bg-slate-100 p-1 rounded-xl print:hidden">
-                      <button
-                        type="button"
-                        onClick={() => setChartType('line')}
-                        className={clsx(
-                          "px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer select-none",
-                          chartType === 'line' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                        )}
-                      >
-                        <TrendingUp className="w-4 h-4" /> Timeline
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setChartType('pie')}
-                        className={clsx(
-                          "px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer select-none",
-                          chartType === 'pie' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                        )}
-                      >
-                        <PieIcon className="w-4 h-4" /> Share
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-wrap items-center gap-3 print:hidden">
-                    {dateFilter === 'custom' && (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="date"
-                          value={customStartDate}
-                          onChange={(e) => setCustomStartDate(e.target.value)}
-                          className="px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-                        />
-                        <span className="text-slate-400 text-sm">to</span>
-                        <input
-                          type="date"
-                          value={customEndDate}
-                          onChange={(e) => setCustomEndDate(e.target.value)}
-                          className="px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-                        />
-                      </div>
-                    )}
-
-                    {/* Category Filter Multi-Select Dropdown */}
-                    <div ref={categoryDropdownRef} className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setCategoryDropdownOpen(o => !o)}
-                        className="flex items-center gap-2 px-3.5 py-2 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium select-none"
-                      >
-                        <span>Categories ({selectedChartCategories.length})</span>
-                        <ChevronDown className={clsx('w-3.5 h-3.5 text-slate-450 transition-transform', categoryDropdownOpen && 'rotate-180')} />
-                      </button>
-
-                      {categoryDropdownOpen && (
-                        <div className="absolute right-0 mt-2 bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[240px] max-h-[300px] overflow-y-auto flex flex-col gap-0.5 z-50 custom-scrollbar">
-                          <div className="flex items-center justify-between p-1.5 border-b border-slate-100 mb-1">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedChartCategories(categoryStats.historicalTotals.map(t => t.name))}
-                              className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-                            >
-                              Select All
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedChartCategories([])}
-                              className="text-xs font-semibold text-slate-500 hover:underline cursor-pointer"
-                            >
-                              Clear
-                            </button>
-                          </div>
-                          {categoryStats.historicalTotals.map(cat => {
-                            const isChecked = selectedChartCategories.includes(cat.name);
-                            return (
-                              <label
-                                key={cat.name}
-                                className="flex items-center gap-2.5 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium hover:bg-slate-50 text-slate-700 hover:text-slate-900 transition-colors select-none"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedChartCategories(prev => [...prev, cat.name]);
-                                    } else {
-                                      setSelectedChartCategories(prev => prev.filter(c => c !== cat.name));
-                                    }
-                                  }}
-                                  className="sr-only"
-                                />
-                                <div className={clsx(
-                                  "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
-                                  isChecked ? "bg-primary border-primary text-white" : "border-slate-300 bg-white"
-                                )}>
-                                  {isChecked && (
-                                    <svg className="w-2.5 h-2.5 fill-none stroke-current" strokeWidth="3" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  )}
-                                </div>
-                                <span className="truncate">{cat.name}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Date Filter Dropdown */}
-                    <div ref={dateDropdownRef} className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setDateDropdownOpen(o => !o)}
-                        className="flex items-center gap-2 px-3.5 py-2 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium select-none"
-                      >
-                        <span>
-                          {dateFilter === '7d' && 'Last 7 Days'}
-                          {dateFilter === '30d' && 'Last 30 Days'}
-                          {dateFilter === 'all' && 'All Time'}
-                          {dateFilter === 'custom' && 'Custom Range'}
-                        </span>
-                        <ChevronDown className={clsx('w-3.5 h-3.5 text-slate-450 transition-transform', dateDropdownOpen && 'rotate-180')} />
-                      </button>
-
-                      {dateDropdownOpen && (
-                        <div className="absolute right-0 mt-2 bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[160px] flex flex-col gap-0.5 z-50">
-                          {[
-                            { key: '7d', label: 'Last 7 Days' },
-                            { key: '30d', label: 'Last 30 Days' },
-                            { key: 'all', label: 'All Time' },
-                            { key: 'custom', label: 'Custom Range' },
-                          ].map(opt => (
-                            <button
-                              key={opt.key}
-                              type="button"
-                              onClick={() => {
-                                setDateFilter(opt.key as any);
-                                setDateDropdownOpen(false);
-                              }}
-                              className={clsx(
-                                'w-full text-left flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium transition-colors select-none',
-                                dateFilter === opt.key
-                                  ? 'bg-primary-50/70 text-primary font-semibold'
-                                  : 'hover:bg-slate-50 text-slate-600 hover:text-slate-900'
-                              )}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                {filteredDaily.length === 0 ? (
-                  <div className="h-110 flex items-center justify-center text-slate-500">No category timeline data available.</div>
-                ) : chartType === 'pie' && pieData.length === 0 ? (
-                  <div className="h-110 flex items-center justify-center text-slate-500">No categories selected or count is zero.</div>
-                ) : (
-                  <div className="h-110">
-                    {chartType === 'line' ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={filteredDaily}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                          <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} axisLine={false} tickLine={false} />
-                          <YAxis tick={{fontSize: 12, fill: '#64748b'}} axisLine={false} tickLine={false} />
-                          <Tooltip content={<CustomTooltip />} />
-                          <Legend content={<RenderCustomLegend />} />
-                          {selectedChartCategories.map((category) => (
-                            <Line 
-                              key={category} 
-                              type="monotone" 
-                              dataKey={category} 
-                              stroke={getCategoryColor(category)} 
-                              strokeWidth={2.5}
-                              dot={{ r: 3 }}
-                              activeDot={{ r: 5 }}
-                            />
-                          ))}
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex flex-col md:flex-row items-center justify-between gap-6 h-full">
-                        <div className="w-full md:w-3/5 h-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={pieData}
-                                dataKey="value"
-                                nameKey="name"
-                                cx="50%"
-                                cy="50%"
-                                outerRadius={140}
-                                label={({ percent }) => percent >= 0.04 ? `${(percent * 100).toFixed(0)}%` : ''}
-                                labelLine={false}
-                              >
-                                {pieData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name)} />
-                                ))}
-                              </Pie>
-                              <Tooltip formatter={(value) => [`${value} items`, 'Count']} />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </div>
-                        
-                        <div className="w-full md:w-2/5 flex flex-col max-h-[380px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Category Share</h4>
-                          {pieData.map((entry) => {
-                            const total = pieData.reduce((sum, item) => sum + item.value, 0);
-                            const pct = total > 0 ? ((entry.value / total) * 100).toFixed(0) : '0';
-                            return (
-                              <div key={entry.name} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <div 
-                                    className="w-3 h-3 rounded-full shrink-0" 
-                                    style={{ backgroundColor: getCategoryColor(entry.name) }}
-                                  />
-                                  <span className="text-xs font-semibold text-slate-700 truncate" title={entry.name}>
-                                    {entry.name}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                  <span className="text-xs font-bold text-slate-900">{entry.value} items</span>
-                                  <span className="text-xs font-bold text-primary bg-primary-50 px-2 py-0.5 rounded-md">
-                                    {pct}%
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Grid of Trends and Categories */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
-                {/* Subscription Trends */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                  <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-                    <TrendingUp className="w-5 h-5 mr-2 text-green-500" /> Subscription Trends (30 Days)
-                  </h3>
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={liveReportData.subscriptions} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                          </linearGradient>
-                          <linearGradient id="colorTrial" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                        <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                        <Tooltip />
-                        <Legend />
-                        <Area type="monotone" dataKey="trial" stroke="#94a3b8" fillOpacity={1} fill="url(#colorTrial)" name="Trial Signups" />
-                        <Area type="monotone" dataKey="active" stroke="#2563eb" fillOpacity={1} fill="url(#colorActive)" name="Active Subscriptions" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Platform Registration Growth */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                  <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-                    <Users className="w-5 h-5 mr-2 text-purple-500" /> Platform Registration Growth
-                  </h3>
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={liveReportData.growth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="month" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                        <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                        <Tooltip cursor={{fill: '#f1f5f9'}} />
-                        <Legend />
-                        <Bar dataKey="buyers" fill="#3b82f6" name="New Buyers" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="sellers" fill="#8b5cf6" name="New Sellers" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Total Items by Category List */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6 flex flex-col">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold text-slate-900 flex items-center">
-                      <FileText className="w-5 h-5 mr-2 text-primary" /> Total Items by Category
-                    </h2>
-                    <button
-                      type="button"
-                      onClick={downloadCategoryCSV}
-                      className="p-2 text-slate-500 hover:text-primary hover:bg-slate-50 rounded-xl transition-all cursor-pointer flex items-center justify-center border border-slate-200 shadow-2xs print:hidden"
-                      title="Download CSV"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                  </div>
-                  
-                  <div className="flex bg-slate-100 p-1 rounded-lg mb-4 print:hidden">
-                    <button
-                      type="button"
-                      onClick={() => setTotalsTab('current')}
-                      className={clsx(
-                        "flex-1 text-sm font-semibold py-1.5 rounded-md transition-all cursor-pointer",
-                        totalsTab === 'current' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                      )}
-                    >
-                      Current Inventory
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTotalsTab('history')}
-                      className={clsx(
-                        "flex-1 text-sm font-semibold py-1.5 rounded-md transition-all cursor-pointer",
-                        totalsTab === 'history' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                      )}
-                    >
-                      All-Time History
-                    </button>
-                  </div>
-
-                  {/* Search box inside category totals list */}
-                  <div className="relative mb-4 print:hidden">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search category..."
-                      value={categorySearchQuery}
-                      onChange={(e) => setCategorySearchQuery(e.target.value)}
-                      className="pl-9 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-
-                  <div className="overflow-y-auto pr-1 flex-1 max-h-[190px] print:max-h-none custom-scrollbar">
-                    {filteredDisplayTotals.length === 0 ? (
-                      <p className="text-slate-500 text-sm text-center py-4">No categories found.</p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                          <thead>
-                            <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                              <th className="pb-2 font-bold">Category</th>
-                              <th className="pb-2 font-bold text-right">Avg Pre-Bid</th>
-                              <th className="pb-2 font-bold text-right">Avg EMD</th>
-                              <th className="pb-2 font-bold text-right">Count</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-50 text-xs font-semibold text-slate-650">
-                            {filteredDisplayTotals.map((cat) => (
-                              <tr key={cat.name} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="py-2 flex items-center gap-1.5 min-w-0">
-                                  <div 
-                                    className="w-2 h-2 rounded-full shrink-0" 
-                                    style={{ backgroundColor: getCategoryColor(cat.name) }}
-                                  />
-                                  <span className="truncate font-semibold text-slate-700 max-w-[100px] sm:max-w-[130px]" title={cat.name}>
-                                    {cat.name}
-                                  </span>
-                                </td>
-                                <td className="py-2 text-right font-mono text-[11px] text-slate-500">
-                                  ₹{(categoryAverages[cat.name]?.avgPreBid || 0).toLocaleString()}
-                                </td>
-                                <td className="py-2 text-right font-mono text-[11px] text-slate-500">
-                                  {(categoryAverages[cat.name]?.avgEmdPct || 0)}%
-                                </td>
-                                <td className="py-2 text-right font-bold text-slate-900">
-                                  {cat.count}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {activeTab === 'emd' && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Pre-Bid EMD Summary & Trend */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* EMD Trend Chart */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-2">
-                  <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-                    <Activity className="w-5 h-5 mr-2 text-indigo-500" /> Pre-Bid EMD Holds & Releases (30 Days)
-                  </h3>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={financialData.emdTimeline}>
-                        <defs>
-                          <linearGradient id="colorEmdHeld" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                          </linearGradient>
-                          <linearGradient id="colorEmdReleased" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="date" tick={{fontSize: 11, fill: '#64748b'}} />
-                        <YAxis tickFormatter={(val) => `₹${val >= 100000 ? `${(val / 100000).toFixed(1)}L` : val}`} tick={{fontSize: 11, fill: '#64748b'}} />
-                        <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, '']} />
-                        <Legend />
-                        <Area type="monotone" dataKey="held" stroke="#4f46e5" fillOpacity={1} fill="url(#colorEmdHeld)" name="EMD Amount Held" />
-                        <Area type="monotone" dataKey="released" stroke="#10b981" fillOpacity={1} fill="url(#colorEmdReleased)" name="EMD Amount Released" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* EMD Statistics Overview */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900 mb-4">EMD Summary</h3>
-                    <p className="text-slate-500 text-xs leading-relaxed mb-6">
-                      Earnest Money Deposit (EMD) represents collateral submitted by buyers before participating in bids. Admin can monitor active holdings vs releases.
-                    </p>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                        <span className="text-sm font-semibold text-slate-600">Active Holds Amount</span>
-                        <span className="text-base font-bold text-slate-900">₹{(financialData.summary.emdHeld || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                        <span className="text-sm font-semibold text-slate-600">Cumulative Volume</span>
-                        <span className="text-base font-bold text-indigo-600">₹{(financialData.summary.emdVolume || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                        <span className="text-sm font-semibold text-slate-600">Ledger Entries Count</span>
-                        <span className="text-base font-bold text-slate-900">{financialData.emdTransactions.length}</span>
-                      </div>
-                    </div>
-                  </div>
+          {/* Category Analysis Panel */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <h2 className="text-lg font-bold text-slate-900 flex items-center">
+                  <TrendingUp className="w-5 h-5 mr-2 text-primary" /> Category Analysis
+                </h2>
+                {/* Chart Switcher */}
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl print:hidden">
                   <button
                     type="button"
-                    onClick={downloadEmdCSV}
-                    className="w-full mt-6 py-2.5 bg-slate-900 hover:bg-black text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
+                    onClick={() => setChartType('line')}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                      chartType === 'line' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
                   >
-                    <Download className="w-4 h-4" /> Download EMD Ledger (.CSV)
+                    <TrendingUp className="w-4 h-4" /> Timeline
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChartType('pie')}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                      chartType === 'pie' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    <PieIcon className="w-4 h-4" /> Share
                   </button>
                 </div>
               </div>
+              
+              <div className="flex flex-wrap items-center gap-3 print:hidden">
+                {dateFilter === 'custom' && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-primary/50 transition-all"
+                    />
+                    <span className="text-slate-400 text-xs font-semibold">to</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-primary/50 transition-all"
+                    />
+                  </div>
+                )}
 
-              {/* Recent EMD Transactions Table */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900 flex items-center">
-                    <Clock className="w-5 h-5 mr-2 text-slate-400" /> Recent EMD Ledger Records
-                  </h3>
+                {/* Date Dropdown Select */}
+                <div className="relative" ref={dateDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setDateDropdownOpen(!dateDropdownOpen)}
+                    className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-100 transition-all cursor-pointer select-none"
+                  >
+                    Date Filter: {
+                      dateFilter === '7d' ? 'Last 7 Days' : 
+                      dateFilter === '30d' ? 'Last 30 Days' : 
+                      dateFilter === 'custom' ? 'Custom Range' : 'All-Time'
+                    }
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  </button>
+
+                  {dateDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-50 animate-fade-in">
+                      <button
+                        type="button"
+                        onClick={() => { setDateFilter('7d'); setDateDropdownOpen(false); }}
+                        className={clsx(
+                          "w-full text-left px-4 py-2 text-sm font-semibold transition-colors cursor-pointer",
+                          dateFilter === '7d' ? "bg-primary/5 text-primary" : "text-slate-650 hover:bg-slate-50"
+                        )}
+                      >
+                        Last 7 Days
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setDateFilter('30d'); setDateDropdownOpen(false); }}
+                        className={clsx(
+                          "w-full text-left px-4 py-2 text-sm font-semibold transition-colors cursor-pointer",
+                          dateFilter === '30d' ? "bg-primary/5 text-primary" : "text-slate-650 hover:bg-slate-50"
+                        )}
+                      >
+                        Last 30 Days
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setDateFilter('all'); setDateDropdownOpen(false); }}
+                        className={clsx(
+                          "w-full text-left px-4 py-2 text-sm font-semibold transition-colors cursor-pointer",
+                          dateFilter === 'all' ? "bg-primary/5 text-primary" : "text-slate-650 hover:bg-slate-50"
+                        )}
+                      >
+                        All-Time History
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setDateFilter('custom'); setDateDropdownOpen(false); }}
+                        className={clsx(
+                          "w-full text-left px-4 py-2 text-sm font-semibold transition-colors cursor-pointer",
+                          dateFilter === 'custom' ? "bg-primary/5 text-primary" : "text-slate-650 hover:bg-slate-50"
+                        )}
+                      >
+                        Custom Range
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
-                        <th className="px-6 py-4 font-semibold">Reference ID</th>
-                        <th className="px-6 py-4 font-semibold">User ID</th>
-                        <th className="px-6 py-4 font-semibold">Amount</th>
-                        <th className="px-6 py-4 font-semibold">Payment Method</th>
-                        <th className="px-6 py-4 font-semibold">Status</th>
-                        <th className="px-6 py-4 font-semibold">Timestamp</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-sm font-medium">
-                      {financialData.emdTransactions.map((tx: any) => (
-                        <tr key={tx.id} className="hover:bg-slate-50 text-slate-700">
-                          <td className="px-6 py-4 font-mono text-xs text-slate-500">{tx.transaction_reference || 'N/A'}</td>
-                          <td className="px-6 py-4 font-mono text-xs text-slate-500">{tx.user_id}</td>
-                          <td className="px-6 py-4 font-bold text-slate-900">₹{(Number(tx.amount)).toLocaleString()}</td>
-                          <td className="px-6 py-4 text-xs text-slate-500">{tx.payment_method || 'Wallet Balance'}</td>
-                          <td className="px-6 py-4">
-                            <span className={clsx(
-                              "px-2 py-0.5 text-xs font-bold rounded-md uppercase",
-                              tx.status === 'held' && "bg-amber-50 text-amber-600 border border-amber-200",
-                              tx.status === 'released' && "bg-emerald-50 text-emerald-600 border border-emerald-200",
-                              tx.status === 'refunded' && "bg-blue-50 text-blue-600 border border-blue-200",
-                              tx.status === 'pending' && "bg-slate-100 text-slate-600 border border-slate-200"
-                            )}>
-                              {tx.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-xs text-slate-400">{new Date(tx.created_at).toLocaleString()}</td>
-                        </tr>
+
+                {/* Multi-Select Category Dropdown */}
+                <div className="relative" ref={categoryDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+                    className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-100 transition-all cursor-pointer select-none"
+                  >
+                    Select Categories ({selectedChartCategories.length})
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  </button>
+
+                  {categoryDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-64 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg p-2 z-50 animate-fade-in custom-scrollbar">
+                      <div className="flex justify-between items-center pb-2 mb-2 border-b border-slate-150 px-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedChartCategories(displayTotals.map(c => c.name))}
+                          className="text-xs font-bold text-primary hover:underline cursor-pointer"
+                        >
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedChartCategories([])}
+                          className="text-xs font-bold text-slate-400 hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {displayTotals.map(cat => (
+                          <label key={cat.name} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded-lg cursor-pointer select-none text-xs font-semibold text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={selectedChartCategories.includes(cat.name)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedChartCategories([...selectedChartCategories, cat.name]);
+                                } else {
+                                  setSelectedChartCategories(selectedChartCategories.filter(name => name !== cat.name));
+                                }
+                              }}
+                              className="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                            />
+                            <span className="truncate">{cat.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Main analysis view */}
+            {chartType === 'line' ? (
+              <div className="h-96 print:h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={filteredDaily}>
+                    <defs>
+                      {displayTotals.map(cat => (
+                        <linearGradient key={cat.name} id={`color_${cat.name.replace(/\s+/g, '_')}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={getCategoryColor(cat.name)} stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor={getCategoryColor(cat.name)} stopOpacity={0}/>
+                        </linearGradient>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="date" tick={{fontSize: 11, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                    <YAxis tick={{fontSize: 11, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    {displayTotals
+                      .filter(cat => selectedChartCategories.includes(cat.name))
+                      .map(cat => (
+                        <Area
+                          key={cat.name}
+                          type="monotone"
+                          dataKey={cat.name}
+                          stroke={getCategoryColor(cat.name)}
+                          fillOpacity={1}
+                          fill={`url(#color_${cat.name.replace(/\s+/g, '_')})`}
+                          name={cat.name}
+                          strokeWidth={2}
+                          stackId="1"
+                        />
+                      ))}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-96 flex flex-col md:flex-row items-center justify-center gap-8">
+                {pieData.length === 0 ? (
+                  <p className="text-slate-500 text-sm font-semibold">Select categories to display visual data.</p>
+                ) : (
+                  <>
+                    <div className="w-full md:w-1/2 h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={pieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={70}
+                            outerRadius={100}
+                            paddingAngle={3}
+                            dataKey="value"
+                          >
+                            {pieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name)} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => [value, 'Items Count']} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="w-full md:w-1/2 max-h-80 overflow-y-auto grid grid-cols-2 gap-4 p-2 custom-scrollbar">
+                      {pieData.map((entry, index) => {
+                        const pct = totalItems > 0 ? ((entry.value / totalItems) * 100).toFixed(1) : '0.0';
+                        return (
+                          <div key={entry.name} className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-100 rounded-xl">
+                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: getCategoryColor(entry.name) }} />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-800 truncate" title={entry.name}>{entry.name}</p>
+                              <p className="text-[10px] text-slate-550 font-bold mt-0.5">{entry.value} ({pct}%)</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Lower Grid: Subscriptions & Category List */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Subscription Trends */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2 text-indigo-500" /> Platform Subscriptions
+              </h3>
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={liveReportData.subscriptions} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorTrial" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                    <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Area type="monotone" dataKey="trial" stroke="#94a3b8" fillOpacity={1} fill="url(#colorTrial)" name="Trial Signups" />
+                    <Area type="monotone" dataKey="active" stroke="#2563eb" fillOpacity={1} fill="url(#colorActive)" name="Active Subscriptions" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
-          )}
 
-          {activeTab === 'bids' && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Bidding volume & Frequency trend */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Bidding charts */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-2">
-                  <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-                    <Gavel className="w-5 h-5 mr-2 text-violet-500" /> Bidding Volume & Quantity (30 Days)
-                  </h3>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={financialData.bidsTimeline}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="date" tick={{fontSize: 11, fill: '#64748b'}} />
-                        <YAxis yAxisId="left" tick={{fontSize: 11, fill: '#64748b'}} label={{ value: 'Bids Placed', angle: -90, position: 'insideLeft', style: {textAnchor: 'middle', fontSize: 10, fill: '#94a3b8'} }} />
-                        <YAxis yAxisId="right" orientation="right" tickFormatter={(val) => `₹${(val / 100000).toFixed(0)}L`} tick={{fontSize: 11, fill: '#64748b'}} label={{ value: 'Value Volume (₹)', angle: 90, position: 'insideRight', style: {textAnchor: 'middle', fontSize: 10, fill: '#94a3b8'} }} />
-                        <Tooltip formatter={(value, name) => [name === 'Bids Volume' ? `₹${value.toLocaleString()}` : value, name]} />
-                        <Legend />
-                        <Line yAxisId="left" type="monotone" dataKey="count" stroke="#8b5cf6" strokeWidth={2.5} name="Bids Placed" activeDot={{ r: 6 }} />
-                        <Line yAxisId="right" type="monotone" dataKey="volume" stroke="#3b82f6" strokeWidth={2.5} name="Bids Volume" activeDot={{ r: 6 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Bidding Summary Statistics */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900 mb-4">Bidding Metrics</h3>
-                    <p className="text-slate-500 text-xs leading-relaxed mb-6">
-                      Analyzes bidding activity across all live auctions on Lelam, evaluating frequency, average valuation, and bidding ranges.
-                    </p>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                        <span className="text-sm font-semibold text-slate-600">Total Bids Count</span>
-                        <span className="text-base font-bold text-slate-900">{financialData.summary.totalBids}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                        <span className="text-sm font-semibold text-slate-600">Average Bid Size</span>
-                        <span className="text-base font-bold text-purple-600">₹{(financialData.summary.avgBidAmount || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                        <span className="text-sm font-semibold text-slate-600">Highest Bid Placed</span>
-                        <span className="text-base font-bold text-emerald-600">₹{(financialData.summary.maxBidAmount || 0).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-purple-50/50 border border-purple-100 rounded-2xl flex items-start gap-3">
-                    <Activity className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="text-xs font-bold text-purple-800 uppercase tracking-wider">Active Bidding Mode</h4>
-                      <p className="text-xs text-purple-950 mt-1 leading-relaxed">
-                        Database analytics displays cumulative bid counters. When bids table starts populating with user bids, live counters auto-adjust.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+            {/* Platform Registration Growth */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
+                <Users className="w-5 h-5 mr-2 text-purple-500" /> Platform Registration Growth
+              </h3>
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={liveReportData.growth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="month" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                    <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{fill: '#f1f5f9'}} />
+                    <Legend />
+                    <Bar dataKey="buyers" fill="#3b82f6" name="New Buyers" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="sellers" fill="#8b5cf6" name="New Sellers" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
-          )}
+
+            {/* Total Items by Category List */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6 flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-slate-900 flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-primary" /> Total Items by Category
+                </h2>
+                <button
+                  type="button"
+                  onClick={downloadCategoryCSV}
+                  className="p-2 text-slate-500 hover:text-primary hover:bg-slate-50 rounded-xl transition-all cursor-pointer flex items-center justify-center border border-slate-200 shadow-2xs print:hidden"
+                  title="Download CSV"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="flex bg-slate-100 p-1 rounded-lg mb-4 print:hidden">
+                <button
+                  type="button"
+                  onClick={() => setTotalsTab('current')}
+                  className={clsx(
+                    "flex-1 text-sm font-semibold py-1.5 rounded-md transition-all cursor-pointer",
+                    totalsTab === 'current' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  )}
+                >
+                  Current Inventory
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTotalsTab('history')}
+                  className={clsx(
+                    "flex-1 text-sm font-semibold py-1.5 rounded-md transition-all cursor-pointer",
+                    totalsTab === 'history' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  )}
+                >
+                  All-Time History
+                </button>
+              </div>
+
+              {/* Search box inside category totals list */}
+              <div className="relative mb-4 print:hidden">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search category..."
+                  value={categorySearchQuery}
+                  onChange={(e) => setCategorySearchQuery(e.target.value)}
+                  className="pl-9 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
+
+              <div className="overflow-y-auto pr-1 flex-1 max-h-[190px] print:max-h-none custom-scrollbar">
+                {filteredDisplayTotals.length === 0 ? (
+                  <p className="text-slate-500 text-sm text-center py-4">No categories found.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                          <th className="pb-2 font-bold">Category</th>
+                          <th className="pb-2 font-bold text-right">Avg Pre-Bid</th>
+                          <th className="pb-2 font-bold text-right">Avg EMD</th>
+                          <th className="pb-2 font-bold text-right">Count</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50 text-xs font-semibold text-slate-650">
+                        {filteredDisplayTotals.map((cat) => (
+                          <tr key={cat.name} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="py-2 flex items-center gap-1.5 min-w-0">
+                              <div 
+                                className="w-2 h-2 rounded-full shrink-0" 
+                                style={{ backgroundColor: getCategoryColor(cat.name) }}
+                              />
+                              <span className="truncate font-semibold text-slate-700 max-w-[100px] sm:max-w-[130px]" title={cat.name}>
+                                {cat.name}
+                              </span>
+                            </td>
+                            <td className="py-2 text-right font-mono text-[11px] text-slate-500">
+                              ₹{(categoryAverages[cat.name]?.avgPreBid || 0).toLocaleString()}
+                            </td>
+                            <td className="py-2 text-right font-mono text-[11px] text-slate-500">
+                              {(categoryAverages[cat.name]?.avgEmdPct || 0)}%
+                            </td>
+                            <td className="py-2 text-right font-bold text-slate-900">
+                              {cat.count}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
