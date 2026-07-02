@@ -101,10 +101,10 @@ export function FeaturedAuctionsSection() {
               <Suspense fallback={null}>
               {/* If empty or not authenticated, we can show mock cards to look premium */}
               {(auctions.length > 0 ? auctions : [
-                { id: '1', title: 'Industrial Heavy Machinery Lot', description: 'Surplus plant manufacturing machinery including CNC routers, lathes, and high capacity air compressors.', starting_price: 4500000, end_time: new Date().toISOString() },
-                { id: '2', title: 'Corporate E-Waste Disposal', description: 'Over 500 decommissioned workstations, laptops, servers and networking switches from a Fortune 500 client.', starting_price: 250000, end_time: new Date().toISOString() },
-                { id: '3', title: 'Commercial Real Estate Complex', description: 'Prime multi-story warehouse space with modern loading docks and convenient highway access.', starting_price: 85000000, end_time: new Date().toISOString() },
-                { id: '4', title: 'Fleet Transport Logistics Package', description: 'Package of 12 commercial logistics vans, light duty trucks, and utility vehicles in excellent running condition.', starting_price: 1800000, end_time: new Date().toISOString() }
+                { id: '11111111-1111-1111-1111-111111111111', title: 'Industrial Heavy Machinery Lot', description: 'Surplus plant manufacturing machinery including CNC routers, lathes, and high capacity air compressors.', starting_price: 4500000, end_time: new Date().toISOString() },
+                { id: '22222222-2222-2222-2222-222222222222', title: 'Corporate E-Waste Disposal', description: 'Over 500 decommissioned workstations, laptops, servers and networking switches from a Fortune 500 client.', starting_price: 250000, end_time: new Date().toISOString() },
+                { id: '33333333-3333-3333-3333-333333333333', title: 'Commercial Real Estate Complex', description: 'Prime multi-story warehouse space with modern loading docks and convenient highway access.', starting_price: 85000000, end_time: new Date().toISOString() },
+                { id: '44444444-4444-4444-4444-444444444444', title: 'Fleet Transport Logistics Package', description: 'Package of 12 commercial logistics vans, light duty trucks, and utility vehicles in excellent running condition.', starting_price: 1800000, end_time: new Date().toISOString() }
               ]).map((auction) => {
                 if (auction.is_mstc) {
                   return (

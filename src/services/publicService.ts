@@ -2113,12 +2113,14 @@ export const MstcSearchService = {
             searchData = retryResult.data;
             returnedCorrectedQuery = correctedQuery;
             error = null;
+            } else {
+              searchData = [];
+              error = null;
+            }
           } else {
-            throw new Error('RPC_ZERO_RESULTS');
+            searchData = [];
+            error = null;
           }
-        } else {
-          throw new Error('RPC_ZERO_RESULTS');
-        }
       }
       
       if (searchData && searchData.length > 0) {
@@ -2144,34 +2146,6 @@ export const MstcSearchService = {
       return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery, hasDirectMatches };
 
     } catch (error) {
-      console.warn('Hybrid search failed, falling back to client-side search:', error);
-      let fallbackData = await MstcSearchService.searchClientSide(query, filters);
-      
-      // Filter by images/docs locally if RPC fails
-      if (filters?.hasImages) {
-        fallbackData = fallbackData.filter(item => {
-          if (!item.raw_materials_text) return false;
-          try {
-            const parsed = JSON.parse(item.raw_materials_text);
-            const images = parsed?.extracted_images || [];
-            return images.some((url: string) => {
-              const lower = url.toLowerCase();
-              return !lower.endsWith('.pdf') && 
-                     !lower.includes('_catalog_page_') && 
-                     !lower.includes('mstc-previews/') &&
-                     /\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff?)$/i.test(lower);
-            });
-          } catch { return false; }
-        });
-      }
-      
-      if (filters?.hasAssetDocuments) {
-        fallbackData = fallbackData.filter(item => hasConfirmedAssetDocuments(item.raw_materials_text));
-      }
-
-      const totalCount = fallbackData.length;
-      
-      // Client-side pagination fallback
       const page = filters?.page || 1;
       const limit = filters?.limit || 12;
       const startIndex = (page - 1) * limit;
@@ -2407,28 +2381,41 @@ export const MstcSearchService = {
       const lowerCategory = categoryPart.toLowerCase();
       const lowerLocation = locationPart.toLowerCase();
 
-      // Fetch actual matching completed auctions using category part
-      const matchingAuctions = await MstcSearchService.searchClientSide(categoryPart);
+      // 1. Fetch autocomplete filter options (categories/subcategories) using cached RPC
+      const filterOptions = await this.getMstcFilterOptions();
 
       const matchedCategories = new Set<string>();
       const matchedSubcategories = new Set<string>();
       const matchedLocations = new Set<string>();
 
-      // Extract unique categories, subcategories from matching results
-      matchingAuctions.forEach(item => {
-        if (item.category_name) {
-          const parts = item.category_name.split(' | ');
-          const mainCat = parts[0]?.trim();
-          const subCat = parts[1]?.trim();
-          
-          if (mainCat && (mainCat.toLowerCase().startsWith(lowerCategory) || mainCat.toLowerCase().includes(lowerCategory))) {
-            matchedCategories.add(mainCat);
-          }
-          if (subCat && (subCat.toLowerCase().startsWith(lowerCategory) || subCat.toLowerCase().includes(lowerCategory))) {
-            matchedSubcategories.add(subCat);
-          }
+      // 2. Extract matching categories and subcategories from memory
+      filterOptions.categories.forEach(mainCat => {
+        if (mainCat.toLowerCase().startsWith(lowerCategory) || mainCat.toLowerCase().includes(lowerCategory)) {
+          matchedCategories.add(mainCat);
         }
       });
+      
+      Object.values(filterOptions.subcategories).forEach(subCatArray => {
+        subCatArray.forEach(subCat => {
+          if (subCat.toLowerCase().startsWith(lowerCategory) || subCat.toLowerCase().includes(lowerCategory)) {
+            matchedSubcategories.add(subCat);
+          }
+        });
+      });
+      
+      // 3. Fast direct DB lookup for top 4 auction numbers
+      let matchingAuctions: any[] = [];
+      if (lowerCategory.length >= 2 && locationPart.length === 0) {
+        const { data } = await supabase
+          .from('mstc_auctions')
+          .select('mstc_auction_number, seller_name, location')
+          .eq('asset_status', 'completed')
+          .ilike('mstc_auction_number', `%${lowerCategory}%`)
+          .limit(4);
+        if (data) {
+          matchingAuctions = data;
+        }
+      }
 
       // Match locations
       const isLocationMatch = (canonical: string, aliases: string[], queryStr: string): boolean => {
