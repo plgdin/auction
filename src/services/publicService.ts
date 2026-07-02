@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { ContactMessage, FaqItem, Announcement, NewsUpdate } from '../types/database.types';
 import { PageCache } from '../utils/pageCache';
-import { hasConfirmedAssetDocuments, isPreBidRequired } from '../utils/mstcHelpers';
+import { isPreBidRequired } from '../utils/mstcHelpers';
 import {
   INVERTED_SYNONYM_MAP,
   CONCEPT_MAP,
@@ -2146,12 +2146,8 @@ export const MstcSearchService = {
       return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery, hasDirectMatches };
 
     } catch (error) {
-      const page = filters?.page || 1;
-      const limit = filters?.limit || 12;
-      const startIndex = (page - 1) * limit;
-      const paginatedData = fallbackData.slice(startIndex, startIndex + limit);
-
-      return { data: paginatedData, count: totalCount, hasDirectMatches: fallbackData.length > 0 };
+      console.error('Hybrid search failed:', error);
+      return { data: [], count: 0, correctedQuery: undefined, hasDirectMatches: false };
     }
   }, 'marketplaceSearch'),
 
@@ -2332,7 +2328,7 @@ export const MstcSearchService = {
    * Generates real-time, Gemini-like autocomplete suggestions based on categories, subcategories,
    * locations, and specific catalog item text matches.
    */
-  getMstcSearchSuggestions: PageCache.memoize(async function getMstcSearchSuggestions(query: string): Promise<SearchSuggestion[]> {
+  getMstcSearchSuggestions: PageCache.memoize(async function getMstcSearchSuggestions(this: any, query: string): Promise<SearchSuggestion[]> {
     try {
       const trimmedQuery = query.trim();
       const suggestions: SearchSuggestion[] = [];
@@ -2389,14 +2385,14 @@ export const MstcSearchService = {
       const matchedLocations = new Set<string>();
 
       // 2. Extract matching categories and subcategories from memory
-      filterOptions.categories.forEach(mainCat => {
+      filterOptions.categories.forEach((mainCat: string) => {
         if (mainCat.toLowerCase().startsWith(lowerCategory) || mainCat.toLowerCase().includes(lowerCategory)) {
           matchedCategories.add(mainCat);
         }
       });
       
-      Object.values(filterOptions.subcategories).forEach(subCatArray => {
-        subCatArray.forEach(subCat => {
+      Object.values(filterOptions.subcategories).forEach((subCatArray: any) => {
+        (subCatArray as string[]).forEach((subCat: string) => {
           if (subCat.toLowerCase().startsWith(lowerCategory) || subCat.toLowerCase().includes(lowerCategory)) {
             matchedSubcategories.add(subCat);
           }
