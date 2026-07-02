@@ -10,9 +10,11 @@
  * - Reduced memory overhead from repeated browser launches.
  */
 import puppeteer, { Browser } from "puppeteer";
+import { createRequire } from "module";
 import { MAX_EMBEDDED_IMAGES, MIN_IMAGE_BYTE_SIZE } from "../config.js";
 import { logger } from "./logger.js";
 
+const require = createRequire(import.meta.url);
 const log = logger.child({ module: "pdfUtils" });
 
 // ─── Browser Singleton ───────────────────────────────────────────────────────
@@ -309,5 +311,57 @@ export async function renderAndExtractPdfPages(
     if (page) {
       await page.close().catch(() => {});
     }
+  }
+}
+
+/**
+ * Extract text page-by-page from a PDF buffer using native pdf-parse.
+ * Completely local, zero Puppeteer / Chromium overhead.
+ *
+ * @param fileBuffer - Raw PDF file buffer.
+ * @returns Array of pages with pageNumber and text.
+ */
+export async function extractPdfTextNatively(
+  fileBuffer: Buffer
+): Promise<{ pageNumber: number; text: string }[]> {
+  const pages: { pageNumber: number; text: string }[] = [];
+  
+  try {
+    const pdf = require("pdf-parse");
+    await pdf(fileBuffer, {
+      pagerender: async (pageData: any) => {
+        try {
+          const textContent = await pageData.getTextContent({
+            normalizeWhitespace: false,
+            disableCombineTextItems: false,
+          });
+          
+          let lastY = 0;
+          let text = "";
+          for (const item of textContent.items) {
+            if (lastY === item.transform[5] || !lastY) {
+              text += item.str + " ";
+            } else {
+              text += "\n" + item.str + " ";
+            }
+            lastY = item.transform[5];
+          }
+          
+          pages.push({
+            pageNumber: (pageData.pageIndex || 0) + 1,
+            text: text,
+          });
+          
+          return text;
+        } catch (err) {
+          return "";
+        }
+      }
+    });
+    
+    return pages.sort((a, b) => a.pageNumber - b.pageNumber);
+  } catch (err: any) {
+    log.error({ errorMessage: err.message }, "Failed native pdf-parse extraction");
+    return [];
   }
 }

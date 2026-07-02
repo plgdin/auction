@@ -38,6 +38,7 @@ import {
   renderPdfFirstPage,
   extractEmbeddedJpegs,
   renderAndExtractPdfPages,
+  extractPdfTextNatively,
 } from "./utils/pdfUtils.js";
 import { parseMstcCatalogText, parseSubItemsFromText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
@@ -888,8 +889,21 @@ async function extractAndProcessLotDocuments(
       "Attachment retrieved, processing images",
     );
 
-    // 1. Try to render all pages
-    const renderedPages = await renderAndExtractPdfPages(docBuffer, 20);
+    // A. Extract text natively in Node.js first (extremely fast, robust, 100% local)
+    const nativePages = await extractPdfTextNatively(docBuffer);
+    const hasNativeText = nativePages.length > 0 && nativePages.some(p => p.text.trim().length > 50);
+
+    // B. Try to render page images for gallery preview
+    let renderedPages: any[] = [];
+    try {
+      renderedPages = await renderAndExtractPdfPages(docBuffer, 20);
+    } catch (renderErr: any) {
+      log.warn(
+        { fileName, errorMessage: renderErr.message },
+        "Puppeteer page rendering failed, will fallback to native text",
+      );
+    }
+
     if (renderedPages.length > 0) {
       // Release raw PDF buffer immediately as we have rendered the pages
       docBuffer = null as any;
@@ -909,12 +923,16 @@ async function extractAndProcessLotDocuments(
             "image/jpeg",
           );
 
+          // Use native page text if available, otherwise fallback to page text from Puppeteer/PDF.js
+          const nativePage = nativePages.find(np => np.pageNumber === page.pageNumber);
+          const pageSelectableText = nativePage ? nativePage.text : page.text;
+
           // Smart OCR: only run OCR when selectable text is insufficient
           let ocrText = "";
-          if (shouldPerformOcr(page.text)) {
+          if (shouldPerformOcr(pageSelectableText)) {
             ocrText = await performOcr(page.imageBuffer);
           }
-          const combinedText = `${page.text || ""}\n${ocrText}`;
+          const combinedText = `${pageSelectableText || ""}\n${ocrText}`;
 
           pagesForAttachment.push({
             fileName,
@@ -933,6 +951,23 @@ async function extractAndProcessLotDocuments(
             "Failed to process rendered page image",
           );
         }
+      }
+    } else if (hasNativeText) {
+      // Fallback: If Puppeteer failed or was blocked, use the natively extracted text!
+      docBuffer = null as any;
+      log.info(
+        { fileName, pageCount: nativePages.length },
+        "Successfully extracted text natively (Puppeteer rendering skipped/failed)",
+      );
+
+      for (const nativePage of nativePages) {
+        pagesForAttachment.push({
+          fileName,
+          pageNumber: nativePage.pageNumber,
+          publicUrl: "", // No image preview available
+          combinedText: nativePage.text,
+          ocrText: "",
+        });
       }
     } else {
       // 2. Fallback: extract embedded JPEGs
