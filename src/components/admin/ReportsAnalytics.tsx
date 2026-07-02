@@ -1289,31 +1289,46 @@ export function ReportsAnalytics() {
                     />
                   </div>
 
-                  <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[190px] print:max-h-none custom-scrollbar">
+                  <div className="overflow-y-auto pr-1 flex-1 max-h-[190px] print:max-h-none custom-scrollbar">
                     {filteredDisplayTotals.length === 0 ? (
                       <p className="text-slate-500 text-sm text-center py-4">No categories found.</p>
                     ) : (
-                      filteredDisplayTotals.map((cat) => (
-                        <div key={cat.name} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <div 
-                              className="w-2.5 h-2.5 rounded-full shrink-0" 
-                              style={{ backgroundColor: getCategoryColor(cat.name) }}
-                            />
-                            <div className="flex flex-col min-w-0 flex-1">
-                              <span className="text-xs font-semibold text-slate-700 truncate max-w-[150px]" title={cat.name}>
-                                {cat.name}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-medium mt-0.5 truncate">
-                                Avg Pre-Bid: ₹{(categoryAverages[cat.name]?.avgPreBid || 0).toLocaleString()} | EMD: {(categoryAverages[cat.name]?.avgEmdPct || 0)}%
-                              </span>
-                            </div>
-                          </div>
-                          <span className="text-xs font-bold text-slate-900 bg-white px-2 py-0.5 rounded-md shadow-sm border border-slate-100 shrink-0 ml-2">
-                            {cat.count}
-                          </span>
-                        </div>
-                      ))
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                              <th className="pb-2 font-bold">Category</th>
+                              <th className="pb-2 font-bold text-right">Avg Pre-Bid</th>
+                              <th className="pb-2 font-bold text-right">Avg EMD</th>
+                              <th className="pb-2 font-bold text-right">Count</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50 text-xs font-semibold text-slate-650">
+                            {filteredDisplayTotals.map((cat) => (
+                              <tr key={cat.name} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="py-2 flex items-center gap-1.5 min-w-0">
+                                  <div 
+                                    className="w-2 h-2 rounded-full shrink-0" 
+                                    style={{ backgroundColor: getCategoryColor(cat.name) }}
+                                  />
+                                  <span className="truncate font-semibold text-slate-700 max-w-[100px] sm:max-w-[130px]" title={cat.name}>
+                                    {cat.name}
+                                  </span>
+                                </td>
+                                <td className="py-2 text-right font-mono text-[11px] text-slate-500">
+                                  ₹{(categoryAverages[cat.name]?.avgPreBid || 0).toLocaleString()}
+                                </td>
+                                <td className="py-2 text-right font-mono text-[11px] text-slate-500">
+                                  {(categoryAverages[cat.name]?.avgEmdPct || 0)}%
+                                </td>
+                                <td className="py-2 text-right font-bold text-slate-900">
+                                  {cat.count}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
                   </div>
                 </div>
