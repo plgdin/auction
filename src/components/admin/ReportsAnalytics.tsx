@@ -741,6 +741,7 @@ export function ReportsAnalytics() {
   };
 
   const handleExportCSV = () => {
+    const filterLabel = dateFilter === 'all' ? totalsTab : dateFilter;
     const lines: string[] = [];
 
     // ── Section 1: Platform Summary ──
