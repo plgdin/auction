@@ -562,6 +562,7 @@ export function ReportsAnalytics() {
   };
   
   const displayTotals = getDisplayTotals();
+  const totalItems = displayTotals.reduce((sum, c) => sum + c.count, 0);
 
   // Search filtered totals
   const filteredDisplayTotals = displayTotals.filter(cat =>
