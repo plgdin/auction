@@ -1572,7 +1572,7 @@ export const MstcSearchService = {
           .from('mstc_auctions')
           .select('*')
           .eq('asset_status', 'completed')
-          .order('created_at', { ascending: false })
+          .order('scraped_at', { ascending: false })
           .range(from, from + pageSize - 1);
 
         if (filters?.sellers && filters.sellers.length > 0) {
@@ -1998,7 +1998,7 @@ export const MstcSearchService = {
           .select('*', { count: 'exact' })
           .eq('asset_status', 'completed')
           .ilike('mstc_auction_number', searchPattern)
-          .order('created_at', { ascending: false })
+          .order('scraped_at', { ascending: false })
           .range((page - 1) * limit, page * limit - 1);
 
         if (!exactError && exactData && exactData.length > 0) {
@@ -2584,7 +2584,7 @@ export const MstcSearchService = {
           .from('mstc_auctions')
           .select('*')
           .eq('asset_status', 'completed') // Guarantees consultants only view rows with ready, uncorrupted local files
-          .order('created_at', { ascending: false })
+          .order('scraped_at', { ascending: false })
           .limit(limitCount);
 
       if (error) throw error;

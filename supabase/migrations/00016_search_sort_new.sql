@@ -53,7 +53,7 @@ BEGIN
     SELECT
       m.id, m.mstc_auction_number, m.seller_name, m.category_name, m.location, 
       m.opening_date, m.closing_date, m.sanitized_document_path, m.raw_materials_text, m.asset_status, m.is_reauction,
-      m.created_at, -- Required for proper descending sorting of newest items
+      m.scraped_at, -- Required for proper descending sorting of newest items
       -- Text Rank uses the indexed column now!
       CASE WHEN v_tsquery IS NOT NULL THEN
         ts_rank_cd(m.fts_doc, v_tsquery)
@@ -163,7 +163,7 @@ BEGIN
   FROM rrf_scored r
   ORDER BY
     (CASE WHEN p_search_query IS NOT NULL AND r.mstc_auction_number ILIKE '%' || p_search_query || '%' THEN 1000.0 ELSE r.rrf_score END) DESC,
-    r.created_at DESC -- Sort by newly scraped auctions first
+    r.scraped_at DESC -- Sort by newly scraped auctions first
   LIMIT p_limit
   OFFSET GREATEST(0, (p_page - 1) * p_limit);
 END;
