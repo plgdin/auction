@@ -70,7 +70,7 @@ export interface CommodityDef {
 export const COMMODITIES: CommodityDef[] = [
   {
     name: 'immovable_property',
-    keywords: ['flat', 'plot', 'land', 'building', 'office space', 'shop', 'showroom', 'immovable', 'residential', 'commercial space'],
+    keywords: ['flat', 'plot', 'land', 'building', 'office space', 'shop', 'showroom', 'immovable', 'residential', 'commercial space', 'vacant', 'registration', 'survey'],
     basePricePerUnit: 5000000,
     minPrice: 1000000,
     maxPrice: 200000000,
@@ -255,6 +255,33 @@ export const COMMODITIES: CommodityDef[] = [
     minPrice: 1000,
     maxPrice: 10000,
     queryKeyword: 'mixed scrap dust price India',
+    unit: 'Ton'
+  },
+  {
+    name: 'teak_timber',
+    keywords: ['teak', 'teakwood', 'teak logs'],
+    basePricePerUnit: 45000,
+    minPrice: 20000,
+    maxPrice: 90000,
+    queryKeyword: 'teak wood timber price India',
+    unit: 'Ton'
+  },
+  {
+    name: 'sal_timber',
+    keywords: ['sal', 'salwood', 'sal logs'],
+    basePricePerUnit: 35000,
+    minPrice: 15000,
+    maxPrice: 70000,
+    queryKeyword: 'sal wood timber price India',
+    unit: 'Ton'
+  },
+  {
+    name: 'general_timber',
+    keywords: ['timber', 'logs', 'wood logs', 'species', 'kfd', 'cfd'],
+    basePricePerUnit: 20000,
+    minPrice: 8000,
+    maxPrice: 40000,
+    queryKeyword: 'scrap timber logs price India',
     unit: 'Ton'
   }
 ];
