@@ -2147,7 +2147,7 @@ export const MstcSearchService = {
 
     } catch (error) {
       console.error('Hybrid search failed:', error);
-      return { data: [], count: 0, correctedQuery: undefined, hasDirectMatches: false };
+      throw error;
     }
   }, 'marketplaceSearch'),
 
