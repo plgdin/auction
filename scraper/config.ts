@@ -95,3 +95,12 @@ export const MIN_IMAGE_BYTE_SIZE = parseInt(
 
 export const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+
+// ─── Ollama Configuration ───────────────────────────────────────────────────
+
+export const OLLAMA_API_URL =
+  process.env.OLLAMA_API_URL || "http://localhost:11434/api/chat";
+
+export const OLLAMA_MODEL_NAME =
+  process.env.OLLAMA_MODEL_NAME || "qwen2.5vl:3b";
+

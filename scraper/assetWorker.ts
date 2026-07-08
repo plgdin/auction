@@ -43,6 +43,7 @@ import {
 import { parseMstcCatalogText, parseSubItemsFromText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
 import { performOcr, shouldPerformOcr } from "./utils/ocrUtils.js";
+import { extractTableWithOllama } from "./utils/ollamaUtils.js";
 import { isTermsOrInstructionPage } from "./parsers/documentClassifier.js";
 
 function parsePdfDateTimeToISO(dateTimeStr: string | undefined): string | null {
@@ -140,6 +141,7 @@ interface ExtractedPage {
   combinedText: string;
   ocrText: string;
   embedding?: number[];
+  subItems?: any[];
 }
 
 // ─── Shared Helpers (Deduplicated) ───────────────────────────────────────────
@@ -237,6 +239,7 @@ export async function processPageForLotEnrichment(
   lotEmbeddings?: Map<string, number[]>,
   lastMatched?: any[],
   pageVector?: number[] | null,
+  pageSubItems?: any[],
 ): Promise<{ matched: any[] }> {
   // Use pre-assigned lot mapping first, fall back to text-based matching
   let matched = attachmentToLots.get(fileName) || [];
@@ -306,9 +309,9 @@ export async function processPageForLotEnrichment(
       }
     } else {
       // Fallback: assign to all matched lots (no distinct markers found)
-      const subItems = isTermsOrInstructionPage(combinedText)
-        ? []
-        : parseSubItemsFromText(combinedText);
+      const subItems = pageSubItems && pageSubItems.length > 0
+        ? pageSubItems
+        : (isTermsOrInstructionPage(combinedText) ? [] : parseSubItemsFromText(combinedText));
       const extracted = extractQuantitiesDetailed(combinedText);
 
       for (const lot of matched) {
@@ -324,9 +327,9 @@ export async function processPageForLotEnrichment(
     }
   } else if (matched.length === 1) {
     const lot = matched[0];
-    const subItems = isTermsOrInstructionPage(combinedText)
-      ? []
-      : parseSubItemsFromText(combinedText);
+    const subItems = pageSubItems && pageSubItems.length > 0
+      ? pageSubItems
+      : (isTermsOrInstructionPage(combinedText) ? [] : parseSubItemsFromText(combinedText));
     const extracted = extractQuantitiesDetailed(combinedText);
 
     const srStr = String(lot.sr);
@@ -927,10 +930,15 @@ async function extractAndProcessLotDocuments(
           const nativePage = nativePages.find(np => np.pageNumber === page.pageNumber);
           const pageSelectableText = nativePage ? nativePage.text : page.text;
 
-          // Smart OCR: only run OCR when selectable text is insufficient
+          // Smart OCR & Vision extraction
           let ocrText = "";
+          let subItems: any[] = [];
           if (shouldPerformOcr(pageSelectableText)) {
             ocrText = await performOcr(page.imageBuffer);
+            log.info({ pageNumber: page.pageNumber }, "Querying local Ollama vision model for sub-items...");
+            subItems = await extractTableWithOllama(page.imageBuffer.toString("base64"));
+          } else {
+            subItems = parseSubItemsFromText(pageSelectableText);
           }
           const combinedText = `${pageSelectableText || ""}\n${ocrText}`;
 
@@ -940,6 +948,7 @@ async function extractAndProcessLotDocuments(
             publicUrl,
             combinedText,
             ocrText,
+            subItems,
           });
 
           // Memory management: null out buffer and text after processing
@@ -990,9 +999,11 @@ async function extractAndProcessLotDocuments(
               "image/jpeg",
             );
 
-            // Always run OCR on embedded image fallbacks (no selectable text exists)
+            // Always run OCR on embedded image fallbacks (no selectable text exists) and query local Ollama vision model
             const ocrText = await performOcr(imgBuffer);
             const combinedText = ocrText;
+            log.info({ filename: fileName, imageIndex: j }, "Querying local Ollama vision model for embedded image sub-items...");
+            const subItems = await extractTableWithOllama(imgBuffer.toString("base64"));
 
             pagesForAttachment.push({
               fileName,
@@ -1000,6 +1011,7 @@ async function extractAndProcessLotDocuments(
               publicUrl,
               combinedText,
               ocrText,
+              subItems,
             });
           } catch (uploadErr: any) {
             log.warn(
@@ -1074,6 +1086,7 @@ async function extractAndProcessLotDocuments(
         lotEmbeddings,
         lastMatched,
         page.embedding || null,
+        page.subItems,
       );
       pageMatches.push(matched);
 
