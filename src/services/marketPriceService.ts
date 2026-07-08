@@ -1,4 +1,14 @@
 import { supabase } from '../lib/supabase';
+import { PageCache } from '../utils/pageCache';
+
+export interface MetalMandiRate {
+  id: string;
+  metal_type: string;
+  grade_name: string;
+  price_per_kg: number;
+  price_change_percent: number;
+  updated_at: string;
+}
 
 export interface CommodityConfig {
   id: string;
@@ -7,6 +17,7 @@ export interface CommodityConfig {
   unit: string;
   defaultPrice: number;
   defaultMultiplier: number; // For closing bid prediction (e.g. 0.75)
+  keywords?: string[];
 }
 
 export interface CommodityState {
@@ -30,46 +41,49 @@ export type FullCommodityConfig = CommodityConfig & { currentPrice: number; curr
 
 export const COMMODITY_DEFS: CommodityConfig[] = [
   // Metals
-  { id: 'steel_iron_ferrous', name: 'Steel / Iron Scrap', category: 'Metals', unit: 'kg', defaultPrice: 38.5, defaultMultiplier: 0.82 },
-  { id: 'copper', name: 'Copper Cathodes / Wire Scrap', category: 'Metals', unit: 'kg', defaultPrice: 780, defaultMultiplier: 0.82 },
-  { id: 'brass', name: 'Brass Scrap', category: 'Metals', unit: 'kg', defaultPrice: 480, defaultMultiplier: 0.82 },
-  { id: 'aluminium', name: 'Aluminium Scrap / Ingots', category: 'Metals', unit: 'kg', defaultPrice: 235, defaultMultiplier: 0.82 },
-  { id: 'lead', name: 'Lead Scrap', category: 'Metals', unit: 'kg', defaultPrice: 185, defaultMultiplier: 0.82 },
-  { id: 'zinc', name: 'Zinc Scrap', category: 'Metals', unit: 'kg', defaultPrice: 220, defaultMultiplier: 0.82 },
-  { id: 'cable_wire', name: 'Cable / Wire Scrap', category: 'Metals', unit: 'kg', defaultPrice: 340, defaultMultiplier: 0.82 },
-  { id: 'battery', name: 'Lead Acid Battery Scrap', category: 'Metals', unit: 'kg', defaultPrice: 120, defaultMultiplier: 0.82 },
-  { id: 'gold', name: 'Gold (99.9% Purity)', category: 'Metals', unit: 'gram', defaultPrice: 7450, defaultMultiplier: 0.90 },
-  { id: 'silver', name: 'Silver (99.9% Purity)', category: 'Metals', unit: 'kg', defaultPrice: 91000, defaultMultiplier: 0.90 },
-  { id: 'industrial_scrap_index', name: 'Industrial Scrap Metal Index', category: 'Metals', unit: 'Ton', defaultPrice: 32000, defaultMultiplier: 0.82 },
+  { id: 'steel_iron_ferrous', name: 'Steel / Iron Scrap', category: 'Metals', unit: 'kg', defaultPrice: 38.5, defaultMultiplier: 0.82, keywords: ['steel', 'iron', 'ferrous', 'pipe', 'angle', 'channel', 'structure', 'railway', 'ms scrap'] },
+  { id: 'copper', name: 'Copper Cathodes / Wire Scrap', category: 'Metals', unit: 'kg', defaultPrice: 780, defaultMultiplier: 0.82, keywords: ['copper', 'cu'] },
+  { id: 'brass', name: 'Brass Scrap', category: 'Metals', unit: 'kg', defaultPrice: 480, defaultMultiplier: 0.82, keywords: ['brass'] },
+  { id: 'aluminium', name: 'Aluminium Scrap / Ingots', category: 'Metals', unit: 'kg', defaultPrice: 235, defaultMultiplier: 0.82, keywords: ['aluminium', 'aluminum', 'al', 'alu', 'allu'] },
+  { id: 'lead', name: 'Lead Scrap', category: 'Metals', unit: 'kg', defaultPrice: 185, defaultMultiplier: 0.82, keywords: ['lead'] },
+  { id: 'zinc', name: 'Zinc Scrap', category: 'Metals', unit: 'kg', defaultPrice: 220, defaultMultiplier: 0.82, keywords: ['zinc'] },
+  { id: 'cable_wire', name: 'Cable / Wire Scrap', category: 'Metals', unit: 'kg', defaultPrice: 340, defaultMultiplier: 0.82, keywords: ['cable', 'wire'] },
+  { id: 'battery', name: 'Lead Acid Battery Scrap', category: 'Metals', unit: 'kg', defaultPrice: 120, defaultMultiplier: 0.82, keywords: ['battery', 'batteries', 'vrla', 'lead acid'] },
+  { id: 'gold', name: 'Gold (99.9% Purity)', category: 'Metals', unit: 'gram', defaultPrice: 7450, defaultMultiplier: 0.90, keywords: ['gold'] },
+  { id: 'silver', name: 'Silver (99.9% Purity)', category: 'Metals', unit: 'kg', defaultPrice: 91000, defaultMultiplier: 0.90, keywords: ['silver'] },
+  { id: 'industrial_scrap_index', name: 'Industrial Scrap Metal Index', category: 'Metals', unit: 'Ton', defaultPrice: 32000, defaultMultiplier: 0.82, keywords: ['industrial scrap metal index', 'industrial scrap index'] },
 
   // Agriculture
-  { id: 'wheat', name: 'Wheat (Durum Grade A)', category: 'Agriculture', unit: 'Quintal', defaultPrice: 2450, defaultMultiplier: 0.75 },
-  { id: 'rice', name: 'Basmati Paddy / Rice', category: 'Agriculture', unit: 'Quintal', defaultPrice: 2200, defaultMultiplier: 0.75 },
-  { id: 'maize_corn', name: 'Yellow Maize / Feed Corn', category: 'Agriculture', unit: 'Ton', defaultPrice: 21000, defaultMultiplier: 0.75 },
+  { id: 'wheat', name: 'Wheat (Durum Grade A)', category: 'Agriculture', unit: 'Quintal', defaultPrice: 2450, defaultMultiplier: 0.75, keywords: ['wheat'] },
+  { id: 'rice', name: 'Basmati Paddy / Rice', category: 'Agriculture', unit: 'Quintal', defaultPrice: 2200, defaultMultiplier: 0.75, keywords: ['rice', 'paddy'] },
+  { id: 'maize_corn', name: 'Yellow Maize / Feed Corn', category: 'Agriculture', unit: 'Ton', defaultPrice: 21000, defaultMultiplier: 0.75, keywords: ['yellow maize', 'feed corn', 'maize', 'corn'] },
 
   // Energy
-  { id: 'coal', name: 'Steam Coal (5500 GAR)', category: 'Energy', unit: 'Ton', defaultPrice: 8400, defaultMultiplier: 0.75 },
-  { id: 'crude_oil', name: 'Crude Oil (WTI Index)', category: 'Energy', unit: 'Barrel', defaultPrice: 6800, defaultMultiplier: 0.75 },
-  { id: 'natural_gas', name: 'Natural Gas (Henry Hub)', category: 'Energy', unit: 'MMBtu', defaultPrice: 210, defaultMultiplier: 0.75 },
-  { id: 'lubricant_oil', name: 'Waste Engine Oil', category: 'Energy', unit: 'Liter', defaultPrice: 85, defaultMultiplier: 0.75 },
+  { id: 'coal', name: 'Steam Coal (5500 GAR)', category: 'Energy', unit: 'Ton', defaultPrice: 8400, defaultMultiplier: 0.75, keywords: ['coal', 'lignite'] },
+  { id: 'crude_oil', name: 'Crude Oil (WTI Index)', category: 'Energy', unit: 'Barrel', defaultPrice: 6800, defaultMultiplier: 0.75, keywords: ['crude oil', 'crude'] },
+  { id: 'natural_gas', name: 'Natural Gas (Henry Hub)', category: 'Energy', unit: 'MMBtu', defaultPrice: 210, defaultMultiplier: 0.75, keywords: ['natural gas', 'gas'] },
+  { id: 'lubricant_oil', name: 'Waste Engine Oil', category: 'Energy', unit: 'Liter', defaultPrice: 85, defaultMultiplier: 0.75, keywords: ['oil', 'lubricant', 'lubricating', 'waste oil', 'petroleum'] },
 
   // Vehicles & Heavy Machinery
-  { id: 'vehicle', name: 'Commercial Vehicle / Car Resale', category: 'Vehicles', unit: 'Unit', defaultPrice: 150000, defaultMultiplier: 0.70 },
-  { id: 'heavy_vehicle_machinery', name: 'Heavy Vehicle / Industrial Machinery', category: 'Vehicles', unit: 'Unit', defaultPrice: 350000, defaultMultiplier: 0.70 },
-  { id: 'motorcycle', name: 'Two-Wheeler / Motorcycle', category: 'Vehicles', unit: 'Unit', defaultPrice: 45000, defaultMultiplier: 0.70 },
-  { id: 'transformer', name: 'Electrical Transformer', category: 'Energy', unit: 'Unit', defaultPrice: 90000, defaultMultiplier: 0.75 },
+  { id: 'vehicle', name: 'Commercial Vehicle / Car Resale', category: 'Vehicles', unit: 'Unit', defaultPrice: 150000, defaultMultiplier: 0.70, keywords: ['car', 'jeep', 'armada', 'vehicle', 'ambulance', 'sumo', 'four-wheeler', 'four wheeler'] },
+  { id: 'heavy_vehicle_machinery', name: 'Heavy Vehicle / Industrial Machinery', category: 'Vehicles', unit: 'Unit', defaultPrice: 350000, defaultMultiplier: 0.70, keywords: ['bus', 'buses', 'truck', 'rig', 'compressor', 'machinery', 'lorry', 'coach', 'forklift', 'dumper', 'tractor', 'loader', 'excavator'] },
+  { id: 'motorcycle', name: 'Two-Wheeler / Motorcycle', category: 'Vehicles', unit: 'Unit', defaultPrice: 45000, defaultMultiplier: 0.70, keywords: ['motorcycle', 'scooter', 'wheeler', 'bike', 'two-wheeler', 'two wheeler'] },
+  { id: 'transformer', name: 'Electrical Transformer', category: 'Energy', unit: 'Unit', defaultPrice: 90000, defaultMultiplier: 0.75, keywords: ['transformer'] },
 
   // Electronics / IT
-  { id: 'e_waste', name: 'Refurbished IT Hardware / E-Waste', category: 'Electronics', unit: 'Unit', defaultPrice: 14500, defaultMultiplier: 0.65 },
+  { id: 'e_waste', name: 'Refurbished IT Hardware / E-Waste', category: 'Electronics', unit: 'Unit', defaultPrice: 14500, defaultMultiplier: 0.65, keywords: ['e-waste', 'telecom', 'computer', 'laptop', 'switch', 'motherboard', 'electronic', 'smps', 'panel', 'it equipment'] },
 
   // Property
-  { id: 'immovable_property', name: 'Immovable Property (Land/Building)', category: 'Property', unit: 'Unit', defaultPrice: 5000000, defaultMultiplier: 0.75 },
+  { id: 'immovable_property', name: 'Immovable Property (Land/Building)', category: 'Property', unit: 'Unit', defaultPrice: 5000000, defaultMultiplier: 0.75, keywords: ['flat', 'plot', 'land', 'building', 'office space', 'shop', 'showroom', 'immovable', 'residential', 'commercial space', 'vacant', 'registration', 'survey'] },
 
-  // Others
-  { id: 'paper_wood', name: 'Paper / Wood / Cardboard Scrap', category: 'Others', unit: 'Ton', defaultPrice: 15000, defaultMultiplier: 0.70 },
-  { id: 'misc_scrap', name: 'Mixed Sweeping / Dust / Sludge', category: 'Others', unit: 'Ton', defaultPrice: 3500, defaultMultiplier: 0.50 },
-  { id: 'sand', name: 'River Sand / Stone Mines', category: 'Others', unit: 'Ton', defaultPrice: 4500, defaultMultiplier: 0.75 },
-  { id: 'default', name: 'Estimated Market Valuation', category: 'Others', unit: 'Unit', defaultPrice: 2500, defaultMultiplier: 0.75 }
+  // Others & Timber/Wood Category
+  { id: 'teak_timber', name: 'Teak Wood / Timber', category: 'Others', unit: 'Ton', defaultPrice: 45000, defaultMultiplier: 0.75, keywords: ['teak', 'teakwood', 'teak logs'] },
+  { id: 'sal_timber', name: 'Sal Wood / Timber', category: 'Others', unit: 'Ton', defaultPrice: 35000, defaultMultiplier: 0.75, keywords: ['sal', 'salwood', 'sal logs'] },
+  { id: 'general_timber', name: 'General Timber / Logs', category: 'Others', unit: 'Ton', defaultPrice: 20000, defaultMultiplier: 0.70, keywords: ['timber', 'logs', 'wood logs', 'species', 'kfd', 'cfd'] },
+  { id: 'paper_wood', name: 'Paper / Wood / Cardboard Scrap', category: 'Others', unit: 'Ton', defaultPrice: 15000, defaultMultiplier: 0.70, keywords: ['paper', 'record', 'records', 'wood', 'wooden', 'cardboard', 'timber', 'plywood'] },
+  { id: 'misc_scrap', name: 'Mixed Sweeping / Dust / Sludge', category: 'Others', unit: 'Ton', defaultPrice: 3500, defaultMultiplier: 0.50, keywords: ['sweep', 'sweeping', 'dust', 'ash', 'sludge', 'garbage', 'misc'] },
+  { id: 'sand', name: 'River Sand / Stone Mines', category: 'Others', unit: 'Ton', defaultPrice: 4500, defaultMultiplier: 0.75, keywords: ['sand', 'mine', 'stone', 'block'] },
+  { id: 'default', name: 'Estimated Market Valuation', category: 'Others', unit: 'Unit', defaultPrice: 2500, defaultMultiplier: 0.75, keywords: ['estimated market valuation', 'default'] }
 ];
 
 // Helper to pre-populate mock historical data
@@ -222,6 +236,21 @@ export const marketPriceService = {
       return this._getLocalPriceHistoryLogs();
     }
   },
+
+  // Fetch MetalMandi rates from Supabase (cached for 10 minutes)
+  fetchMetalMandiRates: PageCache.memoize(async function fetchMetalMandiRates(): Promise<MetalMandiRate[]> {
+    try {
+      const { data, error } = await supabase
+        .from('metalmandi_live_rates')
+        .select('*');
+        
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Failed to fetch MetalMandi rates from Supabase:', err);
+      return [];
+    }
+  }, 'metalmandi_rates', { ttlMs: 600000 }),
 
   // Update price in Supabase
   async updateCommodityPrice(id: string, price: number, multiplier: number, updatedBy: string = 'Admin'): Promise<void> {

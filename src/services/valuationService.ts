@@ -70,7 +70,7 @@ export interface CommodityDef {
 export const COMMODITIES: CommodityDef[] = [
   {
     name: 'immovable_property',
-    keywords: ['flat', 'plot', 'land', 'building', 'office space', 'shop', 'showroom', 'immovable', 'residential', 'commercial space'],
+    keywords: ['flat', 'plot', 'land', 'building', 'office space', 'shop', 'showroom', 'immovable', 'residential', 'commercial space', 'vacant', 'registration', 'survey'],
     basePricePerUnit: 5000000,
     minPrice: 1000000,
     maxPrice: 200000000,
@@ -256,6 +256,33 @@ export const COMMODITIES: CommodityDef[] = [
     maxPrice: 10000,
     queryKeyword: 'mixed scrap dust price India',
     unit: 'Ton'
+  },
+  {
+    name: 'teak_timber',
+    keywords: ['teak', 'teakwood', 'teak logs'],
+    basePricePerUnit: 45000,
+    minPrice: 20000,
+    maxPrice: 90000,
+    queryKeyword: 'teak wood timber price India',
+    unit: 'Ton'
+  },
+  {
+    name: 'sal_timber',
+    keywords: ['sal', 'salwood', 'sal logs'],
+    basePricePerUnit: 35000,
+    minPrice: 15000,
+    maxPrice: 70000,
+    queryKeyword: 'sal wood timber price India',
+    unit: 'Ton'
+  },
+  {
+    name: 'general_timber',
+    keywords: ['timber', 'logs', 'wood logs', 'species', 'kfd', 'cfd'],
+    basePricePerUnit: 20000,
+    minPrice: 8000,
+    maxPrice: 40000,
+    queryKeyword: 'scrap timber logs price India',
+    unit: 'Ton'
   }
 ];
 
@@ -349,7 +376,43 @@ const extractPricesFromText = (text: string): number[] => {
   return foundPrices;
 };
 
+function getLiveRateMatch(description: string, liveRates: any[]): any | null {
+  const desc = (description || '').toLowerCase();
+  
+  const mappings = [
+    { grade: 'MS Scrap(Old)', keywords: ['ms scrap', 'iron scrap old', 'heavy melting scrap', 'hms'] },
+    { grade: 'Wire Scrap', keywords: ['wire scrap', 'copper wire', 'copper scrap'] },
+    { grade: 'Brass Scrap', keywords: ['brass scrap', 'brass waste'] },
+    { grade: 'Aluminium Scrap', keywords: ['aluminium scrap', 'aluminum scrap', 'aluminium waste'] },
+    { grade: 'Lead Scrap', keywords: ['lead scrap', 'lead waste'] }
+  ];
+  
+  for (const map of mappings) {
+    if (map.keywords.some(kw => desc.includes(kw))) {
+      const found = liveRates.find(r => r.grade_name === map.grade);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 export const valuationService = {
+  async getLiveScrapValue(metalType: string, grade: string, weightInKg: number): Promise<number> {
+    const liveRates = await marketPriceService.fetchMetalMandiRates();
+    const match = liveRates.find(
+      r => r.metal_type === metalType.toLowerCase() && 
+      r.grade_name.toLowerCase().includes(grade.toLowerCase())
+    );
+    
+    if (match && match.price_per_kg > 0) {
+      return match.price_per_kg * weightInKg;
+    }
+    
+    console.warn(`Live rate missing for ${metalType} (${grade}), utilizing baseline valuation models.`);
+    const comm = matchCommodity(metalType);
+    const basePrice = marketPriceService.getCommodityPrice(comm.name) || comm.basePricePerKg || 38.5;
+    return basePrice * weightInKg;
+  },
   // Query international pricing from SerpAPI (if available) or generate mock prices
   async fetchInternationalPrices(itemName: string): Promise<{
     in: { price: number; convertedPrice: number; sources: number; isMock: boolean };
@@ -454,6 +517,9 @@ export const valuationService = {
     // Ensure we have the latest global market indices from Supabase before matching
     await marketPriceService.fetchCommodityPrices();
 
+    // Pre-fetch live MetalMandi rates for real-time spot lookup
+    const liveRates = await marketPriceService.fetchMetalMandiRates();
+
     const valuedItems: ValuedItem[] = [];
     let totalLotValue = 0;
     let totalConfidenceSum = 0;
@@ -518,7 +584,15 @@ export const valuationService = {
       
       const isMismatch = (isDiscrete && targetUnit === 'Tons') || (isWeight && targetUnit === 'Units');
 
-      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isUnknownCommodity || isPricingDisabled || isMismatch;
+      // Purge failed, unratified, withdrawn lots, or listings with zero bids to filter outliers
+      const isFailedOrWithdrawn = descLower.includes('withdrawn') || 
+                                  descLower.includes('cancelled') || 
+                                  descLower.includes('unratified') || 
+                                  descLower.includes('no bids') || 
+                                  descLower.includes('zero bids') || 
+                                  descLower.includes('failed auction');
+
+      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isUnknownCommodity || isPricingDisabled || isMismatch || isFailedOrWithdrawn;
 
       if (isNotAvailable) {
         valuedItems.push({
@@ -543,7 +617,13 @@ export const valuationService = {
       let avgPrice = 0;
       let pricingConfidence = 50;
 
-      if (modelId) {
+      // Attempt real-time spot rate lookup first
+      const liveRateMatch = getLiveRateMatch(rawItem.description, liveRates);
+
+      if (liveRateMatch && liveRateMatch.price_per_kg > 0) {
+        avgPrice = liveRateMatch.price_per_kg;
+        pricingConfidence = 98; // Highest confidence from real-time spot market feed
+      } else if (modelId) {
         const grade = detectGrade(rawItem.description, modelId);
         const predictedVal = predictPrice(modelId, grade, 'Mumbai', DEFAULT_MACRO_INPUTS, rawItem.description);
         
