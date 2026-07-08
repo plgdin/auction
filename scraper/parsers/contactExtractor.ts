@@ -142,6 +142,44 @@ export function extractKeyContacts(lines: string[], text: string): KeyContact[] 
   const keyContacts: KeyContact[] = [];
   const processedNames = new Set<string>();
 
+  // ── 0. Extract Seller Details block (standard in MSTC catalogs) ───────────
+  const sellerDetailsStart = lines.findIndex(l => l.toLowerCase().includes("seller details"));
+  if (sellerDetailsStart !== -1) {
+    let sellerEmail = "";
+    let contactPerson = "";
+    let sellerPhone = "";
+    
+    for (let i = sellerDetailsStart + 1; i < Math.min(sellerDetailsStart + 10, lines.length); i++) {
+      const line = lines[i];
+      const lowerLine = line.toLowerCase();
+      
+      if (lowerLine.includes("seller account details") || lowerLine.includes("lot details")) {
+        break;
+      }
+      
+      if (lowerLine.includes("seller email address")) {
+        sellerEmail = line.replace(/Seller Email Address\s*:?\s*/i, "").trim();
+      } else if (lowerLine.includes("contact person")) {
+        contactPerson = line.replace(/Contact Person\s*:?\s*/i, "").trim();
+      } else if (lowerLine.includes("telephone number") || lowerLine.includes("phone number") || lowerLine.includes("mobile number")) {
+        sellerPhone = line.replace(/(?:telephone|phone|mobile)\s*number\s*:?\s*/i, "").trim();
+      }
+    }
+    
+    if (contactPerson || sellerPhone || sellerEmail) {
+      keyContacts.push({
+        role: "Seller Contact / Site In-Charge",
+        name: contactPerson || "Chief Transport Officer",
+        email: sellerEmail || DEFAULT_CONTACT_EMAIL,
+        phone: sellerPhone || "no contact info available"
+      });
+      
+      if (contactPerson) {
+        processedNames.add(contactPerson.toLowerCase());
+      }
+    }
+  }
+
   // ── 1. Extract Site Contacts ("Contact Person") ───────────────────────────
   for (let idx = 0; idx < lines.length; idx++) {
     const line = lines[idx];
