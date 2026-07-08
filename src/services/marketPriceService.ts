@@ -1,4 +1,14 @@
 import { supabase } from '../lib/supabase';
+import { PageCache } from '../utils/pageCache';
+
+export interface MetalMandiRate {
+  id: string;
+  metal_type: string;
+  grade_name: string;
+  price_per_kg: number;
+  price_change_percent: number;
+  updated_at: string;
+}
 
 export interface CommodityConfig {
   id: string;
@@ -226,6 +236,21 @@ export const marketPriceService = {
       return this._getLocalPriceHistoryLogs();
     }
   },
+
+  // Fetch MetalMandi rates from Supabase (cached for 10 minutes)
+  fetchMetalMandiRates: PageCache.memoize(async function fetchMetalMandiRates(): Promise<MetalMandiRate[]> {
+    try {
+      const { data, error } = await supabase
+        .from('metalmandi_live_rates')
+        .select('*');
+        
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Failed to fetch MetalMandi rates from Supabase:', err);
+      return [];
+    }
+  }, 'metalmandi_rates', { ttlMs: 600000 }),
 
   // Update price in Supabase
   async updateCommodityPrice(id: string, price: number, multiplier: number, updatedBy: string = 'Admin'): Promise<void> {

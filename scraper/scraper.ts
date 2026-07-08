@@ -141,6 +141,25 @@ async function executeDiscoveryScraper() {
   const page = await browser.newPage();
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
 
+  // --- MetalMandi Live Rates Scraping Integration ---
+  console.log('[MetalMandi] Launching real-time spot rates scraper tab...');
+  try {
+    const mandiPage = await browser.newPage();
+    await mandiPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+    await mandiPage.goto('https://metalmandi.com/', {
+      waitUntil: 'networkidle2',
+      timeout: 20000
+    });
+    
+    const mandiHtml = await mandiPage.content();
+    const { parseMetalMandiRates } = await import('./parsers/metalMandiParser.js');
+    await parseMetalMandiRates(mandiHtml);
+    await mandiPage.close();
+    console.log('[MetalMandi] Successfully completed real-time rate ingestion.');
+  } catch (e: any) {
+    console.warn('[MetalMandi] Rate scraper failed to scrape portal:', e.message);
+  }
+
   try {
     await page.goto('https://www.mstcecommerce.com/auctionhome/aucsearch/search.jsp', {
       waitUntil: 'networkidle2',
