@@ -1,5 +1,6 @@
 import metadata from '../lib/ml/scrap_model_metadata.json';
 import { marketPriceService } from './marketPriceService';
+import { getLogisticsDiscount } from '../utils/metalValuationModels';
 
 export interface PredictorInputs {
   Grade: string;
@@ -10,6 +11,12 @@ export interface PredictorInputs {
   Domestic_Coal_INR: number;
   Monsoon_Season: number;
   Construction_Index: number;
+  // Lagged price features (optional moving averages)
+  price_lag_3?: number;
+  price_lag_7?: number;
+  price_lag_30?: number;
+  Location?: string;
+  useDynamicWeighting?: boolean;
 }
 
 export const ML_DEFAULT_INPUTS: PredictorInputs = {
@@ -74,6 +81,46 @@ export const mlPredictionService = {
     price += constructionImpact;
     breakdown['Construction Index'] = constructionImpact;
 
+    // --- LAGGED FEATURES BLENDING (Option 1) ---
+    if (inputs.price_lag_3 !== undefined || inputs.price_lag_7 !== undefined || inputs.price_lag_30 !== undefined) {
+      const lag3 = inputs.price_lag_3 ?? price;
+      const lag7 = inputs.price_lag_7 ?? price;
+      const lag30 = inputs.price_lag_30 ?? price;
+
+      const beforeLag = price;
+      // Auto-regressive blending weights: 60% ML linear prediction, 40% moving lags
+      price = 0.60 * price + 0.20 * lag3 + 0.12 * lag7 + 0.08 * lag30;
+      breakdown['Lagged Auto-Correlation (3D/7D/30D)'] = price - beforeLag;
+    }
+
+    // --- GEOGRAPHIC LOGISTICS ADJUSTMENT (Option 1) ---
+    if (inputs.Location) {
+      const beforeLogistics = price;
+      const discount = getLogisticsDiscount(inputs.Location);
+      price = price * discount;
+      if (discount < 1.0) {
+        breakdown[`Logistics Cost Adjustment (${inputs.Location})`] = price - beforeLogistics;
+      }
+    }
+
+    // --- DYNAMIC SUCCESS WEIGHTING (Option 1) ---
+    if (inputs.useDynamicWeighting) {
+      const beforeWeighting = price;
+      const defaultMult = 0.82; // standard for scrap steel
+      
+      const logs = marketPriceService.getPriceHistoryLogs();
+      const steelLogs = logs.filter(l => l.commodityId === 'steel_iron_ferrous');
+      const avgMult = steelLogs.length > 0 
+        ? steelLogs.slice(0, 10).reduce((sum, l) => sum + l.multiplier, 0) / Math.min(10, steelLogs.length) 
+        : defaultMult;
+
+      const weightRatio = avgMult / defaultMult;
+      price = price * weightRatio;
+      if (weightRatio !== 1.0) {
+        breakdown['Dynamic Success Weighting (Historical MSTC Bid Success Rate)'] = price - beforeWeighting;
+      }
+    }
+
     return { 
       price: Math.max(0, price), 
       breakdown 
@@ -95,7 +142,6 @@ export const mlPredictionService = {
     const prices = await marketPriceService.fetchCommodityPrices();
     
     // Map Grade to a commodity ID in our DB
-    // e.g., if it's steel/iron
     const dbCommodity = prices.find(p => p.id === 'steel_iron_ferrous' || p.name.includes(inputs.Grade) || p.keywords?.includes(inputs.Grade.toLowerCase()));
     
     const dbPrice = dbCommodity ? dbCommodity.currentPrice * 1000 : null; // DB price is usually per kg, ML is per Ton!

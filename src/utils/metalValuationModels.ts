@@ -202,7 +202,9 @@ export function predictPrice(
   grade: string,
   region: string,
   macro: MacroInputs,
-  title?: string
+  title?: string,
+  location?: string,
+  historicalMultiplier?: number
 ): number {
   const model = METALLIC_MODELS[modelId] || METALLIC_MODELS.scrap_steel;
   
@@ -218,7 +220,6 @@ export function predictPrice(
   }
 
   // Region adjustment (if not reference region - index 2 'Chennai' for scrap/others)
-  // Let's check model coefficients directly
   const regionKey = `Region_${region}`;
   if (model.coefficients[regionKey] !== undefined) {
     price += model.coefficients[regionKey];
@@ -231,6 +232,17 @@ export function predictPrice(
   price += (model.coefficients['Domestic_Coal_INR'] || 0) * macro.Domestic_Coal_INR;
   price += (model.coefficients['Monsoon_Season'] || 0) * macro.Monsoon_Season;
   price += (model.coefficients['Construction_Index'] || 0) * macro.Construction_Index;
+
+  // Apply location-based logistics discount
+  if (location) {
+    price = price * getLogisticsDiscount(location);
+  }
+
+  // Apply dynamic multiplier adjustment based on actual historical MSTC success rates
+  if (historicalMultiplier !== undefined && historicalMultiplier > 0) {
+    const baseMult = modelId === 'scrap_steel' ? 0.82 : 0.75;
+    price = price * (historicalMultiplier / baseMult);
+  }
 
   // Apply negative remarks price adjustments if title/description is passed
   if (title) {
@@ -261,6 +273,39 @@ export function predictPrice(
 
   // Ensure predicted price is positive
   return Math.max(0, price);
+}
+
+export function getLogisticsDiscount(location: string): number {
+  const loc = (location || '').toLowerCase();
+  
+  if (
+    loc.includes('mumbai') || loc.includes('navi mumbai') || 
+    loc.includes('delhi') || loc.includes('ncr') || 
+    loc.includes('chennai') || loc.includes('kolkata') || loc.includes('calcutta')
+  ) {
+    return 1.0;
+  }
+  
+  if (
+    loc.includes('assam') || loc.includes('tripura') || loc.includes('manipur') || 
+    loc.includes('nagaland') || loc.includes('mizoram') || loc.includes('arunachal') || 
+    loc.includes('meghalaya') || loc.includes('sikkim') || loc.includes('kashmir') || 
+    loc.includes('ladakh') || loc.includes('andaman') || loc.includes('nicobar') ||
+    loc.includes('goa') || loc.includes('kerala')
+  ) {
+    return 0.92; // 8% freight penalty for extremely remote/distant regions
+  }
+  
+  if (
+    loc.includes('pune') || loc.includes('thane') || loc.includes('gurgaon') || 
+    loc.includes('noida') || loc.includes('ghaziabad') || loc.includes('bangalore') || 
+    loc.includes('bengaluru') || loc.includes('hyderabad') || loc.includes('secunderabad') || 
+    loc.includes('ahmedabad') || loc.includes('surat') || loc.includes('baroda') || loc.includes('vadodara')
+  ) {
+    return 0.98; // 2% logistics adjustment for regional Tier 1 hubs
+  }
+  
+  return 0.96; // 4% standard logistics discount for other locations
 }
 
 /**
