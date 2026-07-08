@@ -26,6 +26,60 @@ interface ParsedAuction {
   items: ParsedItem[];
 }
 
+function normalizeItemQuantity(item: ParsedItem): ParsedItem {
+  const desc = item.description || '';
+  const currentUnit = (item.unit || '').toLowerCase().trim();
+  
+  // Try to extract from description if the unit is generic or lot-based
+  const isGenericUnit = !currentUnit || 
+                        currentUnit === 'lot' || 
+                        currentUnit === 'lots' || 
+                        currentUnit === 'unit' || 
+                        currentUnit === 'units' || 
+                        currentUnit === 'nos' || 
+                        currentUnit === 'no.' || 
+                        currentUnit === 'no';
+                        
+  if (!isGenericUnit) {
+    return item;
+  }
+  
+  // Regex to extract quantity and pure unit metrics from description (e.g. approx 5 MT steel, 350 Kgs, etc.)
+  const regex = /\b(?:approx\.?|approx|around|containing|quantity|qty|weight|totaling|total|of|about)\s*[:.-]?\s*([\d\.,]+)\s*(metric\s*tons?|metric\s*tonnes?|m\.?t\.?|tons?|tonnes?|kgs?|kilograms?|quintals?|barrels?|liters?|litres?|nos|pcs|pieces|units?)\b/i;
+  
+  const match = desc.match(regex);
+  if (match) {
+    const rawQty = match[1].replace(/,/g, '').trim();
+    const qtyVal = parseFloat(rawQty);
+    if (!isNaN(qtyVal) && qtyVal > 0) {
+      const rawUnit = match[2].toLowerCase().trim();
+      let normalizedUnit = item.unit;
+      
+      if (rawUnit.includes('metric ton') || rawUnit.includes('m.t') || rawUnit.includes('ton') || rawUnit.includes('tonne') || rawUnit === 'mt') {
+        normalizedUnit = 'Ton';
+      } else if (rawUnit.includes('kg') || rawUnit.includes('kilogram')) {
+        normalizedUnit = 'kg';
+      } else if (rawUnit.includes('quintal')) {
+        normalizedUnit = 'Quintal';
+      } else if (rawUnit.includes('barrel')) {
+        normalizedUnit = 'Barrel';
+      } else if (rawUnit.includes('liter') || rawUnit.includes('litre')) {
+        normalizedUnit = 'Liter';
+      } else if (rawUnit === 'nos' || rawUnit === 'pcs' || rawUnit === 'pieces' || rawUnit.includes('unit')) {
+        normalizedUnit = 'Unit';
+      }
+      
+      return {
+        ...item,
+        qty: String(qtyVal),
+        unit: normalizedUnit
+      };
+    }
+  }
+  
+  return item;
+}
+
 async function run() {
   console.log("Fetching all auctions from database...");
   
@@ -125,6 +179,11 @@ async function run() {
           record.seller_name || '',
           record.location || 'India'
         );
+        
+        // Normalize messy text-based quantities in parsed items
+        if (newParsed && Array.isArray(newParsed.items)) {
+          newParsed.items = newParsed.items.map(item => normalizeItemQuantity(item));
+        }
         
         const oldStr = record.raw_materials_text || '';
         const newStr = JSON.stringify(newParsed);

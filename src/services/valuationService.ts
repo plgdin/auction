@@ -545,7 +545,15 @@ export const valuationService = {
       
       const isMismatch = (isDiscrete && targetUnit === 'Tons') || (isWeight && targetUnit === 'Units');
 
-      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isUnknownCommodity || isPricingDisabled || isMismatch;
+      // Purge failed, unratified, withdrawn lots, or listings with zero bids to filter outliers
+      const isFailedOrWithdrawn = descLower.includes('withdrawn') || 
+                                  descLower.includes('cancelled') || 
+                                  descLower.includes('unratified') || 
+                                  descLower.includes('no bids') || 
+                                  descLower.includes('zero bids') || 
+                                  descLower.includes('failed auction');
+
+      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isUnknownCommodity || isPricingDisabled || isMismatch || isFailedOrWithdrawn;
 
       if (isNotAvailable) {
         valuedItems.push({
