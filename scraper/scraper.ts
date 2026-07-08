@@ -158,6 +158,15 @@ async function executeDiscoveryScraper() {
     console.log('[MetalMandi] Successfully completed real-time rate ingestion.');
   } catch (e: any) {
     console.warn('[MetalMandi] Rate scraper failed to scrape portal:', e.message);
+    // Fallback: upsert baseline default rates so the table is never empty
+    console.log('[MetalMandi] Upserting baseline default rates as fallback...');
+    try {
+      const { parseMetalMandiRates } = await import('./parsers/metalMandiParser.js');
+      await parseMetalMandiRates('');
+      console.log('[MetalMandi] Baseline default rates upserted successfully.');
+    } catch (fallbackErr: any) {
+      console.error('[MetalMandi] Failed to upsert baseline rates:', fallbackErr.message);
+    }
   }
 
   try {

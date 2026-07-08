@@ -571,7 +571,7 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
       let parsedPrice = 0;
       if (mPrice) {
         const cleanP = mPrice.replace(/,/g, '');
-        const match = cleanP.match(/₹\s*(\d+)/);
+        const match = cleanP.match(/(?:₹|Ôé╣)\s*(\d+)/);
         parsedPrice = match ? parseInt(match[1], 10) : 0;
       }
       if (parsedPrice <= 1) {
@@ -812,7 +812,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
             let parsedPrice = 0;
             if (mPrice) {
               const cleanP = mPrice.replace(/,/g, '');
-              const match = cleanP.match(/₹\s*(\d+)/);
+              const match = cleanP.match(/(?:₹|Ôé╣)\s*(\d+)/);
               parsedPrice = match ? parseInt(match[1], 10) : 0;
             }
             if (parsedPrice <= 1) {

@@ -24,8 +24,8 @@ export function formatPriceString(priceStr: string, currencyCode: string = 'INR'
   if (!priceStr) return priceStr;
   const currency = CURRENCIES[currencyCode] || CURRENCIES.INR;
   
-  // Replace rupee-prefixed amounts (e.g. ₹780, ₹ 3,50,000, INR 10,000)
-  return priceStr.replace(/(?:₹|INR)\s*([\d,]+(?:\.\d+)?)/gi, (match, priceNumStr) => {
+  // Replace rupee-prefixed amounts (e.g. ₹780, ₹ 3,50,000, INR 10,000, or mojibake Ôé╣780)
+  return priceStr.replace(/(?:₹|Ôé╣|INR)\s*([\d,]+(?:\.\d+)?)/gi, (match, priceNumStr) => {
     const rawPrice = parseFloat(priceNumStr.replace(/,/g, ''));
     if (isNaN(rawPrice)) return match;
     const converted = rawPrice * currency.rate;
