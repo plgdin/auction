@@ -17,7 +17,15 @@ export function RouteErrorBoundary() {
       errorStack.includes('Failed to fetch dynamically imported module') ||
       errorStr.includes('Failed to fetch dynamically imported module') ||
       errorMessage.includes('ChunkLoadError') ||
-      errorStr.includes('ChunkLoadError');
+      errorStr.includes('ChunkLoadError') ||
+      errorMessage.includes('Failed to fetch') ||
+      errorStr.includes('Failed to fetch') ||
+      errorMessage.includes('Load failed') ||
+      errorStr.includes('Load failed') ||
+      errorMessage.includes('error loading dynamically imported module') ||
+      errorStr.includes('error loading dynamically imported module') ||
+      errorMessage.includes('Importing a module script failed') ||
+      errorStr.includes('Importing a module script failed');
 
     if (isChunk) {
       // Attempt a single automatic reload to fetch the new chunk from the server
@@ -27,7 +35,11 @@ export function RouteErrorBoundary() {
       // Only auto-reload if the last automatic reload was more than 15 seconds ago (prevent loop)
       if (!lastReload || now - parseInt(lastReload, 10) > 15000) {
         sessionStorage.setItem('last-chunk-error-reload', now.toString());
-        window.location.reload();
+        
+        // Append a cache-buster query parameter to force fetching the latest index.html
+        const url = new URL(window.location.href);
+        url.searchParams.set('t_reload', now.toString());
+        window.location.replace(url.toString());
       }
     }
   }, [error]);

@@ -356,12 +356,10 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // Timber / Forest Pass
-  const needsTimber = 
+  const containsTimberKeywords = 
     categoryUpper.includes('TIMBER') || 
-    categoryUpper.includes('WOOD') || 
     categoryUpper.includes('FOREST') || 
     textUpper.includes('TIMBER') || 
-    textUpper.includes('WOOD') || 
     textUpper.includes('TEAK') || 
     textUpper.includes('ROSEWOOD') || 
     textUpper.includes('LOG') || 
@@ -370,6 +368,30 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
       const elUpper = el.toUpperCase();
       return elUpper.includes('TIMBER') || elUpper.includes('TRANSIT PASS') || elUpper.includes('FOREST');
     }));
+
+  let hasRawWood = false;
+  if (categoryUpper.includes('WOOD') || textUpper.includes('WOOD')) {
+    const isFurniture = 
+      categoryUpper.includes('FURNITURE') || 
+      textUpper.includes('TABLE') || 
+      textUpper.includes('CHAIR') || 
+      textUpper.includes('STOOL') || 
+      textUpper.includes('ALMIRAH') || 
+      textUpper.includes('RACK') || 
+      textUpper.includes('BENCH') || 
+      textUpper.includes('BOX') || 
+      textUpper.includes('CABINET') || 
+      textUpper.includes('SHELF') || 
+      textUpper.includes('DOOR') || 
+      textUpper.includes('WINDOW') || 
+      textUpper.includes('PARTITION');
+
+    if (!isFurniture || textUpper.includes('LOG') || textUpper.includes('TIMBER') || categoryUpper.includes('TIMBER') || categoryUpper.includes('FOREST')) {
+      hasRawWood = true;
+    }
+  }
+
+  const needsTimber = containsTimberKeywords || hasRawWood;
 
   if (needsTimber) {
     requiredDocuments.push({

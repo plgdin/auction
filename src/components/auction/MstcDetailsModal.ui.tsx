@@ -152,6 +152,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     urlMap: {}
   });
   const [imagesLoading, setImagesLoading] = useState(false);
+  const [loadedUrls, setLoadedUrls] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!item) return;
@@ -159,6 +160,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     
     async function resolvePreviewUrls() {
       setImagesLoading(true);
+      setLoadedUrls({});
       
       const summary = generateCatalogSummary(item);
       const rawExtImages = summary.extracted_images || [];
@@ -925,7 +927,12 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                   <img
                                     src={url}
                                     alt={`Auction image ${idx + 1}`}
-                                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
+                                    onLoad={() => setLoadedUrls(prev => ({ ...prev, [url]: true }))}
+                                    className={clsx(
+                                      "w-full h-full object-cover transition-all duration-500 ease-out",
+                                      !loadedUrls[url] ? "blur-md scale-105" : "blur-0 scale-100",
+                                      "group-hover:scale-[1.03]"
+                                    )}
                                   />
                                 </button>
                               ))}
@@ -952,7 +959,12 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                   <img
                                     src={url}
                                     alt={`Catalog page ${idx + 1}`}
-                                    className="w-full h-auto object-contain rounded-lg group-hover:scale-[1.01] transition-transform duration-250"
+                                    onLoad={() => setLoadedUrls(prev => ({ ...prev, [url]: true }))}
+                                    className={clsx(
+                                      "w-full h-auto object-contain rounded-lg transition-all duration-500 ease-out",
+                                      !loadedUrls[url] ? "blur-md scale-105" : "blur-0 scale-100",
+                                      "group-hover:scale-[1.01]"
+                                    )}
                                     loading="lazy"
                                   />
                                 </button>
@@ -977,7 +989,12 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               <img
                                 src={displayImage}
                                 alt="PDF Catalog Preview"
-                                className="w-full h-auto object-cover rounded-xl group-hover:scale-[1.01] transition-transform duration-250"
+                                onLoad={() => setLoadedUrls(prev => ({ ...prev, [displayImage]: true }))}
+                                className={clsx(
+                                  "w-full h-auto object-cover rounded-xl transition-all duration-500 ease-out",
+                                  !loadedUrls[displayImage] ? "blur-md scale-105" : "blur-0 scale-100",
+                                  "group-hover:scale-[1.01]"
+                                )}
                               />
                             </button>
                           </div>

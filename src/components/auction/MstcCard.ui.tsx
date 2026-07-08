@@ -37,11 +37,13 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
 
   const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
+  const [highResLoaded, setHighResLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     async function resolveImage() {
       setImageLoading(true);
+      setHighResLoaded(false);
       if (!rawDisplayImage) {
         setSignedDisplayImage(null);
         setImageLoading(false);
@@ -197,7 +199,12 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               alt="Catalog Image" 
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
+              onLoad={() => setHighResLoaded(true)}
+              className={clsx(
+                "w-full h-full object-cover object-top transition-all duration-500 ease-out",
+                !highResLoaded ? "blur-md scale-105" : "blur-0 scale-100",
+                "group-hover:scale-[1.03]"
+              )}
             />
           </div>
         ) : (
@@ -338,7 +345,12 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               alt="Catalog Image" 
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-300"
+              onLoad={() => setHighResLoaded(true)}
+              className={clsx(
+                "w-full h-full object-cover object-top transition-all duration-500 ease-out",
+                !highResLoaded ? "blur-md scale-105" : "blur-0 scale-100",
+                "group-hover:scale-[1.02]"
+              )}
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
