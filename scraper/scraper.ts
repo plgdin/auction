@@ -146,7 +146,7 @@ async function executeDiscoveryScraper() {
   try {
     const mandiPage = await browser.newPage();
     await mandiPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
-    await mandiPage.goto('https://metalmandi.com/', {
+    await mandiPage.goto('https://www.metalmandi.in/', {
       waitUntil: 'networkidle2',
       timeout: 20000
     });

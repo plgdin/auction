@@ -1394,7 +1394,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <td className="py-3 px-3.5 text-center  font-bold text-slate-400">{row.sr}</td>
                           <td className="py-3 px-3.5 text-slate-900">
                             <div className="font-bold">{row.description}</div>
-                            {(row.pcbGroup || row.productType) && (
+                            {(row.pcbGroup || row.productType || row.preBidEmd) && (
                               <div className="flex flex-wrap gap-1.5 mt-1">
                                 {row.pcbGroup && (
                                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
@@ -1404,6 +1404,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                 {row.productType && (
                                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-50 text-slate-700 border border-slate-100">
                                     Type: {row.productType}
+                                  </span>
+                                )}
+                                {row.preBidEmd && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                                    Pre-bid EMD: {row.preBidEmd}
                                   </span>
                                 )}
                               </div>

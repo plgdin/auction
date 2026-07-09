@@ -142,6 +142,7 @@ export interface CatalogSummary {
     subItems?: { sr: number | string; description: string; qty: string; unit: string }[];
     pcbGroup?: string;
     productType?: string;
+    preBidEmd?: string;
   }[];
   eligibility: string[];
   depositDetails: {
@@ -839,6 +840,24 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
               marketPrice: mPrice
             };
           });
+
+          // Sum up pre-bid EMDs dynamically at runtime
+          let totalPreBid = 0;
+          let hasPreBidEmd = false;
+          parsed.items.forEach((it: any) => {
+            if (it.preBidEmd) {
+              const cleanVal = it.preBidEmd.replace(/[^\d]/g, '');
+              const val = parseInt(cleanVal, 10);
+              if (!isNaN(val)) {
+                totalPreBid += val;
+                hasPreBidEmd = true;
+              }
+            }
+          });
+
+          if (hasPreBidEmd && parsed.items.length > 1) {
+            parsed.depositDetails.preBidDdg = `₹${totalPreBid.toLocaleString('en-IN')}`;
+          }
         }
 
         const finalInspectionSchedule = parsed.inspectionSchedule || defaultInspectionSchedule;

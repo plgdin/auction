@@ -49,14 +49,35 @@ export function extractDepositDetails(cleanText: string): DepositDetails {
   }
 
   // ── 3. Explicit Pre-Bid EMD Amount ────────────────────────────────────────
-  const explicitPreBidMatch = cleanText.match(
-    /(?:Pre-Bid\s*(?:EMD\s*)?Amount|Pre-Bid\s*Amount)[\s\S]{0,50}?(?:Rs\.?|₹)?\s*([\d,]{4,10})/i,
+  const allPreBidsMatches = cleanText.match(
+    /(?:Pre-Bid\s*(?:EMD\s*)?Amount|Pre-Bid\s*Amount)[\s\S]{0,50}?(?:Rs\.?|₹)?\s*([\d,]+)/gi
   );
-  if (explicitPreBidMatch) {
-    const val = explicitPreBidMatch[1].replace(/,/g, "");
-    const num = parseInt(val, 10);
-    if (!isNaN(num) && num > 100) {
-      preBidDdg = `₹${num.toLocaleString("en-IN")}`;
+  let isLotWise = false;
+  if (allPreBidsMatches && allPreBidsMatches.length > 1) {
+    const uniqueValues = new Set<string>();
+    allPreBidsMatches.forEach((m) => {
+      const numMatch = m.match(/([\d,]+)$/);
+      if (numMatch) {
+        uniqueValues.add(numMatch[1].replace(/,/g, ""));
+      }
+    });
+    if (uniqueValues.size > 1) {
+      isLotWise = true;
+    }
+  }
+
+  if (isLotWise) {
+    preBidDdg = "Lot-wise (Refer to Lot Details)";
+  } else {
+    const explicitPreBidMatch = cleanText.match(
+      /(?:Pre-Bid\s*(?:EMD\s*)?Amount|Pre-Bid\s*Amount)[\s\S]{0,50}?(?:Rs\.?|₹)?\s*([\d,]{4,10})/i,
+    );
+    if (explicitPreBidMatch) {
+      const val = explicitPreBidMatch[1].replace(/,/g, "");
+      const num = parseInt(val, 10);
+      if (!isNaN(num) && num > 100) {
+        preBidDdg = `₹${num.toLocaleString("en-IN")}`;
+      }
     }
   }
 

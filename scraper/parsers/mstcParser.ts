@@ -54,11 +54,29 @@ export function parseMstcCatalogText(
   // 1. Extract contacts
   const keyContacts = extractKeyContacts(lines, text);
 
+  // 3. Parse lot blocks
+  const items = parseLotBlocks(cleanText, categoryName);
+
   // 2. Extract deposit details
   const depositDetails = extractDepositDetails(cleanText);
 
-  // 3. Parse lot blocks
-  const items = parseLotBlocks(cleanText, categoryName);
+  // Sum up pre-bid EMDs if multiple items have them
+  let totalPreBid = 0;
+  let hasPreBidEmd = false;
+  for (const it of items) {
+    if (it.preBidEmd) {
+      const cleanVal = it.preBidEmd.replace(/[^\d]/g, "");
+      const val = parseInt(cleanVal, 10);
+      if (!isNaN(val)) {
+        totalPreBid += val;
+        hasPreBidEmd = true;
+      }
+    }
+  }
+
+  if (hasPreBidEmd && items.length > 1) {
+    depositDetails.preBidDdg = `₹${totalPreBid.toLocaleString("en-IN")}`;
+  }
 
   // 4. Build overview & scope
   const uniqueItemNames = Array.from(
