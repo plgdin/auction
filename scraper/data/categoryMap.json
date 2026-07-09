@@ -112,6 +112,7 @@
   "industrial shed": { "category": "Immovable Property", "subcategory": "Industry / Industrial Shed" },
   "shed with plant and machinery": { "category": "Immovable Property", "subcategory": "Industry / Shed with Plant/Machinery" },
   "liquor shop license": { "category": "Liquor License Contracts", "subcategory": "Liquor shop license" },
+  "grant of license rights": { "category": "Liquor License Contracts", "subcategory": "Grant of license rights" },
   "iron and steel": { "category": "Metal", "subcategory": "Iron and steel" },
   "aluminium": { "category": "Metal", "subcategory": "Aluminium" },
   "brass": { "category": "Metal", "subcategory": "Brass" },
