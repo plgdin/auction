@@ -112,14 +112,15 @@ BEGIN
       CONTINUE; 
     END IF;
     
-    -- Fuzzy match against search_dictionary (pg_trgm)
+    -- Fuzzy match against search_dictionary (pg_trgm, alpha words only)
     SELECT word INTO v_best_match
     FROM public.search_dictionary
+    WHERE word ~ '^[a-z]+$'
     ORDER BY word <-> v_word
     LIMIT 1;
 
-    -- If distance is close enough (similarity > 0.4 usually means distance < 0.6)
-    IF v_best_match IS NOT NULL AND (v_best_match <-> v_word) < 0.6 THEN
+    -- Relaxed threshold (0.75) to catch transposition typos like cusotms→customs
+    IF v_best_match IS NOT NULL AND (v_best_match <-> v_word) < 0.75 THEN
       v_corrected_query := v_corrected_query || ' ' || v_best_match;
     ELSE
       v_corrected_query := v_corrected_query || ' ' || v_word;

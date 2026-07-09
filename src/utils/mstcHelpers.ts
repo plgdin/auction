@@ -468,6 +468,13 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
 export const parseAuctionType = (item: MstcSanitizedAuction): string => {
   if (!item) return 'O-General';
   
+  // High-priority check for Customs in seller_name or auction number
+  const sellerLower = (item.seller_name || '').toLowerCase();
+  const numberLower = (item.mstc_auction_number || '').toLowerCase();
+  if (sellerLower.includes('customs') || numberLower.includes('customs')) {
+    return 'C-Customs';
+  }
+
   let type = 'O-General';
   const text = item.raw_materials_text || '';
   if (text) {
@@ -485,7 +492,7 @@ export const parseAuctionType = (item: MstcSanitizedAuction): string => {
     }
 
     if (type === 'O-General') {
-      const regex = /(?:auction\s+type|type\s+of\s+auction|e-auction\s+type|auction_type)\s*[:=-]?\s*(O-[A-Za-z0-9_-]+(?:\s+Auction)?)/i;
+      const regex = /(?:auction\s+type|type\s+of\s+auction|e-auction\s+type|auction_type)\s*[:=-]?\s*([A-Za-z0-9]\s*-\s*[A-Za-z0-9_-]+(?:\s+Auction)?)/i;
       const match = text.match(regex);
       if (match && match[1]) {
         const val = match[1].trim();
@@ -500,9 +507,11 @@ export const parseAuctionType = (item: MstcSanitizedAuction): string => {
   
   if (/^O-\s*[Gg]e[rn]e?r?a?l$/i.test(cleaned) || /^O-\s*[Gg]erenal$/i.test(cleaned) || /^O-\s*[Gg]eral$/i.test(cleaned)) {
     cleaned = 'O-General';
+  } else if (/^C-\s*[Cc]ustoms?$/i.test(cleaned)) {
+    cleaned = 'C-Customs';
   } else {
-    // Standardize other types starting with O- if there is a space after hyphen
-    cleaned = cleaned.replace(/^O-\s+/i, 'O-');
+    // Standardize other types starting with a single character hyphen, e.g. O- or C-, if there is a space after hyphen
+    cleaned = cleaned.replace(/^([A-Za-z0-9])\s*-\s*/i, '$1-');
   }
 
   return cleaned || 'O-General';
@@ -745,7 +754,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
             const percentVal = parseFloat(percentMatch[1]);
             if (percentVal > 100) {
               emdVal = '10% of total bid value';
-              preBidDdg = 'Not required for registered MSME bidders';
+              preBidDdg = `₹${percentVal.toLocaleString('en-IN')}`;
             }
           }
         } else {
@@ -756,6 +765,23 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
               preBidDdg = `₹${val.toLocaleString('en-IN')}`;
               emdVal = '10% of total bid value';
             }
+          }
+        }
+
+        const isCustoms = parseAuctionType(item) === 'C-Customs' || 
+                          /customs/i.test(item.seller_name || '') || 
+                          /customs/i.test(item.mstc_auction_number || '');
+
+        if (isCustoms && preBidDdg && preBidDdg.includes('MSME')) {
+          preBidDdg = 'Not Required';
+        }
+
+        const hasMsme = !isCustoms && /msme|micro\s*,?\s*small/i.test(item.raw_materials_text || '');
+        if (hasMsme && preBidDdg && !preBidDdg.includes('MSME')) {
+          if (preBidDdg.toLowerCase() !== 'not required') {
+            preBidDdg = `${preBidDdg} (Not required for registered MSME bidders)`;
+          } else {
+            preBidDdg = 'Not required for registered MSME bidders';
           }
         }
 
@@ -1157,15 +1183,27 @@ export function formatSellerName(name: string | null | undefined): string {
 }
 
 export function isPreBidRequired(item: MstcSanitizedAuction): boolean {
-    if (!item.raw_materials_text) {
-      return false;
-    }
+  if (!item.raw_materials_text) {
+    return false;
+  }
   try {
     const parsed = JSON.parse(item.raw_materials_text);
     const preBidDdg = parsed?.depositDetails?.preBidDdg;
-      if (!preBidDdg) {
-        return false;
+    if (!preBidDdg) {
+      return false;
+    }
+    
+    const matches = preBidDdg.match(/\d[\d,.]*/g);
+    if (matches) {
+      const hasPositiveVal = matches.some((valStr: string) => {
+        const val = parseFloat(valStr.replace(/,/g, ''));
+        return !isNaN(val) && val > 0;
+      });
+      if (hasPositiveVal) {
+        return true;
       }
+    }
+
     const lower = preBidDdg.toLowerCase();
     if (
       lower.includes('not required') ||

@@ -53,7 +53,7 @@ BEGIN
     SELECT
       m.id, m.mstc_auction_number, m.seller_name, m.category_name, m.location, 
       m.opening_date, m.closing_date, m.sanitized_document_path, m.raw_materials_text, m.asset_status, m.is_reauction,
-      m.scraped_at, -- Required for proper descending sorting of newest items
+      m.updated_at, -- Required for proper descending sorting of newest items
       -- Text Rank uses the indexed column now!
       CASE WHEN v_tsquery IS NOT NULL THEN
         ts_rank_cd(m.fts_doc, v_tsquery)
@@ -73,7 +73,7 @@ BEGIN
         ) OR
         (
           p_embedding IS NOT NULL AND m.embedding IS NOT NULL AND
-          (1 - (m.embedding <=> p_embedding)) > 0.6
+          (1 - (m.embedding <=> p_embedding)) > 0.85
         )
       )
       -- Apply Array Filters
@@ -113,11 +113,11 @@ BEGIN
         (
           m.sanitized_document_path IS NOT NULL OR 
           (
-             m.raw_materials_text IS NOT NULL AND (
-               m.raw_materials_text ILIKE '%.pdf%' OR
-               m.raw_materials_text ILIKE '%"docs":%' OR
-               m.raw_materials_text ILIKE '%"documents":%'
-             )
+            m.raw_materials_text IS NOT NULL AND (
+              m.raw_materials_text ILIKE '%.pdf%' OR
+              m.raw_materials_text ILIKE '%"docs":%' OR
+              m.raw_materials_text ILIKE '%"documents":%'
+            )
           )
         )
       )
@@ -136,6 +136,9 @@ BEGIN
       CASE WHEN t_rank > 0 THEN ROW_NUMBER() OVER (ORDER BY t_rank DESC) ELSE 100000 END AS text_rank_num,
       CASE WHEN v_sim > 0 THEN ROW_NUMBER() OVER (ORDER BY v_sim DESC) ELSE 100000 END AS vector_rank_num
     FROM filtered_candidates
+    -- FTS matches (rank >= 2.0) OR tight vector matches (sim > 0.85) survive.
+    -- 0.85 is strict enough for tree→timber but kills tree→vehicles noise.
+    WHERE v_tsquery IS NULL OR t_rank >= 2.0 OR v_sim > 0.85
   ),
   rrf_scored AS (
     SELECT *,
@@ -162,8 +165,12 @@ BEGIN
     COUNT(*) OVER()::BIGINT AS total_count
   FROM rrf_scored r
   ORDER BY
-    (CASE WHEN p_search_query IS NOT NULL AND r.mstc_auction_number ILIKE '%' || p_search_query || '%' THEN 1000.0 ELSE r.rrf_score END) DESC,
-    r.scraped_at DESC -- Sort by newly scraped auctions first
+    (CASE WHEN p_search_query IS NOT NULL AND (
+      r.mstc_auction_number ILIKE '%' || p_search_query || '%'
+      OR r.seller_name ILIKE '%' || p_search_query || '%'
+      OR r.category_name ILIKE '%' || p_search_query || '%'
+    ) THEN 1000.0 ELSE r.rrf_score END) DESC,
+    r.updated_at DESC -- Sort by newly scraped auctions first
   LIMIT p_limit
   OFFSET GREATEST(0, (p_page - 1) * p_limit);
 END;

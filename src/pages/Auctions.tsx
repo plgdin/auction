@@ -408,10 +408,8 @@ export function Auctions() {
       let result = await MstcSearchService.searchMarketplaceCatalog(qParam, searchFilters);
       let showingSimilar = !!qParam.trim() && result.data.length > 0 && result.hasDirectMatches === false;
 
-      if (qParam.trim() && result.data.length === 0) {
-        result = await MstcSearchService.searchMarketplaceCatalog('', searchFilters);
-        showingSimilar = result.data.length > 0;
-      }
+      // Don't dump ALL catalogs as a fallback — just show empty state
+      // The spell correction in publicService already tried to fix typos
 
       setMstcAuctions(result.data);
       setMstcTotalCount(result.count);
@@ -458,6 +456,46 @@ export function Auctions() {
       loadMstcData();
     }
   }, [activeTab, loadMstcData]);
+
+  // Prefetch adjacent pages into PageCache after current page loads
+  useEffect(() => {
+    if (isMstcLoading || mstcTotalCount === 0) return;
+
+    const totalPg = Math.ceil(mstcTotalCount / limit);
+    const qParam = searchParams.get('q') || '';
+    const baseFilters = {
+      categories: selectedMstcCategories.length > 0 ? selectedMstcCategories : undefined,
+      subcategories: selectedMstcSubcategories.length > 0 ? selectedMstcSubcategories : undefined,
+      locations: selectedMstcLocations.length > 0 ? selectedMstcLocations : undefined,
+      regionalOffices: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined,
+      startDate,
+      endDate,
+      hasImages: mstcHasImages,
+      hasAssetDocuments: mstcHasAssetDocuments,
+      isReauction: mstcIsReauction || undefined,
+      preBid: mstcPreBid,
+      limit
+    };
+
+    const pagesToPrefetch: number[] = [];
+    if (page < totalPg) pagesToPrefetch.push(page + 1);
+    if (page > 1) pagesToPrefetch.push(page - 1);
+
+    if (pagesToPrefetch.length === 0) return;
+
+    // Use requestIdleCallback (or setTimeout fallback) to avoid blocking UI
+    const schedule = typeof requestIdleCallback === 'function' ? requestIdleCallback : (cb: () => void) => setTimeout(cb, 200);
+    const id = schedule(() => {
+      pagesToPrefetch.forEach(pg => {
+        MstcSearchService.searchMarketplaceCatalog(qParam, { ...baseFilters, page: pg }).catch(() => {});
+      });
+    });
+
+    return () => {
+      if (typeof cancelIdleCallback === 'function') cancelIdleCallback(id as number);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMstcLoading, mstcTotalCount, page]);
 
   useEffect(() => {
     // Load options when tab is active OR initially on mount

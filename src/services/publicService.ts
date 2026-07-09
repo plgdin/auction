@@ -2131,7 +2131,7 @@ export const MstcSearchService = {
         throw error;
       }
 
-      const hasDirectMatches = !!(searchData && searchData.length > 0 && searchData[0].search_rank !== undefined);
+      const hasDirectMatches = !!(searchData && searchData.length > 0 && searchData.some((r: any) => r.search_rank > 0));
 
       // Map Categories (is_reauction is returned natively by RPC)
       let mapped = (searchData as any[]).map(item => {

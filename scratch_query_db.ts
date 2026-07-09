@@ -1,20 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-import path from 'path';
 
-dotenv.config({ path: path.resolve('.env.local') });
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = 'https://xnhtcswiteuiggaipzvj.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuaHRjc3dpdGV1aWdnYWlwenZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNzUyMzEsImV4cCI6MjA5NjY1MTIzMX0.EGlVZLTE4Porq_xz5ZRwGb9PF_KrDT0NzElLKDSiKCY';
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function run() {
-  console.log('Querying completed auctions...');
   const { data, error } = await supabase
     .from('mstc_auctions')
     .select('*')
-    .like('mstc_auction_number', '%11626')
     .limit(1);
 
   if (error) {
@@ -23,9 +17,13 @@ async function run() {
   }
 
   if (data && data.length > 0) {
-    console.log('Record found:', JSON.stringify(data[0], null, 2));
+    console.log('Columns in other DB mstc_auctions:', Object.keys(data[0]));
+    const { count } = await supabase
+      .from('mstc_auctions')
+      .select('*', { count: 'exact', head: true });
+    console.log('Total auctions in other DB:', count);
   } else {
-    console.log('No records found for 11626.');
+    console.log('No records found in other DB.');
   }
 }
 
