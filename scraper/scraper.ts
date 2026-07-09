@@ -135,7 +135,8 @@ async function executeDiscoveryScraper() {
 
   const browser = await puppeteer.launch({
     headless: false,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    defaultViewport: null,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--start-maximized']
   });
 
   const page = await browser.newPage();
@@ -174,9 +175,39 @@ async function executeDiscoveryScraper() {
       waitUntil: 'networkidle2',
       timeout: 60000
     });
+    await page.bringToFront();
 
-    // Wait for the user to press Enter in the terminal
-    await waitForUserConfirmation('\nPress [Enter] here once the search results page has finished loading...\n');
+    console.log('\n[Scraper] Browser window launched. Action Required:');
+    console.log('1. Solve the CAPTCHA, select options, and click "Search" in the Chrome window.');
+    console.log('2. The scraper will automatically detect when the search results load.\n');
+
+    let resultsLoaded = false;
+    const startTime = Date.now();
+    const timeoutMs = 300000; // 5 minutes
+    
+    while (Date.now() - startTime < timeoutMs) {
+      const frames = page.frames();
+      for (const frame of frames) {
+        try {
+          const count = await frame.evaluate(() => {
+            return document.querySelectorAll('#finalAppendBody tr a').length;
+          });
+          if (count && count > 0) {
+            resultsLoaded = true;
+            break;
+          }
+        } catch (e) {}
+      }
+      if (resultsLoaded) {
+        console.log('[Scraper] Search results detected successfully! Proceeding...');
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+
+    if (!resultsLoaded) {
+      console.warn('[Scraper] Timeout waiting for search results (5 minutes). Attempting to proceed with current page state...');
+    }
 
     // Save session cookies to Supabase database for the background worker
     const cookies = await page.cookies();
