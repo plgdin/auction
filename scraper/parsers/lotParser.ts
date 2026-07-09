@@ -465,14 +465,16 @@ export function parseLotBlocks(
       continue; // Skip phantom lot
     }
 
-    // Truncate lot block at boilerplate sections
-    const boilerplatePattern =
-      /(?:seller\s+specific\s+terms|special\s+terms\s+and\s+conditions|special\s+terms\s+&\s+conditions|general\s+terms\s+and\s+conditions|terms\s+&\s+conditions|terms\s+and\s+conditions|instructions\s+to\s+bidders|instructions\s+to\s+the\s+bidder|payment\s+procedure|e-payment|important\s+instructions)/i;
-    const boilerplateIdx = rawBlock.search(boilerplatePattern);
-    const block =
-      boilerplateIdx !== -1
-        ? rawBlock.substring(0, boilerplateIdx)
-        : rawBlock;
+    // Truncate lot block at boilerplate sections (only applies to the last block since boilerplate follows the last lot)
+    let block = rawBlock;
+    if (i === lotBlocks.length - 1) {
+      const boilerplatePattern =
+        /(?:\n|^)(?:\d+[\s.-]*)?(?:seller\s+specific\s+terms|special\s+terms\s+and\s+conditions|special\s+terms\s+&\s+conditions|general\s+terms\s+and\s+conditions|terms\s+&\s+conditions|terms\s+and\s+conditions|instructions\s+to\s+bidders|instructions\s+to\s+the\s+bidder|payment\s+procedure|e-payment|important\s+instructions)\b/i;
+      const boilerplateIdx = rawBlock.search(boilerplatePattern);
+      if (boilerplateIdx !== -1) {
+        block = rawBlock.substring(0, boilerplateIdx);
+      }
+    }
 
     // ── Extract lot identifier ────────────────────────────────────────────
     const lotNameIdx = block.search(/\bLot Name\s*-/i);
@@ -741,6 +743,19 @@ export function parseLotBlocks(
 
     finalDescription = cleanMaterialDescription(finalDescription);
 
+    // ── Extract lot-level Pre-Bid EMD ────────────────────────────────────
+    let lotPreBidEmd: string | undefined = undefined;
+    const preBidEmdMatch = block.match(
+      /(?:Pre-Bid\s*(?:EMD\s*)?Amount|Pre-Bid\s*Amount)[\s\S]{0,50}?(?:Rs\.?|₹)?\s*([\d,]+)/i,
+    );
+    if (preBidEmdMatch) {
+      const cleanVal = preBidEmdMatch[1].replace(/,/g, "").trim();
+      const num = parseInt(cleanVal, 10);
+      if (!isNaN(num)) {
+        lotPreBidEmd = `₹${num.toLocaleString("en-IN")}`;
+      }
+    }
+
     items.push({
       sr,
       description: finalDescription,
@@ -752,6 +767,7 @@ export function parseLotBlocks(
       subItems: subItems.length > 0 ? subItems : undefined,
       pcbGroup,
       productType,
+      preBidEmd: lotPreBidEmd,
     });
   }
 

@@ -24,6 +24,7 @@ export interface CatalogItem {
   subItems?: SubItem[];
   pcbGroup?: string;
   productType?: string;
+  preBidEmd?: string;
 }
 
 export interface KeyContact {

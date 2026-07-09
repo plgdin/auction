@@ -142,6 +142,7 @@ export interface CatalogSummary {
     subItems?: { sr: number | string; description: string; qty: string; unit: string }[];
     pcbGroup?: string;
     productType?: string;
+    preBidEmd?: string;
   }[];
   eligibility: string[];
   depositDetails: {
@@ -593,7 +594,7 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
       let parsedPrice = 0;
       if (mPrice) {
         const cleanP = mPrice.replace(/,/g, '');
-        const match = cleanP.match(/₹\s*(\d+)/);
+        const match = cleanP.match(/(?:₹|Ôé╣)\s*(\d+)/);
         parsedPrice = match ? parseInt(match[1], 10) : 0;
       }
       if (parsedPrice <= 1) {
@@ -834,7 +835,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
             let parsedPrice = 0;
             if (mPrice) {
               const cleanP = mPrice.replace(/,/g, '');
-              const match = cleanP.match(/₹\s*(\d+)/);
+              const match = cleanP.match(/(?:₹|Ôé╣)\s*(\d+)/);
               parsedPrice = match ? parseInt(match[1], 10) : 0;
             }
             if (parsedPrice <= 1) {
@@ -861,6 +862,24 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
               marketPrice: mPrice
             };
           });
+
+          // Sum up pre-bid EMDs dynamically at runtime
+          let totalPreBid = 0;
+          let hasPreBidEmd = false;
+          parsed.items.forEach((it: any) => {
+            if (it.preBidEmd) {
+              const cleanVal = it.preBidEmd.replace(/[^\d]/g, '');
+              const val = parseInt(cleanVal, 10);
+              if (!isNaN(val)) {
+                totalPreBid += val;
+                hasPreBidEmd = true;
+              }
+            }
+          });
+
+          if (hasPreBidEmd && parsed.items.length > 1) {
+            parsed.depositDetails.preBidDdg = `₹${totalPreBid.toLocaleString('en-IN')}`;
+          }
         }
 
         const finalInspectionSchedule = parsed.inspectionSchedule || defaultInspectionSchedule;

@@ -306,7 +306,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const handleAddItemToQuote = (row: any) => {
     const qty = parseFloat(row.qty.replace(/,/g, '')) || 1;
     let price = 0;
-    const priceMatch = (row.marketPrice || '').match(/Ôé╣([\d,]+)/);
+    const priceMatch = (row.marketPrice || '').match(/(?:₹|Ôé╣)([\d,]+)/);
     if (priceMatch) {
       price = parseFloat(priceMatch[1].replace(/,/g, ''));
     }
@@ -334,7 +334,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     summary.items.forEach(row => {
       const qty = parseFloat(row.qty.replace(/,/g, '')) || 1;
       let price = 0;
-      const priceMatch = (row.marketPrice || '').match(/Ôé╣([\d,]+)/);
+      const priceMatch = (row.marketPrice || '').match(/(?:₹|Ôé╣)([\d,]+)/);
       if (priceMatch) {
         price = parseFloat(priceMatch[1].replace(/,/g, ''));
       }
