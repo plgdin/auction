@@ -169,9 +169,6 @@ export const storageService = {
     }
   },
 
-  /**
-   * Batch-resolves an array of private storage URLs to temporary signed URLs.
-   */
   async getSignedUrls(
     urls: string[], 
     bucketName: string = 'auction_documents',
@@ -182,7 +179,7 @@ export const storageService = {
       // If transform is provided, or to leverage our global cache, we use Promise.all.
       // Promise.all with our caching layer is often faster than createSignedUrls if there are duplicates!
       const results = await Promise.all(urls.map(u => this.getSignedUrl(u, bucketName, transform)));
-      return results.filter(Boolean) as string[];
+      return results.map(url => url || '');
     } catch (err) {
       console.error('Unexpected error creating signed URLs:', err);
       return [];

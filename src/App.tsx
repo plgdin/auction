@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -19,6 +19,16 @@ const queryClient = new QueryClient({
 function App() {
   const { initializeAuth, user } = useAuthStore();
   const { setCurrencyRates, fetchInterestedMstcIds } = useAppStore();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     initializeAuth();
@@ -64,6 +74,27 @@ function App() {
       clearTimeout(prefetchTimer);
     };
   }, [initializeAuth, setCurrencyRates]);
+
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-card/80 backdrop-blur-md border border-border/50 rounded-3xl p-8 text-center shadow-2xl">
+          <div className="inline-flex p-4 bg-primary/10 rounded-full text-primary mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="20" height="14" x="2" y="3" rx="2" />
+              <line x1="8" x2="16" y1="21" y2="21" />
+              <line x1="12" x2="12" y1="17" y2="21" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-3">Desktop View Required</h1>
+          <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+            Mobile view is not available. Please access this platform from a desktop.
+          </p>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
