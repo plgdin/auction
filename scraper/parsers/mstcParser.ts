@@ -54,8 +54,9 @@ export function parseMstcCatalogText(
   // 1. Extract contacts
   const keyContacts = extractKeyContacts(lines, text);
 
-  // 3. Parse lot blocks
-  const items = parseLotBlocks(cleanText, categoryName);
+  // 3. Parse lot blocks (pass raw cleanText for global tax rate extraction
+  //    before boilerplate is stripped inside parseLotBlocks)
+  const items = parseLotBlocks(cleanText, categoryName, cleanText);
 
   // 2. Extract deposit details
   const depositDetails = extractDepositDetails(cleanText);

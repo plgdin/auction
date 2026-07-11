@@ -244,6 +244,52 @@ export async function processPageForLotEnrichment(
     matched = await matchPageToLots(combinedText, items, fileName, lotEmbeddings, lastMatched, pageVector);
   }
 
+  // ── Table-structure detection for annexure PDFs ──────────────────────────
+  // If ≥3 lines start with sequential serial numbers, this page contains a
+  // tabular sub-item list. Parse it recursively and match sub-items to lots.
+  if (!isTermsOrInstructionPage(combinedText)) {
+    const serialLines = combinedText.split(/\r?\n/).filter(
+      (line) => /^\s*\d{1,3}[\s.)\-]/.test(line.trim()),
+    );
+
+    if (serialLines.length >= 3) {
+      // Detect lot references in the attachment text
+      const lotRefs: any[] = [];
+      for (const item of items) {
+        const srStr = String(item.sr).toLowerCase().trim();
+        const lotRefPattern = new RegExp(
+          `\\blot\\s*(?:no|num|number|#)?\\s*[-.:]?\\s*0*${srStr}\\b`,
+          "i",
+        );
+        if (lotRefPattern.test(combinedText)) {
+          lotRefs.push(item);
+        }
+      }
+
+      // If no lot references found in text, use filename-to-lot mapping
+      const targetLots = lotRefs.length > 0 ? lotRefs : matched;
+
+      if (targetLots.length > 0) {
+        const tableSubItems = parseSubItemsFromText(combinedText);
+        if (tableSubItems.length > 0) {
+          jobLog.info(
+            {
+              fileName,
+              serialLines: serialLines.length,
+              subItemsFound: tableSubItems.length,
+              targetLotSrs: targetLots.map((l) => l.sr),
+            },
+            "Table structure detected in attachment — recursively parsed sub-items",
+          );
+
+          for (const lot of targetLots) {
+            mergeSubItems(lot, tableSubItems);
+          }
+        }
+      }
+    }
+  }
+
   if (matched.length > 1) {
     // Multi-lot page segmentation logic
     const lotPositions: { lot: any; index: number }[] = [];
@@ -928,8 +974,9 @@ async function extractAndProcessLotDocuments(
           const pageSelectableText = nativePage ? nativePage.text : page.text;
 
           // Smart OCR: only run OCR when selectable text is insufficient
+          // or when the page contains embedded images (hybrid page detection)
           let ocrText = "";
-          if (shouldPerformOcr(pageSelectableText)) {
+          if (shouldPerformOcr(pageSelectableText, page.hasImages)) {
             ocrText = await performOcr(page.imageBuffer);
           }
           const combinedText = `${pageSelectableText || ""}\n${ocrText}`;

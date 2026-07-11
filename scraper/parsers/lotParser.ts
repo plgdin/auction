@@ -10,10 +10,74 @@
  * - Negative guards on quantity regex to exclude GST/EMD/date/pin numbers.
  * - Expanded attachment detection beyond photo_/annex_ prefixes.
  * - Description-level quantity extraction for forestry catalogs.
+ * - Safe description cleaning: Note/Location only cut at block-level headers.
+ * - Global tax fallback: GST/TCS/RCM extracted from boilerplate.
+ * - Quantity priority: specific description quantities preferred over generic rows.
  */
 import type { CatalogItem } from "./types.js";
 import { stripBoilerplateSections } from "./documentClassifier.js";
 import { parseSubItemsFromText } from "./mstcParser.js";
+
+// ─── Global Tax Rate Extraction ─────────────────────────────────────────────
+
+/**
+ * Global tax rates extracted from boilerplate sections.
+ */
+export interface GlobalTaxRates {
+  gstRate: string | null;
+  tcsRate: string | null;
+  rcmApplicable: boolean;
+}
+
+/**
+ * Extract global GST, TCS, and RCM rates from boilerplate text.
+ * Many MSTC catalogs declare these once globally rather than per-lot.
+ */
+export function extractGlobalTaxRates(rawText: string): GlobalTaxRates {
+  const result: GlobalTaxRates = {
+    gstRate: null,
+    tcsRate: null,
+    rcmApplicable: false,
+  };
+
+  if (!rawText) return result;
+
+  const gstMatch = rawText.match(
+    /(?:GST|G\.?S\.?T\.?)\s*(?:@|rate)?\s*(\d+(?:\.\d+)?)\s*%/i,
+  );
+  if (gstMatch) {
+    result.gstRate = `${gstMatch[1]}%`;
+  }
+
+  const tcsMatch = rawText.match(
+    /(?:TCS|T\.?C\.?S\.?)\s*(?:@|rate)?\s*(\d+(?:\.\d+)?)\s*%/i,
+  );
+  if (tcsMatch) {
+    result.tcsRate = `${tcsMatch[1]}%`;
+  }
+
+  const rcmMatch = rawText.match(
+    /(?:RCM|Reverse\s+Charge(?:\s+Mechanism)?)\s+(?:is\s+)?applicable/i,
+  );
+  if (rcmMatch) {
+    result.rcmApplicable = true;
+  }
+
+  return result;
+}
+
+// ─── Specific Measurement Units ─────────────────────────────────────────────
+
+/**
+ * Units that represent specific measurements (weight, volume, length).
+ * When a description contains quantities with these units, they should
+ * take priority over generic row-level quantities like "1 Lot".
+ */
+const SPECIFIC_UNITS = new Set([
+  "MT", "MTS", "KG", "KGS", "GM", "GMS", "TON", "TONS",
+  "LTR", "LTRS", "CUM", "CFT", "CBM",
+  "MTR", "MTRS", "RM", "RFT",
+]);
 
 // ─── Description Block Quantity Extraction ──────────────────────────────────
 
@@ -151,6 +215,50 @@ function formatQuantity(totalVal: number): string {
         minimumFractionDigits: 0,
         maximumFractionDigits: 3,
       });
+}
+
+// ─── Block-Level Keyword Detection ──────────────────────────────────────────
+
+/**
+ * Check if a keyword at the given index is a block-level section header
+ * (as opposed to being used mid-sentence).
+ *
+ * A keyword is block-level when:
+ * 1. It is at the start of the string OR preceded by a newline.
+ * 2. It is immediately followed by `:` or `-` (section delimiter).
+ * 3. It is NOT followed by continuation words that indicate sentence context
+ *    (e.g. "Note that vehicles..." vs "Note: Please verify...").
+ */
+function isBlockLevelKeyword(
+  text: string,
+  keywordIndex: number,
+  keywordLength: number,
+): boolean {
+  // Must be at start of string or preceded by newline
+  if (keywordIndex > 0) {
+    const before = text.substring(Math.max(0, keywordIndex - 5), keywordIndex);
+    if (!/(?:\r?\n)\s*$/.test(before)) return false;
+  }
+
+  // Must be followed by : or -
+  const after = text.substring(keywordIndex + keywordLength).trimStart();
+  if (!after.startsWith(":") && !after.startsWith("-")) return false;
+
+  // Must NOT be followed by continuation words (sentence context, not header)
+  const afterDelimiter = after.substring(1).trimStart().toLowerCase();
+  const continuationWords = [
+    "that", "the", "this", "all", "these", "those", "it", "we", "they",
+  ];
+  for (const word of continuationWords) {
+    if (
+      afterDelimiter.startsWith(word + " ") ||
+      afterDelimiter.startsWith(word + ",")
+    ) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -291,23 +399,21 @@ export function cleanMaterialDescription(desc: string): string {
   }
 
   // 5. Remove "Note: ..." / "Note- ..." and everything after it
+  //    Only triggers at block-level headers (preceded by newline, followed by
+  //    colon/hyphen, and NOT followed by continuation words like "that").
   const noteIdx = findDelimiterWithBoundary(cleaned.toLowerCase(), "note", 0);
-  if (noteIdx !== -1) {
-    const afterNote = cleaned.substring(noteIdx + 4).trim();
-    if (afterNote.startsWith(":") || afterNote.startsWith("-") || afterNote.startsWith(".")) {
-      cleaned = cleaned.substring(0, noteIdx);
-    }
+  if (noteIdx !== -1 && isBlockLevelKeyword(cleaned, noteIdx, 4)) {
+    cleaned = cleaned.substring(0, noteIdx);
   }
 
   // 6. Remove "Location: ..." and everything after it
+  //    Same block-level guard as Note to prevent cutting descriptions like
+  //    "Location of plant is accessible by road".
   for (const locKeyword of ["lot location", "location"]) {
     const locIdx = findDelimiterWithBoundary(cleaned.toLowerCase(), locKeyword, 0);
-    if (locIdx !== -1) {
-      const afterLoc = cleaned.substring(locIdx + locKeyword.length).trim();
-      if (afterLoc.startsWith(":") || afterLoc.startsWith("-") || afterLoc.startsWith(".")) {
-        cleaned = cleaned.substring(0, locIdx);
-        break;
-      }
+    if (locIdx !== -1 && isBlockLevelKeyword(cleaned, locIdx, locKeyword.length)) {
+      cleaned = cleaned.substring(0, locIdx);
+      break;
     }
   }
 
@@ -431,13 +537,16 @@ export function cleanMaterialDescription(desc: string): string {
 /**
  * Parse lot blocks from catalog text and return structured CatalogItem[].
  *
- * @param cleanText    - The normalized catalog text (lines joined by \n).
- * @param categoryName - The category name from the scraper for fallback descriptions.
+ * @param cleanText              - The normalized catalog text (lines joined by \n).
+ * @param categoryName           - The category name from the scraper for fallback descriptions.
+ * @param rawTextForGlobalRates  - Optional raw text (before boilerplate stripping)
+ *                                  used to extract global GST/TCS/RCM rates.
  * @returns Array of parsed lot items.
  */
 export function parseLotBlocks(
   cleanText: string,
   categoryName: string,
+  rawTextForGlobalRates?: string,
 ): CatalogItem[] {
   const items: CatalogItem[] = [];
 
@@ -627,12 +736,24 @@ export function parseLotBlocks(
     }
 
     // ── Fallback: description-level quantities (forestry and unit-first catalogs) ────────
-    const isGenericUnit = !unit || ["lot", "lots", "lot/s", "unit"].includes(unit.toLowerCase().trim());
+    //    Also triggers when qty is "1" with generic count units (NOS, NO).
+    const unitLower = (unit || "").toLowerCase().trim();
+    const isGenericUnit = !unit
+      || ["lot", "lots", "lot/s", "unit"].includes(unitLower)
+      || (qty === "1" && ["nos", "no"].includes(unitLower));
+
     if (isGenericUnit) {
       const descQty = extractQuantitiesFromDescriptionBlock(block);
       if (descQty) {
-        qty = descQty.qty;
-        unit = descQty.unit;
+        // Prefer description quantity when it uses a specific measurement unit
+        // (weight, volume, length) over generic row-level quantities.
+        const descUnitUpper = (descQty.unit || "").toUpperCase().trim();
+        const isDescSpecific = SPECIFIC_UNITS.has(descUnitUpper);
+
+        if (isDescSpecific || isGenericUnit) {
+          qty = descQty.qty;
+          unit = descQty.unit;
+        }
       }
     }
 
@@ -769,6 +890,38 @@ export function parseLotBlocks(
       productType,
       preBidEmd: lotPreBidEmd,
     });
+  }
+
+  // ── Apply global tax rate fallback ──────────────────────────────────────────
+  const globalRates = extractGlobalTaxRates(rawTextForGlobalRates || cleanText);
+
+  for (const item of items) {
+    // Replace "As Applicable" or empty GST with global rate
+    const taxLower = (item.taxRate || "").toLowerCase();
+    const hasVagueGst =
+      taxLower.includes("as applicable") ||
+      taxLower === "gst" ||
+      !item.taxRate;
+
+    if (hasVagueGst && globalRates.gstRate) {
+      // Reconstruct the taxRate string with the global rate
+      let newTaxRate = `${globalRates.gstRate} GST`;
+
+      // Preserve existing TCS if present, otherwise use global TCS
+      const existingTcsMatch = item.taxRate?.match(/(\d+(?:\.\d+)?%?)\s*TCS/i);
+      const tcsStr = existingTcsMatch
+        ? existingTcsMatch[1]
+        : globalRates.tcsRate;
+      if (tcsStr && tcsStr !== "0" && tcsStr !== "0.0") {
+        newTaxRate += ` + ${tcsStr.endsWith("%") ? tcsStr : tcsStr + "%"} TCS`;
+      }
+
+      if (globalRates.rcmApplicable) {
+        newTaxRate += " + RCM";
+      }
+
+      item.taxRate = newTaxRate;
+    }
   }
 
   // Fallback if no lots parsed

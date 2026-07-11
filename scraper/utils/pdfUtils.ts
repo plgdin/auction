@@ -217,6 +217,8 @@ export interface RenderedPage {
   pageNumber: number;
   text: string;
   imageBuffer: Buffer;
+  /** Whether this page contains embedded image XObjects (scanned content). */
+  hasImages: boolean;
 }
 
 /**
@@ -269,7 +271,17 @@ export async function renderAndExtractPdfPages(
             .map((item: any) => item.str)
             .join(" ");
 
-          // 2. Render to canvas and get data URL
+          // 2. Detect embedded images via operator list
+          //    OPS.paintImageXObject = 85 in PDF.js
+          let hasImages = false;
+          try {
+            const opList = await pdfPage.getOperatorList();
+            hasImages = opList.fnArray.some((op: number) => op === 85);
+          } catch (_opErr) {
+            // Operator list extraction failed, assume no images
+          }
+
+          // 3. Render to canvas and get data URL
           const viewport = pdfPage.getViewport({ scale: 1.5 });
           canvas.width = viewport.width;
           canvas.height = viewport.height;
@@ -277,7 +289,7 @@ export async function renderAndExtractPdfPages(
           await pdfPage.render({ canvasContext, viewport }).promise;
           const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
 
-          // 3. Fallback to Tesseract OCR if text is empty or too short (scanned PDF)
+          // 4. Fallback to Tesseract OCR if text is empty or too short (scanned PDF)
           if (!pageText || pageText.trim().length < 50) {
             try {
               const ocrRes = await (window as any).Tesseract.recognize(canvas, 'eng');
@@ -293,6 +305,7 @@ export async function renderAndExtractPdfPages(
             pageNumber: pNum,
             text: pageText,
             dataUrl,
+            hasImages,
           });
         }
         return results;
@@ -311,6 +324,7 @@ export async function renderAndExtractPdfPages(
         pageNumber: res.pageNumber,
         text: res.text,
         imageBuffer: Buffer.from(base64Image, "base64"),
+        hasImages: res.hasImages ?? false,
       });
     }
     return renderedPages;
