@@ -15,6 +15,9 @@ export function AuditLogsView() {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [userTypeTab, setUserTypeTab] = useState<'registered' | 'unregistered'>('registered');
+  const [geoDetails, setGeoDetails] = useState<Record<string, any>>({});
+  const [loadingGeo, setLoadingGeo] = useState<Record<string, boolean>>({});
   
   // Analytics stats
   const [stats, setStats] = useState({
@@ -28,10 +31,29 @@ export function AuditLogsView() {
 
   const fetchStats = async () => {
     try {
-      const { count: total } = await supabase.from('audit_logs').select('*', { count: 'exact', head: true });
-      const { count: logins } = await supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'user_login');
-      const { count: previews } = await supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'mstc_catalog_preview');
-      const { count: downloads } = await supabase.from('audit_logs').select('*', { count: 'exact', head: true }).in('action', ['mstc_catalog_download', 'mstc_catalog_pdf_served']);
+      let queryTotal = supabase.from('audit_logs').select('*', { count: 'exact', head: true });
+      let queryLogins = supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'user_login');
+      let queryPreviews = supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'mstc_catalog_preview');
+      let queryDownloads = supabase.from('audit_logs').select('*', { count: 'exact', head: true }).in('action', ['mstc_catalog_download', 'mstc_catalog_pdf_served']);
+
+      if (userTypeTab === 'registered') {
+        queryTotal = queryTotal.not('user_id', 'is', null);
+        queryLogins = queryLogins.not('user_id', 'is', null);
+        queryPreviews = queryPreviews.not('user_id', 'is', null);
+        queryDownloads = queryDownloads.not('user_id', 'is', null);
+      } else {
+        queryTotal = queryTotal.is('user_id', null);
+        queryLogins = queryLogins.is('user_id', null);
+        queryPreviews = queryPreviews.is('user_id', null);
+        queryDownloads = queryDownloads.is('user_id', null);
+      }
+
+      const [{ count: total }, { count: logins }, { count: previews }, { count: downloads }] = await Promise.all([
+        queryTotal,
+        queryLogins,
+        queryPreviews,
+        queryDownloads
+      ]);
 
       setStats({
         total: total || 0,
@@ -50,6 +72,13 @@ export function AuditLogsView() {
       let query = supabase
         .from('audit_logs')
         .select('*', { count: 'exact' });
+
+      // Filter by registration status
+      if (userTypeTab === 'registered') {
+        query = query.not('user_id', 'is', null);
+      } else {
+        query = query.is('user_id', null);
+      }
 
       // Apply action filter
       if (selectedAction !== 'all') {
@@ -82,16 +111,83 @@ export function AuditLogsView() {
 
   useEffect(() => {
     fetchLogs();
-  }, [page, selectedAction]);
+  }, [page, selectedAction, userTypeTab]);
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [userTypeTab]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
     fetchLogs();
+  };
+
+  const handleToggleExpand = async (log: AuditLog) => {
+    const isExpanding = expandedLogId !== log.id;
+    setExpandedLogId(isExpanding ? log.id : null);
+    
+    if (isExpanding && log.ip_address && log.ip_address !== 'N/A' && log.ip_address !== '127.0.0.1' && log.ip_address !== '::1') {
+      const ip = log.ip_address;
+      if (geoDetails[log.id] || loadingGeo[log.id]) return;
+      
+      setLoadingGeo(prev => ({ ...prev, [log.id]: true }));
+      try {
+        const response = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`);
+        if (response.ok) {
+          const data = await response.json();
+          setGeoDetails(prev => ({
+            ...prev,
+            [log.id]: {
+              city: data.city,
+              region: data.region,
+              country: data.country_name,
+              countryCode: data.country_code
+            }
+          }));
+        }
+      } catch (e) {
+        console.warn('Geolocation fetch failed for ip:', ip, e);
+      } finally {
+        setLoadingGeo(prev => ({ ...prev, [log.id]: false }));
+      }
+    }
+  };
+
+  const getGeoLocationText = (log: AuditLog) => {
+    const ip = log.ip_address;
+    if (!ip || ip === 'N/A') return 'No IP Address';
+    if (ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+      return 'Local Network / Loopback';
+    }
+    
+    const geo = geoDetails[log.id];
+    if (geo) {
+      if (geo.country === 'India' || geo.countryCode === 'IN') {
+        return geo.region ? `${geo.region}, India` : 'India';
+      }
+      if (geo.city && geo.country) {
+        return `${geo.city}, ${geo.country}`;
+      }
+      return geo.country || 'Unknown Location';
+    }
+    
+    if (loadingGeo[log.id]) {
+      return 'Fetching location...';
+    }
+    
+    return 'Location Unavailable';
+  };
+
+  const renderDetailRow = (label: string, value: any) => {
+    if (value === undefined || value === null) return null;
+    const displayVal = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    return (
+      <div key={label} className="grid grid-cols-3 gap-4 py-2 border-b border-slate-100 last:border-0 text-xs">
+        <span className="font-bold text-slate-500 uppercase tracking-wider">{label.replace(/_/g, ' ')}</span>
+        <span className="col-span-2 text-slate-800 font-medium break-all">{displayVal}</span>
+      </div>
+    );
   };
 
   const totalPages = Math.ceil(totalCount / limit);
@@ -135,6 +231,36 @@ export function AuditLogsView() {
   return (
     <div className="space-y-6">
       
+      {/* Registration Tabs */}
+      <div className="flex space-x-2 border-b border-slate-200">
+        <button 
+          onClick={() => {
+            setUserTypeTab('registered');
+            setPage(1);
+          }}
+          className={`px-4 py-2 font-bold text-sm border-b-2 transition-colors cursor-pointer ${
+            userTypeTab === 'registered' 
+              ? 'border-primary text-primary' 
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          Registered Users
+        </button>
+        <button 
+          onClick={() => {
+            setUserTypeTab('unregistered');
+            setPage(1);
+          }}
+          className={`px-4 py-2 font-bold text-sm border-b-2 transition-colors cursor-pointer ${
+            userTypeTab === 'unregistered' 
+              ? 'border-primary text-primary' 
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          Unregistered Users
+        </button>
+      </div>
+
       {/* Analytics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white p-5 rounded-2xl shadow-xs border border-slate-200 flex items-center justify-between">
@@ -289,20 +415,62 @@ export function AuditLogsView() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <button
-                          onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                          onClick={() => handleToggleExpand(log)}
                           className="text-primary hover:text-primary-750 font-bold text-xs hover:underline cursor-pointer"
                         >
-                          {isExpanded ? 'Collapse' : 'Expand Metadata'}
+                          {isExpanded ? 'Hide Details' : 'View Details'}
                         </button>
                         {isExpanded && (
-                          <div className="mt-3 text-left bg-slate-900 text-slate-100 p-4 rounded-xl font-mono text-xs overflow-x-auto shadow-inner max-w-lg ml-auto border border-slate-800">
-                            <pre className="whitespace-pre-wrap">{JSON.stringify({
-                              id: log.id,
-                              user_id: log.user_id,
-                              entity_type: log.entity_type,
-                              entity_id: log.entity_id,
-                              details: log.details
-                            }, null, 2)}</pre>
+                          <div className="mt-4 p-5 text-left bg-slate-50 border border-slate-200 rounded-2xl shadow-inner max-w-2xl ml-auto animate-fade-in">
+                            <h4 className="text-xs font-black text-slate-900 tracking-wider uppercase mb-3 pb-1.5 border-b border-slate-200">
+                              Activity Log Details
+                            </h4>
+                            
+                            <div className="space-y-3">
+                              {/* Metadata columns */}
+                              <div className="grid grid-cols-2 gap-4 pb-3 border-b border-slate-200/60">
+                                <div>
+                                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Log ID</span>
+                                  <span className="text-xs font-semibold text-slate-700 font-mono break-all">{log.id}</span>
+                                </div>
+                                <div>
+                                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">User ID</span>
+                                  <span className="text-xs font-semibold text-slate-700 font-mono break-all">{log.user_id || 'Anonymous / Guest'}</span>
+                                </div>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-4 pb-3 border-b border-slate-200/60">
+                                <div>
+                                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Entity Info</span>
+                                  <span className="text-xs font-semibold text-slate-700 font-mono">
+                                    {log.entity_type ? `${log.entity_type} (${log.entity_id || 'No ID'})` : 'None'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Location / IP</span>
+                                  <span className="text-xs font-semibold text-slate-700 block font-mono">
+                                    {log.ip_address || 'N/A'}
+                                  </span>
+                                  <span className="text-[11px] font-bold text-primary block mt-0.5">
+                                    {getGeoLocationText(log)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Custom payload details */}
+                              {log.details && Object.keys(log.details).length > 0 ? (
+                                <div className="pt-1">
+                                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Payload Data</span>
+                                  <div className="bg-white px-4 py-2.5 rounded-xl border border-slate-200 divide-y divide-slate-100">
+                                    {Object.entries(log.details).map(([key, val]) => renderDetailRow(key, val))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-slate-500 font-semibold italic pt-1">
+                                  No additional payload data recorded.
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </td>
