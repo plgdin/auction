@@ -383,6 +383,8 @@ function getNormalizedText(text: string): string {
   let val = (text || '').toLowerCase();
   // Strip special chars/parenthesis
   val = val.replace(/[\(\)\/]/g, ' ');
+  // Normalize e-waste before removing dashes/underscores to prevent matching generic 'waste'
+  val = val.replace(/\be\s*[-_]?\s*waste\b/g, 'ewaste');
   val = val.replace(/[-_]/g, ' ');
   // Normalize synonyms
   val = val.replace(/\butensils?\b/g, 'bartan');
