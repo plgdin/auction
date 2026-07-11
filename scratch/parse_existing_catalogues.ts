@@ -1,11 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import path from "path";
-import { createRequire } from "module";
 import { parseMstcCatalogText } from "../scraper/parsers/mstcParser.js";
-
-const require = createRequire(import.meta.url);
-const pdf = require("pdf-parse");
+import { renderAndExtractPdfPages } from "../scraper/utils/pdfUtils.js";
 
 dotenv.config({ path: path.resolve(".env.local") });
 
@@ -55,17 +52,6 @@ async function processBatch(records: any[]): Promise<number> {
           // Not JSON, or empty/malformed
         }
 
-        // Check if we already processed it with the new parser (check if first lot contains pcbGroup property)
-        const firstItem = parsedSummary.items && parsedSummary.items[0];
-        const isAlreadyProcessedWithNewParser = firstItem && (
-          Object.prototype.hasOwnProperty.call(firstItem, 'pcbGroup') || 
-          Object.prototype.hasOwnProperty.call(firstItem, 'productType')
-        );
-
-        if (isAlreadyProcessedWithNewParser) {
-          return false;
-        }
-
         // Download PDF from Supabase Storage using client
         let fileData;
         try {
@@ -95,16 +81,15 @@ async function processBatch(records: any[]): Promise<number> {
         }
 
         const buffer = Buffer.from(await fileData.arrayBuffer());
-        const parsedPdf = await pdf(buffer);
+        
+        // Extract page text (falls back automatically to Tesseract OCR if text is empty/scanned)
+        const pages = await renderAndExtractPdfPages(buffer, 10);
+        const cleanText = pages.map(p => p.text).join("\n");
 
-        if (!parsedPdf || !parsedPdf.text) {
+        if (!cleanText || cleanText.trim().length === 0) {
+          console.warn(`No text content extracted for ${record.mstc_auction_number}`);
           return false;
         }
-
-        const cleanText = parsedPdf.text
-          .split("\n")
-          .map((l: string) => l.trim())
-          .join("\n");
 
         // Parse with the new parser logic
         const newSummary = parseMstcCatalogText(
@@ -159,16 +144,17 @@ async function processBatch(records: any[]): Promise<number> {
 }
 
 async function run() {
-  console.log("Starting parsing of existing catalogues...");
+  console.log("Starting parsing of existing catalogues (with Puppeteer OCR)...");
 
   let totalProcessed = 0;
   let totalUpdated = 0;
   let hasMore = true;
   let page = 0;
-  const pageSize = 100;
+  const pageSize = 10;
+  const maxRecords = 10; // Process 10 records for safety and speed
 
-  while (hasMore) {
-    console.log(`Fetching page ${page} (offset: ${page * pageSize})...`);
+  while (hasMore && totalProcessed < maxRecords) {
+    console.log(`Fetching batch ${page} (offset: ${page * pageSize})...`);
     
     // Fetch completed records
     const { data: records, error } = await supabase
@@ -195,7 +181,7 @@ async function run() {
 
     console.log(`Batch processed. Updated: ${updatedInBatch}. Total processed: ${totalProcessed}. Total updated: ${totalUpdated}`);
 
-    if (records.length < pageSize) {
+    if (records.length < pageSize || totalProcessed >= maxRecords) {
       hasMore = false;
     } else {
       page++;
@@ -206,6 +192,12 @@ async function run() {
   }
 
   console.log(`Completed parsing. Processed: ${totalProcessed}, Updated: ${totalUpdated}`);
+  
+  // Explicitly close browser singleton
+  try {
+    const { closeBrowser } = await import("../scraper/utils/pdfUtils.js");
+    await closeBrowser();
+  } catch (err) {}
 }
 
 run();

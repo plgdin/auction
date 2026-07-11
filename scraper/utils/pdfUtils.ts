@@ -94,6 +94,7 @@ const PDF_JS_HTML = `
   <html>
   <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
     <script>
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
@@ -262,9 +263,9 @@ export async function renderAndExtractPdfPages(
         for (let pNum = 1; pNum <= limit; pNum++) {
           const pdfPage = await pdfDoc.getPage(pNum);
 
-          // 1. Extract text content
+          // 1. Extract text content via PDF.js
           const textContent = await pdfPage.getTextContent();
-          const pageText = textContent.items
+          let pageText = textContent.items
             .map((item: any) => item.str)
             .join(" ");
 
@@ -275,6 +276,18 @@ export async function renderAndExtractPdfPages(
           canvasContext.clearRect(0, 0, canvas.width, canvas.height);
           await pdfPage.render({ canvasContext, viewport }).promise;
           const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+          // 3. Fallback to Tesseract OCR if text is empty or too short (scanned PDF)
+          if (!pageText || pageText.trim().length < 50) {
+            try {
+              const ocrRes = await (window as any).Tesseract.recognize(canvas, 'eng');
+              if (ocrRes && ocrRes.data && ocrRes.data.text) {
+                pageText = ocrRes.data.text;
+              }
+            } catch (ocrErr) {
+              console.error("Scanned PDF OCR failed on page " + pNum, ocrErr);
+            }
+          }
 
           results.push({
             pageNumber: pNum,
