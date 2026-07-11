@@ -377,16 +377,25 @@ export function ReportsAnalytics() {
         ];
 
         const mockWalletTx = [
-          { id: '1', user_id: 'usr-9281', amount: 500000, transaction_type: 'deposit', status: 'completed', reference_id: 'DEP-UPI-9921', description: 'Wallet top-up', created_at: new Date(now.getTime() - 1 * 3600000).toISOString() },
-          { id: '2', user_id: 'usr-2031', amount: 200000, transaction_type: 'withdrawal', status: 'completed', reference_id: 'WTH-NEFT-5512', description: 'Wallet withdrawal', created_at: new Date(now.getTime() - 4 * 3600000).toISOString() },
-          { id: '3', user_id: 'usr-4122', amount: 150000, transaction_type: 'deposit', status: 'completed', reference_id: 'DEP-NET-8821', description: 'Wallet top-up', created_at: new Date(now.getTime() - 8 * 3600000).toISOString() },
-          { id: '4', user_id: 'usr-0912', amount: 300000, transaction_type: 'deposit', status: 'completed', reference_id: 'DEP-RTGS-3310', description: 'Wallet top-up via RTGS', created_at: new Date(now.getTime() - 15 * 3600000).toISOString() },
-          { id: '5', user_id: 'usr-6771', amount: 100000, transaction_type: 'withdrawal', status: 'pending', reference_id: 'WTH-UPI-7711', description: 'Wallet withdrawal requested', created_at: new Date(now.getTime() - 20 * 3600000).toISOString() }
+          { id: '1', user_id: 'usr-9281', amount: 500000, transaction_type: 'deposit', status: 'completed', reference_id: 'DEP-UPI-9921', description: 'Wallet top-up', created_at: new Date(now.getTime() - 1 * 3600000).toISOString(), profiles: { first_name: 'Rahul', last_name: 'Verma' } },
+          { id: '2', user_id: 'usr-2031', amount: 200000, transaction_type: 'withdrawal', status: 'completed', reference_id: 'WTH-NEFT-5512', description: 'Wallet withdrawal', created_at: new Date(now.getTime() - 4 * 3600000).toISOString(), profiles: { first_name: 'Priyanka', last_name: 'Sen' } },
+          { id: '3', user_id: 'usr-4122', amount: 150000, transaction_type: 'deposit', status: 'completed', reference_id: 'DEP-NET-8821', description: 'Wallet top-up', created_at: new Date(now.getTime() - 8 * 3600000).toISOString(), profiles: { first_name: 'Amit', last_name: 'Patel' } },
+          { id: '4', user_id: 'usr-0912', amount: 300000, transaction_type: 'deposit', status: 'completed', reference_id: 'DEP-RTGS-3310', description: 'Wallet top-up via RTGS', created_at: new Date(now.getTime() - 15 * 3600000).toISOString(), profiles: { first_name: 'Siddharth', last_name: 'Joshi' } },
+          { id: '5', user_id: 'usr-6771', amount: 100000, transaction_type: 'withdrawal', status: 'pending', reference_id: 'WTH-UPI-7711', description: 'Wallet withdrawal requested', created_at: new Date(now.getTime() - 20 * 3600000).toISOString(), profiles: { first_name: 'Karan', last_name: 'Mehta' } }
+        ];
+
+        const mockBids = [
+          { id: 'b-1', amount: 550000, status: 'won', created_at: new Date(now.getTime() - 2 * 3600000).toISOString(), bidder_id: 'usr-9281', profiles: { first_name: 'Aditya', last_name: 'Kumar' }, auctions: { title: 'Auction of MS Scrap (Heavy & Melting)' } },
+          { id: 'b-2', amount: 120000, status: 'lost', created_at: new Date(now.getTime() - 6 * 3600000).toISOString(), bidder_id: 'usr-2031', profiles: { first_name: 'Rahul', last_name: 'Sharma' }, auctions: { title: 'Electrical Scrap Cables & Transformer' } },
+          { id: 'b-3', amount: 350000, status: 'winning', created_at: new Date(now.getTime() - 10 * 3600000).toISOString(), bidder_id: 'usr-4122', profiles: { first_name: 'Amit', last_name: 'Patel' }, auctions: { title: 'Aluminium Spot and Wire Scrap Lot' } },
+          { id: 'b-4', amount: 720000, status: 'lost', created_at: new Date(now.getTime() - 18 * 3600000).toISOString(), bidder_id: 'usr-0912', profiles: { first_name: 'Vikas', last_name: 'Singh' }, auctions: { title: 'Old Car Engines & End of Life Vehicles' } },
+          { id: 'b-5', amount: 150000, status: 'won', created_at: new Date(now.getTime() - 28 * 3600000).toISOString(), bidder_id: 'usr-3341', profiles: { first_name: 'Suresh', last_name: 'Rao' }, auctions: { title: 'Industrial Copper Telewire Scrap' } }
         ];
 
         // Process actual database records if they exist
         const hasEmd = finData.emdTransactions && finData.emdTransactions.length > 0;
         const hasBids = finData.bids && finData.bids.length > 0;
+        const hasWallet = finData.walletTransactions && finData.walletTransactions.length > 0;
 
         // EMD Aggregates (calculated from real catalog)
         let emdHeld = finData.realEmdHeld || 0;
@@ -411,9 +420,28 @@ export function ReportsAnalytics() {
           maxBidAmount = 4500000;
         }
 
+        // Wallet Aggregates
+        let totalDeposits = 0;
+        let totalWithdrawals = 0;
+        if (hasWallet) {
+          finData.walletTransactions.forEach((w: any) => {
+            const amt = Number(w.amount || 0);
+            if (w.transaction_type === 'deposit') {
+              totalDeposits += amt;
+            } else if (w.transaction_type === 'withdrawal') {
+              totalWithdrawals += amt;
+            }
+          });
+        } else {
+          totalDeposits = 1450000;
+          totalWithdrawals = 890000;
+        }
+        const walletFlow = totalDeposits - totalWithdrawals;
+
         // Timeline processing
         let emdTimeline = mockEmdTimeline;
         let bidsTimeline = mockBidsTimeline;
+        let walletTimeline = mockWalletTimeline;
 
         if (finData.realEmdVolume > 0) {
           emdTimeline = mockEmdTimeline.map(item => {
@@ -436,24 +464,41 @@ export function ReportsAnalytics() {
           });
         }
 
+        if (hasWallet) {
+          const walletByDate: Record<string, { deposits: number, withdrawals: number }> = {};
+          finData.walletTransactions.forEach((w: any) => {
+            const dateStr = new Date(w.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            if (!walletByDate[dateStr]) walletByDate[dateStr] = { deposits: 0, withdrawals: 0 };
+            if (w.transaction_type === 'deposit') {
+              walletByDate[dateStr].deposits += Number(w.amount || 0);
+            } else if (w.transaction_type === 'withdrawal') {
+              walletByDate[dateStr].withdrawals += Number(w.amount || 0);
+            }
+          });
+          walletTimeline = mockWalletTimeline.map(item => {
+            const real = walletByDate[item.date];
+            return real ? { date: item.date, deposits: real.deposits, withdrawals: real.withdrawals } : { date: item.date, deposits: 0, withdrawals: 0 };
+          });
+        }
+
         setFinancialData({
           emdTransactions: finData.emdTransactions,
-          walletTransactions: [],
-          bids: finData.bids,
+          walletTransactions: hasWallet ? finData.walletTransactions : mockWalletTx,
+          bids: hasBids ? finData.bids : mockBids,
           summary: {
             totalUsers: globalData.totalUsers || 0,
             activeListings: globalData.activeListings || 0,
             totalBids,
             emdHeld,
             emdVolume,
-            walletFlow: 0,
-            totalDeposits: 0,
-            totalWithdrawals: 0,
+            walletFlow,
+            totalDeposits,
+            totalWithdrawals,
             avgBidAmount,
             maxBidAmount
           },
           emdTimeline,
-          walletTimeline: [],
+          walletTimeline,
           bidsTimeline
         });
       } catch (err) {
@@ -740,6 +785,41 @@ export function ReportsAnalytics() {
     triggerCsvDownload([headers.join(','), ...rows].join('\n'), `emd_ledger_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  const downloadWalletCSV = () => {
+    const headers = ['Transaction ID', 'User Name', 'Amount (₹)', 'Type', 'Status', 'Reference ID', 'Description', 'Date'];
+    const rows = financialData.walletTransactions.map((tx: any) => {
+      const userName = tx.profiles ? `${tx.profiles.first_name || ''} ${tx.profiles.last_name || ''}`.trim() : tx.user_id || 'N/A';
+      return [
+        csvCell(tx.id || 'N/A'),
+        csvCell(userName),
+        tx.amount,
+        csvCell(tx.transaction_type || 'N/A'),
+        csvCell(tx.status || 'completed'),
+        csvCell(tx.reference_id || 'N/A'),
+        csvCell(tx.description || 'N/A'),
+        csvCell(new Date(tx.created_at).toLocaleString())
+      ].join(',');
+    });
+    triggerCsvDownload([headers.join(','), ...rows].join('\n'), `wallet_ledger_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const downloadBidsCSV = () => {
+    const headers = ['Bid ID', 'Bidder Name', 'Auction Title', 'Amount (₹)', 'Status', 'Date'];
+    const rows = financialData.bids.map((tx: any) => {
+      const userName = tx.profiles ? `${tx.profiles.first_name || ''} ${tx.profiles.last_name || ''}`.trim() : tx.bidder_id || 'N/A';
+      const auctionTitle = tx.auctions?.title || 'N/A';
+      return [
+        csvCell(tx.id || 'N/A'),
+        csvCell(userName),
+        csvCell(auctionTitle),
+        tx.amount,
+        csvCell(tx.status || 'active'),
+        csvCell(new Date(tx.created_at).toLocaleString())
+      ].join(',');
+    });
+    triggerCsvDownload([headers.join(','), ...rows].join('\n'), `bids_ledger_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
   const handleExportCSV = () => {
     const filterLabel = dateFilter === 'all' ? totalsTab : dateFilter;
     const lines: string[] = [];
@@ -854,6 +934,25 @@ export function ReportsAnalytics() {
         </div>
       )}
 
+      {/* Tab Navigation */}
+      <div className="flex border-b border-slate-200 gap-6 print:hidden">
+        {(['overview', 'emd', 'wallet', 'bids'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={clsx(
+              "pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer capitalize whitespace-nowrap",
+              activeTab === tab
+                ? "border-primary text-primary"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+            )}
+          >
+            {tab === 'emd' ? 'EMD Ledger' : tab === 'wallet' ? 'Wallet Ledger' : tab === 'bids' ? 'Bids Ledger' : tab}
+          </button>
+        ))}
+      </div>
+
       {/* Loading State */}
       {isLoadingCategories || isLoadingFinancial ? (
         <div className="flex justify-center py-20 bg-white rounded-2xl border border-slate-200">
@@ -861,7 +960,9 @@ export function ReportsAnalytics() {
         </div>
       ) : (
         <div className="space-y-6 animate-fade-in">
-          {/* KPI Cards Grid */}
+          {activeTab === 'overview' && (
+            <>
+              {/* KPI Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 print:grid-cols-3">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
               <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
@@ -1288,6 +1389,427 @@ export function ReportsAnalytics() {
               </div>
             </div>
           </div>
+        </>
+      )}
+
+      {activeTab === 'emd' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* KPI Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <DollarSign className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total EMD Volume</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.emdVolume.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">EMD Currently Held</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.emdHeld.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Unlock className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">EMD Released</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{(financialData.summary.emdVolume - financialData.summary.emdHeld).toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Chart: EMD Timeline */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
+              <TrendingUp className="w-5 h-5 mr-2 text-indigo-500" /> EMD Hold vs Release Timeline
+            </h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={financialData.emdTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorHeld" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity="0.3"/>
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorReleased" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity="0.3"/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                  <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, undefined]} />
+                  <Legend />
+                  <Area type="monotone" dataKey="held" stroke="#f59e0b" fillOpacity={1} fill="url(#colorHeld)" name="EMD Held" strokeWidth={2} />
+                  <Area type="monotone" dataKey="released" stroke="#10b981" fillOpacity={1} fill="url(#colorReleased)" name="EMD Released" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* EMD Transactions Table */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-primary" /> EMD Transaction Ledger
+              </h3>
+              <button
+                type="button"
+                onClick={downloadEmdCSV}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-lg flex items-center gap-2 transition-colors cursor-pointer select-none"
+              >
+                <Download className="w-4 h-4" /> Download CSV
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-550 font-bold">
+                    <th className="px-6 py-4 font-bold">Transaction Reference</th>
+                    <th className="px-6 py-4 font-bold">User Context</th>
+                    <th className="px-6 py-4 font-bold">Category</th>
+                    <th className="px-6 py-4 font-bold text-right">Amount</th>
+                    <th className="px-6 py-4 font-bold text-center">EMD %</th>
+                    <th className="px-6 py-4 font-bold text-center">Status</th>
+                    <th className="px-6 py-4 font-bold">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                  {financialData.emdTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-10 text-center text-slate-500 font-semibold">
+                        No EMD transactions found.
+                      </td>
+                    </tr>
+                  ) : (
+                    financialData.emdTransactions.slice(0, 100).map((tx: any) => {
+                      const userName = tx.profiles ? `${tx.profiles.first_name || ''} ${tx.profiles.last_name || ''}`.trim() : tx.user_id || 'N/A';
+                      return (
+                        <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 font-mono text-[11px] text-slate-600 font-bold">
+                            {tx.transaction_reference || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-slate-800 font-bold">{userName}</div>
+                            <div className="text-[10px] text-slate-400 font-normal truncate max-w-[120px]">{tx.user_id}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="bg-slate-100 px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-600 uppercase">
+                              {tx.category_name || 'General'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right text-slate-900 font-black text-sm">
+                            ₹{Number(tx.amount || 0).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 text-center font-mono text-[11px] text-slate-500">
+                            {tx.emd_pct !== undefined ? `${tx.emd_pct}%` : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={clsx(
+                              "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase",
+                              tx.status === 'held' ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                              tx.status === 'released' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                              "bg-slate-50 text-slate-650 border border-slate-200"
+                            )}>
+                              {tx.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 font-medium whitespace-nowrap">
+                            {new Date(tx.created_at).toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'wallet' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* KPI Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Deposits</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.totalDeposits.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                <Activity className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Withdrawals</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.totalWithdrawals.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <DollarSign className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Net Wallet Flow</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.walletFlow.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Chart: Wallet Timeline */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
+              <TrendingUp className="w-5 h-5 mr-2 text-primary" /> Wallet Deposit vs Withdrawal Flow
+            </h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={financialData.walletTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                  <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, undefined]} cursor={{fill: '#f8fafc'}} />
+                  <Legend />
+                  <Bar dataKey="deposits" fill="#3b82f6" name="Deposits" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="withdrawals" fill="#ef4444" name="Withdrawals" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Wallet Transactions Table */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-primary" /> Wallet Ledger Log
+              </h3>
+              <button
+                type="button"
+                onClick={downloadWalletCSV}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-lg flex items-center gap-2 transition-colors cursor-pointer select-none"
+              >
+                <Download className="w-4 h-4" /> Download CSV
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-550 font-bold">
+                    <th className="px-6 py-4 font-bold">Transaction ID</th>
+                    <th className="px-6 py-4 font-bold">User Name</th>
+                    <th className="px-6 py-4 font-bold">Type</th>
+                    <th className="px-6 py-4 font-bold text-right">Amount</th>
+                    <th className="px-6 py-4 font-bold text-center">Status</th>
+                    <th className="px-6 py-4 font-bold">Reference / Description</th>
+                    <th className="px-6 py-4 font-bold">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                  {financialData.walletTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-10 text-center text-slate-500 font-semibold">
+                        No wallet transactions found.
+                      </td>
+                    </tr>
+                  ) : (
+                    financialData.walletTransactions.slice(0, 100).map((tx: any) => {
+                      const userName = tx.profiles ? `${tx.profiles.first_name || ''} ${tx.profiles.last_name || ''}`.trim() : tx.user_id || 'N/A';
+                      return (
+                        <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 font-mono text-[11px] text-slate-500">
+                            {tx.id}
+                          </td>
+                          <td className="px-6 py-4 text-slate-800 font-bold">
+                            {userName}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={clsx(
+                              "px-2.5 py-0.5 rounded text-[10px] font-bold uppercase",
+                              tx.transaction_type === 'deposit' ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                              tx.transaction_type === 'withdrawal' ? "bg-red-50 text-red-700 border border-red-100" :
+                              "bg-slate-100 text-slate-700"
+                            )}>
+                              {tx.transaction_type}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right text-slate-900 font-black text-sm">
+                            ₹{Number(tx.amount || 0).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={clsx(
+                              "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                              tx.status === 'completed' ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"
+                            )}>
+                              {tx.status || 'completed'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-slate-600">
+                            <div className="font-semibold">{tx.description || 'Wallet transaction'}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{tx.reference_id}</div>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 font-medium whitespace-nowrap">
+                            {new Date(tx.created_at).toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'bids' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* KPI Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Gavel className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Bids</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{financialData.summary.totalBids.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <DollarSign className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Average Bid Size</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.avgBidAmount.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Highest Bid</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.maxBidAmount.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Chart: Bids Timeline */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
+              <TrendingUp className="w-5 h-5 mr-2 text-primary" /> Bidding Volume & Count Timeline
+            </h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={financialData.bidsTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="left" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="right" orientation="right" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(value, name) => [name === 'volume' ? `₹${value.toLocaleString()}` : value, name]} />
+                  <Legend />
+                  <Line yAxisId="left" type="monotone" dataKey="volume" stroke="#2563eb" name="Bid Volume" strokeWidth={2.5} activeDot={{ r: 8 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="count" stroke="#10b981" name="Bids Count" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Bids List Table */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-primary" /> Recent Bids Ledger
+              </h3>
+              <button
+                type="button"
+                onClick={downloadBidsCSV}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-lg flex items-center gap-2 transition-colors cursor-pointer select-none"
+              >
+                <Download className="w-4 h-4" /> Download CSV
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-555 font-bold">
+                    <th className="px-6 py-4 font-bold">Bid ID</th>
+                    <th className="px-6 py-4 font-bold">Bidder Name</th>
+                    <th className="px-6 py-4 font-bold">Auction Lot / Item</th>
+                    <th className="px-6 py-4 font-bold text-right">Bid Amount</th>
+                    <th className="px-6 py-4 font-bold text-center">Status</th>
+                    <th className="px-6 py-4 font-bold">Placed At</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+                  {financialData.bids.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-10 text-center text-slate-500 font-semibold">
+                        No bids recorded.
+                      </td>
+                    </tr>
+                  ) : (
+                    financialData.bids.slice(0, 100).map((tx: any) => {
+                      const userName = tx.profiles ? `${tx.profiles.first_name || ''} ${tx.profiles.last_name || ''}`.trim() : tx.bidder_id || 'N/A';
+                      const auctionTitle = tx.auctions?.title || 'N/A';
+                      return (
+                        <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 font-mono text-[11px] text-slate-500">
+                            {tx.id}
+                          </td>
+                          <td className="px-6 py-4 text-slate-800 font-bold">
+                            {userName}
+                          </td>
+                          <td className="px-6 py-4 text-slate-700 font-semibold truncate max-w-[250px]" title={auctionTitle}>
+                            {auctionTitle}
+                          </td>
+                          <td className="px-6 py-4 text-right text-slate-900 font-black text-sm">
+                            ₹{Number(tx.amount || 0).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={clsx(
+                              "px-2.5 py-0.5 rounded text-[10px] font-bold uppercase",
+                              tx.status === 'won' || tx.status === 'winning' ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                              tx.status === 'lost' ? "bg-red-50 text-red-700 border border-red-100" :
+                              "bg-blue-50 text-blue-700 border border-blue-100"
+                            )}>
+                              {tx.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 font-medium whitespace-nowrap">
+                            {new Date(tx.created_at).toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
         </div>
       )}
     </div>
