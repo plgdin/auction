@@ -9,87 +9,221 @@ export interface MetalMandiRate {
   updated_at: string;
 }
 
-/**
- * Extracts and parses scrap metal rates from HTML page content
- * and upserts them to the database with sanity guardrails.
- */
-export async function parseMetalMandiRates(htmlContent: string): Promise<MetalMandiRate[]> {
-  const cleanHtml = (htmlContent || '').replace(/<[^>]*>/g, ' '); // Strip HTML tags for regex-friendly text
+export interface ScrapedRate {
+  category: string;
+  name: string;
+  priceText: string;
+  changeText: string;
+}
+
+function parsePrice(priceText: string): number | null {
+  if (!priceText) return null;
   
-  const targetGrades = [
-    { name: 'MS Scrap(Old)', type: 'iron', keywords: [/ms\s*scrap\s*\(?old\)?/i, /iron\s*scrap\s*old/i, /heavy\s*melting\s*scrap/i, /hms/i], minVal: 15, maxVal: 80, defaultVal: 35.00 },
-    { name: 'Wire Scrap', type: 'copper', keywords: [/wire\s*scrap/i, /copper\s*wire\s*scrap/i, /copper\s*wire/i, /copper\s*scrap/i], minVal: 400, maxVal: 1000, defaultVal: 650.00 },
-    { name: 'Brass Scrap', type: 'brass', keywords: [/brass\s*scrap/i, /scrap\s*brass/i], minVal: 250, maxVal: 650, defaultVal: 420.00 },
-    { name: 'Aluminium Scrap', type: 'aluminium', keywords: [/aluminium\s*scrap/i, /aluminum\s*scrap/i, /scrap\s*aluminium/i], minVal: 100, maxVal: 350, defaultVal: 180.00 },
-    { name: 'Lead Scrap', type: 'lead', keywords: [/lead\s*scrap/i, /scrap\s*lead/i], minVal: 80, maxVal: 280, defaultVal: 150.00 }
+  // Match ranges like "₹1197 - 1307 /kg" or "1197 - 1307"
+  const rangeMatch = priceText.replace(/,/g, '').match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+  if (rangeMatch) {
+    const val1 = parseFloat(rangeMatch[1]);
+    const val2 = parseFloat(rangeMatch[2]);
+    if (!isNaN(val1) && !isNaN(val2)) {
+      return (val1 + val2) / 2;
+    }
+  }
+  
+  // Match single price like "₹1179 /kg" or "₹1526"
+  const singleMatch = priceText.replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
+  if (singleMatch) {
+    const val = parseFloat(singleMatch[1]);
+    if (!isNaN(val)) return val;
+  }
+  
+  return null;
+}
+
+function parseChangePercent(changeText: string): number {
+  if (!changeText) return 0.00;
+  const match = changeText.match(/([+-]?\d+(?:\.\d+)?)\s*%/);
+  if (match) {
+    const val = parseFloat(match[1]);
+    if (!isNaN(val)) return val;
+  }
+  return 0.00;
+}
+
+/**
+ * Syncs MetalMandi rates to the database. Supports dynamic scraped rates
+ * from browser evaluation, and falls back to baseline defaults if no rates are provided.
+ */
+export async function parseMetalMandiRates(scrapedRates?: ScrapedRate[] | string): Promise<MetalMandiRate[]> {
+  const results: MetalMandiRate[] = [];
+  const now = new Date().toISOString();
+
+  // Baseline target legacy grades configuration for defaults & fallback compatibility
+  const legacyConfig = [
+    { name: 'MS Scrap(Old)', type: 'iron', minVal: 15, maxVal: 100, defaultVal: 35.00 },
+    { name: 'Wire Scrap', type: 'copper', minVal: 400, maxVal: 1600, defaultVal: 650.00 },
+    { name: 'Brass Scrap', type: 'brass', minVal: 250, maxVal: 1000, defaultVal: 420.00 },
+    { name: 'Aluminium Scrap', type: 'aluminium', minVal: 100, maxVal: 350, defaultVal: 180.00 },
+    { name: 'Lead Scrap', type: 'lead', minVal: 80, maxVal: 400, defaultVal: 150.00 }
   ];
 
-  const results: MetalMandiRate[] = [];
+  let ratesToProcess = scrapedRates;
+  if (typeof scrapedRates === "string" && scrapedRates.trim().length > 0) {
+    try {
+      ratesToProcess = JSON.parse(scrapedRates);
+    } catch (e: any) {
+      console.error("[MetalMandi] Failed to parse scrapedRates string to JSON:", e.message);
+      ratesToProcess = undefined;
+    }
+  }
 
-  for (const grade of targetGrades) {
-    let extractedPrice: number | null = null;
-    
-    // Scan text near matching keywords to parse rates (like "₹329 /kg" or "Rs. 30")
-    for (const pattern of grade.keywords) {
-      const matchIndex = cleanHtml.search(pattern);
-      if (matchIndex !== -1) {
-        // Extract a clean substring context starting from the matching keyword (look forward only)
-        const context = cleanHtml.substring(
-          matchIndex,
-          Math.min(cleanHtml.length, matchIndex + 120)
-        );
-        
-        // Match numbers following or preceding currency symbols, optional slash-kg
-        const priceMatch = context.match(/(?:₹|Rs\.?|INR)?\s*(\d+(?:\.\d+)?)\s*(?:\/\s*kg|kg)?/i);
-        if (priceMatch) {
-          const val = parseFloat(priceMatch[1]);
-          if (!isNaN(val) && val > 0) {
-            extractedPrice = val;
-            break;
-          }
+  // If scraped rates are provided and it's an array of rates, we parse and sync them
+  if (Array.isArray(ratesToProcess) && ratesToProcess.length > 0) {
+    console.log(`[MetalMandi] Processing ${ratesToProcess.length} scraped rates dynamically...`);
+
+    // 1. Process and upsert each dynamic rate
+    for (const rate of ratesToProcess) {
+      const price = parsePrice(rate.priceText);
+      if (price === null || price <= 0) continue;
+
+      const changePercent = parseChangePercent(rate.changeText);
+      const metalType = rate.category.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+      const unit = rate.priceText.includes('/pcs') ? 'pcs' : 'kg';
+      
+      // If unit is pcs, append it to grade_name to distinguish from kg rates
+      const gradeName = unit === 'pcs' ? `${rate.name.trim()} (pcs)` : rate.name.trim();
+      const id = `metalmandi_${metalType}_${gradeName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${unit}`;
+
+      const payload: MetalMandiRate = {
+        id,
+        metal_type: metalType,
+        grade_name: gradeName,
+        price_per_kg: price,
+        price_change_percent: changePercent,
+        updated_at: now
+      };
+
+      const { error } = await supabase
+        .from('metalmandi_live_rates')
+        .upsert(payload, { onConflict: 'id' });
+
+      if (error) {
+        console.error(`[Supabase] Failed to sync dynamic rate ${gradeName}:`, error.message);
+      } else {
+        results.push(payload);
+      }
+    }
+
+    console.log(`[MetalMandi] Synced ${results.length} dynamic rates successfully.`);
+
+    // 2. Map and upsert the 5 legacy categories to maintain backward compatibility
+    console.log('[MetalMandi] Updating legacy backward-compatible rates...');
+    for (const legacy of legacyConfig) {
+      let matchedPrice: number | null = null;
+      let matchedChange = 0.00;
+
+      if (legacy.name === 'MS Scrap(Old)') {
+        // Map to Iron -> MS Scrap(Old)
+        const match = ratesToProcess.find(r => r.category.toLowerCase() === 'iron' && r.name.toLowerCase().includes('ms scrap(old)'))
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'iron' && r.name.toLowerCase().includes('ms scrap'));
+        if (match) {
+          matchedPrice = parsePrice(match.priceText);
+          matchedChange = parseChangePercent(match.changeText);
+        }
+      } else if (legacy.name === 'Wire Scrap') {
+        // Legacy "Wire Scrap" was Copper Wire. Map to Copper -> Telewire or Copper -> CCR Rod
+        const match = ratesToProcess.find(r => r.category.toLowerCase() === 'copper' && r.name.toLowerCase() === 'telewire')
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'copper' && r.name.toLowerCase().includes('wire'))
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'copper' && r.name.toLowerCase().includes('cc rod'));
+        if (match) {
+          matchedPrice = parsePrice(match.priceText);
+          matchedChange = parseChangePercent(match.changeText);
+        }
+      } else if (legacy.name === 'Brass Scrap') {
+        // Map to Brass -> Purja(AC) or any brass rate
+        const match = ratesToProcess.find(r => r.category.toLowerCase() === 'brass' && r.name.toLowerCase().includes('purja'))
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'brass');
+        if (match) {
+          matchedPrice = parsePrice(match.priceText);
+          matchedChange = parseChangePercent(match.changeText);
+        }
+      } else if (legacy.name === 'Aluminium Scrap') {
+        // Map to Aluminium -> wire scrap, scrap, or fall back to aluminium spot
+        const match = ratesToProcess.find(r => r.category.toLowerCase() === 'aluminium' && r.name.toLowerCase().includes('scrap'))
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'aluminium' && r.name.toLowerCase() === 'wire scrap')
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'aluminium' && r.name.toLowerCase() === 'aluminium spot');
+        if (match) {
+          matchedPrice = parsePrice(match.priceText);
+          matchedChange = parseChangePercent(match.changeText);
+        }
+      } else if (legacy.name === 'Lead Scrap') {
+        // Lead is not on page, look for category 'lead'
+        const match = ratesToProcess.find(r => r.category.toLowerCase() === 'lead');
+        if (match) {
+          matchedPrice = parsePrice(match.priceText);
+          matchedChange = parseChangePercent(match.changeText);
         }
       }
-    }
 
-    // SANITY GUARDRAILS: Anomaly detection checks
-    let finalPrice = grade.defaultVal;
-    let isAnomaly = false;
+      // Apply sanity check guardrails to dynamic mapping
+      let finalPrice = legacy.defaultVal;
+      let isAnomaly = false;
 
-    if (extractedPrice !== null) {
-      // Validate extracted price sits within realistic boundaries
-      if (extractedPrice >= grade.minVal && extractedPrice <= grade.maxVal) {
-        finalPrice = extractedPrice;
-      } else {
-        isAnomaly = true;
-        console.warn(
-          `[Sanity Guardrail] Anomaly detected: Scraped rate for ${grade.name} (₹${extractedPrice}/kg) ` +
-          `is outside normal bounds [₹${grade.minVal} - ₹${grade.maxVal}]. Utilizing baseline rate (₹${grade.defaultVal}).`
-        );
+      if (matchedPrice !== null) {
+        if (matchedPrice >= legacy.minVal && matchedPrice <= legacy.maxVal) {
+          finalPrice = matchedPrice;
+        } else {
+          isAnomaly = true;
+          console.warn(
+            `[Sanity Guardrail] Anomaly on legacy mapping ${legacy.name}: mapped price ₹${matchedPrice} ` +
+            `is outside bounds [₹${legacy.minVal} - ₹${legacy.maxVal}]. Using default ₹${legacy.defaultVal}.`
+          );
+        }
       }
-    } else {
-      console.info(`[Scraper] Spot rate pattern not found for ${grade.name}, utilizing default baseline rate.`);
+
+      const legacyPayload: MetalMandiRate = {
+        id: `metalmandi_${legacy.type}_${legacy.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+        metal_type: legacy.type,
+        grade_name: legacy.name,
+        price_per_kg: finalPrice,
+        price_change_percent: matchedPrice !== null && !isAnomaly ? matchedChange : 0.00,
+        updated_at: now
+      };
+
+      const { error } = await supabase
+        .from('metalmandi_live_rates')
+        .upsert(legacyPayload, { onConflict: 'id' });
+
+      if (error) {
+        console.error(`[Supabase] Failed to sync legacy rate ${legacy.name}:`, error.message);
+      } else {
+        console.log(`[MetalMandi] Synced legacy rate ${legacy.name} -> ₹${finalPrice}/kg${isAnomaly ? ' (Fallback Guardrail Applied)' : ''}`);
+        results.push(legacyPayload);
+      }
     }
+  } else {
+    // Fallback mode: upsert baseline legacy rates
+    console.log('[MetalMandi] Running fallback mode. Syncing baseline legacy rates...');
+    for (const legacy of legacyConfig) {
+      const payload: MetalMandiRate = {
+        id: `metalmandi_${legacy.type}_${legacy.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+        metal_type: legacy.type,
+        grade_name: legacy.name,
+        price_per_kg: legacy.defaultVal,
+        price_change_percent: 0.00,
+        updated_at: now
+      };
 
-    const livePayload: MetalMandiRate = {
-      id: `metalmandi_${grade.type}_${grade.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-      metal_type: grade.type,
-      grade_name: grade.name,
-      price_per_kg: finalPrice,
-      price_change_percent: 0.00,
-      updated_at: new Date().toISOString()
-    };
+      const { error } = await supabase
+        .from('metalmandi_live_rates')
+        .upsert(payload, { onConflict: 'id' });
 
-    // Upsert to the live metal rates table in Supabase
-    const { error } = await supabase
-      .from('metalmandi_live_rates')
-      .upsert(livePayload, { onConflict: 'id' });
-
-    if (error) {
-      console.error(`[Supabase] Failed to sync MetalMandi rates for ${grade.name}:`, error.message);
-    } else {
-      console.log(`[MetalMandi] Synced rate for ${grade.name}: ₹${finalPrice}/kg${isAnomaly ? ' (Fallback Guardrail Applied)' : ''}`);
-      results.push(livePayload);
+      if (error) {
+        console.error(`[Supabase] Failed to sync fallback legacy rate ${legacy.name}:`, error.message);
+      } else {
+        results.push(payload);
+      }
     }
+    console.log('[MetalMandi] Baseline fallback rates upserted.');
   }
 
   return results;

@@ -65,10 +65,7 @@ export default async function handler(req: any, res: any) {
     const authUsers = (listData?.users || []) as any[];
     
     // Map emails and last sign in timestamps
-    const emailMap: Record<string, string> = {
-      '26fbe5e9-f1ae-47de-ada7-2f2992c5ed41': 'admin@auction.com',
-      '93667bce-1b57-4bfa-a1a7-186265a1a94f': 'alanbijialex@gmail.com'
-    };
+    const emailMap: Record<string, string> = {};
     const lastSignInMap: Record<string, string> = {};
 
     if (authUsers.length > 0) {

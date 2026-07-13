@@ -39,7 +39,7 @@ Before going live, your Supabase backend must have the following configured:
 2. Ensure triggers for timestamp updates (`updated_at`) are active.
 
 ### Storage Buckets
-1. Create a **public** storage bucket named precisely `auction-assets`.
+1. Create a **public** storage bucket named precisely `auction_documents`.
 2. Apply Storage RLS policies allowing authenticated users to `INSERT` into the bucket, and allowing public access to `SELECT`.
 
 ### Security (Row Level Security - RLS)

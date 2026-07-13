@@ -124,13 +124,15 @@ class CategoryMapper {
         }
       }
 
-      // Accept fuzzy match if edit distance is ≤ 3 (catches 1-3 char typos)
-      if (bestDistance <= 3 && bestKey) {
+      // Accept fuzzy match if edit distance is within proportional threshold (max 25% of length, min 1)
+      const maxAllowedDistance = Math.max(1, Math.floor(Math.max(normalized.length, bestKey.length) * 0.25));
+      if (bestDistance <= maxAllowedDistance && bestKey) {
         log.info(
           {
             rawInput: rawCellText,
             matchedKey: bestKey,
             editDistance: bestDistance,
+            maxAllowed: maxAllowedDistance,
           },
           "Fuzzy-matched category via Levenshtein distance",
         );
@@ -154,13 +156,15 @@ class CategoryMapper {
         }
       }
 
-      if (bestDistance <= 3 && bestKey) {
+      const maxAllowedDistance = Math.max(1, Math.floor(Math.max(part.length, bestKey.length) * 0.25));
+      if (bestDistance <= maxAllowedDistance && bestKey) {
         log.info(
           {
             rawInput: rawCellText,
             tokenMatched: part,
             matchedKey: bestKey,
             editDistance: bestDistance,
+            maxAllowed: maxAllowedDistance,
           },
           "Fuzzy-matched category token via Levenshtein distance",
         );

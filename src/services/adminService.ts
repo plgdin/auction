@@ -566,19 +566,57 @@ export const adminService = {
       // 1. Fetch EMD Transactions
       const { data: emdTx, error: emdError } = await supabase
         .from('emd_transactions')
-        .select('amount, status, created_at, user_id, transaction_reference, payment_method, auction_id')
+        .select(`
+          amount,
+          status,
+          created_at,
+          user_id,
+          transaction_reference,
+          payment_method,
+          auction_id,
+          profiles (
+            first_name,
+            last_name
+          )
+        `)
         .order('created_at', { ascending: false });
 
       // 2. Fetch Wallet Transactions
       const { data: walletTx, error: walletError } = await supabase
         .from('wallet_transactions')
-        .select('amount, transaction_type, status, created_at, user_id, reference_id, description')
+        .select(`
+          id,
+          amount,
+          transaction_type,
+          status,
+          created_at,
+          user_id,
+          reference_id,
+          description,
+          profiles (
+            first_name,
+            last_name
+          )
+        `)
         .order('created_at', { ascending: false });
 
       // 3. Fetch Bids
       const { data: bids, error: bidsError } = await supabase
         .from('bids')
-        .select('amount, status, created_at')
+        .select(`
+          id,
+          amount,
+          status,
+          created_at,
+          bidder_id,
+          profiles (
+            first_name,
+            last_name
+          ),
+          auctions (
+            title
+          )
+        `)
         .order('created_at', { ascending: false });
 
       // 4. Fetch MSTC Auctions for real Pre-Bid EMD calculations

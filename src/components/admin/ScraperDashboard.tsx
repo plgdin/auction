@@ -115,13 +115,23 @@ export function ScraperDashboard() {
     loadDashboardData();
   }, []);
 
+  const getAuthToken = async (): Promise<string> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || '';
+  };
+
   // Poll Vite dev server API for process status & logs
   useEffect(() => {
     let intervalId: any;
     
     const fetchLocalStatus = async () => {
       try {
-        const res = await fetch('/api/scraper/status');
+        const token = await getAuthToken();
+        const res = await fetch('/api/scraper/status', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (!res.ok) throw new Error('Not OK');
         const data = await res.json();
         setScraperRunning(data.scraperRunning);
@@ -178,7 +188,13 @@ export function ScraperDashboard() {
 
   const startScraper = async () => {
     try {
-      const res = await fetch('/api/scraper/start', { method: 'POST' });
+      const token = await getAuthToken();
+      const res = await fetch('/api/scraper/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (data.success) {
         toast.success('Scraper process spawned!');
@@ -193,7 +209,13 @@ export function ScraperDashboard() {
 
   const stopScraper = async () => {
     try {
-      await fetch('/api/scraper/stop', { method: 'POST' });
+      const token = await getAuthToken();
+      await fetch('/api/scraper/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       toast.success('Scraper stop signal sent.');
       setScraperRunning(false);
     } catch (err) {
@@ -203,7 +225,13 @@ export function ScraperDashboard() {
 
   const sendEnterKey = async () => {
     try {
-      const res = await fetch('/api/scraper/input', { method: 'POST' });
+      const token = await getAuthToken();
+      const res = await fetch('/api/scraper/input', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (data.success) {
         toast.success('Sent Continue command to scraper!');
@@ -217,7 +245,13 @@ export function ScraperDashboard() {
 
   const startWorker = async () => {
     try {
-      const res = await fetch('/api/scraper/worker/start', { method: 'POST' });
+      const token = await getAuthToken();
+      const res = await fetch('/api/scraper/worker/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (data.success) {
         toast.success('Asset worker process spawned!');
@@ -232,7 +266,13 @@ export function ScraperDashboard() {
 
   const stopWorker = async () => {
     try {
-      await fetch('/api/scraper/worker/stop', { method: 'POST' });
+      const token = await getAuthToken();
+      await fetch('/api/scraper/worker/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       toast.success('Worker stop signal sent.');
       setWorkerRunning(false);
     } catch (err) {
@@ -242,7 +282,13 @@ export function ScraperDashboard() {
 
   const startClearDb = async () => {
     try {
-      const res = await fetch('/api/scraper/clear-db/start', { method: 'POST' });
+      const token = await getAuthToken();
+      const res = await fetch('/api/scraper/clear-db/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (data.success) {
         toast.success('Database and Storage Clear task started!');
@@ -257,7 +303,13 @@ export function ScraperDashboard() {
 
   const stopClearDb = async () => {
     try {
-      await fetch('/api/scraper/clear-db/stop', { method: 'POST' });
+      const token = await getAuthToken();
+      await fetch('/api/scraper/clear-db/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       toast.success('Clear DB task stop signal sent.');
       setClearDbRunning(false);
     } catch (err) {
@@ -267,7 +319,13 @@ export function ScraperDashboard() {
 
   const startBackfill = async () => {
     try {
-      const res = await fetch('/api/scraper/backfill/start', { method: 'POST' });
+      const token = await getAuthToken();
+      const res = await fetch('/api/scraper/backfill/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (data.success) {
         toast.success('Batch backfill task started!');
@@ -282,13 +340,21 @@ export function ScraperDashboard() {
 
   const stopBackfill = async () => {
     try {
-      await fetch('/api/scraper/backfill/stop', { method: 'POST' });
+      const token = await getAuthToken();
+      await fetch('/api/scraper/backfill/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       toast.success('Backfill task stop signal sent.');
       setBackfillRunning(false);
     } catch (err) {
       toast.error('Could not connect to local API plugin.');
     }
   };
+
+
 
   const handleResetAllFailed = async () => {
     if (!window.confirm("Are you sure you want to reset all failed auctions? They will be put back into 'pending' status for retry.")) {

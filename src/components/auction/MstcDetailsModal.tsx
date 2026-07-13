@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye } from 'lucide-react';
+import { DownOutlined } from '@ant-design/icons';
+import { X, Copy, Check, Download, Heart, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap, Clock } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice } from '../../services/publicService';
 import { useAuthStore } from '../../store/authStore';
@@ -14,14 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuationService';
 import { marketPriceService } from '../../services/marketPriceService';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { 
-  DEFAULT_MACRO_INPUTS,  
-  predictPrice, 
-  detectModelId, 
-  detectGrade, 
-  detectRegion
-} from '../../utils/metalValuationModels';
+import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, ReferenceLine, Legend } from 'recharts';
 
 interface MstcDetailsModalProps {
   item: MstcSanitizedAuction;
@@ -322,6 +316,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     refurbishment: 0,
     otherFees: 1000,
     extraCharge: 0,
+    gstPercent: 18,
+    tcsPercent: 1,
   });
   const [valuationData, setValuationData] = useState<ValuationOutput | null>(null);
   const [customItemPrices, setCustomItemPrices] = useState<Record<number, number>>({});
@@ -357,6 +353,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           unitValue: customPrice,
           totalValue,
           confidence: 95,
+          priceSource: 'User Override',
           internationalPrices: {
             in: { price: customPrice, convertedPrice: totalValue, sources: 1 },
             us: { price: Math.round((customPrice * 0.95) / 85), convertedPrice: Math.round(totalValue * 0.95), sources: 1 },
@@ -373,8 +370,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     totalLotValue = Math.round(totalLotValue);
     const avgItemConfidence = Math.round(totalConfidenceSum / (updatedItems.filter(v => !v.notAvailable).length || 1));
 
+    const bidAmount = Number(customCosts.currentBid) || 0;
+    const gstPercent = customCosts.gstPercent ?? 18;
+    const tcsPercent = customCosts.tcsPercent ?? 1;
+    const gstAmount = Math.round(bidAmount * (gstPercent / 100));
+    const tcsAmount = Math.round(bidAmount * (tcsPercent / 100));
+
     const totalCost = Math.round(
-      (customCosts.currentBid || 0) +
+      bidAmount +
+      gstAmount +
+      tcsAmount +
       (customCosts.transportation || 0) +
       (customCosts.loadingUnloading || 0) +
       (customCosts.refurbishment || 0) +
@@ -384,7 +389,15 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
     const estimatedProfit = totalLotValue - totalCost;
     const roiPercent = totalCost > 0 ? Math.round((estimatedProfit / totalCost) * 100) : 0;
-    const breakEven = totalCost;
+    const breakEven = totalLotValue - (
+      gstAmount +
+      tcsAmount +
+      (customCosts.transportation || 0) +
+      (customCosts.loadingUnloading || 0) +
+      (customCosts.refurbishment || 0) +
+      (customCosts.otherFees || 0) +
+      (customCosts.extraCharge || 0)
+    );
 
     const dataConfidence = 85; 
     const pricingConfidence = avgItemConfidence;
@@ -478,8 +491,88 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     };
   }, [valuationData, customItemPrices, customCosts, currency]);
 
+  const sensitivityData = React.useMemo(() => {
+    if (!finalValuationData || finalValuationData.totalLotValue <= 0) return [];
+    
+    const lotValue = finalValuationData.totalLotValue;
+    const fixedCosts = (
+      (customCosts.transportation || 0) +
+      (customCosts.loadingUnloading || 0) +
+      (customCosts.refurbishment || 0) +
+      (customCosts.otherFees || 0) +
+      (customCosts.extraCharge || 0)
+    );
+
+    const gstPercent = customCosts.gstPercent ?? 18;
+    const tcsPercent = customCosts.tcsPercent ?? 1;
+    const taxFactor = 1 + (gstPercent + tcsPercent) / 100;
+    
+    const maxBreakEvenBid = Math.max(0, Math.round((lotValue - fixedCosts) / taxFactor));
+    const currentBidVal = Number(customCosts.currentBid) || 0;
+    
+    const startBid = Math.max(0, Math.min(currentBidVal * 0.5, maxBreakEvenBid * 0.2));
+    const endBid = Math.max(maxBreakEvenBid * 1.3, currentBidVal * 1.5);
+    
+    const steps = 15;
+    const stepSize = (endBid - startBid) / (steps - 1 || 1);
+    
+    const dataPoints = [];
+    
+    for (let i = 0; i < steps; i++) {
+      const simulatedBid = Math.round(startBid + i * stepSize);
+      const gstAmount = Math.round(simulatedBid * (gstPercent / 100));
+      const tcsAmount = Math.round(simulatedBid * (tcsPercent / 100));
+      const simulatedTotalCost = simulatedBid + gstAmount + tcsAmount + fixedCosts;
+      
+      const simulatedProfit = lotValue - simulatedTotalCost;
+      const simulatedRoi = simulatedTotalCost > 0 ? Math.round((simulatedProfit / simulatedTotalCost) * 100) : 0;
+      
+      dataPoints.push({
+        bidPrice: simulatedBid,
+        displayBidPrice: `${currencySymbol}${simulatedBid >= 100000 && currency === 'INR' ? (simulatedBid / 100000).toFixed(1) + 'L' : Math.round(simulatedBid).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')}`,
+        profit: Math.round(simulatedProfit * currencyRate),
+        roi: simulatedRoi,
+      });
+    }
+    
+    return dataPoints;
+  }, [finalValuationData, customCosts, currency, currencySymbol, currencyRate]);
+
+  const biddingRecommendations = React.useMemo(() => {
+    if (!finalValuationData || finalValuationData.totalLotValue <= 0) return null;
+
+    const lotValue = finalValuationData.totalLotValue;
+    const gstPercent = customCosts.gstPercent ?? 18;
+    const tcsPercent = customCosts.tcsPercent ?? 1;
+    const taxFactor = 1 + (gstPercent + tcsPercent) / 100;
+    
+    const fixedCosts = (
+      (customCosts.transportation || 0) +
+      (customCosts.loadingUnloading || 0) +
+      (customCosts.refurbishment || 0) +
+      (customCosts.otherFees || 0) +
+      (customCosts.extraCharge || 0)
+    );
+
+    // 1. Conservative (20% Target ROI)
+    const conservativeCostLimit = lotValue / 1.20;
+    const conservativeBid = Math.max(0, Math.round((conservativeCostLimit - fixedCosts) / taxFactor));
+
+    // 2. Moderate/Target (10% Target ROI)
+    const moderateCostLimit = lotValue / 1.10;
+    const moderateBid = Math.max(0, Math.round((moderateCostLimit - fixedCosts) / taxFactor));
+
+    // 3. Hard limit (Break-Even)
+    const breakEvenBid = Math.max(0, Math.round((lotValue - fixedCosts) / taxFactor));
+
+    return {
+      conservativeBid,
+      moderateBid,
+      breakEvenBid,
+    };
+  }, [finalValuationData, customCosts]);
+
   const [isValuating, setIsValuating] = useState(false);
-  const [selectedChartItemId, setSelectedChartItemId] = useState<string>('total');
   const [extraChargeType, setExtraChargeType] = useState<string>('none');
 
   const extraChargeLabels: Record<string, string> = {
@@ -513,56 +606,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     });
   }, [extraChargeType, customCosts.currentBid]);
 
-  const chartData = React.useMemo(() => {
-    if (!valuationData) return [];
 
-    let currentVal = valuationData.totalLotValue;
-    let targetTitle = item.raw_materials_text || item.category_name;
-
-    if (selectedChartItemId !== 'total') {
-      const idx = parseInt(selectedChartItemId, 10);
-      const it = valuationData.items[idx];
-      if (it) {
-        currentVal = it.totalValue;
-        targetTitle = it.name || targetTitle;
-      }
-    }
-
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-
-    // Use ML model to generate realistic price history variations
-    const modelId = detectModelId(targetTitle) || 'scrap_steel';
-    const grade = detectGrade(targetTitle, modelId);
-    const region = detectRegion(item.location || '', targetTitle);
-    
-    const baseLME = DEFAULT_MACRO_INPUTS.LME_Steel_Scrap_USD;
-    const modelPoints: number[] = [];
-    
-    // Generate 6 months of historical prices by varying LME index slightly
-    // Jan (-5 months) to Jun (current)
-    for (let i = -5; i <= 0; i++) {
-      // Use deterministic pseudo-randomness based on month index and item string length
-      const pseudoRandom = Math.sin(i * 12.345 + targetTitle.length) * 2.5;
-      const tempInputs = {
-        ...DEFAULT_MACRO_INPUTS,
-        LME_Steel_Scrap_USD: baseLME + (i * 12) + pseudoRandom
-      };
-      const pricePoint = predictPrice(modelId, grade, region, tempInputs, targetTitle);
-      modelPoints.push(pricePoint);
-    }
-    
-    // Scale the actual 'currentVal' using the shape of the ML model points
-    const currentModelPrice = modelPoints[modelPoints.length - 1];
-    
-    return months.map((m, i) => {
-      // If the model yields 0, fallback to a flat value to avoid NaN
-      const multiplier = currentModelPrice > 0 ? (modelPoints[i] / currentModelPrice) : 1;
-      return {
-        name: m,
-        value: Math.round(currentVal * multiplier)
-      };
-    });
-  }, [valuationData, selectedChartItemId, item]);
 
   useEffect(() => {
     if (item) {
@@ -583,11 +627,12 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
         refurbishment: 0,
         otherFees: 1000,
         extraCharge: 0,
+        gstPercent: 18,
+        tcsPercent: 1,
       });
       setCustomItemPrices({});
       setExtraChargeType('none');
       setModalTab('catalog');
-      setSelectedChartItemId('total');
     } else {
       setValuationData(null);
     }
@@ -608,7 +653,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           unit: it.unit || 'Nos',
           marketPrice: it.marketPrice || '',
         }));
-        const result = await valuationService.calculateValuation(rawItems, customCosts, hasImages);
+        const result = await valuationService.calculateValuation(rawItems, customCosts, hasImages, item.location);
         if (isMounted) {
           setValuationData(result);
         }
@@ -904,13 +949,52 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <select
                             value={extraChargeType}
                             onChange={(e) => setExtraChargeType(e.target.value)}
-                            className="w-full pl-7 pr-8 py-2 border border-slate-250 rounded-xl bg-white text-sm font-bold text-slate-900 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer h-[38px] appearance-none"
+                            className="w-full pl-7 pr-8 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer h-[38px] appearance-none"
                           >
                             {Object.entries(extraChargeLabels).map(([key, label]) => (
                               <option key={key} value={key}>{label}</option>
                             ))}
                           </select>
-                          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                          <DownOutlined className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1.5 font-sans">GST Rate (%)</label>
+                        <div className="relative rounded-xl shadow-2xs">
+                          <select
+                            value={customCosts.gstPercent ?? 18}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              setCustomCosts(prev => ({ ...prev, gstPercent: v }));
+                            }}
+                            className="w-full px-3 py-2 border border-slate-250 rounded-xl bg-white text-sm font-bold text-slate-900 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer h-[38px] appearance-none"
+                          >
+                            <option value={0}>0% (Exempt)</option>
+                            <option value={5}>5% (Concessional)</option>
+                            <option value={12}>12% (Standard Low)</option>
+                            <option value={18}>18% (Standard Metal Scrap)</option>
+                            <option value={28}>28% (Luxury Goods)</option>
+                          </select>
+                          <DownOutlined className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1.5 font-sans">TCS Rate (%)</label>
+                        <div className="relative rounded-xl shadow-2xs">
+                          <select
+                            value={customCosts.tcsPercent ?? 1}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              setCustomCosts(prev => ({ ...prev, tcsPercent: v }));
+                            }}
+                            className="w-full px-3 py-2 border border-slate-250 rounded-xl bg-white text-sm font-bold text-slate-900 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer h-[38px] appearance-none"
+                          >
+                            <option value={0}>0% (None)</option>
+                            <option value={1}>1% (Standard TCS)</option>
+                          </select>
+                          <DownOutlined className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450 pointer-events-none" />
                         </div>
                       </div>
                     </div>
@@ -941,7 +1025,13 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <div className="text-lg font-black text-slate-900 ">
                             {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalCost, currency) : 'N/A'}
                           </div>
-                          <p className="text-[10px] text-slate-400 font-medium">Bid + logistics</p>
+                          {finalValuationData.totalLotValue > 0 ? (
+                            <p className="text-[9px] text-slate-500 font-bold leading-normal">
+                              Bid + GST ({customCosts.gstPercent ?? 18}%) + TCS ({customCosts.tcsPercent ?? 1}%) + Logistics
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 font-medium">Bid + logistics</p>
+                          )}
                         </div>
 
                         <div className={clsx(
@@ -971,6 +1061,143 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
                       </div>
 
+                      {/* Interactive Bidding Assistant Row */}
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Smart Sniping & Bid Recommendation Calculator */}
+                        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4 lg:col-span-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 mb-3.5">
+                              <Zap className="w-4.5 h-4.5 text-amber-500 fill-amber-500" />
+                              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-sans">
+                                Smart Bid Recommendations
+                              </h4>
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-medium mb-4 leading-relaxed">
+                              Simulated caps based on taxes, logistics, and desired profit margins.
+                            </p>
+
+                            {biddingRecommendations && (
+                              <div className="space-y-3.5">
+                                <div className="p-3 bg-emerald-50/50 border border-emerald-150 rounded-2xl flex items-center justify-between">
+                                  <div>
+                                    <div className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider">Conservative Cap</div>
+                                    <div className="text-[9px] text-emerald-600 font-medium mt-0.5">Target: 20% Net ROI</div>
+                                  </div>
+                                  <div className="text-sm font-black text-emerald-950">
+                                    {formatPrice(biddingRecommendations.conservativeBid, currency)}
+                                  </div>
+                                </div>
+
+                                <div className="p-3 bg-amber-50/50 border border-amber-150 rounded-2xl flex items-center justify-between">
+                                  <div>
+                                    <div className="text-[9px] font-bold text-amber-800 uppercase tracking-wider">Target ROI Cap</div>
+                                    <div className="text-[9px] text-amber-600 font-medium mt-0.5">Target: 10% Net ROI</div>
+                                  </div>
+                                  <div className="text-sm font-black text-amber-950">
+                                    {formatPrice(biddingRecommendations.moderateBid, currency)}
+                                  </div>
+                                </div>
+
+                                <div className="p-3 bg-rose-50/50 border border-rose-150 rounded-2xl flex items-center justify-between">
+                                  <div>
+                                    <div className="text-[9px] font-bold text-rose-800 uppercase tracking-wider">Absolute Limit</div>
+                                    <div className="text-[9px] text-rose-600 font-medium mt-0.5">Target: 0% ROI (Break-Even)</div>
+                                  </div>
+                                  <div className="text-sm font-black text-rose-950">
+                                    {formatPrice(biddingRecommendations.breakEvenBid, currency)}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl mt-4">
+                            <div className="flex items-start gap-2">
+                              <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                              <div className="space-y-1">
+                                <h5 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider font-sans">MSTC Sniper Alert</h5>
+                                <p className="text-[9px] text-slate-500 font-medium leading-relaxed font-sans">
+                                  MSTC extensions are triggered by bids placed in the final 8 minutes. Place bids at least 30 seconds before closing to avoid network lag.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sensitivity Chart */}
+                        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4 lg:col-span-2">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider ">
+                              ROI & Profit Sensitivity Curve
+                            </h4>
+                            <span className="text-[10px] text-slate-400 font-medium font-sans">
+                              Simulates profit drop-off as bid price increases
+                            </span>
+                          </div>
+
+                          <div className="h-[240px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <ComposedChart data={sensitivityData} margin={{ top: 10, right: -5, left: -10, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis
+                                  dataKey="displayBidPrice"
+                                  axisLine={false}
+                                  tickLine={false}
+                                  tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 500 }}
+                                />
+                                <YAxis
+                                  yAxisId="left"
+                                  axisLine={false}
+                                  tickLine={false}
+                                  tickFormatter={(v) => {
+                                    return `${currencySymbol}${v >= 100000 && currency === 'INR' ? (v / 100000).toFixed(1) + 'L' : Math.round(v).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')}`;
+                                  }}
+                                  tick={{ fill: '#475569', fontSize: 9, fontWeight: 650 }}
+                                  label={{ value: 'Projected Profit', angle: -90, position: 'insideLeft', fill: '#475569', fontSize: 9, fontWeight: 'bold', offset: 0 }}
+                                />
+                                <YAxis
+                                  yAxisId="right"
+                                  orientation="right"
+                                  axisLine={false}
+                                  tickLine={false}
+                                  tickFormatter={(v) => `${v}%`}
+                                  tick={{ fill: '#0f766e', fontSize: 9, fontWeight: 650 }}
+                                  label={{ value: 'ROI %', angle: 90, position: 'insideRight', fill: '#0f766e', fontSize: 9, fontWeight: 'bold', offset: 0 }}
+                                />
+                                <Tooltip
+                                  formatter={(value: any, name: any) => {
+                                    if (name === 'Projected Profit') {
+                                      return [`${currencySymbol}${Math.round(value).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')}`, name];
+                                    }
+                                    return [`${value}%`, name];
+                                  }}
+                                  contentStyle={{
+                                    borderRadius: '16px',
+                                    border: '1px solid #e2e8f0',
+                                    backgroundColor: '#ffffff',
+                                    color: '#0f172a',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)'
+                                  }}
+                                />
+                                <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
+                                <Area yAxisId="left" type="monotone" dataKey="profit" name="Projected Profit" stroke="#3b82f6" strokeWidth={2} fillOpacity={0.06} fill="#3b82f6" />
+                                <Line yAxisId="right" type="monotone" dataKey="roi" name="ROI %" stroke="#0d9488" strokeWidth={2.5} dot={false} />
+                                <ReferenceLine
+                                  yAxisId="left"
+                                  x={sensitivityData.find(d => d.bidPrice >= (Number(customCosts.currentBid) || 0))?.displayBidPrice}
+                                  stroke="#e11d48"
+                                  strokeWidth={1.5}
+                                  strokeDasharray="4 4"
+                                  label={{ value: 'Current Bid', position: 'top', fill: '#e11d48', fontSize: 8, fontWeight: 'bold' }}
+                                />
+                              </ComposedChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Valuation Breakdown Table */}
                       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs space-y-3">
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2 flex items-center justify-between">
@@ -987,13 +1214,19 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                 <th className="py-2.5 px-3.5 font-bold text-right w-20">Quantity</th>
                                 <th className="py-2.5 px-3.5 font-bold text-right w-44">Unit Est. Value</th>
                                 <th className="py-2.5 px-3.5 font-bold text-right w-36">Total Est. Value</th>
-                                <th className="py-2.5 px-3.5 font-bold text-center w-24">Confidence</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-105 text-slate-700">
                               {finalValuationData.items.map((row, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/50">
-                                  <td className="py-2.5 px-3.5 font-bold text-slate-900">{row.name}</td>
+                                  <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                                    <div>{row.name}</div>
+                                    {!row.notAvailable && row.priceSource && (
+                                      <div className="text-[10px] font-semibold text-slate-400 mt-0.5">
+                                        Source: <span className="text-slate-500 font-bold">{row.priceSource}</span>
+                                      </div>
+                                    )}
+                                  </td>
                                   <td className="py-2.5 px-3.5 text-right  text-slate-650">{row.qty}</td>
                                   <td className="py-2.5 px-3.5 text-right text-slate-950 font-bold w-44">
                                     {row.notAvailable ? (
@@ -1036,17 +1269,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                   <td className="py-2.5 px-3.5 text-right  text-slate-950 font-bold">
                                     {row.notAvailable ? 'N/A' : formatPrice(row.totalValue, currency)}
                                   </td>
-                                  <td className="py-2.5 px-3.5 text-center ">
-                                    <span className={clsx(
-                                      "text-[10px] font-bold px-2 py-0.5 rounded",
-                                      row.notAvailable ? "bg-slate-100 text-slate-650" :
-                                      row.confidence >= 75 ? "bg-emerald-50 text-emerald-700" :
-                                        row.confidence >= 55 ? "bg-amber-50 text-amber-700" :
-                                          "bg-rose-50 text-rose-700"
-                                    )}>
-                                      {row.notAvailable ? 'N/A' : `${row.confidence}%`}
-                                    </span>
-                                  </td>
+                                  
                                 </tr>
                               ))}
                             </tbody>
@@ -1054,139 +1277,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Risk & Confidence Assessment Panel */}
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider ">
-                            Risk & Confidence Assessment
-                          </h4>
-                          <span className={clsx(
-                            "text-xs font-bold px-3 py-1 rounded-full",
-                            finalValuationData.riskAnalysis.riskLevel === 'Low Risk' ? "bg-emerald-50 text-emerald-700 border border-emerald-150" :
-                              finalValuationData.riskAnalysis.riskLevel === 'Medium Risk' ? "bg-amber-50 text-amber-700 border border-amber-150" :
-                                "bg-rose-50 text-rose-700 border border-rose-150"
-                          )}>
-                            {finalValuationData.riskAnalysis.riskLevel}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider ">
-                              <span>Pricing Consistency</span>
-                              <span className="text-slate-700">{finalValuationData.riskAnalysis.pricingConfidence}%</span>
-                            </div>
-                            <div className="h-2 bg-slate-105 rounded-full overflow-hidden">
-                              <div
-                                  className={clsx(
-                                      "h-full rounded-full transition-all duration-500",
-                                      finalValuationData.riskAnalysis.pricingConfidence >= 70 ? "bg-emerald-500" :
-                                          finalValuationData.riskAnalysis.pricingConfidence >= 40 ? "bg-amber-500" : "bg-rose-500"
-                                  )}
-                                  style={{ width: `${finalValuationData.riskAnalysis.pricingConfidence}%` }}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider ">
-                              <span>Overall Confidence</span>
-                              <span className="text-slate-700 font-bold">{finalValuationData.riskAnalysis.overallConfidence}%</span>
-                            </div>
-                            <div className="h-2 bg-slate-105 rounded-full overflow-hidden">
-                              <div
-                                  className={clsx(
-                                      "h-full rounded-full transition-all duration-500",
-                                      finalValuationData.riskAnalysis.overallConfidence >= 70 ? "bg-emerald-600" :
-                                          finalValuationData.riskAnalysis.overallConfidence >= 45 ? "bg-amber-600" : "bg-rose-600"
-                                  )}
-                                  style={{ width: `${finalValuationData.riskAnalysis.overallConfidence}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <p className="text-xs text-slate-655 leading-relaxed bg-slate-50 p-3.5 rounded-2xl border border-slate-100 font-medium">
-                          {finalValuationData.riskAnalysis.reasoning}
-                        </p>
-                      </div>
-
-                      {/* Price Trend Chart Panel */}
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <div>
-                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider ">
-                              Price Trend Comparison (6 Months)
-                            </h4>
-                            <p className="text-[10px] text-slate-400 font-medium font-sans mt-0.5">
-                              Market rate tracking of auction lot items over time
-                            </p>
-                          </div>
-                          <select
-                            value={selectedChartItemId}
-                            onChange={(e) => setSelectedChartItemId(e.target.value)}
-                            className="bg-slate-50 border border-slate-250 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium text-slate-700 cursor-pointer"
-                          >
-                            <option value="total">Total Lot Value</option>
-                            {finalValuationData.items.map((item, idx) => (
-                              <option key={idx} value={String(idx)}>
-                                {item.name} (Qty: {item.qty})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="h-[220px] w-full">
-                          {finalValuationData.totalLotValue <= 0 ? (
-                            <div className="h-full flex items-center justify-center text-slate-400 font-medium text-xs bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl select-none">
-                              No trend data available for this item
-                            </div>
-                          ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                                <defs>
-                                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                  </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis
-                                  dataKey="name"
-                                  axisLine={false}
-                                  tickLine={false}
-                                  tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 500 }}
-                                />
-                                <YAxis
-                                  axisLine={false}
-                                  tickLine={false}
-                                  tickFormatter={(v) => {
-                                    const converted = v * currencyRate;
-                                    return `${currencySymbol}${converted >= 100000 && currency === 'INR' ? (converted / 100000).toFixed(1) + 'L' : Math.round(converted).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')}`;
-                                  }}
-                                  tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 500 }}
-                                />
-                                <Tooltip
-                                  formatter={(value: any) => {
-                                    const converted = value * currencyRate;
-                                    return [`${currencySymbol}${Math.round(converted).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')}`, 'Est. Value'];
-                                  }}
-                                  contentStyle={{
-                                    borderRadius: '16px',
-                                    border: '1px solid #e2e8f0',
-                                    backgroundColor: '#ffffff',
-                                    color: '#0f172a',
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)'
-                                  }}
-                                />
-                                <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorVal)" />
-                              </AreaChart>
-                            </ResponsiveContainer>
-                          )}
-                        </div>
-                      </div>
 
                       {/* International Market Comparison Panel */}
                       {finalValuationData.internationalTotals && finalValuationData.totalLotValue > 0 && (
@@ -1396,7 +1486,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <td className="py-3 px-3.5 text-center  font-bold text-slate-400">{row.sr}</td>
                           <td className="py-3 px-3.5 text-slate-900">
                             <div className="font-bold">{row.description}</div>
-                            {(row.pcbGroup || row.productType || row.preBidEmd) && (
+                            {(row.pcbGroup || row.productType) && (
                               <div className="flex flex-wrap gap-1.5 mt-1">
                                 {row.pcbGroup && (
                                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
@@ -1406,11 +1496,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                 {row.productType && (
                                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-50 text-slate-700 border border-slate-100">
                                     Type: {row.productType}
-                                  </span>
-                                )}
-                                {row.preBidEmd && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
-                                    Pre-bid EMD: {row.preBidEmd}
                                   </span>
                                 )}
                               </div>

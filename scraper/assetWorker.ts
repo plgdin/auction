@@ -64,6 +64,28 @@ function parsePdfDateTimeToISO(dateTimeStr: string | undefined): string | null {
   return null;
 }
 
+export function cosineSimilarity(v1: number[], v2: number[]): number {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let idx = 0; idx < v1.length; idx++) {
+    dot += v1[idx] * v2[idx];
+    normA += v1[idx] * v1[idx];
+    normB += v2[idx] * v2[idx];
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+export function getLotEmbeddingText(item: any): string {
+  const desc = (item.description || "").trim();
+  const qty = (item.qty || "").trim();
+  const unit = (item.unit || "").trim();
+  const tax = (item.taxRate || "").trim();
+  const sr = (item.sr || "").trim();
+  return `Lot ${sr}: ${desc} (Qty: ${qty} ${unit}, Tax: ${tax})`;
+}
+
 import { calculateTotalMarketValue } from "../src/utils/valuationUtils.js";
 import { validateCatalogDescriptions } from "../src/utils/mstcHelpers.js";
 
@@ -242,6 +264,53 @@ export async function processPageForLotEnrichment(
   let matched = attachmentToLots.get(fileName) || [];
   if (matched.length === 0) {
     matched = await matchPageToLots(combinedText, items, fileName, lotEmbeddings, lastMatched, pageVector);
+  }
+
+  // ── Table-structure detection for annexure PDFs ──────────────────────────
+  // If ≥3 lines start with sequential serial numbers, this page contains a
+  // tabular sub-item list. Parse it recursively and match sub-items to lots.
+  if (!isTermsOrInstructionPage(combinedText)) {
+    const serialLines = combinedText.split(/\r?\n/).filter(
+      (line) => /^\s*\d{1,3}[\s.)\-]/.test(line.trim()),
+    );
+
+    if (serialLines.length >= 3) {
+      // Detect lot references in the attachment text
+      const lotRefs: any[] = [];
+      for (const item of items) {
+        const srStr = String(item.sr).toLowerCase().trim();
+        const lotRefPattern = new RegExp(
+          `\\blot\\s*(?:no|num|number|#)?\\s*[-.:]?\\s*0*${srStr}\\b`,
+          "i",
+        );
+        if (lotRefPattern.test(combinedText)) {
+          lotRefs.push(item);
+        }
+      }
+
+      // If no lot references found in text, use filename-to-lot mapping only if it is a single lot
+      // to avoid merging the entire table into multiple ambiguous lots.
+      const targetLots = lotRefs.length > 0 ? lotRefs : (matched.length === 1 ? matched : []);
+
+      if (targetLots.length > 0) {
+        const tableSubItems = parseSubItemsFromText(combinedText);
+        if (tableSubItems.length > 0) {
+          jobLog.info(
+            {
+              fileName,
+              serialLines: serialLines.length,
+              subItemsFound: tableSubItems.length,
+              targetLotSrs: targetLots.map((l) => l.sr),
+            },
+            "Table structure detected in attachment — recursively parsed sub-items",
+          );
+
+          for (const lot of targetLots) {
+            mergeSubItems(lot, tableSubItems);
+          }
+        }
+      }
+    }
   }
 
   if (matched.length > 1) {
@@ -458,20 +527,12 @@ export async function disambiguateLots(
 ): Promise<any | null> {
   if (!pageVector) return null;
   try {
-    const cosineSimilarity = (v1: number[], v2: number[]) => {
-      let dot = 0;
-      for (let idx = 0; idx < v1.length; idx++) {
-        dot += v1[idx] * v2[idx];
-      }
-      return dot;
-    };
-
     let highestSim = -1;
     let secondHighestSim = -1;
     let bestLot = null;
 
     for (const lot of matchedLots) {
-      const lotVector = lotEmbeddings.get(lot.description || "");
+      const lotVector = lotEmbeddings.get(getLotEmbeddingText(lot));
       if (lotVector) {
         const sim = cosineSimilarity(pageVector, lotVector);
         if (sim > highestSim) {
@@ -638,17 +699,9 @@ export async function matchPageToLots(
   // 5. Semantic Similarity fallback matching
   if (pageVector && lotEmbeddings && lotEmbeddings.size > 0 && cleanOcrText.trim().length > 10) {
     try {
-      const cosineSimilarity = (v1: number[], v2: number[]) => {
-        let dot = 0;
-        for (let idx = 0; idx < v1.length; idx++) {
-          dot += v1[idx] * v2[idx];
-        }
-        return dot;
-      };
-
       const semanticMatches: { lot: any; sim: number }[] = [];
       for (const item of items) {
-        const lotVector = lotEmbeddings.get(item.description || "");
+        const lotVector = lotEmbeddings.get(getLotEmbeddingText(item));
         if (lotVector) {
           const sim = cosineSimilarity(pageVector, lotVector);
           if (sim >= 0.55) {
@@ -1391,26 +1444,26 @@ export async function processRecord(record: QueueRecord): Promise<void> {
         }
 
         try {
-          const uniqueLotDescriptions = Array.from(
-            new Set(summaryObj.items.map((it) => it.description || ""))
+          const uniqueLotTexts = Array.from(
+            new Set(summaryObj.items.map((it) => getLotEmbeddingText(it)))
           ).filter(Boolean);
 
-          if (uniqueLotDescriptions.length > 0) {
+          if (uniqueLotTexts.length > 0) {
             jobLog.info(
-              { count: uniqueLotDescriptions.length },
-              "Pre-computing lot description embeddings in batch for semantic matching",
+              { count: uniqueLotTexts.length },
+              "Pre-computing lot enriched embeddings in batch for semantic matching",
             );
             
-            const vectors = await getEmbeddingsFromEdgeFunction(uniqueLotDescriptions);
+            const vectors = await getEmbeddingsFromEdgeFunction(uniqueLotTexts);
             
-            for (let idx = 0; idx < uniqueLotDescriptions.length; idx++) {
-              lotEmbeddings.set(uniqueLotDescriptions[idx], vectors[idx]);
+            for (let idx = 0; idx < uniqueLotTexts.length; idx++) {
+              lotEmbeddings.set(uniqueLotTexts[idx], vectors[idx]);
             }
           }
         } catch (err: any) {
           jobLog.warn(
             { errorMessage: err.message },
-            "Failed to pre-compute lot description embeddings",
+            "Failed to pre-compute lot enriched embeddings",
           );
         }
       }
@@ -1627,6 +1680,55 @@ async function runAssetPipelineQueue(): Promise<void> {
     try {
       await processRecord(record);
     } catch (jobError: any) {
+      if (jobError.message && (
+        jobError.message.includes("Session expired") || 
+        jobError.message.includes("expired or invalid")
+      )) {
+        log.error(
+          {
+            auctionNumber: record.mstc_auction_number,
+            errorMessage: jobError.message,
+          },
+          "Session expired or invalid. Halting queue processing and resetting claimed batch to pending."
+        );
+
+        // Reset the current record to pending without incrementing retry_count
+        await supabase
+          .from("mstc_auctions")
+          .update({
+            asset_status: "pending",
+            error_log: `[Session Expired] ${jobError.message}`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", record.id);
+
+        // Reset all other claimed records in this batch to pending
+        const otherRecords = (claimedRecords as QueueRecord[]).filter(r => r.id !== record.id);
+        if (otherRecords.length > 0) {
+          await supabase
+            .from("mstc_auctions")
+            .update({
+              asset_status: "pending",
+              updated_at: new Date().toISOString(),
+            })
+            .in("id", otherRecords.map(r => r.id));
+        }
+
+        // Insert audit log
+        await supabase.from("audit_logs").insert({
+          action: "mstc_worker_session_expired",
+          entity_type: "mstc_auction",
+          entity_id: record.id,
+          details: {
+            message: "Worker session expired or invalid. Please re-run scraper to update cookies.",
+            error: jobError.message
+          }
+        });
+
+        // Exit queue batch loop immediately
+        return;
+      }
+
       const nextRetryCount = record.retry_count + 1;
       const reachedMaxRetries = nextRetryCount >= MAX_RETRY_COUNT;
 

@@ -16,6 +16,7 @@ export interface ValuedItem {
   totalValue: number;
   confidence: number;
   notAvailable?: boolean;
+  priceSource?: string;
   internationalPrices?: {
     in: { price: number; convertedPrice: number; sources: number };
     us: { price: number; convertedPrice: number; sources: number };
@@ -30,6 +31,8 @@ export interface ValuationCosts {
   refurbishment: number | '';
   otherFees: number | '';
   extraCharge?: number | '';
+  gstPercent?: number;
+  tcsPercent?: number;
 }
 
 export interface ValuationOutput {
@@ -376,24 +379,139 @@ const extractPricesFromText = (text: string): number[] => {
   return foundPrices;
 };
 
-function getLiveRateMatch(description: string, liveRates: any[]): any | null {
-  const desc = (description || '').toLowerCase();
-  
-  const mappings = [
-    { grade: 'MS Scrap(Old)', keywords: ['ms scrap', 'iron scrap old', 'heavy melting scrap', 'hms'] },
-    { grade: 'Wire Scrap', keywords: ['wire scrap', 'copper wire', 'copper scrap'] },
-    { grade: 'Brass Scrap', keywords: ['brass scrap', 'brass waste'] },
-    { grade: 'Aluminium Scrap', keywords: ['aluminium scrap', 'aluminum scrap', 'aluminium waste'] },
-    { grade: 'Lead Scrap', keywords: ['lead scrap', 'lead waste'] }
-  ];
-  
-  for (const map of mappings) {
-    if (map.keywords.some(kw => desc.includes(kw))) {
-      const found = liveRates.find(r => r.grade_name === map.grade);
-      if (found) return found;
+function getNormalizedText(text: string): string {
+  let val = (text || '').toLowerCase();
+  // Strip special chars/parenthesis
+  val = val.replace(/[\(\)\/]/g, ' ');
+  // Normalize e-waste before removing dashes/underscores to prevent matching generic 'waste'
+  val = val.replace(/\be\s*[-_]?\s*waste\b/g, 'ewaste');
+  val = val.replace(/[-_]/g, ' ');
+  // Normalize synonyms
+  val = val.replace(/\butensils?\b/g, 'bartan');
+  val = val.replace(/\bpots?\b/g, 'bartan');
+  val = val.replace(/\bcables?\b/g, 'wire');
+  val = val.replace(/\bconductors?\b/g, 'wire');
+  val = val.replace(/\bsteel\b/g, 'ms iron');
+  val = val.replace(/\bms\b/g, 'ms iron');
+  val = val.replace(/\bhms\b/g, 'ms scrap old');
+  val = val.replace(/\bheavy melting\b/g, 'ms scrap old');
+  val = val.replace(/\bcompressors?\b/g, 'compressor');
+  val = val.replace(/\brefrigerators?\b/g, 'fridge');
+  val = val.replace(/\bmotherboards?\b/g, 'pcb');
+  val = val.replace(/\bdesktops?\b/g, 'desktop');
+  val = val.replace(/\blaptops?\b/g, 'laptop');
+  return val.replace(/\s+/g, ' ').trim();
+}
+
+function getLiveRateMatch(description: string, liveRates: any[], location?: string): any | null {
+  if (!liveRates || liveRates.length === 0) return null;
+  const descNormalized = getNormalizedText(description || '');
+  const locNormalized = location ? getNormalizedText(location) : '';
+
+  let bestMatch: any = null;
+  let bestScore = 0;
+
+  for (const rate of liveRates) {
+    const metalTypeNormalized = getNormalizedText(rate.metal_type || '').replace(/_/g, ' ');
+    const gradeNameNormalized = getNormalizedText(rate.grade_name || '');
+
+    const metalWords = metalTypeNormalized.split(/\s+/).filter(w => w.length > 1);
+    const gradeWords = gradeNameNormalized.replace(/[\(\)\/]/g, ' ').split(/\s+/).filter(w => w.length > 1);
+
+    let score = 0;
+    let matchesMetal = false;
+
+    // Direct exact check
+    if (descNormalized.includes(gradeNameNormalized)) {
+      score += 40;
+      if (descNormalized.includes(metalTypeNormalized)) {
+        score += 25;
+      }
+    }
+
+    // Token intersection check
+    if (metalWords.length > 0) {
+      const matchedMetalWords = metalWords.filter(w => descNormalized.includes(w));
+      if (matchedMetalWords.length === metalWords.length) {
+        matchesMetal = true;
+        score += matchedMetalWords.length * 10;
+      }
+    } else {
+      matchesMetal = true;
+    }
+
+    if (matchesMetal && gradeWords.length > 0) {
+      const matchedGradeWords = gradeWords.filter(w => descNormalized.includes(w));
+      score += matchedGradeWords.length * 15;
+
+      if (matchedGradeWords.length === gradeWords.length) {
+        score += 20;
+      }
+    }
+
+    // Location boost
+    if (locNormalized && gradeNameNormalized.includes(locNormalized)) {
+      score += 50;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = rate;
     }
   }
+
+  if (bestScore >= 25) {
+    return bestMatch;
+  }
+
   return null;
+}
+
+function getRegionalMultiplier(location?: string): { multiplier: number, discountReason?: string } {
+  if (!location) return { multiplier: 1.0 };
+  const loc = location.toLowerCase();
+  
+  // Remote / difficult logistics regions
+  if (
+    loc.includes('assam') || loc.includes('nagaland') || loc.includes('manipur') || 
+    loc.includes('tripura') || loc.includes('mizoram') || loc.includes('arunachal') || 
+    loc.includes('sikkim') || loc.includes('jammu') || loc.includes('kashmir') ||
+    loc.includes('andaman') || loc.includes('nicobar') || loc.includes('lakshadweep') ||
+    loc.includes('leh') || loc.includes('ladakh')
+  ) {
+    return { multiplier: 0.90, discountReason: '10% remote region logistics discount' };
+  }
+  
+  // Secondary logistics regions
+  if (
+    loc.includes('bihar') || loc.includes('jharkhand') || loc.includes('chhattisgarh') ||
+    loc.includes('odisha') || loc.includes('orissa') || loc.includes('uttarakhand')
+  ) {
+    return { multiplier: 0.95, discountReason: '5% secondary region logistics discount' };
+  }
+  
+  return { multiplier: 1.0 };
+}
+
+function getCommodityMovingAverage(commodityId: string, days: number = 7): number {
+  try {
+    const logs = marketPriceService.getPriceHistoryLogs();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    
+    const relevantLogs = logs.filter(log => 
+      log.commodityId === commodityId && 
+      new Date(log.timestamp) >= cutoff
+    );
+
+    if (relevantLogs.length > 0) {
+      const sum = relevantLogs.reduce((acc, log) => acc + log.price, 0);
+      return Math.round(sum / relevantLogs.length);
+    }
+  } catch (e) {
+    console.warn(`Failed to calculate moving average for ${commodityId}`, e);
+  }
+  return marketPriceService.getCommodityPrice(commodityId);
 }
 
 export const valuationService = {
@@ -512,7 +630,8 @@ export const valuationService = {
   async calculateValuation(
     rawItems: { sr: number; description: string; qty: string; unit: string }[],
     costs: ValuationCosts,
-    _hasImages: boolean = false
+    _hasImages: boolean = false,
+    location?: string
   ): Promise<ValuationOutput> {
     // Ensure we have the latest global market indices from Supabase before matching
     await marketPriceService.fetchCommodityPrices();
@@ -592,7 +711,11 @@ export const valuationService = {
                                   descLower.includes('zero bids') || 
                                   descLower.includes('failed auction');
 
-      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isUnknownCommodity || isPricingDisabled || isMismatch || isFailedOrWithdrawn;
+      // If we have a direct live rate match from MetalMandi, bypass heuristic mismatches
+      const hasLiveRate = !!getLiveRateMatch(rawItem.description, liveRates);
+
+      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isFailedOrWithdrawn || 
+                             (!hasLiveRate && (isUnknownCommodity || isPricingDisabled || isMismatch));
 
       if (isNotAvailable) {
         valuedItems.push({
@@ -616,45 +739,99 @@ export const valuationService = {
       
       let avgPrice = 0;
       let pricingConfidence = 50;
+      let priceSource = 'Baseline';
 
-      // Attempt real-time spot rate lookup first
-      const liveRateMatch = getLiveRateMatch(rawItem.description, liveRates);
+      // Rework exact metal prices like zinc, aluminium, lead, copper to pull from MCX (admin commodity index)
+      const hasSpecificScrapWord = [
+        'wire', 'cable', 'armature', 'bhatti', 'purja', 'jali', 'comp', 'compressor', 'fridge', 
+        'refrigerator', 'washing', 'geyser', 'pcb', 'board', 'motherboard', 'chip', 'magnet', 
+        'battery', 'batteries', 'utensil', 'bartan', 'sheet', 'cast iron', 'hms', 'slug', 'dross', 
+        'slime', 'ash', 'sludge', 'dust', 'sweeping', 'fitting', 'anaconda', 'dhada', 'wheel', 
+        'brake', 'shoe', 'shredded', 'boring', 'turning', 'melting', 'heavy melting', 'plate', 
+        'structure', 'old', 'new', 'mix', 'mixed', 'alloy'
+      ].some(word => descLower.includes(word));
 
-      if (liveRateMatch && liveRateMatch.price_per_kg > 0) {
-        avgPrice = liveRateMatch.price_per_kg;
-        pricingConfidence = 98; // Highest confidence from real-time spot market feed
-      } else if (modelId) {
-        const grade = detectGrade(rawItem.description, modelId);
-        const predictedVal = predictPrice(modelId, grade, 'Mumbai', DEFAULT_MACRO_INPUTS, rawItem.description);
-        
-        let normalizedPredictedVal = predictedVal;
-        const targetUnit = modelId === 'cars_vehicles' || modelId === 'e_waste_electronics' ? 'Units' : 'Tons';
-        
-        // Convert prediction to Per KG if the commodity operates in KG
-        if (targetUnit === 'Tons' && isPerKg) {
-          normalizedPredictedVal = predictedVal / 1000;
-        }
+      const isExactZinc = descLower.includes('zinc') && !hasSpecificScrapWord;
+      const isExactAluminium = (descLower.includes('aluminium') || descLower.includes('aluminum')) && !hasSpecificScrapWord;
+      const isExactLead = descLower.includes('lead') && !hasSpecificScrapWord;
+      const isExactCopper = (descLower.includes('copper') || descLower.includes(' cathodes') || descLower.includes('pure copper')) && !hasSpecificScrapWord;
 
-        if (dbPrice > 0) {
-          avgPrice = (normalizedPredictedVal + dbPrice) / 2;
-          pricingConfidence = 90; // High consensus from ML prediction and admin entered price
-        } else {
-          avgPrice = normalizedPredictedVal;
-          pricingConfidence = 80; // ML predicted
-        }
+      if (isExactZinc && marketPriceService.getCommodityPrice('zinc') > 0) {
+        const spot = marketPriceService.getCommodityPrice('zinc');
+        const ma = getCommodityMovingAverage('zinc', 7);
+        avgPrice = Math.round(spot * 0.7 + ma * 0.3); // Weighted blend
+        pricingConfidence = 95;
+        priceSource = `MCX Index (7D MA: ₹${ma})`;
+      } else if (isExactAluminium && marketPriceService.getCommodityPrice('aluminium') > 0) {
+        const spot = marketPriceService.getCommodityPrice('aluminium');
+        const ma = getCommodityMovingAverage('aluminium', 7);
+        avgPrice = Math.round(spot * 0.7 + ma * 0.3);
+        pricingConfidence = 95;
+        priceSource = `MCX Index (7D MA: ₹${ma})`;
+      } else if (isExactLead && marketPriceService.getCommodityPrice('lead') > 0) {
+        const spot = marketPriceService.getCommodityPrice('lead');
+        const ma = getCommodityMovingAverage('lead', 7);
+        avgPrice = Math.round(spot * 0.7 + ma * 0.3);
+        pricingConfidence = 95;
+        priceSource = `MCX Index (7D MA: ₹${ma})`;
+      } else if (isExactCopper && marketPriceService.getCommodityPrice('copper') > 0) {
+        const spot = marketPriceService.getCommodityPrice('copper');
+        const ma = getCommodityMovingAverage('copper', 7);
+        avgPrice = Math.round(spot * 0.7 + ma * 0.3);
+        pricingConfidence = 95;
+        priceSource = `MCX Index (7D MA: ₹${ma})`;
       } else {
-        if (dbPrice > 0) {
-          avgPrice = dbPrice;
-          pricingConfidence = 95; // Supreme confidence from admin price override
-        } else {
-          const intl = await this.fetchInternationalPrices(rawItem.description);
-          avgPrice = intl.in.convertedPrice || comm.basePricePerKg || comm.basePricePerUnit || 50;
-          if (!intl.in.isMock) {
-            pricingConfidence = Math.min(85, 50 + intl.in.sources * 5);
+        // Attempt real-time spot rate lookup first from MetalMandi using keywords and location boost
+        const liveRateMatch = getLiveRateMatch(rawItem.description, liveRates, location);
+
+        if (liveRateMatch && liveRateMatch.price_per_kg > 0) {
+          avgPrice = liveRateMatch.price_per_kg;
+          pricingConfidence = 98; // Highest confidence from real-time spot market feed
+          priceSource = `MetalMandi (${liveRateMatch.metal_type} - ${liveRateMatch.grade_name})`;
+        } else if (modelId) {
+          const grade = detectGrade(rawItem.description, modelId);
+          const predictedVal = predictPrice(modelId, grade, 'Mumbai', DEFAULT_MACRO_INPUTS, rawItem.description);
+          
+          let normalizedPredictedVal = predictedVal;
+          const targetUnit = modelId === 'cars_vehicles' || modelId === 'e_waste_electronics' ? 'Units' : 'Tons';
+          
+          // Convert prediction to Per KG if the commodity operates in KG
+          if (targetUnit === 'Tons' && isPerKg) {
+            normalizedPredictedVal = predictedVal / 1000;
+          }
+
+          if (dbPrice > 0) {
+            avgPrice = (normalizedPredictedVal + dbPrice) / 2;
+            pricingConfidence = 90; // High consensus from ML prediction and admin entered price
+            priceSource = `ML Model + Admin Index`;
           } else {
-            pricingConfidence = 60;
+            avgPrice = normalizedPredictedVal;
+            pricingConfidence = 80; // ML predicted
+            priceSource = `ML Model (${modelId})`;
+          }
+        } else {
+          if (dbPrice > 0) {
+            avgPrice = dbPrice;
+            pricingConfidence = 95; // Supreme confidence from admin price override
+            priceSource = 'Admin Pricing Index';
+          } else {
+            const intl = await this.fetchInternationalPrices(rawItem.description);
+            avgPrice = intl.in.convertedPrice || comm.basePricePerKg || comm.basePricePerUnit || 50;
+            priceSource = intl.in.isMock ? 'Baseline' : 'International Index';
+            if (!intl.in.isMock) {
+              pricingConfidence = Math.min(85, 50 + intl.in.sources * 5);
+            } else {
+              pricingConfidence = 60;
+            }
           }
         }
+      }
+
+      // Apply regional premium/discount location multiplier
+      const reg = getRegionalMultiplier(location);
+      if (reg.multiplier !== 1.0) {
+        avgPrice = Math.round(avgPrice * reg.multiplier);
+        priceSource += ` [${reg.discountReason}]`;
       }
 
       const customPriceStr = (rawItem as any).marketPrice;
@@ -669,6 +846,7 @@ export const valuationService = {
             }
             avgPrice = parsedPrice;
             pricingConfidence = 85;
+            priceSource = 'Catalog Spot Estimate';
           }
         }
       }
@@ -682,6 +860,7 @@ export const valuationService = {
         unitValue: itemUnitValue,
         totalValue: itemTotalValue,
         confidence: pricingConfidence,
+        priceSource,
         internationalPrices: {
           in: { 
             price: itemUnitValue, 

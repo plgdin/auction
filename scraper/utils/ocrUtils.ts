@@ -97,21 +97,52 @@ function cacheSet(key: string, value: string): void {
 // ─── Smart Skip Logic ────────────────────────────────────────────────────────
 
 /**
+ * Structural keywords expected in lot-bearing MSTC catalog pages.
+ * If selectable text is moderately long but lacks these markers,
+ * the page likely has a selectable header with scanned tabular body.
+ */
+const LOT_STRUCTURAL_KEYWORDS = [
+  "lot no", "lot name", "product type", "gst", "quantity",
+  "start price", "bid increment", "category", "lot location",
+];
+
+/**
  * Determine if OCR should be performed based on the quality of existing
  * selectable text from PDF.js extraction.
  *
+ * Hybrid page detection:
+ * - Requires ≥400 chars and ≥40 meaningful words to skip OCR.
+ * - Forces OCR when the page contains embedded images (scanned content).
+ * - Forces OCR when text is moderately long (>100 chars) but lacks
+ *   key lot structural keywords, indicating a selectable header
+ *   with scanned tabular body.
+ *
  * @param selectableText - Text already extracted via PDF.js getTextContent().
+ * @param pageHasImages  - Whether the page contains embedded image XObjects.
  * @returns `true` if OCR should be performed (text is insufficient).
  */
-export function shouldPerformOcr(selectableText: string): boolean {
+export function shouldPerformOcr(
+  selectableText: string,
+): boolean {
   if (!selectableText) return true;
 
   const trimmed = selectableText.trim();
-  if (trimmed.length < 50) return true;
+  if (trimmed.length < 400) return true;
 
   // Count meaningful words (≥3 chars, alphabetic)
   const words = trimmed.split(/\s+/).filter((w) => /^[a-zA-Z]{3,}/.test(w));
-  if (words.length < 10) return true;
+  if (words.length < 40) return true;
+
+  // Hybrid page check: if the text is moderately long (>100 chars) but
+  // missing structural lot keywords, the selectable text is likely just
+  // headers/footers while the real content is scanned.
+  if (trimmed.length > 100) {
+    const lower = trimmed.toLowerCase();
+    const hasStructuralKeywords = LOT_STRUCTURAL_KEYWORDS.some(
+      (kw) => lower.includes(kw),
+    );
+    if (!hasStructuralKeywords) return true;
+  }
 
   return false;
 }

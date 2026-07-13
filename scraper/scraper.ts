@@ -147,14 +147,65 @@ async function executeDiscoveryScraper() {
   try {
     const mandiPage = await browser.newPage();
     await mandiPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
-    await mandiPage.goto('https://www.metalmandi.in/', {
+    
+    console.log('[MetalMandi] Navigating to https://www.metalmandi.in/scrap-rate...');
+    await mandiPage.goto('https://www.metalmandi.in/scrap-rate', {
       waitUntil: 'networkidle2',
-      timeout: 20000
+      timeout: 30000
     });
     
-    const mandiHtml = await mandiPage.content();
+    console.log('[MetalMandi] Waiting for dynamic city rates to load...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    console.log('[MetalMandi] Evaluating DOM to extract dynamic scrap rates...');
+    const rates = await mandiPage.evaluate(() => {
+      const categoryHeaders = Array.from(document.querySelectorAll('h3'));
+      const parsed = [];
+      
+      for (const h3 of categoryHeaders) {
+        const categoryName = h3.innerText.trim();
+        const parent = h3.parentElement;
+        if (!parent) continue;
+        
+        const mainCard = parent.parentElement;
+        if (!mainCard) continue;
+        
+        const itemDivs = Array.from(mainCard.querySelectorAll('.flex.items-center.justify-between.py-2.md\\:py-3.px-3.md\\:px-6'));
+        
+        for (const itemDiv of itemDivs) {
+          const nameSpan = itemDiv.querySelector('span');
+          const name = nameSpan ? nameSpan.innerText.trim() : '';
+          
+          const priceContainer = itemDiv.querySelector('.flex.flex-col.items-end');
+          let priceText = '';
+          let changeText = '';
+          
+          if (priceContainer) {
+            const spans = priceContainer.querySelectorAll('span');
+            if (spans.length >= 1) priceText = spans[0].innerText.trim();
+            if (spans.length >= 2) changeText = spans[1].innerText.trim();
+          }
+          
+          if (name && priceText) {
+            parsed.push({
+              category: categoryName,
+              name,
+              priceText,
+              changeText
+            });
+          }
+        }
+      }
+      return parsed;
+    });
+
+    if (!rates || rates.length === 0) {
+      throw new Error('No rates extracted from DOM tree.');
+    }
+
+    console.log(`[MetalMandi] Extracted ${rates.length} rates dynamically from page.`);
     const { parseMetalMandiRates } = await import('./parsers/metalMandiParser.js');
-    await parseMetalMandiRates(mandiHtml);
+    await parseMetalMandiRates(rates);
     await mandiPage.close();
     console.log('[MetalMandi] Successfully completed real-time rate ingestion.');
   } catch (e: any) {
@@ -163,7 +214,7 @@ async function executeDiscoveryScraper() {
     console.log('[MetalMandi] Upserting baseline default rates as fallback...');
     try {
       const { parseMetalMandiRates } = await import('./parsers/metalMandiParser.js');
-      await parseMetalMandiRates('');
+      await parseMetalMandiRates();
       console.log('[MetalMandi] Baseline default rates upserted successfully.');
     } catch (fallbackErr: any) {
       console.error('[MetalMandi] Failed to upsert baseline rates:', fallbackErr.message);

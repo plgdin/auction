@@ -18,8 +18,8 @@ import type { DepositDetails } from "./types.js";
  * @returns Structured deposit details.
  */
 export function extractDepositDetails(cleanText: string, isCustoms = false): DepositDetails {
-  let emdValue = "10% of total bid value";
-  let preBidDdg = "Not Required";
+  let emdValue = "Refer to Catalog / Lot Details";
+  let preBidDdg = "Refer to Catalog / Lot Details";
 
   // ── 1. Try Post-Bid EMD percentage (e.g. "Post Bid EMD % - 25.0") ────────
   const emdPercentMatch =
@@ -41,7 +41,7 @@ export function extractDepositDetails(cleanText: string, isCustoms = false): Dep
         const parsedNum = parseInt(numOnly, 10);
         if (numOnly && parsedNum > 100) {
           preBidDdg = `₹${parsedNum.toLocaleString("en-IN")}`;
-          emdValue = "10% of total bid value";
+          emdValue = "Refer to Catalog / Lot Details";
         } else {
           preBidDdg = matchVal;
         }
@@ -89,7 +89,7 @@ export function extractDepositDetails(cleanText: string, isCustoms = false): Dep
                            /(?:exempt|not\s+required|no\s+pre-bid|nil)/i.test(cleanText);
 
   if (hasMsmeExemption) {
-    if (preBidDdg && preBidDdg !== "Not Required") {
+    if (preBidDdg && preBidDdg !== "Refer to Catalog / Lot Details") {
       if (!preBidDdg.includes("MSME")) {
         preBidDdg = `${preBidDdg} (Not required for registered MSME bidders)`;
       }
