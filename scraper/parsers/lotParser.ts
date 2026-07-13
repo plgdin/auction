@@ -18,54 +18,6 @@ import type { CatalogItem } from "./types.js";
 import { stripBoilerplateSections } from "./documentClassifier.js";
 import { parseSubItemsFromText } from "./mstcParser.js";
 
-// ─── Global Tax Rate Extraction ─────────────────────────────────────────────
-
-/**
- * Global tax rates extracted from boilerplate sections.
- */
-export interface GlobalTaxRates {
-  gstRate: string | null;
-  tcsRate: string | null;
-  rcmApplicable: boolean;
-}
-
-/**
- * Extract global GST, TCS, and RCM rates from boilerplate text.
- * Many MSTC catalogs declare these once globally rather than per-lot.
- */
-export function extractGlobalTaxRates(rawText: string): GlobalTaxRates {
-  const result: GlobalTaxRates = {
-    gstRate: null,
-    tcsRate: null,
-    rcmApplicable: false,
-  };
-
-  if (!rawText) return result;
-
-  const gstMatch = rawText.match(
-    /(?:GST|G\.?S\.?T\.?)\s*(?:@|rate)?\s*(\d+(?:\.\d+)?)\s*%/i,
-  );
-  if (gstMatch) {
-    result.gstRate = `${gstMatch[1]}%`;
-  }
-
-  const tcsMatch = rawText.match(
-    /(?:TCS|T\.?C\.?S\.?)\s*(?:@|rate)?\s*(\d+(?:\.\d+)?)\s*%/i,
-  );
-  if (tcsMatch) {
-    result.tcsRate = `${tcsMatch[1]}%`;
-  }
-
-  const rcmMatch = rawText.match(
-    /(?:RCM|Reverse\s+Charge(?:\s+Mechanism)?)\s+(?:is\s+)?applicable/i,
-  );
-  if (rcmMatch) {
-    result.rcmApplicable = true;
-  }
-
-  return result;
-}
-
 // ─── Specific Measurement Units ─────────────────────────────────────────────
 
 /**
@@ -539,14 +491,11 @@ export function cleanMaterialDescription(desc: string): string {
  *
  * @param cleanText              - The normalized catalog text (lines joined by \n).
  * @param categoryName           - The category name from the scraper for fallback descriptions.
- * @param rawTextForGlobalRates  - Optional raw text (before boilerplate stripping)
- *                                  used to extract global GST/TCS/RCM rates.
  * @returns Array of parsed lot items.
  */
 export function parseLotBlocks(
   cleanText: string,
   categoryName: string,
-  rawTextForGlobalRates?: string,
 ): CatalogItem[] {
   const items: CatalogItem[] = [];
 
@@ -750,7 +699,7 @@ export function parseLotBlocks(
         const descUnitUpper = (descQty.unit || "").toUpperCase().trim();
         const isDescSpecific = SPECIFIC_UNITS.has(descUnitUpper);
 
-        if (isDescSpecific || isGenericUnit) {
+        if (isDescSpecific) {
           qty = descQty.qty;
           unit = descQty.unit;
         }
@@ -890,38 +839,6 @@ export function parseLotBlocks(
       productType,
       preBidEmd: lotPreBidEmd,
     });
-  }
-
-  // ── Apply global tax rate fallback ──────────────────────────────────────────
-  const globalRates = extractGlobalTaxRates(rawTextForGlobalRates || cleanText);
-
-  for (const item of items) {
-    // Replace "As Applicable" or empty GST with global rate
-    const taxLower = (item.taxRate || "").toLowerCase();
-    const hasVagueGst =
-      taxLower.includes("as applicable") ||
-      taxLower === "gst" ||
-      !item.taxRate;
-
-    if (hasVagueGst && globalRates.gstRate) {
-      // Reconstruct the taxRate string with the global rate
-      let newTaxRate = `${globalRates.gstRate} GST`;
-
-      // Preserve existing TCS if present, otherwise use global TCS
-      const existingTcsMatch = item.taxRate?.match(/(\d+(?:\.\d+)?%?)\s*TCS/i);
-      const tcsStr = existingTcsMatch
-        ? existingTcsMatch[1]
-        : globalRates.tcsRate;
-      if (tcsStr && tcsStr !== "0" && tcsStr !== "0.0") {
-        newTaxRate += ` + ${tcsStr.endsWith("%") ? tcsStr : tcsStr + "%"} TCS`;
-      }
-
-      if (globalRates.rcmApplicable) {
-        newTaxRate += " + RCM";
-      }
-
-      item.taxRate = newTaxRate;
-    }
   }
 
   // Fallback if no lots parsed

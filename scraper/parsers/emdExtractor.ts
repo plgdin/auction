@@ -17,9 +17,9 @@ import type { DepositDetails } from "./types.js";
  * @param cleanText - The normalized catalog text (lines joined by \n).
  * @returns Structured deposit details.
  */
-export function extractDepositDetails(cleanText: string): DepositDetails {
-  let emdValue = "10% of total bid value";
-  let preBidDdg = "Not required for registered MSME bidders";
+export function extractDepositDetails(cleanText: string, isCustoms = false): DepositDetails {
+  let emdValue = "Refer to Catalog / Lot Details";
+  let preBidDdg = "Refer to Catalog / Lot Details";
 
   // ── 1. Try Post-Bid EMD percentage (e.g. "Post Bid EMD % - 25.0") ────────
   const emdPercentMatch =
@@ -30,7 +30,7 @@ export function extractDepositDetails(cleanText: string): DepositDetails {
     emdValue = `${emdPercentMatch[1]}% of total bid value (Post-Bid EMD)`;
   } else {
     // ── 2. Fallback: Pre-Bid EMD ────────────────────────────────────────────
-    const preBidMatch = cleanText.match(/Pre-Bid EMD:\s*([^\n]+)/);
+    const preBidMatch = cleanText.match(/Pre-Bid EMD:\s*([^\n]+)/i);
     if (preBidMatch) {
       const matchVal = preBidMatch[1].trim();
       if (
@@ -38,11 +38,12 @@ export function extractDepositDetails(cleanText: string): DepositDetails {
         !matchVal.toLowerCase().includes("item wise")
       ) {
         const numOnly = matchVal.replace(/[^\d]/g, "");
-        if (numOnly && parseInt(numOnly, 10) > 100) {
-          preBidDdg = `₹${parseInt(numOnly, 10).toLocaleString("en-IN")}`;
-          emdValue = "10% of total bid value";
+        const parsedNum = parseInt(numOnly, 10);
+        if (numOnly && parsedNum > 100) {
+          preBidDdg = `₹${parsedNum.toLocaleString("en-IN")}`;
+          emdValue = "Refer to Catalog / Lot Details";
         } else {
-          emdValue = matchVal;
+          preBidDdg = matchVal;
         }
       }
     }
@@ -78,6 +79,22 @@ export function extractDepositDetails(cleanText: string): DepositDetails {
       if (!isNaN(num) && num > 100) {
         preBidDdg = `₹${num.toLocaleString("en-IN")}`;
       }
+    }
+  }
+
+  // Check for MSME exemption text in cleanText (only if not a Customs auction)
+  const isCustomsFinal = isCustoms || /customs/i.test(cleanText);
+  const hasMsmeExemption = !isCustomsFinal &&
+                           /msme|micro\s*,?\s*small/i.test(cleanText) && 
+                           /(?:exempt|not\s+required|no\s+pre-bid|nil)/i.test(cleanText);
+
+  if (hasMsmeExemption) {
+    if (preBidDdg && preBidDdg !== "Refer to Catalog / Lot Details") {
+      if (!preBidDdg.includes("MSME")) {
+        preBidDdg = `${preBidDdg} (Not required for registered MSME bidders)`;
+      }
+    } else {
+      preBidDdg = "Not required for registered MSME bidders";
     }
   }
 

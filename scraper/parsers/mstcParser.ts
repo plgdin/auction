@@ -47,19 +47,34 @@ export function parseMstcCatalogText(
 
   // The auction type is catalogue metadata, not the material category.
   const auctionTypeMatch = cleanText.match(
-    /(?:auction\s+type|type\s+of\s+auction)\s*:?\s*(O-[A-Za-z0-9_-]+(?:\s+Auction)?)/i,
+    /(?:auction\s+type|type\s+of\s+auction)\s*:?\s*([A-Za-z0-9]\s*-\s*[A-Za-z0-9_-]+(?:\s+Auction)?)/i,
   );
-  const auctionType = auctionTypeMatch?.[1]?.trim();
+  let auctionType = auctionTypeMatch?.[1]?.trim();
+  if (auctionType) {
+    auctionType = auctionType.replace(/^([A-Za-z0-9])\s*-\s*/i, '$1-');
+    if (/^C-\s*[Cc]ustoms?$/i.test(auctionType)) {
+      auctionType = 'C-Customs';
+    } else if (/^O-\s*[Gg]e[rn]e?r?a?l$/i.test(auctionType)) {
+      auctionType = 'O-General';
+    }
+  } else {
+    // Fallback based on seller name or cleanText content
+    if (/customs/i.test(sellerName) || /customs/i.test(cleanText)) {
+      auctionType = 'C-Customs';
+    } else {
+      auctionType = 'O-General';
+    }
+  }
 
   // 1. Extract contacts
   const keyContacts = extractKeyContacts(lines, text);
 
-  // 3. Parse lot blocks (pass raw cleanText for global tax rate extraction
-  //    before boilerplate is stripped inside parseLotBlocks)
-  const items = parseLotBlocks(cleanText, categoryName, cleanText);
+  // 3. Parse lot blocks
+  const items = parseLotBlocks(cleanText, categoryName);
 
   // 2. Extract deposit details
-  const depositDetails = extractDepositDetails(cleanText);
+  const isCustoms = auctionType === 'C-Customs';
+  const depositDetails = extractDepositDetails(cleanText, isCustoms);
 
   // Sum up pre-bid EMDs if multiple items have them
   let totalPreBid = 0;

@@ -42,7 +42,6 @@ const localApiPlugin = () => ({
 
         if (
           pathname === '/api/users' || 
-          pathname === '/api/pdf' || 
           pathname === '/api/scraper/reset-failed' || 
           pathname === '/api/scraper/reset-single' ||
           pathname === '/api/scraper/unlock-processing'
@@ -64,9 +63,6 @@ const localApiPlugin = () => ({
 
           if (pathname === '/api/users') {
             import('./api/users.ts').then((m) => m.default(req, res)).catch(next);
-            return;
-          } else if (pathname === '/api/pdf') {
-            import('./api/pdf.ts').then((m) => m.default(req, res)).catch(next);
             return;
           } else if (
             pathname === '/api/scraper/reset-failed' || 

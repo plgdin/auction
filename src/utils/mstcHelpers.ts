@@ -723,8 +723,8 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
           if (percentMatch) {
             const percentVal = parseFloat(percentMatch[1]);
             if (percentVal > 100) {
-              emdVal = '10% of total bid value';
-              preBidDdg = 'Not required for registered MSME bidders';
+              emdVal = 'Refer to Catalog / Lot Details';
+              preBidDdg = 'Refer to Catalog / Lot Details';
             }
           }
         } else {
@@ -733,7 +733,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
             const val = parseFloat(numMatch[1]);
             if (val > 100) {
               preBidDdg = `₹${val.toLocaleString('en-IN')}`;
-              emdVal = '10% of total bid value';
+              emdVal = 'Refer to Catalog / Lot Details';
             }
           }
         }

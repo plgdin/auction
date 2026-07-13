@@ -123,12 +123,8 @@ const LOT_STRUCTURAL_KEYWORDS = [
  */
 export function shouldPerformOcr(
   selectableText: string,
-  pageHasImages?: boolean,
 ): boolean {
   if (!selectableText) return true;
-
-  // Force OCR when the page contains embedded images (scanned content)
-  if (pageHasImages) return true;
 
   const trimmed = selectableText.trim();
   if (trimmed.length < 400) return true;

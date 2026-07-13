@@ -73,6 +73,10 @@ export default async function handler(req: any, res: any) {
   const cleanUrl = url.split('?')[0];
 
   try {
+    // Enforce admin check globally for all scraper routes
+    const isAdmin = await verifyAdmin(req, res);
+    if (!isAdmin) return;
+
     // 1. Status Check
     if (cleanUrl === '/api/scraper/status') {
 
@@ -94,9 +98,6 @@ export default async function handler(req: any, res: any) {
     if (req.method === 'POST') {
       // Reset Failed Auctions (Admins only)
       if (cleanUrl === '/api/scraper/reset-failed') {
-        const isAdmin = await verifyAdmin(req, res);
-        if (!isAdmin) return;
-
         const { error } = await supabase
           .from('mstc_auctions')
           .update({
@@ -124,9 +125,6 @@ export default async function handler(req: any, res: any) {
 
       // Unlock Processing Auctions (Admins only)
       if (cleanUrl === '/api/scraper/unlock-processing') {
-        const isAdmin = await verifyAdmin(req, res);
-        if (!isAdmin) return;
-
         const { error } = await supabase
           .from('mstc_auctions')
           .update({
@@ -154,9 +152,6 @@ export default async function handler(req: any, res: any) {
 
       // Reset Single Failed Auction (Admins only)
       if (cleanUrl === '/api/scraper/reset-single') {
-        const isAdmin = await verifyAdmin(req, res);
-        if (!isAdmin) return;
-
         const parsedUrl = new URL(req.url || '', 'http://localhost');
         const id = parsedUrl.searchParams.get('id');
 

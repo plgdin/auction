@@ -169,8 +169,8 @@ export function extractKeyContacts(lines: string[], text: string): KeyContact[] 
     if (contactPerson || sellerPhone || sellerEmail) {
       keyContacts.push({
         role: "Seller Contact / Site In-Charge",
-        name: contactPerson || "Chief Transport Officer",
-        email: sellerEmail || DEFAULT_CONTACT_EMAIL,
+        name: contactPerson || "Unknown",
+        email: sellerEmail || "Unknown",
         phone: sellerPhone || "no contact info available"
       });
       
@@ -336,8 +336,8 @@ export function extractKeyContacts(lines: string[], text: string): KeyContact[] 
   if (keyContacts.length === 0) {
     keyContacts.push({
       role: "Auction Officer (MSTC)",
-      name: DEFAULT_MSTC_OFFICER.name,
-      email: DEFAULT_MSTC_OFFICER.email,
+      name: "Unknown",
+      email: "Unknown",
       phone: "no contact info available",
     });
   }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DownOutlined } from '@ant-design/icons';
-import { X, Copy, Check, Download, Heart, FilePlus, ChevronDown, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap, Clock } from 'lucide-react';
+import { X, Copy, Check, Download, Heart, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap, Clock } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice } from '../../services/publicService';
 import { useAuthStore } from '../../store/authStore';

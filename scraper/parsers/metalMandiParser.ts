@@ -62,16 +62,26 @@ export async function parseMetalMandiRates(scrapedRates?: ScrapedRate[] | string
     { name: 'MS Scrap(Old)', type: 'iron', minVal: 15, maxVal: 100, defaultVal: 35.00 },
     { name: 'Wire Scrap', type: 'copper', minVal: 400, maxVal: 1600, defaultVal: 650.00 },
     { name: 'Brass Scrap', type: 'brass', minVal: 250, maxVal: 1000, defaultVal: 420.00 },
-    { name: 'Aluminium Scrap', type: 'aluminium', minVal: 100, maxVal: 500, defaultVal: 180.00 },
+    { name: 'Aluminium Scrap', type: 'aluminium', minVal: 100, maxVal: 350, defaultVal: 180.00 },
     { name: 'Lead Scrap', type: 'lead', minVal: 80, maxVal: 400, defaultVal: 150.00 }
   ];
 
+  let ratesToProcess = scrapedRates;
+  if (typeof scrapedRates === "string" && scrapedRates.trim().length > 0) {
+    try {
+      ratesToProcess = JSON.parse(scrapedRates);
+    } catch (e: any) {
+      console.error("[MetalMandi] Failed to parse scrapedRates string to JSON:", e.message);
+      ratesToProcess = undefined;
+    }
+  }
+
   // If scraped rates are provided and it's an array of rates, we parse and sync them
-  if (Array.isArray(scrapedRates) && scrapedRates.length > 0) {
-    console.log(`[MetalMandi] Processing ${scrapedRates.length} scraped rates dynamically...`);
+  if (Array.isArray(ratesToProcess) && ratesToProcess.length > 0) {
+    console.log(`[MetalMandi] Processing ${ratesToProcess.length} scraped rates dynamically...`);
 
     // 1. Process and upsert each dynamic rate
-    for (const rate of scrapedRates) {
+    for (const rate of ratesToProcess) {
       const price = parsePrice(rate.priceText);
       if (price === null || price <= 0) continue;
 
@@ -113,41 +123,41 @@ export async function parseMetalMandiRates(scrapedRates?: ScrapedRate[] | string
 
       if (legacy.name === 'MS Scrap(Old)') {
         // Map to Iron -> MS Scrap(Old)
-        const match = scrapedRates.find(r => r.category.toLowerCase() === 'iron' && r.name.toLowerCase().includes('ms scrap(old)'))
-          || scrapedRates.find(r => r.category.toLowerCase() === 'iron' && r.name.toLowerCase().includes('ms scrap'));
+        const match = ratesToProcess.find(r => r.category.toLowerCase() === 'iron' && r.name.toLowerCase().includes('ms scrap(old)'))
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'iron' && r.name.toLowerCase().includes('ms scrap'));
         if (match) {
           matchedPrice = parsePrice(match.priceText);
           matchedChange = parseChangePercent(match.changeText);
         }
       } else if (legacy.name === 'Wire Scrap') {
         // Legacy "Wire Scrap" was Copper Wire. Map to Copper -> Telewire or Copper -> CCR Rod
-        const match = scrapedRates.find(r => r.category.toLowerCase() === 'copper' && r.name.toLowerCase() === 'telewire')
-          || scrapedRates.find(r => r.category.toLowerCase() === 'copper' && r.name.toLowerCase().includes('wire'))
-          || scrapedRates.find(r => r.category.toLowerCase() === 'copper' && r.name.toLowerCase().includes('cc rod'));
+        const match = ratesToProcess.find(r => r.category.toLowerCase() === 'copper' && r.name.toLowerCase() === 'telewire')
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'copper' && r.name.toLowerCase().includes('wire'))
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'copper' && r.name.toLowerCase().includes('cc rod'));
         if (match) {
           matchedPrice = parsePrice(match.priceText);
           matchedChange = parseChangePercent(match.changeText);
         }
       } else if (legacy.name === 'Brass Scrap') {
         // Map to Brass -> Purja(AC) or any brass rate
-        const match = scrapedRates.find(r => r.category.toLowerCase() === 'brass' && r.name.toLowerCase().includes('purja'))
-          || scrapedRates.find(r => r.category.toLowerCase() === 'brass');
+        const match = ratesToProcess.find(r => r.category.toLowerCase() === 'brass' && r.name.toLowerCase().includes('purja'))
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'brass');
         if (match) {
           matchedPrice = parsePrice(match.priceText);
           matchedChange = parseChangePercent(match.changeText);
         }
       } else if (legacy.name === 'Aluminium Scrap') {
-        // Map to Aluminium -> Wire Scrap or Aluminium Spot or Section
-        const match = scrapedRates.find(r => r.category.toLowerCase() === 'aluminium' && r.name.toLowerCase() === 'aluminium spot')
-          || scrapedRates.find(r => r.category.toLowerCase() === 'aluminium' && r.name.toLowerCase().includes('scrap'))
-          || scrapedRates.find(r => r.category.toLowerCase() === 'aluminium' && r.name.toLowerCase() === 'wire scrap');
+        // Map to Aluminium -> wire scrap, scrap, or fall back to aluminium spot
+        const match = ratesToProcess.find(r => r.category.toLowerCase() === 'aluminium' && r.name.toLowerCase().includes('scrap'))
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'aluminium' && r.name.toLowerCase() === 'wire scrap')
+          || ratesToProcess.find(r => r.category.toLowerCase() === 'aluminium' && r.name.toLowerCase() === 'aluminium spot');
         if (match) {
           matchedPrice = parsePrice(match.priceText);
           matchedChange = parseChangePercent(match.changeText);
         }
       } else if (legacy.name === 'Lead Scrap') {
         // Lead is not on page, look for category 'lead'
-        const match = scrapedRates.find(r => r.category.toLowerCase() === 'lead');
+        const match = ratesToProcess.find(r => r.category.toLowerCase() === 'lead');
         if (match) {
           matchedPrice = parsePrice(match.priceText);
           matchedChange = parseChangePercent(match.changeText);

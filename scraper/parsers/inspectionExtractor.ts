@@ -16,8 +16,7 @@ export function extractInspectionDetails(
   text: string,
   contacts: KeyContact[],
 ): InspectionDetails {
-  let inspectionTime =
-    "From publication date to 1 day prior to bidding (10:00 AM - 4:00 PM on working days)";
+  let inspectionTime = "Unknown";
 
   // ── 1. Try unified structured/inline pattern matchers ─────────────────────
   const scheduleMatch =
