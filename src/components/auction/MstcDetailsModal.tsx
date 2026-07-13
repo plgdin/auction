@@ -13,7 +13,8 @@ import { useAppStore } from '../../store/appStore';
 import { formatPrice, CURRENCIES, formatPriceString } from '../../utils/currency';
 import { useNavigate } from 'react-router-dom';
 import { valuationService } from '../../services/valuationService';
-import type { ValuationCosts, ValuationOutput } from '../../services/valuationService';
+import type { ValuationCosts, ValuationOutput } from '../../services/valuation/roiEngine';
+import { roiEngine } from '../../services/valuation/roiEngine';
 import { marketPriceService } from '../../services/marketPriceService';
 import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, ReferenceLine, Legend } from 'recharts';
 
@@ -318,7 +319,24 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     extraCharge: 0,
     gstPercent: 18,
     tcsPercent: 1,
+    auctionFee: 0,
+    emdCost: 0,
+    unloading: 0,
+    warehouse: 0,
+    storage: 0,
+    insurance: 0,
+    interest: 0,
+    opportunityCost: 0,
+    repair: 0,
+    fuel: 0,
+    customDuty: 0,
+    labour: 0,
+    shrinkage: 0,
+    processingLoss: 0,
+    miscellaneous: 0,
+    contingency: 0
   });
+  const [showAdvancedCosts, setShowAdvancedCosts] = useState(false);
   const [valuationData, setValuationData] = useState<ValuationOutput | null>(null);
   const [customItemPrices, setCustomItemPrices] = useState<Record<number, number>>({});
 
@@ -337,159 +355,22 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const finalValuationData = React.useMemo<ValuationOutput | null>(() => {
     if (!valuationData) return null;
 
-    let totalLotValue = 0;
-    let totalConfidenceSum = 0;
-
-    const updatedItems = valuationData.items.map((row, idx) => {
-      if (row.notAvailable) return row;
-
+    const rawItems = valuationData.items.map((row, idx) => {
       const customPrice = customItemPrices[idx];
-      if (customPrice !== undefined && customPrice > 0) {
-        const totalValue = Math.round(customPrice * row.qty);
-        totalLotValue += totalValue;
-        totalConfidenceSum += 95;
-        return {
-          ...row,
-          unitValue: customPrice,
-          totalValue,
-          confidence: 95,
-          priceSource: 'User Override',
-          internationalPrices: {
-            in: { price: customPrice, convertedPrice: totalValue, sources: 1 },
-            us: { price: Math.round((customPrice * 0.95) / 85), convertedPrice: Math.round(totalValue * 0.95), sources: 1 },
-            uk: { price: Math.round((customPrice * 0.90) / 108), convertedPrice: Math.round(totalValue * 0.90), sources: 1 }
-          }
-        };
-      } else {
-        totalLotValue += row.totalValue;
-        totalConfidenceSum += row.confidence;
-        return row;
-      }
+      return {
+        sr: idx + 1,
+        description: row.name,
+        qty: String(row.qty),
+        unit: 'Nos',
+        marketPrice: customPrice ? `₹ ${customPrice}` : undefined
+      };
     });
 
-    totalLotValue = Math.round(totalLotValue);
-    const avgItemConfidence = Math.round(totalConfidenceSum / (updatedItems.filter(v => !v.notAvailable).length || 1));
+    const summary = generateCatalogSummary(item);
+    const hasImages = !!(summary.extracted_images && summary.extracted_images.length > 0);
 
-    const bidAmount = Number(customCosts.currentBid) || 0;
-    const gstPercent = customCosts.gstPercent ?? 18;
-    const tcsPercent = customCosts.tcsPercent ?? 1;
-    const gstAmount = Math.round(bidAmount * (gstPercent / 100));
-    const tcsAmount = Math.round(bidAmount * (tcsPercent / 100));
-
-    const totalCost = Math.round(
-      bidAmount +
-      gstAmount +
-      tcsAmount +
-      (customCosts.transportation || 0) +
-      (customCosts.loadingUnloading || 0) +
-      (customCosts.refurbishment || 0) +
-      (customCosts.otherFees || 0) +
-      (customCosts.extraCharge || 0)
-    );
-
-    const estimatedProfit = totalLotValue - totalCost;
-    const roiPercent = totalCost > 0 ? Math.round((estimatedProfit / totalCost) * 100) : 0;
-    const breakEven = totalLotValue - (
-      gstAmount +
-      tcsAmount +
-      (customCosts.transportation || 0) +
-      (customCosts.loadingUnloading || 0) +
-      (customCosts.refurbishment || 0) +
-      (customCosts.otherFees || 0) +
-      (customCosts.extraCharge || 0)
-    );
-
-    const dataConfidence = 85; 
-    const pricingConfidence = avgItemConfidence;
-    const overallConfidence = Math.round((dataConfidence + pricingConfidence) / 2);
-
-    let riskLevel: 'Low Risk' | 'Medium Risk' | 'High Risk' = 'Medium Risk';
-    let riskReasoning = '';
-    
-    if (overallConfidence < 55) {
-      riskLevel = 'High Risk';
-      riskReasoning = 'High risk due to limited matching pricing points.';
-    } else if (roiPercent < 10) {
-      riskLevel = 'High Risk';
-      riskReasoning = 'High risk because the estimated return on investment is extremely low or negative.';
-    } else if (overallConfidence >= 75 && roiPercent >= 30) {
-      riskLevel = 'Low Risk';
-      riskReasoning = 'Low risk due to robust catalog details, high verification confidence, and strong margins.';
-    } else {
-      riskLevel = 'Medium Risk';
-      riskReasoning = 'Medium risk. Solid margins but watch out for transport logistics costs and potential quality variations.';
-    }
-
-    let closingBidMultiplier = marketPriceService.getCommodityMultiplier('default');
-    let metalCount = 0;
-    let vehicleCount = 0;
-    let ewasteCount = 0;
-    updatedItems.forEach(item => {
-      const desc = (item.name || '').toLowerCase();
-      if (desc.includes('steel') || desc.includes('iron') || desc.includes('copper') || desc.includes('metal') || desc.includes('brass')) {
-        metalCount++;
-      } else if (desc.includes('vehicle') || desc.includes('car') || desc.includes('bus') || desc.includes('truck') || desc.includes('motorcycle')) {
-        vehicleCount++;
-      } else if (desc.includes('computer') || desc.includes('laptop') || desc.includes('battery') || desc.includes('e-waste') || desc.includes('electronic')) {
-        ewasteCount++;
-      }
-    });
-    
-    const totalItemsCount = updatedItems.length || 1;
-    if (metalCount / totalItemsCount > 0.5) {
-      closingBidMultiplier = marketPriceService.getCommodityMultiplier('steel_iron_ferrous');
-    } else if (vehicleCount / totalItemsCount > 0.5) {
-      closingBidMultiplier = marketPriceService.getCommodityMultiplier('vehicle');
-    } else if (ewasteCount / totalItemsCount > 0.5) {
-      closingBidMultiplier = marketPriceService.getCommodityMultiplier('e_waste');
-    }
-
-    let recommendation: ValuationOutput['recommendation'] = 'Watch Carefully';
-    let recommendationReasoning = '';
-
-    if (riskLevel === 'Low Risk' && roiPercent >= 40) {
-      recommendation = 'Strong Buy';
-      recommendationReasoning = `Excellent bidding opportunity with a high projected ROI of ${roiPercent}%. Data verification is strong.`;
-    } else if (roiPercent >= 20 && riskLevel !== 'High Risk') {
-      recommendation = 'Buy';
-      recommendationReasoning = `Solid potential returns (${roiPercent}% ROI) with manageable risk levels. Recommended to place bids up to ${formatPrice(Math.round(totalLotValue * closingBidMultiplier), currency)}.`;
-    } else if (riskLevel === 'High Risk' || roiPercent < 0) {
-      recommendation = 'High Risk';
-      recommendationReasoning = `Not recommended. The projected ROI is negative or extremely low (${roiPercent}%), making it likely unprofitable.`;
-    } else if (roiPercent < 15) {
-      recommendation = 'High Risk';
-      recommendationReasoning = `Bidding margin is tight. Proceed only if loading/refurbishment costs can be optimized.`;
-    } else {
-      recommendation = 'Watch Carefully';
-      recommendationReasoning = `Decent margins but confidence is moderate. Monitor bidding action closely and do not exceed the break-even value of ${formatPrice(breakEven, currency)}.`;
-    }
-
-    const totalUsInr = totalLotValue * 0.95;
-    const totalUkInr = totalLotValue * 0.90;
-
-    return {
-      items: updatedItems,
-      totalLotValue,
-      totalCost,
-      estimatedProfit,
-      roiPercent,
-      breakEven,
-      riskAnalysis: {
-        dataConfidence,
-        pricingConfidence,
-        overallConfidence,
-        riskLevel,
-        reasoning: riskReasoning
-      },
-      recommendation,
-      recommendationReasoning,
-      internationalTotals: {
-        in: totalLotValue,
-        us: Math.round(totalUsInr),
-        uk: Math.round(totalUkInr)
-      }
-    };
-  }, [valuationData, customItemPrices, customCosts, currency]);
+    return roiEngine.calculateValuationSync(rawItems, customCosts, hasImages, item.location);
+  }, [valuationData, customItemPrices, customCosts, item, currency]);
 
   const sensitivityData = React.useMemo(() => {
     if (!finalValuationData || finalValuationData.totalLotValue <= 0) return [];
@@ -538,39 +419,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     return dataPoints;
   }, [finalValuationData, customCosts, currency, currencySymbol, currencyRate]);
 
-  const biddingRecommendations = React.useMemo(() => {
-    if (!finalValuationData || finalValuationData.totalLotValue <= 0) return null;
-
-    const lotValue = finalValuationData.totalLotValue;
-    const gstPercent = customCosts.gstPercent ?? 18;
-    const tcsPercent = customCosts.tcsPercent ?? 1;
-    const taxFactor = 1 + (gstPercent + tcsPercent) / 100;
-    
-    const fixedCosts = (
-      (customCosts.transportation || 0) +
-      (customCosts.loadingUnloading || 0) +
-      (customCosts.refurbishment || 0) +
-      (customCosts.otherFees || 0) +
-      (customCosts.extraCharge || 0)
-    );
-
-    // 1. Conservative (20% Target ROI)
-    const conservativeCostLimit = lotValue / 1.20;
-    const conservativeBid = Math.max(0, Math.round((conservativeCostLimit - fixedCosts) / taxFactor));
-
-    // 2. Moderate/Target (10% Target ROI)
-    const moderateCostLimit = lotValue / 1.10;
-    const moderateBid = Math.max(0, Math.round((moderateCostLimit - fixedCosts) / taxFactor));
-
-    // 3. Hard limit (Break-Even)
-    const breakEvenBid = Math.max(0, Math.round((lotValue - fixedCosts) / taxFactor));
-
-    return {
-      conservativeBid,
-      moderateBid,
-      breakEvenBid,
-    };
-  }, [finalValuationData, customCosts]);
 
   const [isValuating, setIsValuating] = useState(false);
   const [extraChargeType, setExtraChargeType] = useState<string>('none');
@@ -993,11 +841,65 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           >
                             <option value={0}>0% (None)</option>
                             <option value={1}>1% (Standard TCS)</option>
-                          </select>
-                          <DownOutlined className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450 pointer-events-none" />
                         </div>
                       </div>
                     </div>
+
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvancedCosts(!showAdvancedCosts)}
+                        className="text-xs font-bold text-primary hover:underline flex items-center gap-1.5 cursor-pointer bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-2xs hover:bg-slate-100/80 transition-all"
+                      >
+                        {showAdvancedCosts ? 'Hide Advanced Cost Options' : 'Show Advanced Cost Options'}
+                      </button>
+                    </div>
+
+                    {showAdvancedCosts && (
+                      <div className="mt-4 pt-4 border-t border-dashed border-slate-250">
+                        <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3.5 font-sans">Advanced Bidding & Costs Config</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
+                          {[
+                            { key: 'auctionFee', label: 'Auction Portal Fee' },
+                            { key: 'emdCost', label: 'EMD Blocked Interest' },
+                            { key: 'unloading', label: 'Unloading Cost' },
+                            { key: 'warehouse', label: 'Warehouse Rent' },
+                            { key: 'storage', label: 'Storage & Yard Fee' },
+                            { key: 'insurance', label: 'Transit Insurance' },
+                            { key: 'interest', label: 'Capital Interest Cost' },
+                            { key: 'opportunityCost', label: 'Opportunity Cost' },
+                            { key: 'repair', label: 'Repair & Sorting' },
+                            { key: 'fuel', label: 'Fuel Surcharge' },
+                            { key: 'customDuty', label: 'Custom Duty' },
+                            { key: 'labour', label: 'Labour Charges' },
+                            { key: 'shrinkage', label: 'Weight Shrinkage' },
+                            { key: 'processingLoss', label: 'Processing Loss' },
+                            { key: 'miscellaneous', label: 'Misc Costs' },
+                            { key: 'contingency', label: 'Contingency Margin' }
+                          ].map((costItem) => (
+                            <div key={costItem.key}>
+                              <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1.5 font-sans">
+                                {costItem.label} ({currency})
+                              </label>
+                              <div className="relative rounded-xl shadow-2xs">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                  <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
+                                </div>
+                                <input
+                                  type="number"
+                                  value={toDisplayVal((customCosts as any)[costItem.key])}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setCustomCosts(prev => ({ ...prev, [costItem.key]: toInrVal(v) }));
+                                  }}
+                                  className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {isValuating || !finalValuationData ? (
@@ -1076,25 +978,25 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               Simulated caps based on taxes, logistics, and desired profit margins.
                             </p>
 
-                            {biddingRecommendations && (
+                             {finalValuationData && finalValuationData.bidding && (
                               <div className="space-y-3.5">
                                 <div className="p-3 bg-emerald-50/50 border border-emerald-150 rounded-2xl flex items-center justify-between">
                                   <div>
                                     <div className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider">Conservative Cap</div>
-                                    <div className="text-[9px] text-emerald-600 font-medium mt-0.5">Target: 20% Net ROI</div>
+                                    <div className="text-[9px] text-emerald-600 font-medium mt-0.5">Target: 40% Net ROI</div>
                                   </div>
                                   <div className="text-sm font-black text-emerald-950">
-                                    {formatPrice(biddingRecommendations.conservativeBid, currency)}
+                                    {formatPrice(finalValuationData.bidding.conservativeBid, currency)}
                                   </div>
                                 </div>
 
                                 <div className="p-3 bg-amber-50/50 border border-amber-150 rounded-2xl flex items-center justify-between">
                                   <div>
                                     <div className="text-[9px] font-bold text-amber-800 uppercase tracking-wider">Target ROI Cap</div>
-                                    <div className="text-[9px] text-amber-600 font-medium mt-0.5">Target: 10% Net ROI</div>
+                                    <div className="text-[9px] text-amber-600 font-medium mt-0.5">Target: 25% Net ROI</div>
                                   </div>
                                   <div className="text-sm font-black text-amber-950">
-                                    {formatPrice(biddingRecommendations.moderateBid, currency)}
+                                    {formatPrice(finalValuationData.bidding.idealBid, currency)}
                                   </div>
                                 </div>
 
@@ -1104,7 +1006,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                     <div className="text-[9px] text-rose-600 font-medium mt-0.5">Target: 0% ROI (Break-Even)</div>
                                   </div>
                                   <div className="text-sm font-black text-rose-950">
-                                    {formatPrice(biddingRecommendations.breakEvenBid, currency)}
+                                    {formatPrice(finalValuationData.bidding.walkAwayPrice, currency)}
                                   </div>
                                 </div>
                               </div>
