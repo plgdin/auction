@@ -263,7 +263,7 @@ export async function runRoiEngineTests(): Promise<boolean> {
     const valuationB = await roiEngine.calculateValuation(catalogItemB, costsB, false, 'Jammu & Kashmir');
 
     // Salvage Bus should match vehicle / heavy vehicle, have J&K 10% region logistics discount
-    assert(valuationB.items[0].priceSource?.includes('J&K') || valuationB.items[0].priceSource?.includes('logistics'), 'Logistics discount reason should be listed in price source');
+    assert(!!(valuationB.items[0].priceSource?.includes('J&K') || valuationB.items[0].priceSource?.includes('logistics')), 'Logistics discount reason should be listed in price source');
 
     // Catalog Item C: Unserviceable Electronics scrap (Avoid recommendation test)
     const catalogItemC = [

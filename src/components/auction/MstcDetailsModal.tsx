@@ -14,9 +14,16 @@ import { formatPrice, CURRENCIES, formatPriceString } from '../../utils/currency
 import { useNavigate } from 'react-router-dom';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuation/roiEngine';
-import { roiEngine } from '../../services/valuation/roiEngine';
 import { marketPriceService } from '../../services/marketPriceService';
 import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, ReferenceLine, Legend } from 'recharts';
+import {
+  computeCostBreakdown,
+  computeRoiMetrics,
+  computeOverallConfidence,
+  detectClosingBidMultiplier,
+  computeBidCaps,
+  computeSensitivityData,
+} from '../../utils/roiEngine';
 
 interface MstcDetailsModalProps {
   item: MstcSanitizedAuction;
@@ -184,8 +191,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const currencyRate = CURRENCIES[currency]?.rate || 1;
 
   // Helper to convert internal INR value to displayed currency value
-  const toDisplayVal = (val: number | '') => {
-    if (val === '') return '';
+  const toDisplayVal = (val: number | '' | undefined) => {
+    if (val === undefined || val === '') return '';
     return Math.round(val * currencyRate);
   };
 
@@ -352,25 +359,98 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     });
   };
 
-  const finalValuationData = React.useMemo<ValuationOutput | null>(() => {
+  const finalValuationData = React.useMemo<any>(() => {
     if (!valuationData) return null;
 
-    const rawItems = valuationData.items.map((row, idx) => {
+    let totalLotValue = 0;
+    let totalConfidenceSum = 0;
+
+    const updatedItems = valuationData.items.map((row, idx) => {
+      if (row.notAvailable) return row;
+
       const customPrice = customItemPrices[idx];
-      return {
-        sr: idx + 1,
-        description: row.name,
-        qty: String(row.qty),
-        unit: 'Nos',
-        marketPrice: customPrice ? `₹ ${customPrice}` : undefined
-      };
+      if (customPrice !== undefined && customPrice > 0) {
+        const totalValue = Math.round(customPrice * row.qty);
+        totalLotValue += totalValue;
+        totalConfidenceSum += 95;
+        return {
+          ...row,
+          unitValue: customPrice,
+          totalValue,
+          confidence: 95,
+          priceSource: 'User Override',
+          internationalPrices: {
+            in: { price: customPrice, convertedPrice: totalValue, sources: 1 },
+            us: { price: Math.round((customPrice * 0.95) / 85), convertedPrice: Math.round(totalValue * 0.95), sources: 1 },
+            uk: { price: Math.round((customPrice * 0.90) / 108), convertedPrice: Math.round(totalValue * 0.90), sources: 1 }
+          }
+        };
+      } else {
+        totalLotValue += row.totalValue;
+        totalConfidenceSum += row.confidence;
+        return row;
+      }
     });
 
-    const summary = generateCatalogSummary(item);
-    const hasImages = !!(summary.extracted_images && summary.extracted_images.length > 0);
+    totalLotValue = Math.round(totalLotValue);
+    const avgItemConfidence = Math.round(totalConfidenceSum / (updatedItems.filter(v => !v.notAvailable).length || 1));
 
-    return roiEngine.calculateValuationSync(rawItems, customCosts, hasImages, item.location);
-  }, [valuationData, customItemPrices, customCosts, item, currency]);
+    const gstPercent = customCosts.gstPercent ?? 18;
+    const tcsPercent = customCosts.tcsPercent ?? 1;
+
+    const costBreakdown = computeCostBreakdown({
+      ...customCosts,
+      currentBid: Number(customCosts.currentBid) || 0,
+      transportation: Number(customCosts.transportation) || 0,
+      loadingUnloading: Number(customCosts.loadingUnloading) || 0,
+      refurbishment: Number(customCosts.refurbishment) || 0,
+      otherFees: Number(customCosts.otherFees) || 0,
+      extraCharge: Number(customCosts.extraCharge) || 0,
+      gstPercent,
+      tcsPercent,
+    });
+
+    const notAvailableRatio = updatedItems.filter(v => v.notAvailable).length / (updatedItems.length || 1);
+    const overallConfidence = computeOverallConfidence(avgItemConfidence, notAvailableRatio);
+
+    const closingBidMultiplier = detectClosingBidMultiplier(updatedItems.map(i => i.name));
+
+    const roi = computeRoiMetrics({
+      lotValue: totalLotValue,
+      totalCost: costBreakdown.totalCost,
+      fixedCosts: costBreakdown.fixedCosts,
+      taxFactor: costBreakdown.taxFactor,
+      overallConfidence,
+      closingBidMultiplier,
+      formatPrice: (n: number) => formatPrice(n, currency),
+    });
+
+    const totalUsInr = totalLotValue * 0.95;
+    const totalUkInr = totalLotValue * 0.90;
+
+    return {
+      items: updatedItems,
+      totalLotValue,
+      totalCost: costBreakdown.totalCost,
+      estimatedProfit: roi.estimatedProfit,
+      roiPercent: roi.roiPercent,
+      breakEven: roi.breakEven,
+      riskAnalysis: {
+        dataConfidence: Math.round(95 - notAvailableRatio * 60),
+        pricingConfidence: avgItemConfidence,
+        overallConfidence,
+        riskLevel: roi.riskLevel,
+        reasoning: roi.riskReasoning
+      },
+      recommendation: roi.recommendation,
+      recommendationReasoning: roi.recommendationReasoning,
+      internationalTotals: {
+        in: totalLotValue,
+        us: Math.round(totalUsInr),
+        uk: Math.round(totalUkInr)
+      }
+    };
+  }, [valuationData, customItemPrices, customCosts, currency]);
 
   const sensitivityData = React.useMemo(() => {
     if (!finalValuationData || finalValuationData.totalLotValue <= 0) return [];
@@ -386,38 +466,37 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
     const gstPercent = customCosts.gstPercent ?? 18;
     const tcsPercent = customCosts.tcsPercent ?? 1;
-    const taxFactor = 1 + (gstPercent + tcsPercent) / 100;
     
-    const maxBreakEvenBid = Math.max(0, Math.round((lotValue - fixedCosts) / taxFactor));
-    const currentBidVal = Number(customCosts.currentBid) || 0;
-    
-    const startBid = Math.max(0, Math.min(currentBidVal * 0.5, maxBreakEvenBid * 0.2));
-    const endBid = Math.max(maxBreakEvenBid * 1.3, currentBidVal * 1.5);
-    
-    const steps = 15;
-    const stepSize = (endBid - startBid) / (steps - 1 || 1);
-    
-    const dataPoints = [];
-    
-    for (let i = 0; i < steps; i++) {
-      const simulatedBid = Math.round(startBid + i * stepSize);
-      const gstAmount = Math.round(simulatedBid * (gstPercent / 100));
-      const tcsAmount = Math.round(simulatedBid * (tcsPercent / 100));
-      const simulatedTotalCost = simulatedBid + gstAmount + tcsAmount + fixedCosts;
-      
-      const simulatedProfit = lotValue - simulatedTotalCost;
-      const simulatedRoi = simulatedTotalCost > 0 ? Math.round((simulatedProfit / simulatedTotalCost) * 100) : 0;
-      
-      dataPoints.push({
-        bidPrice: simulatedBid,
-        displayBidPrice: `${currencySymbol}${simulatedBid >= 100000 && currency === 'INR' ? (simulatedBid / 100000).toFixed(1) + 'L' : Math.round(simulatedBid).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')}`,
-        profit: Math.round(simulatedProfit * currencyRate),
-        roi: simulatedRoi,
-      });
-    }
-    
-    return dataPoints;
+    return computeSensitivityData(
+      lotValue,
+      fixedCosts,
+      gstPercent,
+      tcsPercent,
+      Number(customCosts.currentBid) || 0,
+      currencySymbol,
+      currency,
+      currencyRate
+    );
   }, [finalValuationData, customCosts, currency, currencySymbol, currencyRate]);
+
+  const biddingRecommendations = React.useMemo(() => {
+    if (!finalValuationData || finalValuationData.totalLotValue <= 0) return null;
+
+    const lotValue = finalValuationData.totalLotValue;
+    const gstPercent = customCosts.gstPercent ?? 18;
+    const tcsPercent = customCosts.tcsPercent ?? 1;
+    const taxFactor = (1 + gstPercent / 100) * (1 + tcsPercent / 100);
+    
+    const fixedCosts = (
+      (customCosts.transportation || 0) +
+      (customCosts.loadingUnloading || 0) +
+      (customCosts.refurbishment || 0) +
+      (customCosts.otherFees || 0) +
+      (customCosts.extraCharge || 0)
+    );
+
+    return computeBidCaps(lotValue, fixedCosts, taxFactor);
+  }, [finalValuationData, customCosts]);
 
 
   const [isValuating, setIsValuating] = useState(false);
@@ -841,6 +920,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           >
                             <option value={0}>0% (None)</option>
                             <option value={1}>1% (Standard TCS)</option>
+                          </select>
+                          <DownOutlined className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450 pointer-events-none" />
                         </div>
                       </div>
                     </div>
@@ -978,25 +1059,25 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               Simulated caps based on taxes, logistics, and desired profit margins.
                             </p>
 
-                             {finalValuationData && finalValuationData.bidding && (
+                            {biddingRecommendations && (
                               <div className="space-y-3.5">
                                 <div className="p-3 bg-emerald-50/50 border border-emerald-150 rounded-2xl flex items-center justify-between">
                                   <div>
                                     <div className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider">Conservative Cap</div>
-                                    <div className="text-[9px] text-emerald-600 font-medium mt-0.5">Target: 40% Net ROI</div>
+                                    <div className="text-[9px] text-emerald-600 font-medium mt-0.5">Target: 20% Net ROI</div>
                                   </div>
                                   <div className="text-sm font-black text-emerald-950">
-                                    {formatPrice(finalValuationData.bidding.conservativeBid, currency)}
+                                    {formatPrice(biddingRecommendations.conservativeBid, currency)}
                                   </div>
                                 </div>
 
                                 <div className="p-3 bg-amber-50/50 border border-amber-150 rounded-2xl flex items-center justify-between">
                                   <div>
                                     <div className="text-[9px] font-bold text-amber-800 uppercase tracking-wider">Target ROI Cap</div>
-                                    <div className="text-[9px] text-amber-600 font-medium mt-0.5">Target: 25% Net ROI</div>
+                                    <div className="text-[9px] text-amber-600 font-medium mt-0.5">Target: 10% Net ROI</div>
                                   </div>
                                   <div className="text-sm font-black text-amber-950">
-                                    {formatPrice(finalValuationData.bidding.idealBid, currency)}
+                                    {formatPrice(biddingRecommendations.moderateBid, currency)}
                                   </div>
                                 </div>
 
@@ -1006,7 +1087,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                     <div className="text-[9px] text-rose-600 font-medium mt-0.5">Target: 0% ROI (Break-Even)</div>
                                   </div>
                                   <div className="text-sm font-black text-rose-950">
-                                    {formatPrice(finalValuationData.bidding.walkAwayPrice, currency)}
+                                    {formatPrice(biddingRecommendations.breakEvenBid, currency)}
                                   </div>
                                 </div>
                               </div>
@@ -1119,7 +1200,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-105 text-slate-700">
-                              {finalValuationData.items.map((row, idx) => (
+                              {finalValuationData.items.map((row: any, idx: number) => (
                                 <tr key={idx} className="hover:bg-slate-50/50">
                                   <td className="py-2.5 px-3.5 font-bold text-slate-900">
                                     <div>{row.name}</div>
