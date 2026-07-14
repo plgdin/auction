@@ -1025,7 +1025,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         const isAvoid = status.startsWith('Avoid');
                         const isBuy = status === 'Buy' || status === 'Strong Buy';
                         const starCount = status === 'Strong Buy' ? 5 : status === 'Buy' ? 4 : status === 'Watch' ? 3 : 2;
-                        const stars = Array.from({ length: 5 }, (_, i) => i < starCount ? 'â˜…' : 'â˜†').join('');
+                        const stars = Array.from({ length: 5 }, (_, i) => i < starCount ? '\u2605' : '\u2606').join('');
                         const bgGradient = isBuy
                           ? 'from-emerald-600 via-emerald-500 to-teal-500'
                           : isAvoid
