@@ -782,6 +782,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               )}
             >
               <span>Bid Intelligence</span>
+              <span className="text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-250 px-1.5 py-0.5 rounded-md tracking-normal uppercase shrink-0">Beta</span>
             </button>
           </div>
 
@@ -1063,32 +1064,32 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                       {/* â•â•â•â•â•â•â• SECTION 2: Financial Summary â•â•â•â•â•â•â• */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1">
+                        <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Lot Value</h5>
-                          <div className="text-base font-black text-slate-900">
+                          <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
                             {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalLotValue, currency) : 'N/A'}
                           </div>
                           <p className="text-[9px] text-slate-400 font-medium">Market value</p>
                         </div>
 
-                        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1">
+                        <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Current Bid</h5>
-                          <div className="text-base font-black text-slate-900">
+                          <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
                             {Number(customCosts.currentBid) > 0 ? formatPrice(Number(customCosts.currentBid), currency) : 'N/A'}
                           </div>
                           <p className="text-[9px] text-slate-400 font-medium">Your bid amount</p>
                         </div>
 
-                        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1">
+                        <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total Cost</h5>
-                          <div className="text-base font-black text-slate-900">
+                          <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
                             {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalCost, currency) : 'N/A'}
                           </div>
                           <p className="text-[9px] text-slate-500 font-bold">Bid + Tax + Costs</p>
                         </div>
 
                         <div className={clsx(
-                          "rounded-2xl p-4 border shadow-2xs space-y-1",
+                          "rounded-2xl p-3 border shadow-2xs space-y-1",
                           finalValuationData.totalLotValue <= 0
                             ? "bg-slate-50 border-slate-200 text-slate-500"
                             : finalValuationData.estimatedProfit >= 0
@@ -1096,7 +1097,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             : "bg-rose-50/50 border-rose-150 text-rose-950"
                         )}>
                           <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest">Profit</h5>
-                          <div className="text-base font-black">
+                          <div className="text-xs sm:text-sm lg:text-base font-black truncate">
                             {finalValuationData.totalLotValue > 0
                               ? `${finalValuationData.estimatedProfit >= 0 ? '+' : ''}${formatPrice(finalValuationData.estimatedProfit, currency)}`
                               : 'N/A'
@@ -1106,7 +1107,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
 
                         <div className={clsx(
-                          "rounded-2xl p-4 border shadow-2xs space-y-1",
+                          "rounded-2xl p-3 border shadow-2xs space-y-1",
                           finalValuationData.roiPercent >= 20
                             ? "bg-emerald-50/50 border-emerald-150 text-emerald-950"
                             : finalValuationData.roiPercent >= 0
@@ -1114,13 +1115,13 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             : "bg-rose-50/50 border-rose-150 text-rose-950"
                         )}>
                           <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest">ROI</h5>
-                          <div className="text-base font-black">{finalValuationData.roiPercent}%</div>
+                          <div className="text-xs sm:text-sm lg:text-base font-black truncate">{finalValuationData.roiPercent}%</div>
                           <p className="text-[9px] opacity-70 font-medium">Return on investment</p>
                         </div>
 
-                        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-1">
+                        <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Break-Even</h5>
-                          <div className="text-base font-black text-slate-900">
+                          <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
                             {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.breakEven, currency) : 'N/A'}
                           </div>
                           <p className="text-[9px] text-slate-400 font-medium">Max safe bid</p>
