@@ -194,18 +194,17 @@ export function computeRoiMetrics(input: RoiMetricsInput) {
 }
 
 export function computeBidCaps(lotValue: number, fixedCosts: number, taxFactor: number) {
-  const conservativeCostLimit = lotValue / 1.20;
-  const conservativeBid = Math.max(0, Math.round((conservativeCostLimit - fixedCosts) / taxFactor));
-
-  const moderateCostLimit = lotValue / 1.10;
-  const moderateBid = Math.max(0, Math.round((moderateCostLimit - fixedCosts) / taxFactor));
-
-  const breakEvenBid = Math.max(0, Math.round((lotValue - fixedCosts) / taxFactor));
+  const bidForRoi = (targetRoi: number): number => {
+    const costLimit = lotValue / (1 + targetRoi / 100);
+    return Math.max(0, Math.round((costLimit - fixedCosts) / taxFactor));
+  };
 
   return {
-    conservativeBid,
-    moderateBid,
-    breakEvenBid,
+    conservativeBid: bidForRoi(40),   // Conservative: 40% ROI target
+    idealBid: bidForRoi(25),          // Recommended: 25% ROI target
+    aggressiveBid: bidForRoi(15),     // Aggressive: 15% ROI target
+    maxBid: bidForRoi(10),            // Maximum: 10% ROI target
+    walkAwayPrice: bidForRoi(0),      // Break-even: 0% ROI
   };
 }
 
