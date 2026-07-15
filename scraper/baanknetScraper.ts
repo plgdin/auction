@@ -291,76 +291,78 @@ function extractListingsFromDOM(): RawBaankNetItem[] {
   return items;
 }
 
-// ─── Scroll-to-Load Handler ─────────────────────────────────────────────────
+// ─── Multi-Page Scrape Handler ───────────────────────────────────────────────
 
-async function scrollToLoadAll(
+async function scrapeAllPages(
   page: any,
-  maxCycles: number
-): Promise<void> {
-  log.info("Scrolling to load all listings...");
+  statusFilter: string,
+  maxPages: number
+): Promise<RawBaankNetItem[]> {
+  log.info(`Scraping up to ${maxPages} pages for status: ${statusFilter}`);
 
-  let previousHeight = 0;
-  let stableCount = 0;
+  const allItems: RawBaankNetItem[] = [];
+  const seenAuctionIds = new Set<string>();
 
-  for (let cycle = 0; cycle < maxCycles; cycle++) {
-    const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+  for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+    log.info(`Scraping page ${pageNum}...`);
 
-    if (currentHeight === previousHeight) {
-      stableCount++;
-      if (stableCount >= 3) {
-        log.info(
-          { cycles: cycle, height: currentHeight },
-          "Page height stabilized — all listings loaded"
-        );
-        break;
+    // Extract current page listings
+    const rawItems: RawBaankNetItem[] = await page.evaluate(
+      extractListingsFromDOM
+    );
+
+    log.info(`Page ${pageNum}: Found ${rawItems.length} items`);
+
+    let newItemsCount = 0;
+    for (const item of rawItems) {
+      if (!seenAuctionIds.has(item.auctionId)) {
+        seenAuctionIds.add(item.auctionId);
+        allItems.push(item);
+        newItemsCount++;
       }
-    } else {
-      stableCount = 0;
     }
 
-    previousHeight = currentHeight;
+    log.info(`Page ${pageNum}: Added ${newItemsCount} new unique items. Total accumulated: ${allItems.length}`);
 
-    await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight);
-    });
+    // If we found no items on this page, stop
+    if (rawItems.length === 0) {
+      log.info(`No items found on page ${pageNum}. Stopping pagination.`);
+      break;
+    }
 
-    await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
-
-    // Also try clicking "Load More" / "Show More" buttons if present
-    try {
-      const loadMoreClicked = await page.evaluate(() => {
-        const buttons = Array.from(document.querySelectorAll("button, a"));
-        for (const btn of buttons) {
-          const text = (btn as HTMLElement).innerText?.toLowerCase() || "";
-          if (
-            text.includes("load more") ||
-            text.includes("show more") ||
-            text.includes("next")
-          ) {
+    // Try to click the "Next" button to go to the next page
+    const nextClicked = await page.evaluate(() => {
+      // Find button by id or class
+      const nextBtn = document.querySelector("#btnNext") as HTMLElement;
+      if (nextBtn && !nextBtn.hasAttribute("disabled") && !(nextBtn as any).disabled) {
+        nextBtn.click();
+        return true;
+      }
+      
+      // Fallback: search for buttons with text "Next"
+      const buttons = Array.from(document.querySelectorAll("button, a, .page-link"));
+      for (const btn of buttons) {
+        const text = btn.textContent?.toLowerCase().trim() || "";
+        if (text === "next" || text === ">" || text.includes("next")) {
+          if (!btn.hasAttribute("disabled") && !(btn as any).disabled) {
             (btn as HTMLElement).click();
             return true;
           }
         }
-        return false;
-      });
-
-      if (loadMoreClicked) {
-        log.info({ cycle }, "Clicked 'Load More' button");
-        await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
       }
-    } catch {
-      // Button not found, continue scrolling
+      return false;
+    });
+
+    if (!nextClicked) {
+      log.info(`Next button is disabled or not found. Reached the last page.`);
+      break;
     }
 
-    if (cycle % 10 === 0 && cycle > 0) {
-      const itemCount = await page.evaluate(() => {
-        const text = document.body.innerText || "";
-        const matches = text.match(/Auction\s*ID\s*:/gi);
-        return matches ? matches.length : 0;
-      });
-      log.info({ cycle, visibleItems: itemCount }, "Scroll progress");
-    }
+    // Wait for the next page to load
+    await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
   }
+
+  return allItems;
 }
 
 // ─── Status Tab Click ────────────────────────────────────────────────────────
@@ -622,14 +624,8 @@ async function executeBaankNetScraper(): Promise<void> {
       // Wait for content to load after tab switch
       await randomDelay(3000);
 
-      // Scroll to load all listings
-      await scrollToLoadAll(page, BAANKNET_MAX_SCROLL_CYCLES);
-
-      // Extract listings from DOM
-      log.info("Extracting listings from DOM...");
-      const rawItems: RawBaankNetItem[] = await page.evaluate(
-        extractListingsFromDOM
-      );
+      // Scrape pages sequentially
+      const rawItems = await scrapeAllPages(page, statusFilter, BAANKNET_MAX_SCROLL_CYCLES);
 
       log.info(
         { status: statusFilter, rawCount: rawItems.length },
