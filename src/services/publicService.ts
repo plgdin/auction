@@ -2187,8 +2187,57 @@ export const MstcSearchService = {
     regionalOffices: string[];
   }> {
     try {
-      const { data, error } = await supabase.rpc('get_mstc_filter_options');
-      if (error) throw error;
+      // 1. Fetch categories and subcategories from category_daily_stats (retained historically)
+      const { data: statsData, error: statsError } = await supabase
+        .from('category_daily_stats')
+        .select('category_name');
+        
+      if (statsError) throw statsError;
+
+      // Helper to parse parent category name robustly
+      const getParentName = (fullName: string): string => {
+        if (!fullName) return 'Uncategorized';
+        if (fullName.includes('|')) {
+          return fullName.split('|')[0].trim();
+        }
+        const normalized = fullName.toLowerCase().trim();
+        if (
+          normalized.includes('custom goods') || 
+          normalized.includes('unclaimed cargo') || 
+          normalized.includes('cfs containers') || 
+          normalized.includes('customs')
+        ) {
+          return 'Miscellaneous';
+        }
+        return fullName.trim();
+      };
+
+      const categoriesSet = new Set<string>();
+      const subcategoriesMap: Record<string, Set<string>> = {};
+
+      statsData?.forEach(item => {
+        const fullName = item.category_name;
+        if (fullName) {
+          const parent = getParentName(fullName);
+          const subName = fullName.includes('|') ? fullName.split('|')[1].trim() : fullName.trim();
+          
+          categoriesSet.add(parent);
+          if (!subcategoriesMap[parent]) {
+            subcategoriesMap[parent] = new Set<string>();
+          }
+          subcategoriesMap[parent].add(subName);
+        }
+      });
+
+      const categories = Array.from(categoriesSet).sort();
+      const subcategories: Record<string, string[]> = {};
+      Object.entries(subcategoriesMap).forEach(([parent, subsSet]) => {
+        subcategories[parent] = Array.from(subsSet).sort();
+      });
+
+      // 2. Fetch active sellers and locations from get_mstc_filter_options RPC
+      const { data: filterData, error: filterError } = await supabase.rpc('get_mstc_filter_options');
+      if (filterError) throw filterError;
       
       // Known standard offices used frequently
       const standardOffices = ['BBR','BLR','BPL','CDG','ERO','GHY','HYD','JPR','LKO','NRO','SRO','WRO','TVC','VSP','PTN','VAD','CO'];
@@ -2200,10 +2249,10 @@ export const MstcSearchService = {
       });
       
       return {
-        categories: (data?.categories || []).sort(),
-        subcategories: data?.subcategories || {},
-        sellers: (data?.sellers || []).sort(),
-        locations: (data?.locations || []).sort(),
+        categories,
+        subcategories,
+        sellers: (filterData?.sellers || []).sort(),
+        locations: (filterData?.locations || []).sort(),
         regionalOffices: sortedOffices
       };
     } catch (error) {

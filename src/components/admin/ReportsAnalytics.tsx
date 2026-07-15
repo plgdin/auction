@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Fragment } from 'react';
 import { 
   Download, 
   FileText, 
@@ -8,6 +8,7 @@ import {
   Users, 
   CheckCircle2, 
   ChevronDown, 
+  ChevronRight, 
   Search, 
   PieChart as PieIcon,
   Gavel,
@@ -28,6 +29,7 @@ import clsx from 'clsx';
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 const getCategoryColor = (name: string) => {
+  if (name === 'Others') return '#94a3b8';
   const palette = [
     '#4f46e5', // Indigo
     '#10b981', // Emerald
@@ -54,8 +56,55 @@ const getCategoryColor = (name: string) => {
 };
 
 const getParentCategory = (name: string): string => {
-  if (!name) return '';
-  return name.includes('|') ? name.split('|')[0].trim() : name.trim();
+  if (!name) return 'Uncategorized';
+  if (name.includes('|')) {
+    return name.split('|')[0].trim();
+  }
+  
+  const normalized = name.toLowerCase().trim();
+  
+  // Map custom/unclaimed goods to Miscellaneous parent category
+  if (
+    normalized.includes('custom goods') || 
+    normalized.includes('unclaimed cargo') || 
+    normalized.includes('cfs containers') || 
+    normalized.includes('customs')
+  ) {
+    return 'Miscellaneous';
+  }
+
+  // Check standard parent category matches (case-insensitive)
+  const knownParents = [
+    'agricultural produce', 'aquatic produce', 'ash', 'chemicals', 'coal', 
+    'container', 'diamond', 'electrical items', 'electronics items', 
+    'forest produce', 'immovable property', 'liquor license contracts', 
+    'metal', 'mine block', 'minerals', 'miscellaneous', 'petroleum products', 
+    'plant/machineries', 'transport vehicles', 'vessels'
+  ];
+
+  const parentMatch = knownParents.find(p => normalized === p);
+  if (parentMatch) {
+    return name.trim();
+  }
+
+  // Standard keyword fallbacks
+  if (normalized.includes('vehicle') || normalized.includes('car') || normalized.includes('truck') || normalized.includes('bus')) {
+    return 'Transport Vehicles';
+  }
+  if (normalized.includes('scrap') || normalized.includes('steel') || normalized.includes('iron') || normalized.includes('copper') || normalized.includes('aluminum')) {
+    return 'Metal';
+  }
+  if (normalized.includes('machinery') || normalized.includes('machine') || normalized.includes('spares')) {
+    return 'Plant/Machineries';
+  }
+  if (normalized.includes('battery') || normalized.includes('cable') || normalized.includes('transformer') || normalized.includes('generator')) {
+    return 'Electrical Items';
+  }
+  if (normalized.includes('computer') || normalized.includes('laptop') || normalized.includes('mobile')) {
+    return 'Electronics Items';
+  }
+
+  return name.trim();
 };
 
 const groupStatsByParent = (rawStats: { 
@@ -63,57 +112,13 @@ const groupStatsByParent = (rawStats: {
   historicalTotals: {name: string, count: number}[], 
   daily: any[] 
 }) => {
-  // Build parent-level aggregation maps
-  const currentMap: Record<string, number> = {};
-  rawStats.currentTotals.forEach(item => {
-    const parent = getParentCategory(item.name);
-    currentMap[parent] = (currentMap[parent] || 0) + item.count;
-  });
-
-  const historicalMap: Record<string, number> = {};
-  rawStats.historicalTotals.forEach(item => {
-    const parent = getParentCategory(item.name);
-    historicalMap[parent] = (historicalMap[parent] || 0) + item.count;
-  });
-
-  // Union of all parent categories across both sets
-  const allParents = Array.from(new Set([
-    ...Object.keys(currentMap),
-    ...Object.keys(historicalMap)
-  ]));
-
-  const currentTotals = allParents
-    .map(name => ({ name, count: currentMap[name] || 0 }))
-    .sort((a, b) => b.count - a.count);
-
-  const historicalTotals = allParents
-    .map(name => ({ name, count: historicalMap[name] || 0 }))
-    .sort((a, b) => b.count - a.count);
-
-  const daily = rawStats.daily.map(day => {
-    const groupedDay: any = { date: day.date };
-    allParents.forEach(p => { groupedDay[p] = 0; });
-    Object.keys(day).forEach(key => {
-      if (key !== 'date') {
-        const parent = getParentCategory(key);
-        groupedDay[parent] = (groupedDay[parent] || 0) + day[key];
-      }
-    });
-    return groupedDay;
-  });
-
-  // Build raw subcategory breakdown grouped under each parent
-  const subcategoryMap: Record<string, {name: string, count: number}[]> = {};
-  rawStats.currentTotals.forEach(item => {
-    const parent = getParentCategory(item.name);
-    const subName = item.name.includes('|') ? item.name.split('|')[1].trim() : item.name.trim();
-    if (!subcategoryMap[parent]) subcategoryMap[parent] = [];
-    subcategoryMap[parent].push({ name: subName, count: item.count });
-  });
-  // Sort subcategories within each parent by count descending
-  Object.values(subcategoryMap).forEach(subs => subs.sort((a, b) => b.count - a.count));
-
-  return { currentTotals, historicalTotals, daily, rawSubcategories: subcategoryMap, dailyRaw: rawStats.daily };
+  return { 
+    currentTotals: rawStats.currentTotals, 
+    historicalTotals: rawStats.historicalTotals, 
+    daily: rawStats.daily, 
+    rawSubcategories: {}, 
+    dailyRaw: rawStats.daily 
+  };
 };
 
 // Custom Tooltip component to avoid giant popup listing all active categories
@@ -173,7 +178,7 @@ export function ReportsAnalytics() {
   const [exportMessage, setExportMessage] = useState<string | null>(null);
 
   // Tabs state
-  const [activeTab, setActiveTab] = useState<'overview' | 'emd' | 'wallet' | 'bids'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'emd' | 'wallet'>('overview');
 
   // Live reports data state
   const [liveReportData, setLiveReportData] = useState<{
@@ -215,6 +220,12 @@ export function ReportsAnalytics() {
 
   // Filter states
   const [totalsTab, setTotalsTab] = useState<'current' | 'history'>('current');
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+  const toggleCategoryExpand = (name: string) => {
+    setExpandedCategories(prev => 
+      prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]
+    );
+  };
   const [dateFilter, setDateFilter] = useState<'7d' | '30d' | 'all' | 'custom'>('all');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
@@ -615,12 +626,38 @@ export function ReportsAnalytics() {
   );
 
   // Pie chart data structure
-  const pieData = displayTotals
-    .filter(cat => selectedChartCategories.includes(cat.name) && cat.count > 0)
-    .map(cat => ({
+  const pieData = (() => {
+    const selectedData = displayTotals
+      .filter(cat => selectedChartCategories.includes(cat.name) && cat.count > 0);
+    
+    // Sort selected data descending by count
+    selectedData.sort((a, b) => b.count - a.count);
+
+    if (selectedData.length <= 10) {
+      return selectedData.map(cat => ({
+        name: cat.name,
+        value: cat.count
+      }));
+    }
+
+    const top8 = selectedData.slice(0, 9);
+    const rest = selectedData.slice(9);
+    const othersCount = rest.reduce((sum, c) => sum + c.count, 0);
+
+    const result = top8.map(cat => ({
       name: cat.name,
       value: cat.count
     }));
+
+    if (othersCount > 0) {
+      result.push({
+        name: 'Others',
+        value: othersCount
+      });
+    }
+
+    return result;
+  })();
 
   // Build subcategory map for the selected date filter
   const filteredSubcategoriesMap: Record<string, number> = {};
@@ -657,12 +694,12 @@ export function ReportsAnalytics() {
 
   const filteredEmdTx = getFilteredEmdTransactions();
 
-  // Calculate average pre-bid EMD and average EMD percentage for each parent category
+  // Calculate average pre-bid EMD and average EMD percentage for each category
   const categoryAverages = (() => {
     const parentAverages: Record<string, { preBidSum: number, preBidCount: number, emdPctSum: number, emdPctCount: number }> = {};
     
     filteredEmdTx.forEach((tx: any) => {
-      const parent = getParentCategory(tx.category_name);
+      const parent = tx.category_name || 'Uncategorized';
       if (!parentAverages[parent]) {
         parentAverages[parent] = { preBidSum: 0, preBidCount: 0, emdPctSum: 0, emdPctCount: 0 };
       }
@@ -719,58 +756,21 @@ export function ReportsAnalytics() {
   const downloadCategoryCSV = () => {
     const totalItems = displayTotals.reduce((sum, c) => sum + c.count, 0);
     const lines: string[] = [
-      'Parent Category,Subcategory,Item Count,Share of Total,Avg Pre-Bid EMD (₹),Avg EMD (%)'
+      'Category,Item Count,Share of Total,Avg Pre-Bid EMD (₹),Avg EMD (%)'
     ];
 
-    const currentSubMap = totalsTab === 'current' && dateFilter === 'all' 
-      ? categoryStats.rawSubcategories 
-      : filteredSubcategoryMap;
+    displayTotals.forEach(cat => {
+      const catPct = totalItems > 0 ? ((cat.count / totalItems) * 100).toFixed(2) : '0.00';
+      const avgPreBid = categoryAverages[cat.name]?.avgPreBid || 0;
+      const avgEmdPct = categoryAverages[cat.name]?.avgEmdPct || 0;
 
-    displayTotals.forEach(parent => {
-      const subs = currentSubMap[parent.name] || [];
-      const parentPct = totalItems > 0 ? ((parent.count / totalItems) * 100).toFixed(2) : '0.00';
-      const avgPreBid = categoryAverages[parent.name]?.avgPreBid || 0;
-      const avgEmdPct = categoryAverages[parent.name]?.avgEmdPct || 0;
-
-      if (subs.length <= 1) {
-        lines.push([
-          csvCell(parent.name), 
-          csvCell(subs[0]?.name || parent.name), 
-          parent.count, 
-          `${parentPct}%`,
-          avgPreBid,
-          `${avgEmdPct}%`
-        ].join(','));
-      } else {
-        lines.push([
-          csvCell(parent.name), 
-          csvCell('(All Subcategories)'), 
-          parent.count, 
-          `${parentPct}%`,
-          avgPreBid,
-          `${avgEmdPct}%`
-        ].join(','));
-        subs.forEach(sub => {
-          const subPct = totalItems > 0 ? ((sub.count / totalItems) * 100).toFixed(2) : '0.00';
-          const subEmds = filteredEmdTx.filter((t: any) => t.category_name === `${parent.name} | ${sub.name}` || (parent.name === sub.name && t.category_name === parent.name));
-          const subPreBidSum = subEmds.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-          const subPreBidCount = subEmds.filter((t: any) => (t.amount || 0) > 0).length;
-          const subEmdPctSum = subEmds.reduce((sum: number, t: any) => sum + (t.emd_pct || 0), 0);
-          const subEmdPctCount = subEmds.filter((t: any) => t.emd_pct !== undefined && t.emd_pct > 0).length;
-          
-          const subAvgPreBid = subPreBidCount > 0 ? Math.round(subPreBidSum / subPreBidCount) : 0;
-          const subAvgEmdPct = subEmdPctCount > 0 ? parseFloat((subEmdPctSum / subEmdPctCount).toFixed(2)) : 0;
-
-          lines.push([
-            csvCell(''), 
-            csvCell(sub.name), 
-            sub.count, 
-            `${subPct}%`,
-            subAvgPreBid,
-            `${subAvgEmdPct}%`
-          ].join(','));
-        });
-      }
+      lines.push([
+        csvCell(cat.name), 
+        cat.count, 
+        `${catPct}%`,
+        avgPreBid,
+        `${avgEmdPct}%`
+      ].join(','));
     });
 
     const filterLabel = dateFilter === 'all' ? totalsTab : dateFilter;
@@ -831,69 +831,29 @@ export function ReportsAnalytics() {
     lines.push(`Active Listings,${financialData.summary.activeListings}`);
     lines.push(`Pre-Bid EMD Currently Held,${financialData.summary.emdHeld}`);
     lines.push(`Total Pre-Bid EMD Volume,${financialData.summary.emdVolume}`);
-    lines.push(`Total Bids Count,${financialData.summary.totalBids}`);
-    lines.push(`Average Bid Size,${financialData.summary.avgBidAmount}`);
-    lines.push(`Highest Bid Placed,${financialData.summary.maxBidAmount}`);
     lines.push('');
 
     // ── Section 2: Category Inventory ──
     const totalItems = displayTotals.reduce((sum, c) => sum + c.count, 0);
 
     lines.push('CATEGORY INVENTORY BREAKDOWN');
-    lines.push('Parent Category,Subcategory,Item Count,Share of Total,Avg Pre-Bid EMD (₹),Avg EMD (%)');
+    lines.push('Category,Item Count,Share of Total,Avg Pre-Bid EMD (₹),Avg EMD (%)');
 
-    const currentSubMap = totalsTab === 'current' && dateFilter === 'all' 
-      ? categoryStats.rawSubcategories 
-      : filteredSubcategoryMap;
+    displayTotals.forEach(cat => {
+      const catPct = totalItems > 0 ? ((cat.count / totalItems) * 100).toFixed(2) : '0.00';
+      const avgPreBid = categoryAverages[cat.name]?.avgPreBid || 0;
+      const avgEmdPct = categoryAverages[cat.name]?.avgEmdPct || 0;
 
-    displayTotals.forEach(parent => {
-      const subs = currentSubMap[parent.name] || [];
-      const parentPct = totalItems > 0 ? ((parent.count / totalItems) * 100).toFixed(2) : '0.00';
-      const avgPreBid = categoryAverages[parent.name]?.avgPreBid || 0;
-      const avgEmdPct = categoryAverages[parent.name]?.avgEmdPct || 0;
-
-      if (subs.length <= 1) {
-        lines.push([
-          csvCell(parent.name), 
-          csvCell(subs[0]?.name || parent.name), 
-          parent.count, 
-          `${parentPct}%`,
-          avgPreBid,
-          `${avgEmdPct}%`
-        ].join(','));
-      } else {
-        lines.push([
-          csvCell(parent.name), 
-          csvCell('(All Subcategories)'), 
-          parent.count, 
-          `${parentPct}%`,
-          avgPreBid,
-          `${avgEmdPct}%`
-        ].join(','));
-        subs.forEach(sub => {
-          const subPct = totalItems > 0 ? ((sub.count / totalItems) * 100).toFixed(2) : '0.00';
-          const subEmds = filteredEmdTx.filter((t: any) => t.category_name === `${parent.name} | ${sub.name}` || (parent.name === sub.name && t.category_name === parent.name));
-          const subPreBidSum = subEmds.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-          const subPreBidCount = subEmds.filter((t: any) => (t.amount || 0) > 0).length;
-          const subEmdPctSum = subEmds.reduce((sum: number, t: any) => sum + (t.emd_pct || 0), 0);
-          const subEmdPctCount = subEmds.filter((t: any) => t.emd_pct !== undefined && t.emd_pct > 0).length;
-          
-          const subAvgPreBid = subPreBidCount > 0 ? Math.round(subPreBidSum / subPreBidCount) : 0;
-          const subAvgEmdPct = subEmdPctCount > 0 ? parseFloat((subEmdPctSum / subEmdPctCount).toFixed(2)) : 0;
-
-          lines.push([
-            csvCell(''), 
-            csvCell(sub.name), 
-            sub.count, 
-            `${subPct}%`,
-            subAvgPreBid,
-            `${subAvgEmdPct}%`
-          ].join(','));
-        });
-      }
+      lines.push([
+        csvCell(cat.name), 
+        cat.count, 
+        `${catPct}%`,
+        avgPreBid,
+        `${avgEmdPct}%`
+      ].join(','));
     });
     lines.push('');
-    lines.push(`Total Items,,${totalItems},100.00%`);
+    lines.push(`Total Items,${totalItems},100.00%`);
     lines.push('');
 
     triggerCsvDownload(lines.join('\n'), `platform_analytics_report_${filterLabel}_${new Date().toISOString().split('T')[0]}.csv`);
@@ -936,7 +896,7 @@ export function ReportsAnalytics() {
 
       {/* Tab Navigation */}
       <div className="flex border-b border-slate-200 gap-6 print:hidden">
-        {(['overview', 'emd', 'wallet', 'bids'] as const).map((tab) => (
+        {(['overview', 'emd', 'wallet'] as const).map((tab) => (
           <button
             key={tab}
             type="button"
@@ -948,7 +908,7 @@ export function ReportsAnalytics() {
                 : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
             )}
           >
-            {tab === 'emd' ? 'EMD Ledger' : tab === 'wallet' ? 'Wallet Ledger' : tab === 'bids' ? 'Bids Ledger' : tab}
+            {tab === 'emd' ? 'EMD Ledger' : tab === 'wallet' ? 'Wallet Ledger' : tab}
           </button>
         ))}
       </div>
@@ -1242,8 +1202,8 @@ export function ReportsAnalytics() {
             )}
           </div>
 
-          {/* Lower Grid: Subscriptions & Category List */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Lower Grid: Subscriptions & Growth Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Subscription Trends */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
               <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
@@ -1293,12 +1253,16 @@ export function ReportsAnalytics() {
                 </ResponsiveContainer>
               </div>
             </div>
+          </div>
 
-            {/* Total Items by Category List */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6 flex flex-col">
+          {/* Total Items by Category List */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6 flex flex-col">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-slate-900 flex items-center">
-                  <FileText className="w-5 h-5 mr-2 text-primary" /> Total Items by Category
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2.5">
+                  <FileText className="w-5 h-5 text-primary" /> Total Items by Category
+                  <span className="px-2.5 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full font-bold select-none">
+                    {totalItems.toLocaleString()} Total Items
+                  </span>
                 </h2>
                 <button
                   type="button"
@@ -1345,39 +1309,39 @@ export function ReportsAnalytics() {
                 />
               </div>
 
-              <div className="overflow-y-auto pr-1 flex-1 max-h-[190px] print:max-h-none custom-scrollbar">
+              <div className="overflow-y-auto pr-1 flex-1 max-h-[550px] print:max-h-none custom-scrollbar">
                 {filteredDisplayTotals.length === 0 ? (
                   <p className="text-slate-500 text-sm text-center py-4">No categories found.</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="pb-2 font-bold">Category</th>
-                          <th className="pb-2 font-bold text-right">Avg Pre-Bid</th>
-                          <th className="pb-2 font-bold text-right">Avg EMD</th>
-                          <th className="pb-2 font-bold text-right">Count</th>
+                        <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400 font-bold">
+                          <th className="pb-2.5 font-bold">Category</th>
+                          <th className="pb-2.5 font-bold text-right">Avg Pre-Bid</th>
+                          <th className="pb-2.5 font-bold text-right">Avg EMD</th>
+                          <th className="pb-2.5 font-bold text-right">Count</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50 text-xs font-semibold text-slate-650">
+                      <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-650">
                         {filteredDisplayTotals.map((cat) => (
                           <tr key={cat.name} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-2 flex items-center gap-1.5 min-w-0">
+                            <td className="py-2.5 flex items-center gap-1.5 min-w-0">
                               <div 
-                                className="w-2 h-2 rounded-full shrink-0" 
+                                className="w-2.5 h-2.5 rounded-full shrink-0" 
                                 style={{ backgroundColor: getCategoryColor(cat.name) }}
                               />
-                              <span className="truncate font-semibold text-slate-700 max-w-[100px] sm:max-w-[130px]" title={cat.name}>
+                              <span className="truncate font-semibold text-slate-700 max-w-[350px] sm:max-w-[450px]" title={cat.name}>
                                 {cat.name}
                               </span>
                             </td>
-                            <td className="py-2 text-right font-mono text-[11px] text-slate-500">
+                            <td className="py-2.5 text-right font-mono text-xs text-slate-500">
                               ₹{(categoryAverages[cat.name]?.avgPreBid || 0).toLocaleString()}
                             </td>
-                            <td className="py-2 text-right font-mono text-[11px] text-slate-500">
+                            <td className="py-2.5 text-right font-mono text-xs text-slate-500">
                               {(categoryAverages[cat.name]?.avgEmdPct || 0)}%
                             </td>
-                            <td className="py-2 text-right font-bold text-slate-900">
+                            <td className="py-2.5 text-right font-bold text-slate-900">
                               {cat.count}
                             </td>
                           </tr>
@@ -1388,7 +1352,6 @@ export function ReportsAnalytics() {
                 )}
               </div>
             </div>
-          </div>
         </>
       )}
 
@@ -1679,137 +1642,6 @@ export function ReportsAnalytics() {
         </div>
       )}
 
-      {activeTab === 'bids' && (
-        <div className="space-y-6 animate-fade-in">
-          {/* KPI Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <Gavel className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Bids</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{financialData.summary.totalBids.toLocaleString()}</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                <DollarSign className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Average Bid Size</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.avgBidAmount.toLocaleString()}</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Highest Bid</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.maxBidAmount.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Chart: Bids Timeline */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-primary" /> Bidding Volume & Count Timeline
-            </h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={financialData.bidsTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                  <YAxis yAxisId="left" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                  <YAxis yAxisId="right" orientation="right" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                  <Tooltip formatter={(value, name) => [name === 'volume' ? `₹${value.toLocaleString()}` : value, name]} />
-                  <Legend />
-                  <Line yAxisId="left" type="monotone" dataKey="volume" stroke="#2563eb" name="Bid Volume" strokeWidth={2.5} activeDot={{ r: 8 }} />
-                  <Line yAxisId="right" type="monotone" dataKey="count" stroke="#10b981" name="Bids Count" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Bids List Table */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
-            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-primary" /> Recent Bids Ledger
-              </h3>
-              <button
-                type="button"
-                onClick={downloadBidsCSV}
-                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-lg flex items-center gap-2 transition-colors cursor-pointer select-none"
-              >
-                <Download className="w-4 h-4" /> Download CSV
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-555 font-bold">
-                    <th className="px-6 py-4 font-bold">Bid ID</th>
-                    <th className="px-6 py-4 font-bold">Bidder Name</th>
-                    <th className="px-6 py-4 font-bold">Auction Lot / Item</th>
-                    <th className="px-6 py-4 font-bold text-right">Bid Amount</th>
-                    <th className="px-6 py-4 font-bold text-center">Status</th>
-                    <th className="px-6 py-4 font-bold">Placed At</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
-                  {financialData.bids.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-10 text-center text-slate-500 font-semibold">
-                        No bids recorded.
-                      </td>
-                    </tr>
-                  ) : (
-                    financialData.bids.slice(0, 100).map((tx: any) => {
-                      const userName = tx.profiles ? `${tx.profiles.first_name || ''} ${tx.profiles.last_name || ''}`.trim() : tx.bidder_id || 'N/A';
-                      const auctionTitle = tx.auctions?.title || 'N/A';
-                      return (
-                        <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 font-mono text-[11px] text-slate-500">
-                            {tx.id}
-                          </td>
-                          <td className="px-6 py-4 text-slate-800 font-bold">
-                            {userName}
-                          </td>
-                          <td className="px-6 py-4 text-slate-700 font-semibold truncate max-w-[250px]" title={auctionTitle}>
-                            {auctionTitle}
-                          </td>
-                          <td className="px-6 py-4 text-right text-slate-900 font-black text-sm">
-                            ₹{Number(tx.amount || 0).toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={clsx(
-                              "px-2.5 py-0.5 rounded text-[10px] font-bold uppercase",
-                              tx.status === 'won' || tx.status === 'winning' ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
-                              tx.status === 'lost' ? "bg-red-50 text-red-700 border border-red-100" :
-                              "bg-blue-50 text-blue-700 border border-blue-100"
-                            )}>
-                              {tx.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-slate-500 font-medium whitespace-nowrap">
-                            {new Date(tx.created_at).toLocaleString()}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
         </div>
       )}
     </div>
