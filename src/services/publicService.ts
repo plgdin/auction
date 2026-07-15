@@ -2656,7 +2656,7 @@ export interface BaanknetAuction {
   baanknet_auction_id: string;
   bank_property_id: string;
   title: string;
-  reserve_price: number;
+  reserve_price_value?: number | null;
   reserve_price_text: string;
   bank_name: string;
   location: string;
@@ -2668,6 +2668,7 @@ export interface BaanknetAuction {
   auction_end_date: string;
   source_url: string;
   scraped_at: string;
+  document_url?: string;
 }
 
 export const BaanknetSearchService = {
@@ -2718,9 +2719,9 @@ export const BaanknetSearchService = {
       // Sorting
       const sortBy = filters?.sortBy || 'newest';
       if (sortBy === 'price_asc') {
-        q = q.order('reserve_price', { ascending: true, nullsFirst: false });
+        q = q.order('reserve_price_value', { ascending: true, nullsFirst: false });
       } else if (sortBy === 'price_desc') {
-        q = q.order('reserve_price', { ascending: false, nullsFirst: false });
+        q = q.order('reserve_price_value', { ascending: false, nullsFirst: false });
       } else if (sortBy === 'date_asc') {
         q = q.order('auction_start_date', { ascending: true });
       } else {

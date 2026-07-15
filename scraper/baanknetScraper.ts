@@ -212,6 +212,10 @@ function extractListingsFromDOM(): RawBaankNetItem[] {
       const startMatch = text.match(/Start\s*Date\s*:\s*([\d\-/]+\s+[\d:]+)/i);
       const endMatch = text.match(/End\s*Date\s*:\s*([\d\-/]+\s+[\d:]+)/i);
 
+      // Extract detail page link
+      const detailLink = card.querySelector('a[href*="view-auction-notice"]') as HTMLAnchorElement;
+      const detailUrl = detailLink ? detailLink.getAttribute("href") || "" : "";
+
       if (auctionIdMatch) {
         items.push({
           auctionId: auctionIdMatch[1],
@@ -223,6 +227,7 @@ function extractListingsFromDOM(): RawBaankNetItem[] {
           address: address,
           startDate: startMatch ? startMatch[1] : "",
           endDate: endMatch ? endMatch[1] : "",
+          detailUrl: detailUrl,
         });
       }
     });
@@ -273,6 +278,10 @@ function extractListingsFromDOM(): RawBaankNetItem[] {
     const startMatch = text.match(/Start\s*Date\s*:\s*([\d\-/]+\s+[\d:]+)/i);
     const endMatch = text.match(/End\s*Date\s*:\s*([\d\-/]+\s+[\d:]+)/i);
 
+    // Extract detail page link
+    const detailLink = card.querySelector('a[href*="view-auction-notice"]') as HTMLAnchorElement;
+    const detailUrl = detailLink ? detailLink.getAttribute("href") || "" : "";
+
     if (auctionIdMatch) {
       items.push({
         auctionId: auctionIdMatch[1],
@@ -284,6 +293,7 @@ function extractListingsFromDOM(): RawBaankNetItem[] {
         address: address,
         startDate: startMatch ? startMatch[1] : "",
         endDate: endMatch ? endMatch[1] : "",
+        detailUrl: detailUrl,
       });
     }
   });
@@ -293,7 +303,47 @@ function extractListingsFromDOM(): RawBaankNetItem[] {
 
 // ─── Multi-Page Scrape Handler ───────────────────────────────────────────────
 
+async function scrapeDetailDocumentUrl(
+  browser: any,
+  detailUrl: string
+): Promise<string> {
+  const absoluteUrl = detailUrl.startsWith("http") ? detailUrl : `${BAANKNET_BASE_URL}${detailUrl}`;
+  log.info({ url: absoluteUrl }, "Opening new tab to scrape document link...");
+
+  let detailPage: any = null;
+  try {
+    detailPage = await browser.newPage();
+    await detailPage.setUserAgent(DEFAULT_USER_AGENT);
+    
+    await detailPage.goto(absoluteUrl, {
+      waitUntil: "networkidle2",
+      timeout: 30000,
+    });
+    await randomDelay(2000);
+
+    const docPath = await detailPage.evaluate(() => {
+      const anchor = document.querySelector('a[href*="file-download"]') as HTMLAnchorElement;
+      return anchor ? anchor.getAttribute("href") || "" : "";
+    });
+
+    if (docPath) {
+      const fullDocUrl = docPath.startsWith("http") ? docPath : `${BAANKNET_BASE_URL}${docPath}`;
+      log.info({ docUrl: fullDocUrl }, "Found document download URL");
+      return fullDocUrl;
+    }
+    return "";
+  } catch (err: any) {
+    log.error({ error: err.message }, "Error scraping document link in new tab");
+    return "";
+  } finally {
+    if (detailPage) {
+      await detailPage.close().catch(() => {});
+    }
+  }
+}
+
 async function scrapeAllPages(
+  browser: any,
   page: any,
   statusFilter: string,
   maxPages: number
@@ -317,12 +367,30 @@ async function scrapeAllPages(
     for (const item of rawItems) {
       if (!seenAuctionIds.has(item.auctionId)) {
         seenAuctionIds.add(item.auctionId);
-        allItems.push(item);
-        newItemsCount++;
+
+        // Optimization check: does this ID already exist in the database?
+        const { data: exists } = await supabase
+          .from("baanknet_auctions")
+          .select("baanknet_auction_id, document_url")
+          .eq("baanknet_auction_id", item.auctionId)
+          .maybeSingle();
+
+        if (exists) {
+          // If it already exists, use the existing document_url to avoid redundant scrape
+          item.documentUrl = exists.document_url || undefined;
+          allItems.push(item);
+        } else {
+          // If it is a new item, scrape the detail page for document URL
+          if (item.detailUrl) {
+            item.documentUrl = await scrapeDetailDocumentUrl(browser, item.detailUrl);
+          }
+          allItems.push(item);
+          newItemsCount++;
+        }
       }
     }
 
-    log.info(`Page ${pageNum}: Added ${newItemsCount} new unique items. Total accumulated: ${allItems.length}`);
+    log.info(`Page ${pageNum}: Processed ${rawItems.length} items. Added ${newItemsCount} new unique items. Total: ${allItems.length}`);
 
     // If we found no items on this page, stop
     if (rawItems.length === 0) {
@@ -625,7 +693,7 @@ async function executeBaankNetScraper(): Promise<void> {
       await randomDelay(3000);
 
       // Scrape pages sequentially
-      const rawItems = await scrapeAllPages(page, statusFilter, BAANKNET_MAX_SCROLL_CYCLES);
+      const rawItems = await scrapeAllPages(browser, page, statusFilter, BAANKNET_MAX_SCROLL_CYCLES);
 
       log.info(
         { status: statusFilter, rawCount: rawItems.length },

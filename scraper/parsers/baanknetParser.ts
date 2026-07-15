@@ -30,6 +30,7 @@ export interface BaankNetListing {
   source_url: string;
   category_name: string;
   raw_description: string;
+  document_url?: string;
 }
 
 // ─── Price Parsing ───────────────────────────────────────────────────────────
@@ -266,7 +267,7 @@ export function parseListings(
       auction_start_date: startDate,
       auction_end_date: endDate,
       auction_status: statusFilter,
-      source_url: `https://baanknet.com/eAuction/auction-detail/${item.auctionId}`,
+      source_url: item.detailUrl ? (item.detailUrl.startsWith("http") ? item.detailUrl : `https://baanknet.com${item.detailUrl}`) : `https://baanknet.com/eAuction/auction-detail/${item.auctionId}`,
       category_name: `${category} | ${subcategory}`,
       raw_description: [
         item.title,
@@ -277,6 +278,7 @@ export function parseListings(
       ]
         .filter(Boolean)
         .join(" | "),
+      document_url: item.documentUrl || undefined,
     });
   }
 
@@ -299,4 +301,6 @@ export interface RawBaankNetItem {
   address: string;
   startDate: string;
   endDate: string;
+  detailUrl?: string;
+  documentUrl?: string;
 }

@@ -20,12 +20,12 @@ export function BaanknetCard({
   const [imageError, setImageError] = useState(false);
 
   // Parse reserve price numeric value or fallback
-  const formattedPrice = item.reserve_price
+  const formattedPrice = item.reserve_price_value
     ? new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
         maximumFractionDigits: 0,
-      }).format(item.reserve_price)
+      }).format(item.reserve_price_value)
     : item.reserve_price_text || 'N/A';
 
   // Determine property status (Live vs Upcoming vs Closed)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Calendar, Landmark, MapPin, Heart, ExternalLink, Clock } from 'lucide-react';
+import { X, Copy, Check, Calendar, Landmark, MapPin, Heart, ExternalLink, Clock, FileDown } from 'lucide-react';
 import type { BaanknetAuction } from '../../services/publicService';
 
 interface BaanknetDetailsModalProps {
@@ -81,12 +81,12 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
     setTimeout(() => setCopiedAddress(false), 2000);
   };
 
-  const formattedPrice = item.reserve_price
+  const formattedPrice = item.reserve_price_value
     ? new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
         maximumFractionDigits: 0,
-      }).format(item.reserve_price)
+      }).format(item.reserve_price_value)
     : item.reserve_price_text || 'N/A';
 
   // Determine property status
@@ -246,16 +246,29 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
             )}
           </div>
 
-          {item.source_url && (
-            <a
-              href={item.source_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
-            >
-              Visit Live Foreclosure Portal <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
+          <div className="flex items-center gap-2">
+            {item.document_url && (
+              <a
+                href={item.document_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                <FileDown className="w-4 h-4" /> Download Notice
+              </a>
+            )}
+            
+            {item.source_url && (
+              <a
+                href={item.source_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                Visit Live Portal <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
         </div>
 
       </div>
