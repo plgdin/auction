@@ -316,18 +316,27 @@ export const adminService = {
       .select('*', { count: 'exact', head: true })
       .eq('asset_status', 'completed');
 
+    const { count: activeBaanknetListings } = await supabase
+      .from('baanknet_auctions')
+      .select('*', { count: 'exact', head: true });
+
     const now = new Date().toISOString();
     const { count: upcomingAuctions } = await supabase
       .from('mstc_auctions')
       .select('*', { count: 'exact', head: true })
       .gt('opening_date', now);
 
+    const { count: upcomingBaanknetAuctions } = await supabase
+      .from('baanknet_auctions')
+      .select('*', { count: 'exact', head: true })
+      .gt('auction_start_date', now);
+
     return {
       totalUsers: userCount || 0,
       activeAuctions: auctionCount || 0,
       activeTenders: tenderCount || 0,
-      activeListings: activeListings || 0,
-      upcomingAuctions: upcomingAuctions || 0
+      activeListings: (activeListings || 0) + (activeBaanknetListings || 0),
+      upcomingAuctions: (upcomingAuctions || 0) + (upcomingBaanknetAuctions || 0)
     };
   },
 
@@ -425,6 +434,41 @@ export const adminService = {
     return data;
   },
 
+  async getBaanknetScraperAnalytics() {
+    try {
+      const [totalRes, upcomingRes, liveRes, closedRes] = await Promise.all([
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }),
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'upcoming'),
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'live'),
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).in('auction_status', ['closed', 'cancelled', 'ended']),
+      ]);
+
+      return {
+        total: totalRes.count || 0,
+        upcoming: upcomingRes.count || 0,
+        live: liveRes.count || 0,
+        closed: closedRes.count || 0,
+      };
+    } catch (error) {
+      console.error('Error fetching BaankNet scraper analytics:', error);
+      return { total: 0, upcoming: 0, live: 0, closed: 0 };
+    }
+  },
+
+  async getBaanknetScraperAuctions(limit: number = 100): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('baanknet_auctions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching BaankNet scraper auctions:', error);
+      return [];
+    }
+    return data;
+  },
+
   async getScraperLogs(limit: number = 100): Promise<AuditLog[]> {
     const { data, error } = await supabase
       .from('audit_logs')
@@ -438,6 +482,21 @@ export const adminService = {
       return [];
     }
     return data;
+  },
+
+  async getBaanknetScraperLogs(limit: number = 100): Promise<AuditLog[]> {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .in('action', ['baanknet_auction_deleted', 'baanknet_auction_scraped'])
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching BaankNet scraper audit logs:', error);
+      return [];
+    }
+    return data || [];
   },
 
   // Contact Messages Management

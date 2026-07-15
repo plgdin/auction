@@ -8,11 +8,13 @@ let scraperProcess: any = null;
 let workerProcess: any = null;
 let clearDbProcess: any = null;
 let backfillProcess: any = null;
+let baanknetProcess: any = null;
 
 let scraperLogs: string[] = [];
 let workerLogs: string[] = [];
 let clearDbLogs: string[] = [];
 let backfillLogs: string[] = [];
+let baanknetLogs: string[] = [];
 
 const appendLog = (type: string, data: any) => {
   const lines = data.toString().split('\n');
@@ -21,6 +23,7 @@ const appendLog = (type: string, data: any) => {
   else if (type === 'worker') target = workerLogs;
   else if (type === 'clear-db') target = clearDbLogs;
   else if (type === 'backfill') target = backfillLogs;
+  else if (type === 'baanknet') target = baanknetLogs;
   else return;
 
   lines.forEach((line: string) => {
@@ -84,10 +87,12 @@ const localApiPlugin = () => ({
             workerRunning: workerProcess !== null,
             clearDbRunning: clearDbProcess !== null,
             backfillRunning: backfillProcess !== null,
+            baanknetRunning: baanknetProcess !== null,
             scraperLogs,
             workerLogs,
             clearDbLogs,
-            backfillLogs
+            backfillLogs,
+            baanknetLogs
           }));
           return;
         }
@@ -118,6 +123,36 @@ const localApiPlugin = () => ({
               scraperProcess.kill('SIGINT');
               scraperProcess = null;
               appendLog('scraper', 'Scraper process stopped by user request.');
+            }
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/baanknet/start') {
+            if (baanknetProcess) {
+              res.end(JSON.stringify({ success: false, message: 'BaankNet Scraper already running' }));
+              return;
+            }
+            baanknetLogs = [];
+            appendLog('baanknet', 'Starting BaankNet Scraper (npx tsx scraper/baanknetScraper.ts)...');
+            baanknetProcess = spawn('npx', ['tsx', 'scraper/baanknetScraper.ts'], { shell: true });
+            
+            baanknetProcess.stdout.on('data', (data: any) => appendLog('baanknet', data));
+            baanknetProcess.stderr.on('data', (data: any) => appendLog('baanknet', data));
+            baanknetProcess.on('close', (code: any) => {
+              appendLog('baanknet', `BaankNet Scraper process terminated with exit code ${code}`);
+              baanknetProcess = null;
+            });
+            
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/baanknet/stop') {
+            if (baanknetProcess) {
+              baanknetProcess.kill('SIGINT');
+              baanknetProcess = null;
+              appendLog('baanknet', 'BaankNet Scraper process stopped by user request.');
             }
             res.end(JSON.stringify({ success: true }));
             return;

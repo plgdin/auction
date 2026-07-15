@@ -86,10 +86,12 @@ export default async function handler(req: any, res: any) {
         workerRunning: false,
         clearDbRunning: false,
         backfillRunning: false,
+        baanknetRunning: false,
         scraperLogs,
         workerLogs,
         clearDbLogs,
-        backfillLogs
+        backfillLogs,
+        baanknetLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.']
       });
       return;
     }
@@ -187,6 +189,19 @@ export default async function handler(req: any, res: any) {
         return;
       }
       if (cleanUrl === '/api/scraper/stop' || cleanUrl === '/api/scraper/input') {
+        res.status(200).json({ success: true });
+        return;
+      }
+
+      // BaankNet Scraper
+      if (cleanUrl === '/api/scraper/baanknet/start') {
+        res.status(400).json({
+          success: false,
+          message: 'The BaankNet Portal Scraper requires Chromium binaries to execute Angular bootstrap, which is not supported in basic Vercel Serverless Functions. Please run this scraper locally using "npm run dev".'
+        });
+        return;
+      }
+      if (cleanUrl === '/api/scraper/baanknet/stop') {
         res.status(200).json({ success: true });
         return;
       }
