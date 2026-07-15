@@ -419,16 +419,24 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
     return;
   }
 
+  // Deduplicate input list by baanknet_auction_id to prevent duplicates in the same batch
+  const seenIds = new Set<string>();
+  const uniqueListings = listings.filter((l) => {
+    if (seenIds.has(l.baanknet_auction_id)) return false;
+    seenIds.add(l.baanknet_auction_id);
+    return true;
+  });
+
   // Check for existing records
-  const newIds = listings.map((l) => l.baanknet_auction_id);
+  const newIds = uniqueListings.map((l) => l.baanknet_auction_id);
   const { data: existing } = await supabase
     .from("baanknet_auctions")
     .select("baanknet_auction_id")
     .in("baanknet_auction_id", newIds);
 
   const existingSet = new Set(existing?.map((a) => a.baanknet_auction_id) || []);
-  const newListings = listings.filter((l) => !existingSet.has(l.baanknet_auction_id));
-  const updatedListings = listings.filter((l) => existingSet.has(l.baanknet_auction_id));
+  const newListings = uniqueListings.filter((l) => !existingSet.has(l.baanknet_auction_id));
+  const updatedListings = uniqueListings.filter((l) => existingSet.has(l.baanknet_auction_id));
 
   // Insert new records
   if (newListings.length > 0) {
