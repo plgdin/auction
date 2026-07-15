@@ -102,7 +102,7 @@ export const BAANKNET_BASE_URL =
   process.env.BAANKNET_BASE_URL || "https://baanknet.com";
 
 export const BAANKNET_EAUCTION_PATH =
-  process.env.BAANKNET_EAUCTION_PATH || "/eAuction";
+  process.env.BAANKNET_EAUCTION_PATH || "/eauction-psb/eproc-listing";
 
 /** Delay between page scroll/load actions to avoid detection (ms). */
 export const BAANKNET_SCRAPE_DELAY_MS = parseInt(

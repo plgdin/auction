@@ -368,32 +368,47 @@ async function scrollToLoadAll(
 async function clickStatusTab(page: any, statusLabel: string): Promise<boolean> {
   log.info({ status: statusLabel }, "Clicking status tab...");
 
-  const clicked = await page.evaluate((label: string) => {
+  const result = await page.evaluate((label: string) => {
     // Look for tab buttons / mat-tab labels
     const tabs = Array.from(
       document.querySelectorAll(
-        "button, a, [role='tab'], .mat-tab-label, .nav-link, [class*='tab']"
+        "button, a, [role='tab'], .mat-tab-label, .nav-link, [class*='tab'], li"
       )
     );
 
+    const foundTabsInfo: { tagName: string; className: string; text: string }[] = [];
+
     for (const tab of tabs) {
       const text = (tab as HTMLElement).innerText?.trim().toUpperCase() || "";
+      if (text.length > 0 && text.length < 50) {
+        foundTabsInfo.push({
+          tagName: tab.tagName,
+          className: tab.className,
+          text: (tab as HTMLElement).innerText?.trim() || "",
+        });
+      }
       if (text.startsWith(label.toUpperCase())) {
         (tab as HTMLElement).click();
-        return true;
+        return { clicked: true, foundTabsInfo };
       }
     }
-    return false;
+    return { clicked: false, foundTabsInfo };
   }, statusLabel);
 
-  if (clicked) {
+  if (result.clicked) {
     log.info({ status: statusLabel }, "Status tab clicked. Waiting for content...");
     await randomDelay(BAANKNET_SCRAPE_DELAY_MS + 2000);
+    return true;
   } else {
-    log.warn({ status: statusLabel }, "Could not find status tab");
+    const uniqTabs = Array.from(
+      new Set(result.foundTabsInfo.map((t: any) => `${t.tagName}.${t.className.replace(/\s+/g, '.')} -> "${t.text}"`))
+    ).slice(0, 20);
+    log.warn(
+      { status: statusLabel, availableTabs: uniqTabs },
+      "Could not find status tab"
+    );
+    return false;
   }
-
-  return clicked;
 }
 
 // ─── Database Upsert ─────────────────────────────────────────────────────────
@@ -553,8 +568,18 @@ async function executeBaankNetScraper(): Promise<void> {
   let totalScraped = 0;
 
   try {
-    const targetUrl = `${BAANKNET_BASE_URL}${BAANKNET_EAUCTION_PATH}`;
-    log.info({ url: targetUrl }, "Navigating to BaankNet eAuction page...");
+    // First, establish session by visiting the home portal to set cookies
+    const sessionUrl = `${BAANKNET_BASE_URL}/eauction-psb/`;
+    log.info({ url: sessionUrl }, "Establishing session with BaankNet portal...");
+    await page.goto(sessionUrl, {
+      waitUntil: "networkidle2",
+      timeout: 45000,
+    });
+    await randomDelay(3000);
+
+    // Now, navigate to the actual eAuction listings page
+    const targetUrl = `${BAANKNET_BASE_URL}/eauction-psb/eproc-listing`;
+    log.info({ url: targetUrl }, "Navigating to BaankNet eAuction listings page...");
 
     await page.goto(targetUrl, {
       waitUntil: "networkidle2",
