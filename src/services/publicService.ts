@@ -2650,3 +2650,152 @@ export const MstcSearchService = {
     }
   }, 'verifiedConsultantFeed')
 };
+
+export interface BaanknetAuction {
+  id: string;
+  baanknet_auction_id: string;
+  bank_property_id: string;
+  title: string;
+  reserve_price: number;
+  reserve_price_text: string;
+  bank_name: string;
+  location: string;
+  city: string;
+  pincode: string;
+  full_address: string;
+  property_type: string;
+  auction_start_date: string;
+  auction_end_date: string;
+  source_url: string;
+  scraped_at: string;
+}
+
+export const BaanknetSearchService = {
+  /**
+   * High-speed catalog search for BaankNet bank properties
+   */
+  async searchBaanknetCatalog(
+    query: string,
+    filters?: {
+      category?: string;
+      location?: string;
+      regionalOffice?: string;
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+    }
+  ): Promise<{ data: BaanknetAuction[]; count: number }> {
+    try {
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 12;
+      const offset = (page - 1) * limit;
+
+      let q = supabase
+        .from('baanknet_auctions')
+        .select('*', { count: 'exact' });
+
+      // Apply category (property type) filter
+      if (filters?.category && filters.category !== 'All Categories') {
+        q = q.eq('property_type', filters.category);
+      }
+
+      // Apply location (state) filter
+      if (filters?.location && filters.location !== 'All Locations') {
+        q = q.eq('location', filters.location);
+      }
+
+      // Apply regionalOffice (bank name) filter
+      if (filters?.regionalOffice && filters.regionalOffice !== 'All Regional Offices') {
+        q = q.eq('bank_name', filters.regionalOffice);
+      }
+
+      // Text search
+      if (query.trim()) {
+        const cleanQuery = query.trim();
+        q = q.or(`title.ilike.%${cleanQuery}%,bank_name.ilike.%${cleanQuery}%,location.ilike.%${cleanQuery}%,city.ilike.%${cleanQuery}%,full_address.ilike.%${cleanQuery}%,baanknet_auction_id.ilike.%${cleanQuery}%`);
+      }
+
+      // Sorting
+      const sortBy = filters?.sortBy || 'newest';
+      if (sortBy === 'price_asc') {
+        q = q.order('reserve_price', { ascending: true, nullsFirst: false });
+      } else if (sortBy === 'price_desc') {
+        q = q.order('reserve_price', { ascending: false, nullsFirst: false });
+      } else if (sortBy === 'date_asc') {
+        q = q.order('auction_start_date', { ascending: true });
+      } else {
+        q = q.order('auction_start_date', { ascending: false });
+      }
+
+      // Pagination
+      q = q.range(offset, offset + limit - 1);
+
+      const { data, error, count } = await q;
+
+      if (error) throw error;
+
+      return {
+        data: (data as BaanknetAuction[]) || [],
+        count: count || 0,
+      };
+    } catch (e) {
+      console.error('Failed to search BaankNet catalog:', e);
+      return { data: [], count: 0 };
+    }
+  },
+
+  /**
+   * Fetches single BaankNet property by its database ID
+   */
+  async getBaanknetAuctionById(id: string): Promise<BaanknetAuction | null> {
+    try {
+      const { data, error } = await supabase
+        .from('baanknet_auctions')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return data as BaanknetAuction;
+    } catch (e) {
+      console.error(`Failed to load BaankNet property ${id}:`, e);
+      return null;
+    }
+  },
+
+  /**
+   * Fetches distinct categories, states, and bank names to populate search filters
+   */
+  async getBaanknetFilterOptions(): Promise<{
+    categories: string[];
+    locations: string[];
+    regionalOffices: string[];
+  }> {
+    try {
+      const { data, error } = await supabase
+        .from('baanknet_auctions')
+        .select('property_type, location, bank_name');
+
+      if (error) throw error;
+
+      const categoriesSet = new Set<string>();
+      const locationsSet = new Set<string>();
+      const regionalOfficesSet = new Set<string>();
+
+      (data || []).forEach((item) => {
+        if (item.property_type) categoriesSet.add(item.property_type);
+        if (item.location) locationsSet.add(item.location);
+        if (item.bank_name) regionalOfficesSet.add(item.bank_name);
+      });
+
+      return {
+        categories: Array.from(categoriesSet).sort(),
+        locations: Array.from(locationsSet).sort(),
+        regionalOffices: Array.from(regionalOfficesSet).sort(),
+      };
+    } catch (e) {
+      console.error('Failed to load BaankNet filter options:', e);
+      return { categories: [], locations: [], regionalOffices: [] };
+    }
+  }
+};

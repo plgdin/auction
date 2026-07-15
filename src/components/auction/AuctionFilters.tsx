@@ -46,7 +46,7 @@ interface AuctionFiltersProps {
     hasImages?: boolean;
     isReauction?: boolean;
   };
-  activeTab?: 'commercial' | 'mstc';
+  activeTab?: 'commercial' | 'mstc' | 'baanknet';
   customCategories?: string[];
   customSubcategories?: Record<string, string[]>;
   customLocations?: string[];
@@ -522,19 +522,19 @@ export function AuctionFilters({
 
   const customSubcategoryOptions = availableSubcategories.map(sub => ({ key: sub, label: sub }));
   
-  const currentRegionalOffices = activeTab === 'mstc' ? customRegionalOffices : REGIONAL_OFFICES;
+  const currentRegionalOffices = (activeTab === 'mstc' || activeTab === 'baanknet') ? customRegionalOffices : REGIONAL_OFFICES;
   const regionalOfficeOptions = currentRegionalOffices.map(office => ({
     key: office,
     label: activeTab === 'mstc' ? expandMstcOffice(office) : office
   }));
 
-  const currentLocations = activeTab === 'mstc' ? customLocations : LOCATIONS;
+  const currentLocations = (activeTab === 'mstc' || activeTab === 'baanknet') ? customLocations : LOCATIONS;
   const locationOptions = currentLocations.map(loc => ({ key: loc, label: loc }));
 
-  const expandMstcOfficeMap = customRegionalOffices.reduce((acc, office) => {
+  const expandMstcOfficeMap = activeTab === 'mstc' ? customRegionalOffices.reduce((acc, office) => {
     acc[office] = expandMstcOffice(office);
     return acc;
-  }, {} as Record<string, string>);
+  }, {} as Record<string, string>) : {};
 
 
 
@@ -562,7 +562,7 @@ export function AuctionFilters({
         {/* Categories */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Categories</h3>
-          {activeTab === 'mstc' ? (
+          {(activeTab === 'mstc' || activeTab === 'baanknet') ? (
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
@@ -585,45 +585,47 @@ export function AuctionFilters({
                     <span className="truncate">
                       {getTriggerLabel(selectedCategories, 'All Categories')}
                     </span>
-                    <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                    <DownOutlined className="w-3.5 h-3.5 text-slate-455 shrink-0 ml-2" />
                   </button>
                 </Dropdown>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
-                <Dropdown 
-                  popupRender={() => renderMultiSelectMenu(
-                    customSubcategoryOptions,
-                    selectedSubcategories,
-                    setSelectedSubcategories,
-                    'All Sub-Categories'
-                  )}
-                  trigger={['click']} 
-                  disabled={selectedCategories.length === 0}
-                  placement="bottomLeft"
-                  align={{ overflow: { adjustX: false, adjustY: false } }}
-                  getPopupContainer={() => containerRef.current || document.body}
-                >
-                  <button 
-                    type="button"
-                    disabled={selectedCategories.length === 0}
-                    className={clsx(
-                      "w-full flex justify-between items-center px-3.5 py-2.5 border rounded-xl shadow-2xs text-sm transition-all text-left",
-                      selectedCategories.length === 0 
-                        ? "border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50" 
-                        : "border-slate-250 bg-white text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+              {activeTab !== 'baanknet' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
+                  <Dropdown 
+                    popupRender={() => renderMultiSelectMenu(
+                      customSubcategoryOptions,
+                      selectedSubcategories,
+                      setSelectedSubcategories,
+                      'All Sub-Categories'
                     )}
+                    trigger={['click']} 
+                    disabled={selectedCategories.length === 0}
+                    placement="bottomLeft"
+                    align={{ overflow: { adjustX: false, adjustY: false } }}
+                    getPopupContainer={() => containerRef.current || document.body}
                   >
-                    <span className="truncate">
-                      {selectedCategories.length === 0 
-                        ? 'Select a category first' 
-                        : getTriggerLabel(selectedSubcategories, 'All Sub-Categories')}
-                    </span>
-                    <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
-                  </button>
-                </Dropdown>
-              </div>
+                    <button 
+                      type="button"
+                      disabled={selectedCategories.length === 0}
+                      className={clsx(
+                        "w-full flex justify-between items-center px-3.5 py-2.5 border rounded-xl shadow-2xs text-sm transition-all text-left",
+                        selectedCategories.length === 0 
+                          ? "border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50" 
+                          : "border-slate-250 bg-white text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                      )}
+                    >
+                      <span className="truncate">
+                        {selectedCategories.length === 0 
+                          ? 'Select a category first' 
+                          : getTriggerLabel(selectedSubcategories, 'All Sub-Categories')}
+                      </span>
+                      <DownOutlined className="w-3.5 h-3.5 text-slate-455 shrink-0 ml-2" />
+                    </button>
+                  </Dropdown>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-1">
