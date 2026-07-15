@@ -329,15 +329,15 @@ export function Auctions() {
 
   const mstcActiveFilters = [
     ...(submittedSearchQuery ? [{ label: 'Search', value: submittedSearchQuery }] : []),
-    ...(selectedMstcCategories.length ? [{ label: 'Category', value: selectedMstcCategories.join(', ') }] : []),
-    ...(selectedMstcSubcategories.length ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
+    ...(selectedMstcCategories.length ? [{ label: activeTab === 'baanknet' ? 'Property Type' : 'Category', value: selectedMstcCategories.join(', ') }] : []),
+    ...(selectedMstcSubcategories.length && activeTab !== 'baanknet' ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
     ...(selectedMstcLocations.length ? [{ label: 'Location', value: selectedMstcLocations.join(', ') }] : []),
-    ...(selectedMstcRegionalOffices.length ? [{ label: 'Regional office', value: selectedMstcRegionalOffices.join(', ') }] : []),
+    ...(selectedMstcRegionalOffices.length ? [{ label: activeTab === 'baanknet' ? 'Lending Bank' : 'Regional office', value: selectedMstcRegionalOffices.join(', ') }] : []),
     ...(startDate ? [{ label: 'From', value: startDate }] : []),
     ...(endDate ? [{ label: 'To', value: endDate }] : []),
-    ...(mstcHasAssetDocuments ? [{ label: 'Documents', value: 'Available' }] : []),
-    ...(mstcHasImages ? [{ label: 'Images', value: 'Available' }] : []),
-    ...(mstcIsReauction ? [{ label: 'Auction status', value: 'Re-auction' }] : []),
+    ...(mstcHasAssetDocuments && activeTab !== 'baanknet' ? [{ label: 'Documents', value: 'Available' }] : []),
+    ...(mstcHasImages && activeTab !== 'baanknet' ? [{ label: 'Images', value: 'Available' }] : []),
+    ...(mstcIsReauction && activeTab !== 'baanknet' ? [{ label: 'Auction status', value: 'Re-auction' }] : []),
   ];
 
   const isAnyFilterActive = !!(
@@ -1049,7 +1049,9 @@ export function Auctions() {
               <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between sm:items-start gap-4">
                 <div className="min-w-0 space-y-2">
                   <div className="text-sm text-slate-700 font-semibold">
-                    Showing {mstcTotalCount} Government Catalogs
+                    {activeTab === 'baanknet'
+                      ? `Showing ${baanknetTotalCount} Bank Auctions`
+                      : `Showing ${mstcTotalCount} Government Catalogs`}
                   </div>
                   {mstcActiveFilters.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5" aria-label="Applied filters">
