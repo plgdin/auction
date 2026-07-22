@@ -44,10 +44,16 @@ export interface BaankNetListing {
   inspection_end_date?: string | null;
   emd_end_date?: string | null;
   borrower_name?: string;
+  borrower_names?: string[];
   property_description?: string;
   photo_count?: number;
   thumbnail_url?: string;
   photo_urls?: string[];
+  document_urls?: string[];
+  emd_amount_text?: string;
+  contact_person?: string;
+  contact_phone?: string;
+  dedup_fingerprint?: string;
 }
 
 // ─── Price Parsing ───────────────────────────────────────────────────────────
@@ -241,6 +247,40 @@ export function parseLocation(locationStr: string): {
   return { state, city, pincode };
 }
 
+// ─── Cross-Module Dedup ──────────────────────────────────────────────────────
+
+/**
+ * The same physical property can be posted under a different auctionId in
+ * each of the three BaankNet modules (eauction_psb, property, ibc) — they
+ * are not the same record by baanknet_auction_id, so the existing dedupe in
+ * upsertListings() (which keys only on baanknet_auction_id) lets true
+ * duplicates through as separate rows.
+ *
+ * This fingerprint is a best-effort cross-module match key: bank_property_id
+ * is the most reliable shared identifier when present; falling back to
+ * pincode + rounded reserve price catches cases where the property ID format
+ * differs between modules. It is NOT guaranteed unique — treat matches as
+ * "likely the same property, worth a manual/secondary check" rather than
+ * an automatic merge, since two unrelated small properties in the same
+ * pincode could coincidentally collide.
+ */
+export function computeDedupFingerprint(listing: {
+  bank_property_id: string;
+  pincode: string;
+  reserve_price_value: number | null;
+}): string {
+  if (listing.bank_property_id) {
+    return `bpid:${listing.bank_property_id.trim().toUpperCase()}`;
+  }
+  if (listing.pincode && listing.reserve_price_value) {
+    // Round to nearest 1000 so minor rounding differences between modules
+    // (e.g. "20.05 Lakh" vs "20 Lakh") still collide.
+    const roundedPrice = Math.round(listing.reserve_price_value / 1000) * 1000;
+    return `pin:${listing.pincode}:price:${roundedPrice}`;
+  }
+  return "";
+}
+
 // ─── Main DOM Extraction ─────────────────────────────────────────────────────
 
 /**
@@ -325,10 +365,20 @@ export function parseListings(
       inspection_end_date: inspEnd,
       emd_end_date: emdEnd,
       borrower_name: item.borrowerName,
+      borrower_names: item.borrowerNames,
       property_description: item.description,
       photo_count: item.photoUrls?.length || 0,
       thumbnail_url: item.thumbnailUrl,
       photo_urls: item.photoUrls,
+      document_urls: item.documentUrls,
+      emd_amount_text: item.emdAmountText,
+      contact_person: item.contactPerson,
+      contact_phone: item.contactPhone,
+      dedup_fingerprint: computeDedupFingerprint({
+        bank_property_id: item.bankPropertyId || "",
+        pincode,
+        reserve_price_value: priceValue,
+      }),
     });
   }
 
@@ -364,10 +414,15 @@ export interface RawBaankNetItem {
   inspectionEndDate?: string;
   emdEndDate?: string;
   borrowerName?: string;
+  borrowerNames?: string[];
   description?: string;
   photoUrls?: string[];
   thumbnailUrl?: string;
   auctionModule?: string;
+  documentUrls?: string[];
+  emdAmountText?: string;
+  contactPerson?: string;
+  contactPhone?: string;
 }
 
 // ─── Area Parsing ────────────────────────────────────────────────────────────

@@ -44,6 +44,7 @@ import {
 import { logger } from "./utils/logger.js";
 import {
   parseListings,
+  computeDedupFingerprint,
   type RawBaankNetItem,
 } from "./parsers/baanknetParser.js";
 import {
@@ -53,6 +54,7 @@ import {
   mergeDetailData,
   type DetailPageData,
 } from "./parsers/baanknetDetailParser.js";
+import { KNOWN_LENDERS } from "./data/knownLenders.js";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -161,7 +163,7 @@ async function scrapeDetailPages(
         });
         await randomDelay(2000);
 
-        const detail: DetailPageData = await detailPage.evaluate(extractEAuctionDetail);
+        const detail: DetailPageData = await detailPage.evaluate(extractEAuctionDetail, KNOWN_LENDERS);
 
         // Merge detail data into the item
         mergeDetailData(item, detail);
@@ -256,8 +258,20 @@ async function cleanupExpiredAuctions(): Promise<void> {
  * Extracts all visible auction listing cards from the BaankNet eAuction page.
  * This function is serialized and run inside the browser.
  */
-function extractEAuctionListingsFromDOM(): RawBaankNetItem[] {
+function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNetItem[] {
   const items: RawBaankNetItem[] = [];
+
+  // Nested (not imported) — page.evaluate() serializes only this function's
+  // body, so a top-level/imported helper would be undefined in the browser.
+  // See the equivalent note in parsers/baanknetDetailParser.ts.
+  function matchLenderInline(text: string, lenders: string[]): string {
+    for (const lender of lenders) {
+      const escaped = lender.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`\\b${escaped}\\b`, "i");
+      if (re.test(text)) return lender;
+    }
+    return "";
+  }
 
   // Each auction listing is a card/div with auction details
   const cards = document.querySelectorAll(
@@ -281,7 +295,14 @@ function extractEAuctionListingsFromDOM(): RawBaankNetItem[] {
     const auctionIdMatch = text.match(/Auction\s*ID\s*:\s*(\d+)/i);
     const bankPropIdMatch = text.match(/Bank\s*Property\s*ID\s*:\s*(\S+)/i);
     const reservePriceMatch = text.match(/Reserve\s*Price\s*:\s*([₹\s\d.,]+(?:Lakh|Crore|Lac)?)/i);
-    const bankMatch = text.match(/(?:🏛|Bank\s*(?:Name)?)\s*:?\s*([A-Za-z\s]+(?:Bank|of\s+\w+)(?:\s+of\s+\w+)?)/i);
+
+    // Curated list first — catches NBFCs/ARCs the old regex structurally
+    // could not (it required the literal word "Bank" in the name).
+    let bankName = matchLenderInline(text, knownLenders);
+    if (!bankName) {
+      const bankMatch = text.match(/(?:🏛|Bank\s*(?:Name)?)\s*:?\s*([A-Za-z\s]+(?:Bank|of\s+\w+)(?:\s+of\s+\w+)?)/i);
+      bankName = bankMatch ? bankMatch[1].trim() : "";
+    }
 
     // Title extraction
     const lines = text.split("\n").map((l: string) => l.trim()).filter((l: string) => l.length > 0);
@@ -331,7 +352,7 @@ function extractEAuctionListingsFromDOM(): RawBaankNetItem[] {
         bankPropertyId: bankPropIdMatch ? bankPropIdMatch[1] : "",
         title: title || "Bank Auction Property",
         reservePrice: reservePriceMatch ? reservePriceMatch[1].trim() : "",
-        bankName: bankMatch ? bankMatch[1].trim() : "Unknown Bank",
+        bankName: bankName || "Unknown Bank",
         location: locationStr,
         address: address,
         startDate: startMatch ? startMatch[1] : "",
@@ -385,7 +406,8 @@ async function scrapeEAuctionPages(
     log.info({ page: pageNum }, "Extracting eAuction listings from page");
 
     const rawItems: RawBaankNetItem[] = await page.evaluate(
-      extractEAuctionListingsFromDOM
+      extractEAuctionListingsFromDOM,
+      KNOWN_LENDERS
     );
 
     if (rawItems.length === 0) {
@@ -562,7 +584,7 @@ async function scrapePropertyListings(
 
   for (let scroll = 1; scroll <= maxScrolls; scroll++) {
     // Extract current visible cards
-    const rawCards = await page.evaluate(extractPropertyListingCards);
+    const rawCards = await page.evaluate(extractPropertyListingCards, KNOWN_LENDERS);
 
     let newCount = 0;
     for (const card of rawCards) {
@@ -697,7 +719,7 @@ async function scrapeIBCAuctions(
     }
 
     for (let pageNum = startPage; pageNum <= maxPages; pageNum++) {
-      const rawCards = await ibcPage.evaluate(extractIBCListingCards);
+      const rawCards = await ibcPage.evaluate(extractIBCListingCards, KNOWN_LENDERS);
 
       const pageNewItems: RawBaankNetItem[] = [];
       for (const card of rawCards) {

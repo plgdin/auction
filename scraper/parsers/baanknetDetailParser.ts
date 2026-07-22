@@ -14,14 +14,38 @@ import { logger } from "../utils/logger.js";
 
 const log = logger.child({ module: "baanknetDetailParser" });
 
+/**
+ * IMPORTANT: extractEAuctionDetail, extractPropertyListingCards, and
+ * extractIBCListingCards all run inside `page.evaluate()`. Puppeteer
+ * serializes ONLY the function body to the browser — it does NOT carry
+ * along module imports or outer closures. Calling an imported helper
+ * (e.g. matchKnownLender from ../data/knownLenders.js) from inside one of
+ * these functions would silently resolve to `undefined` at runtime in the
+ * browser, not a Node import error, which makes it an easy bug to miss in
+ * testing. Any lender/data list these functions need must be passed in as
+ * an explicit `page.evaluate(fn, arg)` argument (plain serializable data
+ * only) and matched with an inline helper defined INSIDE the function —
+ * see matchLenderInline below. Do not add a top-level import and call it
+ * from these three functions.
+ */
+
+// Note: there is deliberately no shared/sibling helper function for lender
+// matching here. page.evaluate(fn) serializes ONLY fn.toString() — it does
+// not pull in other top-level functions from this module either, even ones
+// in the same file. The matcher has to be declared INSIDE each extraction
+// function (see `matchLenderInline` nested inside extractEAuctionDetail and
+// extractPropertyListingCards below) so it travels with the outer function.
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface DetailPageData {
   photoUrls: string[];
   thumbnailUrl: string;
   borrowerName: string;
+  borrowerNames: string[];
   description: string;
   documentUrl: string;
+  documentUrls: string[];
   carpetArea: string;
   furnishing: string;
   possessionStatus: string;
@@ -30,6 +54,10 @@ export interface DetailPageData {
   inspectionStartDate: string;
   inspectionEndDate: string;
   emdEndDate: string;
+  emdAmountText: string;
+  contactPerson: string;
+  contactPhone: string;
+  lenderName: string;
 }
 
 // ─── DOM Extraction Functions (run inside Puppeteer page context) ────────────
@@ -41,8 +69,19 @@ export interface DetailPageData {
  * BaankNet eAuction detail pages use Angular Material components.
  * The URL pattern is: /eauction-psb/xcommon/view-auction-notice/{id}
  */
-export function extractEAuctionDetail(): DetailPageData {
+export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageData {
   const bodyText = document.body?.innerText || "";
+
+  // Nested (not imported) so it's included when Puppeteer serializes this
+  // function for page.evaluate() — see the note above.
+  function matchLenderInline(text: string, lenders: string[]): string {
+    for (const lender of lenders) {
+      const escaped = lender.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`\\b${escaped}\\b`, "i");
+      if (re.test(text)) return lender;
+    }
+    return "";
+  }
 
   // Photos: look for image elements in gallery/carousel sections
   const photoUrls: string[] = [];
@@ -59,14 +98,17 @@ export function extractEAuctionDetail(): DetailPageData {
     }
   });
 
-  // Borrower / Guarantor name
-  let borrowerName = "";
-  const borrowerMatch = bodyText.match(
-    /(?:Borrower|Guarantor|Defaulter)\s*(?:Name)?\s*:?\s*([^\n]{3,80})/i
-  );
-  if (borrowerMatch) {
-    borrowerName = borrowerMatch[1].trim();
+  // Borrower / Guarantor name(s) — auctions frequently list co-borrowers or
+  // both a borrower and a guarantor separately. Collect every match, not
+  // just the first, and dedupe.
+  const borrowerNames: string[] = [];
+  const borrowerRe = /(?:Borrower|Co-Borrower|Guarantor|Defaulter)\s*(?:Name)?\s*:?\s*([^\n]{3,80})/gi;
+  let borrowerMatchIter: RegExpExecArray | null;
+  while ((borrowerMatchIter = borrowerRe.exec(bodyText)) !== null) {
+    const name = borrowerMatchIter[1].trim();
+    if (name && !borrowerNames.includes(name)) borrowerNames.push(name);
   }
+  const borrowerName = borrowerNames[0] || "";
 
   // Property description
   let description = "";
@@ -77,15 +119,19 @@ export function extractEAuctionDetail(): DetailPageData {
     description = descMatch[1].trim();
   }
 
-  // Document download link
-  let documentUrl = "";
-  const docLink = document.querySelector(
+  // Document download links — auction detail pages typically link the
+  // sale notice, valuation report, possession notice, and terms &
+  // conditions separately. Capture all of them, not just the first match.
+  const documentUrls: string[] = [];
+  const docLinks = document.querySelectorAll(
     'a[href*="file-download"], a[href*="download"], a[href*="notice"], ' +
     'a[href*="document"], a[href*=".pdf"]'
-  ) as HTMLAnchorElement | null;
-  if (docLink) {
-    documentUrl = docLink.href || docLink.getAttribute("href") || "";
-  }
+  );
+  docLinks.forEach((el) => {
+    const href = (el as HTMLAnchorElement).href || el.getAttribute("href") || "";
+    if (href && !documentUrls.includes(href)) documentUrls.push(href);
+  });
+  const documentUrl = documentUrls[0] || "";
 
   // Carpet area
   let carpetArea = "";
@@ -145,12 +191,48 @@ export function extractEAuctionDetail(): DetailPageData {
     emdEndDate = emdMatch[1].trim();
   }
 
+  // EMD amount — kept as raw text (e.g. "₹ 2,50,000") since the numeric
+  // parse (Lakh/Crore/plain) already lives in baanknetParser.ts and should
+  // stay the single source of truth for currency parsing.
+  let emdAmountText = "";
+  const emdAmountMatch = bodyText.match(
+    /EMD\s*(?:Amount)?\s*:?\s*(₹\s*[\d,.]+\s*(?:Lakh|Lac|Crore|Cr)?)/i
+  );
+  if (emdAmountMatch) {
+    emdAmountText = emdAmountMatch[1].trim();
+  }
+
+  // Contact person / helpdesk phone for questions about this auction
+  let contactPerson = "";
+  let contactPhone = "";
+  const contactPersonMatch = bodyText.match(
+    /(?:Contact\s*Person|Authorized\s*Officer|Nodal\s*Officer)\s*:?\s*([^\n]{3,60})/i
+  );
+  if (contactPersonMatch) contactPerson = contactPersonMatch[1].trim();
+  const phoneMatch = bodyText.match(/(?:Contact\s*(?:No\.?|Number)?|Mobile|Phone)\s*:?\s*(\+?91[\s-]?\d{10}|\d{10})/i);
+  if (phoneMatch) contactPhone = phoneMatch[1].trim();
+
+  // Lender name — resolve against the curated known-lender list first;
+  // this is the field that used to require the literal word "Bank" and
+  // silently dropped every NBFC/ARC auction to "Unknown Bank".
+  let lenderName = matchLenderInline(bodyText, knownLenders);
+  if (!lenderName) {
+    const lenderFallbackMatch = bodyText.match(
+      /(?:🏛|Bank\s*(?:Name)?|Lender)\s*:?\s*([A-Za-z\s&]+(?:Bank|of\s+\w+|Finance|Financial|Housing|ARC|Reconstruction))/i
+    );
+    if (lenderFallbackMatch) {
+      lenderName = lenderFallbackMatch[1].trim();
+    }
+  }
+
   return {
     photoUrls,
     thumbnailUrl: photoUrls[0] || "",
     borrowerName,
+    borrowerNames,
     description,
     documentUrl,
+    documentUrls,
     carpetArea,
     furnishing,
     possessionStatus,
@@ -159,6 +241,10 @@ export function extractEAuctionDetail(): DetailPageData {
     inspectionStartDate,
     inspectionEndDate,
     emdEndDate,
+    emdAmountText,
+    contactPerson,
+    contactPhone,
+    lenderName,
   };
 }
 
@@ -169,7 +255,7 @@ export function extractEAuctionDetail(): DetailPageData {
  *
  * Runs inside the browser via page.evaluate().
  */
-export function extractPropertyListingCards(): {
+export function extractPropertyListingCards(knownLenders: string[] = []): {
   auctionId: string;
   bankPropertyId: string;
   title: string;
@@ -195,6 +281,16 @@ export function extractPropertyListingCards(): {
   status: string;
 }[] {
   const items: ReturnType<typeof extractPropertyListingCards> = [];
+
+  // Nested (not imported) — see the note near extractEAuctionDetail above.
+  function matchLenderInline(text: string, lenders: string[]): string {
+    for (const lender of lenders) {
+      const escaped = lender.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`\\b${escaped}\\b`, "i");
+      if (re.test(text)) return lender;
+    }
+    return "";
+  }
 
   // Property listing cards have a distinct card layout with images, area, etc.
   const cards = document.querySelectorAll(
@@ -227,9 +323,14 @@ export function extractPropertyListingCards(): {
     const priceMatch = text.match(/₹\s*([\d,.]+\s*(?:Lakh?|Lac|Crore?|Cr)?)/i);
     const reservePrice = priceMatch ? `₹ ${priceMatch[1]}` : "";
 
-    // Bank name
-    const bankEl = card.querySelector("[class*='bank'], [class*='Bank']") as HTMLElement;
-    let bankName = bankEl?.innerText?.trim() || "";
+    // Bank name — try the curated known-lender list first (catches NBFCs/ARCs
+    // that the old "must contain the word Bank" regex could never match),
+    // then the DOM element, then the legacy regex as a last resort.
+    let bankName = matchLenderInline(text, knownLenders);
+    if (!bankName) {
+      const bankEl = card.querySelector("[class*='bank'], [class*='Bank']") as HTMLElement;
+      bankName = bankEl?.innerText?.trim() || "";
+    }
     if (!bankName) {
       const bankMatch = text.match(/(?:🏛|Bank\s*(?:Name)?\s*:?\s*)([A-Za-z\s]+(?:Bank|of\s+\w+))/i);
       bankName = bankMatch ? bankMatch[1].trim() : "";
@@ -335,7 +436,7 @@ export function extractPropertyListingCards(): {
  * IBC cards are on ibbi.baanknet.com with a different Angular app.
  * Runs inside the browser via page.evaluate().
  */
-export function extractIBCListingCards(): {
+export function extractIBCListingCards(knownLenders: string[] = []): {
   auctionId: string;
   title: string;
   reservePrice: string;
@@ -347,6 +448,16 @@ export function extractIBCListingCards(): {
   status: string;
 }[] {
   const items: ReturnType<typeof extractIBCListingCards> = [];
+
+  // Nested (not imported) — see the note near extractEAuctionDetail above.
+  function matchLenderInline(text: string, lenders: string[]): string {
+    for (const lender of lenders) {
+      const escaped = lender.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`\\b${escaped}\\b`, "i");
+      if (re.test(text)) return lender;
+    }
+    return "";
+  }
 
   const cards = document.querySelectorAll(
     ".card, [class*='asset-card'], [class*='listing-card'], " +
@@ -366,7 +477,11 @@ export function extractIBCListingCards(): {
     const title = titleEl?.innerText?.trim() || text.split("\n")[0]?.trim() || "";
 
     const priceMatch = text.match(/Reserve\s*(?:Price)?\s*:?\s*₹?\s*([\d,.]+\s*(?:Lakh?|Lac|Crore?|Cr)?)/i);
-    const bankMatch = text.match(/(?:Bank|Institution|Creditor)\s*:?\s*([A-Za-z\s]+?)(?=\n|$)/i);
+    let bankName = matchLenderInline(text, knownLenders);
+    if (!bankName) {
+      const bankMatch = text.match(/(?:Bank|Institution|Creditor)\s*:?\s*([A-Za-z\s]+?)(?=\n|$)/i);
+      bankName = bankMatch ? bankMatch[1].trim() : "";
+    }
 
     const locationMatch = text.match(/(?:Location|State|City)\s*:?\s*([A-Za-z,\s]+?)(?=\n|$)/i);
 
@@ -381,7 +496,7 @@ export function extractIBCListingCards(): {
       auctionId: idMatch[1],
       title: title || "IBC Auction Asset",
       reservePrice: priceMatch ? `₹ ${priceMatch[1]}` : "",
-      bankName: bankMatch ? bankMatch[1].trim() : "",
+      bankName: bankName || "",
       location: locationMatch ? locationMatch[1].trim() : "",
       startDate: startMatch ? startMatch[1] : "",
       endDate: endMatch ? endMatch[1] : "",
@@ -401,8 +516,10 @@ export function extractIBCListingCards(): {
 export function mergeDetailData(
   item: {
     borrowerName?: string;
+    borrowerNames?: string[];
     description?: string;
     documentUrl?: string;
+    documentUrls?: string[];
     carpetArea?: string;
     furnishing?: string;
     possessionStatus?: string;
@@ -411,6 +528,10 @@ export function mergeDetailData(
     inspectionStartDate?: string;
     inspectionEndDate?: string;
     emdEndDate?: string;
+    emdAmountText?: string;
+    contactPerson?: string;
+    contactPhone?: string;
+    bankName?: string;
     photoUrls?: string[];
     thumbnailUrl?: string;
   },
@@ -419,11 +540,36 @@ export function mergeDetailData(
   if (!item.borrowerName && detail.borrowerName) {
     item.borrowerName = detail.borrowerName;
   }
+  if (detail.borrowerNames && detail.borrowerNames.length > 0) {
+    const existingBorrowers = new Set(item.borrowerNames || []);
+    for (const name of detail.borrowerNames) existingBorrowers.add(name);
+    item.borrowerNames = Array.from(existingBorrowers);
+  }
   if (!item.description && detail.description) {
     item.description = detail.description;
   }
   if (!item.documentUrl && detail.documentUrl) {
     item.documentUrl = detail.documentUrl;
+  }
+  if (detail.documentUrls && detail.documentUrls.length > 0) {
+    const existingDocs = new Set(item.documentUrls || []);
+    for (const url of detail.documentUrls) existingDocs.add(url);
+    item.documentUrls = Array.from(existingDocs);
+  }
+  if (!item.emdAmountText && detail.emdAmountText) {
+    item.emdAmountText = detail.emdAmountText;
+  }
+  if (!item.contactPerson && detail.contactPerson) {
+    item.contactPerson = detail.contactPerson;
+  }
+  if (!item.contactPhone && detail.contactPhone) {
+    item.contactPhone = detail.contactPhone;
+  }
+  // Only fill bankName from the detail page's lender match if the card-level
+  // extraction came back empty/"Unknown Bank" — the card is scraped first
+  // and its curated-list match should already be reliable when it hits.
+  if ((!item.bankName || item.bankName === "Unknown Bank") && detail.lenderName) {
+    item.bankName = detail.lenderName;
   }
   if (!item.carpetArea && detail.carpetArea) {
     item.carpetArea = detail.carpetArea;
