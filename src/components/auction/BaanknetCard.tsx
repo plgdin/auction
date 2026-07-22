@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, MapPin, Building2, Calendar, Landmark, Heart } from 'lucide-react';
+import { Eye, MapPin, Building2, Calendar, Landmark, Heart, Ruler, Shield } from 'lucide-react';
 import type { BaanknetAuction } from '../../services/publicService';
 
 interface BaanknetCardProps {
@@ -69,7 +69,7 @@ export function BaanknetCard({
     return 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3';
   };
 
-  const previewImage = getPlaceholderImage();
+  const previewImage = item.thumbnail_url || getPlaceholderImage();
 
   if (isGrid) {
     return (
@@ -142,9 +142,23 @@ export function BaanknetCard({
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-left">Reserve Price</span>
               <span className="text-base font-extrabold text-slate-950 block mt-0.5 text-left">{formattedPrice}</span>
             </div>
-          </div>
 
-          {/* Footer Action Buttons */}
+            {/* Property Meta: Area & Action Type */}
+            {(item.carpet_area || item.action_type) && (
+              <div className="flex flex-wrap gap-2 mt-1">
+                {item.carpet_area && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-50 text-sky-700 text-[9px] font-bold rounded border border-sky-200">
+                    <Ruler className="w-2.5 h-2.5" /> {item.carpet_area}
+                  </span>
+                )}
+                {item.action_type && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 text-violet-700 text-[9px] font-bold rounded border border-violet-200">
+                    <Shield className="w-2.5 h-2.5" /> {item.action_type}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
           <div className="pt-4 border-t border-slate-100 flex justify-between items-center mt-4">
             <div className="text-[11px] text-slate-400 flex items-center gap-1 leading-tight text-left">
               <Calendar className="w-3.5 h-3.5 text-slate-350 shrink-0" />

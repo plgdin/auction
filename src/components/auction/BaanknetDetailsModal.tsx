@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Calendar, Landmark, MapPin, Heart, ExternalLink, Clock, FileDown } from 'lucide-react';
+import { X, Copy, Check, Calendar, Landmark, Heart, ExternalLink, Clock, FileDown, Image, Ruler, ChevronLeft, ChevronRight, Shield, User } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import type { BaanknetAuction } from '../../services/publicService';
 
 interface BaanknetDetailsModalProps {
@@ -18,6 +19,47 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [countdownStr, setCountdownStr] = useState<string>('');
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+
+  // Fetch photos from baanknet_auction_photos table
+  useEffect(() => {
+    async function fetchPhotos() {
+      const { data } = await supabase
+        .from('baanknet_auction_photos')
+        .select('photo_url')
+        .eq('baanknet_auction_id', item.baanknet_auction_id)
+        .order('display_order', { ascending: true });
+      if (data && data.length > 0) {
+        const validPhotos = data
+          .map(p => p.photo_url)
+          .filter(url => {
+            if (!url) return false;
+            const lower = url.toLowerCase();
+            return !lower.endsWith('.svg') &&
+                   !lower.includes('icon') &&
+                   !lower.includes('logo') &&
+                   !lower.includes('facebook') &&
+                   !lower.includes('twitter') &&
+                   !lower.includes('linkedin') &&
+                   !lower.includes('instagram') &&
+                   !lower.includes('youtube') &&
+                   !lower.includes('footer') &&
+                   !lower.includes('faq') &&
+                   !lower.includes('hassle') &&
+                   !lower.includes('banner') &&
+                   !lower.includes('ebkray');
+          });
+        setPhotos(validPhotos);
+      } else if (item.thumbnail_url) {
+        const lower = item.thumbnail_url.toLowerCase();
+        if (!lower.endsWith('.svg') && !lower.includes('icon') && !lower.includes('logo') && !lower.includes('footer')) {
+          setPhotos([item.thumbnail_url]);
+        }
+      }
+    }
+    fetchPhotos();
+  }, [item.baanknet_auction_id, item.thumbnail_url]);
 
   // Lock body scroll
   useEffect(() => {
@@ -94,7 +136,6 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const start = new Date(item.auction_start_date);
   const end = new Date(item.auction_end_date);
   const isLive = now >= start && now <= end;
-  const isClosed = now > end;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs select-text overflow-y-auto">
@@ -151,6 +192,118 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Photo Gallery */}
+          {photos.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <Image className="w-4 h-4 text-slate-400" /> Property Photos ({photos.length})
+              </h3>
+              <div className="relative rounded-2xl overflow-hidden bg-slate-100 aspect-video">
+                <img
+                  src={photos[activePhotoIdx]}
+                  alt={`Property photo ${activePhotoIdx + 1}`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                {photos.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setActivePhotoIdx((i) => (i - 1 + photos.length) % photos.length)}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 cursor-pointer transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setActivePhotoIdx((i) => (i + 1) % photos.length)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 cursor-pointer transition-colors"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 text-white text-[10px] font-bold px-3 py-1 rounded-full">
+                      {activePhotoIdx + 1} / {photos.length}
+                    </div>
+                  </>
+                )}
+              </div>
+              {photos.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {photos.map((url, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActivePhotoIdx(idx)}
+                      className={`shrink-0 w-16 h-12 rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
+                        idx === activePhotoIdx ? 'border-primary shadow-md scale-105' : 'border-transparent opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={url} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Property Physical Details */}
+          {(item.carpet_area || item.furnishing || item.possession_status || item.action_type) && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <Ruler className="w-4 h-4 text-slate-400" /> Property Details
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {item.carpet_area && (
+                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Carpet Area</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block">{item.carpet_area}</span>
+                    {item.carpet_area_sqft && (
+                      <span className="text-[10px] text-slate-500">{item.carpet_area_sqft.toLocaleString()} sq ft</span>
+                    )}
+                  </div>
+                )}
+                {item.furnishing && (
+                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Furnishing</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block">{item.furnishing}</span>
+                  </div>
+                )}
+                {item.possession_status && (
+                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Possession</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block">{item.possession_status}</span>
+                  </div>
+                )}
+                {item.action_type && (
+                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Action Type</span>
+                    <span className="text-sm font-bold text-slate-900 mt-0.5 block flex items-center gap-1">
+                      <Shield className="w-3.5 h-3.5 text-indigo-500" />
+                      {item.action_type}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Borrower & Description */}
+          {(item.borrower_name || item.property_description) && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <User className="w-4 h-4 text-slate-400" /> Borrower & Description
+              </h3>
+              {item.borrower_name && (
+                <div className="bg-amber-50 border border-amber-150 rounded-xl p-4">
+                  <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Borrower / Guarantor</span>
+                  <span className="text-sm font-bold text-amber-900 mt-0.5 block">{item.borrower_name}</span>
+                </div>
+              )}
+              {item.property_description && (
+                <p className="bg-slate-50 border border-slate-150 rounded-xl p-4 text-sm text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
+                  {item.property_description}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Location & Address Section */}
           <div className="space-y-3">
@@ -211,6 +364,36 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Inspection & EMD dates (only shown when scraped from detail pages) */}
+            {(item.inspection_start_date || item.emd_end_date) && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                {item.inspection_start_date && (
+                  <div className="border border-emerald-150 rounded-xl p-3 bg-emerald-50/50">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Inspection Start</span>
+                    <span className="font-bold text-emerald-900 text-xs mt-0.5 block">
+                      {new Date(item.inspection_start_date).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                {item.inspection_end_date && (
+                  <div className="border border-emerald-150 rounded-xl p-3 bg-emerald-50/50">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Inspection End</span>
+                    <span className="font-bold text-emerald-900 text-xs mt-0.5 block">
+                      {new Date(item.inspection_end_date).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                {item.emd_end_date && (
+                  <div className="border border-rose-150 rounded-xl p-3 bg-rose-50/50">
+                    <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">EMD Deadline</span>
+                    <span className="font-bold text-rose-900 text-xs mt-0.5 block">
+                      {new Date(item.emd_end_date).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Countdown Banner */}
             <div className="bg-indigo-50 border border-indigo-150 rounded-xl p-4.5 flex items-center justify-between text-indigo-900 shadow-2xs">

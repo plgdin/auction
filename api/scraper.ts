@@ -193,11 +193,16 @@ export default async function handler(req: any, res: any) {
         return;
       }
 
-      // BaankNet Scraper
+      // BaankNet Multi-Module Scraper
       if (cleanUrl === '/api/scraper/baanknet/start') {
         res.status(400).json({
           success: false,
-          message: 'The BaankNet Portal Scraper requires Chromium binaries to execute Angular bootstrap, which is not supported in basic Vercel Serverless Functions. Please run this scraper locally using "npm run dev".'
+          message: 'The BaankNet Multi-Module Scraper requires Chromium binaries for Angular bootstrap. Run locally:\n\n' +
+            '  npx tsx scraper/baanknetScraper.ts                    # All 3 modules\n' +
+            '  npx tsx scraper/baanknetScraper.ts --module=eauction  # eAuction PSB only\n' +
+            '  npx tsx scraper/baanknetScraper.ts --module=property  # Property Listings only\n' +
+            '  npx tsx scraper/baanknetScraper.ts --module=ibc       # IBC eAuction only\n' +
+            '  npx tsx scraper/baanknetScraper.ts --headful          # Visible browser for debug'
         });
         return;
       }

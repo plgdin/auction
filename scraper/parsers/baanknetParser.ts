@@ -31,6 +31,29 @@ export interface BaankNetListing {
   category_name: string;
   raw_description: string;
   document_url?: string;
+
+  // Multi-module fields
+  auction_module: string;
+  carpet_area?: string;
+  carpet_area_sqft?: number | null;
+  furnishing?: string;
+  possession_status?: string;
+  action_type?: string;
+  district?: string;
+  inspection_start_date?: string | null;
+  inspection_end_date?: string | null;
+  emd_end_date?: string | null;
+  borrower_name?: string;
+  borrower_names?: string[];
+  property_description?: string;
+  photo_count?: number;
+  thumbnail_url?: string;
+  photo_urls?: string[];
+  document_urls?: string[];
+  emd_amount_text?: string;
+  contact_person?: string;
+  contact_phone?: string;
+  dedup_fingerprint?: string;
 }
 
 // ─── Price Parsing ───────────────────────────────────────────────────────────
@@ -96,6 +119,15 @@ export function parseBaankNetDate(dateStr: string): string | null {
   if (fullMatch) {
     const [, day, month, year, hours, minutes, seconds] = fullMatch;
     return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+05:30`;
+  }
+
+  // DD-MM-YYYY HH:mm (no seconds — used in Property Listing dates)
+  const noSecondsMatch = cleaned.match(
+    /(\d{2})[-/](\d{2})[-/](\d{4})\s+(\d{2}):(\d{2})/
+  );
+  if (noSecondsMatch) {
+    const [, day, month, year, hours, minutes] = noSecondsMatch;
+    return `${year}-${month}-${day}T${hours}:${minutes}:00+05:30`;
   }
 
   // DD-MM-YYYY or DD/MM/YYYY (no time)
@@ -215,6 +247,40 @@ export function parseLocation(locationStr: string): {
   return { state, city, pincode };
 }
 
+// ─── Cross-Module Dedup ──────────────────────────────────────────────────────
+
+/**
+ * The same physical property can be posted under a different auctionId in
+ * each of the three BaankNet modules (eauction_psb, property, ibc) — they
+ * are not the same record by baanknet_auction_id, so the existing dedupe in
+ * upsertListings() (which keys only on baanknet_auction_id) lets true
+ * duplicates through as separate rows.
+ *
+ * This fingerprint is a best-effort cross-module match key: bank_property_id
+ * is the most reliable shared identifier when present; falling back to
+ * pincode + rounded reserve price catches cases where the property ID format
+ * differs between modules. It is NOT guaranteed unique — treat matches as
+ * "likely the same property, worth a manual/secondary check" rather than
+ * an automatic merge, since two unrelated small properties in the same
+ * pincode could coincidentally collide.
+ */
+export function computeDedupFingerprint(listing: {
+  bank_property_id: string;
+  pincode: string;
+  reserve_price_value: number | null;
+}): string {
+  if (listing.bank_property_id) {
+    return `bpid:${listing.bank_property_id.trim().toUpperCase()}`;
+  }
+  if (listing.pincode && listing.reserve_price_value) {
+    // Round to nearest 1000 so minor rounding differences between modules
+    // (e.g. "20.05 Lakh" vs "20 Lakh") still collide.
+    const roundedPrice = Math.round(listing.reserve_price_value / 1000) * 1000;
+    return `pin:${listing.pincode}:price:${roundedPrice}`;
+  }
+  return "";
+}
+
 // ─── Main DOM Extraction ─────────────────────────────────────────────────────
 
 /**
@@ -251,6 +317,11 @@ export function parseListings(
     const { state, city, pincode } = parseLocation(item.location);
     const { propertyType, category, subcategory } = classifyProperty(item.title);
 
+    const areaInfo = item.carpetArea ? parseArea(item.carpetArea) : { raw: undefined, sqft: null };
+    const inspStart = item.inspectionStartDate ? parseBaankNetDate(item.inspectionStartDate) : null;
+    const inspEnd = item.inspectionEndDate ? parseBaankNetDate(item.inspectionEndDate) : null;
+    const emdEnd = item.emdEndDate ? parseBaankNetDate(item.emdEndDate) : null;
+
     parsed.push({
       baanknet_auction_id: item.auctionId,
       bank_property_id: item.bankPropertyId || "",
@@ -275,10 +346,39 @@ export function parseListings(
         item.bankName,
         item.location,
         item.address,
+        item.carpetArea,
+        item.actionType,
       ]
         .filter(Boolean)
         .join(" | "),
       document_url: item.documentUrl || undefined,
+
+      // Multi-module fields
+      auction_module: item.auctionModule || "eauction_psb",
+      carpet_area: areaInfo.raw,
+      carpet_area_sqft: areaInfo.sqft,
+      furnishing: item.furnishing,
+      possession_status: item.possessionStatus,
+      action_type: item.actionType,
+      district: item.district || undefined,
+      inspection_start_date: inspStart,
+      inspection_end_date: inspEnd,
+      emd_end_date: emdEnd,
+      borrower_name: item.borrowerName,
+      borrower_names: item.borrowerNames,
+      property_description: item.description,
+      photo_count: item.photoUrls?.length || 0,
+      thumbnail_url: item.thumbnailUrl,
+      photo_urls: item.photoUrls,
+      document_urls: item.documentUrls,
+      emd_amount_text: item.emdAmountText,
+      contact_person: item.contactPerson,
+      contact_phone: item.contactPhone,
+      dedup_fingerprint: computeDedupFingerprint({
+        bank_property_id: item.bankPropertyId || "",
+        pincode,
+        reserve_price_value: priceValue,
+      }),
     });
   }
 
@@ -303,4 +403,52 @@ export interface RawBaankNetItem {
   endDate: string;
   detailUrl?: string;
   documentUrl?: string;
+
+  // Detail-page / Property Listing fields
+  carpetArea?: string;
+  furnishing?: string;
+  possessionStatus?: string;
+  actionType?: string;
+  district?: string;
+  inspectionStartDate?: string;
+  inspectionEndDate?: string;
+  emdEndDate?: string;
+  borrowerName?: string;
+  borrowerNames?: string[];
+  description?: string;
+  photoUrls?: string[];
+  thumbnailUrl?: string;
+  auctionModule?: string;
+  documentUrls?: string[];
+  emdAmountText?: string;
+  contactPerson?: string;
+  contactPhone?: string;
+}
+
+// ─── Area Parsing ────────────────────────────────────────────────────────────
+
+/**
+ * Parse area strings into sq ft values.
+ * Handles "987.06 sq feet", "107.51 sq meter", "1200 sqft", etc.
+ */
+export function parseArea(areaText: string): {
+  raw: string;
+  sqft: number | null;
+} {
+  if (!areaText) return { raw: "", sqft: null };
+
+  const cleaned = areaText.trim();
+  const numMatch = cleaned.match(/([\d,.]+)/);
+  if (!numMatch) return { raw: cleaned, sqft: null };
+
+  const value = parseFloat(numMatch[1].replace(/,/g, ""));
+  if (isNaN(value)) return { raw: cleaned, sqft: null };
+
+  // Convert sq meter to sq ft (1 sq meter = 10.7639 sq ft)
+  if (/sq\.?\s*met(?:er|re)/i.test(cleaned) || /sqm/i.test(cleaned)) {
+    return { raw: cleaned, sqft: Math.round(value * 10.7639) };
+  }
+
+  // Already in sq ft variants
+  return { raw: cleaned, sqft: Math.round(value) };
 }
