@@ -64,7 +64,7 @@ const log = logger.child({ module: "baanknetScraper" });
 // ─── Supabase Client ─────────────────────────────────────────────────────────
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  log.fatal("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.");
+  log.error({}, "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.");
   process.exit(1);
 }
 
