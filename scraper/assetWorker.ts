@@ -78,11 +78,11 @@ export function cosineSimilarity(v1: number[], v2: number[]): number {
 }
 
 export function getLotEmbeddingText(item: any): string {
-  const desc = (item.description || "").trim();
-  const qty = (item.qty || "").trim();
-  const unit = (item.unit || "").trim();
-  const tax = (item.taxRate || "").trim();
-  const sr = (item.sr || "").trim();
+  const desc = String(item?.description || "").trim();
+  const qty = String(item?.qty || "").trim();
+  const unit = String(item?.unit || "").trim();
+  const tax = String(item?.taxRate || "").trim();
+  const sr = String(item?.sr || "").trim();
   return `Lot ${sr}: ${desc} (Qty: ${qty} ${unit}, Tax: ${tax})`;
 }
 
