@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { LogisticsProfile, LogisticsRequest, Profile } from '../types/database.types';
+import type { LogisticsProfile, Profile } from '../types/database.types';
 
 export const logisticsService = {
   // Fetch all profiles that have the logistics role, joined with their logistics_profiles

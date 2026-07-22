@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { logisticsService } from '../../services/logisticsService';
 import { useAuthStore } from '../../store/authStore';
-import { Truck, Check, X, Search, Clock, FileText } from 'lucide-react';
+import { Truck, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export function LogisticsRequests() {

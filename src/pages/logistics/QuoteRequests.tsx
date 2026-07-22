@@ -3,7 +3,7 @@ import { logisticsService } from '../../services/logisticsService';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice } from '../../utils/currency';
-import { FileText, Eye, Check, X, Search, Clock } from 'lucide-react';
+import { FileText, Eye, Check, X, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export function QuoteRequests() {
