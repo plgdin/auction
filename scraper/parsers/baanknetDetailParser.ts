@@ -70,6 +70,9 @@ export interface DetailPageData {
  * The URL pattern is: /eauction-psb/xcommon/view-auction-notice/{id}
  */
 export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageData {
+  if (typeof (window as any).__name === "undefined") {
+    (window as any).__name = (target: any) => target;
+  }
   const bodyText = document.body?.innerText || "";
 
   // Nested (not imported) so it's included when Puppeteer serializes this
@@ -280,6 +283,9 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
   photoUrls: string[];
   status: string;
 }[] {
+  if (typeof (window as any).__name === "undefined") {
+    (window as any).__name = (target: any) => target;
+  }
   const items: ReturnType<typeof extractPropertyListingCards> = [];
 
   // Nested (not imported) — see the note near extractEAuctionDetail above.
@@ -447,6 +453,9 @@ export function extractIBCListingCards(knownLenders: string[] = []): {
   detailUrl: string;
   status: string;
 }[] {
+  if (typeof (window as any).__name === "undefined") {
+    (window as any).__name = (target: any) => target;
+  }
   const items: ReturnType<typeof extractIBCListingCards> = [];
 
   // Nested (not imported) — see the note near extractEAuctionDetail above.

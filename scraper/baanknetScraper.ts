@@ -156,6 +156,9 @@ async function scrapeDetailPages(
 
         detailPage = await browser.newPage();
         await detailPage.setUserAgent(DEFAULT_USER_AGENT);
+        await detailPage.evaluateOnNewDocument(() => {
+          (window as any).__name = (window as any).__name || ((fn: any) => fn);
+        });
 
         await detailPage.goto(absoluteUrl, {
           waitUntil: "networkidle2",
@@ -259,6 +262,9 @@ async function cleanupExpiredAuctions(): Promise<void> {
  * This function is serialized and run inside the browser.
  */
 function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNetItem[] {
+  if (typeof (window as any).__name === "undefined") {
+    (window as any).__name = (target: any) => target;
+  }
   const items: RawBaankNetItem[] = [];
 
   // Nested (not imported) — page.evaluate() serializes only this function's
@@ -687,6 +693,7 @@ async function scrapeIBCAuctions(
 
   // Override webdriver detection
   await ibcPage.evaluateOnNewDocument(() => {
+    (window as any).__name = (window as any).__name || ((fn: any) => fn);
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
   });
 
@@ -1030,6 +1037,7 @@ async function setupPage(browser: any) {
   });
 
   await page.evaluateOnNewDocument(() => {
+    (window as any).__name = (window as any).__name || ((fn: any) => fn);
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
     Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
   });
