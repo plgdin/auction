@@ -885,6 +885,8 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
   // Insert new records in chunks
   if (newListings.length > 0) {
     const chunkSize = 100;
+    const successfullyInsertedIds = new Set<string>();
+
     for (let i = 0; i < newListings.length; i += chunkSize) {
       const chunk = newListings.slice(i, i + chunkSize);
       const dbChunk = chunk.map((item) => {
@@ -895,7 +897,22 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
           reserve_price_value: dbFields.reserve_price_value ?? null,
         };
       });
-      const { error } = await supabase.from("baanknet_auctions").insert(dbChunk);
+
+      let { error } = await supabase.from("baanknet_auctions").insert(dbChunk);
+
+      if (error && (error.message.includes("Could not find") || error.message.includes("column"))) {
+        log.warn(
+          { error: error.message },
+          "Retrying insert without newer optional columns (schema migration pending)"
+        );
+        const strippedChunk = dbChunk.map(({
+          borrower_names, document_urls, emd_amount_text,
+          contact_person, contact_phone, dedup_fingerprint,
+          ...coreFields
+        }: any) => coreFields);
+        const retryRes = await supabase.from("baanknet_auctions").insert(strippedChunk);
+        error = retryRes.error;
+      }
 
       if (error) {
         log.error(
@@ -903,6 +920,9 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
           "Failed to insert BaankNet listings chunk"
         );
       } else {
+        for (const item of chunk) {
+          successfullyInsertedIds.add(item.baanknet_auction_id);
+        }
         log.info(
           { inserted: chunk.length, batch: Math.floor(i / chunkSize) + 1 },
           "Inserted BaankNet listings batch"
@@ -910,10 +930,14 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
       }
     }
 
-    // Insert photos for new listings
+    // Insert photos for successfully inserted listings
     const photoInserts: { baanknet_auction_id: string; photo_url: string; display_order: number }[] = [];
     for (const listing of newListings) {
-      if (listing.photo_urls && listing.photo_urls.length > 0) {
+      if (
+        successfullyInsertedIds.has(listing.baanknet_auction_id) &&
+        listing.photo_urls &&
+        listing.photo_urls.length > 0
+      ) {
         listing.photo_urls.forEach((url, idx) => {
           photoInserts.push({
             baanknet_auction_id: listing.baanknet_auction_id,

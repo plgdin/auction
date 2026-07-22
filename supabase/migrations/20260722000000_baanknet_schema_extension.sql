@@ -47,6 +47,27 @@ ALTER TABLE public.baanknet_auctions
 ALTER TABLE public.baanknet_auctions
     ADD COLUMN IF NOT EXISTS property_description TEXT;
 
+-- Multiple borrower/guarantor names & document URLs
+ALTER TABLE public.baanknet_auctions
+    ADD COLUMN IF NOT EXISTS borrower_names TEXT[];
+
+ALTER TABLE public.baanknet_auctions
+    ADD COLUMN IF NOT EXISTS document_urls TEXT[];
+
+-- EMD raw text & contact details
+ALTER TABLE public.baanknet_auctions
+    ADD COLUMN IF NOT EXISTS emd_amount_text TEXT;
+
+ALTER TABLE public.baanknet_auctions
+    ADD COLUMN IF NOT EXISTS contact_person TEXT;
+
+ALTER TABLE public.baanknet_auctions
+    ADD COLUMN IF NOT EXISTS contact_phone TEXT;
+
+-- Cross-module deduplication fingerprint
+ALTER TABLE public.baanknet_auctions
+    ADD COLUMN IF NOT EXISTS dedup_fingerprint TEXT;
+
 -- Photo metadata
 ALTER TABLE public.baanknet_auctions
     ADD COLUMN IF NOT EXISTS photo_count INTEGER DEFAULT 0;
@@ -65,6 +86,10 @@ CREATE INDEX IF NOT EXISTS idx_baanknet_action_type
 -- Index on district for location drilling
 CREATE INDEX IF NOT EXISTS idx_baanknet_district
     ON public.baanknet_auctions (district);
+
+-- Index on dedup_fingerprint for cross-module deduplication
+CREATE INDEX IF NOT EXISTS idx_baanknet_dedup_fingerprint
+    ON public.baanknet_auctions (dedup_fingerprint);
 
 -- ─── Photos Table ────────────────────────────────────────────────────────────
 
