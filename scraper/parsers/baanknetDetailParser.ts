@@ -86,17 +86,39 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
     return "";
   }
 
-  // Photos: look for image elements in gallery/carousel sections
+  // Nested helper to filter out social media icons, SVGs, logos, and site chrome
+  function isValidPhotoInline(src: string, img?: HTMLImageElement): boolean {
+    if (!src || typeof src !== "string") return false;
+    const lower = src.toLowerCase();
+    if (lower.includes(".svg") || lower.endsWith(".svg")) return false;
+    const junkKeywords = [
+      "favicon", "logo", "icon", "banner", "footer", "header", "psb-",
+      "ebkray", "faq", "hassle", "social", "facebook", "twitter", "linkedin",
+      "instagram", "youtube", "play.google", "apple.com", "placeholder",
+      "avatar", "client-logo", "bank-logo", "app-store", "sprite"
+    ];
+    for (const kw of junkKeywords) {
+      if (lower.includes(kw)) return false;
+    }
+    if (img) {
+      const w = img.naturalWidth || img.width || 0;
+      const h = img.naturalHeight || img.height || 0;
+      if (w > 0 && h > 0 && (w < 100 || h < 100)) return false;
+    }
+    return true;
+  }
+
+  // Photos: look for image elements in gallery/carousel/property sections
   const photoUrls: string[] = [];
   const images = document.querySelectorAll(
-    "img[src*='property'], img[src*='photo'], img[src*='image'], " +
-    "img[src*='upload'], img[src*='asset'], " +
     ".carousel img, .gallery img, .photo-gallery img, " +
-    "[class*='gallery'] img, [class*='carousel'] img, [class*='photo'] img"
+    "[class*='gallery'] img, [class*='carousel'] img, [class*='photo'] img, " +
+    "img[src*='property'], img[src*='photo'], img[src*='upload'], img[src*='asset']"
   );
   images.forEach((img) => {
-    const src = (img as HTMLImageElement).src || img.getAttribute("data-src") || "";
-    if (src && !src.includes("favicon") && !src.includes("logo") && !src.includes("icon")) {
+    const htmlImg = img as HTMLImageElement;
+    const src = htmlImg.src || htmlImg.getAttribute("data-src") || "";
+    if (src && isValidPhotoInline(src, htmlImg) && !photoUrls.includes(src)) {
       photoUrls.push(src);
     }
   });
@@ -390,8 +412,9 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
     const imgs = card.querySelectorAll("img");
     const photoUrls: string[] = [];
     imgs.forEach((img) => {
-      const src = (img as HTMLImageElement).src || img.getAttribute("data-src") || "";
-      if (src && !src.includes("favicon") && !src.includes("logo") && !src.includes("icon") && !src.includes("placeholder")) {
+      const htmlImg = img as HTMLImageElement;
+      const src = htmlImg.src || htmlImg.getAttribute("data-src") || "";
+      if (src && isValidPhotoInline(src, htmlImg) && !photoUrls.includes(src)) {
         photoUrls.push(src);
       }
     });

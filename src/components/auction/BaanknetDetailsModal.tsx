@@ -31,9 +31,31 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
         .eq('baanknet_auction_id', item.baanknet_auction_id)
         .order('display_order', { ascending: true });
       if (data && data.length > 0) {
-        setPhotos(data.map(p => p.photo_url));
+        const validPhotos = data
+          .map(p => p.photo_url)
+          .filter(url => {
+            if (!url) return false;
+            const lower = url.toLowerCase();
+            return !lower.endsWith('.svg') &&
+                   !lower.includes('icon') &&
+                   !lower.includes('logo') &&
+                   !lower.includes('facebook') &&
+                   !lower.includes('twitter') &&
+                   !lower.includes('linkedin') &&
+                   !lower.includes('instagram') &&
+                   !lower.includes('youtube') &&
+                   !lower.includes('footer') &&
+                   !lower.includes('faq') &&
+                   !lower.includes('hassle') &&
+                   !lower.includes('banner') &&
+                   !lower.includes('ebkray');
+          });
+        setPhotos(validPhotos);
       } else if (item.thumbnail_url) {
-        setPhotos([item.thumbnail_url]);
+        const lower = item.thumbnail_url.toLowerCase();
+        if (!lower.endsWith('.svg') && !lower.includes('icon') && !lower.includes('logo') && !lower.includes('footer')) {
+          setPhotos([item.thumbnail_url]);
+        }
       }
     }
     fetchPhotos();
