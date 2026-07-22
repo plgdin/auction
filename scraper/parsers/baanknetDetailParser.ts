@@ -91,11 +91,17 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
     if (!src || typeof src !== "string") return false;
     const lower = src.toLowerCase();
     if (lower.includes(".svg") || lower.endsWith(".svg")) return false;
+
+    // Explicitly allow CloudFront real property images
+    if (lower.includes("/property/images/") || lower.includes("_compressed")) {
+      return true;
+    }
+
     const junkKeywords = [
       "favicon", "logo", "icon", "banner", "footer", "header", "psb-",
       "ebkray", "faq", "hassle", "social", "facebook", "twitter", "linkedin",
       "instagram", "youtube", "play.google", "apple.com", "placeholder",
-      "avatar", "client-logo", "bank-logo", "app-store", "sprite"
+      "avatar", "client-logo", "bank-logo", "app-store", "sprite", "list-icon", "amenities"
     ];
     for (const kw of junkKeywords) {
       if (lower.includes(kw)) return false;
@@ -325,11 +331,17 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
     if (!src || typeof src !== "string") return false;
     const lower = src.toLowerCase();
     if (lower.includes(".svg") || lower.endsWith(".svg")) return false;
+
+    // Explicitly allow CloudFront real property images
+    if (lower.includes("/property/images/") || lower.includes("_compressed")) {
+      return true;
+    }
+
     const junkKeywords = [
       "favicon", "logo", "icon", "banner", "footer", "header", "psb-",
       "ebkray", "faq", "hassle", "social", "facebook", "twitter", "linkedin",
       "instagram", "youtube", "play.google", "apple.com", "placeholder",
-      "avatar", "client-logo", "bank-logo", "app-store", "sprite"
+      "avatar", "client-logo", "bank-logo", "app-store", "sprite", "list-icon", "amenities"
     ];
     for (const kw of junkKeywords) {
       if (lower.includes(kw)) return false;
