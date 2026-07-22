@@ -97,6 +97,9 @@ const PDF_JS_HTML = `
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
     <script>
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      if (pdfjsLib.VerbosityLevel) {
+        pdfjsLib.verbosity = pdfjsLib.VerbosityLevel.ERRORS;
+      }
     </script>
   </head>
   <body>
@@ -129,7 +132,7 @@ export async function renderPdfFirstPage(
       for (let i = 0; i < len; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      const loadingTask = (window as any).pdfjsLib.getDocument({ data: bytes });
+      const loadingTask = (window as any).pdfjsLib.getDocument({ data: bytes, verbosity: 0 });
       const pdfDoc = await loadingTask.promise;
       const pdfPage = await pdfDoc.getPage(1);
       const viewport = pdfPage.getViewport({ scale: 1.5 });
@@ -250,6 +253,7 @@ export async function renderAndExtractPdfPages(
         }
         const loadingTask = (window as any).pdfjsLib.getDocument({
           data: bytes,
+          verbosity: 0,
         });
         const pdfDoc = await loadingTask.promise;
         const numPages = pdfDoc.numPages;
