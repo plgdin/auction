@@ -147,6 +147,27 @@ export function shouldPerformOcr(
   return false;
 }
 
+// ─── Image Validation Helper ──────────────────────────────────────────────────
+
+/**
+ * Check if a Buffer is a valid image format (JPEG, PNG, WEBP, BMP, GIF, TIFF).
+ * Prevents Tesseract / Leptonica native pixReadStream crashes on corrupt or non-image buffers.
+ */
+export function isValidImageBuffer(buffer: Buffer): boolean {
+  if (!buffer || !Buffer.isBuffer(buffer) || buffer.length < 100) {
+    return false;
+  }
+
+  const isJpeg = buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+  const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+  const isWebp = buffer.length > 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP";
+  const isBmp = buffer[0] === 0x42 && buffer[1] === 0x4D;
+  const isGif = buffer.toString("ascii", 0, 3) === "GIF";
+  const isTiff = (buffer[0] === 0x49 && buffer[1] === 0x49) || (buffer[0] === 0x4D && buffer[1] === 0x4D);
+
+  return isJpeg || isPng || isWebp || isBmp || isGif || isTiff;
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -157,6 +178,15 @@ export function shouldPerformOcr(
  * @returns The extracted text, or an empty string if OCR fails.
  */
 export async function performOcr(imageBuffer: Buffer): Promise<string> {
+  // Validate image buffer before passing to Tesseract / Leptonica
+  if (!isValidImageBuffer(imageBuffer)) {
+    log.warn(
+      { bufferLength: imageBuffer?.length },
+      "Skipping OCR: buffer is invalid, empty, or not a recognized image format"
+    );
+    return "";
+  }
+
   const cacheKey = hashBuffer(imageBuffer);
 
   // 1. Check in-memory cache first (fast path)
@@ -213,9 +243,12 @@ export async function performOcr(imageBuffer: Buffer): Promise<string> {
 
     return result;
   } catch (err: any) {
-    log.error({ errorMessage: err.message }, "OCR recognition failed");
+    log.error({ errorMessage: err?.message || String(err) }, "OCR recognition failed");
 
-    // If the worker crashed, reset it so next call reinitializes
+    // If the worker crashed, terminate and reset it so next call reinitializes cleanly
+    if (workerInstance) {
+      workerInstance.terminate().catch(() => {});
+    }
     workerInstance = null;
     workerInitializing = null;
 
