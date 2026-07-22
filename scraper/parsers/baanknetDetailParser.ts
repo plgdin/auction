@@ -320,6 +320,28 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
     return "";
   }
 
+  // Nested helper to filter out social media icons, SVGs, logos, and site chrome
+  function isValidPhotoInline(src: string, img?: HTMLImageElement): boolean {
+    if (!src || typeof src !== "string") return false;
+    const lower = src.toLowerCase();
+    if (lower.includes(".svg") || lower.endsWith(".svg")) return false;
+    const junkKeywords = [
+      "favicon", "logo", "icon", "banner", "footer", "header", "psb-",
+      "ebkray", "faq", "hassle", "social", "facebook", "twitter", "linkedin",
+      "instagram", "youtube", "play.google", "apple.com", "placeholder",
+      "avatar", "client-logo", "bank-logo", "app-store", "sprite"
+    ];
+    for (const kw of junkKeywords) {
+      if (lower.includes(kw)) return false;
+    }
+    if (img) {
+      const w = img.naturalWidth || img.width || 0;
+      const h = img.naturalHeight || img.height || 0;
+      if (w > 0 && h > 0 && (w < 100 || h < 100)) return false;
+    }
+    return true;
+  }
+
   // Property listing cards have a distinct card layout with images, area, etc.
   const cards = document.querySelectorAll(
     ".card, [class*='property-card'], [class*='listing-card'], " +

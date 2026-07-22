@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Calendar, Landmark, MapPin, Heart, ExternalLink, Clock, FileDown, Image, Ruler, ChevronLeft, ChevronRight, Shield, User } from 'lucide-react';
+import { X, Copy, Check, Calendar, Landmark, Heart, ExternalLink, Clock, FileDown, Image, Ruler, ChevronLeft, ChevronRight, Shield, User } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { BaanknetAuction } from '../../services/publicService';
 
@@ -136,7 +136,6 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const start = new Date(item.auction_start_date);
   const end = new Date(item.auction_end_date);
   const isLive = now >= start && now <= end;
-  const isClosed = now > end;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs select-text overflow-y-auto">
