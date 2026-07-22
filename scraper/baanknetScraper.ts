@@ -79,6 +79,7 @@ interface CliArgs {
   statusFilters: string[];
   headful: boolean;
   maxPages: number;
+  startPage: number;
   scrapeDetails: boolean;
 }
 
@@ -88,6 +89,7 @@ function parseCliArgs(): CliArgs {
   let statusFilters = [...BAANKNET_STATUS_FILTERS];
   let modules = [...BAANKNET_MODULES];
   let maxPages = BAANKNET_MAX_PAGES;
+  let startPage = 1;
   let scrapeDetails = BAANKNET_SCRAPE_DETAILS;
 
   for (const arg of args) {
@@ -102,9 +104,12 @@ function parseCliArgs(): CliArgs {
     if (arg.startsWith("--max-pages=")) {
       maxPages = parseInt(arg.replace("--max-pages=", ""), 10);
     }
+    if (arg.startsWith("--start-page=")) {
+      startPage = parseInt(arg.replace("--start-page=", ""), 10);
+    }
   }
 
-  return { modules, statusFilters, headful, maxPages, scrapeDetails };
+  return { modules, statusFilters, headful, maxPages, startPage, scrapeDetails };
 }
 
 // ─── Utility Functions ───────────────────────────────────────────────────────
@@ -346,29 +351,54 @@ async function scrapeEAuctionPages(
   browser: any,
   page: any,
   statusFilter: string,
+  startPage: number,
   maxPages: number,
   scrapeDetails: boolean,
 ): Promise<RawBaankNetItem[]> {
-  log.info({ statusFilter, maxPages }, "Scraping eAuction PSB pages");
+  log.info({ statusFilter, startPage, maxPages }, "Scraping eAuction PSB pages");
 
   const allItems: RawBaankNetItem[] = [];
   const seenAuctionIds = new Set<string>();
+  let consecutiveStalePages = 0;
 
-  for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+  // Jump to startPage if > 1
+  if (startPage > 1) {
+    log.info({ startPage }, `Jumping directly to page ${startPage}...`);
+    await page.evaluate((targetPage: number) => {
+      const pageInput = document.querySelector(
+        "input[type='number'][id*='page'], input[type='number'][id*='goto'], " +
+        "input[type='text'][id*='page'], input.page-input"
+      ) as HTMLInputElement;
+      if (pageInput) {
+        pageInput.value = String(targetPage);
+        pageInput.dispatchEvent(new Event("input", { bubbles: true }));
+        pageInput.dispatchEvent(new Event("change", { bubbles: true }));
+        const goBtn = pageInput.parentElement?.querySelector("button") as HTMLElement;
+        if (goBtn) goBtn.click();
+        else pageInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      }
+    }, startPage);
+    await randomDelay(BAANKNET_SCRAPE_DELAY_MS + 2000);
+  }
+
+  for (let pageNum = startPage; pageNum <= maxPages; pageNum++) {
     log.info({ page: pageNum }, "Extracting eAuction listings from page");
 
     const rawItems: RawBaankNetItem[] = await page.evaluate(
       extractEAuctionListingsFromDOM
     );
 
-    log.info({ page: pageNum, found: rawItems.length }, "Items extracted from page");
+    if (rawItems.length === 0) {
+      log.info({ page: pageNum }, "No items found on page. Reached end of catalog.");
+      break;
+    }
 
-    let newCount = 0;
+    const pageNewItems: RawBaankNetItem[] = [];
     const pageItemIds = rawItems
       .filter((item) => !seenAuctionIds.has(item.auctionId))
       .map((item) => item.auctionId);
 
-    // Batch check which items already exist in DB (1 query per page instead of N)
+    // Batch check which items already exist in DB
     const existingMap = new Map<string, { document_url: string | null; borrower_name: string | null }>();
     if (pageItemIds.length > 0) {
       const { data: existingRows } = await supabase
@@ -391,31 +421,44 @@ async function scrapeEAuctionPages(
 
         const existing = existingMap.get(item.auctionId);
         if (existing) {
-          // Use existing detail data
           item.documentUrl = existing.document_url || undefined;
           if (existing.borrower_name) item.borrowerName = existing.borrower_name;
-        } else {
-          newCount++;
         }
 
+        pageNewItems.push(item);
         allItems.push(item);
       }
     }
 
-    log.info(
-      { page: pageNum, new: newCount, total: allItems.length },
-      "Page processed"
-    );
+    // Incremental Detail Scraping & DB Upsert PER PAGE
+    if (pageNewItems.length > 0) {
+      consecutiveStalePages = 0;
+      if (scrapeDetails) {
+        const toScrape = pageNewItems.filter(
+          (item) => item.detailUrl && !item.borrowerName
+        );
+        if (toScrape.length > 0) {
+          await scrapeDetailPages(browser, toScrape, BAANKNET_BASE_URL, BAANKNET_DETAIL_CONCURRENCY);
+        }
+      }
 
-    // Stop if no items found on this page
-    if (rawItems.length === 0) {
-      log.info({ page: pageNum }, "No items found. Reached last page.");
-      break;
+      const parsed = parseListings(pageNewItems, statusFilter.toLowerCase());
+      await upsertListings(parsed);
+      log.info(
+        { page: pageNum, newSaved: parsed.length, totalSoFar: allItems.length },
+        "Page scraped, enriched, and saved to database"
+      );
+    } else {
+      consecutiveStalePages++;
+      log.info({ page: pageNum, consecutiveStalePages }, "Page items already seen/saved in previous runs.");
+      if (consecutiveStalePages >= 5) {
+        log.info("5 consecutive pages with no new items encountered. Catalog is up to date or pagination completed. Stopping.");
+        break;
+      }
     }
 
     // Navigate to next page using page number input if available
     const navigated = await page.evaluate((nextPage: number) => {
-      // Try direct page number input (reliable for large datasets)
       const pageInput = document.querySelector(
         "input[type='number'][id*='page'], input[type='number'][id*='goto'], " +
         "input[type='text'][id*='page'], input.page-input"
@@ -426,25 +469,21 @@ async function scrapeEAuctionPages(
         pageInput.dispatchEvent(new Event("input", { bubbles: true }));
         pageInput.dispatchEvent(new Event("change", { bubbles: true }));
 
-        // Try to find and click a "Go" button nearby
         const goBtn = pageInput.parentElement?.querySelector("button") as HTMLElement;
         if (goBtn) {
           goBtn.click();
           return true;
         }
-        // If no go button, press Enter
         pageInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
         return true;
       }
 
-      // Fallback: click Next button
       const nextBtn = document.querySelector("#btnNext") as HTMLElement;
       if (nextBtn && !nextBtn.hasAttribute("disabled") && !(nextBtn as any).disabled) {
         nextBtn.click();
         return true;
       }
 
-      // Fallback: search for buttons with text "Next" or ">"
       const buttons = Array.from(document.querySelectorAll("button, a, .page-link"));
       for (const btn of buttons) {
         const text = btn.textContent?.toLowerCase().trim() || "";
@@ -464,32 +503,18 @@ async function scrapeEAuctionPages(
       break;
     }
 
-    // Wait for next page content to load
     await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
 
-    // Wait for new content to appear
     try {
       await page.waitForFunction(
-        (prevCount: number) => {
+        () => {
           const bodyText = document.body?.innerText || "";
-          const newIdMatch = bodyText.match(/Auction\s*ID\s*:\s*(\d+)/gi);
-          return newIdMatch && newIdMatch.length > 0;
+          return bodyText.includes("Auction ID");
         },
-        { timeout: 15000 },
-        rawItems.length
+        { timeout: 15000 }
       );
     } catch {
       log.warn({ page: pageNum + 1 }, "Timeout waiting for new page content");
-    }
-  }
-
-  // Scrape detail pages for new items
-  if (scrapeDetails) {
-    const newItems = allItems.filter(
-      (item) => item.detailUrl && !item.borrowerName
-    );
-    if (newItems.length > 0) {
-      await scrapeDetailPages(browser, newItems, BAANKNET_BASE_URL, BAANKNET_DETAIL_CONCURRENCY);
     }
   }
 
@@ -613,6 +638,11 @@ async function scrapePropertyListings(
     }
   }
 
+  if (allItems.length > 0) {
+    const parsed = parseListings(allItems, "upcoming");
+    await upsertListings(parsed);
+  }
+
   return allItems;
 }
 
@@ -620,10 +650,11 @@ async function scrapePropertyListings(
 
 async function scrapeIBCAuctions(
   browser: any,
+  startPage: number,
   maxPages: number,
   scrapeDetails: boolean,
 ): Promise<RawBaankNetItem[]> {
-  log.info({ maxPages }, "Scraping IBC eAuction (ibbi.baanknet.com)");
+  log.info({ startPage, maxPages }, "Scraping IBC eAuction (ibbi.baanknet.com)");
 
   // IBC uses a separate subdomain — needs its own page/session
   const ibcPage = await browser.newPage();
@@ -665,15 +696,15 @@ async function scrapeIBCAuctions(
       log.warn("Timeout waiting for IBC listings. Page may be empty or loading slowly.");
     }
 
-    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+    for (let pageNum = startPage; pageNum <= maxPages; pageNum++) {
       const rawCards = await ibcPage.evaluate(extractIBCListingCards);
 
-      let newCount = 0;
+      const pageNewItems: RawBaankNetItem[] = [];
       for (const card of rawCards) {
         if (seenIds.has(card.auctionId)) continue;
         seenIds.add(card.auctionId);
 
-        allItems.push({
+        const itemObj: RawBaankNetItem = {
           auctionId: card.auctionId,
           bankPropertyId: "",
           title: card.title,
@@ -686,11 +717,22 @@ async function scrapeIBCAuctions(
           detailUrl: card.detailUrl,
           actionType: "IBC",
           auctionModule: "ibc",
-        });
-        newCount++;
+        };
+        pageNewItems.push(itemObj);
+        allItems.push(itemObj);
       }
 
-      log.info({ page: pageNum, new: newCount, total: allItems.length }, "IBC page processed");
+      if (pageNewItems.length > 0) {
+        if (scrapeDetails) {
+          const toEnrich = pageNewItems.filter(item => item.detailUrl);
+          if (toEnrich.length > 0) {
+            await scrapeDetailPages(browser, toEnrich, BAANKNET_IBC_BASE_URL, BAANKNET_DETAIL_CONCURRENCY);
+          }
+        }
+        const parsed = parseListings(pageNewItems, "upcoming");
+        await upsertListings(parsed);
+        log.info({ page: pageNum, saved: parsed.length, total: allItems.length }, "IBC page scraped and saved to DB");
+      }
 
       if (rawCards.length === 0) {
         log.info({ page: pageNum }, "No IBC items found. Reached last page.");
@@ -718,14 +760,6 @@ async function scrapeIBCAuctions(
       }
 
       await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
-    }
-
-    // Scrape detail pages
-    if (scrapeDetails) {
-      const toEnrich = allItems.filter((item) => item.detailUrl);
-      if (toEnrich.length > 0) {
-        await scrapeDetailPages(browser, toEnrich, BAANKNET_IBC_BASE_URL, BAANKNET_DETAIL_CONCURRENCY);
-      }
     }
   } catch (err: any) {
     log.error({ error: err.message }, "IBC scraper error");
@@ -984,10 +1018,10 @@ async function setupPage(browser: any) {
 // ─── Main Scraper Entry Point ────────────────────────────────────────────────
 
 async function executeBaankNetScraper(): Promise<void> {
-  const { modules, statusFilters, headful, maxPages, scrapeDetails } = parseCliArgs();
+  const { modules, statusFilters, headful, maxPages, startPage, scrapeDetails } = parseCliArgs();
 
   log.info(
-    { modules, statusFilters, headful, maxPages, scrapeDetails },
+    { modules, statusFilters, headful, maxPages, startPage, scrapeDetails },
     "Starting BaankNet multi-module scraper"
   );
 
@@ -1038,24 +1072,12 @@ async function executeBaankNetScraper(): Promise<void> {
           await randomDelay(3000);
 
           const rawItems = await scrapeEAuctionPages(
-            browser, page, statusFilter, maxPages, scrapeDetails
+            browser, page, statusFilter, startPage, maxPages, scrapeDetails
           );
 
-          log.info({ status: statusFilter, count: rawItems.length }, "Raw items extracted");
+          totalScraped += rawItems.length;
 
-          if (rawItems.length === 0) {
-            const pageText = await page.evaluate(
-              () => (document.body?.innerText || "").substring(0, 500)
-            );
-            log.info({ pageTextPreview: pageText }, "No items found for tab. Page preview:");
-            continue;
-          }
-
-          const parsed = parseListings(rawItems, statusFilter.toLowerCase());
-          await upsertListings(parsed);
-          totalScraped += parsed.length;
-
-          log.info({ status: statusFilter, count: parsed.length }, "Tab complete");
+          log.info({ status: statusFilter, count: rawItems.length }, "Tab processing complete");
 
           if (statusFilters.indexOf(statusFilter) < statusFilters.length - 1) {
             await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
@@ -1078,13 +1100,8 @@ async function executeBaankNetScraper(): Promise<void> {
           browser, page, BAANKNET_MAX_SCROLL_CYCLES, scrapeDetails
         );
 
-        log.info({ count: rawItems.length }, "Property listings extracted");
-
-        if (rawItems.length > 0) {
-          const parsed = parseListings(rawItems, "upcoming");
-          await upsertListings(parsed);
-          totalScraped += parsed.length;
-        }
+        totalScraped += rawItems.length;
+        log.info({ count: rawItems.length }, "Property listings module complete");
       } catch (err: any) {
         log.error({ error: err.message }, "Property Listing module error");
       } finally {
@@ -1097,15 +1114,10 @@ async function executeBaankNetScraper(): Promise<void> {
       log.info("═══ Starting Module: IBC eAuction ═══");
 
       try {
-        const rawItems = await scrapeIBCAuctions(browser, maxPages, scrapeDetails);
+        const rawItems = await scrapeIBCAuctions(browser, startPage, maxPages, scrapeDetails);
 
-        log.info({ count: rawItems.length }, "IBC auctions extracted");
-
-        if (rawItems.length > 0) {
-          const parsed = parseListings(rawItems, "upcoming");
-          await upsertListings(parsed);
-          totalScraped += parsed.length;
-        }
+        totalScraped += rawItems.length;
+        log.info({ count: rawItems.length }, "IBC eAuction module complete");
       } catch (err: any) {
         log.error({ error: err.message }, "IBC eAuction module error");
       }
