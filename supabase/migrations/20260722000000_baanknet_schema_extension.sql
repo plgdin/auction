@@ -111,11 +111,13 @@ CREATE TABLE IF NOT EXISTS public.baanknet_auction_photos (
 ALTER TABLE public.baanknet_auction_photos ENABLE ROW LEVEL SECURITY;
 
 -- Public read access
+DROP POLICY IF EXISTS "Allow public read access on BaankNet photos" ON public.baanknet_auction_photos;
 CREATE POLICY "Allow public read access on BaankNet photos"
     ON public.baanknet_auction_photos
     FOR SELECT USING (true);
 
 -- Service role full access
+DROP POLICY IF EXISTS "Allow service role access on BaankNet photos" ON public.baanknet_auction_photos;
 CREATE POLICY "Allow service role access on BaankNet photos"
     ON public.baanknet_auction_photos
     FOR ALL USING (true);
