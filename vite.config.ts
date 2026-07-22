@@ -238,9 +238,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  esbuild: {
-    drop: ['console', 'debugger'],
-  },
   build: {
     target: 'es2020', // Modern browsers — avoid unnecessary polyfills
     chunkSizeWarningLimit: 1000,
@@ -270,6 +267,18 @@ export default defineConfig({
             // Icon library — only icons actually imported are tree-shaken
             if (normalizedId.includes('lucide-react')) {
               return 'lucide-vendor';
+            }
+            // Supabase — heavy SDK, split from main bundle
+            if (normalizedId.includes('@supabase')) {
+              return 'supabase';
+            }
+            // React-query — used widely but deferrable
+            if (normalizedId.includes('@tanstack/react-query')) {
+              return 'react-query-vendor';
+            }
+            // React-router — used on every page but can be a separate chunk
+            if (normalizedId.includes('react-router') || normalizedId.includes('@remix-run')) {
+              return 'router-vendor';
             }
           }
         }

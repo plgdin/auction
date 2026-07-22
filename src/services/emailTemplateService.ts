@@ -60,8 +60,10 @@ export const emailTemplateService = {
       'View Live Auction'
     );
     
-    console.log(`[EMAIL DISPATCH] To: ${email} | Subject: Bid Confirmation - ${auctionTitle}`);
-    console.log(html);
+    if ((import.meta as any).env?.DEV) {
+      console.log(`[EMAIL DISPATCH] To: ${email} | Subject: Bid Confirmation - ${auctionTitle}`);
+      console.log(html);
+    }
   },
 
   sendOutbidAlert(email: string, auctionTitle: string, auctionUrl: string) {
@@ -76,8 +78,10 @@ export const emailTemplateService = {
       'Place New Bid'
     );
     
-    console.log(`[EMAIL DISPATCH] To: ${email} | Subject: Urgent: Outbid Alert - ${auctionTitle}`);
-    console.log(html);
+    if ((import.meta as any).env?.DEV) {
+      console.log(`[EMAIL DISPATCH] To: ${email} | Subject: Urgent: Outbid Alert - ${auctionTitle}`);
+      console.log(html);
+    }
   },
 
   sendEmdReceipt(email: string, amount: number, referenceId: string, walletUrl: string) {
@@ -107,7 +111,9 @@ export const emailTemplateService = {
       'View Wallet Balance'
     );
     
-    console.log(`[EMAIL DISPATCH] To: ${email} | Subject: Receipt - Deposit of ${formattedAmount}`);
-    console.log(html);
+    if ((import.meta as any).env?.DEV) {
+      console.log(`[EMAIL DISPATCH] To: ${email} | Subject: Receipt - Deposit of ${formattedAmount}`);
+      console.log(html);
+    }
   }
 };

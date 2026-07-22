@@ -8,23 +8,32 @@ Detailed features and capabilities:
 * Scrap Metal Price Valuation: Linear regression model forecasting Indian metal scrap price ranges based on LME & local benchmarks.
 * Watchlist & Bookmark Management: Real-time tracking and bookmarking of upcoming government eAuctions.
 * PDF Catalog Processor: Auto-indexing of official government catalog PDF documents in secure storage.
+* AI Chatbot Assistant (Laila): Interactive assistant for MSTC auction rules, EMD tracking, and platform navigation.
 
 AI Agent and Crawler Information:
-* Allowed Directories: /faq, /auctions, /about, /contact, /news, /cookies are open to crawling.
+* Allowed Directories: /faq, /auctions, /about, /contact, /news, /cookies, /notices, /blog are open to crawling.
 * Disallowed Directories: /auth/, /admin/, /dashboard/, /api/ are blocked for privacy and user data protection.
+* Accessibility Tree: All interactive components provide accessible labels (`aria-label`), keyboard navigation boundaries, and structured headings for automated agentic browsing.
 * Data Freshness: Government eAuction schedules are uploaded on the platform, processed, and updated regularly.
 
 ## Site Structure & Navigation
 
 - [Homepage](/) - Features global search, live statistics, and recent news.
 - [Auctions Directory](/auctions) - Search directory for all active, upcoming, and closed eAuctions.
-- [Tenders Directory](/tenders) - B2B bidding directory for tenders and procurement opportunities.
 - [News & Price Alerts](/news) - Industry news, LME price alerts, and platform announcements.
+- [Official Notices](/notices) - Official platform announcements and regulatory notifications.
+- [Blog](/blog) - Industry guides, scrap metal market insights, and eAuction bidding tips.
 - [eAuctions Help Center](/faq) - Help center containing schema for common questions.
 - [About](/about) - Core platform values, whitepapers, and branding updates.
 - [Contact](/contact) - Support channel and corporate inquiry messaging.
 
-## Optional
+## Legal & Compliance
+
+- [Privacy Policy](/privacy) - Data protection policy.
+- [Terms of Service](/terms) - Terms and condition guidelines.
+- [Cookie Policy](/cookies) - Cookie preference details.
+
+## Crawler & Agent References
 
 - [Robots Configuration](/robots.txt) - Rules for web crawlers.
 - [Sitemap](/sitemap.xml) - Structured index of public pages.

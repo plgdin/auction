@@ -3,7 +3,7 @@ import { Mail, Phone, MapPin, Gavel, ArrowRight } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="relative bg-slate-900 text-slate-300 pt-16 pb-8 overflow-hidden">
+    <footer className="relative bg-slate-900 text-slate-300 pt-16 pb-8 overflow-hidden" role="contentinfo">
       {/* Background decoration */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
@@ -105,12 +105,12 @@ export function Footer() {
           </div>
           <div className="flex space-x-4">
             {/* Social Icons Placeholder */}
-            <div className="w-8 h-8 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">
-               <span className="text-xs font-bold text-white">in</span>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">
-               <span className="text-xs font-bold text-white">X</span>
-            </div>
+            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="w-8 h-8 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">
+               <span className="text-xs font-bold text-white" aria-hidden="true">in</span>
+            </a>
+            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" className="w-8 h-8 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">
+               <span className="text-xs font-bold text-white" aria-hidden="true">X</span>
+            </a>
           </div>
         </div>
       </div>

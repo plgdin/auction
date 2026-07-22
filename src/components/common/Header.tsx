@@ -93,7 +93,7 @@ export function Header() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
+    <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40" role="banner">
       <div className="w-full px-4 sm:px-8 lg:px-12">
         <div className="flex justify-between items-center h-20">
           <div className="flex-shrink-0 flex items-center -ml-4">
@@ -104,7 +104,7 @@ export function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-1 lg:space-x-4 items-center">
+          <nav className="hidden md:flex space-x-1 lg:space-x-4 items-center" aria-label="Main navigation">
             {navigation.map((item) => (
               <Link
                 key={item.name}

@@ -5,8 +5,9 @@ import { publicService } from '../../services/publicService';
 import { Maintenance } from '../../pages/Maintenance';
 
 export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
-  const [maintenanceEnabled, setMaintenanceEnabled] = useState<boolean | null>(null);
-  const { profile, isLoading: authLoading } = useAuthStore();
+  // Default to false so page loads instantly
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState<boolean>(false);
+  const { profile } = useAuthStore();
 
   useEffect(() => {
     let isMounted = true;
@@ -16,7 +17,7 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
         const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000));
         const mode = await Promise.race([publicService.getMaintenanceMode(), timeoutPromise]);
         if (isMounted) {
-          setMaintenanceEnabled(mode);
+          setMaintenanceEnabled(!!mode);
         }
       } catch (e) {
         if (isMounted) setMaintenanceEnabled(false);
@@ -49,14 +50,6 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(subscription);
     };
   }, []);
-
-  if (maintenanceEnabled === null || authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-900"></div>
-      </div>
-    );
-  }
 
   // Admins & superadmins bypass maintenance
   const isBypassed = profile?.role === 'admin' || profile?.role === 'superadmin';

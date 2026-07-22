@@ -291,9 +291,11 @@ CONTACT & ESCALATION:
                 e.stopPropagation();
                 setShowBubble(false);
               }}
+              aria-label="Dismiss welcome message"
               className="text-slate-500 hover:text-slate-800 p-0.5 rounded transition-colors absolute top-2 right-2 cursor-pointer"
             >
               <X size={14} />
+              <span className="sr-only">Dismiss welcome message</span>
             </button>
             <div className="absolute right-6 -bottom-2 w-4 h-4 bg-slate-100 border-r border-b border-slate-300 transform rotate-45"></div>
           </div>
@@ -301,7 +303,7 @@ CONTACT & ESCALATION:
 
         {/* Opened Chat window */}
         {isOpen && (
-          <div className="pointer-events-auto w-96 h-[500px] bg-white/75 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-[0_20px_50px_rgba(15,23,42,0.12),_0_0_30px_rgba(0,91,153,0.2)] flex flex-col mb-4 mr-1 overflow-hidden transition-all duration-300">
+          <div className="pointer-events-auto w-96 h-[500px] bg-white/75 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-[0_20px_50px_rgba(15,23,42,0.12),_0_0_30px_rgba(0,91,153,0.2)] flex flex-col mb-4 mr-1 overflow-hidden transition-all duration-300" role="dialog" aria-label="Laila Assistant Chat">
             
             {/* Chatbox Header */}
             <div className="p-4 bg-white/35 backdrop-blur-md border-b border-white/20 flex items-center justify-between">
@@ -336,6 +338,7 @@ CONTACT & ESCALATION:
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setIsOpen(false)}
+                  aria-label="Minimize chat"
                   className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 >
                   <Minimize2 size={16} />
@@ -344,7 +347,7 @@ CONTACT & ESCALATION:
             </div>
 
             {/* Chatbox Messages List */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+            <div className="flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent" role="log" aria-live="polite" aria-label="Chat messages">
               {messages.map((msg, index) => (
                 <div
                   key={index}
@@ -434,12 +437,14 @@ CONTACT & ESCALATION:
                   if (e.key === 'Enter') handleSendMessage();
                 }}
                 placeholder="Ask about MSTC, Lelam or EMD..."
+                aria-label="Type your message to Laila"
                 className="flex-1 bg-white/60 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#005b99]/60 focus:bg-white/80 caret-[#005b99]"
               />
 
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputText.trim()}
+                aria-label="Send message"
                 className={`p-2 rounded-xl transition-colors ${
                   inputText.trim()
                     ? 'bg-[#005b99] text-white hover:bg-[#004a7c] shadow-[0_4px_12px_rgba(0,91,153,0.25)]'
@@ -454,12 +459,15 @@ CONTACT & ESCALATION:
 
         {/* Outer Floating Orb trigger button */}
         <button
+          type="button"
+          aria-label={isOpen ? "Close Laila Assistant Chat" : "Open Laila Assistant Chat"}
           onClick={() => {
             setIsOpen(prev => !prev);
             setShowBubble(false);
           }}
           className={`pointer-events-auto relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 border-2 border-[#005b99] shadow-[0_8px_32px_rgba(0,0,0,0.1),_0_0_15px_rgba(0,91,153,0.25)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.15),_0_0_20px_rgba(0,91,153,0.45)] transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer ${getOrbStateClass()}`}
         >
+          <span className="sr-only">{isOpen ? "Close Laila Assistant Chat" : "Open Laila Assistant Chat"}</span>
           {/* Fluid Wave layers inside Orb */}
           <div className="absolute bottom-0 left-0 right-0 h-full overflow-hidden rounded-full pointer-events-none">
             <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-1 transition-all duration-500">
