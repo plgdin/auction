@@ -2669,6 +2669,22 @@ export interface BaanknetAuction {
   source_url: string;
   scraped_at: string;
   document_url?: string;
+
+  // Multi-module detail fields
+  auction_module?: string;
+  carpet_area?: string;
+  carpet_area_sqft?: number | null;
+  furnishing?: string;
+  possession_status?: string;
+  action_type?: string;
+  district?: string;
+  inspection_start_date?: string;
+  inspection_end_date?: string;
+  emd_end_date?: string;
+  borrower_name?: string;
+  property_description?: string;
+  photo_count?: number;
+  thumbnail_url?: string;
 }
 
 export const BaanknetSearchService = {

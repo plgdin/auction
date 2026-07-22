@@ -101,22 +101,63 @@ export const DEFAULT_USER_AGENT =
 export const BAANKNET_BASE_URL =
   process.env.BAANKNET_BASE_URL || "https://baanknet.com";
 
+// ── Module 1: eAuction PSB ──────────────────────────────────────────────────
+
 export const BAANKNET_EAUCTION_PATH =
   process.env.BAANKNET_EAUCTION_PATH || "/eauction-psb/eproc-listing";
 
-/** Delay between page scroll/load actions to avoid detection (ms). */
+// ── Module 2: Property Listings ─────────────────────────────────────────────
+
+export const BAANKNET_PROPERTY_LISTING_PATH =
+  process.env.BAANKNET_PROPERTY_LISTING_PATH || "/property-listing";
+
+// ── Module 3: IBC eAuction (separate subdomain) ────────────────────────────
+
+export const BAANKNET_IBC_BASE_URL =
+  process.env.BAANKNET_IBC_BASE_URL || "https://ibbi.baanknet.com";
+
+export const BAANKNET_IBC_LISTING_PATH =
+  process.env.BAANKNET_IBC_LISTING_PATH || "/eauction-ibbi/asset-listing";
+
+// ── Shared Timing & Limits ──────────────────────────────────────────────────
+
+/** Delay between page navigation/scroll actions to avoid detection (ms). */
 export const BAANKNET_SCRAPE_DELAY_MS = parseInt(
   process.env.BAANKNET_SCRAPE_DELAY_MS || "3000",
   10,
 );
 
-/** Maximum number of scroll-to-load cycles per scraping run. */
-export const BAANKNET_MAX_SCROLL_CYCLES = parseInt(
-  process.env.BAANKNET_MAX_SCROLL_CYCLES || "50",
+/** Maximum pages to traverse per status tab in eAuction / IBC modules. */
+export const BAANKNET_MAX_PAGES = parseInt(
+  process.env.BAANKNET_MAX_PAGES || "1000",
   10,
 );
 
-/** Which auction status tabs to scrape. */
+/** Maximum scroll-to-load cycles for infinite-scroll Property Listing. */
+export const BAANKNET_MAX_SCROLL_CYCLES = parseInt(
+  process.env.BAANKNET_MAX_SCROLL_CYCLES || "500",
+  10,
+);
+
+/** Which auction status tabs to scrape in eAuction module. */
 export const BAANKNET_STATUS_FILTERS: string[] = (
   process.env.BAANKNET_STATUS_FILTERS || "UPCOMING,LIVE"
+).split(",");
+
+// ── Detail Page Scraping ────────────────────────────────────────────────────
+
+/** Enable scraping individual detail pages for full property data. */
+export const BAANKNET_SCRAPE_DETAILS = (
+  process.env.BAANKNET_SCRAPE_DETAILS || "true"
+) === "true";
+
+/** Max concurrent browser tabs for parallel detail-page scraping. */
+export const BAANKNET_DETAIL_CONCURRENCY = parseInt(
+  process.env.BAANKNET_DETAIL_CONCURRENCY || "3",
+  10,
+);
+
+/** Which modules to scrape. Comma-separated: eauction,property,ibc */
+export const BAANKNET_MODULES: string[] = (
+  process.env.BAANKNET_MODULES || "eauction,property,ibc"
 ).split(",");
