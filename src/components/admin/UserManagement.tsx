@@ -20,8 +20,7 @@ export function UserManagement() {
     loadUsers();
   }, []);
 
-  const handleRoleChange = async (userId: string, currentRole: string) => {
-    const newRole = currentRole === 'buyer' ? 'seller' : 'buyer';
+  const handleRoleChange = async (userId: string, newRole: string) => {
     if (!window.confirm(`Are you sure you want to change this user's role to ${newRole.toUpperCase()}?`)) return;
 
     setUpdatingId(userId);
@@ -91,7 +90,8 @@ export function UserManagement() {
                   <span className={clsx(
                     "px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wide",
                     user.role === 'admin' || user.role === 'superadmin' ? "bg-purple-100 text-purple-700" :
-                    user.role === 'seller' ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
+                    user.role === 'seller' ? "bg-amber-100 text-amber-700" :
+                    user.role === 'logistics' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
                   )}>
                     {user.role}
                   </span>
@@ -108,15 +108,24 @@ export function UserManagement() {
                   )}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  {(user.role === 'buyer' || user.role === 'seller') && (
-                    <button 
-                      onClick={() => handleRoleChange(user.id, user.role)}
-                      disabled={updatingId === user.id}
-                      className="inline-flex items-center px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-md transition-colors disabled:opacity-50"
-                    >
-                      <Shield className="w-3.5 h-3.5 mr-1" />
-                      {updatingId === user.id ? 'Updating...' : `Make ${user.role === 'buyer' ? 'Seller' : 'Buyer'}`}
-                    </button>
+                  {(user.role === 'buyer' || user.role === 'seller' || user.role === 'logistics') && (
+                    <div className="inline-flex relative">
+                      <select
+                        value={user.role}
+                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                        disabled={updatingId === user.id}
+                        className="appearance-none pr-8 pl-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-md outline-none cursor-pointer disabled:opacity-50 transition-colors"
+                      >
+                        <option value="buyer">Buyer</option>
+                        <option value="seller">Seller</option>
+                        <option value="logistics">Logistics</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                        <svg className="h-3 w-3 fill-current" viewBox="0 0 20 20">
+                          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                        </svg>
+                      </div>
+                    </div>
                   )}
                 </td>
               </tr>

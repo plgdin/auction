@@ -88,6 +88,11 @@ const Vendors = lazyWithSuspense(() => import('../pages/dashboard/Vendors').then
 const Reminders = lazyWithSuspense(() => import('../pages/dashboard/Reminders').then(m => ({ default: m.Reminders })));
 const Inventory = lazyWithSuspense(() => import('../pages/dashboard/Inventory').then(m => ({ default: m.Inventory })));
 const QuotePage = lazyWithSuspense(() => import('../pages/dashboard/QuotePage').then(m => ({ default: m.QuotePage })));
+const LogisticsRequests = lazyWithSuspense(() => import('../pages/dashboard/LogisticsRequests').then(m => ({ default: m.LogisticsRequests })));
+
+const LogisticsDashboard = lazyWithSuspense(() => import('../pages/logistics/LogisticsDashboard').then(m => ({ default: m.LogisticsDashboard })));
+const QuoteRequests = lazyWithSuspense(() => import('../pages/logistics/QuoteRequests').then(m => ({ default: m.QuoteRequests })));
+const LogisticsProfileSettings = lazyWithSuspense(() => import('../pages/logistics/LogisticsProfileSettings').then(m => ({ default: m.LogisticsProfileSettings })));
 
 export const router = createBrowserRouter([
   {
@@ -152,6 +157,7 @@ export const router = createBrowserRouter([
       { path: 'inventory', element: <Inventory /> },
       { path: 'quotes', element: <QuotePage /> },
       { path: 'quote', element: <Navigate to="/dashboard/quotes" replace /> },
+      { path: 'shipping-requests', element: <LogisticsRequests /> },
     ],
   },
   {
@@ -179,6 +185,20 @@ export const router = createBrowserRouter([
       { path: 'auctions', element: <ManageAuctions /> },
       { path: 'auctions/create', element: <AuctionForm /> },
       { path: 'auctions/:id/edit', element: <AuctionForm /> },
+    ],
+  },
+  {
+    path: '/logistics',
+    element: (
+      <ProtectedRoute allowedRoles={['logistics', 'admin', 'superadmin']}>
+        <DashboardLayout />
+      </ProtectedRoute>
+    ),
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      { index: true, element: <LogisticsDashboard /> },
+      { path: 'requests', element: <QuoteRequests /> },
+      { path: 'profile', element: <LogisticsProfileSettings /> },
     ],
   },
 ]);

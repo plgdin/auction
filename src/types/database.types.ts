@@ -1,4 +1,4 @@
-export type UserRole = 'buyer' | 'seller' | 'admin' | 'superadmin';
+export type UserRole = 'buyer' | 'seller' | 'admin' | 'superadmin' | 'logistics';
 export type AuctionStatus = 'draft' | 'published' | 'active' | 'closed' | 'cancelled';
 export type BidStatus = 'active' | 'winning' | 'outbid' | 'withdrawn';
 export type TenderStatus = 'draft' | 'open' | 'under_evaluation' | 'awarded' | 'cancelled';
@@ -255,3 +255,29 @@ export interface Blog {
 }
 
 
+
+export interface LogisticsProfile {
+  id: string;
+  company_name: string;
+  service_areas: string[];
+  vehicle_types: string[];
+  base_rates?: string;
+  certifications?: string;
+  description?: string;
+  contact_info?: Record<string, any>;
+  is_accepting_requests?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LogisticsRequest {
+  id: string;
+  sender_id: string;
+  logistics_id: string;
+  quote_data: any;
+  status: 'pending' | 'responded' | 'rejected' | 'completed';
+  user_note?: string;
+  logistics_response?: string;
+  created_at: string;
+  updated_at: string;
+}
