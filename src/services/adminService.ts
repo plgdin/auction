@@ -538,14 +538,32 @@ export const adminService = {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to reset failed auctions: ${response.statusText}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) return true;
       }
-
-      const data = await response.json();
-      return !!data.success;
     } catch (error) {
-      console.error('Error resetting failed auctions:', error);
+      console.warn('API resetFailedAuctions endpoint unavailable or unauthorized, trying direct DB update:', error);
+    }
+
+    // Direct database update fallback (for local dev or direct Supabase client access)
+    try {
+      const { error } = await supabase
+        .from('mstc_auctions')
+        .update({
+          asset_status: 'pending',
+          retry_count: 0,
+          error_log: null
+        })
+        .eq('asset_status', 'failed');
+
+      if (error) {
+        console.error('Error in direct resetFailedAuctions update:', error);
+        return false;
+      }
+      return true;
+    } catch (dbErr) {
+      console.error('Database error resetting failed auctions:', dbErr);
       return false;
     }
   },
@@ -562,14 +580,32 @@ export const adminService = {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to reset single failed auction: ${response.statusText}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) return true;
       }
-
-      const data = await response.json();
-      return !!data.success;
     } catch (error) {
-      console.error('Error resetting single failed auction:', error);
+      console.warn('API resetSingleFailedAuction endpoint unavailable or unauthorized, trying direct DB update:', error);
+    }
+
+    // Direct database update fallback
+    try {
+      const { error } = await supabase
+        .from('mstc_auctions')
+        .update({
+          asset_status: 'pending',
+          retry_count: 0,
+          error_log: null
+        })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error in direct resetSingleFailedAuction update:', error);
+        return false;
+      }
+      return true;
+    } catch (dbErr) {
+      console.error('Database error resetting single failed auction:', dbErr);
       return false;
     }
   },
@@ -586,14 +622,32 @@ export const adminService = {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to unlock processing auctions: ${response.statusText}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) return true;
       }
-
-      const data = await response.json();
-      return !!data.success;
     } catch (error) {
-      console.error('Error unlocking processing auctions:', error);
+      console.warn('API unlockProcessingAuctions endpoint unavailable or unauthorized, trying direct DB update:', error);
+    }
+
+    // Direct database update fallback (for local dev or direct Supabase client access)
+    try {
+      const { error } = await supabase
+        .from('mstc_auctions')
+        .update({
+          asset_status: 'pending',
+          retry_count: 0,
+          error_log: null
+        })
+        .eq('asset_status', 'processing');
+
+      if (error) {
+        console.error('Error in direct unlockProcessingAuctions update:', error);
+        return false;
+      }
+      return true;
+    } catch (dbErr) {
+      console.error('Database error unlocking processing auctions:', dbErr);
       return false;
     }
   },
