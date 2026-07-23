@@ -551,6 +551,41 @@ async function executeDiscoveryScraper() {
             });
         }
       }
+
+      // Upsert into location_daily_stats for region-centric analytics
+      console.log(`[Analytics] Recording location-centric stats...`);
+      const locationStatsMap: Record<string, number> = {};
+      actuallyNewRows.forEach(row => {
+        const key = `${row.location || 'India'}|||${row.category_name || 'Uncategorized'}`;
+        locationStatsMap[key] = (locationStatsMap[key] || 0) + 1;
+      });
+
+      for (const [compoundKey, count] of Object.entries(locationStatsMap)) {
+        const [loc, cat] = compoundKey.split('|||');
+        const { data: existingLocStat } = await supabase
+          .from('location_daily_stats')
+          .select('id, items_added')
+          .eq('date', today)
+          .eq('location', loc)
+          .eq('category_name', cat)
+          .maybeSingle();
+
+        if (existingLocStat) {
+          await supabase
+            .from('location_daily_stats')
+            .update({ items_added: existingLocStat.items_added + count })
+            .eq('id', existingLocStat.id);
+        } else {
+          await supabase
+            .from('location_daily_stats')
+            .insert({
+              date: today,
+              location: loc,
+              category_name: cat,
+              items_added: count
+            });
+        }
+      }
     }
 
     const { error: upsertError } = await supabase
