@@ -6,6 +6,7 @@ import { router } from './router';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { Chatbox } from './components/common/Chatbox';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -100,6 +101,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <RouterProvider router={router} />
+        <Chatbox />
         <Toaster
           position="top-right"
           containerClassName="print:hidden"

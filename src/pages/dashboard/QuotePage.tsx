@@ -2,13 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   FileText, Plus, Trash2, Printer, Save, Paperclip,
   Palette, Building2, User, Percent, FileCode, Check,
-  Bookmark, FileDown, ChevronDown
+  Bookmark, FileDown, ChevronDown, Truck, Send, X
 } from 'lucide-react';
 import { useQuoteStore } from '../../store/quoteStore';
 import type { QuoteAttachment } from '../../store/quoteStore';
 import { useAuthStore } from '../../store/authStore';
 import { MstcSearchService } from '../../services/publicService';
 import { dashboardService } from '../../services/dashboardService';
+import { logisticsService } from '../../services/logisticsService';
 import { generateCatalogSummary } from '../../utils/mstcHelpers';
 import { toast } from 'react-hot-toast';
 import clsx from 'clsx';
@@ -123,6 +124,51 @@ export function QuotePage() {
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const colorInputRef = useRef<HTMLInputElement>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+
+  // Logistics Quote State
+  const [isLogisticsModalOpen, setIsLogisticsModalOpen] = useState(false);
+  const [logisticsProviders, setLogisticsProviders] = useState<any[]>([]);
+  const [selectedLogisticsId, setSelectedLogisticsId] = useState<string>('');
+  const [logisticsNote, setLogisticsNote] = useState<string>('');
+  const [isSendingQuote, setIsSendingQuote] = useState(false);
+
+  const openLogisticsModal = async () => {
+    setIsLogisticsModalOpen(true);
+    try {
+      const providers = await logisticsService.getLogisticsProviders();
+      setLogisticsProviders(providers);
+    } catch (error) {
+      toast.error('Failed to load logistics providers');
+    }
+  };
+
+  const handleSendLogisticsQuote = async () => {
+    if (!selectedLogisticsId) {
+      toast.error('Please select a logistics provider');
+      return;
+    }
+    if (!user) {
+      toast.error('You must be logged in');
+      return;
+    }
+    setIsSendingQuote(true);
+    try {
+      await logisticsService.sendQuoteRequest(
+        user.id,
+        selectedLogisticsId,
+        activeQuote,
+        logisticsNote
+      );
+      toast.success('Shipping quote request sent successfully!');
+      setIsLogisticsModalOpen(false);
+      setLogisticsNote('');
+      setSelectedLogisticsId('');
+    } catch (error) {
+      toast.error('Failed to send request');
+    } finally {
+      setIsSendingQuote(false);
+    }
+  };
 
   // Interested Auctions Importing State
   const { user } = useAuthStore();
@@ -1026,6 +1072,13 @@ export function QuotePage() {
             {/* Editor Top Bar for Preview actions */}
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-end print:hidden bg-white p-4 border border-slate-200 rounded-2xl shadow-xs">
               <button
+                onClick={openLogisticsModal}
+                className="inline-flex justify-center items-center py-2 px-5 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all cursor-pointer"
+              >
+                <Truck className="w-4 h-4 mr-2" />
+                Request Shipping Quote
+              </button>
+              <button
                 onClick={handleSave}
                 className="inline-flex justify-center items-center py-2 px-5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-350 shadow-2xs transition-all bg-white cursor-pointer"
               >
@@ -1412,6 +1465,94 @@ export function QuotePage() {
 
           </div>
 
+        </div>
+      )}
+
+      {/* Logistics Modal */}
+      {isLogisticsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm print:hidden">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <h2 className="text-xl font-bold text-slate-900 flex items-center">
+                <Truck className="w-5 h-5 mr-2 text-primary" />
+                Request Shipping Quote
+              </h2>
+              <button 
+                onClick={() => setIsLogisticsModalOpen(false)}
+                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+              {logisticsProviders.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-slate-500 font-semibold">No logistics providers available at the moment.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    <label className="text-sm font-bold text-slate-900 block">Select Logistics Provider</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {logisticsProviders.map(provider => (
+                        <div 
+                          key={provider.id}
+                          onClick={() => setSelectedLogisticsId(provider.id)}
+                          className={clsx(
+                            "border rounded-xl p-4 cursor-pointer transition-all",
+                            selectedLogisticsId === provider.id 
+                              ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary" 
+                              : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                          )}
+                        >
+                          <h4 className="font-bold text-slate-900">{provider.company_name}</h4>
+                          {provider.service_areas && provider.service_areas.length > 0 && (
+                            <p className="text-xs text-slate-500 mt-1 line-clamp-1">Areas: {provider.service_areas.join(', ')}</p>
+                          )}
+                          {provider.vehicle_types && provider.vehicle_types.length > 0 && (
+                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">Fleet: {provider.vehicle_types.join(', ')}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-sm font-bold text-slate-900 block">Note for Provider (Optional)</label>
+                    <textarea
+                      value={logisticsNote}
+                      onChange={e => setLogisticsNote(e.target.value)}
+                      placeholder="Special instructions, pickup dates, fragility notes..."
+                      rows={3}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm resize-none"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-slate-100 flex justify-end gap-3 shrink-0 bg-slate-50 rounded-b-2xl">
+              <button
+                onClick={() => setIsLogisticsModalOpen(false)}
+                className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendLogisticsQuote}
+                disabled={!selectedLogisticsId || isSendingQuote}
+                className="px-5 py-2.5 text-sm font-bold text-white bg-primary hover:bg-primary/90 rounded-xl transition-colors shadow-md disabled:opacity-50 flex items-center cursor-pointer"
+              >
+                {isSendingQuote ? 'Sending...' : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Request
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

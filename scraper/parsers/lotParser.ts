@@ -724,6 +724,31 @@ export function parseLotBlocks(
       tcs = tcsMatch[1].replace(/\r?\n/g, " ").trim();
     }
 
+    // ── Extract Lot Location ──────────────────────────────────────────
+    let lotLocation: string | undefined = undefined;
+    const locMatch = block.match(
+      /\bLot Location\s*-\s*([^\n]*?)(?=\r|\n|State|Lot State|GST|TCS|Bid Valid|Start\s*Price|$)/i,
+    );
+    if (locMatch) {
+      const rawLoc = locMatch[1].replace(/\r?\n/g, " ").trim();
+      if (rawLoc) {
+        lotLocation = rawLoc;
+      }
+    }
+
+    // ── Extract Lot State ─────────────────────────────────────────────
+    let lotState: string | undefined = undefined;
+    const stateMatch = block.match(
+      /\b(?:Lot State|State)\s*-\s*([^\n]*?)(?=\r|\n|Lot Location|GST|TCS|Bid Valid|Start\s*Price|$)/i,
+    );
+    if (stateMatch) {
+      const rawState = stateMatch[1].replace(/\r?\n/g, " ").trim();
+      // Guard: reject if it looks like a description fragment rather than a state name
+      if (rawState && rawState.length < 60 && !/\d/.test(rawState)) {
+        lotState = rawState;
+      }
+    }
+
     // ── Extract Start Price / Market Price ───────────────────────────────
     let lotMarketPrice: string | undefined = undefined;
 
@@ -838,6 +863,8 @@ export function parseLotBlocks(
       pcbGroup,
       productType,
       preBidEmd: lotPreBidEmd,
+      lotLocation,
+      lotState,
     });
   }
 

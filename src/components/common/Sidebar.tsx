@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Gavel, Heart, Bell, 
   Settings, Building2, LogOut, FolderLock, Users, Calendar, ClipboardCheck,
-  ArrowLeft, FileText, Cpu, Megaphone, BarChart3, Mail, TrendingUp, HelpCircle, ShieldAlert
+  ArrowLeft, FileText, Cpu, Megaphone, BarChart3, Mail, TrendingUp, HelpCircle, ShieldAlert, Truck
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
@@ -26,6 +26,7 @@ export function Sidebar() {
     { name: 'My Bids', path: '/dashboard/bids', icon: Gavel },
     { name: 'Interested', path: '/dashboard/interested', icon: Heart },
     { name: 'Quote Builder', path: '/dashboard/quotes', icon: FileText },
+    { name: 'Shipping Requests', path: '/dashboard/shipping-requests', icon: Truck },
     { name: 'Document Vault', path: '/dashboard/documents', icon: FolderLock },
     { name: 'Calendar & Alerts', path: '/dashboard/reminders', icon: Calendar },
     { name: 'Personal Vendors', path: '/dashboard/vendors', icon: Users },
@@ -146,6 +147,61 @@ export function Sidebar() {
                 location.pathname.startsWith('/seller') ? "text-primary" : "text-muted-foreground group-hover:text-primary"
               )} />
               Seller Portal
+            </Link>
+          </>
+        ) : null}
+
+        {!isAdminSide && (profile?.role === 'logistics' || profile?.role === 'admin' || profile?.role === 'superadmin') ? (
+          <>
+            <div className="pt-6 pb-2">
+              <p className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Logistics
+              </p>
+            </div>
+            <Link
+              to="/logistics"
+              className={clsx(
+                "flex items-center px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group",
+                location.pathname === '/logistics'
+                  ? "bg-primary/10 text-primary font-semibold" 
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Truck className={clsx(
+                "w-5 h-5 mr-3 shrink-0 transition-colors",
+                location.pathname === '/logistics' ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+              )} />
+              Portal Dashboard
+            </Link>
+            <Link
+              to="/logistics/requests"
+              className={clsx(
+                "flex items-center px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group mt-1",
+                location.pathname === '/logistics/requests'
+                  ? "bg-primary/10 text-primary font-semibold" 
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <ClipboardCheck className={clsx(
+                "w-5 h-5 mr-3 shrink-0 transition-colors",
+                location.pathname === '/logistics/requests' ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+              )} />
+              Incoming Quotes
+            </Link>
+            <Link
+              to="/logistics/profile"
+              className={clsx(
+                "flex items-center px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group mt-1",
+                location.pathname === '/logistics/profile'
+                  ? "bg-primary/10 text-primary font-semibold" 
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Settings className={clsx(
+                "w-5 h-5 mr-3 shrink-0 transition-colors",
+                location.pathname === '/logistics/profile' ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+              )} />
+              Provider Profile
             </Link>
           </>
         ) : null}

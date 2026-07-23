@@ -178,6 +178,35 @@
     background-color: var(--background);
     color: var(--foreground);
   }
+
+  /* Prevent text input cursor (caret) and mouse cursor from turning white/disappearing */
+  input, textarea {
+    caret-color: #0f172a !important; /* Default dark caret */
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='20' viewBox='0 0 10 20'><path d='M 2 3 L 8 3 M 5 3 L 5 17 M 2 17 L 8 17' stroke='%230f172a' stroke-width='1.5' stroke-linecap='round' fill='none'/></svg>") 5 10, text !important;
+  }
+  
+  .dark input, .dark textarea,
+  input.bg-slate-900, input.bg-slate-950, input.bg-slate-900\/95, input.bg-slate-950\/95,
+  textarea.bg-slate-900, textarea.bg-slate-950, textarea.bg-slate-900\/95, textarea.bg-slate-950\/95 {
+    caret-color: #ffffff !important; /* Light caret for dark inputs */
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='20' viewBox='0 0 10 20'><path d='M 2 3 L 8 3 M 5 3 L 5 17 M 2 17 L 8 17' stroke='%23ffffff' stroke-width='1.5' stroke-linecap='round' fill='none'/></svg>") 5 10, text !important;
+  }
+
+  /* Force caret color and custom cursor in dark containers only if input itself is not light */
+  .bg-slate-900 input:not([class*="bg-white"]):not([class*="bg-slate-100"]),
+  .bg-slate-950 input:not([class*="bg-white"]):not([class*="bg-slate-100"]),
+  .bg-slate-900 textarea:not([class*="bg-white"]):not([class*="bg-slate-100"]),
+  .bg-slate-950 textarea:not([class*="bg-white"]):not([class*="bg-slate-100"]) {
+    caret-color: #ffffff !important;
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='20' viewBox='0 0 10 20'><path d='M 2 3 L 8 3 M 5 3 L 5 17 M 2 17 L 8 17' stroke='%23ffffff' stroke-width='1.5' stroke-linecap='round' fill='none'/></svg>") 5 10, text !important;
+  }
+
+  /* Force dark caret/cursor on explicitly light inputs, even inside dark panels */
+  input[class*="bg-white"], input[class*="bg-slate-100"], input[class*="bg-slate-50"], input[class*="bg-slate-200"],
+  textarea[class*="bg-white"], textarea[class*="bg-slate-100"], textarea[class*="bg-slate-50"], textarea[class*="bg-slate-200"] {
+    caret-color: #0f172a !important;
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='20' viewBox='0 0 10 20'><path d='M 2 3 L 8 3 M 5 3 L 5 17 M 2 17 L 8 17' stroke='%230f172a' stroke-width='1.5' stroke-linecap='round' fill='none'/></svg>") 5 10, text !important;
+  }
 }
 
 @keyframes fadeIn {

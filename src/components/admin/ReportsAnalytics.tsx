@@ -16,7 +16,11 @@ import {
   Unlock,
   DollarSign,
   Activity,
-  Clock
+  Clock,
+  MapPin,
+  Globe,
+  Building2,
+  Navigation
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -178,7 +182,17 @@ export function ReportsAnalytics() {
   const [exportMessage, setExportMessage] = useState<string | null>(null);
 
   // Tabs state
-  const [activeTab, setActiveTab] = useState<'overview' | 'emd' | 'wallet'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'location' | 'emd' | 'wallet'>('overview');
+
+  // Location stats state
+  const [locationStats, setLocationStats] = useState<{
+    locations: { location: string; count: number; percentage: number; topCategory: string; categories: { name: string; count: number }[] }[];
+    totalAuctions: number;
+    topRegion: string;
+    dailyTrends: any[];
+  }>({ locations: [], totalAuctions: 0, topRegion: 'N/A', dailyTrends: [] });
+  const [isLoadingLocations, setIsLoadingLocations] = useState(true);
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
 
   // Live reports data state
   const [liveReportData, setLiveReportData] = useState<{
@@ -230,6 +244,7 @@ export function ReportsAnalytics() {
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [chartType, setChartType] = useState<'line' | 'pie'>('line');
+  const [locChartType, setLocChartType] = useState<'bar' | 'pie'>('bar');
   const [selectedChartCategories, setSelectedChartCategories] = useState<string[]>([]);
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
@@ -239,6 +254,18 @@ export function ReportsAnalytics() {
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    async function loadLocationData() {
+      setIsLoadingLocations(true);
+      try {
+        const locData = await adminService.getLocationAnalytics();
+        setLocationStats(locData);
+      } catch (err) {
+        console.error('Failed loading location analytics', err);
+      } finally {
+        setIsLoadingLocations(false);
+      }
+    }
+
     async function loadCategoryData() {
       setIsLoadingCategories(true);
       try {
@@ -519,6 +546,7 @@ export function ReportsAnalytics() {
       }
     }
 
+    loadLocationData();
     loadCategoryData();
     loadReportMetrics();
     loadFinancialData();
@@ -733,7 +761,8 @@ export function ReportsAnalytics() {
 
   // Helper to trigger CSV download
   const triggerCsvDownload = (csvContent: string, filename: string) => {
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Add UTF-8 Byte Order Mark (\uFEFF) so Excel opens UTF-8 symbols & text perfectly
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
@@ -762,19 +791,33 @@ export function ReportsAnalytics() {
     displayTotals.forEach(cat => {
       const catPct = totalItems > 0 ? ((cat.count / totalItems) * 100).toFixed(2) : '0.00';
       const avgPreBid = categoryAverages[cat.name]?.avgPreBid || 0;
-      const avgEmdPct = categoryAverages[cat.name]?.avgEmdPct || 0;
+      const rawEmdPct = categoryAverages[cat.name]?.avgEmdPct || 0;
 
       lines.push([
         csvCell(cat.name), 
         cat.count, 
         `${catPct}%`,
-        avgPreBid,
-        `${avgEmdPct}%`
+        Math.round(avgPreBid),
+        rawEmdPct > 100 ? '100.00%' : `${rawEmdPct.toFixed(2)}%`
       ].join(','));
     });
 
     const filterLabel = dateFilter === 'all' ? totalsTab : dateFilter;
     triggerCsvDownload(lines.join('\n'), `category_inventory_${filterLabel}_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const downloadLocationCSV = () => {
+    const headers = ['State', 'District / Regional HQ', 'Total Auctions', 'Share of Total (%)', 'Primary Category'];
+    const rows = locationStats.locations.map(loc =>
+      [
+        csvCell(loc.state || loc.location),
+        csvCell(loc.district || loc.location),
+        loc.count,
+        `${loc.percentage}%`,
+        csvCell(loc.topCategory)
+      ].join(',')
+    );
+    triggerCsvDownload([headers.join(','), ...rows].join('\n'), `auctions_by_location_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   const downloadEmdCSV = () => {
@@ -824,36 +867,53 @@ export function ReportsAnalytics() {
     const filterLabel = dateFilter === 'all' ? totalsTab : dateFilter;
     const lines: string[] = [];
 
-    // ── Section 1: Platform Summary ──
+    // ── Section 1: Platform Summary Metrics ──
     lines.push('PLATFORM SUMMARY METRICS');
     lines.push('Metric,Value');
-    lines.push(`Total Users,${financialData.summary.totalUsers}`);
-    lines.push(`Active Listings,${financialData.summary.activeListings}`);
-    lines.push(`Pre-Bid EMD Currently Held,${financialData.summary.emdHeld}`);
-    lines.push(`Total Pre-Bid EMD Volume,${financialData.summary.emdVolume}`);
+    lines.push(`Total Registered Users,${financialData.summary.totalUsers || 0}`);
+    lines.push(`Active Auction Listings,${financialData.summary.activeListings || 0}`);
+    lines.push(`Pre-Bid EMD Currently Held (₹),${Math.round(financialData.summary.emdHeld || 0)}`);
+    lines.push(`Total Pre-Bid EMD Volume (₹),${Math.round(financialData.summary.emdVolume || 0)}`);
+    lines.push('');
     lines.push('');
 
-    // ── Section 2: Category Inventory ──
+    // ── Section 2: Category Inventory Breakdown ──
     const totalItems = displayTotals.reduce((sum, c) => sum + c.count, 0);
 
     lines.push('CATEGORY INVENTORY BREAKDOWN');
-    lines.push('Category,Item Count,Share of Total,Avg Pre-Bid EMD (₹),Avg EMD (%)');
+    lines.push('Category Name,Item Count,Share of Total,Avg Pre-Bid EMD (₹),Avg EMD (%)');
 
     displayTotals.forEach(cat => {
       const catPct = totalItems > 0 ? ((cat.count / totalItems) * 100).toFixed(2) : '0.00';
       const avgPreBid = categoryAverages[cat.name]?.avgPreBid || 0;
-      const avgEmdPct = categoryAverages[cat.name]?.avgEmdPct || 0;
+      const rawEmdPct = categoryAverages[cat.name]?.avgEmdPct || 0;
 
       lines.push([
         csvCell(cat.name), 
         cat.count, 
         `${catPct}%`,
-        avgPreBid,
-        `${avgEmdPct}%`
+        Math.round(avgPreBid),
+        rawEmdPct > 100 ? '100.00%' : `${rawEmdPct.toFixed(2)}%`
       ].join(','));
     });
+    lines.push([csvCell('TOTAL CATEGORIES SUMMARY'), totalItems, '100.00%', '', ''].join(','));
     lines.push('');
-    lines.push(`Total Items,${totalItems},100.00%`);
+    lines.push('');
+
+    // ── Section 3: Location & Region Breakdown ──
+    lines.push('LOCATION & REGION BREAKDOWN');
+    lines.push('State,District / Regional HQ,Auctions Count,Share of Total,Primary Category');
+
+    locationStats.locations.forEach(loc => {
+      lines.push([
+        csvCell(loc.state || loc.location),
+        csvCell(loc.district || loc.location),
+        loc.count,
+        `${loc.percentage}%`,
+        csvCell(loc.topCategory || 'N/A')
+      ].join(','));
+    });
+    lines.push([csvCell('TOTAL REGIONS SUMMARY'), `${locationStats.locations.length} Regions Tracked`, locationStats.totalAuctions, '100.00%', 'All Categories'].join(','));
     lines.push('');
 
     triggerCsvDownload(lines.join('\n'), `platform_analytics_report_${filterLabel}_${new Date().toISOString().split('T')[0]}.csv`);
@@ -895,20 +955,21 @@ export function ReportsAnalytics() {
       )}
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-slate-200 gap-6 print:hidden">
-        {(['overview', 'emd', 'wallet'] as const).map((tab) => (
+      <div className="flex border-b border-slate-200 gap-6 print:hidden overflow-x-auto">
+        {(['overview', 'location', 'emd', 'wallet'] as const).map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
             className={clsx(
-              "pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer capitalize whitespace-nowrap",
+              "pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer capitalize whitespace-nowrap flex items-center gap-2",
               activeTab === tab
                 ? "border-primary text-primary"
                 : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
             )}
           >
-            {tab === 'emd' ? 'EMD Ledger' : tab === 'wallet' ? 'Wallet Ledger' : tab}
+            {tab === 'location' && <MapPin className="w-4 h-4" />}
+            {tab === 'emd' ? 'EMD Ledger' : tab === 'wallet' ? 'Wallet Ledger' : tab === 'location' ? 'Location Analytics' : tab}
           </button>
         ))}
       </div>
@@ -1202,6 +1263,122 @@ export function ReportsAnalytics() {
             )}
           </div>
 
+          {/* Location Analysis Panel on Overview Tab */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <h2 className="text-lg font-bold text-slate-900 flex items-center">
+                  <MapPin className="w-5 h-5 mr-2 text-primary" /> Location Analysis
+                </h2>
+                {/* Chart Switcher */}
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl print:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setLocChartType('bar')}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                      locChartType === 'bar' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    <BarChart3 className="w-4 h-4" /> Volume
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocChartType('pie')}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                      locChartType === 'pie' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    <PieIcon className="w-4 h-4" /> Share
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 print:hidden">
+                <span className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-blue-600" />
+                  {locationStats.locations.length} Regions Indexed
+                </span>
+                <button
+                  type="button"
+                  onClick={downloadLocationCSV}
+                  className="p-2 text-slate-500 hover:text-primary hover:bg-slate-50 rounded-xl transition-all border border-slate-200 shadow-2xs cursor-pointer"
+                  title="Export Location CSV"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Main chart view */}
+            {locChartType === 'bar' ? (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={locationStats.locations.slice(0, 12)} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="location" 
+                      tick={{fontSize: 11, fill: '#64748b'}} 
+                      interval={0} 
+                      angle={-20} 
+                      textAnchor="end" 
+                      tickLine={false} 
+                      axisLine={false} 
+                    />
+                    <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{fill: '#f1f5f9'}} />
+                    <Bar dataKey="count" name="Auctions Count" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-80 flex flex-col md:flex-row items-center justify-center gap-8">
+                {locationStats.locations.length === 0 ? (
+                  <p className="text-slate-500 text-sm font-semibold">No location data available.</p>
+                ) : (
+                  <>
+                    <div className="w-full md:w-1/2 h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={locationStats.locations.slice(0, 8).map(l => ({ name: l.location, value: l.count }))}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={65}
+                            outerRadius={95}
+                            paddingAngle={3}
+                            dataKey="value"
+                          >
+                            {locationStats.locations.slice(0, 8).map((entry, index) => (
+                              <Cell key={`cell-ov-loc-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="w-full md:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto custom-scrollbar p-2">
+                      {locationStats.locations.slice(0, 8).map((entry, index) => {
+                        const total = locationStats.totalAuctions || 1;
+                        const pct = ((entry.count / total) * 100).toFixed(1);
+                        return (
+                          <div key={entry.location} className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-100 rounded-xl">
+                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-800 truncate" title={entry.location}>{entry.location}</p>
+                              <p className="text-[10px] text-slate-550 font-bold mt-0.5">{entry.count} ({pct}%)</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Lower Grid: Subscriptions & Growth Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Subscription Trends */}
@@ -1352,7 +1529,250 @@ export function ReportsAnalytics() {
                 )}
               </div>
             </div>
+
+            {/* Total Items by Location List */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6 flex flex-col mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2.5">
+                  <MapPin className="w-5 h-5 text-primary" /> Total Items by Location / Region
+                  <span className="px-2.5 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full font-bold select-none">
+                    {locationStats.locations.length} Regions Tracked
+                  </span>
+                </h2>
+                <button
+                  type="button"
+                  onClick={downloadLocationCSV}
+                  className="p-2 text-slate-500 hover:text-primary hover:bg-slate-50 rounded-xl transition-all cursor-pointer flex items-center justify-center border border-slate-200 shadow-2xs print:hidden"
+                  title="Download Location CSV"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto pr-1 flex-1 max-h-[450px] print:max-h-none custom-scrollbar">
+                {locationStats.locations.length === 0 ? (
+                  <p className="text-slate-500 text-sm text-center py-4">No locations found.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400 font-bold">
+                          <th className="pb-2.5 font-bold">State</th>
+                          <th className="pb-2.5 font-bold">District / Regional HQ</th>
+                          <th className="pb-2.5 font-bold text-center">Share</th>
+                          <th className="pb-2.5 font-bold">Primary Category</th>
+                          <th className="pb-2.5 font-bold text-right">Auctions Count</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-650">
+                        {locationStats.locations.map((loc) => (
+                          <tr key={loc.location} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="py-2.5 font-bold text-slate-900 flex items-center gap-2">
+                              <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                              {loc.state || loc.location}
+                            </td>
+                            <td className="py-2.5 font-semibold text-slate-600">
+                              {loc.district || loc.location}
+                            </td>
+                            <td className="py-2.5 text-center font-mono text-xs text-slate-500">
+                              {loc.percentage}%
+                            </td>
+                            <td className="py-2.5">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                                {loc.topCategory}
+                              </span>
+                            </td>
+                            <td className="py-2.5 text-right font-bold text-slate-900 font-mono">
+                              {loc.count.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
         </>
+      )}
+
+      {activeTab === 'location' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Location KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Globe className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Regions Tracked</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{locationStats.locations.length}</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Top Region</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5 truncate max-w-[200px]" title={locationStats.topRegion}>
+                  {locationStats.topRegion}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Indexed Auctions</h3>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{locationStats.totalAuctions.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Location Visualizations Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Bar Chart: Auctions by Location */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-blue-600" /> Auctions Volume by Location
+                </span>
+                <span className="text-xs text-slate-400 font-semibold">Top 10 Regions</span>
+              </h3>
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={locationStats.locations.slice(0, 10)} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="location" 
+                      tick={{fontSize: 11, fill: '#64748b'}} 
+                      interval={0} 
+                      angle={-25} 
+                      textAnchor="end" 
+                      tickLine={false} 
+                      axisLine={false} 
+                    />
+                    <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{fill: '#f1f5f9'}} />
+                    <Bar dataKey="count" name="Auctions Count" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Pie Chart: Region Market Share */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <PieIcon className="w-5 h-5 text-emerald-600" /> Regional Market Share
+              </h3>
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={locationStats.locations.slice(0, 7).map(l => ({ name: l.location, value: l.count }))}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={95}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {locationStats.locations.slice(0, 7).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Location Breakdown Table */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-primary" /> Location & Region Breakdown
+                </h3>
+                <p className="text-slate-500 text-xs mt-0.5">Origin breakdown of all scrap auctions processed across India.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search region..."
+                    value={locationSearchQuery}
+                    onChange={(e) => setLocationSearchQuery(e.target.value)}
+                    className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={downloadLocationCSV}
+                  className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-xl flex items-center gap-2 transition-colors cursor-pointer select-none"
+                >
+                  <Download className="w-4 h-4" /> CSV
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
+                    <th className="px-6 py-4 font-bold">State</th>
+                    <th className="px-6 py-4 font-bold">District / Regional HQ</th>
+                    <th className="px-6 py-4 font-bold text-center">Auctions Count</th>
+                    <th className="px-6 py-4 font-bold text-center">Share of Total</th>
+                    <th className="px-6 py-4 font-bold">Primary Category</th>
+                    <th className="px-6 py-4 font-bold">Distribution Bar</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-sm font-semibold text-slate-700">
+                  {locationStats.locations
+                    .filter(loc => (loc.state || loc.location).toLowerCase().includes(locationSearchQuery.toLowerCase()) || (loc.district || '').toLowerCase().includes(locationSearchQuery.toLowerCase()))
+                    .map((loc) => (
+                      <tr key={loc.location} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="px-6 py-4 font-bold text-slate-900 flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-primary shrink-0" />
+                          {loc.state || loc.location}
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-slate-600">
+                          {loc.district || loc.location}
+                        </td>
+                        <td className="px-6 py-4 text-center font-bold text-primary font-mono">
+                          {loc.count.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 text-center font-mono text-slate-600">
+                          {loc.percentage}%
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                            {loc.topCategory}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 min-w-[160px]">
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div 
+                              className="bg-primary h-2 rounded-full transition-all duration-500" 
+                              style={{ width: `${Math.max(loc.percentage, 2)}%` }}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {activeTab === 'emd' && (
