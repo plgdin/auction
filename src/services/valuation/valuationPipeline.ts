@@ -35,6 +35,77 @@ function getRegionalMultiplier(location?: string): { multiplier: number, discoun
   return { multiplier: 1.0 };
 }
 
+// Extract approx unit weight from description
+function extractUnitWeight(description: string): number | null {
+  const desc = (description || '').toLowerCase();
+  
+  // Pattern matching patterns like "APPROX WEIGHT : 120 GRAM PER 1 Nos", "10.5 kg each", etc.
+  const weightRegex = /(?:approx\s*wt\.?|approx\s*weight|weight|wt\.?)\s*:?\s*([\d\.,]+)\s*(gram|g|kg|kilogram|ton|tonne|mt)(?:\s*per|\s*each|\s*\/|\b)/i;
+  
+  const match = desc.match(weightRegex);
+  if (match) {
+    const value = parseFloat(match[1].replace(/,/g, ''));
+    const unit = match[2].toLowerCase();
+    if (!isNaN(value)) {
+      if (unit === 'gram' || unit === 'g') {
+        return value / 1000;
+      } else if (unit === 'ton' || unit === 'tonne' || unit === 'mt') {
+        return value * 1000;
+      } else {
+        return value; // kg
+      }
+    }
+  }
+  
+  const altRegex = /\b([\d\.,]+)\s*(gram|g|kg|kilogram|ton|tonne|mt)\s*(?:each|per|\/)/i;
+  const altMatch = desc.match(altRegex);
+  if (altMatch) {
+    const value = parseFloat(altMatch[1].replace(/,/g, ''));
+    const unit = altMatch[2].toLowerCase();
+    if (!isNaN(value)) {
+      if (unit === 'gram' || unit === 'g') {
+        return value / 1000;
+      } else if (unit === 'ton' || unit === 'tonne' || unit === 'mt') {
+        return value * 1000;
+      } else {
+        return value;
+      }
+    }
+  }
+  
+  return null;
+}
+
+function getDefaultUnitWeight(commodityName: string, modelId: string | null): number {
+  const comm = (commodityName || '').toLowerCase();
+  const model = modelId ? modelId.toLowerCase() : '';
+  
+  if (comm === 'copper') return 0.5;
+  if (comm === 'brass') return 0.5;
+  if (comm === 'aluminium' || comm === 'aluminum') return 0.5;
+  if (comm === 'lead') return 2.0;
+  if (comm === 'zinc') return 1.0;
+  
+  if (comm === 'steel_iron_ferrous' || model === 'primary_steel' || model === 'scrap_steel') {
+    return 5.0; // 5 kg
+  }
+  
+  return 1.0;
+}
+
+function getDefaultWeightPerUnit(commodityName: string, modelId: string | null): number {
+  const comm = (commodityName || '').toLowerCase();
+  const model = modelId ? modelId.toLowerCase() : '';
+  
+  if (model === 'cars_vehicles' || comm === 'vehicle') return 1500; // 1.5 Tons
+  if (comm === 'heavy_vehicle_machinery') return 5000; // 5 Tons
+  if (comm === 'transformer') return 1000; // 1 Ton
+  if (comm === 'e_waste' || model === 'e_waste_electronics') return 10; // 10 kg
+  if (comm === 'motorcycle') return 150; // 150 kg
+  
+  return 100;
+}
+
 export const valuationPipeline = {
   executeSync(
     rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string }[],
@@ -80,7 +151,7 @@ export const valuationPipeline = {
       }
 
       const qty = totalQty > 0 ? totalQty : 1;
-      const baseQty = totalBaseQty > 0 ? totalBaseQty : 1;
+      let baseQty = totalBaseQty > 0 ? totalBaseQty : 1;
 
       // 2. Not Available / Unpriceable lot filters
       const descLower = (rawItem.description || '').toLowerCase();
@@ -100,15 +171,35 @@ export const valuationPipeline = {
         'ship', 'boat', 'vessel', 'yacht', 'barge', 'ferry', 'tugboat', 'cruiser',
         'property', 'flat', 'plot', 'land', 'building', 'office space', 'shop', 'showroom', 'immovable'
       ];
-      const isUnpriceable = unpriceableWords.some(word => descLower.includes(word));
+      const isUnpriceable = unpriceableWords.some(word => {
+        const regex = new RegExp(`\\b${word}(?:s|es)?\\b`, 'i');
+        return regex.test(descLower);
+      });
       
       const isUnknownCommodity = comm.name === 'default';
-      const isDiscrete = unitLower.includes('no') || unitLower === 'ea' || unitLower.includes('unit') || unitLower.includes('set') || unitLower === 'pc' || unitLower === 'pcs';
-      const isWeight = unitLower.includes('kg') || unitLower.includes('mt') || unitLower.includes('ton');
+      const isDiscrete = unitLower.includes('no') || unitLower === 'ea' || unitLower.includes('unit') || unitLower.includes('set') || unitLower === 'pc' || unitLower === 'pcs' || unitLower.includes('item');
+      const isWeight = unitLower.includes('kg') || unitLower.includes('mt') || unitLower.includes('ton') || unitLower.includes('tonne');
       
       const modelId = detectModelId(rawItem.description);
       const targetUnit = modelId ? (modelId === 'cars_vehicles' || modelId === 'e_waste_electronics' ? 'Units' : 'Tons') : (comm.unit === 'kg' || comm.unit === 'Ton' ? 'Tons' : 'Units');
-      const isMismatch = (isDiscrete && targetUnit === 'Tons') || (isWeight && targetUnit === 'Units');
+      let isMismatch = (isDiscrete && targetUnit === 'Tons') || (isWeight && targetUnit === 'Units');
+
+      if (isMismatch) {
+        if (isDiscrete && targetUnit === 'Tons') {
+          const parsedWeight = extractUnitWeight(rawItem.description);
+          const unitWeight = parsedWeight !== null ? parsedWeight : getDefaultUnitWeight(comm.name, modelId);
+          baseQty = qty * unitWeight;
+          isMismatch = false;
+        } else if (isWeight && targetUnit === 'Units') {
+          let totalWeightKg = baseQty;
+          if (unitLower.includes('mt') || unitLower.includes('ton') || unitLower.includes('tonne')) {
+            totalWeightKg = qty * 1000;
+          }
+          const weightPerUnit = getDefaultWeightPerUnit(comm.name, modelId);
+          baseQty = totalWeightKg / weightPerUnit;
+          isMismatch = false;
+        }
+      }
 
       const isFailedOrWithdrawn = descLower.includes('withdrawn') || 
                                   descLower.includes('cancelled') || 
@@ -155,7 +246,7 @@ export const valuationPipeline = {
       const customPriceStr = rawItem.marketPrice;
       if (customPriceStr) {
         const cleanPrice = customPriceStr.replace(/,/g, '');
-        const priceMatch = cleanPrice.match(/₹\s*(\d+)/);
+        const priceMatch = cleanPrice.match(/(?:₹|Ôé╣|â‚¹|Ã”Ã©â•£)\s*(\d+)/);
         if (priceMatch) {
           let parsedPrice = parseInt(priceMatch[1], 10);
           if (parsedPrice > 1) {

@@ -285,6 +285,39 @@ export async function runRoiEngineTests(): Promise<boolean> {
     // Should yield High Risk or Avoid due to unserviceable and overpriced parameters
     assert(valuationC.recommendation.status.startsWith('Avoid'), `Electronics scrap recommendation should be 'Avoid', got ${valuationC.recommendation.status}`);
 
+    // Catalog Item D: Unit mismatch with explicit weight in description
+    const catalogItemD = [
+      {
+        sr: 1,
+        description: 'Steel OBSOLETE COPPER COMMUTATOR RING (APPROX WEIGHT : 120 GRAM PER 1 Nos) LYING AT CSN :- 154 Nos',
+        qty: '154',
+        unit: 'NO',
+        marketPrice: '₹78,407 / Ton'
+      }
+    ];
+    const costsD = {
+      currentBid: 1000,
+      gstPercent: 18,
+      tcsPercent: 1
+    };
+    const valuationD = await roiEngine.calculateValuation(catalogItemD, costsD, false, 'Gujarat');
+    assert(valuationD.totalLotValue > 0, `Discrete item with mismatch should be priceable, got value ${valuationD.totalLotValue}`);
+    assert(!valuationD.items[0].notAvailable, `Item should not be marked as notAvailable`);
+
+    // Catalog Item E: Unit mismatch with fallback weight and Leyland check (avoiding layland word boundary failure)
+    const catalogItemE = [
+      {
+        sr: 1,
+        description: 'Steel NEW OBSOLETE 3RD SPEED GEAR FOR LAYLAND LYING AT CSN :- 108 Nos',
+        qty: '108',
+        unit: 'NO',
+        marketPrice: '₹78,407 / Ton'
+      }
+    ];
+    const valuationE = await roiEngine.calculateValuation(catalogItemE, costsD, false, 'Gujarat');
+    assert(valuationE.totalLotValue > 0, `Leyland item should be priceable and have positive value, got ${valuationE.totalLotValue}`);
+    assert(!valuationE.items[0].notAvailable, `Leyland item should not be marked as notAvailable`);
+
   } catch (err: any) {
     console.error('Catalog Regression Tests Failed:', err.message);
     success = false;
