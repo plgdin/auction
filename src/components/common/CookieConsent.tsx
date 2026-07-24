@@ -43,7 +43,7 @@ export function CookieConsent() {
 
   return (
     <div 
-      className="fixed bottom-6 right-6 z-55 max-w-sm w-full bg-card border border-border rounded-xl shadow-xl animate-fade-in p-5 print:hidden"
+      className="fixed bottom-6 left-6 z-[1050] max-w-sm w-full bg-card border border-border rounded-xl shadow-xl animate-fade-in p-5 print:hidden"
       role="region"
       aria-label="Cookie consent banner"
     >

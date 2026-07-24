@@ -2089,7 +2089,9 @@ export const MstcSearchService = {
         });
 
         if (!correctionError && correctedQuery && correctedQuery !== workingQuery) {
-          console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
+          if ((import.meta as any).env?.DEV) {
+            console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
+          }
           const retryResult = await supabase.rpc('hybrid_search_mstc_catalog', {
             p_search_query: correctedQuery,
             p_embedding: embeddingStr as any,

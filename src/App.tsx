@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -6,7 +6,8 @@ import { router } from './router';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-import { Chatbox } from './components/common/Chatbox';
+
+const Chatbox = lazy(() => import('./components/common/Chatbox').then(m => ({ default: m.Chatbox })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,6 +22,7 @@ function App() {
   const { initializeAuth, user } = useAuthStore();
   const { setCurrencyRates, fetchInterestedMstcIds } = useAppStore();
   const [isMobile, setIsMobile] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -43,6 +45,12 @@ function App() {
     }
   }, [user, fetchInterestedMstcIds]);
 
+  // Delay chatbot mount until after initial paint to prevent flash of the orb
+  useEffect(() => {
+    const timer = setTimeout(() => setShowChatbot(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     // Fetch latest currency rates dynamically on load (lazy-imported to reduce TBT)
     import('./utils/currency').then(({ fetchLatestRates }) => {
@@ -54,26 +62,6 @@ function App() {
         })
         .catch((err) => console.warn('Dynamic exchange rate fetch failed:', err));
     });
-
-    // Heavy embedding model pre-warming has been removed from App initialization.
-    // It will be lazy-loaded on-demand during the first semantic search to prevent 
-    // massive Total Blocking Time (TBT) penalties during Lighthouse performance tests.
-
-    // Lazy load the pre-fetching to keep initial load lightweight
-    const prefetchTimer = setTimeout(async () => {
-      try {
-        const { MstcSearchService } = await import('./services/publicService');
-        const { auctionService } = await import('./services/auctionService');
-        MstcSearchService.getMstcFilterOptions().catch(err => console.warn('Pre-fetching filter options failed:', err));
-        auctionService.getCategories().catch(err => console.warn('Pre-fetching categories failed:', err));
-      } catch (e) {
-        console.warn('Failed to load search/auction services dynamically:', e);
-      }
-    }, 5000);
-
-    return () => {
-      clearTimeout(prefetchTimer);
-    };
   }, [initializeAuth, setCurrencyRates]);
 
   if (isMobile) {
@@ -101,7 +89,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <RouterProvider router={router} />
-        <Chatbox />
+        {showChatbot && (
+          <Suspense fallback={null}>
+            <Chatbox />
+          </Suspense>
+        )}
         <Toaster
           position="top-right"
           containerClassName="print:hidden"
