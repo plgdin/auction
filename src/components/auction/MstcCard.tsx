@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel } from 'lucide-react';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime, hasConfirmedAssetDocuments } from '../../utils/mstcHelpers';
@@ -37,50 +37,15 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     };
   }, [item]);
   
-  const [currentImageIdx, setCurrentImageIdx] = useState(0);
-  const [hasSetDefaultIdx, setHasSetDefaultIdx] = useState(false);
+  const hasOtherMedia = (summary?.extracted_images || []).length > 0;
 
-  // Distinguish actual item photos from document page preview images
-  const actualPhotos = useMemo(() => {
-    if (!summary) return [];
-    return (summary.extracted_images || []).filter(
-      (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('_page_') && !url.toLowerCase().includes('mstc-previews/') && !url.toLowerCase().endsWith('.pdf')
-    );
-  }, [summary?.extracted_images]);
-  
-  const rawImages = useMemo(() => {
-    if (actualPhotos.length > 0) return actualPhotos;
-    if (summary?.preview_image_url) return [summary.preview_image_url];
-    
-    // Look for any catalog pages inside extracted_images
-    const catalogPages = (summary?.extracted_images || []).filter(
-      (url: string) => (url.toLowerCase().includes('_catalog_page_') || url.toLowerCase().includes('_page_') || url.toLowerCase().includes('mstc-previews/')) && !url.toLowerCase().endsWith('.pdf')
-    );
-    if (catalogPages.length > 0) return catalogPages;
-    
-    const fallbackPreview = item.sanitized_document_path ? `mstc-previews/${item.id}.jpg` : null;
-    return fallbackPreview ? [fallbackPreview] : [];
-  }, [actualPhotos, summary, item.id, item.sanitized_document_path]);
-
-  // MSTC PDF catalogs typically start with 1-3 pages of site/building cover photos
-  // before showing the actual product/vehicle images. Skip past those for the default preview.
-  useEffect(() => {
-    if (hasSetDefaultIdx || rawImages.length <= 1) return;
-    let defaultIdx = 0;
-    if (rawImages.length > 10) {
-      defaultIdx = 4; // Large catalogs: skip first 4 site/header images
-    } else if (rawImages.length > 5) {
-      defaultIdx = 3;
-    } else if (rawImages.length > 2) {
-      defaultIdx = 1;
-    }
-    setCurrentImageIdx(defaultIdx);
-    setHasSetDefaultIdx(true);
-  }, [rawImages.length, hasSetDefaultIdx]);
-
-  const hasOtherMedia = rawImages.length > 0;
-  const safeImageIdx = Math.min(currentImageIdx, Math.max(0, rawImages.length - 1));
-  const rawDisplayImage = rawImages[safeImageIdx] || null;
+  // Card preview: always show the catalog document page (like the MSTC header page).
+  // Extracted item photos are viewable inside the details modal.
+  const rawDisplayImage = useMemo(() => {
+    if (summary?.preview_image_url) return summary.preview_image_url;
+    if (item.sanitized_document_path) return `mstc-previews/${item.id}.jpg`;
+    return null;
+  }, [summary?.preview_image_url, item.sanitized_document_path, item.id]);
 
   const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
@@ -247,7 +212,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
         {imageLoading ? (
           <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-100 animate-pulse hidden sm:block"></div>
         ) : signedDisplayImage ? (
-          <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-55 relative hidden sm:block group/image">
+          <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
             <img 
               src={signedDisplayImage} 
               alt="Catalog Image" 
@@ -260,37 +225,6 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                 "group-hover:scale-[1.03]"
               )}
             />
-            {rawImages.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCurrentImageIdx(prev => (prev - 1 + rawImages.length) % rawImages.length);
-                  }}
-                  className="absolute left-1 top-1/2 -translate-y-1/2 bg-slate-900/60 hover:bg-slate-900/80 text-white p-0.5 rounded-full opacity-0 group-hover/image:opacity-100 transition-opacity cursor-pointer z-10"
-                  title="Previous Image"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCurrentImageIdx(prev => (prev + 1) % rawImages.length);
-                  }}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 bg-slate-900/60 hover:bg-slate-900/80 text-white p-0.5 rounded-full opacity-0 group-hover/image:opacity-100 transition-opacity cursor-pointer z-10"
-                  title="Next Image"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-                <div className="absolute bottom-1 right-1 bg-slate-900/60 text-white text-[8px] font-bold px-1 py-0.2 rounded backdrop-blur-xs select-none">
-                  {safeImageIdx + 1}
-                </div>
-              </>
-            )}
           </div>
         ) : (
           <div className="w-[120px] h-[120px] rounded-xl border border-slate-200 shrink-0 bg-slate-50 flex flex-col items-center justify-center text-slate-400 select-none hidden sm:flex gap-1.5">
@@ -422,55 +356,22 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full p-5 justify-between">
       <div>
-        <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative group/image">
+        <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
           {imageLoading ? (
             <div className="w-full h-full bg-slate-100 animate-pulse"></div>
           ) : signedDisplayImage ? (
-            <>
-              <img 
-                src={signedDisplayImage} 
-                alt="Catalog Image" 
-                loading="lazy"
-                decoding="async"
-                onLoad={() => setHighResLoaded(true)}
-                className={clsx(
-                  "w-full h-full object-cover object-top transition-all duration-500 ease-out",
-                  !highResLoaded ? "blur-md scale-105" : "blur-0 scale-100",
-                  "group-hover:scale-[1.02]"
-                )}
-              />
-              {rawImages.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setCurrentImageIdx(prev => (prev - 1 + rawImages.length) % rawImages.length);
-                    }}
-                    className="absolute left-1.5 top-1/2 -translate-y-1/2 bg-slate-900/60 hover:bg-slate-900/80 text-white p-1 rounded-full opacity-0 group-hover/image:opacity-100 transition-opacity cursor-pointer z-10 animate-fade-in"
-                    title="Previous Image"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setCurrentImageIdx(prev => (prev + 1) % rawImages.length);
-                    }}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-slate-900/60 hover:bg-slate-900/80 text-white p-1 rounded-full opacity-0 group-hover/image:opacity-100 transition-opacity cursor-pointer z-10 animate-fade-in"
-                    title="Next Image"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                  <div className="absolute bottom-1.5 right-1.5 bg-slate-900/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded backdrop-blur-xs select-none">
-                    {safeImageIdx + 1} / {rawImages.length}
-                  </div>
-                </>
+            <img 
+              src={signedDisplayImage} 
+              alt="Catalog Image" 
+              loading="lazy"
+              decoding="async"
+              onLoad={() => setHighResLoaded(true)}
+              className={clsx(
+                "w-full h-full object-cover object-top transition-all duration-500 ease-out",
+                !highResLoaded ? "blur-md scale-105" : "blur-0 scale-100",
+                "group-hover:scale-[1.02]"
               )}
-            </>
+            />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
               <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
