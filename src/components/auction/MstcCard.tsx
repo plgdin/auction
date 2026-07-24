@@ -38,6 +38,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
   }, [item]);
   
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
+  const [hasSetDefaultIdx, setHasSetDefaultIdx] = useState(false);
 
   // Distinguish actual item photos from document page preview images
   const actualPhotos = useMemo(() => {
@@ -60,6 +61,22 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     const fallbackPreview = item.sanitized_document_path ? `mstc-previews/${item.id}.jpg` : null;
     return fallbackPreview ? [fallbackPreview] : [];
   }, [actualPhotos, summary, item.id, item.sanitized_document_path]);
+
+  // MSTC PDF catalogs typically start with 1-3 pages of site/building cover photos
+  // before showing the actual product/vehicle images. Skip past those for the default preview.
+  useEffect(() => {
+    if (hasSetDefaultIdx || rawImages.length <= 1) return;
+    let defaultIdx = 0;
+    if (rawImages.length > 10) {
+      defaultIdx = 4; // Large catalogs: skip first 4 site/header images
+    } else if (rawImages.length > 5) {
+      defaultIdx = 3;
+    } else if (rawImages.length > 2) {
+      defaultIdx = 1;
+    }
+    setCurrentImageIdx(defaultIdx);
+    setHasSetDefaultIdx(true);
+  }, [rawImages.length, hasSetDefaultIdx]);
 
   const hasOtherMedia = rawImages.length > 0;
   const safeImageIdx = Math.min(currentImageIdx, Math.max(0, rawImages.length - 1));
