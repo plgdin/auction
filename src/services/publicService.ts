@@ -2969,3 +2969,138 @@ export const GemSearchService = {
     }
   }
 };
+
+export interface GemBid {
+  id: string;
+  bid_number: string;
+  ra_number?: string | null;
+  items: string;
+  quantity?: string | null;
+  department_name?: string | null;
+  start_date: string;
+  end_date: string;
+  status: string;
+  document_url?: string | null;
+  ra_document_url?: string | null;
+  category_name: string;
+  raw_description?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const GemBidSearchService = {
+  /**
+   * Search for GeM Procurement Bids (BidPlus)
+   */
+  async searchGemBids(
+    query: string,
+    filters?: {
+      category?: string;
+      department?: string;
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+    }
+  ): Promise<{ data: GemBid[]; count: number }> {
+    try {
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 12;
+      const offset = (page - 1) * limit;
+
+      let q = supabase
+        .from('gem_bids')
+        .select('*', { count: 'exact' });
+
+      // Apply category filter
+      if (filters?.category && filters.category !== 'All Categories') {
+        q = q.eq('category_name', filters.category);
+      }
+
+      // Apply department filter
+      if (filters?.department && filters.department !== 'All Departments') {
+        q = q.eq('department_name', filters.department);
+      }
+
+      // Full text search
+      if (query.trim()) {
+        const cleanQuery = query.trim();
+        q = q.or(`bid_number.ilike.%${cleanQuery}%,ra_number.ilike.%${cleanQuery}%,items.ilike.%${cleanQuery}%,department_name.ilike.%${cleanQuery}%,category_name.ilike.%${cleanQuery}%`);
+      }
+
+      // Sorting
+      const sortBy = filters?.sortBy || 'newest';
+      if (sortBy === 'date_asc') {
+        q = q.order('start_date', { ascending: true });
+      } else {
+        q = q.order('start_date', { ascending: false });
+      }
+
+      // Pagination
+      q = q.range(offset, offset + limit - 1);
+
+      const { data, error, count } = await q;
+
+      if (error) throw error;
+
+      return {
+        data: (data as GemBid[]) || [],
+        count: count || 0,
+      };
+    } catch (e) {
+      console.error('Failed to search GeM bids:', e);
+      return { data: [], count: 0 };
+    }
+  },
+
+  /**
+   * Fetch single GeM bid details by database ID
+   */
+  async getGemBidById(id: string): Promise<GemBid | null> {
+    try {
+      const { data, error } = await supabase
+        .from('gem_bids')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return data as GemBid;
+    } catch (e) {
+      console.error(`Failed to load GeM bid ${id}:`, e);
+      return null;
+    }
+  },
+
+  /**
+   * Fetch distinct categories and departments to populate search filters
+   */
+  async getGemBidFilterOptions(): Promise<{
+    categories: string[];
+    departments: string[];
+  }> {
+    try {
+      const { data, error } = await supabase
+        .from('gem_bids')
+        .select('category_name, department_name');
+
+      if (error) throw error;
+
+      const categoriesSet = new Set<string>();
+      const departmentsSet = new Set<string>();
+
+      (data || []).forEach((item) => {
+        if (item.category_name) categoriesSet.add(item.category_name);
+        if (item.department_name) departmentsSet.add(item.department_name);
+      });
+
+      return {
+        categories: Array.from(categoriesSet).sort(),
+        departments: Array.from(departmentsSet).sort(),
+      };
+    } catch (e) {
+      console.error('Failed to load GeM bid filter options:', e);
+      return { categories: [], departments: [] };
+    }
+  }
+};
+

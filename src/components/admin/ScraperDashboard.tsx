@@ -41,16 +41,19 @@ interface ScraperStats {
 }
 
 export function ScraperDashboard() {
-  const [sourceTab, setSourceTab] = useState<'mstc' | 'baanknet' | 'gem'>('mstc');
+  const [sourceTab, setSourceTab] = useState<'mstc' | 'baanknet' | 'gem' | 'gem-bids'>('mstc');
   const [stats, setStats] = useState<ScraperStats>({ total: 0, pending: 0, processing: 0, completed: 0, failed: 0 });
   const [baanknetStats, setBaanknetStats] = useState({ total: 0, upcoming: 0, live: 0, closed: 0 });
   const [gemStats, setGemStats] = useState({ total: 0, live: 0, closed: 0 });
+  const [gemBidsStats, setGemBidsStats] = useState({ total: 0, live: 0, closed: 0 });
   const [auctions, setAuctions] = useState<any[]>([]);
   const [baanknetAuctions, setBaanknetAuctions] = useState<any[]>([]);
   const [gemAuctions, setGemAuctions] = useState<any[]>([]);
+  const [gemBids, setGemBids] = useState<any[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [baanknetLogs, setBaanknetLogs] = useState<AuditLog[]>([]);
   const [gemLogs, setGemLogs] = useState<AuditLog[]>([]);
+  const [gemBidsLogs, setGemBidsLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,7 +72,7 @@ export function ScraperDashboard() {
       },
       {
         key: 'ref',
-        label: sourceTab === 'baanknet' ? 'Search ID Fields Only' : 'Search Reference No Only',
+        label: sourceTab === 'baanknet' ? 'Search ID Fields Only' : sourceTab === 'gem-bids' ? 'Search Bid/RA Number' : 'Search Reference No Only',
       }
     ],
     onClick: ({ key }: { key: string }) => {
@@ -84,12 +87,14 @@ export function ScraperDashboard() {
   const [backfillRunning, setBackfillRunning] = useState(false);
   const [baanknetRunning, setBaanknetRunning] = useState(false);
   const [gemRunning, setGemRunning] = useState(false);
+  const [gemBidsRunning, setGemBidsRunning] = useState(false);
   const [liveScraperLogs, setLiveScraperLogs] = useState<string[]>([]);
   const [liveWorkerLogs, setLiveWorkerLogs] = useState<string[]>([]);
   const [liveClearDbLogs, setLiveClearDbLogs] = useState<string[]>([]);
   const [liveBackfillLogs, setLiveBackfillLogs] = useState<string[]>([]);
   const [liveBaanknetLogs, setLiveBaanknetLogs] = useState<string[]>([]);
   const [liveGemLogs, setLiveGemLogs] = useState<string[]>([]);
+  const [liveGemBidsLogs, setLiveGemBidsLogs] = useState<string[]>([]);
   const [isLocalApiAvailable, setIsLocalApiAvailable] = useState(false);
   const [isServerless, setIsServerless] = useState(false);
   const [generateVectorsRunning, setGenerateVectorsRunning] = useState(false);
@@ -100,13 +105,19 @@ export function ScraperDashboard() {
   const backfillTerminalRef = useRef<HTMLDivElement>(null);
   const baanknetTerminalRef = useRef<HTMLDivElement>(null);
   const gemTerminalRef = useRef<HTMLDivElement>(null);
+  const gemBidsTerminalRef = useRef<HTMLDivElement>(null);
 
   const loadDashboardData = async (silent = false) => {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
 
     try {
-      const [statsData, auctionsData, logsData, bnStats, bnAuctions, bnLogs, gemStatsData, gemAuctionsData, gemLogsData] = await Promise.all([
+      const [
+        statsData, auctionsData, logsData, 
+        bnStats, bnAuctions, bnLogs, 
+        gemStatsData, gemAuctionsData, gemLogsData,
+        gemBidsStatsData, gemBidsData, gemBidsLogsData
+      ] = await Promise.all([
         adminService.getScraperAnalytics(),
         adminService.getScraperAuctions(3000),
         adminService.getScraperLogs(100),
@@ -115,7 +126,10 @@ export function ScraperDashboard() {
         adminService.getBaanknetScraperLogs(100),
         adminService.getGemScraperAnalytics(),
         adminService.getGemScraperAuctions(3000),
-        adminService.getGemScraperLogs(100)
+        adminService.getGemScraperLogs(100),
+        adminService.getGemBidsScraperAnalytics(),
+        adminService.getGemBidsScraperBids(3000),
+        adminService.getGemBidsScraperLogs(100)
       ]);
 
       setStats(statsData);
@@ -127,6 +141,9 @@ export function ScraperDashboard() {
       setGemStats(gemStatsData);
       setGemAuctions(gemAuctionsData);
       setGemLogs(gemLogsData);
+      setGemBidsStats(gemBidsStatsData);
+      setGemBids(gemBidsData);
+      setGemBidsLogs(gemBidsLogsData);
     } catch (err: any) {
       console.error('Failed to load scraper dashboard data:', err);
       toast.error('Failed to reload database metrics.');
@@ -165,12 +182,14 @@ export function ScraperDashboard() {
         setBackfillRunning(data.backfillRunning);
         setBaanknetRunning(data.baanknetRunning);
         setGemRunning(data.gemRunning || false);
+        setGemBidsRunning(data.gemBidsRunning || false);
         setLiveScraperLogs(data.scraperLogs || []);
         setLiveWorkerLogs(data.workerLogs || []);
         setLiveClearDbLogs(data.clearDbLogs || []);
         setLiveBackfillLogs(data.backfillLogs || []);
         setLiveBaanknetLogs(data.baanknetLogs || []);
         setLiveGemLogs(data.gemLogs || []);
+        setLiveGemBidsLogs(data.gemBidsLogs || []);
         setIsLocalApiAvailable(true);
         setIsServerless(!!data.isServerless);
       } catch (err) {
@@ -215,6 +234,18 @@ export function ScraperDashboard() {
       baanknetTerminalRef.current.scrollTop = baanknetTerminalRef.current.scrollHeight;
     }
   }, [liveBaanknetLogs]);
+
+  useEffect(() => {
+    if (gemTerminalRef.current) {
+      gemTerminalRef.current.scrollTop = gemTerminalRef.current.scrollHeight;
+    }
+  }, [liveGemLogs]);
+
+  useEffect(() => {
+    if (gemBidsTerminalRef.current) {
+      gemBidsTerminalRef.current.scrollTop = gemBidsTerminalRef.current.scrollHeight;
+    }
+  }, [liveGemBidsLogs]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -327,6 +358,43 @@ export function ScraperDashboard() {
       });
       toast.success('GeM Portal scraper stop signal sent.');
       setGemRunning(false);
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const startGemBidsScraper = async () => {
+    try {
+      const token = await getAuthToken();
+      const res = await fetch('/api/scraper/gem-bids/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('GeM Bids scraper process spawned!');
+        setGemBidsRunning(true);
+      } else {
+        toast.error(data.message || 'Failed to start GeM Bids scraper.');
+      }
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const stopGemBidsScraper = async () => {
+    try {
+      const token = await getAuthToken();
+      await fetch('/api/scraper/gem-bids/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      toast.success('GeM Bids scraper stop signal sent.');
+      setGemBidsRunning(false);
     } catch (err) {
       toast.error('Could not connect to local API plugin.');
     }
@@ -650,6 +718,22 @@ export function ScraperDashboard() {
     return matchesSearch;
   });
 
+  const filteredGemBids = gemBids.filter(auc => {
+    let matchesSearch = false;
+    if (searchType === 'ref') {
+      matchesSearch = (auc.bid_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      (auc.ra_number || '').toLowerCase().includes(searchTerm.toLowerCase());
+    } else {
+      matchesSearch = 
+        (auc.bid_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (auc.ra_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (auc.items || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (auc.department_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (auc.category_name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    }
+    return matchesSearch;
+  });
+
   useEffect(() => {
     if (activeSubTab === 'auctions') {
       if (sourceTab === 'mstc') {
@@ -670,7 +754,7 @@ export function ScraperDashboard() {
         } else {
           setSelectedAuctionId(null);
         }
-      } else {
+      } else if (sourceTab === 'gem') {
         if (filteredGemAuctions.length > 0) {
           const currentSelectedExists = filteredGemAuctions.some(auc => auc.id === selectedAuctionId);
           if (!selectedAuctionId || !currentSelectedExists) {
@@ -679,11 +763,20 @@ export function ScraperDashboard() {
         } else {
           setSelectedAuctionId(null);
         }
+      } else {
+        if (filteredGemBids.length > 0) {
+          const currentSelectedExists = filteredGemBids.some(auc => auc.id === selectedAuctionId);
+          if (!selectedAuctionId || !currentSelectedExists) {
+            setSelectedAuctionId(filteredGemBids[0].id);
+          }
+        } else {
+          setSelectedAuctionId(null);
+        }
       }
     } else {
       setSelectedAuctionId(null);
     }
-  }, [filteredAuctions, filteredBaanknetAuctions, filteredGemAuctions, selectedAuctionId, activeSubTab, sourceTab]);
+  }, [filteredAuctions, filteredBaanknetAuctions, filteredGemAuctions, filteredGemBids, selectedAuctionId, activeSubTab, sourceTab]);
 
   const getLogBadge = (action: string) => {
     switch (action) {
@@ -696,6 +789,7 @@ export function ScraperDashboard() {
       case 'mstc_auction_deleted':
       case 'baanknet_auction_deleted':
       case 'gem_auction_deleted':
+      case 'gem_bid_deleted':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
             <Trash2 className="w-3 h-3 mr-1" /> Deleted (Expired)
@@ -709,6 +803,7 @@ export function ScraperDashboard() {
         );
       case 'baanknet_auction_scraped':
       case 'gem_auction_scraped':
+      case 'gem_bid_scraped':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
             <Database className="w-3 h-3 mr-1" /> Scraped Item
@@ -854,7 +949,7 @@ export function ScraperDashboard() {
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-150">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reserve Price</span>
-              <p className="text-xl font-extrabold text-slate-950 mt-1">
+              <p className="text-xl font-extrabold text-slate-955 mt-1">
                 {item.reserve_price_text || 'N/A'}
               </p>
             </div>
@@ -935,6 +1030,92 @@ export function ScraperDashboard() {
     );
   };
 
+  const renderGemBidDetail = (item: any) => {
+    return (
+      <div className="flex-1 flex flex-col h-full bg-white divide-y divide-slate-100 overflow-hidden">
+        <div className="p-6 bg-slate-900 text-white shrink-0 text-left">
+          <span className="bg-primary/20 text-primary-200 border border-primary/30 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+            {item.category_name || 'Procurement Bid'}
+          </span>
+          <h2 className="text-lg font-bold mt-2 leading-snug">{item.items}</h2>
+          <p className="text-xs text-slate-400 mt-1 font-mono">GeM Bid Number: {item.bid_number}</p>
+        </div>
+
+        <div className="p-6 space-y-5 flex-1 overflow-y-auto text-left">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-150">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quantity</span>
+              <p className="text-xl font-extrabold text-slate-955 mt-1">
+                {item.quantity || 'N/A'}
+              </p>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-150">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Department</span>
+              <p className="text-sm font-bold text-slate-950 mt-1 truncate" title={item.department_name}>{item.department_name || 'N/A'}</p>
+            </div>
+          </div>
+
+          <div className="space-y-3.5 text-sm">
+            {item.ra_number && (
+              <div>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Reverse Auction Number</span>
+                <p className="text-slate-800 font-semibold mt-0.5">{item.ra_number}</p>
+              </div>
+            )}
+            {item.raw_description && (
+              <div>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Crawl Details</span>
+                <p className="text-slate-750 font-medium bg-slate-50 p-3.5 rounded-xl border border-slate-150 mt-1 leading-relaxed whitespace-pre-wrap text-xs max-h-48 overflow-y-auto">
+                  {item.raw_description}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-xs pt-2">
+            <div>
+              <span className="text-slate-400 font-bold uppercase tracking-wider">Starts</span>
+              <p className="text-slate-800 font-bold mt-1">
+                {new Date(item.start_date).toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <span className="text-slate-400 font-bold uppercase tracking-wider">Ends</span>
+              <p className="text-slate-800 font-bold mt-1">
+                {new Date(item.end_date).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 bg-slate-50 flex items-center justify-between shrink-0">
+          <div className="flex gap-2">
+            {item.document_url && (
+              <a
+                href={item.document_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-xs hover:bg-slate-50"
+              >
+                <Download className="w-3.5 h-3.5" /> Notice Document
+              </a>
+            )}
+            {item.ra_document_url && (
+              <a
+                href={item.ra_document_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-xs hover:bg-slate-50"
+              >
+                <Download className="w-3.5 h-3.5" /> RA Document
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-32 bg-slate-50/50 rounded-2xl border border-slate-100">
@@ -970,7 +1151,7 @@ export function ScraperDashboard() {
     <div className="space-y-6">
       
       {/* Source Selector Tabs */}
-      <div className="flex gap-2.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/50 w-full max-w-lg shrink-0">
+      <div className="flex gap-2.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/50 w-full max-w-xl shrink-0">
         <button
           onClick={() => {
             setSourceTab('mstc');
@@ -1009,6 +1190,19 @@ export function ScraperDashboard() {
           }`}
         >
           🛒 GeM Auctions
+        </button>
+        <button
+          onClick={() => {
+            setSourceTab('gem-bids');
+            setSelectedAuctionId(null);
+          }}
+          className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            sourceTab === 'gem-bids'
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          💼 GeM Bids
         </button>
       </div>
 
@@ -1264,7 +1458,7 @@ export function ScraperDashboard() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : sourceTab === 'gem' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Total Scraped */}
             <div className="bg-gradient-to-br from-white to-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
@@ -1305,6 +1499,50 @@ export function ScraperDashboard() {
               <div>
                 <p className="text-2xl font-black text-gray-700">{gemStats.closed}</p>
                 <p className="text-xs text-slate-400 mt-1">Ended auctions</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Total Scraped */}
+            <div className="bg-gradient-to-br from-white to-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Scraped</span>
+                <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
+                  <Database className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-800">{gemBidsStats.total}</p>
+                <p className="text-xs text-slate-400 mt-1">GeM procurement bids discovered</p>
+              </div>
+            </div>
+
+            {/* Live */}
+            <div className="bg-gradient-to-br from-white to-emerald-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Live</span>
+                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                  <Activity className="w-4 h-4 animate-pulse" />
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-emerald-700">{gemBidsStats.live}</p>
+                <p className="text-xs text-slate-400 mt-1">Active bidding periods</p>
+              </div>
+            </div>
+
+            {/* Closed */}
+            <div className="bg-gradient-to-br from-white to-gray-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Closed</span>
+                <div className="p-2 bg-gray-150 text-gray-650 rounded-lg">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-gray-700">{gemBidsStats.closed}</p>
+                <p className="text-xs text-slate-400 mt-1">Submission closed bids</p>
               </div>
             </div>
           </div>
@@ -1414,14 +1652,12 @@ export function ScraperDashboard() {
                 </button>
               </Dropdown>
             </div>
-          </div>
-
-          {(sourceTab === 'mstc' ? filteredAuctions : sourceTab === 'baanknet' ? filteredBaanknetAuctions : filteredGemAuctions).length === 0 ? (
+                  {(sourceTab === 'mstc' ? filteredAuctions : sourceTab === 'baanknet' ? filteredBaanknetAuctions : sourceTab === 'gem' ? filteredGemAuctions : filteredGemBids).length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center shadow-sm">
               <div className="max-w-md mx-auto space-y-3">
                 <p className="text-slate-800 font-bold text-lg">No Matching Records Found</p>
                 <p className="text-slate-400 text-sm">
-                  Try adjusting your search terms or filter constraints. If you haven't run the scraper, execute <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">npx tsx {sourceTab === 'gem' ? 'scraper/gemScraper.ts' : sourceTab === 'baanknet' ? 'scraper/baanknetScraper.ts' : 'scraper/scraper.ts'}</code> locally.
+                  Try adjusting your search terms or filter constraints. If you haven't run the scraper, execute <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono font-bold text-indigo-900">npx tsx {sourceTab === 'gem' ? 'scraper/gemScraper.ts' : sourceTab === 'gem-bids' ? 'scraper/gemBidScraper.ts' : sourceTab === 'baanknet' ? 'scraper/baanknetScraper.ts' : 'scraper/scraper.ts'}</code> locally.
                 </p>
               </div>
             </div>
@@ -1436,13 +1672,17 @@ export function ScraperDashboard() {
                       ? 'Catalogs' 
                       : sourceTab === 'baanknet' 
                         ? 'Bank Properties' 
-                        : 'GeM Auctions'
+                        : sourceTab === 'gem'
+                          ? 'GeM Auctions'
+                          : 'GeM Bids'
                     } ({
                       sourceTab === 'mstc' 
                         ? filteredAuctions.length 
                         : sourceTab === 'baanknet' 
                           ? filteredBaanknetAuctions.length 
-                          : filteredGemAuctions.length
+                          : sourceTab === 'gem'
+                            ? filteredGemAuctions.length
+                            : filteredGemBids.length
                     })
                   </span>
                 </div>
@@ -1521,7 +1761,7 @@ export function ScraperDashboard() {
                         </div>
                       );
                     })
-                  ) : (
+                  ) : sourceTab === 'gem' ? (
                     filteredGemAuctions.map((auc) => {
                       const isSelected = selectedAuctionId === auc.id;
                       return (
@@ -1549,6 +1789,35 @@ export function ScraperDashboard() {
                           </div>
                           <div className="text-[9px] text-slate-400 font-semibold text-right">
                             {auc.location || 'India'}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    filteredGemBids.map((auc) => {
+                      const isSelected = selectedAuctionId === auc.id;
+                      return (
+                        <div
+                          key={auc.id}
+                          onClick={() => setSelectedAuctionId(auc.id)}
+                          className={`p-4 cursor-pointer transition-all border-l-4 text-left flex flex-col gap-1.5 ${
+                            isSelected 
+                              ? 'bg-primary/5 border-primary shadow-xs' 
+                              : 'border-transparent hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono font-bold text-xs text-slate-900 truncate max-w-[160px]" title={auc.department_name}>{auc.department_name || 'GeM Department'}</span>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-200 capitalize">
+                              {auc.status}
+                            </span>
+                          </div>
+                          <div className="text-[11px] font-bold text-slate-855 leading-snug line-clamp-2">
+                            {auc.items}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-medium flex items-center justify-between mt-1">
+                            <span className="font-semibold text-slate-700">Qty: {auc.quantity || 'N/A'}</span>
+                            <span>{new Date(auc.end_date).toLocaleDateString()}</span>
                           </div>
                         </div>
                       );
@@ -1584,7 +1853,7 @@ export function ScraperDashboard() {
                       <p className="text-xs text-slate-400 mt-1">Click any bank property on the left list to review complete parameters.</p>
                     </div>
                   )
-                ) : (
+                ) : sourceTab === 'gem' ? (
                   selectedAuctionId && gemAuctions.find(a => a.id === selectedAuctionId) ? (
                     renderGemDetail(gemAuctions.find(a => a.id === selectedAuctionId))
                   ) : (
@@ -1594,6 +1863,15 @@ export function ScraperDashboard() {
                       <p className="text-xs text-slate-400 mt-1">Click any GeM auction on the left list to review notice details.</p>
                     </div>
                   )
+                ) : (
+                  selectedAuctionId && gemBids.find(a => a.id === selectedAuctionId) ? (
+                    renderGemBidDetail(gemBids.find(a => a.id === selectedAuctionId))
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-slate-50/20">
+                      <FileCheck className="w-12 h-12 text-slate-300 mb-3" />
+                      <p className="font-bold text-slate-600 text-sm">Select a GeM procurement bid</p>
+                      <p className="text-xs text-slate-400 mt-1">Click any GeM bid on the left list to review notice details.</p>
+                    </div>
                 )}
               </div>
             </div>
@@ -1834,8 +2112,7 @@ export function ScraperDashboard() {
                         );
                       })}
                     </tbody>
-                  </table>
-                ) : (
+                ) : sourceTab === 'gem' ? (
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider font-extrabold text-slate-500">
@@ -1937,6 +2214,66 @@ export function ScraperDashboard() {
                       })}
                     </tbody>
                   </table>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider font-extrabold text-slate-500">
+                        <th className="px-6 py-4">Bid Number</th>
+                        <th className="px-6 py-4">Department</th>
+                        <th className="px-6 py-4">Procurement Items</th>
+                        <th className="px-6 py-4">Quantity</th>
+                        <th className="px-6 py-4">Timeline Dates</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-sm">
+                      {filteredGemBids.map((auc) => {
+                        return (
+                          <tr key={auc.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="font-bold text-slate-900">{auc.bid_number}</span>
+                              {auc.ra_number && <p className="text-[10px] text-indigo-650 font-bold font-mono mt-0.5">RA: {auc.ra_number}</p>}
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="font-semibold text-slate-800 line-clamp-1 max-w-[200px]" title={auc.department_name}>{auc.department_name || 'N/A'}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="font-medium text-slate-700 line-clamp-2 max-w-xs">{auc.items}</p>
+                              <span className="text-[10px] font-extrabold text-primary mt-0.5 inline-block">{auc.category_name}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-slate-800 font-bold">
+                              {auc.quantity || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-slate-500 text-xs">Start: {new Date(auc.start_date).toLocaleDateString()}</div>
+                              <div className="text-slate-655 text-xs font-semibold mt-0.5">End: {new Date(auc.end_date).toLocaleDateString()}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 capitalize">
+                                {auc.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {auc.document_url && (
+                                  <a 
+                                    href={auc.document_url} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg transition-colors inline-block"
+                                    title="Download Bid PDF notice"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 )}
               </div>
             </div>
@@ -1956,12 +2293,14 @@ export function ScraperDashboard() {
                 ? 'Tracks PDF downloads, network download failures, and automatic storage cleanup events when auctions close.'
                 : sourceTab === 'baanknet'
                   ? 'Tracks bank property database updates, newly discovered listings, and automatic database purges of ended properties.'
-                  : 'Tracks GeM Forward Auction scraper updates, database ingestion logs, and automatic purges of expired listings.'
+                  : sourceTab === 'gem'
+                    ? 'Tracks GeM Forward Auction scraper updates, database ingestion logs, and automatic purges of expired listings.'
+                    : 'Tracks GeM Procurement Bids scraper updates, database ingestion logs, and automatic purges of expired bids.'
               }
             </p>
           </div>
 
-          {((sourceTab === 'mstc' ? logs : sourceTab === 'baanknet' ? baanknetLogs : gemLogs).length) === 0 ? (
+          {((sourceTab === 'mstc' ? logs : sourceTab === 'baanknet' ? baanknetLogs : sourceTab === 'gem' ? gemLogs : gemBidsLogs).length) === 0 ? (
             <div className="p-16 text-center text-slate-500">
               No recent activity or deletion events recorded. Start the scraper to see events populate.
             </div>
@@ -1976,9 +2315,9 @@ export function ScraperDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {(sourceTab === 'mstc' ? logs : sourceTab === 'baanknet' ? baanknetLogs : gemLogs).map((log) => {
+                  {(sourceTab === 'mstc' ? logs : sourceTab === 'baanknet' ? baanknetLogs : sourceTab === 'gem' ? gemLogs : gemBidsLogs).map((log) => {
                     const detailsObj = log.details ? (typeof log.details === 'string' ? JSON.parse(log.details) : log.details) : {};
-                    const aucNum = detailsObj.mstc_auction_number || detailsObj.baanknet_auction_id || detailsObj.gem_auction_id || 'Unknown Auction';
+                    const aucNum = detailsObj.mstc_auction_number || detailsObj.baanknet_auction_id || detailsObj.gem_auction_id || detailsObj.bid_number || 'Unknown Item';
                     
                     let logMessage = '';
                     if (log.action === 'mstc_auction_downloaded') {
@@ -1995,6 +2334,10 @@ export function ScraperDashboard() {
                       logMessage = `Purged expired GeM auction ID ${aucNum} (End date: ${new Date(detailsObj.auction_end_date).toLocaleDateString()}).`;
                     } else if (log.action === 'gem_auction_scraped') {
                       logMessage = `Successfully scraped and imported GeM auction ${aucNum} (${detailsObj.title || 'No Title'}).`;
+                    } else if (log.action === 'gem_bid_deleted') {
+                      logMessage = `Purged expired GeM bid ID ${aucNum} (End date: ${new Date(detailsObj.end_date).toLocaleDateString()}).`;
+                    } else if (log.action === 'gem_bid_scraped') {
+                      logMessage = `Successfully scraped and imported GeM bid ${aucNum} (${detailsObj.items || 'No Items'}).`;
                     } else {
                       logMessage = log.entity_type ? `${log.entity_type} event logged` : 'System action recorded';
                     }
@@ -2163,6 +2506,112 @@ export function ScraperDashboard() {
                         <h4 className="font-bold text-white mb-1.5">Automatic Database Pruning</h4>
                         <p>
                           Like the BaankNet daemon, expired GeM auctions are automatically pruned if their closing date passes, keeping search lists fast and clean.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/5 text-[11px] text-slate-500 font-medium flex items-center justify-between mt-6">
+                    <span>Database: Postgres (Supabase RLS Active)</span>
+                    <span>Version 1.0.0</span>
+                  </div>
+                </div>
+              </>
+            ) : sourceTab === 'gem-bids' ? (
+              <>
+                {/* GeM Bids Portal Panel */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
+                  
+                  {/* Header */}
+                  <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                      <Cpu className="w-5 h-5 text-slate-600" />
+                      <div>
+                        <h3 className="font-bold text-slate-900 leading-tight">GeM Portal Procurement Bids Scraper</h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Automated Government e-Marketplace procurement bid crawler</p>
+                      </div>
+                    </div>
+                    
+                    {/* Status indicator */}
+                    {gemBidsRunning ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-ping" /> Scraper Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                        <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Scraper Stopped
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Controls */}
+                  <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2">
+                    <button
+                      onClick={startGemBidsScraper}
+                      disabled={!isLocalApiAvailable || gemBidsRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Scraper
+                    </button>
+                    <button
+                      onClick={stopGemBidsScraper}
+                      disabled={!isLocalApiAvailable || !gemBidsRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Square className="w-3.5 h-3.5 mr-1.5 fill-rose-600 text-rose-600" /> Stop Scraper
+                    </button>
+                  </div>
+
+                  {/* Console Viewer */}
+                  <div 
+                    ref={gemBidsTerminalRef}
+                    className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-96 overflow-y-auto space-y-1 select-text scroll-smooth"
+                  >
+                    {liveGemBidsLogs.length === 0 ? (
+                      <p className="text-slate-500 italic">No output logs. Click "Start Scraper" to initiate the process.</p>
+                    ) : (
+                      liveGemBidsLogs.map((line, idx) => (
+                        <p key={idx} className="leading-relaxed whitespace-pre-wrap">
+                          <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
+                          {line}
+                        </p>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Info Panel */}
+                <div className="bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl border border-slate-800 p-6 text-white shadow-xl flex flex-col justify-between min-h-[480px]">
+                  <div>
+                    <div className="flex items-center gap-3.5 mb-6">
+                      <div className="p-2.5 bg-white/10 rounded-xl">
+                        <Terminal className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-base leading-tight">GeM Bids Scraper System Intelligence</h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Automated crawling parameters and strategies</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 text-xs leading-relaxed text-slate-350">
+                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
+                        <h4 className="font-bold text-white mb-1.5">No-Auth Procurement Index Mining</h4>
+                        <p>
+                          Like GeM forward auctions, procurement bids and reverse auctions directory pages are publicly readable. HEADLESS browser automation handles navigation, item extraction, and document link indexing easily.
+                        </p>
+                      </div>
+
+                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
+                        <h4 className="font-bold text-white mb-1.5">Sequential Paging Delay</h4>
+                        <p>
+                          To maintain server request guidelines, the crawler employs 4-second paging delays and random jitter, preventing throttling or IP rate limiting.
+                        </p>
+                      </div>
+
+                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
+                        <h4 className="font-bold text-white mb-1.5">Automatic Database Pruning</h4>
+                        <p>
+                          Ended/closed bids are automatically pruned if their closing date passes, keeping search lists fast and clean.
                         </p>
                       </div>
                     </div>

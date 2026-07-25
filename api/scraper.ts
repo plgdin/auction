@@ -88,12 +88,14 @@ export default async function handler(req: any, res: any) {
         backfillRunning: false,
         baanknetRunning: false,
         gemRunning: false,
+        gemBidsRunning: false,
         scraperLogs,
         workerLogs,
         clearDbLogs,
         backfillLogs,
         baanknetLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.'],
-        gemLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.']
+        gemLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.'],
+        gemBidsLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.']
       });
       return;
     }
@@ -222,6 +224,19 @@ export default async function handler(req: any, res: any) {
         return;
       }
       if (cleanUrl === '/api/scraper/gem/stop') {
+        res.status(200).json({ success: true });
+        return;
+      }
+
+      // GeM Bids Scraper
+      if (cleanUrl === '/api/scraper/gem-bids/start') {
+        res.status(400).json({
+          success: false,
+          message: 'The GeM Bids Scraper requires Chromium binaries to navigate the procurement bids directory. Please run this scraper locally using "npm run dev".'
+        });
+        return;
+      }
+      if (cleanUrl === '/api/scraper/gem-bids/stop') {
         res.status(200).json({ success: true });
         return;
       }

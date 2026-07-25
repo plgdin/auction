@@ -7,9 +7,11 @@ import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
 import { BaanknetCard } from '../components/auction/BaanknetCard';
 import { GemCard } from '../components/auction/GemCard';
+import { GemBidCard } from '../components/auction/GemBidCard';
 const MstcDetailsModal = lazy(() => import('../components/auction/MstcDetailsModal').then(module => ({ default: module.MstcDetailsModal })));
 const BaanknetDetailsModal = lazy(() => import('../components/auction/BaanknetDetailsModal').then(module => ({ default: module.BaanknetDetailsModal })));
 const GemDetailsModal = lazy(() => import('../components/auction/GemDetailsModal').then(module => ({ default: module.GemDetailsModal })));
+const GemBidDetailsModal = lazy(() => import('../components/auction/GemBidDetailsModal').then(module => ({ default: module.GemBidDetailsModal })));
 import { AuctionFilters } from '../components/auction/AuctionFilters';
 import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
@@ -17,8 +19,8 @@ import { useAuthStore } from '../store/authStore';
 import { useAppStore } from '../store/appStore';
 import { dashboardService } from '../services/dashboardService';
 import type { Auction } from '../types/database.types';
-import { MstcSearchService, expandMstcOffice, BaanknetSearchService, GemSearchService } from '../services/publicService';
-import type { MstcSanitizedAuction, SearchSuggestion, BaanknetAuction, GemAuction } from '../services/publicService';
+import { MstcSearchService, expandMstcOffice, BaanknetSearchService, GemSearchService, GemBidSearchService } from '../services/publicService';
+import type { MstcSanitizedAuction, SearchSuggestion, BaanknetAuction, GemAuction, GemBid } from '../services/publicService';
 import clsx from 'clsx';
 import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
 import { recommendationService } from '../services/recommendationService';
@@ -140,7 +142,7 @@ export function Auctions() {
   const { user, isAuthenticated } = useAuthStore();
 
   const rawTab = searchParams.get('tab');
-  const activeTab = rawTab === 'commercial' ? 'commercial' : rawTab === 'baanknet' ? 'baanknet' : rawTab === 'gem' ? 'gem' : 'mstc';
+  const activeTab = rawTab === 'commercial' ? 'commercial' : rawTab === 'baanknet' ? 'baanknet' : rawTab === 'gem' ? 'gem' : rawTab === 'gem-bids' ? 'gem-bids' : 'mstc';
 
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -175,6 +177,19 @@ export function Auctions() {
     categories: [],
     locations: [],
     regionalOffices: []
+  });
+
+  // GeM Bids specific states
+  const [gemBids, setGemBids] = useState<GemBid[]>([]);
+  const [gemBidsTotalCount, setGemBidsTotalCount] = useState(0);
+  const [isGemBidsLoading, setIsGemBidsLoading] = useState(false);
+  const [selectedPreviewGemBid, setSelectedPreviewGemBid] = useState<GemBid | null>(null);
+  const [gemBidsOptions, setGemBidsOptions] = useState<{
+    categories: string[];
+    departments: string[];
+  }>({
+    categories: [],
+    departments: []
   });
 
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
@@ -558,6 +573,46 @@ export function Auctions() {
     }
   }, []);
 
+  const loadGemBidsData = useCallback(async () => {
+    setIsGemBidsLoading(true);
+    try {
+      const qParam = searchParams.get('q') || '';
+      const result = await GemBidSearchService.searchGemBids(qParam, {
+        category: selectedMstcCategories[0] || undefined,
+        department: selectedMstcRegionalOffices[0] || undefined,
+        page,
+        limit,
+        sortBy
+      });
+
+      setGemBids(result.data);
+      setGemBidsTotalCount(result.count);
+    } catch (error) {
+      console.error('Error loading GeM Bids data:', error);
+    } finally {
+      setIsGemBidsLoading(false);
+    }
+  }, [
+    searchParams,
+    selectedMstcCategoriesJoined,
+    selectedMstcRegionalOfficesJoined,
+    page,
+    limit,
+    sortBy
+  ]);
+
+  const loadGemBidsOptions = useCallback(async () => {
+    try {
+      const options = await GemBidSearchService.getGemBidFilterOptions();
+      setGemBidsOptions({
+        categories: options.categories,
+        departments: options.departments
+      });
+    } catch (error) {
+      console.error('Error loading GeM Bids filter options:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'commercial') {
       loadData();
@@ -593,6 +648,18 @@ export function Auctions() {
       loadGemOptions();
     }
   }, [activeTab, loadGemOptions]);
+
+  useEffect(() => {
+    if (activeTab === 'gem-bids') {
+      loadGemBidsData();
+    }
+  }, [activeTab, loadGemBidsData]);
+
+  useEffect(() => {
+    if (activeTab === 'gem-bids') {
+      loadGemBidsOptions();
+    }
+  }, [activeTab, loadGemBidsOptions]);
 
   // Prefetch adjacent pages into PageCache after current page loads
   useEffect(() => {
@@ -869,7 +936,9 @@ export function Auctions() {
       ? Math.ceil(baanknetTotalCount / limit)
       : activeTab === 'gem'
         ? Math.ceil(gemTotalCount / limit)
-        : Math.ceil(mstcTotalCount / limit);
+        : activeTab === 'gem-bids'
+          ? Math.ceil(gemBidsTotalCount / limit)
+          : Math.ceil(mstcTotalCount / limit);
 
   const startIndex = (page - 1) * limit;
   const paginatedMstcAuctions = mstcAuctions;
@@ -924,6 +993,17 @@ export function Auctions() {
               GeM Notice Board
             </button>
             <button
+              onClick={() => setSearchParams({ tab: 'gem-bids' })}
+              className={clsx(
+                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
+                activeTab === 'gem-bids'
+                  ? "bg-white text-slate-955 shadow-md"
+                  : "text-white hover:bg-white/5"
+              )}
+            >
+              GeM Procurement Bids
+            </button>
+            <button
               onClick={() => setSearchParams({ tab: 'commercial' })}
               className={clsx(
                 "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
@@ -951,7 +1031,9 @@ export function Auctions() {
                     ? "Search bank names, property titles, address, locations..."
                     : activeTab === 'gem'
                       ? "Search GeM ministries, organizations, categories, titles..."
-                      : "Search MSTC catalog numbers, categories, or sellers..."
+                      : activeTab === 'gem-bids'
+                        ? "Search GeM bid/RA numbers, departments, items..."
+                        : "Search MSTC catalog numbers, categories, or sellers..."
               }
               value={searchQuery}
               onChange={handleInputChange}
@@ -1042,7 +1124,9 @@ export function Auctions() {
                   ? `${baanknetTotalCount} results`
                   : activeTab === 'gem'
                     ? `${gemTotalCount} results`
-                    : `${mstcAuctions.length} results`
+                    : activeTab === 'gem-bids'
+                      ? `${gemBidsTotalCount} results`
+                      : `${mstcAuctions.length} results`
               }
             </div>
           </div>
@@ -1066,10 +1150,10 @@ export function Auctions() {
                 preBid: mstcPreBid
               }}
               activeTab={activeTab}
-              customCategories={activeTab === 'baanknet' ? baanknetOptions.categories : activeTab === 'gem' ? gemOptions.categories : mstcOptions.categories}
-              customSubcategories={activeTab === 'baanknet' || activeTab === 'gem' ? {} : mstcOptions.subcategories}
-              customLocations={activeTab === 'baanknet' ? baanknetOptions.locations : activeTab === 'gem' ? gemOptions.locations : mstcOptions.locations}
-              customRegionalOffices={activeTab === 'baanknet' ? baanknetOptions.regionalOffices : activeTab === 'gem' ? gemOptions.regionalOffices : mstcOptions.regionalOffices}
+              customCategories={activeTab === 'baanknet' ? baanknetOptions.categories : activeTab === 'gem' ? gemOptions.categories : activeTab === 'gem-bids' ? gemBidsOptions.categories : mstcOptions.categories}
+              customSubcategories={activeTab === 'baanknet' || activeTab === 'gem' || activeTab === 'gem-bids' ? {} : mstcOptions.subcategories}
+              customLocations={activeTab === 'baanknet' ? baanknetOptions.locations : activeTab === 'gem' ? gemOptions.locations : []}
+              customRegionalOffices={activeTab === 'baanknet' ? baanknetOptions.regionalOffices : activeTab === 'gem' ? gemOptions.regionalOffices : activeTab === 'gem-bids' ? gemBidsOptions.departments : mstcOptions.regionalOffices}
             />
             {/* Overlay for mobile filters */}
             {isFiltersOpen && (
@@ -1549,6 +1633,128 @@ export function Auctions() {
               </>
             )}
 
+            {/* GeM Procurement Bids Tab */}
+            {activeTab === 'gem-bids' && (
+              <>
+                {isGemBidsLoading ? (
+                  <SkeletonGrid
+                    isGrid={isGridView}
+                    count={6}
+                    classes={clsx(
+                      "gap-6 flex-grow",
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                    )}
+                  />
+                ) : gemBids.length === 0 ? (
+                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-350 flex-grow text-left">
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">No GeM procurement bids found</h3>
+                    <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
+                    <button
+                      onClick={() => {
+                        setSearchParams({ tab: 'gem-bids' });
+                      }}
+                      className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
+                    >
+                      Clear search & filters
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className={clsx(
+                      "gap-6",
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                    )}>
+                      {gemBids.map(item => (
+                        <GemBidCard
+                          key={item.id}
+                          item={item}
+                          isGrid={isGridView}
+                          onPreview={setSelectedPreviewGemBid}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="mt-10 flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 rounded-xl shadow-sm">
+                        <div className="flex flex-1 justify-between sm:hidden">
+                          <button
+                            onClick={() => handlePageChange(Math.max(1, page - 1))}
+                            disabled={page === 1}
+                            className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            Previous
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                            disabled={page === totalPages}
+                            className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            Next
+                          </button>
+                        </div>
+                        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm text-slate-700">
+                              Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, gemBidsTotalCount)}</span> of <span className="font-medium">{gemBidsTotalCount}</span> results
+                            </p>
+                          </div>
+                          <div>
+                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                              <button
+                                onClick={() => handlePageChange(Math.max(1, page - 1))}
+                                disabled={page === 1}
+                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
+                              >
+                                <span className="sr-only">Previous</span>
+                                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                              </button>
+
+                              {getPageNumbers(page, totalPages).map((p, i) => {
+                                if (p === '...') {
+                                  return (
+                                    <span
+                                      key={`dots-gem-bids-${i}`}
+                                      className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-300 focus:outline-none"
+                                    >
+                                      ...
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    key={`gem-bids-page-${p}`}
+                                    onClick={() => handlePageChange(p as number)}
+                                    className={clsx(
+                                      "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset cursor-pointer",
+                                      page === p
+                                        ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
+                                        : "text-slate-900 ring-slate-300 hover:bg-slate-50"
+                                    )}
+                                  >
+                                    {p}
+                                  </button>
+                                );
+                              })}
+
+                              <button
+                                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                                disabled={page === totalPages}
+                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
+                              >
+                                <span className="sr-only">Next</span>
+                                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                              </button>
+                            </nav>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+
             {/* MSTC Gov Catalogs Tab */}
             {activeTab === 'mstc' && (
               <>
@@ -1729,6 +1935,20 @@ export function Auctions() {
           <GemDetailsModal
             item={selectedPreviewGemItem}
             onClose={() => setSelectedPreviewGemItem(null)}
+          />
+        </Suspense>
+      )}
+
+      {/* GeM Bid Details Modal */}
+      {selectedPreviewGemBid && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+          </div>
+        }>
+          <GemBidDetailsModal
+            item={selectedPreviewGemBid}
+            onClose={() => setSelectedPreviewGemBid(null)}
           />
         </Suspense>
       )}
