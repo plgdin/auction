@@ -2669,6 +2669,7 @@ export interface BaanknetAuction {
   source_url: string;
   scraped_at: string;
   document_url?: string;
+  document_urls?: string[];
 
   // Multi-module detail fields
   auction_module?: string;

@@ -868,6 +868,7 @@ export function AuctionFilters({
             </button>
           </Dropdown>
         </div>
+        )}
 
         {/* Pre-bid Requirement */}
         {activeTab === 'mstc' && (

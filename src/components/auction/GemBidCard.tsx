@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, MapPin, Building2, Calendar, Landmark, Download } from 'lucide-react';
+import { Eye, Building2, Calendar, Landmark, Download } from 'lucide-react';
 import type { GemBid } from '../../services/publicService';
 
 interface GemBidCardProps {

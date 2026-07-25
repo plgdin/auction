@@ -134,7 +134,7 @@ async function scrapeDetailPages(
 ): Promise<void> {
   // Filter to items that actually have detail URLs and haven't been enriched yet
   const toScrape = items.filter(
-    (item) => item.detailUrl && !item.borrowerName && !item.description
+    (item) => item.detailUrl && (!item.borrowerName || !item.documentUrl || !item.description)
   );
 
   if (toScrape.length === 0) {
@@ -348,10 +348,16 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
     const endMatch = text.match(/End\s*Date\s*:\s*([\d\-/]+\s+[\d:]+)/i);
 
     // Detail and property links
-    const auctionDetailLink = card.querySelector('a[href*="view-auction"]') as HTMLAnchorElement;
-    const propertyDetailLink = card.querySelector('a[href*="view-property"], a[href*="property-detail"]') as HTMLAnchorElement;
-    const detailUrl = auctionDetailLink?.href || auctionDetailLink?.getAttribute("href") ||
-                      propertyDetailLink?.href || propertyDetailLink?.getAttribute("href") || "";
+    const auctionDetailLink = card.querySelector('a[href*="view-auction"], a[data-original-title*="View Auction"], a[title="View"]') as HTMLAnchorElement;
+    const propertyDetailLink = card.querySelector('a[href*="view-property"], a[data-original-title*="View Property"], a[href*="property-detail"]') as HTMLAnchorElement;
+    let detailUrl = auctionDetailLink?.getAttribute("href") || auctionDetailLink?.href ||
+                    propertyDetailLink?.getAttribute("href") || propertyDetailLink?.href || "";
+
+    if (detailUrl.startsWith("http://baanknet.com")) {
+      detailUrl = detailUrl.replace("http://baanknet.com", "https://baanknet.com");
+    } else if (detailUrl.startsWith("/")) {
+      detailUrl = `https://baanknet.com${detailUrl}`;
+    }
 
     if (auctionIdMatch) {
       items.push({
@@ -464,7 +470,7 @@ async function scrapeEAuctionPages(
       consecutiveStalePages = 0;
       if (scrapeDetails) {
         const toScrape = pageNewItems.filter(
-          (item) => item.detailUrl && !item.borrowerName
+          (item) => item.detailUrl && (!item.borrowerName || !item.documentUrl)
         );
         if (toScrape.length > 0) {
           await scrapeDetailPages(browser, toScrape, BAANKNET_BASE_URL, BAANKNET_DETAIL_CONCURRENCY);
@@ -986,6 +992,9 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
         ...(listing.inspection_start_date ? { inspection_start_date: listing.inspection_start_date } : {}),
         ...(listing.inspection_end_date ? { inspection_end_date: listing.inspection_end_date } : {}),
         ...(listing.emd_end_date ? { emd_end_date: listing.emd_end_date } : {}),
+        ...(listing.document_url ? { document_url: listing.document_url } : {}),
+        ...(listing.document_urls && listing.document_urls.length > 0 ? { document_urls: listing.document_urls } : {}),
+        ...(listing.source_url ? { source_url: listing.source_url } : {}),
       })
       .eq("baanknet_auction_id", listing.baanknet_auction_id);
 

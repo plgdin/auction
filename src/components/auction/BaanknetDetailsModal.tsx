@@ -136,6 +136,48 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const start = new Date(item.auction_start_date);
   const end = new Date(item.auction_end_date);
   const isLive = now >= start && now <= end;
+  // Helper to format live portal URL accurately (routing to exact auction notice or property page)
+  const getLivePortalUrl = (): string => {
+    let rawUrl = item.source_url || '';
+    if (rawUrl) {
+      if (rawUrl.startsWith('http://baanknet.com')) {
+        rawUrl = rawUrl.replace('http://baanknet.com', 'https://baanknet.com');
+      }
+      // If we have a direct view-auction-notice, view-property, or ibbi URL, return it!
+      if (
+        rawUrl.includes('/view-auction-notice/') ||
+        rawUrl.includes('/view-property/') ||
+        rawUrl.includes('ibbi.baanknet.com')
+      ) {
+        return rawUrl;
+      }
+      // If rawUrl is a valid http/https URL and not the old broken /auction-detail/ route
+      if (rawUrl.startsWith('http') && !rawUrl.includes('/auction-detail/')) {
+        return rawUrl;
+      }
+    }
+    // For eAuction PSB property listings fallback, route to eAuction PSB portal
+    return 'https://baanknet.com/eauction-psb/home';
+  };
+
+  // Helper to gather all downloadable PDF document URLs
+  const getAvailableDocuments = (): string[] => {
+    const docs: string[] = [];
+    if (item.document_url && !docs.includes(item.document_url)) {
+      docs.push(item.document_url);
+    }
+    if (Array.isArray(item.document_urls)) {
+      for (const d of item.document_urls) {
+        if (d && !docs.includes(d)) {
+          docs.push(d);
+        }
+      }
+    }
+    return docs;
+  };
+
+  const availableDocs = getAvailableDocuments();
+  const livePortalUrl = getLivePortalUrl();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs select-text overflow-y-auto">
@@ -429,28 +471,39 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {item.document_url && (
+          <div className="flex flex-wrap items-center gap-2">
+            {availableDocs.length > 0 ? (
+              availableDocs.map((docUrl, idx) => (
+                <a
+                  key={idx}
+                  href={docUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                >
+                  <FileDown className="w-4 h-4" />
+                  Download Notice PDF {availableDocs.length > 1 ? `#${idx + 1}` : ''}
+                </a>
+              ))
+            ) : (
               <a
-                href={item.document_url}
+                href={livePortalUrl}
                 target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold shadow-2xs transition-colors cursor-pointer"
               >
-                <FileDown className="w-4 h-4" /> Download Notice
+                <FileDown className="w-4 h-4 text-indigo-600" /> View Notice PDF on Live Portal
               </a>
             )}
             
-            {item.source_url && (
-              <a
-                href={item.source_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
-              >
-                Visit Live Portal <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            )}
+            <a
+              href={livePortalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+            >
+              Visit Live Portal <ExternalLink className="w-3.5 h-3.5" />
+            </a>
           </div>
         </div>
 

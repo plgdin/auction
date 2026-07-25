@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Landmark, Download, AlignLeft, Info, Clock, Calendar } from 'lucide-react';
+import { X, Copy, Check, Landmark, Download, AlignLeft, Info, Clock, Calendar, ExternalLink } from 'lucide-react';
 import type { GemBid } from '../../services/publicService';
 
 interface GemBidDetailsModalProps {
@@ -259,6 +259,14 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
               Download RA PDF Notice
             </a>
           )}
+          <a
+            href={item.document_url || `https://bidplus.gem.gov.in/showbidDocument/${item.bid_number}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800 shadow-xs transition-colors cursor-pointer"
+          >
+            Visit Live Portal <ExternalLink className="w-3.5 h-3.5" />
+          </a>
         </div>
 
       </div>

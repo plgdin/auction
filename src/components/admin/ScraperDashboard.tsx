@@ -1651,8 +1651,10 @@ export function ScraperDashboard() {
                   <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
                 </button>
               </Dropdown>
-            </div>
-                  {(sourceTab === 'mstc' ? filteredAuctions : sourceTab === 'baanknet' ? filteredBaanknetAuctions : sourceTab === 'gem' ? filteredGemAuctions : filteredGemBids).length === 0 ? (
+          </div>
+        </div>
+
+        {(sourceTab === 'mstc' ? filteredAuctions : sourceTab === 'baanknet' ? filteredBaanknetAuctions : sourceTab === 'gem' ? filteredGemAuctions : filteredGemBids).length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center shadow-sm">
               <div className="max-w-md mx-auto space-y-3">
                 <p className="text-slate-800 font-bold text-lg">No Matching Records Found</p>
@@ -1872,6 +1874,7 @@ export function ScraperDashboard() {
                       <p className="font-bold text-slate-600 text-sm">Select a GeM procurement bid</p>
                       <p className="text-xs text-slate-400 mt-1">Click any GeM bid on the left list to review notice details.</p>
                     </div>
+                  )
                 )}
               </div>
             </div>
@@ -2112,6 +2115,7 @@ export function ScraperDashboard() {
                         );
                       })}
                     </tbody>
+                  </table>
                 ) : sourceTab === 'gem' ? (
                   <table className="w-full text-left border-collapse">
                     <thead>
