@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Gavel, LayoutDashboard, Newspaper, HelpCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -8,27 +8,15 @@ export function MobileBottomNav() {
   const location = useLocation();
   const { user } = useAuthStore();
   const [isVisible, setIsVisible] = useState(false);
-  const lastScrollY = useRef(0);
 
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      // Hide when near top of page (hero section)
-      if (currentScrollY < 80) {
-        setIsVisible(false);
-      } else if (currentScrollY > lastScrollY.current + 5) {
-        // User scrolling DOWN -> slide nav UP into view
-        setIsVisible(true);
-      } else if (currentScrollY < lastScrollY.current - 15) {
-        // User scrolling UP -> hide nav
-        setIsVisible(false);
-      }
-
-      lastScrollY.current = currentScrollY;
+      // Show bottom navbar whenever user is scrolled past top hero area (50px)
+      setIsVisible(window.scrollY > 50);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -43,7 +31,7 @@ export function MobileBottomNav() {
   return (
     <nav
       className={clsx(
-        "fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200 py-2 px-2 flex justify-around items-center md:hidden shadow-2xl transition-all duration-300 ease-in-out",
+        "fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-xl border-t border-slate-200 py-2 px-2 flex justify-around items-center md:hidden shadow-2xl transition-all duration-300 ease-in-out",
         isVisible
           ? "translate-y-0 opacity-100"
           : "translate-y-full opacity-0 pointer-events-none"

@@ -52,7 +52,56 @@ export function HowItWorksSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        {/* Mobile Left-Right Horizontal Slider */}
+        <div className="flex sm:hidden overflow-x-auto snap-x snap-mandatory gap-4 -my-4 py-4 pb-6 -mx-6 px-6 hide-scrollbar">
+          {features.map((feature) => {
+            const Icon = feature.icon;
+            const linkTo = isAuthenticated ? feature.authPath : '/auth/register';
+
+            return (
+              <div 
+                key={feature.id} 
+                className="bg-white border border-slate-200/80 rounded-2xl p-6 flex flex-col justify-between hover:border-primary/40 transition-all duration-300 group w-[82vw] max-w-[320px] shrink-0 snap-center"
+              >
+                <div>
+                  <div className="mb-5">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-2xs">
+                      <Icon className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-bold text-slate-900 mb-2.5 group-hover:text-primary transition-colors">
+                    {feature.name}
+                  </h3>
+
+                  <p className="text-sm text-slate-500 leading-relaxed mb-5">
+                    {feature.description}
+                  </p>
+
+                  <ul className="space-y-2 pt-3 border-t border-slate-100">
+                    {feature.highlights.map((item, i) => (
+                      <li key={i} className="flex items-center text-xs font-medium text-slate-600">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-primary mr-2 shrink-0" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <Link
+                  to={linkTo}
+                  className="pt-5 mt-6 border-t border-slate-100 flex items-center text-xs font-bold text-primary group-hover:translate-x-1 transition-transform"
+                >
+                  <span>Explore Feature</span>
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Tablet & Desktop Grid */}
+        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
           {features.map((feature) => {
             const Icon = feature.icon;
             const linkTo = isAuthenticated ? feature.authPath : '/auth/register';

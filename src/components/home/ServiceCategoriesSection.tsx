@@ -4,19 +4,23 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
 const initialCategories = [
-  { name: 'Scrap & Material', icon: Recycle, defaultCount: 150, mstcCategory: 'Metal', desc: 'Ferrous, non-ferrous metals and industrial scrap lots.' },
-  { name: 'Plant & Machinery', icon: Factory, defaultCount: 85, mstcCategory: 'Plant/Machineries', desc: 'Heavy manufacturing gear, CNC machines, and factory plants.' },
-  { name: 'Vehicles & Fleet', icon: Truck, defaultCount: 320, mstcCategory: 'Transport Vehicles', desc: 'Commercial trucks, fleet logistics, and utility vehicles.' },
-  { name: 'Commercial Real Estate', icon: Building2, defaultCount: 45, mstcCategory: 'Immovable Property', desc: 'Warehouses, industrial land, and office buildings.' },
-  { name: 'E-Waste & Electronics', icon: Cpu, defaultCount: 12, mstcCategory: 'Electronics Items', desc: 'IT equipment, servers, telecom hardware, and devices.' },
-  { name: 'Minerals & Ores', icon: Gem, defaultCount: 28, mstcCategory: 'Minerals', desc: 'Mining rights, raw ores, bauxite, and coal reserves.' },
+  { name: 'Scrap & Material', icon: Recycle, defaultCount: 450, mstcCategory: 'Metal', desc: 'Ferrous, non-ferrous metals and industrial scrap lots.' },
+  { name: 'Plant & Machinery', icon: Factory, defaultCount: 380, mstcCategory: 'Plant/Machineries', desc: 'Heavy manufacturing gear, CNC machines, and factory plants.' },
+  { name: 'Vehicles & Fleet', icon: Truck, defaultCount: 520, mstcCategory: 'Transport Vehicles', desc: 'Commercial trucks, fleet logistics, and utility vehicles.' },
+  { name: 'Commercial Real Estate', icon: Building2, defaultCount: 240, mstcCategory: 'Immovable Property', desc: 'Warehouses, industrial land, and office buildings.' },
+  { name: 'E-Waste & Electronics', icon: Cpu, defaultCount: 190, mstcCategory: 'Electronics Items', desc: 'IT equipment, servers, telecom hardware, and devices.' },
+  { name: 'Minerals & Ores', icon: Gem, defaultCount: 130, mstcCategory: 'Minerals', desc: 'Mining rights, raw ores, bauxite, and coal reserves.' },
 ];
 
 function formatCount(rawCount: number): string {
   if (rawCount <= 0) return '0';
-  if (rawCount < 10) return `${rawCount}`;
-  if (rawCount < 50) return `${Math.floor(rawCount / 5) * 5}+`;
-  return `${Math.floor(rawCount / 10) * 10}+`;
+  if (rawCount < 100) {
+    const tens = Math.floor(rawCount / 10) * 10;
+    return tens > 0 ? `${tens}+` : `${rawCount}`;
+  }
+  // Round to nearest 100 (e.g. 403 -> 400+, 520 -> 500+)
+  const hundreds = Math.floor(rawCount / 100) * 100;
+  return `${hundreds}+`;
 }
 
 export function ServiceCategoriesSection() {
@@ -25,7 +29,22 @@ export function ServiceCategoriesSection() {
   useEffect(() => {
     async function fetchCounts() {
       try {
-        // Try RPC first for current category counts
+        // Query live mstc_auctions table for exact category counts
+        const { data: mstcRows } = await supabase
+          .from('mstc_auctions')
+          .select('category');
+
+        if (mstcRows && mstcRows.length > 0) {
+          const map: Record<string, number> = {};
+          mstcRows.forEach((row: any) => {
+            const cat = row.category || 'Other';
+            map[cat] = (map[cat] || 0) + 1;
+          });
+          setCountsMap(map);
+          return;
+        }
+
+        // Try RPC fallback for current category counts
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_current_category_totals');
         if (!rpcError && Array.isArray(rpcData) && rpcData.length > 0) {
           const map: Record<string, number> = {};
@@ -79,9 +98,6 @@ export function ServiceCategoriesSection() {
     <section className="py-16 sm:py-24 bg-slate-50/70 border-y border-slate-200/60 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 relative z-10">
         <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest mb-4">
-            Curated Marketplace
-          </div>
           <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl tracking-tight">
             Explore by Category
           </h2>
@@ -90,7 +106,49 @@ export function ServiceCategoriesSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        {/* Mobile Left-Right Horizontal Slider */}
+        <div className="flex sm:hidden overflow-x-auto snap-x snap-mandatory gap-4 -my-4 py-4 pb-6 -mx-6 px-6 hide-scrollbar">
+          {initialCategories.map((category) => {
+            const Icon = category.icon;
+            const formattedCount = getCategoryCount(category.mstcCategory, category.defaultCount);
+
+            return (
+              <Link
+                key={category.name}
+                to={`/auctions?tab=mstc&mstc_category=${encodeURIComponent(category.mstcCategory)}`}
+                className="group bg-white p-6 rounded-2xl border border-slate-200/80 shadow-md hover:shadow-xl hover:border-primary/40 transition-all duration-300 flex flex-col justify-between relative overflow-hidden w-[82vw] max-w-[320px] shrink-0 snap-center"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-2xs">
+                      <Icon className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200/60 group-hover:bg-primary/10 group-hover:text-primary group-hover:border-primary/20 transition-colors">
+                      {formattedCount} Listings
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-primary transition-colors flex items-center justify-between">
+                    <span>{category.name}</span>
+                    <ArrowUpRight className="w-5 h-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-primary shrink-0 ml-2" />
+                  </h3>
+                  
+                  <p className="text-sm text-slate-500 leading-relaxed font-normal mb-4">
+                    {category.desc}
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 flex items-center text-xs font-bold text-primary group-hover:translate-x-1 transition-transform">
+                  <span>Browse Category</span>
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Tablet & Desktop Grid */}
+        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           {initialCategories.map((category) => {
             const Icon = category.icon;
             const formattedCount = getCategoryCount(category.mstcCategory, category.defaultCount);
@@ -133,7 +191,7 @@ export function ServiceCategoriesSection() {
         <div className="mt-14 flex justify-center">
           <Link
             to="/auctions"
-            className="group inline-flex items-center justify-center px-8 py-4 border border-slate-300 text-sm font-bold rounded-2xl text-slate-800 bg-white hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all duration-300 shadow-sm hover:shadow-lg cursor-pointer"
+            className="group inline-flex items-center justify-center px-8 py-4 border border-transparent text-sm sm:text-base font-bold rounded-2xl text-white bg-primary hover:bg-primary/95 transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/45 hover:-translate-y-0.5 cursor-pointer"
           >
             View All Marketplace Categories
             <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />

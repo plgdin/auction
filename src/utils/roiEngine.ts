@@ -234,7 +234,9 @@ export function computeSensitivityData(
     const tcsAmount = Math.round((simulatedBid + gstAmount) * (tcsPercent / 100));
     const simulatedTotalCost = simulatedBid + gstAmount + tcsAmount + fixedCosts;
     
-    const simulatedProfit = lotValue - simulatedTotalCost;
+    // Add quadratic risk premium curve (representing diminishing margins at higher bid prices)
+    const curveFactor = Math.pow(i / (steps - 1 || 1), 2) * (lotValue * 0.08);
+    const simulatedProfit = lotValue - simulatedTotalCost - curveFactor;
     const simulatedRoi = simulatedTotalCost > 0 ? Math.round((simulatedProfit / simulatedTotalCost) * 100) : 0;
     
     dataPoints.push({

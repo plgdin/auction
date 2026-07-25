@@ -96,44 +96,73 @@ export function FeaturedAuctionsSection() {
           </div>
         ) : (
           <div className="relative">
-            {/* Grid of Auctions */}
-            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 transition-all duration-300 min-h-[400px] ${!isAuthenticated ? 'filter blur-sm select-none pointer-events-none' : ''}`}>
+            {/* Mobile Left-Right Slider & Desktop/Tablet Grid Container */}
+            <div className={`transition-all duration-300 ${!isAuthenticated ? 'filter blur-sm select-none pointer-events-none' : ''}`}>
               <Suspense fallback={null}>
-              {/* If empty or not authenticated, we can show mock cards to look premium */}
-              {(auctions.length > 0 ? auctions : [
-                { id: '11111111-1111-1111-1111-111111111111', title: 'Industrial Heavy Machinery Lot', description: 'Surplus plant manufacturing machinery including CNC routers, lathes, and high capacity air compressors.', starting_price: 4500000, end_time: new Date().toISOString() },
-                { id: '22222222-2222-2222-2222-222222222222', title: 'Corporate E-Waste Disposal', description: 'Over 500 decommissioned workstations, laptops, servers and networking switches from a Fortune 500 client.', starting_price: 250000, end_time: new Date().toISOString() },
-                { id: '33333333-3333-3333-3333-333333333333', title: 'Commercial Real Estate Complex', description: 'Prime multi-story warehouse space with modern loading docks and convenient highway access.', starting_price: 85000000, end_time: new Date().toISOString() },
-                { id: '44444444-4444-4444-4444-444444444444', title: 'Fleet Transport Logistics Package', description: 'Package of 12 commercial logistics vans, light duty trucks, and utility vehicles in excellent running condition.', starting_price: 1800000, end_time: new Date().toISOString() }
-              ]).map((auction) => {
-                if (auction.is_mstc) {
-                  return (
-                    <MstcCard
-                      key={auction.id}
-                      item={auction as any}
-                      isGrid={true}
-                      onPreview={(item) => setSelectedPreviewItem(item)}
-                      isInterested={interestedMstcIds.includes(auction.id)}
-                      onInterestedToggle={() => handleMstcInterestedToggle(auction.id)}
-                    />
-                  );
-                } else {
-                  return (
-                    <AuctionCard
-                      key={auction.id}
-                      auction={auction}
-                      isGrid={true}
-                    />
-                  );
-                }
-              })}
+                {/* Mobile Left-Right Horizontal Slider */}
+                <div className="flex sm:hidden overflow-x-auto snap-x snap-mandatory gap-4 -my-4 py-4 pb-6 -mx-6 px-6 hide-scrollbar">
+                  {(auctions.length > 0 ? auctions : [
+                    { id: '11111111-1111-1111-1111-111111111111', title: 'Industrial Heavy Machinery Lot', description: 'Surplus plant manufacturing machinery including CNC routers, lathes, and high capacity air compressors.', starting_price: 4500000, end_time: new Date().toISOString() },
+                    { id: '22222222-2222-2222-2222-222222222222', title: 'Corporate E-Waste Disposal', description: 'Over 500 decommissioned workstations, laptops, servers and networking switches from a Fortune 500 client.', starting_price: 250000, end_time: new Date().toISOString() },
+                    { id: '33333333-3333-3333-3333-333333333333', title: 'Commercial Real Estate Complex', description: 'Prime multi-story warehouse space with modern loading docks and convenient highway access.', starting_price: 85000000, end_time: new Date().toISOString() },
+                    { id: '44444444-4444-4444-4444-444444444444', title: 'Fleet Transport Logistics Package', description: 'Package of 12 commercial logistics vans, light duty trucks, and utility vehicles in excellent running condition.', starting_price: 1800000, end_time: new Date().toISOString() }
+                  ]).map((auction) => (
+                    <div key={auction.id} className="w-[82vw] max-w-[320px] shrink-0 snap-center">
+                      {auction.is_mstc ? (
+                        <MstcCard
+                          item={auction as any}
+                          isGrid={true}
+                          onPreview={(item) => setSelectedPreviewItem(item)}
+                          isInterested={interestedMstcIds.includes(auction.id)}
+                          onInterestedToggle={() => handleMstcInterestedToggle(auction.id)}
+                        />
+                      ) : (
+                        <AuctionCard
+                          auction={auction}
+                          isGrid={true}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Tablet & Desktop Grid */}
+                <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {(auctions.length > 0 ? auctions : [
+                    { id: '11111111-1111-1111-1111-111111111111', title: 'Industrial Heavy Machinery Lot', description: 'Surplus plant manufacturing machinery including CNC routers, lathes, and high capacity air compressors.', starting_price: 4500000, end_time: new Date().toISOString() },
+                    { id: '22222222-2222-2222-2222-222222222222', title: 'Corporate E-Waste Disposal', description: 'Over 500 decommissioned workstations, laptops, servers and networking switches from a Fortune 500 client.', starting_price: 250000, end_time: new Date().toISOString() },
+                    { id: '33333333-3333-3333-3333-333333333333', title: 'Commercial Real Estate Complex', description: 'Prime multi-story warehouse space with modern loading docks and convenient highway access.', starting_price: 85000000, end_time: new Date().toISOString() },
+                    { id: '44444444-4444-4444-4444-444444444444', title: 'Fleet Transport Logistics Package', description: 'Package of 12 commercial logistics vans, light duty trucks, and utility vehicles in excellent running condition.', starting_price: 1800000, end_time: new Date().toISOString() }
+                  ]).map((auction) => {
+                    if (auction.is_mstc) {
+                      return (
+                        <MstcCard
+                          key={auction.id}
+                          item={auction as any}
+                          isGrid={true}
+                          onPreview={(item) => setSelectedPreviewItem(item)}
+                          isInterested={interestedMstcIds.includes(auction.id)}
+                          onInterestedToggle={() => handleMstcInterestedToggle(auction.id)}
+                        />
+                      );
+                    } else {
+                      return (
+                        <AuctionCard
+                          key={auction.id}
+                          auction={auction}
+                          isGrid={true}
+                        />
+                      );
+                    }
+                  })}
+                </div>
               </Suspense>
             </div>
 
             {/* Auth Gate Overlay */}
             {!isAuthenticated && (
-              <div className="absolute inset-0 flex items-center justify-center z-10 px-4 bg-white/70 rounded-2xl">
-                <div className="max-w-md w-full bg-slate-900 text-white p-8 rounded-3xl shadow-2xl text-center border border-slate-800 relative overflow-hidden">
+              <div className="absolute inset-0 flex items-center justify-center z-10 px-4 pointer-events-auto">
+                <div className="max-w-md w-full bg-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-2xl text-center border border-slate-800 relative overflow-hidden">
                   {/* Decorative Glowing Circle - Replaced heavy blur-2xl with a fast radial-gradient */}
                   <div className="absolute -top-20 -right-20 w-48 h-48 bg-[radial-gradient(circle_at_center,_rgba(30,41,59,0.8)_0%,_rgba(15,23,42,0)_70%)] pointer-events-none" />
                   

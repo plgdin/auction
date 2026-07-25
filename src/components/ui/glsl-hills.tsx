@@ -191,17 +191,17 @@ export function GLSLHills({
       const aspect = w / h;
       camera.aspect = aspect;
 
-      // Adjust camera for mobile portrait aspect so hills fit cleanly without clipping out
+      // Adjust camera for mobile portrait & tablet aspect so hills fit cleanly with rich depth
       if (aspect < 0.85) {
-        // Phone portrait: scale distance with aspect ratio to keep full hills landscape in view
-        camera.fov = 50;
-        camera.position.set(0, 22, cameraZ * (1.1 / aspect));
-        camera.lookAt(new THREE.Vector3(0, 20, 0));
+        // Mobile portrait: keep camera closer (z=120) with wide FOV (62) so hills fill canvas seamlessly
+        camera.fov = 62;
+        camera.position.set(0, 14, 120);
+        camera.lookAt(new THREE.Vector3(0, 24, 0));
       } else if (aspect < 1.2) {
         // Tablet portrait
-        camera.fov = 48;
-        camera.position.set(0, 18, cameraZ * 1.15);
-        camera.lookAt(new THREE.Vector3(0, 22, 0));
+        camera.fov = 54;
+        camera.position.set(0, 15, 122);
+        camera.lookAt(new THREE.Vector3(0, 26, 0));
       } else {
         // Desktop landscape
         camera.fov = 45;

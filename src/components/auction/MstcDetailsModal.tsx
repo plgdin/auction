@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuation/roiEngine';
 import { marketPriceService } from '../../services/marketPriceService';
+import { simulationEngine } from '../../services/valuation/simulationEngine';
 import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, ReferenceLine } from 'recharts';
 import {
   computeCostBreakdown,
@@ -366,8 +367,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     let totalConfidenceSum = 0;
 
     const updatedItems = valuationData.items.map((row, idx) => {
-      if (row.notAvailable) return row;
-
       const customPrice = customItemPrices[idx];
       if (customPrice !== undefined && customPrice > 0) {
         const totalValue = Math.round(customPrice * row.qty);
@@ -375,6 +374,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
         totalConfidenceSum += 95;
         return {
           ...row,
+          notAvailable: false,
           unitValue: customPrice,
           totalValue,
           confidence: 95,
@@ -386,8 +386,10 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           }
         };
       } else {
-        totalLotValue += row.totalValue;
-        totalConfidenceSum += row.confidence;
+        if (!row.notAvailable) {
+          totalLotValue += row.totalValue;
+          totalConfidenceSum += row.confidence;
+        }
         return row;
       }
     });
@@ -471,7 +473,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
       // Backend engine data surfaced for new dashboard sections
       risk: valuationData.risk ?? null,
       confidence: valuationData.confidence ?? null,
-      simulation: valuationData.simulation ?? null,
+      simulation: totalLotValue > 0 ? simulationEngine.runSimulation(totalLotValue, {
+        currentBid: Number(customCosts.currentBid) || 0,
+        transportation: Number(customCosts.transportation) || 0,
+        loadingUnloading: Number(customCosts.loadingUnloading) || 0,
+        refurbishment: Number(customCosts.refurbishment) || 0,
+        otherFees: Number(customCosts.otherFees) || 0,
+        extraCharge: Number(customCosts.extraCharge) || 0,
+        gstPercent,
+        tcsPercent,
+      }) : null,
       bidding: valuationData.bidding ?? null,
       commodities,
     };
@@ -795,8 +806,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   {/* Cost Input Form Card */}
                   <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider  flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+                      <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
                         Interactive Bid & Cost Estimator
                       </h4>
                       <span className="text-[10px] text-slate-400 ">Adjust costs to see impact on bid strategy</span>
@@ -1009,6 +1019,83 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     )}
                   </div>
 
+                  {finalValuationData && (
+                    <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center justify-between">
+                        <span>Item Breakdown</span>
+                        <span className="text-[10px] text-slate-400 font-medium normal-case font-sans">
+                          Edit unit values to manually override
+                        </span>
+                      </h4>
+                      <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-slate-50 text-slate-650 border-b border-slate-250">
+                              <th className="py-2.5 px-3.5 font-bold">Item Description</th>
+                              <th className="py-2.5 px-3.5 font-bold text-right w-20">Quantity</th>
+                              <th className="py-2.5 px-3.5 font-bold text-right w-44">Unit Est. Value</th>
+                              <th className="py-2.5 px-3.5 font-bold text-right w-36">Total Est. Value</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-105 text-slate-700">
+                            {finalValuationData.items.map((row: any, idx: number) => (
+                              <tr key={idx} className="hover:bg-slate-50/50">
+                                <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                                  <div>{row.name}</div>
+                                  {!row.notAvailable && row.priceSource && (
+                                    <div className="text-[10px] font-semibold text-slate-400 mt-0.5">
+                                      Source: <span className="text-slate-500 font-bold">{row.priceSource}</span>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3.5 text-right text-slate-650">{row.qty}</td>
+                                <td className="py-2.5 px-3.5 text-right text-slate-950 font-bold w-44">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {customItemPrices[idx] !== undefined && (
+                                      <button
+                                        onClick={() => handleCustomItemPriceChange(idx, 0)}
+                                        className="p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
+                                        title="Reset to automated estimate"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                    <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
+                                    <input
+                                      type="number"
+                                      value={
+                                        customItemPrices[idx] !== undefined
+                                          ? Math.round(customItemPrices[idx] * currencyRate)
+                                          : row.notAvailable
+                                          ? ""
+                                          : Math.round(row.unitValue * currencyRate)
+                                      }
+                                      onChange={(e) => {
+                                        const enteredVal = parseFloat(e.target.value);
+                                        const valInInr = isNaN(enteredVal) ? 0 : enteredVal / currencyRate;
+                                        handleCustomItemPriceChange(idx, valInInr);
+                                      }}
+                                      className={clsx(
+                                        "w-24 text-right p-1 px-1.5 border rounded-lg focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary font-bold text-xs transition-all",
+                                        customItemPrices[idx] !== undefined
+                                          ? "border-amber-300 bg-amber-50/30 text-amber-900"
+                                          : "border-slate-250 bg-slate-50 hover:bg-white focus:bg-white text-slate-900"
+                                      )}
+                                      placeholder={row.notAvailable ? "Enter price" : "Price"}
+                                    />
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3.5 text-right text-slate-950 font-bold">
+                                  {row.notAvailable && customItemPrices[idx] === undefined ? '—' : formatPrice(row.totalValue, currency)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
                   {isValuating || !finalValuationData ? (
                     <div className="bg-white rounded-3xl p-12 border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
                       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
@@ -1030,7 +1117,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         const bgGradient = isBuy
                           ? 'from-emerald-600 via-emerald-500 to-teal-500'
                           : isAvoid
-                          ? 'from-rose-600 via-rose-500 to-red-500'
+                          ? 'from-red-800 via-red-700 to-rose-900'
                           : 'from-amber-500 via-amber-400 to-yellow-400';
                         const displayStatus = isBuy ? status.toUpperCase() : isAvoid ? 'AVOID' : 'WATCH';
                         return (
@@ -1065,25 +1152,52 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {/* â•â•â•â•â•â•â• SECTION 2: Financial Summary â•â•â•â•â•â•â• */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                         <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
-                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Lot Value</h5>
+                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                            <span>Lot Value</span>
+                            <div className="relative group inline-block">
+                              <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                Estimated market resale value of all items in this lot.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+                          </h5>
                           <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
-                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalLotValue, currency) : 'N/A'}
+                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalLotValue, currency) : '—'}
                           </div>
                           <p className="text-[9px] text-slate-400 font-medium">Market value</p>
                         </div>
 
                         <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
-                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Current Bid</h5>
+                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                            <span>Current Bid</span>
+                            <div className="relative group inline-block">
+                              <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                Your current active or proposed bid amount for this lot.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+                          </h5>
                           <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
-                            {Number(customCosts.currentBid) > 0 ? formatPrice(Number(customCosts.currentBid), currency) : 'N/A'}
+                            {Number(customCosts.currentBid) > 0 ? formatPrice(Number(customCosts.currentBid), currency) : '—'}
                           </div>
                           <p className="text-[9px] text-slate-400 font-medium">Your bid amount</p>
                         </div>
 
                         <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
-                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total Cost</h5>
+                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                            <span>Total Cost</span>
+                            <div className="relative group inline-block">
+                              <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                Total cost including current bid, taxes (GST), and service fees.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+                          </h5>
                           <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
-                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalCost, currency) : 'N/A'}
+                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalCost, currency) : '—'}
                           </div>
                           <p className="text-[9px] text-slate-500 font-bold">Bid + Tax + Costs</p>
                         </div>
@@ -1096,11 +1210,20 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             ? "bg-emerald-50/50 border-emerald-150 text-emerald-950"
                             : "bg-rose-50/50 border-rose-150 text-rose-950"
                         )}>
-                          <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest">Profit</h5>
+                          <h5 className="text-[9px] font-bold uppercase tracking-widest flex items-center gap-1">
+                            <span className="opacity-60">Profit</span>
+                            <div className="relative group inline-block">
+                              <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                Estimated net profit (Lot Value minus Total Cost).
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+                          </h5>
                           <div className="text-xs sm:text-sm lg:text-base font-black truncate">
                             {finalValuationData.totalLotValue > 0
                               ? `${finalValuationData.estimatedProfit >= 0 ? '+' : ''}${formatPrice(finalValuationData.estimatedProfit, currency)}`
-                              : 'N/A'
+                              : '—'
                             }
                           </div>
                           <p className="text-[9px] opacity-70 font-medium">Net profit</p>
@@ -1114,15 +1237,33 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             ? "bg-amber-50/50 border-amber-150 text-amber-950"
                             : "bg-rose-50/50 border-rose-150 text-rose-950"
                         )}>
-                          <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest">ROI</h5>
+                          <h5 className="text-[9px] font-bold uppercase tracking-widest flex items-center gap-1">
+                            <span className="opacity-60">ROI</span>
+                            <div className="relative group inline-block">
+                              <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                Return on Investment percentage (Profit divided by Total Cost).
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+                          </h5>
                           <div className="text-xs sm:text-sm lg:text-base font-black truncate">{finalValuationData.roiPercent}%</div>
                           <p className="text-[9px] opacity-70 font-medium">Return on investment</p>
                         </div>
 
                         <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
-                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Break-Even</h5>
+                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                            <span>Break-Even</span>
+                            <div className="relative group inline-block">
+                              <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                Max bid amount where profit becomes zero. Bidding higher leads to loss.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+                          </h5>
                           <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
-                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.breakEven, currency) : 'N/A'}
+                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.breakEven, currency) : '—'}
                           </div>
                           <p className="text-[9px] text-slate-400 font-medium">Max safe bid</p>
                         </div>
@@ -1272,98 +1413,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
                       </div>
 
-                      {/* â•â•â•â•â•â•â• SECTION 5: Risk Analysis â•â•â•â•â•â•â• */}
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Risk Analysis</h4>
-                          <div className="flex items-center gap-2">
-                            <span className={clsx(
-                              "text-[10px] font-bold px-2.5 py-1 rounded-full",
-                              (finalValuationData.risk?.score ?? 50) < 35 ? "bg-emerald-50 text-emerald-700" :
-                              (finalValuationData.risk?.score ?? 50) > 60 ? "bg-rose-50 text-rose-700" :
-                              "bg-amber-50 text-amber-700"
-                            )}>
-                              {finalValuationData.risk?.score ?? 'â€”'} / 100
-                            </span>
-                            <span className={clsx(
-                              "text-[10px] font-bold",
-                              finalValuationData.riskAnalysis?.riskLevel === 'Low Risk' ? "text-emerald-600" :
-                              finalValuationData.riskAnalysis?.riskLevel === 'High Risk' ? "text-rose-600" :
-                              "text-amber-600"
-                            )}>
-                              {finalValuationData.riskAnalysis?.riskLevel || 'Medium Risk'}
-                            </span>
-                          </div>
-                        </div>
-                        {finalValuationData.risk?.breakdown && (
-                          <div className="space-y-2.5">
-                            {[
-                              { label: 'Price Volatility', value: finalValuationData.risk.breakdown.priceVolatility },
-                              { label: 'Market Trend', value: finalValuationData.risk.breakdown.marketTrend },
-                              { label: 'Seller Reliability', value: finalValuationData.risk.breakdown.sellerReliability },
-                              { label: 'OCR Confidence', value: finalValuationData.risk.breakdown.ocrConfidence },
-                              { label: 'Photo Quality', value: finalValuationData.risk.breakdown.photoQuality },
-                              { label: 'Transport Risk', value: finalValuationData.risk.breakdown.transportRisk },
-                              { label: 'Category Risk', value: finalValuationData.risk.breakdown.categoryRisk },
-                              { label: 'Environmental', value: finalValuationData.risk.breakdown.environmentalRisk },
-                            ].map((factor) => (
-                              <div key={factor.label} className="flex items-center gap-3">
-                                <span className="text-[10px] font-bold text-slate-500 w-28 shrink-0">{factor.label}</span>
-                                <div className="flex-grow bg-slate-100 rounded-full h-2 overflow-hidden">
-                                  <div
-                                    className={clsx(
-                                      "h-full rounded-full transition-all",
-                                      factor.value < 30 ? "bg-emerald-400" : factor.value < 60 ? "bg-amber-400" : "bg-rose-400"
-                                    )}
-                                    style={{ width: `${Math.min(100, factor.value)}%` }}
-                                  />
-                                </div>
-                                <span className={clsx(
-                                  "text-[10px] font-bold w-8 text-right",
-                                  factor.value < 30 ? "text-emerald-600" : factor.value < 60 ? "text-amber-600" : "text-rose-600"
-                                )}>
-                                  {factor.value}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* â•â•â•â•â•â•â• SECTION 6: Confidence Breakdown â•â•â•â•â•â•â• */}
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Confidence Breakdown</h4>
-                          <span className="text-sm font-black text-slate-900">
-                            {finalValuationData.confidence?.overallScore ?? finalValuationData.riskAnalysis?.overallConfidence ?? 'â€”'}%
-                          </span>
-                        </div>
-                        {finalValuationData.confidence?.breakdown && (
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {[
-                              { label: 'OCR', value: finalValuationData.confidence.breakdown.ocr },
-                              { label: 'Market Price', value: finalValuationData.confidence.breakdown.market },
-                              { label: 'Weight', value: finalValuationData.confidence.breakdown.weight },
-                              { label: 'Material', value: finalValuationData.confidence.breakdown.material },
-                              { label: 'Image', value: finalValuationData.confidence.breakdown.image },
-                              { label: 'Seller', value: finalValuationData.confidence.breakdown.seller },
-                              { label: 'Historical', value: finalValuationData.confidence.breakdown.history },
-                              { label: 'Description', value: finalValuationData.confidence.breakdown.description },
-                            ].map((cf) => (
-                              <div key={cf.label} className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-center">
-                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{cf.label}</div>
-                                <div className={clsx(
-                                  "text-lg font-black mt-1",
-                                  cf.value >= 85 ? "text-emerald-600" : cf.value >= 70 ? "text-amber-600" : "text-rose-600"
-                                )}>
-                                  {cf.value}%
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
                       {/* â•â•â•â•â•â•â• SECTION 7: Why This Recommendation â•â•â•â•â•â•â• */}
                       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
                         <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3">
@@ -1394,10 +1443,14 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             }
                             return reasons.map((r, i) => (
                               <div key={i} className="flex items-start gap-2.5">
-                                <span className={clsx("text-sm font-bold mt-0.5 shrink-0", r.positive ? "text-emerald-500" : "text-rose-500")}>
-                                  {r.positive ? 'âœ“' : 'âœ—'}
+                                <span className="shrink-0 mt-0.5">
+                                  {r.positive ? (
+                                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                  ) : (
+                                    <X className="w-3.5 h-3.5 text-rose-500" />
+                                  )}
                                 </span>
-                                <span className="text-xs font-medium text-slate-600 leading-relaxed">{r.text}</span>
+                                <span className="text-xs font-medium text-slate-650 leading-normal">{r.text}</span>
                               </div>
                             ));
                           })()}
@@ -1411,31 +1464,90 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Simulation Analysis</h4>
                             <span className="text-[10px] text-slate-400 font-medium">5,000 Monte Carlo iterations</span>
                           </div>
-                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <div className={clsx(
-                              "rounded-2xl p-4 text-center border",
-                              finalValuationData.simulation.chanceOfProfit >= 70
-                                ? "bg-emerald-50/50 border-emerald-150"
-                                : "bg-amber-50/50 border-amber-150"
-                            )}>
-                              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Chance of Profit</div>
-                              <div className="text-xl font-black text-emerald-700 mt-1">{finalValuationData.simulation.chanceOfProfit}%</div>
-                            </div>
-                            <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
-                              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Expected ROI</div>
-                              <div className="text-xl font-black text-slate-900 mt-1">{finalValuationData.simulation.expectedRoi}%</div>
-                            </div>
-                            <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
-                              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Best Case</div>
-                              <div className="text-xl font-black text-emerald-600 mt-1">{finalValuationData.simulation.bestRoi}%</div>
-                            </div>
-                            <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
-                              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Worst Case</div>
-                              <div className={clsx("text-xl font-black mt-1", finalValuationData.simulation.worstRoi >= 0 ? "text-amber-600" : "text-rose-600")}>
-                                {finalValuationData.simulation.worstRoi}%
+                          {(() => {
+                            const hasBid = (Number(customCosts.currentBid) || 0) > 0;
+                            const hasLotValue = finalValuationData.totalLotValue > 0;
+                            const isActive = hasBid && hasLotValue;
+                            const sim = finalValuationData.simulation;
+
+                            return (
+                              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div className={clsx(
+                                  "rounded-2xl p-4 text-center border transition-all",
+                                  !isActive 
+                                    ? "bg-slate-50 border-slate-100" 
+                                    : sim.chanceOfProfit >= 70
+                                    ? "bg-emerald-50/50 border-emerald-150"
+                                    : "bg-amber-50/50 border-amber-150"
+                                )}>
+                                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
+                                    <span>Chance of Profit</span>
+                                    <div className="relative group inline-block">
+                                      <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                        Probability that net profit is above zero under randomized market price and weight fluctuations.
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className={clsx("text-xl font-black mt-1", isActive ? "text-emerald-700" : "text-slate-400")}>
+                                    {isActive ? `${sim.chanceOfProfit}%` : '—'}
+                                  </div>
+                                </div>
+
+                                <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+                                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
+                                    <span>Expected ROI</span>
+                                    <div className="relative group inline-block">
+                                      <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                        Average Return on Investment percentage projected across all 5,000 simulations.
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className={clsx("text-xl font-black mt-1", isActive ? "text-slate-900" : "text-slate-400")}>
+                                    {isActive ? `${sim.expectedRoi}%` : '—'}
+                                  </div>
+                                </div>
+
+                                <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+                                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
+                                    <span>Best Case</span>
+                                    <div className="relative group inline-block">
+                                      <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                        95th percentile ROI scenario under highly optimistic price and weight outcomes.
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className={clsx("text-xl font-black mt-1", isActive ? "text-emerald-600" : "text-slate-400")}>
+                                    {isActive ? `${sim.bestRoi}%` : '—'}
+                                  </div>
+                                </div>
+
+                                <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+                                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
+                                    <span>Worst Case</span>
+                                    <div className="relative group inline-block">
+                                      <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                        5th percentile ROI scenario under highly pessimistic price and weight outcomes.
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className={clsx(
+                                    "text-xl font-black mt-1",
+                                    !isActive ? "text-slate-400" : sim.worstRoi >= 0 ? "text-amber-600" : "text-rose-600"
+                                  )}>
+                                    {isActive ? `${sim.worstRoi}%` : '—'}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
+                            );
+                          })()}
                         </div>
                       )}
 
@@ -1457,84 +1569,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </div>
                         </div>
                       )}
-
-                      {/* â•â•â•â•â•â•â• SECTION 10: Item Breakdown Table â•â•â•â•â•â•â• */}
-                      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center justify-between">
-                          <span>Item Breakdown</span>
-                          <span className="text-[10px] text-slate-400 font-medium normal-case font-sans">
-                            Edit unit values to manually override
-                          </span>
-                        </h4>
-                        <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
-                          <table className="w-full text-left border-collapse text-xs">
-                            <thead>
-                              <tr className="bg-slate-50 text-slate-650 border-b border-slate-250">
-                                <th className="py-2.5 px-3.5 font-bold">Item Description</th>
-                                <th className="py-2.5 px-3.5 font-bold text-right w-20">Quantity</th>
-                                <th className="py-2.5 px-3.5 font-bold text-right w-44">Unit Est. Value</th>
-                                <th className="py-2.5 px-3.5 font-bold text-right w-36">Total Est. Value</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-105 text-slate-700">
-                              {finalValuationData.items.map((row: any, idx: number) => (
-                                <tr key={idx} className="hover:bg-slate-50/50">
-                                  <td className="py-2.5 px-3.5 font-bold text-slate-900">
-                                    <div>{row.name}</div>
-                                    {!row.notAvailable && row.priceSource && (
-                                      <div className="text-[10px] font-semibold text-slate-400 mt-0.5">
-                                        Source: <span className="text-slate-500 font-bold">{row.priceSource}</span>
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="py-2.5 px-3.5 text-right text-slate-650">{row.qty}</td>
-                                  <td className="py-2.5 px-3.5 text-right text-slate-950 font-bold w-44">
-                                    {row.notAvailable ? (
-                                      'N/A'
-                                    ) : (
-                                      <div className="flex items-center justify-end gap-1.5">
-                                        {customItemPrices[idx] !== undefined && (
-                                          <button
-                                            onClick={() => handleCustomItemPriceChange(idx, 0)}
-                                            className="p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-slate-100 transition-colors"
-                                            title="Reset to automated estimate"
-                                          >
-                                            <RotateCcw className="w-3.5 h-3.5" />
-                                          </button>
-                                        )}
-                                        <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
-                                        <input
-                                          type="number"
-                                          value={
-                                            customItemPrices[idx] !== undefined
-                                              ? Math.round(customItemPrices[idx] * currencyRate)
-                                              : Math.round(row.unitValue * currencyRate)
-                                          }
-                                          onChange={(e) => {
-                                            const enteredVal = parseFloat(e.target.value);
-                                            const valInInr = isNaN(enteredVal) ? 0 : enteredVal / currencyRate;
-                                            handleCustomItemPriceChange(idx, valInInr);
-                                          }}
-                                          className={clsx(
-                                            "w-24 text-right p-1 px-1.5 border rounded-lg focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary font-bold text-xs transition-all",
-                                            customItemPrices[idx] !== undefined
-                                              ? "border-amber-300 bg-amber-50/30 text-amber-900"
-                                              : "border-slate-250 bg-slate-50 hover:bg-white focus:bg-white text-slate-900"
-                                          )}
-                                          placeholder="Price"
-                                        />
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="py-2.5 px-3.5 text-right text-slate-950 font-bold">
-                                    {row.notAvailable ? 'N/A' : formatPrice(row.totalValue, currency)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
                     </>
                   )}
                 </div>
@@ -1618,7 +1652,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     </div>
                   )}
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Auction Type</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Auction Type</span>
+                      <div className="relative group inline-block">
+                        <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          Identifies the category of the auction (e.g. C-Customs, O-General, P-Property) which dictates specific compliance rules and bidding procedures.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {summary.auctionType || 'O-General'}
                     </span>
@@ -1640,7 +1683,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Inspection Date Range</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Inspection Date Range</span>
+                      <div className="relative group inline-block">
+                        <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          The designated timeline for bidders to physically visit the warehouse or site to inspect material condition, quality, and quantity.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {summary.inspectionSchedule || 'N/A'}
                     </span>
@@ -1803,13 +1855,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     {summary.complianceInfo?.requiredDocuments && summary.complianceInfo.requiredDocuments.length > 0 ? (
                       summary.complianceInfo.requiredDocuments.map((doc, idx) => (
                         <div key={idx} className="flex gap-2 items-start p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                          <span className="mt-0.5 shrink-0">
-                            {doc.type === 'mandatory' ? (
-                              <span className="text-emerald-600 text-sm font-bold">âœ“</span>
-                            ) : (
-                              <span className="text-amber-500 text-sm font-bold">âš </span>
-                            )}
-                          </span>
                           <div>
                             <p className="text-xs font-bold text-slate-850 flex items-center gap-1.5 flex-wrap">
                               <span>{doc.name}</span>
@@ -1840,20 +1885,47 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   </h4>
                   <div className="space-y-3">
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase tracking-wider">EMD Details</span>
+                      <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <span>EMD Details</span>
+                        <div className="relative group inline-block">
+                          <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                            Earnest Money Deposit (EMD) is a security deposit to guarantee bid commitment. Refunded to unsuccessful bidders.
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                          </div>
+                        </div>
+                      </span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
                         {formatPriceString(summary.depositDetails.emd, currency)}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase tracking-wider">Pre-bid EMD</span>
+                      <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <span>Pre-bid EMD</span>
+                        <div className="relative group inline-block">
+                          <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                            Pre-bid EMD is a mandatory deposit paid before the auction starts to qualify and receive bidding credentials.
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                          </div>
+                        </div>
+                      </span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
                         {formatPriceString(summary.depositDetails.preBidDdg, currency)}
                       </span>
                     </div>
                     {summary.complianceInfo?.gstStatus && (
                       <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <span className="text-slate-500 text-[11px] uppercase tracking-wider">GST Tax Scheme</span>
+                        <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>GST Tax Scheme</span>
+                          <div className="relative group inline-block">
+                            <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-56 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                              Reverse Charge Mechanism (RCM) requires the buyer to pay the GST directly to the government instead of paying it to the seller.
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                            </div>
+                          </div>
+                        </span>
                         <div className="mt-1 flex flex-col gap-1">
                           <span className="font-bold text-slate-850 text-[13.5px] flex items-center gap-1.5">
                             {summary.complianceInfo.gstStatus.type}

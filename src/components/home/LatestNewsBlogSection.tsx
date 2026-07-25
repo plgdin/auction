@@ -131,7 +131,113 @@ export function LatestNewsBlogSection() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-start">
+        {/* Mobile View: 2 Separate Slideable Rows */}
+        <div className="block sm:hidden space-y-8">
+          {/* Row 1: Featured Blog Articles Slider */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-primary" />
+              <h3 className="text-lg font-bold text-slate-900">Featured Blog Articles</h3>
+            </div>
+            <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 -my-3 py-3 pb-5 -mx-6 px-6 hide-scrollbar">
+              {displayBlogs.map((post: any, idx: number) => {
+                const img = post.image_url || DEFAULT_BLOG_IMAGES[idx % DEFAULT_BLOG_IMAGES.length];
+                return (
+                  <Link
+                    key={post.id}
+                    to={`/blog/${post.slug || post.id}`}
+                    className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-md hover:shadow-xl hover:border-primary/40 transition-all duration-300 flex flex-col justify-between w-[82vw] max-w-[320px] shrink-0 snap-center group"
+                  >
+                    <div>
+                      <div className="w-full h-36 rounded-xl overflow-hidden bg-slate-100 mb-3 border border-slate-200/60">
+                        <img
+                          src={img}
+                          alt={post.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-bold text-primary mb-2">
+                        <span className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+                          {post.category || 'Article'}
+                        </span>
+                        <span className="text-slate-400 flex items-center gap-1 font-normal">
+                          <Clock className="w-3 h-3" />
+                          {post.read_time || '4 min read'}
+                        </span>
+                      </div>
+                      <h4 className="text-base font-bold text-slate-900 mb-2 group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+                        {post.title}
+                      </h4>
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-3">
+                        {stripHtml(post.excerpt) || stripHtml(post.content)?.slice(0, 100)}
+                      </p>
+                    </div>
+                    <div className="flex items-center text-xs font-bold text-primary group-hover:translate-x-1 transition-transform pt-2 border-t border-slate-100">
+                      <span>Read Full Article</span>
+                      <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Row 2: Latest Market Bulletins Slider */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center gap-2">
+              <Newspaper className="w-5 h-5 text-primary" />
+              <h3 className="text-lg font-bold text-slate-900">Latest Market Bulletins</h3>
+            </div>
+            <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 -my-3 py-3 pb-5 -mx-6 px-6 hide-scrollbar">
+              {displayNews.map((item: any, idx: number) => {
+                const img = item.image_url || DEFAULT_NEWS_IMAGES[idx % DEFAULT_NEWS_IMAGES.length];
+                const sourceName = extractNewsSource(item);
+
+                return (
+                  <Link
+                    key={item.id}
+                    to="/news"
+                    className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xl hover:border-primary/40 transition-all duration-300 flex flex-col justify-between w-[82vw] max-w-[320px] shrink-0 snap-center group"
+                  >
+                    <div>
+                      <div className="w-full h-36 rounded-xl overflow-hidden bg-slate-100 mb-3 border border-slate-200/60">
+                        <img
+                          src={img}
+                          alt={item.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-2">
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 border border-amber-500/20">
+                          {item.category || 'News Alert'}
+                        </span>
+                        <span className="flex items-center gap-1 font-normal text-slate-400">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(item.published_at || item.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                      <h4 className="text-base font-bold text-slate-900 mb-2 group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+                        {item.title}
+                      </h4>
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-3">
+                        {stripHtml(item.summary) || stripHtml(item.content)?.slice(0, 100)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                      <span className="text-slate-400 font-medium truncate max-w-[140px]">Source: {sourceName}</span>
+                      <span className="font-bold text-primary group-hover:translate-x-1 transition-transform flex items-center shrink-0">
+                        View News <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Tablet & Desktop View: 2-Column Grid */}
+        <div className="hidden sm:grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-start">
           {/* Featured Blog Posts */}
           <div className="space-y-4 sm:space-y-6">
             <div className="flex items-center gap-2 mb-2">

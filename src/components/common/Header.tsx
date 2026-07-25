@@ -1,20 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
 import { 
-  Menu, X, ChevronDown, Check, Gavel, 
+  Menu, X, Gavel, 
   HelpCircle, Newspaper, BookOpen, Info, Mail, Home as HomeIcon, Sparkles
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { useAppStore } from '../../store/appStore';
 import clsx from 'clsx';
 
-const CURRENCIES = [
-  { code: 'INR', label: 'INR (₹)' },
-  { code: 'USD', label: 'USD ($)' },
-  { code: 'EUR', label: 'EUR (€)' },
-  { code: 'GBP', label: 'GBP (£)' },
-];
-
+/*
 function CurrencyDropdown({ isTransparent }: { isTransparent?: boolean }) {
   const { currency, setCurrency } = useAppStore();
   const [open, setOpen] = useState(false);
@@ -82,6 +75,7 @@ function CurrencyDropdown({ isTransparent }: { isTransparent?: boolean }) {
     </div>
   );
 }
+*/
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -90,10 +84,10 @@ export function Header() {
   const [heroMounted, setHeroMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Monitor window scroll for transition threshold
+  // Monitor window scroll for transition threshold - trigger as soon as scrolling starts
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      setIsScrolled(window.scrollY > 2);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
@@ -156,7 +150,7 @@ export function Header() {
 
       <div className="w-full px-4 sm:px-8 lg:px-12">
         <div className="flex justify-between items-center h-20">
-          <div className="flex-shrink-0 flex items-center -ml-4" style={{
+          <div className="flex-shrink-0 flex items-center" style={{
             opacity: navLogoOpacity,
             transform: `translateY(${navLogoSlideY}px)`,
             transition: 'opacity 0.25s ease, transform 0.25s ease',
@@ -188,11 +182,8 @@ export function Header() {
               </Link>
             ))}
 
-            <div className={clsx(
-              "pl-4 ml-4 border-l flex items-center space-x-4",
-              isHeaderTransparent ? "border-white/20" : "border-slate-200"
-            )}>
-              <CurrencyDropdown isTransparent={isHeaderTransparent} />
+            <div className="flex items-center space-x-4 ml-4">
+              {/* CurrencyDropdown is temporarily hidden */}
 
               {isAuthenticated ? (
                 <Link
@@ -333,10 +324,7 @@ export function Header() {
               Sign In
             </Link>
           )}
-
-          <div className="pt-1 flex items-center justify-center">
-            <CurrencyDropdown isTransparent={false} />
-          </div>
+          {/* CurrencyDropdown is temporarily hidden */}
         </div>
       </div>
     </header>
