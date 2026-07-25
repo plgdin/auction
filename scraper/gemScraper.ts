@@ -57,7 +57,7 @@ interface CliArgs {
 function parseCliArgs(): CliArgs {
   const args = process.argv.slice(2);
   let headful = false;
-  let maxPages = 20; // Default limit
+  let maxPages = 100; // Default limit (covers all pages up to 1000 records)
   let startPage = 1;
 
   for (const arg of args) {
@@ -149,7 +149,8 @@ function extractGeMListingsFromDOM(): any[] {
     const href = briefLink.getAttribute("href") || "";
     
     // Find container element (typically card or list-item row)
-    const container = briefLink.closest(".x-auction-card") || 
+    const container = briefLink.closest(".eproc-listing-main") || 
+                      briefLink.closest(".x-auction-card") || 
                       briefLink.closest(".card") || 
                       briefLink.closest("tr") || 
                       briefLink.parentElement?.parentElement?.parentElement || 
