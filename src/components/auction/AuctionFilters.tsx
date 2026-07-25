@@ -542,9 +542,9 @@ export function AuctionFilters({
     <div 
       ref={containerRef}
       className={clsx(
-        "fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out flex flex-col",
-        "lg:relative lg:translate-x-0 lg:w-full lg:bg-white lg:border lg:border-slate-200 lg:rounded-2xl lg:shadow-xs lg:overflow-hidden lg:h-[calc(100vh-140px)]",
-        isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:shadow-none"
+        "fixed inset-y-0 left-0 z-50 w-[85vw] max-w-xs sm:w-80 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl",
+        "lg:relative lg:translate-x-0 lg:w-full lg:bg-white lg:border lg:border-slate-200 lg:rounded-2xl lg:shadow-xs lg:overflow-hidden lg:h-[calc(100vh-140px)] lg:z-auto",
+        isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}
     >
       {/* Scrollable Content wrapper */}

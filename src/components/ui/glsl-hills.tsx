@@ -10,8 +10,8 @@ interface GLSLHillsProps {
 }
 
 export function GLSLHills({
-  width = '100vw',
-  height = '100vh',
+  width = '100%',
+  height = '100%',
   cameraZ = 125,
   planeSize = 256,
   speed = 0.5
@@ -20,7 +20,13 @@ export function GLSLHills({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    // Reduce geometry on mobile for performance
+    const isMobile = window.innerWidth < 768;
+    const segments = isMobile ? 128 : planeSize;
 
     // Plane class
     class Plane {
@@ -38,7 +44,7 @@ export function GLSLHills({
 
       createMesh() {
         return new THREE.Mesh(
-          new THREE.PlaneGeometry(planeSize, planeSize, planeSize, planeSize),
+          new THREE.PlaneGeometry(planeSize, planeSize, segments, segments),
           new THREE.RawShaderMaterial({
             uniforms: this.uniforms,
             vertexShader: `
@@ -172,20 +178,42 @@ export function GLSLHills({
     }
 
     // Three.js setup
-    const renderer = new THREE.WebGLRenderer({ canvas: canvasRef.current, antialias: false });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+    const camera = new THREE.PerspectiveCamera(45, 1, 1, 10000);
     const clock = new THREE.Clock();
     const plane = new Plane();
 
     const resize = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      camera.aspect = window.innerWidth / window.innerHeight;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      if (!w || !h) return;
+
+      const aspect = w / h;
+      camera.aspect = aspect;
+
+      // On portrait/mobile, pull camera closer and look more into the terrain
+      if (aspect < 0.85) {
+        // portrait phone — wide FOV, camera close and low, looking into the hills
+        camera.fov = 75;
+        camera.position.set(0, 30, cameraZ * 0.7);
+        camera.lookAt(new THREE.Vector3(0, 25, -40));
+      } else if (aspect < 1.2) {
+        // tablet portrait / squarish
+        camera.fov = 60;
+        camera.position.set(0, 24, cameraZ * 0.9);
+        camera.lookAt(new THREE.Vector3(0, 24, -20));
+      } else {
+        // landscape desktop
+        camera.fov = 45;
+        camera.position.set(0, 16, cameraZ);
+        camera.lookAt(new THREE.Vector3(0, 28, 0));
+      }
+
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      // Use devicePixelRatio capped at 2 for perf
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(w, h, false);
     };
 
     const render = () => {
@@ -199,13 +227,13 @@ export function GLSLHills({
       animationId = requestAnimationFrame(renderLoop);
     };
 
+    // Use ResizeObserver on the container for reliable size tracking on mobile
+    const ro = new ResizeObserver(() => resize());
+
     const init = () => {
-      renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setClearColor(0x000000, 0);
-      camera.position.set(0, 16, cameraZ);
-      camera.lookAt(new THREE.Vector3(0, 28, 0));
       scene.add(plane.mesh);
-      window.addEventListener('resize', resize);
+      ro.observe(container);
       resize();
       renderLoop();
     };
@@ -213,29 +241,33 @@ export function GLSLHills({
     init();
 
     return () => {
-      window.removeEventListener('resize', resize);
+      ro.disconnect();
       cancelAnimationFrame(animationId);
       renderer.dispose();
       plane.mesh.geometry.dispose();
       if (Array.isArray(plane.mesh.material)) {
-        plane.mesh.material.forEach((m) => m.dispose());
+        plane.mesh.material.forEach((m: any) => m.dispose());
       } else {
-        plane.mesh.material.dispose();
+        (plane.mesh.material as THREE.Material).dispose();
       }
     };
   }, [cameraZ, planeSize, speed]);
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width, height }}> 
+    <div
+      ref={containerRef}
+      style={{ position: 'relative', width, height, overflow: 'hidden' }}
+    >
       <canvas
         ref={canvasRef}
         style={{
           position: 'absolute',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: 0,
-          zIndex: 1
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          zIndex: 1,
+          pointerEvents: 'none',
         }}
       />
     </div>

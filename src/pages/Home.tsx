@@ -6,7 +6,7 @@ import { MstcSearchService } from '../services/publicService';
 // Below-fold sections: lazy-loaded to reduce Total Blocking Time (TBT)
 const FeaturedAuctionsSection = lazy(() => import('../components/home/FeaturedAuctionsSection').then(m => ({ default: m.FeaturedAuctionsSection })));
 const HowItWorksSection = lazy(() => import('../components/home/HowItWorksSection').then(m => ({ default: m.HowItWorksSection })));
-const StatisticsSection = lazy(() => import('../components/home/StatisticsSection').then(m => ({ default: m.StatisticsSection })));
+const LatestNewsBlogSection = lazy(() => import('../components/home/LatestNewsBlogSection').then(m => ({ default: m.LatestNewsBlogSection })));
 const FaqSection = lazy(() => import('../components/home/FaqSection').then(m => ({ default: m.FaqSection })));
 
 function SectionSkeleton() {
@@ -38,7 +38,7 @@ export function Home() {
         <HowItWorksSection />
       </Suspense>
       <Suspense fallback={<SectionSkeleton />}>
-        <StatisticsSection />
+        <LatestNewsBlogSection />
       </Suspense>
       <Suspense fallback={<SectionSkeleton />}>
         <FaqSection />

@@ -51,8 +51,8 @@ export function FeaturedAuctionsSection() {
   }, [isAuthenticated, user]);
 
   return (
-    <section className="py-20 bg-white relative">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-16 sm:py-24 bg-white relative">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex justify-between items-end mb-12 border-b border-slate-200 pb-6">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Recommended Auctions</h2>

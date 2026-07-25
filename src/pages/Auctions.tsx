@@ -819,7 +819,7 @@ export function Auctions() {
           <p className="text-slate-400 mb-6">Browse official government catalogs, bank properties and MSTC eAuctions.</p>
 
           {/* Glassmorphic Tab Switcher */}
-          <div className="flex space-x-2 mb-6 bg-white/10 backdrop-blur-md p-1 rounded-xl w-fit border border-white/10">
+          <div className="flex space-x-2 mb-6 bg-white/10 backdrop-blur-md p-1 rounded-xl w-full sm:w-fit border border-white/10 overflow-x-auto scrollbar-none">
             <button
               onClick={() => setSearchParams({ tab: 'mstc' })}
               className={clsx(
@@ -989,7 +989,7 @@ export function Auctions() {
             {/* Overlay for mobile filters */}
             {isFiltersOpen && (
               <div
-                className="fixed inset-0 bg-white/45 backdrop-blur-md z-30 lg:hidden"
+                className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-45 lg:hidden"
                 onClick={() => setIsFiltersOpen(false)}
               />
             )}
