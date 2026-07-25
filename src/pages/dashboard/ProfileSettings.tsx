@@ -103,7 +103,7 @@ export function ProfileSettings() {
   const handleTerminateAccount = async () => {
     if (!user) return;
     const confirmInput = window.prompt(
-      'WARNING: This action is permanent. Type "DELETE" to request account termination:'
+      'WARNING: This action is permanent. Type "DELETE" to request account deletion:'
     );
     if (confirmInput !== 'DELETE') {
       alert('Deactivation cancelled.');
@@ -117,7 +117,7 @@ export function ProfileSettings() {
       localStorage.removeItem(`usr_vendors_${user.id}`);
       
       await logout();
-      alert('Account deactivation and termination requested. You have been successfully signed out.');
+      alert('Account deletion requested. You have been successfully signed out.');
       window.location.href = '/';
     } catch (error) {
       console.error('Error requesting account deactivation:', error);
@@ -475,7 +475,7 @@ export function ProfileSettings() {
             </div>
             <div className="p-6 space-y-6">
               <p className="text-slate-600 text-sm leading-relaxed">
-                You can manage the removal of your active data from the platform, delete your watchlist items, remove documents from your vault, or request account termination.
+                You can manage the removal of your active data from the platform, delete your watchlist items, remove documents from your vault, or request account deletion.
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
@@ -507,14 +507,14 @@ export function ProfileSettings() {
 
                 <div className="border border-red-100 rounded-xl p-4 flex flex-col justify-between hover:shadow-sm transition-shadow bg-red-50/10">
                   <div>
-                    <h3 className="font-bold text-red-600 text-sm mb-1">Terminate Account</h3>
+                    <h3 className="font-bold text-red-600 text-sm mb-1">Delete Account</h3>
                     <p className="text-xs text-slate-500 mb-4">Permanently delete your profile and deactivate your account credentials.</p>
                   </div>
                   <button
                     onClick={handleTerminateAccount}
                     className="w-full text-center py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors shadow-sm cursor-pointer"
                   >
-                    Request Termination
+                    Delete Account
                   </button>
                 </div>
               </div>
