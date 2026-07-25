@@ -56,7 +56,7 @@ export function extractKeyContacts(cleanText: string): KeyContact[] {
 
     const name = sanitizeContactName(namePart) || "Site Contact";
     const phone = phoneMatch ? phoneMatch[0] : undefined;
-    const email = emailMatch ? emailMatch[0] : undefined;
+    const email = emailMatch ? emailMatch[0] : DEFAULT_CONTACT_EMAIL;
 
     if (name.length > 2 && !contacts.some((c) => c.name === name)) {
       contacts.push({ name, role: "Site Contact", phone, email });
@@ -107,10 +107,10 @@ export function extractKeyContacts(cleanText: string): KeyContact[] {
         const phoneMatch = line.match(/(\+?91[\s-]?)?[6-9]\d{9}/);
         if (phoneMatch) {
           contacts.push({
-            name: DEFAULT_MSTC_OFFICER,
+            name: DEFAULT_MSTC_OFFICER.name,
             role: "Helpdesk Contact",
             phone: phoneMatch[0],
-            email: DEFAULT_CONTACT_EMAIL,
+            email: DEFAULT_MSTC_OFFICER.email || DEFAULT_CONTACT_EMAIL,
           });
           break;
         }
@@ -121,9 +121,9 @@ export function extractKeyContacts(cleanText: string): KeyContact[] {
   // Guaranteed fallback
   if (contacts.length === 0) {
     contacts.push({
-      name: DEFAULT_MSTC_OFFICER,
+      name: DEFAULT_MSTC_OFFICER.name,
       role: "MSTC Officer",
-      email: DEFAULT_CONTACT_EMAIL,
+      email: DEFAULT_MSTC_OFFICER.email || DEFAULT_CONTACT_EMAIL,
     });
   }
 

@@ -40,11 +40,17 @@ export interface DepositDetails {
   emd: string;
   preBidDdg: string;
   adminCharges: string;
+  postBidEmdPercent?: number;
+  preBidEmdAmount?: string;
+  preBidEmdRequired?: boolean;
 }
 
 export interface InspectionDetails {
   time: string;
   contact: string;
+  inspectionTime?: string;
+  contactPerson?: string;
+  contactPhone?: string;
 }
 
 export interface CatalogSummary {

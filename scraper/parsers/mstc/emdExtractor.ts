@@ -5,13 +5,8 @@ import { ADMIN_CHARGES } from "../../config.js";
 import type { DepositDetails } from "../types.js";
 
 export function extractDepositDetails(cleanText: string, isCustoms = false): DepositDetails {
-  let postBidEmdPercent = 10;
-  let adminChargesStr = ADMIN_CHARGES.NON_CUSTOMS;
-
-  if (isCustoms) {
-    postBidEmdPercent = 25;
-    adminChargesStr = ADMIN_CHARGES.CUSTOMS;
-  }
+  let postBidEmdPercent = isCustoms ? 25 : 10;
+  const adminChargesStr = ADMIN_CHARGES;
 
   const emdPercentMatch = cleanText.match(
     /(?:EMD|Earnest\s*Money)\s*[:\-–]?\s*(\d{1,2})\s*%/i
@@ -32,9 +27,11 @@ export function extractDepositDetails(cleanText: string, isCustoms = false): Dep
   }
 
   return {
+    emd: `${postBidEmdPercent}% of bid value`,
+    preBidDdg: preBidEmdAmount || "Not specified / as per STC",
+    adminCharges: adminChargesStr,
     postBidEmdPercent,
     preBidEmdAmount,
-    adminCharges: adminChargesStr,
     preBidEmdRequired: !!preBidEmdAmount,
   };
 }

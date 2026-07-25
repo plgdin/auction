@@ -23,6 +23,8 @@ export function extractInspectionDetails(
   const contactPhone = primaryContact?.phone || "See Catalog Details";
 
   return {
+    time: inspectionTime,
+    contact: `${contactName} (${contactPhone})`,
     inspectionTime,
     contactPerson: contactName,
     contactPhone,
