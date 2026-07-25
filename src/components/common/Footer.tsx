@@ -84,8 +84,8 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="text-primary shrink-0" size={20} />
-                <a href="mailto:Support@lelam.co" className="text-slate-305 hover:text-white transition-colors">
-                  Support@lelam.co
+                <a href="mailto:support@lelam.co" className="text-slate-305 hover:text-white transition-colors">
+                  support@lelam.co
                 </a>
               </li>
             </ul>
@@ -103,13 +103,10 @@ export function Footer() {
               Lelam Company is an independent assistive platform and is not affiliated with MSTC Limited.
             </p>
           </div>
-          <div className="flex space-x-4">
+          <div className="flex space-x-4 pr-20 md:pr-24">
             {/* Social Icons Placeholder */}
-            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="w-8 h-8 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">
-               <span className="text-xs font-bold text-white" aria-hidden="true">in</span>
-            </a>
-            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" className="w-8 h-8 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">
-               <span className="text-xs font-bold text-white" aria-hidden="true">X</span>
+            <a href="https://www.linkedin.com/company/lelam-co/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="w-10 h-10 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">
+               <span className="text-sm font-bold text-white" aria-hidden="true">in</span>
             </a>
           </div>
         </div>
