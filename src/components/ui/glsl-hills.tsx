@@ -10,8 +10,8 @@ interface GLSLHillsProps {
 }
 
 export function GLSLHills({
-  width = '100vw',
-  height = '100vh',
+  width = '100%',
+  height = '100%',
   cameraZ = 125,
   planeSize = 256,
   speed = 0.5
@@ -20,7 +20,12 @@ export function GLSLHills({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const isMobile = window.innerWidth < 768;
+    const segments = isMobile ? 128 : planeSize;
 
     // Plane class
     class Plane {
@@ -38,7 +43,7 @@ export function GLSLHills({
 
       createMesh() {
         return new THREE.Mesh(
-          new THREE.PlaneGeometry(planeSize, planeSize, planeSize, planeSize),
+          new THREE.PlaneGeometry(planeSize, planeSize, segments, segments),
           new THREE.RawShaderMaterial({
             uniforms: this.uniforms,
             vertexShader: `
@@ -172,20 +177,41 @@ export function GLSLHills({
     }
 
     // Three.js setup
-    const renderer = new THREE.WebGLRenderer({ canvas: canvasRef.current, antialias: false });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+    const camera = new THREE.PerspectiveCamera(45, 1, 1, 10000);
     const clock = new THREE.Clock();
     const plane = new Plane();
 
     const resize = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      camera.aspect = window.innerWidth / window.innerHeight;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      if (!w || !h) return;
+
+      const aspect = w / h;
+      camera.aspect = aspect;
+
+      // Adjust camera for mobile portrait & tablet aspect so hills fit cleanly with rich depth
+      if (aspect < 0.85) {
+        // Mobile portrait: keep camera closer (z=120) with wide FOV (62) so hills fill canvas seamlessly
+        camera.fov = 62;
+        camera.position.set(0, 14, 120);
+        camera.lookAt(new THREE.Vector3(0, 24, 0));
+      } else if (aspect < 1.2) {
+        // Tablet portrait
+        camera.fov = 54;
+        camera.position.set(0, 15, 122);
+        camera.lookAt(new THREE.Vector3(0, 26, 0));
+      } else {
+        // Desktop landscape
+        camera.fov = 45;
+        camera.position.set(0, 16, cameraZ);
+        camera.lookAt(new THREE.Vector3(0, 28, 0));
+      }
+
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(w, h, false);
     };
 
     const render = () => {
@@ -199,13 +225,12 @@ export function GLSLHills({
       animationId = requestAnimationFrame(renderLoop);
     };
 
+    const ro = new ResizeObserver(() => resize());
+
     const init = () => {
-      renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setClearColor(0x000000, 0);
-      camera.position.set(0, 16, cameraZ);
-      camera.lookAt(new THREE.Vector3(0, 28, 0));
       scene.add(plane.mesh);
-      window.addEventListener('resize', resize);
+      ro.observe(container);
       resize();
       renderLoop();
     };
@@ -213,29 +238,33 @@ export function GLSLHills({
     init();
 
     return () => {
-      window.removeEventListener('resize', resize);
+      ro.disconnect();
       cancelAnimationFrame(animationId);
       renderer.dispose();
       plane.mesh.geometry.dispose();
       if (Array.isArray(plane.mesh.material)) {
-        plane.mesh.material.forEach((m) => m.dispose());
+        plane.mesh.material.forEach((m: any) => m.dispose());
       } else {
-        plane.mesh.material.dispose();
+        (plane.mesh.material as THREE.Material).dispose();
       }
     };
   }, [cameraZ, planeSize, speed]);
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width, height }}> 
+    <div
+      ref={containerRef}
+      style={{ position: 'relative', width, height, overflow: 'hidden' }}
+    >
       <canvas
         ref={canvasRef}
         style={{
           position: 'absolute',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: 0,
-          zIndex: 1
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          zIndex: 1,
+          pointerEvents: 'none',
         }}
       />
     </div>

@@ -176,47 +176,95 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const cardHeader = (
-    <div className="flex justify-between items-start gap-4 mb-3">
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
-          <span className="text-xs font-semibold text-slate-500 font-mono">
-            Ref ID: {shortId}
-          </span>
-          <button
-            onClick={handleCopy}
-            className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
-            title="Copy full reference number to clipboard"
-            aria-label="Copy reference number"
-          >
-            {copied ? (
-              <Check className="w-3.5 h-3.5 text-emerald-605 animate-scaleIn" />
-            ) : (
-              <Copy className="w-3.5 h-3.5" />
-            )}
-          </button>
+  const renderCardHeader = () => {
+    if (isGrid) {
+      return (
+        <div className="flex flex-col gap-2 mb-3">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+              <span className="text-xs font-semibold text-slate-500 font-mono">
+                Ref ID: {shortId}
+              </span>
+              <button
+                onClick={handleCopy}
+                className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+                title="Copy full reference number to clipboard"
+                aria-label="Copy reference number"
+              >
+                {copied ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-605 animate-scaleIn" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
+          </div>
+          {(item.is_reauction || hasConfirmedAssetDocuments(item.raw_materials_text) || hasOtherMedia) && (
+            <div className="flex flex-wrap gap-1.5 justify-start">
+              {item.is_reauction && (
+                <span className="bg-amber-50 border border-amber-250 text-amber-800 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                  Re-auction
+                </span>
+              )}
+              {hasConfirmedAssetDocuments(item.raw_materials_text) && (
+                <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+                  Asset docs available
+                </span>
+              )}
+              {hasOtherMedia && (
+                <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+                  Images available
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex justify-between items-start gap-4 mb-3">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+            <span className="text-xs font-semibold text-slate-500 font-mono">
+              Ref ID: {shortId}
+            </span>
+            <button
+              onClick={handleCopy}
+              className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+              title="Copy full reference number to clipboard"
+              aria-label="Copy reference number"
+            >
+              {copied ? (
+                <Check className="w-3.5 h-3.5 text-emerald-605 animate-scaleIn" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1.5">
+          {item.is_reauction && (
+            <span className="bg-amber-50 border border-amber-250 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              Re-auction
+            </span>
+          )}
+          {hasConfirmedAssetDocuments(item.raw_materials_text) && (
+            <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+              Asset documents available
+            </span>
+          )}
+          {hasOtherMedia && (
+            <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+              Images available
+            </span>
+          )}
         </div>
       </div>
-      <div className="flex flex-col items-end gap-1.5">
-        {item.is_reauction && (
-          <span className="bg-amber-50 border border-amber-250 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-            Re-auction
-          </span>
-        )}
-        {hasConfirmedAssetDocuments(item.raw_materials_text) && (
-          <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
-            Asset documents available
-          </span>
-        )}
-        {hasOtherMedia && (
-          <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
-            Images available
-          </span>
-        )}
-      </div>
-    </div>
-  );
+    );
+  };
 
   if (!isGrid) {
     // LIST VIEW
@@ -250,7 +298,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
 
         <div className="flex-1 flex flex-col justify-between">
           <div>
-            {cardHeader}
+            {renderCardHeader()}
             
             {(() => {
               const parts = (item?.category_name || '').split(' | ');
@@ -394,7 +442,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
             </div>
           )}
         </div>
-        {cardHeader}
+        {renderCardHeader()}
 
         {(() => {
           const parts = (item?.category_name || '').split(' | ');
@@ -418,34 +466,34 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           );
         })()}
 
-        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-4 gap-y-3.5 text-sm">
+        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-3 gap-y-3 text-xs sm:text-sm">
           <div className="flex flex-col min-w-0">
             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Office</span>
-            <span className="font-bold text-slate-700 truncate text-base" title={regionalOfficeName}>
+            <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={regionalOfficeName}>
               {regionalOfficeName}
             </span>
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Location</span>
-            <span className="font-bold text-slate-700 truncate text-base" title={locationName || 'N/A'}>
+            <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={locationName || 'N/A'}>
               {locationName || 'N/A'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">EMD Required</span>
-            <span className="font-bold text-slate-700 truncate" title={summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}>
+            <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}>
               {summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
-            <span className="font-bold text-slate-700 truncate" title={summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}>
+            <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}>
               {summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5 col-span-2">
             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Auction Type</span>
-            <span className="font-bold text-slate-700 truncate text-base" title={summary?.auctionType || 'O-General'}>
+            <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.auctionType || 'O-General'}>
               {summary?.auctionType || 'O-General'}
             </span>
           </div>
