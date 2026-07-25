@@ -16,6 +16,7 @@ import { storageService } from '../../services/storageService';
 import { auctionService } from '../../services/auctionService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { toast } from 'react-hot-toast';
+import { WonKanbanBoard } from '../../components/dashboard/WonKanbanBoard';
 
 export function Interested() {
   const { user } = useAuthStore();
@@ -315,107 +316,14 @@ export function Interested() {
           </div>
         )
       ) : (
-        /* Won Auctions Tab Content */
-        wonList.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 shadow-2xs">
-            <CheckCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-slate-900">No won auctions registered</h3>
-            <p className="text-slate-500 mt-1 mb-6 text-sm">Register auctions you have won to track documentation, record bids, and verify inventory checklists.</p>
-            <button
-              onClick={handleOpenAddWonModal}
-              className="inline-flex items-center px-5 py-2.5 text-xs font-bold rounded-xl text-white bg-primary hover:bg-primary-700 transition-all shadow-xs hover:shadow-md"
-            >
-              Register First Won Auction
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {wonList.map((item) => (
-              <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4 flex flex-col justify-between hover:shadow-xs transition-shadow">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded uppercase tracking-wide">
-                      {item.isManual ? 'Manual Registry' : 'Bidding Winner'}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-bold font-mono">
-                      {item.reference_number || 'N/A'}
-                    </span>
-                  </div>
-
-                  <h3 className="text-sm font-bold text-slate-900 line-clamp-2 leading-snug">
-                    {item.title}
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-3 pt-2 text-xs border-t border-slate-100">
-                    <div>
-                      <span className="text-slate-400 font-medium block">Closing Bid</span>
-                      <span className="text-slate-800 font-bold block mt-0.5">
-                        {item.closing_bid ? `₹${item.closing_bid.toLocaleString('en-IN')}` : 'Not Specified'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 font-medium block">Awarded Date</span>
-                      <span className="text-slate-800 font-bold block mt-0.5">
-                        {item.closing_date ? new Date(item.closing_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not Specified'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Document Display */}
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-150 flex items-center justify-between">
-                    <div className="flex items-center gap-2 truncate">
-                      <FileText className="w-4 h-4 text-slate-455 shrink-0" />
-                      <span className="text-xs text-slate-700 font-semibold truncate">
-                        {item.document_name || 'No receipt/document'}
-                      </span>
-                    </div>
-                    {item.document_url && (
-                      <button
-                        onClick={async () => {
-                          const storagePath = storageService.extractStoragePath(item.document_url);
-                          await storageService.downloadPrivateFile('auction_documents', storagePath, item.document_name || 'won_receipt.pdf');
-                        }}
-                        className="text-primary hover:text-primary/80 p-1"
-                        title="Download Document"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-4 border-t border-slate-100 mt-2">
-                  <Link
-                    to={`/dashboard/inventory?auctionId=${item.id}`}
-                    className="flex-1 inline-flex items-center justify-center px-3.5 py-2 bg-primary hover:bg-primary-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors gap-1.5"
-                  >
-                    <ClipboardCheck className="w-3.5 h-3.5" /> Checklist
-                  </Link>
-
-                  {item.isManual && (
-                    <>
-                      <button
-                        onClick={() => handleOpenEditWonModal(item)}
-                        className="p-2 border border-slate-200 text-slate-650 hover:text-slate-900 rounded-xl hover:bg-slate-50 transition-colors"
-                        title="Edit Details"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button
-                        onClick={() => handleDeleteWon(item.id)}
-                        className="p-2 border border-slate-200 text-red-500 hover:text-red-700 rounded-xl hover:bg-red-50 hover:border-red-200 transition-colors"
-                        title="Remove Registry"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )
+        /* Won Auctions Tab Content — Kanban Board */
+        <WonKanbanBoard
+          userId={user.id}
+          wonList={wonList}
+          onEdit={handleOpenEditWonModal}
+          onDelete={handleDeleteWon}
+          onAddNew={handleOpenAddWonModal}
+        />
       )}
 
       {/* Catalog Details Modal */}
