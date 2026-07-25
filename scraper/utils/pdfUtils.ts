@@ -357,6 +357,24 @@ export async function extractPdfTextNatively(
 ): Promise<{ pageNumber: number; text: string }[]> {
   const pages: { pageNumber: number; text: string }[] = [];
   
+  // Temporarily suppress PDF.js font evaluator warnings (Warning: TT: undefined function: ...)
+  const originalWarn = console.warn;
+  const originalLog = console.log;
+  
+  console.warn = function(...args: any[]) {
+    if (args[0] && typeof args[0] === "string" && (args[0].includes("Warning:") || args[0].includes("undefined function:"))) {
+      return;
+    }
+    originalWarn.apply(console, args);
+  };
+  
+  console.log = function(...args: any[]) {
+    if (args[0] && typeof args[0] === "string" && (args[0].includes("Warning:") || args[0].includes("undefined function:"))) {
+      return;
+    }
+    originalLog.apply(console, args);
+  };
+  
   try {
     const pdf = require("pdf-parse");
     await pdf(fileBuffer, {
@@ -394,5 +412,8 @@ export async function extractPdfTextNatively(
   } catch (err: any) {
     log.error({ errorMessage: err.message }, "Failed native pdf-parse extraction");
     return [];
+  } finally {
+    console.warn = originalWarn;
+    console.log = originalLog;
   }
 }

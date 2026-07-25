@@ -109,7 +109,7 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
     if (img) {
       const w = img.naturalWidth || img.width || 0;
       const h = img.naturalHeight || img.height || 0;
-      if (w > 0 && h > 0 && (w < 100 || h < 100)) return false;
+      if (w > 0 && h > 0 && (w < 30 || h < 30)) return false;
     }
     return true;
   }
@@ -123,7 +123,12 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
   );
   images.forEach((img) => {
     const htmlImg = img as HTMLImageElement;
-    const src = htmlImg.src || htmlImg.getAttribute("data-src") || "";
+    const src = htmlImg.src || 
+                htmlImg.getAttribute("data-src") || 
+                htmlImg.getAttribute("data-lazy") || 
+                htmlImg.getAttribute("data-original") || 
+                htmlImg.getAttribute("lazy-src") || 
+                "";
     if (src && isValidPhotoInline(src, htmlImg) && !photoUrls.includes(src)) {
       photoUrls.push(src);
     }
@@ -349,7 +354,7 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
     if (img) {
       const w = img.naturalWidth || img.width || 0;
       const h = img.naturalHeight || img.height || 0;
-      if (w > 0 && h > 0 && (w < 100 || h < 100)) return false;
+      if (w > 0 && h > 0 && (w < 30 || h < 30)) return false;
     }
     return true;
   }
@@ -447,7 +452,12 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
     const photoUrls: string[] = [];
     imgs.forEach((img) => {
       const htmlImg = img as HTMLImageElement;
-      const src = htmlImg.src || htmlImg.getAttribute("data-src") || "";
+      const src = htmlImg.src || 
+                  htmlImg.getAttribute("data-src") || 
+                  htmlImg.getAttribute("data-lazy") || 
+                  htmlImg.getAttribute("data-original") || 
+                  htmlImg.getAttribute("lazy-src") || 
+                  "";
       if (src && isValidPhotoInline(src, htmlImg) && !photoUrls.includes(src)) {
         photoUrls.push(src);
       }

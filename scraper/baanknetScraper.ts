@@ -350,7 +350,8 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
     // Detail and property links
     const auctionDetailLink = card.querySelector('a[href*="view-auction"]') as HTMLAnchorElement;
     const propertyDetailLink = card.querySelector('a[href*="view-property"], a[href*="property-detail"]') as HTMLAnchorElement;
-    const detailUrl = auctionDetailLink?.getAttribute("href") || propertyDetailLink?.getAttribute("href") || "";
+    const detailUrl = auctionDetailLink?.href || auctionDetailLink?.getAttribute("href") ||
+                      propertyDetailLink?.href || propertyDetailLink?.getAttribute("href") || "";
 
     if (auctionIdMatch) {
       items.push({
@@ -993,6 +994,34 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
         { id: listing.baanknet_auction_id, error: error.message },
         "Failed to update existing BaankNet listing"
       );
+    } else if (listing.photo_urls && listing.photo_urls.length > 0) {
+      try {
+        await supabase
+          .from("baanknet_auction_photos")
+          .delete()
+          .eq("baanknet_auction_id", listing.baanknet_auction_id);
+
+        const photoInserts = listing.photo_urls.map((url, idx) => ({
+          baanknet_auction_id: listing.baanknet_auction_id,
+          photo_url: url,
+          display_order: idx,
+        }));
+
+        const { error: photoError } = await supabase
+          .from("baanknet_auction_photos")
+          .insert(photoInserts);
+        if (photoError) {
+          log.error(
+            { id: listing.baanknet_auction_id, error: photoError.message },
+            "Failed to insert updated photos"
+          );
+        }
+      } catch (err: any) {
+        log.error(
+          { id: listing.baanknet_auction_id, error: err.message },
+          "Error syncing photos for updated BaankNet listing"
+        );
+      }
     }
   }
 
