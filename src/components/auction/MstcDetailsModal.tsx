@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DownOutlined } from '@ant-design/icons';
-import { X, Copy, Check, Download, Heart, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap } from 'lucide-react';
+import { X, Copy, Check, Download, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
+import ButtonWithIconDemo from '../ui/button-witn-icon';
 import { expandMstcOffice } from '../../services/publicService';
 import { useAuthStore } from '../../store/authStore';
 import { storageService } from '../../services/storageService';
@@ -748,17 +749,12 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               </button>
 
               {onInterestedToggle && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onInterestedToggle();
-                  }}
-                  className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-400 hover:text-rose-500 cursor-pointer flex items-center justify-center ml-1"
-                  title={isInterested ? "Remove from interested list" : "Add to interested list"}
-                >
-                  <Heart className={clsx("w-3.5 h-3.5", isInterested ? "fill-rose-500 text-rose-500" : "")} />
-                </button>
+                <ButtonWithIconDemo
+                  isInterested={isInterested}
+                  onInterestedToggle={onInterestedToggle}
+                  label="I'm Interested"
+                  className="ml-2"
+                />
               )}
             </div>
             <button
@@ -2235,47 +2231,51 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           </div>
 
           {/* Modal Footer */}
-          <div className="px-6 py-4 border-t border-slate-150 bg-slate-50/50 flex flex-col sm:flex-row gap-3 sm:justify-end items-center">
+          <div className="px-6 py-4 border-t border-slate-150 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
             <button
               onClick={onClose}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl text-[15px] font-bold text-slate-650 hover:text-slate-850 hover:bg-slate-200 transition-all cursor-pointer text-center"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-all cursor-pointer text-center"
             >
               Close Details
             </button>
-            <button
-              onClick={handleViewPdf}
-              disabled={viewing}
-              className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {viewing ? (
-                <>
-                  <div className="w-4 h-4 mr-2 border-2 border-slate-850 border-t-transparent rounded-full animate-spin"></div>
-                  Opening...
-                </>
-              ) : (
-                <>
-                  <Eye className="w-4 h-4 mr-2" />
-                  View Catalog
-                </>
-              )}
-            </button>
-            <button
-              onClick={handleDownloadPdf}
-              disabled={downloading}
-              className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {downloading ? (
-                <>
-                  <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Downloading...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download PDF Catalog
-                </>
-              )}
-            </button>
+
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              <button
+                onClick={handleViewPdf}
+                disabled={viewing}
+                className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {viewing ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-slate-850 border-t-transparent rounded-full animate-spin"></div>
+                    Opening...
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Catalog
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleDownloadPdf}
+                disabled={downloading}
+                className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {downloading ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PDF Catalog
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
         </div>

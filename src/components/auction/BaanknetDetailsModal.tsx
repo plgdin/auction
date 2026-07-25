@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Calendar, Landmark, Heart, ExternalLink, Clock, FileDown, Image, Ruler, ChevronLeft, ChevronRight, Shield, User } from 'lucide-react';
+import { X, Copy, Check, Calendar, Landmark, ExternalLink, Clock, FileDown, Image, Ruler, ChevronLeft, ChevronRight, Shield, User } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { BaanknetAuction } from '../../services/publicService';
+import ButtonWithIconDemo from '../ui/button-witn-icon';
 
 interface BaanknetDetailsModalProps {
   item: BaanknetAuction;
@@ -418,15 +419,11 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
               {copied ? 'Copied ID' : 'Copy Auction ID'}
             </button>
             
-            {onInterestedToggle && (
-              <button
-                onClick={onInterestedToggle}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-rose-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-              >
-                <Heart className={`w-3.5 h-3.5 ${isInterested ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
-                {isInterested ? 'Saved to Watchlist' : 'Save to Watchlist'}
-              </button>
-            )}
+            <ButtonWithIconDemo
+              isInterested={isInterested}
+              onInterestedToggle={onInterestedToggle}
+              label="I'm Interested"
+            />
           </div>
 
           <div className="flex items-center gap-2">
