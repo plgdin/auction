@@ -7,6 +7,7 @@ const features = [
     id: '01',
     name: 'ROI Calculator',
     description: 'Calculate customs duty rates, logistics fees, tax components, and estimated net profit margin for any lot.',
+    desktopDescription: 'Calculate customs duty, GST, logistics, handling, and other landed costs before you bid, then compare the expected net margin across each auction lot.',
     highlights: ['Duty & GST Calculation', 'Logistics Estimator', 'Net Margin Projection'],
     icon: Calculator,
     authPath: '/auctions',
@@ -15,6 +16,7 @@ const features = [
     id: '02',
     name: 'Quote Builder',
     description: 'Generate professional procurement quotes with automatic pricing, tax computation, and exportable documentation.',
+    desktopDescription: 'Turn a selected lot into a professional procurement quote with itemized pricing, tax computation, payment terms, and exportable documentation for your buyer or team.',
     highlights: ['Instant PDF Export', 'Tax & Fee Breakdowns', 'Custom Payment Terms'],
     icon: FileText,
     authPath: '/dashboard/quotes',
@@ -23,6 +25,7 @@ const features = [
     id: '03',
     name: 'Document Vault',
     description: 'Securely store and organize your bid documents, compliance certificates, KYC records, and tender submissions.',
+    desktopDescription: 'Keep bid documents, compliance certificates, KYC records, inspection reports, and tender submissions organized in one secure workspace for faster retrieval.',
     highlights: ['Encrypted Vault Storage', 'KYC & License Storage', 'One-Click Bid Attachment'],
     icon: FolderLock,
     authPath: '/dashboard/documents',
@@ -31,6 +34,7 @@ const features = [
     id: '04',
     name: 'Watchlist & Alerts',
     description: 'Save auctions you\'re interested in, set bid reminders, and receive real-time notifications on status changes.',
+    desktopDescription: 'Track auctions that matter to you, set bid reminders, sync important dates, and receive timely alerts when prices, deadlines, or auction status changes.',
     highlights: ['Real-Time Status Alerts', 'Calendar Syncing', 'Live Price Triggers'],
     icon: Heart,
     authPath: '/dashboard/interested',
@@ -42,7 +46,7 @@ export function HowItWorksSection() {
 
   return (
     <section className="py-14 sm:py-16 bg-slate-50/70 border-t border-slate-200/70 relative">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 relative z-10">
+      <div className="max-w-[1440px] lg:max-w-none mx-auto px-6 sm:px-8 lg:px-16 relative z-10">
         <div className="text-center max-w-3xl mx-auto mb-10">
           <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl tracking-tight">
             Built-In Tools & Features
@@ -61,7 +65,7 @@ export function HowItWorksSection() {
             return (
               <div 
                 key={feature.id} 
-                className="bg-white border border-slate-200/80 rounded-2xl p-6 flex flex-col justify-between hover:border-primary/40 transition-all duration-300 group w-[82vw] max-w-[320px] shrink-0 snap-center"
+                className="bg-white border border-slate-200/80 rounded-2xl p-7 flex flex-col justify-between hover:border-primary/40 transition-all duration-300 group w-[88vw] max-w-[360px] min-h-[390px] shrink-0 snap-center"
               >
                 <div>
                   <div className="mb-5">
@@ -101,7 +105,7 @@ export function HowItWorksSection() {
         </div>
 
         {/* Tablet & Desktop Grid */}
-        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-7 lg:gap-8">
           {features.map((feature) => {
             const Icon = feature.icon;
             const linkTo = isAuthenticated ? feature.authPath : '/auth/register';
@@ -109,7 +113,7 @@ export function HowItWorksSection() {
             return (
               <div 
                 key={feature.id} 
-                className="bg-white border border-slate-200/80 rounded-2xl p-7 min-h-[350px] flex flex-col justify-between hover:border-primary/40 hover:shadow-xl transition-all duration-300 group"
+                className="bg-white border border-slate-200/80 rounded-2xl p-8 min-h-[400px] flex flex-col justify-between hover:border-primary/40 hover:shadow-xl transition-all duration-300 group"
               >
                 <div>
                   <div className="mb-5">
@@ -123,7 +127,7 @@ export function HowItWorksSection() {
                   </h3>
 
                   <p className="text-sm text-slate-500 leading-relaxed mb-5">
-                    {feature.description}
+                    {feature.desktopDescription}
                   </p>
 
                   <ul className="space-y-2 pt-3 border-t border-slate-100">

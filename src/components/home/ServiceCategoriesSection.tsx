@@ -4,12 +4,12 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
 const initialCategories = [
-  { name: 'Scrap & Material', icon: Recycle, defaultCount: 450, mstcCategory: 'Metal', desc: 'Ferrous, non-ferrous metals and industrial scrap lots.' },
-  { name: 'Plant & Machinery', icon: Factory, defaultCount: 380, mstcCategory: 'Plant/Machineries', desc: 'Heavy manufacturing gear, CNC machines, and factory plants.' },
-  { name: 'Vehicles & Fleet', icon: Truck, defaultCount: 520, mstcCategory: 'Transport Vehicles', desc: 'Commercial trucks, fleet logistics, and utility vehicles.' },
-  { name: 'Commercial Real Estate', icon: Building2, defaultCount: 240, mstcCategory: 'Immovable Property', desc: 'Warehouses, industrial land, and office buildings.' },
-  { name: 'E-Waste & Electronics', icon: Cpu, defaultCount: 190, mstcCategory: 'Electronics Items', desc: 'IT equipment, servers, telecom hardware, and devices.' },
-  { name: 'Minerals & Ores', icon: Gem, defaultCount: 130, mstcCategory: 'Minerals', desc: 'Mining rights, raw ores, bauxite, and coal reserves.' },
+  { name: 'Scrap & Material', icon: Recycle, defaultCount: 450, mstcCategory: 'Metal', desc: 'Ferrous, non-ferrous metals and industrial scrap lots.', desktopDesc: 'Browse verified ferrous and non-ferrous metal lots, production scrap, and industrial material clearances from government and institutional sellers.' },
+  { name: 'Plant & Machinery', icon: Factory, defaultCount: 380, mstcCategory: 'Plant/Machineries', desc: 'Heavy manufacturing gear, CNC machines, and factory plants.', desktopDesc: 'Find heavy manufacturing equipment, CNC machines, processing lines, and complete factory plants offered through verified liquidation auctions.' },
+  { name: 'Vehicles & Fleet', icon: Truck, defaultCount: 520, mstcCategory: 'Transport Vehicles', desc: 'Commercial trucks, fleet logistics, and utility vehicles.', desktopDesc: 'Explore commercial trucks, transport fleets, utility vehicles, and other movable assets released by public agencies and major institutions.' },
+  { name: 'Commercial Real Estate', icon: Building2, defaultCount: 240, mstcCategory: 'Immovable Property', desc: 'Warehouses, industrial land, and office buildings.', desktopDesc: 'Review warehouses, industrial plots, office buildings, and other commercial properties with auction details, locations, and seller information.' },
+  { name: 'E-Waste & Electronics', icon: Cpu, defaultCount: 190, mstcCategory: 'Electronics Items', desc: 'IT equipment, servers, telecom hardware, and devices.', desktopDesc: 'Source servers, IT equipment, telecom hardware, and electronic devices from organized e-waste and surplus asset auctions.' },
+  { name: 'Minerals & Ores', icon: Gem, defaultCount: 130, mstcCategory: 'Minerals', desc: 'Mining rights, raw ores, bauxite, and coal reserves.', desktopDesc: 'Explore mineral rights, raw ores, bauxite, coal reserves, and other resource lots with clear auction timelines and listing information.' },
 ];
 
 function formatCount(rawCount: number): string {
@@ -96,7 +96,7 @@ export function ServiceCategoriesSection() {
 
   return (
     <section className="py-16 sm:py-24 bg-slate-50/70 border-y border-slate-200/60 relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 relative z-10">
+      <div className="max-w-[1440px] lg:max-w-none mx-auto px-6 sm:px-8 lg:px-16 relative z-10">
         <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
           <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl tracking-tight">
             Explore by Category
@@ -116,7 +116,7 @@ export function ServiceCategoriesSection() {
               <Link
                 key={category.name}
                 to={`/auctions?tab=mstc&mstc_category=${encodeURIComponent(category.mstcCategory)}`}
-                className="group bg-white p-6 rounded-2xl border border-slate-200/80 shadow-md hover:shadow-xl hover:border-primary/40 transition-all duration-300 flex flex-col justify-between relative overflow-hidden w-[82vw] max-w-[320px] shrink-0 snap-center"
+                className="group bg-white p-7 rounded-2xl border border-slate-200/80 shadow-md hover:shadow-xl hover:border-primary/40 transition-all duration-300 flex flex-col justify-between relative overflow-hidden w-[88vw] max-w-[400px] min-h-[290px] shrink-0 snap-center"
               >
                 <div>
                   <div className="flex items-center justify-between mb-5">
@@ -148,7 +148,7 @@ export function ServiceCategoriesSection() {
         </div>
 
         {/* Tablet & Desktop Grid */}
-        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-7 lg:gap-8">
           {initialCategories.map((category) => {
             const Icon = category.icon;
             const formattedCount = getCategoryCount(category.mstcCategory, category.defaultCount);
@@ -157,11 +157,11 @@ export function ServiceCategoriesSection() {
               <Link
                 key={category.name}
                 to={`/auctions?tab=mstc&mstc_category=${encodeURIComponent(category.mstcCategory)}`}
-                className="group bg-white p-7 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative overflow-hidden"
+                className="group bg-white p-8 min-h-[300px] rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative overflow-hidden"
               >
                 <div>
                   <div className="flex items-center justify-between mb-6">
-                    <div className="w-13 h-13 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-2xs">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-2xs">
                       <Icon className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
                     </div>
                     <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200/60 group-hover:bg-primary/10 group-hover:text-primary group-hover:border-primary/20 transition-colors">
@@ -175,7 +175,7 @@ export function ServiceCategoriesSection() {
                   </h3>
                   
                   <p className="text-sm text-slate-500 leading-relaxed font-normal mb-4">
-                    {category.desc}
+                    {category.desktopDesc}
                   </p>
                 </div>
 
