@@ -46,7 +46,7 @@ interface AuctionFiltersProps {
     hasImages?: boolean;
     isReauction?: boolean;
   };
-  activeTab?: 'commercial' | 'mstc' | 'baanknet' | 'gem' | 'gem-bids';
+  activeTab?: 'commercial' | 'mstc';
   customCategories?: string[];
   customSubcategories?: Record<string, string[]>;
   customLocations?: string[];
@@ -522,13 +522,13 @@ export function AuctionFilters({
 
   const customSubcategoryOptions = availableSubcategories.map(sub => ({ key: sub, label: sub }));
   
-  const currentRegionalOffices = (activeTab === 'mstc' || activeTab === 'baanknet' || activeTab === 'gem' || activeTab === 'gem-bids') ? customRegionalOffices : REGIONAL_OFFICES;
+  const currentRegionalOffices = activeTab === 'mstc' ? customRegionalOffices : REGIONAL_OFFICES;
   const regionalOfficeOptions = currentRegionalOffices.map(office => ({
     key: office,
     label: activeTab === 'mstc' ? expandMstcOffice(office) : office
   }));
 
-  const currentLocations = (activeTab === 'mstc' || activeTab === 'baanknet' || activeTab === 'gem' || activeTab === 'gem-bids') ? customLocations : LOCATIONS;
+  const currentLocations = activeTab === 'mstc' ? customLocations : LOCATIONS;
   const locationOptions = currentLocations.map(loc => ({ key: loc, label: loc }));
 
   const expandMstcOfficeMap = activeTab === 'mstc' ? customRegionalOffices.reduce((acc, office) => {
@@ -562,7 +562,7 @@ export function AuctionFilters({
         {/* Categories */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Categories</h3>
-          {(activeTab === 'mstc' || activeTab === 'baanknet' || activeTab === 'gem' || activeTab === 'gem-bids') ? (
+          {activeTab === 'mstc' ? (
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
@@ -590,9 +590,8 @@ export function AuctionFilters({
                 </Dropdown>
               </div>
 
-              {activeTab !== 'baanknet' && activeTab !== 'gem' && activeTab !== 'gem-bids' && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
                   <Dropdown 
                     popupRender={() => renderMultiSelectMenu(
                       customSubcategoryOptions,
@@ -625,7 +624,6 @@ export function AuctionFilters({
                     </button>
                   </Dropdown>
                 </div>
-              )}
             </div>
           ) : (
             <div className="space-y-1">
@@ -814,14 +812,14 @@ export function AuctionFilters({
         ) : (
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
-              {activeTab === 'gem' ? 'Organisation' : activeTab === 'gem-bids' ? 'Department' : 'Regional Office'}
+              Regional Office
             </h3>
             <Dropdown 
               popupRender={() => renderMultiSelectMenu(
                 regionalOfficeOptions,
                 selectedRegionalOffices,
                 setSelectedRegionalOffices,
-                activeTab === 'gem' ? 'All Organisations' : activeTab === 'gem-bids' ? 'All Departments' : 'All Regional Offices'
+                'All Regional Offices'
               )}
               trigger={['click']} 
               placement="bottomLeft"
@@ -833,7 +831,7 @@ export function AuctionFilters({
                 className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
               >
                 <span className="truncate">
-                  {getTriggerLabel(selectedRegionalOffices, activeTab === 'gem' ? 'All Organisations' : activeTab === 'gem-bids' ? 'All Departments' : 'All Regional Offices')}
+                  {getTriggerLabel(selectedRegionalOffices, 'All Regional Offices')}
                 </span>
                 <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
               </button>
@@ -842,9 +840,8 @@ export function AuctionFilters({
         )}
 
         {/* Location */}
-        {activeTab !== 'gem-bids' && (
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Location</h3>
+        <div className="mb-8">
+          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Location</h3>
             <Dropdown 
               popupRender={() => renderMultiSelectMenu(
                 locationOptions,
@@ -868,7 +865,6 @@ export function AuctionFilters({
             </button>
           </Dropdown>
         </div>
-        )}
 
         {/* Pre-bid Requirement */}
         {activeTab === 'mstc' && (
