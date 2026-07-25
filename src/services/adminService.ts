@@ -320,6 +320,10 @@ export const adminService = {
       .from('baanknet_auctions')
       .select('*', { count: 'exact', head: true });
 
+    const { count: activeGemListings } = await supabase
+      .from('gem_auctions')
+      .select('*', { count: 'exact', head: true });
+
     const now = new Date().toISOString();
     const { count: upcomingAuctions } = await supabase
       .from('mstc_auctions')
@@ -331,12 +335,17 @@ export const adminService = {
       .select('*', { count: 'exact', head: true })
       .gt('auction_start_date', now);
 
+    const { count: upcomingGemAuctions } = await supabase
+      .from('gem_auctions')
+      .select('*', { count: 'exact', head: true })
+      .gt('auction_start_date', now);
+
     return {
       totalUsers: userCount || 0,
       activeAuctions: auctionCount || 0,
       activeTenders: tenderCount || 0,
-      activeListings: (activeListings || 0) + (activeBaanknetListings || 0),
-      upcomingAuctions: (upcomingAuctions || 0) + (upcomingBaanknetAuctions || 0)
+      activeListings: (activeListings || 0) + (activeBaanknetListings || 0) + (activeGemListings || 0),
+      upcomingAuctions: (upcomingAuctions || 0) + (upcomingBaanknetAuctions || 0) + (upcomingGemAuctions || 0)
     };
   },
 
@@ -610,6 +619,55 @@ export const adminService = {
 
     if (error) {
       console.error('Error fetching BaankNet scraper audit logs:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async getGemScraperAnalytics() {
+    try {
+      const [totalRes, liveRes, closedRes] = await Promise.all([
+        supabase.from('gem_auctions').select('*', { count: 'exact', head: true }),
+        supabase.from('gem_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'live'),
+        supabase.from('gem_auctions').select('*', { count: 'exact', head: true }).in('auction_status', ['closed', 'cancelled', 'ended']),
+      ]);
+
+      return {
+        total: totalRes.count || 0,
+        upcoming: 0,
+        live: liveRes.count || 0,
+        closed: closedRes.count || 0,
+      };
+    } catch (error) {
+      console.error('Error fetching GeM scraper analytics:', error);
+      return { total: 0, upcoming: 0, live: 0, closed: 0 };
+    }
+  },
+
+  async getGemScraperAuctions(limit: number = 100): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('gem_auctions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching GeM scraper auctions:', error);
+      return [];
+    }
+    return data;
+  },
+
+  async getGemScraperLogs(limit: number = 100): Promise<AuditLog[]> {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .in('action', ['gem_auction_deleted', 'gem_auction_scraped'])
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching GeM scraper audit logs:', error);
       return [];
     }
     return data || [];

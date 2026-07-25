@@ -87,11 +87,13 @@ export default async function handler(req: any, res: any) {
         clearDbRunning: false,
         backfillRunning: false,
         baanknetRunning: false,
+        gemRunning: false,
         scraperLogs,
         workerLogs,
         clearDbLogs,
         backfillLogs,
-        baanknetLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.']
+        baanknetLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.'],
+        gemLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.']
       });
       return;
     }
@@ -207,6 +209,19 @@ export default async function handler(req: any, res: any) {
         return;
       }
       if (cleanUrl === '/api/scraper/baanknet/stop') {
+        res.status(200).json({ success: true });
+        return;
+      }
+
+      // GeM Portal Scraper
+      if (cleanUrl === '/api/scraper/gem/start') {
+        res.status(400).json({
+          success: false,
+          message: 'The GeM Portal Scraper requires Chromium binaries to navigate the forward auctions directory. Please run this scraper locally using "npm run dev".'
+        });
+        return;
+      }
+      if (cleanUrl === '/api/scraper/gem/stop') {
         res.status(200).json({ success: true });
         return;
       }

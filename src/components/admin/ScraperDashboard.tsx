@@ -41,13 +41,16 @@ interface ScraperStats {
 }
 
 export function ScraperDashboard() {
-  const [sourceTab, setSourceTab] = useState<'mstc' | 'baanknet'>('mstc');
+  const [sourceTab, setSourceTab] = useState<'mstc' | 'baanknet' | 'gem'>('mstc');
   const [stats, setStats] = useState<ScraperStats>({ total: 0, pending: 0, processing: 0, completed: 0, failed: 0 });
   const [baanknetStats, setBaanknetStats] = useState({ total: 0, upcoming: 0, live: 0, closed: 0 });
+  const [gemStats, setGemStats] = useState({ total: 0, live: 0, closed: 0 });
   const [auctions, setAuctions] = useState<any[]>([]);
   const [baanknetAuctions, setBaanknetAuctions] = useState<any[]>([]);
+  const [gemAuctions, setGemAuctions] = useState<any[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [baanknetLogs, setBaanknetLogs] = useState<AuditLog[]>([]);
+  const [gemLogs, setGemLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,11 +83,13 @@ export function ScraperDashboard() {
   const [clearDbRunning, setClearDbRunning] = useState(false);
   const [backfillRunning, setBackfillRunning] = useState(false);
   const [baanknetRunning, setBaanknetRunning] = useState(false);
+  const [gemRunning, setGemRunning] = useState(false);
   const [liveScraperLogs, setLiveScraperLogs] = useState<string[]>([]);
   const [liveWorkerLogs, setLiveWorkerLogs] = useState<string[]>([]);
   const [liveClearDbLogs, setLiveClearDbLogs] = useState<string[]>([]);
   const [liveBackfillLogs, setLiveBackfillLogs] = useState<string[]>([]);
   const [liveBaanknetLogs, setLiveBaanknetLogs] = useState<string[]>([]);
+  const [liveGemLogs, setLiveGemLogs] = useState<string[]>([]);
   const [isLocalApiAvailable, setIsLocalApiAvailable] = useState(false);
   const [isServerless, setIsServerless] = useState(false);
   const [generateVectorsRunning, setGenerateVectorsRunning] = useState(false);
@@ -94,19 +99,23 @@ export function ScraperDashboard() {
   const clearDbTerminalRef = useRef<HTMLDivElement>(null);
   const backfillTerminalRef = useRef<HTMLDivElement>(null);
   const baanknetTerminalRef = useRef<HTMLDivElement>(null);
+  const gemTerminalRef = useRef<HTMLDivElement>(null);
 
   const loadDashboardData = async (silent = false) => {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
 
     try {
-      const [statsData, auctionsData, logsData, bnStats, bnAuctions, bnLogs] = await Promise.all([
+      const [statsData, auctionsData, logsData, bnStats, bnAuctions, bnLogs, gemStatsData, gemAuctionsData, gemLogsData] = await Promise.all([
         adminService.getScraperAnalytics(),
         adminService.getScraperAuctions(3000),
         adminService.getScraperLogs(100),
         adminService.getBaanknetScraperAnalytics(),
         adminService.getBaanknetScraperAuctions(3000),
-        adminService.getBaanknetScraperLogs(100)
+        adminService.getBaanknetScraperLogs(100),
+        adminService.getGemScraperAnalytics(),
+        adminService.getGemScraperAuctions(3000),
+        adminService.getGemScraperLogs(100)
       ]);
 
       setStats(statsData);
@@ -115,6 +124,9 @@ export function ScraperDashboard() {
       setBaanknetStats(bnStats);
       setBaanknetAuctions(bnAuctions);
       setBaanknetLogs(bnLogs);
+      setGemStats(gemStatsData);
+      setGemAuctions(gemAuctionsData);
+      setGemLogs(gemLogsData);
     } catch (err: any) {
       console.error('Failed to load scraper dashboard data:', err);
       toast.error('Failed to reload database metrics.');
@@ -152,11 +164,13 @@ export function ScraperDashboard() {
         setClearDbRunning(data.clearDbRunning);
         setBackfillRunning(data.backfillRunning);
         setBaanknetRunning(data.baanknetRunning);
+        setGemRunning(data.gemRunning || false);
         setLiveScraperLogs(data.scraperLogs || []);
         setLiveWorkerLogs(data.workerLogs || []);
         setLiveClearDbLogs(data.clearDbLogs || []);
         setLiveBackfillLogs(data.backfillLogs || []);
         setLiveBaanknetLogs(data.baanknetLogs || []);
+        setLiveGemLogs(data.gemLogs || []);
         setIsLocalApiAvailable(true);
         setIsServerless(!!data.isServerless);
       } catch (err) {
@@ -276,6 +290,43 @@ export function ScraperDashboard() {
       });
       toast.success('BaankNet scraper stop signal sent.');
       setBaanknetRunning(false);
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const startGemScraper = async () => {
+    try {
+      const token = await getAuthToken();
+      const res = await fetch('/api/scraper/gem/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('GeM Portal scraper process spawned!');
+        setGemRunning(true);
+      } else {
+        toast.error(data.message || 'Failed to start GeM scraper.');
+      }
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const stopGemScraper = async () => {
+    try {
+      const token = await getAuthToken();
+      await fetch('/api/scraper/gem/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      toast.success('GeM Portal scraper stop signal sent.');
+      setGemRunning(false);
     } catch (err) {
       toast.error('Could not connect to local API plugin.');
     }
@@ -583,6 +634,22 @@ export function ScraperDashboard() {
     return matchesSearch;
   });
 
+  const filteredGemAuctions = gemAuctions.filter(auc => {
+    let matchesSearch = false;
+    if (searchType === 'ref') {
+      matchesSearch = (auc.gem_auction_id || '').toLowerCase().includes(searchTerm.toLowerCase());
+    } else {
+      matchesSearch = 
+        (auc.gem_auction_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (auc.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (auc.organisation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (auc.ministry || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (auc.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (auc.full_address || '').toLowerCase().includes(searchTerm.toLowerCase());
+    }
+    return matchesSearch;
+  });
+
   useEffect(() => {
     if (activeSubTab === 'auctions') {
       if (sourceTab === 'mstc') {
@@ -594,7 +661,7 @@ export function ScraperDashboard() {
         } else {
           setSelectedAuctionId(null);
         }
-      } else {
+      } else if (sourceTab === 'baanknet') {
         if (filteredBaanknetAuctions.length > 0) {
           const currentSelectedExists = filteredBaanknetAuctions.some(auc => auc.id === selectedAuctionId);
           if (!selectedAuctionId || !currentSelectedExists) {
@@ -603,11 +670,20 @@ export function ScraperDashboard() {
         } else {
           setSelectedAuctionId(null);
         }
+      } else {
+        if (filteredGemAuctions.length > 0) {
+          const currentSelectedExists = filteredGemAuctions.some(auc => auc.id === selectedAuctionId);
+          if (!selectedAuctionId || !currentSelectedExists) {
+            setSelectedAuctionId(filteredGemAuctions[0].id);
+          }
+        } else {
+          setSelectedAuctionId(null);
+        }
       }
     } else {
       setSelectedAuctionId(null);
     }
-  }, [filteredAuctions, filteredBaanknetAuctions, selectedAuctionId, activeSubTab, sourceTab]);
+  }, [filteredAuctions, filteredBaanknetAuctions, filteredGemAuctions, selectedAuctionId, activeSubTab, sourceTab]);
 
   const getLogBadge = (action: string) => {
     switch (action) {
@@ -619,6 +695,7 @@ export function ScraperDashboard() {
         );
       case 'mstc_auction_deleted':
       case 'baanknet_auction_deleted':
+      case 'gem_auction_deleted':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
             <Trash2 className="w-3 h-3 mr-1" /> Deleted (Expired)
@@ -631,9 +708,10 @@ export function ScraperDashboard() {
           </span>
         );
       case 'baanknet_auction_scraped':
+      case 'gem_auction_scraped':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            <Database className="w-3 h-3 mr-1" /> Scraped Property
+            <Database className="w-3 h-3 mr-1" /> Scraped Item
           </span>
         );
       default:
@@ -761,6 +839,102 @@ export function ScraperDashboard() {
     );
   };
 
+  const renderGemDetail = (item: any) => {
+    return (
+      <div className="flex-1 flex flex-col h-full bg-white divide-y divide-slate-100 overflow-hidden">
+        <div className="p-6 bg-slate-900 text-white shrink-0 text-left">
+          <span className="bg-primary/20 text-primary-200 border border-primary/30 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+            {item.category_name || 'Government Auction'}
+          </span>
+          <h2 className="text-lg font-bold mt-2 leading-snug">{item.title}</h2>
+          <p className="text-xs text-slate-400 mt-1 font-mono">GeM Auction ID: {item.gem_auction_id}</p>
+        </div>
+
+        <div className="p-6 space-y-5 flex-1 overflow-y-auto text-left">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-150">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reserve Price</span>
+              <p className="text-xl font-extrabold text-slate-950 mt-1">
+                {item.reserve_price_text || 'N/A'}
+              </p>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-150">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Organisation</span>
+              <p className="text-sm font-bold text-slate-950 mt-1 truncate" title={item.organisation}>{item.organisation || 'N/A'}</p>
+            </div>
+          </div>
+
+          <div className="space-y-3.5 text-sm">
+            {item.ministry && (
+              <div>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ministry</span>
+                <p className="text-slate-800 font-semibold mt-0.5">{item.ministry}</p>
+              </div>
+            )}
+            {item.department && (
+              <div>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Department</span>
+                <p className="text-slate-800 font-semibold mt-0.5">{item.department}</p>
+              </div>
+            )}
+            <div>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Location / State</span>
+              <p className="text-slate-800 font-semibold mt-0.5">{item.location || 'India'} {item.city ? ` - ${item.city}` : ''} {item.pincode ? `(${item.pincode})` : ''}</p>
+            </div>
+            {item.raw_description && (
+              <div>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Crawl Details</span>
+                <p className="text-slate-700 font-medium bg-slate-50 p-3.5 rounded-xl border border-slate-150 mt-1 leading-relaxed whitespace-pre-wrap text-xs max-h-48 overflow-y-auto">
+                  {item.raw_description}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-xs pt-2">
+            <div>
+              <span className="text-slate-400 font-bold uppercase tracking-wider">Starts</span>
+              <p className="text-slate-855 font-bold mt-1">
+                {new Date(item.auction_start_date).toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <span className="text-slate-400 font-bold uppercase tracking-wider">Ends</span>
+              <p className="text-slate-855 font-bold mt-1">
+                {new Date(item.auction_end_date).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 bg-slate-50 flex items-center justify-between shrink-0">
+          <div className="flex gap-2">
+            {item.document_url && (
+              <a
+                href={item.document_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-xs hover:bg-slate-50"
+              >
+                <Download className="w-3.5 h-3.5" /> Notice Document
+              </a>
+            )}
+          </div>
+          {item.source_url && (
+            <a
+              href={item.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+            >
+              Go to GeM Notice <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-32 bg-slate-50/50 rounded-2xl border border-slate-100">
@@ -796,7 +970,7 @@ export function ScraperDashboard() {
     <div className="space-y-6">
       
       {/* Source Selector Tabs */}
-      <div className="flex gap-2.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/50 w-full max-w-md shrink-0">
+      <div className="flex gap-2.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/50 w-full max-w-lg shrink-0">
         <button
           onClick={() => {
             setSourceTab('mstc');
@@ -821,7 +995,20 @@ export function ScraperDashboard() {
               : "text-slate-500 hover:text-slate-900"
           }`}
         >
-          🏢 BaankNet Bank Properties
+          🏢 BaankNet Bank
+        </button>
+        <button
+          onClick={() => {
+            setSourceTab('gem');
+            setSelectedAuctionId(null);
+          }}
+          className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            sourceTab === 'gem'
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          🛒 GeM Auctions
         </button>
       </div>
 
@@ -840,7 +1027,9 @@ export function ScraperDashboard() {
           >
             {sourceTab === 'mstc' 
               ? `Scraped Catalogs (${filteredAuctions.length})`
-              : `Scraped Properties (${filteredBaanknetAuctions.length})`
+              : sourceTab === 'baanknet'
+                ? `Scraped Properties (${filteredBaanknetAuctions.length})`
+                : `Scraped GeM Auctions (${filteredGemAuctions.length})`
             }
           </button>
           <button
@@ -853,7 +1042,9 @@ export function ScraperDashboard() {
           >
             {sourceTab === 'mstc'
               ? `Worker & Deletion Logs (${logs.length})`
-              : `Ingestion & Cleanup Logs (${baanknetLogs.length})`
+              : sourceTab === 'baanknet'
+                ? `Ingestion & Cleanup Logs (${baanknetLogs.length})`
+                : `GeM Scraper Logs (${gemLogs.length})`
             }
           </button>
           <button
@@ -1015,7 +1206,7 @@ export function ScraperDashboard() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : sourceTab === 'baanknet' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Scraped */}
             <div className="bg-gradient-to-br from-white to-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
@@ -1070,6 +1261,50 @@ export function ScraperDashboard() {
               <div>
                 <p className="text-2xl font-black text-gray-700">{baanknetStats.closed}</p>
                 <p className="text-xs text-slate-400 mt-1">Ended properties</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Total Scraped */}
+            <div className="bg-gradient-to-br from-white to-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Scraped</span>
+                <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
+                  <Database className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-800">{gemStats.total}</p>
+                <p className="text-xs text-slate-400 mt-1">GeM auctions discovered</p>
+              </div>
+            </div>
+
+            {/* Live */}
+            <div className="bg-gradient-to-br from-white to-emerald-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Live</span>
+                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                  <Activity className="w-4 h-4 animate-pulse" />
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-emerald-700">{gemStats.live}</p>
+                <p className="text-xs text-slate-400 mt-1">Active live auctions</p>
+              </div>
+            </div>
+
+            {/* Closed */}
+            <div className="bg-gradient-to-br from-white to-gray-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Closed</span>
+                <div className="p-2 bg-gray-150 text-gray-650 rounded-lg">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-gray-700">{gemStats.closed}</p>
+                <p className="text-xs text-slate-400 mt-1">Ended auctions</p>
               </div>
             </div>
           </div>
@@ -1179,15 +1414,14 @@ export function ScraperDashboard() {
                 </button>
               </Dropdown>
             </div>
-
           </div>
 
-          {(sourceTab === 'mstc' ? filteredAuctions : filteredBaanknetAuctions).length === 0 ? (
+          {(sourceTab === 'mstc' ? filteredAuctions : sourceTab === 'baanknet' ? filteredBaanknetAuctions : filteredGemAuctions).length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center shadow-sm">
               <div className="max-w-md mx-auto space-y-3">
                 <p className="text-slate-800 font-bold text-lg">No Matching Records Found</p>
                 <p className="text-slate-400 text-sm">
-                  Try adjusting your search terms or filter constraints. If you haven't run the scraper, execute <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">npx tsx {sourceTab === 'baanknet' ? 'scraper/baanknetScraper.ts' : 'scraper/scraper.ts'}</code> locally.
+                  Try adjusting your search terms or filter constraints. If you haven't run the scraper, execute <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">npx tsx {sourceTab === 'gem' ? 'scraper/gemScraper.ts' : sourceTab === 'baanknet' ? 'scraper/baanknetScraper.ts' : 'scraper/scraper.ts'}</code> locally.
                 </p>
               </div>
             </div>
@@ -1198,7 +1432,18 @@ export function ScraperDashboard() {
               <div className="w-full lg:w-96 shrink-0 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-[750px]">
                 <div className="p-4 border-b border-slate-150 bg-slate-50/50 flex items-center justify-between shrink-0">
                   <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
-                    {sourceTab === 'mstc' ? 'Catalogs' : 'Bank Properties'} ({sourceTab === 'mstc' ? filteredAuctions.length : filteredBaanknetAuctions.length})
+                    {sourceTab === 'mstc' 
+                      ? 'Catalogs' 
+                      : sourceTab === 'baanknet' 
+                        ? 'Bank Properties' 
+                        : 'GeM Auctions'
+                    } ({
+                      sourceTab === 'mstc' 
+                        ? filteredAuctions.length 
+                        : sourceTab === 'baanknet' 
+                          ? filteredBaanknetAuctions.length 
+                          : filteredGemAuctions.length
+                    })
                   </span>
                 </div>
                 <div className="flex-1 overflow-y-auto divide-y divide-slate-150 min-h-0">
@@ -1244,7 +1489,7 @@ export function ScraperDashboard() {
                         </div>
                       );
                     })
-                  ) : (
+                  ) : sourceTab === 'baanknet' ? (
                     filteredBaanknetAuctions.map((auc) => {
                       const isSelected = selectedAuctionId === auc.id;
                       return (
@@ -1276,6 +1521,38 @@ export function ScraperDashboard() {
                         </div>
                       );
                     })
+                  ) : (
+                    filteredGemAuctions.map((auc) => {
+                      const isSelected = selectedAuctionId === auc.id;
+                      return (
+                        <div
+                          key={auc.id}
+                          onClick={() => setSelectedAuctionId(auc.id)}
+                          className={`p-4 cursor-pointer transition-all border-l-4 text-left flex flex-col gap-1.5 ${
+                            isSelected 
+                              ? 'bg-primary/5 border-primary shadow-xs' 
+                              : 'border-transparent hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono font-bold text-xs text-slate-900 truncate max-w-[160px]" title={auc.organisation}>{auc.organisation || 'GeM Organisation'}</span>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 capitalize">
+                              {auc.auction_status}
+                            </span>
+                          </div>
+                          <div className="text-[11px] font-bold text-slate-855 leading-snug line-clamp-2">
+                            {auc.title}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-medium flex items-center justify-between mt-1">
+                            <span className="font-semibold text-slate-700">{auc.reserve_price_text || 'No Reserve'}</span>
+                            <span>{new Date(auc.auction_end_date).toLocaleDateString()}</span>
+                          </div>
+                          <div className="text-[9px] text-slate-400 font-semibold text-right">
+                            {auc.location || 'India'}
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -1293,18 +1570,28 @@ export function ScraperDashboard() {
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-slate-50/20">
                       <FileCheck className="w-12 h-12 text-slate-300 mb-3" />
-                      <p className="font-bold text-slate-650 text-sm">Select a catalog to view and edit</p>
+                      <p className="font-bold text-slate-600 text-sm">Select a catalog to view and edit</p>
                       <p className="text-xs text-slate-400 mt-1">Click any item on the left list to review and correct lot details.</p>
                     </div>
                   )
-                ) : (
+                ) : sourceTab === 'baanknet' ? (
                   selectedAuctionId && baanknetAuctions.find(a => a.id === selectedAuctionId) ? (
                     renderBaanknetDetail(baanknetAuctions.find(a => a.id === selectedAuctionId))
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-slate-50/20">
                       <FileCheck className="w-12 h-12 text-slate-300 mb-3" />
-                      <p className="font-bold text-slate-650 text-sm">Select a property listing</p>
+                      <p className="font-bold text-slate-600 text-sm">Select a property listing</p>
                       <p className="text-xs text-slate-400 mt-1">Click any bank property on the left list to review complete parameters.</p>
+                    </div>
+                  )
+                ) : (
+                  selectedAuctionId && gemAuctions.find(a => a.id === selectedAuctionId) ? (
+                    renderGemDetail(gemAuctions.find(a => a.id === selectedAuctionId))
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-slate-50/20">
+                      <FileCheck className="w-12 h-12 text-slate-300 mb-3" />
+                      <p className="font-bold text-slate-600 text-sm">Select a GeM auction notice</p>
+                      <p className="text-xs text-slate-400 mt-1">Click any GeM auction on the left list to review notice details.</p>
                     </div>
                   )
                 )}
@@ -1460,7 +1747,7 @@ export function ScraperDashboard() {
                       })}
                     </tbody>
                   </table>
-                ) : (
+                ) : sourceTab === 'baanknet' ? (
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider font-extrabold text-slate-500">
@@ -1548,6 +1835,108 @@ export function ScraperDashboard() {
                       })}
                     </tbody>
                   </table>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider font-extrabold text-slate-500">
+                        <th className="px-6 py-4">Organisation / Ministry</th>
+                        <th className="px-6 py-4">Auction Title</th>
+                        <th className="px-6 py-4">Reserve Price</th>
+                        <th className="px-6 py-4">Bidding Dates</th>
+                        <th className="px-6 py-4">Location</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-sm">
+                      {filteredGemAuctions.map((auc) => {
+                        return (
+                          <tr key={auc.id} className="hover:bg-slate-50/50 transition-colors">
+                            
+                            {/* Organisation */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-slate-900 truncate max-w-[180px]" title={auc.organisation}>{auc.organisation || 'GeM Organisation'}</span>
+                                <button 
+                                  onClick={() => handleCopy(auc.organisation || '')}
+                                  className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded transition-colors"
+                                  title="Copy Organisation"
+                                >
+                                  <Clipboard className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <p className="text-[10px] text-slate-400 font-medium truncate max-w-[180px] mt-0.5" title={auc.ministry}>{auc.ministry}</p>
+                            </td>
+
+                            {/* Auction Title */}
+                            <td className="px-6 py-4">
+                              <div className="max-w-xs md:max-w-sm">
+                                <p className="font-semibold text-slate-800 leading-tight line-clamp-2">{auc.title}</p>
+                                <p className="text-xs text-primary font-bold mt-1 capitalize">{auc.category_name}</p>
+                              </div>
+                            </td>
+
+                            {/* Reserve Price */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-slate-900 font-extrabold">{auc.reserve_price_text || 'No Reserve'}</span>
+                            </td>
+
+                            {/* Bidding Dates */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-slate-600 font-semibold text-xs">
+                                Start: {new Date(auc.auction_start_date).toLocaleDateString()}
+                              </div>
+                              <div className="text-slate-650 font-semibold text-xs mt-1">
+                                End: {new Date(auc.auction_end_date).toLocaleDateString()}
+                              </div>
+                            </td>
+
+                            {/* Location */}
+                            <td className="px-6 py-4">
+                              <span className="text-slate-600 font-medium text-xs block">{auc.location || 'India'}</span>
+                              <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">{auc.city}</span>
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 capitalize">
+                                {auc.auction_status}
+                              </span>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {auc.source_url && (
+                                  <a 
+                                    href={auc.source_url} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg transition-colors inline-block"
+                                    title="Open Original GeM Notice URL"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </a>
+                                )}
+                                {auc.document_url && (
+                                  <a 
+                                    href={auc.document_url} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-800 border border-emerald-200 rounded-lg transition-colors inline-block"
+                                    title="Download Notice PDF"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 )}
               </div>
             </div>
@@ -1565,12 +1954,14 @@ export function ScraperDashboard() {
             <p className="text-xs text-slate-400 mt-0.5">
               {sourceTab === 'mstc' 
                 ? 'Tracks PDF downloads, network download failures, and automatic storage cleanup events when auctions close.'
-                : 'Tracks bank property database updates, newly discovered listings, and automatic database purges of ended properties.'
+                : sourceTab === 'baanknet'
+                  ? 'Tracks bank property database updates, newly discovered listings, and automatic database purges of ended properties.'
+                  : 'Tracks GeM Forward Auction scraper updates, database ingestion logs, and automatic purges of expired listings.'
               }
             </p>
           </div>
 
-          {((sourceTab === 'mstc' ? logs : baanknetLogs).length) === 0 ? (
+          {((sourceTab === 'mstc' ? logs : sourceTab === 'baanknet' ? baanknetLogs : gemLogs).length) === 0 ? (
             <div className="p-16 text-center text-slate-500">
               No recent activity or deletion events recorded. Start the scraper to see events populate.
             </div>
@@ -1585,9 +1976,9 @@ export function ScraperDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {(sourceTab === 'mstc' ? logs : baanknetLogs).map((log) => {
+                  {(sourceTab === 'mstc' ? logs : sourceTab === 'baanknet' ? baanknetLogs : gemLogs).map((log) => {
                     const detailsObj = log.details ? (typeof log.details === 'string' ? JSON.parse(log.details) : log.details) : {};
-                    const aucNum = detailsObj.mstc_auction_number || detailsObj.baanknet_auction_id || 'Unknown Auction';
+                    const aucNum = detailsObj.mstc_auction_number || detailsObj.baanknet_auction_id || detailsObj.gem_auction_id || 'Unknown Auction';
                     
                     let logMessage = '';
                     if (log.action === 'mstc_auction_downloaded') {
@@ -1600,6 +1991,10 @@ export function ScraperDashboard() {
                       logMessage = `Purged expired BaankNet auction ID ${aucNum} (End date: ${new Date(detailsObj.auction_end_date).toLocaleDateString()}).`;
                     } else if (log.action === 'baanknet_auction_scraped') {
                       logMessage = `Successfully scraped and imported ${detailsObj.total_scraped} bank property listings.`;
+                    } else if (log.action === 'gem_auction_deleted') {
+                      logMessage = `Purged expired GeM auction ID ${aucNum} (End date: ${new Date(detailsObj.auction_end_date).toLocaleDateString()}).`;
+                    } else if (log.action === 'gem_auction_scraped') {
+                      logMessage = `Successfully scraped and imported GeM auction ${aucNum} (${detailsObj.title || 'No Title'}).`;
                     } else {
                       logMessage = log.entity_type ? `${log.entity_type} event logged` : 'System action recorded';
                     }
@@ -1673,7 +2068,113 @@ export function ScraperDashboard() {
           {/* Console Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {sourceTab === 'baanknet' ? (
+            {sourceTab === 'gem' ? (
+              <>
+                {/* GeM Portal Panel */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
+                  
+                  {/* Header */}
+                  <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                      <Cpu className="w-5 h-5 text-slate-600" />
+                      <div>
+                        <h3 className="font-bold text-slate-900 leading-tight">GeM Portal Forward Auction Scraper</h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Automated Government e-Marketplace listings crawler</p>
+                      </div>
+                    </div>
+                    
+                    {/* Status indicator */}
+                    {gemRunning ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-ping" /> Scraper Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                        <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Scraper Stopped
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Controls */}
+                  <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2">
+                    <button
+                      onClick={startGemScraper}
+                      disabled={!isLocalApiAvailable || gemRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Scraper
+                    </button>
+                    <button
+                      onClick={stopGemScraper}
+                      disabled={!isLocalApiAvailable || !gemRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Square className="w-3.5 h-3.5 mr-1.5 fill-rose-600 text-rose-600" /> Stop Scraper
+                    </button>
+                  </div>
+
+                  {/* Console Viewer */}
+                  <div 
+                    ref={gemTerminalRef}
+                    className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-96 overflow-y-auto space-y-1 select-text scroll-smooth"
+                  >
+                    {liveGemLogs.length === 0 ? (
+                      <p className="text-slate-500 italic">No output logs. Click "Start Scraper" to initiate the process.</p>
+                    ) : (
+                      liveGemLogs.map((line, idx) => (
+                        <p key={idx} className="leading-relaxed whitespace-pre-wrap">
+                          <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
+                          {line}
+                        </p>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Info Panel */}
+                <div className="bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl border border-slate-800 p-6 text-white shadow-xl flex flex-col justify-between min-h-[480px]">
+                  <div>
+                    <div className="flex items-center gap-3.5 mb-6">
+                      <div className="p-2.5 bg-white/10 rounded-xl">
+                        <Terminal className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-base leading-tight">GeM Scraper System Intelligence</h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Automated crawling parameters and strategies</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 text-xs leading-relaxed text-slate-350">
+                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
+                        <h4 className="font-bold text-white mb-1.5">No-Auth Index Mining</h4>
+                        <p>
+                          Unlike government buyer listings which require active session validations or CAPTCHA solving, GeM Forward Auctions directory pages are public-facing. HEADLESS browser automation handles navigation easily.
+                        </p>
+                      </div>
+
+                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
+                        <h4 className="font-bold text-white mb-1.5">Sequential Paging Delay</h4>
+                        <p>
+                          To maintain server request guidelines, the crawler employs 4-second paging delays and random jitter, preventing throttling or IP rate limiting.
+                        </p>
+                      </div>
+
+                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
+                        <h4 className="font-bold text-white mb-1.5">Automatic Database Pruning</h4>
+                        <p>
+                          Like the BaankNet daemon, expired GeM auctions are automatically pruned if their closing date passes, keeping search lists fast and clean.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/5 text-[11px] text-slate-500 font-medium flex items-center justify-between mt-6">
+                    <span>Database: Postgres (Supabase RLS Active)</span>
+                    <span>Version 1.0.0</span>
+                  </div>
+                </div>
+              </>
+            ) : sourceTab === 'baanknet' ? (
               <>
                 {/* BaankNet Panel */}
                 <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">

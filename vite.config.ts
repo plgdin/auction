@@ -9,12 +9,14 @@ let workerProcess: any = null;
 let clearDbProcess: any = null;
 let backfillProcess: any = null;
 let baanknetProcess: any = null;
+let gemProcess: any = null;
 
 let scraperLogs: string[] = [];
 let workerLogs: string[] = [];
 let clearDbLogs: string[] = [];
 let backfillLogs: string[] = [];
 let baanknetLogs: string[] = [];
+let gemLogs: string[] = [];
 
 const appendLog = (type: string, data: any) => {
   const lines = data.toString().split('\n');
@@ -24,6 +26,7 @@ const appendLog = (type: string, data: any) => {
   else if (type === 'clear-db') target = clearDbLogs;
   else if (type === 'backfill') target = backfillLogs;
   else if (type === 'baanknet') target = baanknetLogs;
+  else if (type === 'gem') target = gemLogs;
   else return;
 
   lines.forEach((line: string) => {
@@ -88,11 +91,13 @@ const localApiPlugin = () => ({
             clearDbRunning: clearDbProcess !== null,
             backfillRunning: backfillProcess !== null,
             baanknetRunning: baanknetProcess !== null,
+            gemRunning: gemProcess !== null,
             scraperLogs,
             workerLogs,
             clearDbLogs,
             backfillLogs,
-            baanknetLogs
+            baanknetLogs,
+            gemLogs
           }));
           return;
         }
@@ -153,6 +158,36 @@ const localApiPlugin = () => ({
               baanknetProcess.kill('SIGINT');
               baanknetProcess = null;
               appendLog('baanknet', 'BaankNet Scraper process stopped by user request.');
+            }
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/gem/start') {
+            if (gemProcess) {
+              res.end(JSON.stringify({ success: false, message: 'GeM Scraper already running' }));
+              return;
+            }
+            gemLogs = [];
+            appendLog('gem', 'Starting GeM Portal Scraper (npx tsx scraper/gemScraper.ts)...');
+            gemProcess = spawn('npx', ['tsx', 'scraper/gemScraper.ts'], { shell: true });
+            
+            gemProcess.stdout.on('data', (data: any) => appendLog('gem', data));
+            gemProcess.stderr.on('data', (data: any) => appendLog('gem', data));
+            gemProcess.on('close', (code: any) => {
+              appendLog('gem', `GeM Scraper process terminated with exit code ${code}`);
+              gemProcess = null;
+            });
+            
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/gem/stop') {
+            if (gemProcess) {
+              gemProcess.kill('SIGINT');
+              gemProcess = null;
+              appendLog('gem', 'GeM Scraper process stopped by user request.');
             }
             res.end(JSON.stringify({ success: true }));
             return;
