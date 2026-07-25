@@ -24,7 +24,6 @@ export function GLSLHills({
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    // Reduce geometry on mobile for performance
     const isMobile = window.innerWidth < 768;
     const segments = isMobile ? 128 : planeSize;
 
@@ -192,26 +191,25 @@ export function GLSLHills({
       const aspect = w / h;
       camera.aspect = aspect;
 
-      // On portrait/mobile, pull camera closer and look more into the terrain
+      // Adjust camera for mobile portrait aspect so hills fit cleanly without clipping out
       if (aspect < 0.85) {
-        // portrait phone — wide FOV, camera close and low, looking into the hills
-        camera.fov = 75;
-        camera.position.set(0, 30, cameraZ * 0.7);
-        camera.lookAt(new THREE.Vector3(0, 25, -40));
+        // Phone portrait: scale distance with aspect ratio to keep full hills landscape in view
+        camera.fov = 50;
+        camera.position.set(0, 22, cameraZ * (1.1 / aspect));
+        camera.lookAt(new THREE.Vector3(0, 20, 0));
       } else if (aspect < 1.2) {
-        // tablet portrait / squarish
-        camera.fov = 60;
-        camera.position.set(0, 24, cameraZ * 0.9);
-        camera.lookAt(new THREE.Vector3(0, 24, -20));
+        // Tablet portrait
+        camera.fov = 48;
+        camera.position.set(0, 18, cameraZ * 1.15);
+        camera.lookAt(new THREE.Vector3(0, 22, 0));
       } else {
-        // landscape desktop
+        // Desktop landscape
         camera.fov = 45;
         camera.position.set(0, 16, cameraZ);
         camera.lookAt(new THREE.Vector3(0, 28, 0));
       }
 
       camera.updateProjectionMatrix();
-      // Use devicePixelRatio capped at 2 for perf
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(w, h, false);
     };
@@ -227,7 +225,6 @@ export function GLSLHills({
       animationId = requestAnimationFrame(renderLoop);
     };
 
-    // Use ResizeObserver on the container for reliable size tracking on mobile
     const ro = new ResizeObserver(() => resize());
 
     const init = () => {

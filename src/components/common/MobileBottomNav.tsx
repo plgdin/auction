@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Gavel, LayoutDashboard, Newspaper, HelpCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -6,6 +7,30 @@ import clsx from 'clsx';
 export function MobileBottomNav() {
   const location = useLocation();
   const { user } = useAuthStore();
+  const [isVisible, setIsVisible] = useState(false);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // Hide when near top of page (hero section)
+      if (currentScrollY < 80) {
+        setIsVisible(false);
+      } else if (currentScrollY > lastScrollY.current + 5) {
+        // User scrolling DOWN -> slide nav UP into view
+        setIsVisible(true);
+      } else if (currentScrollY < lastScrollY.current - 15) {
+        // User scrolling UP -> hide nav
+        setIsVisible(false);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
@@ -16,11 +41,18 @@ export function MobileBottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200 py-2 px-2 flex justify-around items-center md:hidden shadow-2xl">
+    <nav
+      className={clsx(
+        "fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200 py-2 px-2 flex justify-around items-center md:hidden shadow-2xl transition-all duration-300 ease-in-out",
+        isVisible
+          ? "translate-y-0 opacity-100"
+          : "translate-y-full opacity-0 pointer-events-none"
+      )}
+    >
       {navItems.map((item) => {
         const Icon = item.icon;
-        const isActive = item.path === '/' 
-          ? location.pathname === '/' 
+        const isActive = item.path === '/'
+          ? location.pathname === '/'
           : location.pathname.startsWith(item.path);
 
         return (
@@ -29,8 +61,8 @@ export function MobileBottomNav() {
             to={item.path}
             className={clsx(
               "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all duration-200 cursor-pointer min-w-[60px]",
-              isActive 
-                ? "text-primary font-bold bg-primary/10 scale-105" 
+              isActive
+                ? "text-primary font-bold bg-primary/10 scale-105"
                 : "text-slate-500 hover:text-slate-900 font-medium"
             )}
           >
