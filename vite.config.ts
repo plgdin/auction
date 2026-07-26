@@ -123,6 +123,7 @@ const localApiPlugin = () => ({
             return;
           }
 
+
           if (req.url === '/api/scraper/input') {
             if (scraperProcess && scraperProcess.stdin) {
               scraperProcess.stdin.write('\n');

@@ -490,7 +490,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     </div>
                   )}
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Auction Type</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Auction Type</span>
+                      <div className="relative group inline-block">
+                        <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          Identifies the category of the auction (e.g. C-Customs, O-General, P-Property) which dictates specific compliance rules and bidding procedures.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {summary.auctionType || 'O-General'}
                     </span>
@@ -512,7 +521,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Inspection Date Range</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Inspection Date Range</span>
+                      <div className="relative group inline-block">
+                        <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          The designated timeline for bidders to physically visit the warehouse or site to inspect material condition, quality, and quantity.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {summary.inspectionSchedule || 'N/A'}
                     </span>
@@ -668,13 +686,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     {summary.complianceInfo?.requiredDocuments && summary.complianceInfo.requiredDocuments.length > 0 ? (
                       summary.complianceInfo.requiredDocuments.map((doc, idx) => (
                         <div key={idx} className="flex gap-2 items-start p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                          <span className="mt-0.5 shrink-0">
-                            {doc.type === 'mandatory' ? (
-                              <span className="text-emerald-600 text-sm font-bold">✓</span>
-                            ) : (
-                              <span className="text-amber-500 text-sm font-bold">⚠</span>
-                            )}
-                          </span>
                           <div>
                             <p className="text-xs font-bold text-slate-850 flex items-center gap-1.5 flex-wrap">
                               <span>{doc.name}</span>
@@ -705,20 +716,47 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   </h4>
                   <div className="space-y-3">
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase tracking-wider">EMD Details</span>
+                      <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <span>EMD Details</span>
+                        <div className="relative group inline-block">
+                          <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                            Earnest Money Deposit (EMD) is a security deposit to guarantee bid commitment. Refunded to unsuccessful bidders.
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                          </div>
+                        </div>
+                      </span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
                         {summary.depositDetails.emd}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase tracking-wider">Pre-bid EMD</span>
+                      <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <span>Pre-bid EMD</span>
+                        <div className="relative group inline-block">
+                          <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                            Pre-bid EMD is a mandatory deposit paid before the auction starts to qualify and receive bidding credentials.
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                          </div>
+                        </div>
+                      </span>
                       <span className="font-bold text-slate-850 text-[13.5px]">
                         {summary.depositDetails.preBidDdg}
                       </span>
                     </div>
                     {summary.complianceInfo?.gstStatus && (
                       <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <span className="text-slate-500 text-[11px] uppercase tracking-wider">GST Tax Scheme</span>
+                        <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>GST Tax Scheme</span>
+                          <div className="relative group inline-block">
+                            <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-56 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                              Reverse Charge Mechanism (RCM) requires the buyer to pay the GST directly to the government instead of paying it to the seller.
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                            </div>
+                          </div>
+                        </span>
                         <div className="mt-1 flex flex-col gap-1">
                           <span className="font-bold text-slate-850 text-[13.5px] flex items-center gap-1.5">
                             {summary.complianceInfo.gstStatus.type}

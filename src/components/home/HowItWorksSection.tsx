@@ -1,68 +1,155 @@
-import { Search, TrendingUp, Sliders, LayoutDashboard } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Calculator, FileText, FolderLock, Heart, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
 
-const steps = [
+const features = [
   {
     id: '01',
-    name: 'Access MSTC Auctions',
-    description: 'Instantly search and browse through synchronized government and corporate auction schedules and catalog listings.',
-    icon: Search,
+    name: 'ROI Calculator',
+    description: 'Calculate customs duty rates, logistics fees, tax components, and estimated net profit margin for any lot.',
+    desktopDescription: 'Calculate customs duty, GST, logistics, handling, and other landed costs before you bid, then compare the expected net margin across each auction lot.',
+    highlights: ['Duty & GST Calculation', 'Logistics Estimator', 'Net Margin Projection'],
+    icon: Calculator,
+    authPath: '/auctions',
   },
   {
     id: '02',
-    name: 'Track Market Prices',
-    description: 'View live and historical metal index trends, currency rates, and regression models to determine accurate valuations.',
-    icon: TrendingUp,
+    name: 'Quote Builder',
+    description: 'Generate professional procurement quotes with automatic pricing, tax computation, and exportable documentation.',
+    desktopDescription: 'Turn a selected lot into a professional procurement quote with itemized pricing, tax computation, payment terms, and exportable documentation for your buyer or team.',
+    highlights: ['Instant PDF Export', 'Tax & Fee Breakdowns', 'Custom Payment Terms'],
+    icon: FileText,
+    authPath: '/dashboard/quotes',
   },
   {
     id: '03',
-    name: 'Compare & Calculate',
-    description: 'Adjust customs duties and logistics charges, toggle price visibility, and evaluate potential ROI dynamically.',
-    icon: Sliders,
+    name: 'Document Vault',
+    description: 'Securely store and organize your bid documents, compliance certificates, KYC records, and tender submissions.',
+    desktopDescription: 'Keep bid documents, compliance certificates, KYC records, inspection reports, and tender submissions organized in one secure workspace for faster retrieval.',
+    highlights: ['Encrypted Vault Storage', 'KYC & License Storage', 'One-Click Bid Attachment'],
+    icon: FolderLock,
+    authPath: '/dashboard/documents',
   },
   {
     id: '04',
-    name: 'Interactive Dashboard',
-    description: 'Monitor your bookmarked items, manage analyzed lots, and customize your settings from the admin sidebar.',
-    icon: LayoutDashboard,
+    name: 'Watchlist & Alerts',
+    description: 'Save auctions you\'re interested in, set bid reminders, and receive real-time notifications on status changes.',
+    desktopDescription: 'Track auctions that matter to you, set bid reminders, sync important dates, and receive timely alerts when prices, deadlines, or auction status changes.',
+    highlights: ['Real-Time Status Alerts', 'Calendar Syncing', 'Live Price Triggers'],
+    icon: Heart,
+    authPath: '/dashboard/interested',
   },
 ];
 
 export function HowItWorksSection() {
+  const { isAuthenticated } = useAuthStore();
 
   return (
-    <section className="py-20 bg-white border-t border-slate-100">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">How the Platform Works</h2>
-          <p className="mt-4 text-lg text-slate-600">
-            Empowering MSTC buyers with data-driven auction intelligence in 4 simple steps.
+    <section className="py-14 sm:py-16 bg-slate-50/70 border-t border-slate-200/70 relative">
+      <div className="max-w-[1440px] lg:max-w-none mx-auto px-6 sm:px-8 lg:px-16 relative z-10">
+        <div className="text-center max-w-3xl mx-auto mb-10">
+          <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl tracking-tight">
+            Built-In Tools & Features
+          </h2>
+          <p className="mt-3 text-base sm:text-lg text-slate-600 leading-relaxed">
+            Everything you need to analyze, bid, and win high-value eAuctions — all inside one platform.
           </p>
         </div>
 
-        <div className="relative">
-          {/* Connecting line for desktop */}
-          <div className="hidden md:block absolute top-12 left-[10%] right-[10%] h-0.5 bg-slate-200" aria-hidden="true" />
+        {/* Mobile Left-Right Horizontal Slider */}
+        <div className="flex sm:hidden overflow-x-auto snap-x snap-mandatory gap-4 -my-4 py-4 pb-6 -mx-6 px-6 hide-scrollbar">
+          {features.map((feature) => {
+            const Icon = feature.icon;
+            const linkTo = isAuthenticated ? feature.authPath : '/auth/register';
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
-            {steps.map((step) => {
-              const Icon = step.icon;
-              return (
-                <div key={step.id} className="relative flex flex-col items-center text-center">
-                  <div className="w-24 h-24 rounded-full bg-white border-4 border-slate-50 shadow-sm flex items-center justify-center relative z-10 mb-6 group hover:border-primary/20 transition-colors">
-                    <div className="absolute inset-0 bg-primary/5 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-                    <Icon className="w-10 h-10 text-primary relative z-10" />
-                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md">
-                      {step.id}
+            return (
+              <div 
+                key={feature.id} 
+                className="bg-white border border-slate-200/80 rounded-2xl p-7 flex flex-col justify-between hover:border-primary/40 transition-all duration-300 group w-[88vw] max-w-[360px] min-h-[390px] shrink-0 snap-center"
+              >
+                <div>
+                  <div className="mb-5">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-2xs">
+                      <Icon className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
                     </div>
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-3">{step.name}</h3>
-                  <p className="text-slate-600 leading-relaxed text-sm">
-                    {step.description}
+
+                  <h3 className="text-lg font-bold text-slate-900 mb-2.5 group-hover:text-primary transition-colors">
+                    {feature.name}
+                  </h3>
+
+                  <p className="text-sm text-slate-500 leading-relaxed mb-5">
+                    {feature.description}
                   </p>
+
+                  <ul className="space-y-2 pt-3 border-t border-slate-100">
+                    {feature.highlights.map((item, i) => (
+                      <li key={i} className="flex items-center text-xs font-medium text-slate-600">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-primary mr-2 shrink-0" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              );
-            })}
-          </div>
+
+                <Link
+                  to={linkTo}
+                  className="pt-5 mt-6 border-t border-slate-100 flex items-center text-xs font-bold text-primary group-hover:translate-x-1 transition-transform"
+                >
+                  <span>Explore Feature</span>
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Tablet & Desktop Grid */}
+        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-7 lg:gap-8">
+          {features.map((feature) => {
+            const Icon = feature.icon;
+            const linkTo = isAuthenticated ? feature.authPath : '/auth/register';
+
+            return (
+              <div 
+                key={feature.id} 
+                className="bg-white border border-slate-200/80 rounded-2xl p-8 min-h-[400px] flex flex-col justify-between hover:border-primary/40 hover:shadow-xl transition-all duration-300 group"
+              >
+                <div>
+                  <div className="mb-5">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-2xs">
+                      <Icon className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
+                    </div>
+                  </div>
+
+                  <h3 className="text-xl font-bold text-slate-900 mb-2.5 group-hover:text-primary transition-colors">
+                    {feature.name}
+                  </h3>
+
+                  <p className="text-sm text-slate-500 leading-relaxed mb-5">
+                    {feature.desktopDescription}
+                  </p>
+
+                  <ul className="space-y-2 pt-3 border-t border-slate-100">
+                    {feature.highlights.map((item, i) => (
+                      <li key={i} className="flex items-center text-xs font-medium text-slate-600">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-primary mr-2 shrink-0" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <Link
+                  to={linkTo}
+                  className="pt-5 mt-6 border-t border-slate-100 flex items-center text-xs font-bold text-primary group-hover:translate-x-1 transition-transform"
+                >
+                  <span>Explore Feature</span>
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Link>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

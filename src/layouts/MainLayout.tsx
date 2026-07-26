@@ -5,6 +5,7 @@ import { AnnouncementBanner } from '../components/common/AnnouncementBanner';
 import { PageTracker } from '../components/common/PageTracker';
 import { CookieConsent } from '../components/common/CookieConsent';
 import { MaintenanceGuard } from '../components/common/MaintenanceGuard';
+import { MobileBottomNav } from '../components/common/MobileBottomNav';
 
 export function MainLayout() {
   return (
@@ -17,10 +18,11 @@ export function MainLayout() {
         <PageTracker />
         <AnnouncementBanner />
         <Header />
-        <main id="main-content" className="flex-grow" role="main">
+        <main id="main-content" className="flex-grow pb-16 md:pb-0" role="main">
           <Outlet />
         </main>
         <Footer />
+        <MobileBottomNav />
         <CookieConsent />
       </div>
     </MaintenanceGuard>

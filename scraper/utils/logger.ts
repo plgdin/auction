@@ -39,27 +39,43 @@ function createLogger(context?: Record<string, unknown>) {
       return createLogger({ ...baseContext, ...childContext });
     },
 
-    info(metadata: Record<string, unknown>, message: string) {
-      console.log(formatEntry("info", { ...baseContext, ...metadata }, message));
+    info(metadata: Record<string, unknown> | string, message?: string) {
+      if (typeof metadata === "string") {
+        console.log(formatEntry("info", baseContext, metadata));
+      } else {
+        console.log(formatEntry("info", { ...baseContext, ...metadata }, message || ""));
+      }
     },
 
-    warn(metadata: Record<string, unknown>, message: string) {
-      console.warn(
-        formatEntry("warn", { ...baseContext, ...metadata }, message),
-      );
-    },
-
-    error(metadata: Record<string, unknown>, message: string) {
-      console.error(
-        formatEntry("error", { ...baseContext, ...metadata }, message),
-      );
-    },
-
-    debug(metadata: Record<string, unknown>, message: string) {
-      if (process.env.LOG_LEVEL === "debug") {
-        console.log(
-          formatEntry("debug", { ...baseContext, ...metadata }, message),
+    warn(metadata: Record<string, unknown> | string, message?: string) {
+      if (typeof metadata === "string") {
+        console.warn(formatEntry("warn", baseContext, metadata));
+      } else {
+        console.warn(
+          formatEntry("warn", { ...baseContext, ...metadata }, message || ""),
         );
+      }
+    },
+
+    error(metadata: Record<string, unknown> | string, message?: string) {
+      if (typeof metadata === "string") {
+        console.error(formatEntry("error", baseContext, metadata));
+      } else {
+        console.error(
+          formatEntry("error", { ...baseContext, ...metadata }, message || ""),
+        );
+      }
+    },
+
+    debug(metadata: Record<string, unknown> | string, message?: string) {
+      if (process.env.LOG_LEVEL === "debug") {
+        if (typeof metadata === "string") {
+          console.log(formatEntry("debug", baseContext, metadata));
+        } else {
+          console.log(
+            formatEntry("debug", { ...baseContext, ...metadata }, message || ""),
+          );
+        }
       }
     },
   };

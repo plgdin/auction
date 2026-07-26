@@ -231,15 +231,30 @@
   }
 }
 
-@utility animate-fade-in {
+@keyframes slideDownFromTop {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
   animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@utility animate-scale-up {
+.animate-scale-up {
   animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@utility custom-scrollbar {
+.animate-slide-down {
+  animation: slideDownFromTop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.custom-scrollbar {
   &::-webkit-scrollbar {
     width: 6px;
   }
@@ -256,6 +271,27 @@
   &::-webkit-scrollbar-thumb:hover {
     background-color: var(--outline);
   }
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .calendar-dropdown-overlay .ant-dropdown-menu {
@@ -352,4 +388,23 @@
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+}
+
+/* Typing cursor blink animation */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Heart bounce animation for "I'm Interested" button */
+@keyframes bounce-once {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.25); }
+  50% { transform: scale(0.9); }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.animate-bounce-once {
+  animation: bounce-once 0.4s ease-out;
 }
