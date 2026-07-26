@@ -12,13 +12,18 @@ export function MobileBottomNav() {
   useEffect(() => {
     const handleScroll = () => {
       // Show bottom navbar whenever user is scrolled past top hero area (50px)
-      setIsVisible(window.scrollY > 50);
+      // Only apply this auto-hide logic on the home page.
+      if (location.pathname === '/') {
+        setIsVisible(window.scrollY > 50);
+      } else {
+        setIsVisible(true);
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [location.pathname]);
 
   const navItems = [
     { name: 'Home', path: '/', icon: Home },

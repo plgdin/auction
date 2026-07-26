@@ -11,6 +11,26 @@ interface Message {
 export function Chatbox() {
   const [isOpen, setIsOpen] = useState(false);
   const [showBubble, setShowBubble] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isHomePage, setIsHomePage] = useState(window.location.pathname === '/');
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+      setIsHomePage(window.location.pathname === '/');
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Fallback to update location on navigation
+    const checkLocation = () => setIsHomePage(window.location.pathname === '/');
+    window.addEventListener('popstate', checkLocation);
+    
+    handleScroll();
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('popstate', checkLocation);
+    };
+  }, []);
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'bot',
@@ -273,7 +293,7 @@ CONTACT & ESCALATION:
       `}</style>
 
       {/* Floating Widget Container */}
-      <div className="fixed bottom-6 right-6 z-[999] flex flex-col items-end pointer-events-none select-none font-sans">
+      <div className={`fixed ${!isHomePage || isScrolled ? 'bottom-16' : 'bottom-6'} md:bottom-6 right-4 md:right-6 z-[999] flex flex-col items-end pointer-events-none select-none font-sans transition-all duration-300 ease-in-out`}>
         
         {/* Closed state bubble pop up */}
         {!isOpen && showBubble && (

@@ -35,10 +35,9 @@ function App() {
     }
   }, [user, fetchInterestedMstcIds]);
 
-  // Delay chatbot mount until after initial paint to prevent flash of the orb
+  // Allow chatbot to load immediately instead of artificial delay
   useEffect(() => {
-    const timer = setTimeout(() => setShowChatbot(true), 3000);
-    return () => clearTimeout(timer);
+    setShowChatbot(true);
   }, []);
 
   useEffect(() => {
