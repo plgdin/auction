@@ -5,7 +5,13 @@ import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight,
 import { lazy, Suspense } from 'react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
+import { BaanknetCard } from '../components/auction/BaanknetCard';
+import { GemCard } from '../components/auction/GemCard';
+import { GemBidCard } from '../components/auction/GemBidCard';
 const MstcDetailsModal = lazy(() => import('../components/auction/MstcDetailsModal').then(module => ({ default: module.MstcDetailsModal })));
+const BaanknetDetailsModal = lazy(() => import('../components/auction/BaanknetDetailsModal').then(module => ({ default: module.BaanknetDetailsModal })));
+const GemDetailsModal = lazy(() => import('../components/auction/GemDetailsModal').then(module => ({ default: module.GemDetailsModal })));
+const GemBidDetailsModal = lazy(() => import('../components/auction/GemBidDetailsModal').then(module => ({ default: module.GemBidDetailsModal })));
 import { AuctionFilters } from '../components/auction/AuctionFilters';
 import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
@@ -13,8 +19,8 @@ import { useAuthStore } from '../store/authStore';
 import { useAppStore } from '../store/appStore';
 import { dashboardService } from '../services/dashboardService';
 import type { Auction } from '../types/database.types';
-import { MstcSearchService, expandMstcOffice } from '../services/publicService';
-import type { MstcSanitizedAuction, SearchSuggestion } from '../services/publicService';
+import { MstcSearchService, expandMstcOffice, BaanknetSearchService, GemSearchService, GemBidSearchService } from '../services/publicService';
+import type { MstcSanitizedAuction, SearchSuggestion, BaanknetAuction, GemAuction, GemBid } from '../services/publicService';
 import clsx from 'clsx';
 import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
 import { recommendationService } from '../services/recommendationService';
@@ -135,12 +141,56 @@ export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
 
-  const activeTab = rawTab === 'commercial' ? 'commercial' : 'mstc';
+  const rawTab = searchParams.get('tab');
+  const activeTab = rawTab === 'commercial' ? 'commercial' : rawTab === 'baanknet' ? 'baanknet' : rawTab === 'gem' ? 'gem' : rawTab === 'gem-bids' ? 'gem-bids' : 'mstc';
 
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [watchlistIds, setWatchlistIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // BaankNet eAuction specific states
+  const [baanknetAuctions, setBaanknetAuctions] = useState<BaanknetAuction[]>([]);
+  const [baanknetTotalCount, setBaanknetTotalCount] = useState(0);
+  const [isBaanknetLoading, setIsBaanknetLoading] = useState(false);
+  const [selectedPreviewBaanknetItem, setSelectedPreviewBaanknetItem] = useState<BaanknetAuction | null>(null);
+  const [baanknetOptions, setBaanknetOptions] = useState<{
+    categories: string[];
+    locations: string[];
+    regionalOffices: string[];
+  }>({
+    categories: [],
+    locations: [],
+    regionalOffices: []
+  });
+
+  // GeM Portal specific states
+  const [gemAuctions, setGemAuctions] = useState<GemAuction[]>([]);
+  const [gemTotalCount, setGemTotalCount] = useState(0);
+  const [isGemLoading, setIsGemLoading] = useState(false);
+  const [selectedPreviewGemItem, setSelectedPreviewGemItem] = useState<GemAuction | null>(null);
+  const [gemOptions, setGemOptions] = useState<{
+    categories: string[];
+    locations: string[];
+    regionalOffices: string[];
+  }>({
+    categories: [],
+    locations: [],
+    regionalOffices: []
+  });
+
+  // GeM Bids specific states
+  const [gemBids, setGemBids] = useState<GemBid[]>([]);
+  const [gemBidsTotalCount, setGemBidsTotalCount] = useState(0);
+  const [isGemBidsLoading, setIsGemBidsLoading] = useState(false);
+  const [selectedPreviewGemBid, setSelectedPreviewGemBid] = useState<GemBid | null>(null);
+  const [gemBidsOptions, setGemBidsOptions] = useState<{
+    categories: string[];
+    departments: string[];
+  }>({
+    categories: [],
+    departments: []
+  });
 
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
   const [mstcTotalCount, setMstcTotalCount] = useState(0);
@@ -311,15 +361,15 @@ export function Auctions() {
 
   const mstcActiveFilters = [
     ...(submittedSearchQuery ? [{ label: 'Search', value: submittedSearchQuery }] : []),
-    ...(selectedMstcCategories.length ? [{ label: 'Category', value: selectedMstcCategories.join(', ') }] : []),
-    ...(selectedMstcSubcategories.length ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
+    ...(selectedMstcCategories.length ? [{ label: activeTab === 'baanknet' ? 'Property Type' : 'Category', value: selectedMstcCategories.join(', ') }] : []),
+    ...(selectedMstcSubcategories.length && activeTab !== 'baanknet' ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
     ...(selectedMstcLocations.length ? [{ label: 'Location', value: selectedMstcLocations.join(', ') }] : []),
-    ...(selectedMstcRegionalOffices.length ? [{ label: 'Regional office', value: selectedMstcRegionalOffices.join(', ') }] : []),
+    ...(selectedMstcRegionalOffices.length ? [{ label: activeTab === 'baanknet' ? 'Lending Bank' : 'Regional office', value: selectedMstcRegionalOffices.join(', ') }] : []),
     ...(startDate ? [{ label: 'From', value: startDate }] : []),
     ...(endDate ? [{ label: 'To', value: endDate }] : []),
-    ...(mstcHasAssetDocuments ? [{ label: 'Documents', value: 'Available' }] : []),
-    ...(mstcHasImages ? [{ label: 'Images', value: 'Available' }] : []),
-    ...(mstcIsReauction ? [{ label: 'Auction status', value: 'Re-auction' }] : []),
+    ...(mstcHasAssetDocuments && activeTab !== 'baanknet' ? [{ label: 'Documents', value: 'Available' }] : []),
+    ...(mstcHasImages && activeTab !== 'baanknet' ? [{ label: 'Images', value: 'Available' }] : []),
+    ...(mstcIsReauction && activeTab !== 'baanknet' ? [{ label: 'Auction status', value: 'Re-auction' }] : []),
   ];
 
   const isAnyFilterActive = !!(
@@ -445,6 +495,124 @@ export function Auctions() {
     }
   }, []);
 
+  const loadBaanknetData = useCallback(async () => {
+    setIsBaanknetLoading(true);
+    try {
+      const qParam = searchParams.get('q') || '';
+      const result = await BaanknetSearchService.searchBaanknetCatalog(qParam, {
+        category: selectedMstcCategories[0] || undefined,
+        location: selectedMstcLocations[0] || undefined,
+        regionalOffice: selectedMstcRegionalOffices[0] || undefined,
+        page,
+        limit,
+        sortBy
+      });
+
+      setBaanknetAuctions(result.data);
+      setBaanknetTotalCount(result.count);
+    } catch (error) {
+      console.error('Error loading BaankNet data:', error);
+    } finally {
+      setIsBaanknetLoading(false);
+    }
+  }, [
+    searchParams,
+    selectedMstcCategoriesJoined,
+    selectedMstcLocationsJoined,
+    selectedMstcRegionalOfficesJoined,
+    page,
+    limit,
+    sortBy
+  ]);
+
+  const loadBaanknetOptions = useCallback(async () => {
+    try {
+      const options = await BaanknetSearchService.getBaanknetFilterOptions();
+      setBaanknetOptions(options);
+    } catch (error) {
+      console.error('Error loading BaankNet filter options:', error);
+    }
+  }, []);
+
+  const loadGemData = useCallback(async () => {
+    setIsGemLoading(true);
+    try {
+      const qParam = searchParams.get('q') || '';
+      const result = await GemSearchService.searchGemCatalog(qParam, {
+        category: selectedMstcCategories[0] || undefined,
+        location: selectedMstcLocations[0] || undefined,
+        regionalOffice: selectedMstcRegionalOffices[0] || undefined,
+        page,
+        limit,
+        sortBy
+      });
+
+      setGemAuctions(result.data);
+      setGemTotalCount(result.count);
+    } catch (error) {
+      console.error('Error loading GeM data:', error);
+    } finally {
+      setIsGemLoading(false);
+    }
+  }, [
+    searchParams,
+    selectedMstcCategoriesJoined,
+    selectedMstcLocationsJoined,
+    selectedMstcRegionalOfficesJoined,
+    page,
+    limit,
+    sortBy
+  ]);
+
+  const loadGemOptions = useCallback(async () => {
+    try {
+      const options = await GemSearchService.getGemFilterOptions();
+      setGemOptions(options);
+    } catch (error) {
+      console.error('Error loading GeM filter options:', error);
+    }
+  }, []);
+
+  const loadGemBidsData = useCallback(async () => {
+    setIsGemBidsLoading(true);
+    try {
+      const qParam = searchParams.get('q') || '';
+      const result = await GemBidSearchService.searchGemBids(qParam, {
+        category: selectedMstcCategories[0] || undefined,
+        department: selectedMstcRegionalOffices[0] || undefined,
+        page,
+        limit,
+        sortBy
+      });
+
+      setGemBids(result.data);
+      setGemBidsTotalCount(result.count);
+    } catch (error) {
+      console.error('Error loading GeM Bids data:', error);
+    } finally {
+      setIsGemBidsLoading(false);
+    }
+  }, [
+    searchParams,
+    selectedMstcCategoriesJoined,
+    selectedMstcRegionalOfficesJoined,
+    page,
+    limit,
+    sortBy
+  ]);
+
+  const loadGemBidsOptions = useCallback(async () => {
+    try {
+      const options = await GemBidSearchService.getGemBidFilterOptions();
+      setGemBidsOptions({
+        categories: options.categories,
+        departments: options.departments
+      });
+    } catch (error) {
+      console.error('Error loading GeM Bids filter options:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'commercial') {
       loadData();
@@ -456,6 +624,42 @@ export function Auctions() {
       loadMstcData();
     }
   }, [activeTab, loadMstcData]);
+
+  useEffect(() => {
+    if (activeTab === 'baanknet') {
+      loadBaanknetData();
+    }
+  }, [activeTab, loadBaanknetData]);
+
+  useEffect(() => {
+    if (activeTab === 'baanknet') {
+      loadBaanknetOptions();
+    }
+  }, [activeTab, loadBaanknetOptions]);
+
+  useEffect(() => {
+    if (activeTab === 'gem') {
+      loadGemData();
+    }
+  }, [activeTab, loadGemData]);
+
+  useEffect(() => {
+    if (activeTab === 'gem') {
+      loadGemOptions();
+    }
+  }, [activeTab, loadGemOptions]);
+
+  useEffect(() => {
+    if (activeTab === 'gem-bids') {
+      loadGemBidsData();
+    }
+  }, [activeTab, loadGemBidsData]);
+
+  useEffect(() => {
+    if (activeTab === 'gem-bids') {
+      loadGemBidsOptions();
+    }
+  }, [activeTab, loadGemBidsOptions]);
 
   // Prefetch adjacent pages into PageCache after current page loads
   useEffect(() => {
@@ -728,7 +932,13 @@ export function Auctions() {
 
   const totalPages = activeTab === 'commercial'
     ? Math.ceil(totalCount / limit)
-    : Math.ceil(mstcTotalCount / limit);
+    : activeTab === 'baanknet'
+      ? Math.ceil(baanknetTotalCount / limit)
+      : activeTab === 'gem'
+        ? Math.ceil(gemTotalCount / limit)
+        : activeTab === 'gem-bids'
+          ? Math.ceil(gemBidsTotalCount / limit)
+          : Math.ceil(mstcTotalCount / limit);
 
   const startIndex = (page - 1) * limit;
   const paginatedMstcAuctions = mstcAuctions;
@@ -745,7 +955,7 @@ export function Auctions() {
 
         <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-white mb-2">Auctions Marketplace</h1>
-          <p className="text-slate-400 mb-6">Browse official government catalogs and MSTC eAuctions.</p>
+          <p className="text-slate-400 mb-6">Browse official government catalogs, bank properties and MSTC eAuctions.</p>
 
           {/* Glassmorphic Tab Switcher */}
           <div className="flex space-x-2 mb-6 bg-white/10 backdrop-blur-md p-1 rounded-xl w-fit border border-white/10 flex-wrap gap-y-2">
@@ -759,6 +969,39 @@ export function Auctions() {
               )}
             >
               MSTC Gov Catalogs
+            </button>
+            <button
+              onClick={() => setSearchParams({ tab: 'baanknet' })}
+              className={clsx(
+                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
+                activeTab === 'baanknet'
+                  ? "bg-white text-slate-955 shadow-md"
+                  : "text-white hover:bg-white/5"
+              )}
+            >
+              BaankNet Bank Auctions
+            </button>
+            <button
+              onClick={() => setSearchParams({ tab: 'gem' })}
+              className={clsx(
+                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
+                activeTab === 'gem'
+                  ? "bg-white text-slate-955 shadow-md"
+                  : "text-white hover:bg-white/5"
+              )}
+            >
+              GeM Notice Board
+            </button>
+            <button
+              onClick={() => setSearchParams({ tab: 'gem-bids' })}
+              className={clsx(
+                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
+                activeTab === 'gem-bids'
+                  ? "bg-white text-slate-955 shadow-md"
+                  : "text-white hover:bg-white/5"
+              )}
+            >
+              GeM Procurement Bids
             </button>
             <button
               onClick={() => setSearchParams({ tab: 'commercial' })}
@@ -784,7 +1027,13 @@ export function Auctions() {
               placeholder={
                 activeTab === 'commercial'
                   ? "Search by title, reference number, or keywords..."
-                  : "Search MSTC catalog numbers, categories, or sellers..."
+                  : activeTab === 'baanknet'
+                    ? "Search bank names, property titles, address, locations..."
+                    : activeTab === 'gem'
+                      ? "Search GeM ministries, organizations, categories, titles..."
+                      : activeTab === 'gem-bids'
+                        ? "Search GeM bid/RA numbers, departments, items..."
+                        : "Search MSTC catalog numbers, categories, or sellers..."
               }
               value={searchQuery}
               onChange={handleInputChange}
@@ -871,7 +1120,13 @@ export function Auctions() {
             <div className="text-sm text-slate-500 font-medium">
               {activeTab === 'commercial'
                 ? (!isAnyFilterActive ? '0 results' : `${totalCount} results`)
-                : `${mstcAuctions.length} results`
+                : activeTab === 'baanknet'
+                  ? `${baanknetTotalCount} results`
+                  : activeTab === 'gem'
+                    ? `${gemTotalCount} results`
+                    : activeTab === 'gem-bids'
+                      ? `${gemBidsTotalCount} results`
+                      : `${mstcAuctions.length} results`
               }
             </div>
           </div>
@@ -895,10 +1150,10 @@ export function Auctions() {
                 preBid: mstcPreBid
               }}
               activeTab={activeTab}
-              customCategories={mstcOptions.categories}
-              customSubcategories={mstcOptions.subcategories}
-              customLocations={[]}
-              customRegionalOffices={mstcOptions.regionalOffices}
+              customCategories={activeTab === 'baanknet' ? baanknetOptions.categories : activeTab === 'gem' ? gemOptions.categories : activeTab === 'gem-bids' ? gemBidsOptions.categories : mstcOptions.categories}
+              customSubcategories={activeTab === 'baanknet' || activeTab === 'gem' || activeTab === 'gem-bids' ? {} : mstcOptions.subcategories}
+              customLocations={activeTab === 'baanknet' ? baanknetOptions.locations : activeTab === 'gem' ? gemOptions.locations : []}
+              customRegionalOffices={activeTab === 'baanknet' ? baanknetOptions.regionalOffices : activeTab === 'gem' ? gemOptions.regionalOffices : activeTab === 'gem-bids' ? gemBidsOptions.departments : mstcOptions.regionalOffices}
             />
             {/* Overlay for mobile filters */}
             {isFiltersOpen && (
@@ -963,7 +1218,11 @@ export function Auctions() {
               <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between sm:items-start gap-4">
                 <div className="min-w-0 space-y-2">
                   <div className="text-sm text-slate-700 font-semibold">
-                    Showing {mstcTotalCount} Government Catalogs
+                    {activeTab === 'baanknet'
+                      ? `Showing ${baanknetTotalCount} Bank Auctions`
+                      : activeTab === 'gem'
+                        ? `Showing ${gemTotalCount} GeM Auctions`
+                        : `Showing ${mstcTotalCount} Government Catalogs`}
                   </div>
                   {mstcActiveFilters.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5" aria-label="Applied filters">

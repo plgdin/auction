@@ -86,10 +86,16 @@ export default async function handler(req: any, res: any) {
         workerRunning: false,
         clearDbRunning: false,
         backfillRunning: false,
+        baanknetRunning: false,
+        gemRunning: false,
+        gemBidsRunning: false,
         scraperLogs,
         workerLogs,
         clearDbLogs,
-        backfillLogs
+        backfillLogs,
+        baanknetLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.'],
+        gemLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.'],
+        gemBidsLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.']
       });
       return;
     }
@@ -191,6 +197,49 @@ export default async function handler(req: any, res: any) {
         return;
       }
 
+      // BaankNet Multi-Module Scraper
+      if (cleanUrl === '/api/scraper/baanknet/start') {
+        res.status(400).json({
+          success: false,
+          message: 'The BaankNet Multi-Module Scraper requires Chromium binaries for Angular bootstrap. Run locally:\n\n' +
+            '  npx tsx scraper/baanknetScraper.ts                    # All 3 modules\n' +
+            '  npx tsx scraper/baanknetScraper.ts --module=eauction  # eAuction PSB only\n' +
+            '  npx tsx scraper/baanknetScraper.ts --module=property  # Property Listings only\n' +
+            '  npx tsx scraper/baanknetScraper.ts --module=ibc       # IBC eAuction only\n' +
+            '  npx tsx scraper/baanknetScraper.ts --headful          # Visible browser for debug'
+        });
+        return;
+      }
+      if (cleanUrl === '/api/scraper/baanknet/stop') {
+        res.status(200).json({ success: true });
+        return;
+      }
+
+      // GeM Portal Scraper
+      if (cleanUrl === '/api/scraper/gem/start') {
+        res.status(400).json({
+          success: false,
+          message: 'The GeM Portal Scraper requires Chromium binaries to navigate the forward auctions directory. Please run this scraper locally using "npm run dev".'
+        });
+        return;
+      }
+      if (cleanUrl === '/api/scraper/gem/stop') {
+        res.status(200).json({ success: true });
+        return;
+      }
+
+      // GeM Bids Scraper
+      if (cleanUrl === '/api/scraper/gem-bids/start') {
+        res.status(400).json({
+          success: false,
+          message: 'The GeM Bids Scraper requires Chromium binaries to navigate the procurement bids directory. Please run this scraper locally using "npm run dev".'
+        });
+        return;
+      }
+      if (cleanUrl === '/api/scraper/gem-bids/stop') {
+        res.status(200).json({ success: true });
+        return;
+      }
 
       // Worker (Single-loop batch)
       if (cleanUrl === '/api/scraper/worker/start') {

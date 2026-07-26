@@ -2651,4 +2651,457 @@ export const MstcSearchService = {
   }, 'verifiedConsultantFeed')
 };
 
+export interface BaanknetAuction {
+  id: string;
+  baanknet_auction_id: string;
+  bank_property_id: string;
+  title: string;
+  reserve_price_value?: number | null;
+  reserve_price_text: string;
+  bank_name: string;
+  location: string;
+  city: string;
+  pincode: string;
+  full_address: string;
+  property_type: string;
+  auction_start_date: string;
+  auction_end_date: string;
+  source_url: string;
+  scraped_at: string;
+  document_url?: string;
+  document_urls?: string[];
+
+  // Multi-module detail fields
+  auction_module?: string;
+  carpet_area?: string;
+  carpet_area_sqft?: number | null;
+  furnishing?: string;
+  possession_status?: string;
+  action_type?: string;
+  district?: string;
+  inspection_start_date?: string;
+  inspection_end_date?: string;
+  emd_end_date?: string;
+  borrower_name?: string;
+  property_description?: string;
+  photo_count?: number;
+  thumbnail_url?: string;
+}
+
+export const BaanknetSearchService = {
+  /**
+   * High-speed catalog search for BaankNet bank properties
+   */
+  async searchBaanknetCatalog(
+    query: string,
+    filters?: {
+      category?: string;
+      location?: string;
+      regionalOffice?: string;
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+    }
+  ): Promise<{ data: BaanknetAuction[]; count: number }> {
+    try {
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 12;
+      const offset = (page - 1) * limit;
+
+      let q = supabase
+        .from('baanknet_auctions')
+        .select('*', { count: 'exact' });
+
+      // Apply category (property type) filter
+      if (filters?.category && filters.category !== 'All Categories') {
+        q = q.eq('property_type', filters.category);
+      }
+
+      // Apply location (state) filter
+      if (filters?.location && filters.location !== 'All Locations') {
+        q = q.eq('location', filters.location);
+      }
+
+      // Apply regionalOffice (bank name) filter
+      if (filters?.regionalOffice && filters.regionalOffice !== 'All Regional Offices') {
+        q = q.eq('bank_name', filters.regionalOffice);
+      }
+
+      // Text search
+      if (query.trim()) {
+        const cleanQuery = query.trim();
+        q = q.or(`title.ilike.%${cleanQuery}%,bank_name.ilike.%${cleanQuery}%,location.ilike.%${cleanQuery}%,city.ilike.%${cleanQuery}%,full_address.ilike.%${cleanQuery}%,baanknet_auction_id.ilike.%${cleanQuery}%`);
+      }
+
+      // Sorting
+      const sortBy = filters?.sortBy || 'newest';
+      if (sortBy === 'price_asc') {
+        q = q.order('reserve_price_value', { ascending: true, nullsFirst: false });
+      } else if (sortBy === 'price_desc') {
+        q = q.order('reserve_price_value', { ascending: false, nullsFirst: false });
+      } else if (sortBy === 'date_asc') {
+        q = q.order('auction_start_date', { ascending: true });
+      } else {
+        q = q.order('auction_start_date', { ascending: false });
+      }
+
+      // Pagination
+      q = q.range(offset, offset + limit - 1);
+
+      const { data, error, count } = await q;
+
+      if (error) throw error;
+
+      return {
+        data: (data as BaanknetAuction[]) || [],
+        count: count || 0,
+      };
+    } catch (e) {
+      console.error('Failed to search BaankNet catalog:', e);
+      return { data: [], count: 0 };
+    }
+  },
+
+  /**
+   * Fetches single BaankNet property by its database ID
+   */
+  async getBaanknetAuctionById(id: string): Promise<BaanknetAuction | null> {
+    try {
+      const { data, error } = await supabase
+        .from('baanknet_auctions')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return data as BaanknetAuction;
+    } catch (e) {
+      console.error(`Failed to load BaankNet property ${id}:`, e);
+      return null;
+    }
+  },
+
+  /**
+   * Fetches distinct categories, states, and bank names to populate search filters
+   */
+  async getBaanknetFilterOptions(): Promise<{
+    categories: string[];
+    locations: string[];
+    regionalOffices: string[];
+  }> {
+    try {
+      const { data, error } = await supabase
+        .from('baanknet_auctions')
+        .select('property_type, location, bank_name');
+
+      if (error) throw error;
+
+      const categoriesSet = new Set<string>();
+      const locationsSet = new Set<string>();
+      const regionalOfficesSet = new Set<string>();
+
+      (data || []).forEach((item) => {
+        if (item.property_type) categoriesSet.add(item.property_type);
+        if (item.location) locationsSet.add(item.location);
+        if (item.bank_name) regionalOfficesSet.add(item.bank_name);
+      });
+
+      return {
+        categories: Array.from(categoriesSet).sort(),
+        locations: Array.from(locationsSet).sort(),
+        regionalOffices: Array.from(regionalOfficesSet).sort(),
+      };
+    } catch (e) {
+      console.error('Failed to load BaankNet filter options:', e);
+      return { categories: [], locations: [], regionalOffices: [] };
+    }
+  }
+};
+
+export interface GemAuction {
+  id: string;
+  gem_auction_id: string;
+  title: string;
+  category_name: string;
+  reserve_price_value?: number | null;
+  reserve_price_text: string;
+  organisation: string;
+  ministry?: string;
+  department?: string;
+  location: string;
+  city?: string;
+  pincode?: string;
+  full_address?: string;
+  auction_start_date: string;
+  auction_end_date: string;
+  source_url: string;
+  document_url?: string;
+  scraped_at: string;
+  raw_description?: string;
+  auction_status?: string;
+}
+
+export const GemSearchService = {
+  /**
+   * High-speed catalog search for GeM Portal auctions
+   */
+  async searchGemCatalog(
+    query: string,
+    filters?: {
+      category?: string;
+      location?: string;
+      regionalOffice?: string;
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+    }
+  ): Promise<{ data: GemAuction[]; count: number }> {
+    try {
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 12;
+      const offset = (page - 1) * limit;
+
+      let q = supabase
+        .from('gem_auctions')
+        .select('*', { count: 'exact' });
+
+      // Apply category filter
+      if (filters?.category && filters.category !== 'All Categories') {
+        q = q.eq('category_name', filters.category);
+      }
+
+      // Apply location (state) filter
+      if (filters?.location && filters.location !== 'All Locations') {
+        q = q.eq('location', filters.location);
+      }
+
+      // Apply regionalOffice (organisation) filter
+      if (filters?.regionalOffice && filters.regionalOffice !== 'All Regional Offices') {
+        q = q.eq('organisation', filters.regionalOffice);
+      }
+
+      // Text search
+      if (query.trim()) {
+        const cleanQuery = query.trim();
+        q = q.or(`title.ilike.%${cleanQuery}%,organisation.ilike.%${cleanQuery}%,ministry.ilike.%${cleanQuery}%,location.ilike.%${cleanQuery}%,city.ilike.%${cleanQuery}%,category_name.ilike.%${cleanQuery}%,gem_auction_id.ilike.%${cleanQuery}%`);
+      }
+
+      // Sorting
+      const sortBy = filters?.sortBy || 'newest';
+      if (sortBy === 'price_asc') {
+        q = q.order('reserve_price_value', { ascending: true, nullsFirst: false });
+      } else if (sortBy === 'price_desc') {
+        q = q.order('reserve_price_value', { ascending: false, nullsFirst: false });
+      } else if (sortBy === 'date_asc') {
+        q = q.order('auction_start_date', { ascending: true });
+      } else {
+        q = q.order('auction_start_date', { ascending: false });
+      }
+
+      // Pagination
+      q = q.range(offset, offset + limit - 1);
+
+      const { data, error, count } = await q;
+
+      if (error) throw error;
+
+      return {
+        data: (data as GemAuction[]) || [],
+        count: count || 0,
+      };
+    } catch (e) {
+      console.error('Failed to search GeM catalog:', e);
+      return { data: [], count: 0 };
+    }
+  },
+
+  /**
+   * Fetches single GeM auction notice by its database ID
+   */
+  async getGemAuctionById(id: string): Promise<GemAuction | null> {
+    try {
+      const { data, error } = await supabase
+        .from('gem_auctions')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return data as GemAuction;
+    } catch (e) {
+      console.error(`Failed to load GeM auction ${id}:`, e);
+      return null;
+    }
+  },
+
+  /**
+   * Fetches distinct categories, states, and organizations to populate search filters
+   */
+  async getGemFilterOptions(): Promise<{
+    categories: string[];
+    locations: string[];
+    regionalOffices: string[];
+  }> {
+    try {
+      const { data, error } = await supabase
+        .from('gem_auctions')
+        .select('category_name, location, organisation');
+
+      if (error) throw error;
+
+      const categoriesSet = new Set<string>();
+      const locationsSet = new Set<string>();
+      const regionalOfficesSet = new Set<string>();
+
+      (data || []).forEach((item) => {
+        if (item.category_name) categoriesSet.add(item.category_name);
+        if (item.location) locationsSet.add(item.location);
+        if (item.organisation) regionalOfficesSet.add(item.organisation);
+      });
+
+      return {
+        categories: Array.from(categoriesSet).sort(),
+        locations: Array.from(locationsSet).sort(),
+        regionalOffices: Array.from(regionalOfficesSet).sort(),
+      };
+    } catch (e) {
+      console.error('Failed to load GeM filter options:', e);
+      return { categories: [], locations: [], regionalOffices: [] };
+    }
+  }
+};
+
+export interface GemBid {
+  id: string;
+  bid_number: string;
+  ra_number?: string | null;
+  items: string;
+  quantity?: string | null;
+  department_name?: string | null;
+  start_date: string;
+  end_date: string;
+  status: string;
+  document_url?: string | null;
+  ra_document_url?: string | null;
+  category_name: string;
+  raw_description?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const GemBidSearchService = {
+  /**
+   * Search for GeM Procurement Bids (BidPlus)
+   */
+  async searchGemBids(
+    query: string,
+    filters?: {
+      category?: string;
+      department?: string;
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+    }
+  ): Promise<{ data: GemBid[]; count: number }> {
+    try {
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 12;
+      const offset = (page - 1) * limit;
+
+      let q = supabase
+        .from('gem_bids')
+        .select('*', { count: 'exact' });
+
+      // Apply category filter
+      if (filters?.category && filters.category !== 'All Categories') {
+        q = q.eq('category_name', filters.category);
+      }
+
+      // Apply department filter
+      if (filters?.department && filters.department !== 'All Departments') {
+        q = q.eq('department_name', filters.department);
+      }
+
+      // Full text search
+      if (query.trim()) {
+        const cleanQuery = query.trim();
+        q = q.or(`bid_number.ilike.%${cleanQuery}%,ra_number.ilike.%${cleanQuery}%,items.ilike.%${cleanQuery}%,department_name.ilike.%${cleanQuery}%,category_name.ilike.%${cleanQuery}%`);
+      }
+
+      // Sorting
+      const sortBy = filters?.sortBy || 'newest';
+      if (sortBy === 'date_asc') {
+        q = q.order('start_date', { ascending: true });
+      } else {
+        q = q.order('start_date', { ascending: false });
+      }
+
+      // Pagination
+      q = q.range(offset, offset + limit - 1);
+
+      const { data, error, count } = await q;
+
+      if (error) throw error;
+
+      return {
+        data: (data as GemBid[]) || [],
+        count: count || 0,
+      };
+    } catch (e) {
+      console.error('Failed to search GeM bids:', e);
+      return { data: [], count: 0 };
+    }
+  },
+
+  /**
+   * Fetch single GeM bid details by database ID
+   */
+  async getGemBidById(id: string): Promise<GemBid | null> {
+    try {
+      const { data, error } = await supabase
+        .from('gem_bids')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return data as GemBid;
+    } catch (e) {
+      console.error(`Failed to load GeM bid ${id}:`, e);
+      return null;
+    }
+  },
+
+  /**
+   * Fetch distinct categories and departments to populate search filters
+   */
+  async getGemBidFilterOptions(): Promise<{
+    categories: string[];
+    departments: string[];
+  }> {
+    try {
+      const { data, error } = await supabase
+        .from('gem_bids')
+        .select('category_name, department_name');
+
+      if (error) throw error;
+
+      const categoriesSet = new Set<string>();
+      const departmentsSet = new Set<string>();
+
+      (data || []).forEach((item) => {
+        if (item.category_name) categoriesSet.add(item.category_name);
+        if (item.department_name) departmentsSet.add(item.department_name);
+      });
+
+      return {
+        categories: Array.from(categoriesSet).sort(),
+        departments: Array.from(departmentsSet).sort(),
+      };
+    } catch (e) {
+      console.error('Failed to load GeM bid filter options:', e);
+      return { categories: [], departments: [] };
+    }
+  }
+};
 
