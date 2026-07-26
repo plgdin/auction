@@ -13,6 +13,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { logout, profile } = useAuthStore();
   const { activeAdminTab, setActiveAdminTab, sidebarOpen, toggleSidebar } = useAppStore();
+  const isAdminSide = location.pathname.startsWith('/admin');
 
   const handleAdminItemClick = (itemId: string) => {
     setActiveAdminTab(itemId);

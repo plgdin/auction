@@ -21,17 +21,7 @@ const queryClient = new QueryClient({
 function App() {
   const { initializeAuth, user } = useAuthStore();
   const { setCurrencyRates, fetchInterestedMstcIds } = useAppStore();
-  const [isMobile, setIsMobile] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   useEffect(() => {
     initializeAuth();
