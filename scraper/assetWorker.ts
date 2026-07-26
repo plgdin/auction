@@ -1857,65 +1857,6 @@ async function cleanupExpiredAuctions(): Promise<void> {
     if (totalMstcPurged > 0) {
       log.info({ totalMstcPurged }, `Successfully purged all ${totalMstcPurged} expired MSTC auctions from backlog`);
     }
-
-    // 2. BaankNet Auctions Cleanup (Loop until all backlog is cleared)
-    let totalBaanknetPurged = 0;
-    while (true) {
-      const { data: expiredBaanknet, error: fetchBnError } = await supabase
-        .from("baanknet_auctions")
-        .select("id, baanknet_auction_id, auction_end_date")
-        .lt("auction_end_date", oneWeekAgoIso)
-        .limit(1000);
-
-      if (fetchBnError) {
-        log.error({ error: fetchBnError.message }, "Failed to fetch expired BaankNet auctions for cleanup");
-        break;
-      }
-      if (!expiredBaanknet || expiredBaanknet.length === 0) {
-        break;
-      }
-
-      log.info({ count: expiredBaanknet.length }, `Cleaning up batch of ${expiredBaanknet.length} expired BaankNet auctions...`);
-
-      const logEntries = expiredBaanknet.map(auc => ({
-        action: "baanknet_auction_deleted",
-        entity_type: "baanknet_auction",
-        details: {
-          baanknet_auction_id: auc.baanknet_auction_id,
-          reason: "expired",
-          auction_end_date: auc.auction_end_date
-        }
-      }));
-
-      const { error: logError } = await supabase.from("audit_logs").insert(logEntries);
-      if (logError) {
-        log.error({ error: logError.message }, "Failed to write BaankNet audit logs during cleanup");
-      }
-
-      // Delete database records in chunks of 100
-      const idsToDelete = expiredBaanknet.map(auc => auc.id);
-      const chunkSize = 100;
-      let deleteFailed = false;
-      for (let i = 0; i < idsToDelete.length; i += chunkSize) {
-        const chunk = idsToDelete.slice(i, i + chunkSize);
-        const { error: deleteError } = await supabase
-          .from("baanknet_auctions")
-          .delete()
-          .in("id", chunk);
-        if (deleteError) {
-          log.error({ error: deleteError.message, chunkStart: i }, "Failed to delete expired BaankNet database records chunk");
-          deleteFailed = true;
-        }
-      }
-      if (!deleteFailed) {
-        totalBaanknetPurged += expiredBaanknet.length;
-      } else {
-        break;
-      }
-    }
-    if (totalBaanknetPurged > 0) {
-      log.info({ totalBaanknetPurged }, `Successfully purged all ${totalBaanknetPurged} expired BaankNet auctions from backlog`);
-    }
   } catch (err: any) {
     log.error({ error: err.message }, "Exception caught during background cleanup");
   }

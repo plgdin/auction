@@ -5,9 +5,7 @@ import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight,
 import { lazy, Suspense } from 'react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
-import { BaanknetCard } from '../components/auction/BaanknetCard';
 const MstcDetailsModal = lazy(() => import('../components/auction/MstcDetailsModal').then(module => ({ default: module.MstcDetailsModal })));
-const BaanknetDetailsModal = lazy(() => import('../components/auction/BaanknetDetailsModal').then(module => ({ default: module.BaanknetDetailsModal })));
 import { AuctionFilters } from '../components/auction/AuctionFilters';
 import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
@@ -15,8 +13,8 @@ import { useAuthStore } from '../store/authStore';
 import { useAppStore } from '../store/appStore';
 import { dashboardService } from '../services/dashboardService';
 import type { Auction } from '../types/database.types';
-import { MstcSearchService, expandMstcOffice, BaanknetSearchService } from '../services/publicService';
-import type { MstcSanitizedAuction, SearchSuggestion, BaanknetAuction } from '../services/publicService';
+import { MstcSearchService, expandMstcOffice } from '../services/publicService';
+import type { MstcSanitizedAuction, SearchSuggestion } from '../services/publicService';
 import clsx from 'clsx';
 import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
 import { recommendationService } from '../services/recommendationService';
@@ -137,28 +135,12 @@ export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
 
-  const rawTab = searchParams.get('tab');
-  const activeTab = rawTab === 'commercial' ? 'commercial' : rawTab === 'baanknet' ? 'baanknet' : 'mstc';
+  const activeTab = rawTab === 'commercial' ? 'commercial' : 'mstc';
 
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [watchlistIds, setWatchlistIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // BaankNet eAuction specific states
-  const [baanknetAuctions, setBaanknetAuctions] = useState<BaanknetAuction[]>([]);
-  const [baanknetTotalCount, setBaanknetTotalCount] = useState(0);
-  const [isBaanknetLoading, setIsBaanknetLoading] = useState(false);
-  const [selectedPreviewBaanknetItem, setSelectedPreviewBaanknetItem] = useState<BaanknetAuction | null>(null);
-  const [baanknetOptions, setBaanknetOptions] = useState<{
-    categories: string[];
-    locations: string[];
-    regionalOffices: string[];
-  }>({
-    categories: [],
-    locations: [],
-    regionalOffices: []
-  });
 
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
   const [mstcTotalCount, setMstcTotalCount] = useState(0);
@@ -204,44 +186,6 @@ export function Auctions() {
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [columns, setColumns] = useState<2 | 3 | 4 | 5>(3);
-
-  const getGridColsClass = (cols: number) => {
-    switch (cols) {
-      case 2:
-        return "grid-cols-1 md:grid-cols-2";
-      case 4:
-        return "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
-      case 5:
-        return "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
-      case 3:
-      default:
-        return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
-    }
-  };
-
-  // Lock body scroll when mobile filters drawer is active
-  useEffect(() => {
-    if (isFiltersOpen && window.innerWidth < 1024) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isFiltersOpen]);
-
-  // Show floating filter tag only after scrolling past the hero section
-  const [scrollPastHero, setScrollPastHero] = useState(false);
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollPastHero(window.scrollY > 280);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Sync searchQuery local input state with query params
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
@@ -290,55 +234,6 @@ export function Auctions() {
 
     return () => clearTimeout(timer);
   }, [searchQuery, activeTab]);
-
-  // Hybrid search examples cycling typing animation
-  const placeholderExamples = [
-    "Show me auctions in Delhi",
-    "Show me vehicle auctions",
-    "Show me property auctions",
-    "Copper scrap auctions in Mumbai",
-    "Iron and steel scrap near Kolkata",
-    "Auctions in Kolkata",
-    "Auctions in Tamil Nadu",
-    "Auctions in Chennai",
-    "Auctions in Bangalore"
-  ];
-  const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
-  const [phExampleIdx, setPhExampleIdx] = useState(0);
-  const [phCharIdx, setPhCharIdx] = useState(0);
-  const [phPhase, setPhPhase] = useState<'typing' | 'pausing' | 'deleting'>('typing');
-
-  useEffect(() => {
-    const current = placeholderExamples[phExampleIdx];
-    let timer: ReturnType<typeof setTimeout>;
-
-    if (phPhase === 'typing') {
-      if (phCharIdx < current.length) {
-        timer = setTimeout(() => {
-          setAnimatedPlaceholder(current.substring(0, phCharIdx + 1));
-          setPhCharIdx(prev => prev + 1);
-        }, 70);
-      } else {
-        // Done typing, pause before deleting
-        timer = setTimeout(() => setPhPhase('pausing'), 2200);
-      }
-    } else if (phPhase === 'pausing') {
-      timer = setTimeout(() => setPhPhase('deleting'), 100);
-    } else if (phPhase === 'deleting') {
-      if (phCharIdx > 0) {
-        timer = setTimeout(() => {
-          setPhCharIdx(prev => prev - 1);
-          setAnimatedPlaceholder(current.substring(0, phCharIdx - 1));
-        }, 25);
-      } else {
-        // Done deleting, move to next example
-        setPhExampleIdx(prev => (prev + 1) % placeholderExamples.length);
-        setPhPhase('typing');
-      }
-    }
-
-    return () => clearTimeout(timer);
-  }, [phCharIdx, phPhase, phExampleIdx]);
 
   const selectSuggestion = (suggestion: SearchSuggestion) => {
     let queryText = suggestion.text;
@@ -402,7 +297,7 @@ export function Auctions() {
   const endDate = searchParams.get('endDate') || undefined;
   const sortBy = (searchParams.get('sortBy') as AuctionFilterParams['sortBy']) || 'newest';
   const page = parseInt(searchParams.get('page') || '1');
-  const limit = 60;
+  const limit = 12;
 
   const filters: AuctionFilterParams = {
     categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
@@ -416,15 +311,15 @@ export function Auctions() {
 
   const mstcActiveFilters = [
     ...(submittedSearchQuery ? [{ label: 'Search', value: submittedSearchQuery }] : []),
-    ...(selectedMstcCategories.length ? [{ label: activeTab === 'baanknet' ? 'Property Type' : 'Category', value: selectedMstcCategories.join(', ') }] : []),
-    ...(selectedMstcSubcategories.length && activeTab !== 'baanknet' ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
+    ...(selectedMstcCategories.length ? [{ label: 'Category', value: selectedMstcCategories.join(', ') }] : []),
+    ...(selectedMstcSubcategories.length ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
     ...(selectedMstcLocations.length ? [{ label: 'Location', value: selectedMstcLocations.join(', ') }] : []),
-    ...(selectedMstcRegionalOffices.length ? [{ label: activeTab === 'baanknet' ? 'Lending Bank' : 'Regional office', value: selectedMstcRegionalOffices.join(', ') }] : []),
+    ...(selectedMstcRegionalOffices.length ? [{ label: 'Regional office', value: selectedMstcRegionalOffices.join(', ') }] : []),
     ...(startDate ? [{ label: 'From', value: startDate }] : []),
     ...(endDate ? [{ label: 'To', value: endDate }] : []),
-    ...(mstcHasAssetDocuments && activeTab !== 'baanknet' ? [{ label: 'Documents', value: 'Available' }] : []),
-    ...(mstcHasImages && activeTab !== 'baanknet' ? [{ label: 'Images', value: 'Available' }] : []),
-    ...(mstcIsReauction && activeTab !== 'baanknet' ? [{ label: 'Auction status', value: 'Re-auction' }] : []),
+    ...(mstcHasAssetDocuments ? [{ label: 'Documents', value: 'Available' }] : []),
+    ...(mstcHasImages ? [{ label: 'Images', value: 'Available' }] : []),
+    ...(mstcIsReauction ? [{ label: 'Auction status', value: 'Re-auction' }] : []),
   ];
 
   const isAnyFilterActive = !!(
@@ -550,45 +445,6 @@ export function Auctions() {
     }
   }, []);
 
-  const loadBaanknetData = useCallback(async () => {
-    setIsBaanknetLoading(true);
-    try {
-      const qParam = searchParams.get('q') || '';
-      const result = await BaanknetSearchService.searchBaanknetCatalog(qParam, {
-        category: selectedMstcCategories[0] || undefined,
-        location: selectedMstcLocations[0] || undefined,
-        regionalOffice: selectedMstcRegionalOffices[0] || undefined,
-        page,
-        limit,
-        sortBy
-      });
-
-      setBaanknetAuctions(result.data);
-      setBaanknetTotalCount(result.count);
-    } catch (error) {
-      console.error('Error loading BaankNet data:', error);
-    } finally {
-      setIsBaanknetLoading(false);
-    }
-  }, [
-    searchParams,
-    selectedMstcCategoriesJoined,
-    selectedMstcLocationsJoined,
-    selectedMstcRegionalOfficesJoined,
-    page,
-    limit,
-    sortBy
-  ]);
-
-  const loadBaanknetOptions = useCallback(async () => {
-    try {
-      const options = await BaanknetSearchService.getBaanknetFilterOptions();
-      setBaanknetOptions(options);
-    } catch (error) {
-      console.error('Error loading BaankNet filter options:', error);
-    }
-  }, []);
-
   useEffect(() => {
     if (activeTab === 'commercial') {
       loadData();
@@ -600,18 +456,6 @@ export function Auctions() {
       loadMstcData();
     }
   }, [activeTab, loadMstcData]);
-
-  useEffect(() => {
-    if (activeTab === 'baanknet') {
-      loadBaanknetData();
-    }
-  }, [activeTab, loadBaanknetData]);
-
-  useEffect(() => {
-    if (activeTab === 'baanknet') {
-      loadBaanknetOptions();
-    }
-  }, [activeTab, loadBaanknetOptions]);
 
   // Prefetch adjacent pages into PageCache after current page loads
   useEffect(() => {
@@ -884,9 +728,7 @@ export function Auctions() {
 
   const totalPages = activeTab === 'commercial'
     ? Math.ceil(totalCount / limit)
-    : activeTab === 'baanknet'
-      ? Math.ceil(baanknetTotalCount / limit)
-      : Math.ceil(mstcTotalCount / limit);
+    : Math.ceil(mstcTotalCount / limit);
 
   const startIndex = (page - 1) * limit;
   const paginatedMstcAuctions = mstcAuctions;
@@ -894,43 +736,64 @@ export function Auctions() {
   return (
     <div className="bg-slate-50 min-h-screen">
       {/* Header Banner */}
-      <div className="relative bg-slate-900 py-20 md:py-28 overflow-hidden">
+      <div className="relative bg-slate-900 py-12">
         {/* Background decoration */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
           <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-800/20 to-transparent" />
         </div>
 
-        <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-center">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-3 tracking-tight">Auctions Marketplace</h1>
-          <p className="text-slate-400 text-sm sm:text-base md:text-lg mb-8 max-w-2xl font-medium leading-relaxed">
-            Browse official government catalogs, bank properties and MSTC eAuctions.
-          </p>
+        <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Auctions Marketplace</h1>
+          <p className="text-slate-400 mb-6">Browse official government catalogs and MSTC eAuctions.</p>
 
-          <form onSubmit={handleSearch} className="max-w-3xl w-full mx-auto relative" onKeyDown={handleKeyDown}>
-            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-              <Search className="h-6 w-6 text-slate-400" />
+          {/* Glassmorphic Tab Switcher */}
+          <div className="flex space-x-2 mb-6 bg-white/10 backdrop-blur-md p-1 rounded-xl w-fit border border-white/10 flex-wrap gap-y-2">
+            <button
+              onClick={() => setSearchParams({ tab: 'mstc' })}
+              className={clsx(
+                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
+                activeTab === 'mstc'
+                  ? "bg-white text-slate-955 shadow-md"
+                  : "text-white hover:bg-white/5"
+              )}
+            >
+              MSTC Gov Catalogs
+            </button>
+            <button
+              onClick={() => setSearchParams({ tab: 'commercial' })}
+              className={clsx(
+                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
+                activeTab === 'commercial'
+                  ? "bg-white text-slate-955 shadow-md"
+                  : "text-white hover:bg-white/5"
+              )}
+            >
+              Commercial Auctions
+            </button>
+          </div>
+
+          <form onSubmit={handleSearch} className="max-w-3xl relative" onKeyDown={handleKeyDown}>
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400" />
             </div>
             <input
               ref={inputRef}
               type="text"
-              className="block w-full pl-14 pr-28 py-5 border-0 rounded-2xl leading-6 bg-white focus:outline-none focus:ring-2 focus:ring-primary text-lg shadow-xl text-slate-900"
-              placeholder=""
+              className="block w-full pl-11 pr-24 py-4 border-0 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary sm:text-lg shadow-lg text-slate-900"
+              placeholder={
+                activeTab === 'commercial'
+                  ? "Search by title, reference number, or keywords..."
+                  : "Search MSTC catalog numbers, categories, or sellers..."
+              }
               value={searchQuery}
               onChange={handleInputChange}
               onFocus={() => setShowSuggestions(true)}
               autoComplete="off"
             />
-            {/* Custom animated placeholder with blinking cursor */}
-            {!searchQuery && (
-              <div className="absolute inset-y-0 left-14 right-28 flex items-center pointer-events-none select-none overflow-hidden">
-                <span className="text-lg text-slate-400 whitespace-nowrap">{animatedPlaceholder}</span>
-                <span className="inline-block w-0.5 h-6 bg-slate-400 ml-0.5 animate-[blink_1s_step-end_infinite]" />
-              </div>
-            )}
             <button
               type="submit"
-              className="absolute right-2.5 top-2.5 bottom-2.5 px-7 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 transition-colors cursor-pointer text-base"
+              className="absolute right-2 top-2 bottom-2 px-6 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors cursor-pointer"
             >
               Search
             </button>
@@ -993,80 +856,61 @@ export function Auctions() {
         </div>
       </div>
 
-      {/* Pullable Left Filter Drawer & Floating Side Tag anchored to far left screen border */}
-      <div className={clsx(
-        "fixed top-1/2 -translate-y-1/2 left-0 z-50 pointer-events-none transition-all duration-300",
-        (scrollPastHero || isFiltersOpen) ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-full"
-      )}>
-        {/* Backdrop Overlay */}
-        <div 
-          className={clsx(
-            "fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity duration-300 pointer-events-auto lg:hidden",
-            isFiltersOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-          )}
-          onClick={() => setIsFiltersOpen(false)}
-        />
-
-        {/* Filter Drawer Container popping from far left edge */}
-        <div 
-          className={clsx(
-            "relative z-10 w-[340px] sm:w-[380px] max-h-[85vh] bg-white rounded-r-2xl shadow-2xl flex flex-col border-r border-y border-slate-200 transition-transform duration-300 ease-in-out transform pointer-events-auto",
-            isFiltersOpen ? "translate-x-0" : "-translate-x-full"
-          )}
-        >
-          <AuctionFilters
-            isOpen={isFiltersOpen}
-            onClose={() => setIsFiltersOpen(false)}
-            onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
-            initialFilters={activeTab === 'commercial' ? filters : {
-              categoryIds: selectedMstcCategories,
-              subcategories: selectedMstcSubcategories,
-              locations: selectedMstcLocations,
-              regionalOffices: selectedMstcRegionalOffices,
-              startDate,
-              endDate,
-              hasAssetDocuments: mstcHasAssetDocuments,
-              hasImages: mstcHasImages,
-              isReauction: mstcIsReauction,
-              preBid: mstcPreBid
-            }}
-            activeTab={activeTab}
-            customCategories={activeTab === 'baanknet' ? baanknetOptions.categories : mstcOptions.categories}
-            customSubcategories={activeTab === 'baanknet' ? {} : mstcOptions.subcategories}
-            customLocations={activeTab === 'baanknet' ? baanknetOptions.locations : mstcOptions.locations}
-            customRegionalOffices={activeTab === 'baanknet' ? baanknetOptions.regionalOffices : mstcOptions.regionalOffices}
-          />
-
-          {/* Pullable Side Tag Tab nested inside Drawer Container at absolute left-full */}
-          <button
-            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-            className="absolute left-full top-24 -translate-y-1/2 z-20 pointer-events-auto flex items-center gap-2 px-3 py-3.5 bg-primary text-white font-bold text-xs rounded-r-xl shadow-2xl hover:bg-primary/95 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-l-0 border-white/20 select-none group shrink-0"
-            title={isFiltersOpen ? "Close filters panel" : "Pull filters panel open"}
-            aria-label="Toggle filters side panel"
-          >
-            <SlidersHorizontal className="w-4 h-4 text-white shrink-0" />
-            <span className="font-semibold tracking-wider uppercase text-[11px] whitespace-nowrap">
-              {isFiltersOpen ? "Hide" : "Filters"}
-            </span>
-            {mstcActiveFilters.length > 0 && (
-              <span className="bg-white text-primary text-[10px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0">
-                {mstcActiveFilters.length}
-              </span>
-            )}
-            {isFiltersOpen ? (
-              <ChevronLeft className="w-4 h-4 text-white/90 group-hover:-translate-x-0.5 transition-transform shrink-0" />
-            ) : (
-              <ChevronRight className="w-4 h-4 text-white/90 group-hover:translate-x-0.5 transition-transform shrink-0" />
-            )}
-          </button>
-        </div>
-      </div>
-
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
 
+          {/* Mobile Filter Toggle */}
+          <div className="lg:hidden flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 w-full mb-4">
+            <button
+              onClick={() => setIsFiltersOpen(true)}
+              className="flex items-center text-slate-700 font-medium cursor-pointer"
+            >
+              <SlidersHorizontal className="w-5 h-5 mr-2" />
+              Filters
+            </button>
+            <div className="text-sm text-slate-500 font-medium">
+              {activeTab === 'commercial'
+                ? (!isAnyFilterActive ? '0 results' : `${totalCount} results`)
+                : `${mstcAuctions.length} results`
+              }
+            </div>
+          </div>
+
+          {/* Sidebar Filters */}
+          <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:self-start lg:overflow-visible z-20">
+            <AuctionFilters
+              isOpen={isFiltersOpen}
+              onClose={() => setIsFiltersOpen(false)}
+              onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
+              initialFilters={activeTab === 'commercial' ? filters : {
+                categoryIds: selectedMstcCategories,
+                subcategories: selectedMstcSubcategories,
+                locations: selectedMstcLocations,
+                regionalOffices: selectedMstcRegionalOffices,
+                startDate,
+                endDate,
+                hasAssetDocuments: mstcHasAssetDocuments,
+                hasImages: mstcHasImages,
+                isReauction: mstcIsReauction,
+                preBid: mstcPreBid
+              }}
+              activeTab={activeTab}
+              customCategories={mstcOptions.categories}
+              customSubcategories={mstcOptions.subcategories}
+              customLocations={[]}
+              customRegionalOffices={mstcOptions.regionalOffices}
+            />
+            {/* Overlay for mobile filters */}
+            {isFiltersOpen && (
+              <div
+                className="fixed inset-0 bg-white/45 backdrop-blur-md z-30 lg:hidden"
+                onClick={() => setIsFiltersOpen(false)}
+              />
+            )}
+          </div>
+
           {/* Main Content */}
-          <div className="flex-grow flex flex-col w-full">
+          <div className="flex-grow flex flex-col lg:w-3/4">
 
             {/* Toolbar */}
             {activeTab === 'commercial' ? (
@@ -1093,32 +937,11 @@ export function Auctions() {
                     <option value="price_desc">Price: High to Low</option>
                   </select>
 
-                  {/* Column Switcher (Hidden on mobile) */}
-                  <div className="hidden md:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
-                    {[2, 3, 4, 5].map((cols) => (
-                      <button
-                        key={cols}
-                        onClick={() => {
-                          setIsGridView(true);
-                          setColumns(cols as any);
-                        }}
-                        className={clsx(
-                          "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
-                          isGridView && columns === cols
-                            ? "bg-white shadow-sm text-primary"
-                            : "text-slate-500 hover:text-slate-800"
-                        )}
-                      >
-                        {cols} Col
-                      </button>
-                    ))}
-                  </div>
-
                   <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
                     <button
                       onClick={() => setIsGridView(true)}
                       className={clsx(
-                        "p-1.5 rounded-md transition-colors cursor-pointer",
+                        "p-1.5 rounded-md transition-colors",
                         isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
@@ -1127,7 +950,7 @@ export function Auctions() {
                     <button
                       onClick={() => setIsGridView(false)}
                       className={clsx(
-                        "p-1.5 rounded-md transition-colors cursor-pointer",
+                        "p-1.5 rounded-md transition-colors",
                         !isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
@@ -1137,75 +960,28 @@ export function Auctions() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <div className="min-w-0 flex items-center h-full">
-                  <div className="space-y-1">
-                    <div className="text-sm text-slate-700 font-semibold flex items-center h-full">
-                      {activeTab === 'baanknet'
-                        ? `Showing ${baanknetTotalCount} Bank Auctions`
-                        : `Showing ${mstcTotalCount} Government Catalogs`}
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between sm:items-start gap-4">
+                <div className="min-w-0 space-y-2">
+                  <div className="text-sm text-slate-700 font-semibold">
+                    Showing {mstcTotalCount} Government Catalogs
+                  </div>
+                  {mstcActiveFilters.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5" aria-label="Applied filters">
+                      <span className="text-xs font-medium text-slate-500 mr-0.5">Applied filters:</span>
+                      {mstcActiveFilters.map(filter => (
+                        <span
+                          key={`${filter.label}-${filter.value}`}
+                          className="max-w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"
+                          title={`${filter.label}: ${filter.value}`}
+                        >
+                          <span className="font-semibold text-slate-700">{filter.label}:</span>{' '}
+                          <span className="break-words">{filter.value}</span>
+                        </span>
+                      ))}
                     </div>
-                    {mstcActiveFilters.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5" aria-label="Applied filters">
-                        <span className="text-xs font-medium text-slate-500 mr-0.5">Applied filters:</span>
-                        {mstcActiveFilters.map(filter => (
-                          <span
-                            key={`${filter.label}-${filter.value}`}
-                            className="max-w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"
-                            title={`${filter.label}: ${filter.value}`}
-                          >
-                            <span className="font-semibold text-slate-700">{filter.label}:</span>{' '}
-                            <span className="break-words">{filter.value}</span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  {/* Desktop Filter Toggle Button */}
-                  <button
-                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                    className={clsx(
-                      "hidden lg:flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border transition-all cursor-pointer",
-                      isFiltersOpen
-                        ? "bg-primary text-white border-primary shadow-sm"
-                        : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400"
-                    )}
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                    <span>{isFiltersOpen ? "Hide Filters" : "Show Filters"}</span>
-                    {mstcActiveFilters.length > 0 && (
-                      <span className={clsx(
-                        "text-[11px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center -mr-1",
-                        isFiltersOpen ? "bg-white text-primary" : "bg-primary text-white"
-                      )}>
-                        {mstcActiveFilters.length}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Column Switcher (Hidden on mobile) */}
-                  <div className="hidden md:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
-                    {[2, 3, 4, 5].map((cols) => (
-                      <button
-                        key={cols}
-                        onClick={() => {
-                          setIsGridView(true);
-                          setColumns(cols as any);
-                        }}
-                        className={clsx(
-                          "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
-                          isGridView && columns === cols
-                            ? "bg-white shadow-sm text-primary"
-                            : "text-slate-500 hover:text-slate-800"
-                        )}
-                      >
-                        {cols} Col
-                      </button>
-                    ))}
-                  </div>
-
+                <div className="flex items-center gap-4 w-full sm:w-auto">
                   <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
                     <button
                       onClick={() => setIsGridView(true)}
@@ -1239,7 +1015,7 @@ export function Auctions() {
                     count={6}
                     classes={clsx(
                       "gap-6 flex-grow",
-                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
                     )}
                   />
                 ) : auctions.length === 0 ? (
@@ -1259,7 +1035,7 @@ export function Auctions() {
                   <>
                     <div className={clsx(
                       "gap-6",
-                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
                     )}>
                       {auctions.map(auction => (
                         <AuctionCard
@@ -1361,11 +1137,11 @@ export function Auctions() {
                     count={6}
                     classes={clsx(
                       "gap-6 flex-grow",
-                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
                     )}
                   />
                 ) : baanknetAuctions.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-355 flex-grow text-left">
+                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-350 flex-grow text-left">
                     <h3 className="text-xl font-bold text-slate-900 mb-2">No BaankNet auctions found</h3>
                     <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
                     <button
@@ -1381,7 +1157,7 @@ export function Auctions() {
                   <>
                     <div className={clsx(
                       "gap-6",
-                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
                     )}>
                       {baanknetAuctions.map(item => (
                         <BaanknetCard
@@ -1476,16 +1252,260 @@ export function Auctions() {
               </>
             )}
 
+            {/* GeM Notice Board Tab */}
+            {activeTab === 'gem' && (
+              <>
+                {isGemLoading ? (
+                  <SkeletonGrid
+                    isGrid={isGridView}
+                    count={6}
+                    classes={clsx(
+                      "gap-6 flex-grow",
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                    )}
+                  />
+                ) : gemAuctions.length === 0 ? (
+                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-350 flex-grow text-left">
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">No GeM auctions found</h3>
+                    <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
+                    <button
+                      onClick={() => {
+                        setSearchParams({ tab: 'gem' });
+                      }}
+                      className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
+                    >
+                      Clear search & filters
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className={clsx(
+                      "gap-6",
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                    )}>
+                      {gemAuctions.map(item => (
+                        <GemCard
+                          key={item.id}
+                          item={item}
+                          isGrid={isGridView}
+                          onPreview={setSelectedPreviewGemItem}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="mt-10 flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 rounded-xl shadow-sm">
+                        <div className="flex flex-1 justify-between sm:hidden">
+                          <button
+                            onClick={() => handlePageChange(Math.max(1, page - 1))}
+                            disabled={page === 1}
+                            className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            Previous
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                            disabled={page === totalPages}
+                            className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            Next
+                          </button>
+                        </div>
+                        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm text-slate-700">
+                              Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, gemTotalCount)}</span> of <span className="font-medium">{gemTotalCount}</span> results
+                            </p>
+                          </div>
+                          <div>
+                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                              <button
+                                onClick={() => handlePageChange(Math.max(1, page - 1))}
+                                disabled={page === 1}
+                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
+                              >
+                                <span className="sr-only">Previous</span>
+                                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                              </button>
+
+                              {getPageNumbers(page, totalPages).map((p, i) => {
+                                if (p === '...') {
+                                  return (
+                                    <span
+                                      key={`dots-gem-${i}`}
+                                      className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-505 ring-1 ring-inset ring-slate-300 focus:outline-none"
+                                    >
+                                      ...
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    key={`gem-page-${p}`}
+                                    onClick={() => handlePageChange(p as number)}
+                                    className={clsx(
+                                      "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset cursor-pointer",
+                                      page === p
+                                        ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
+                                        : "text-slate-900 ring-slate-300 hover:bg-slate-50"
+                                    )}
+                                  >
+                                    {p}
+                                  </button>
+                                );
+                              })}
+
+                              <button
+                                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                                disabled={page === totalPages}
+                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
+                              >
+                                <span className="sr-only">Next</span>
+                                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                              </button>
+                            </nav>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+
+            {/* GeM Procurement Bids Tab */}
+            {activeTab === 'gem-bids' && (
+              <>
+                {isGemBidsLoading ? (
+                  <SkeletonGrid
+                    isGrid={isGridView}
+                    count={6}
+                    classes={clsx(
+                      "gap-6 flex-grow",
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                    )}
+                  />
+                ) : gemBids.length === 0 ? (
+                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-350 flex-grow text-left">
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">No GeM procurement bids found</h3>
+                    <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
+                    <button
+                      onClick={() => {
+                        setSearchParams({ tab: 'gem-bids' });
+                      }}
+                      className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
+                    >
+                      Clear search & filters
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className={clsx(
+                      "gap-6",
+                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                    )}>
+                      {gemBids.map(item => (
+                        <GemBidCard
+                          key={item.id}
+                          item={item}
+                          isGrid={isGridView}
+                          onPreview={setSelectedPreviewGemBid}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="mt-10 flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 rounded-xl shadow-sm">
+                        <div className="flex flex-1 justify-between sm:hidden">
+                          <button
+                            onClick={() => handlePageChange(Math.max(1, page - 1))}
+                            disabled={page === 1}
+                            className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            Previous
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                            disabled={page === totalPages}
+                            className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            Next
+                          </button>
+                        </div>
+                        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm text-slate-700">
+                              Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, gemBidsTotalCount)}</span> of <span className="font-medium">{gemBidsTotalCount}</span> results
+                            </p>
+                          </div>
+                          <div>
+                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                              <button
+                                onClick={() => handlePageChange(Math.max(1, page - 1))}
+                                disabled={page === 1}
+                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
+                              >
+                                <span className="sr-only">Previous</span>
+                                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                              </button>
+
+                              {getPageNumbers(page, totalPages).map((p, i) => {
+                                if (p === '...') {
+                                  return (
+                                    <span
+                                      key={`dots-gem-bids-${i}`}
+                                      className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-300 focus:outline-none"
+                                    >
+                                      ...
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    key={`gem-bids-page-${p}`}
+                                    onClick={() => handlePageChange(p as number)}
+                                    className={clsx(
+                                      "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset cursor-pointer",
+                                      page === p
+                                        ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
+                                        : "text-slate-900 ring-slate-300 hover:bg-slate-50"
+                                    )}
+                                  >
+                                    {p}
+                                  </button>
+                                );
+                              })}
+
+                              <button
+                                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                                disabled={page === totalPages}
+                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
+                              >
+                                <span className="sr-only">Next</span>
+                                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                              </button>
+                            </nav>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+
             {/* MSTC Gov Catalogs Tab */}
             {activeTab === 'mstc' && (
               <>
                 {isMstcLoading ? (
                   <SkeletonGrid
                     isGrid={isGridView}
-                    count={6}
+                    count={4}
                     classes={clsx(
                       "gap-6 flex-grow",
-                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
+                      isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
                     )}
                   />
                 ) : mstcAuctions.length === 0 ? (
@@ -1515,7 +1535,7 @@ export function Auctions() {
                     )}
                     <div className={clsx(
                       "gap-6",
-                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
+                      isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
                     )}>
                       {paginatedMstcAuctions.map(item => (
                         <MstcCard
@@ -1626,22 +1646,6 @@ export function Auctions() {
             onClose={() => setSelectedPreviewItem(null)}
             isInterested={interestedMstcIds.includes(selectedPreviewItem.id)}
             onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
-          />
-        </Suspense>
-      )}
-
-      {/* BaankNet Details Modal */}
-      {selectedPreviewBaanknetItem && (
-        <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-          </div>
-        }>
-          <BaanknetDetailsModal
-            item={selectedPreviewBaanknetItem}
-            onClose={() => setSelectedPreviewBaanknetItem(null)}
-            isInterested={watchlistIds.includes(selectedPreviewBaanknetItem.id)}
-            onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewBaanknetItem.id)}
           />
         </Suspense>
       )}

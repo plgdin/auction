@@ -46,7 +46,7 @@ interface AuctionFiltersProps {
     hasImages?: boolean;
     isReauction?: boolean;
   };
-  activeTab?: 'commercial' | 'mstc' | 'baanknet';
+  activeTab?: 'commercial' | 'mstc';
   customCategories?: string[];
   customSubcategories?: Record<string, string[]>;
   customLocations?: string[];
@@ -62,7 +62,7 @@ interface CategoryNode {
 
 export function AuctionFilters({ 
   onFilterChange, 
-  isOpen: _isOpen, 
+  isOpen, 
   onClose, 
   initialFilters,
   activeTab = 'commercial',
@@ -522,13 +522,13 @@ export function AuctionFilters({
 
   const customSubcategoryOptions = availableSubcategories.map(sub => ({ key: sub, label: sub }));
   
-  const currentRegionalOffices = (activeTab === 'mstc' || activeTab === 'baanknet') ? customRegionalOffices : REGIONAL_OFFICES;
+  const currentRegionalOffices = activeTab === 'mstc' ? customRegionalOffices : REGIONAL_OFFICES;
   const regionalOfficeOptions = currentRegionalOffices.map(office => ({
     key: office,
     label: activeTab === 'mstc' ? expandMstcOffice(office) : office
   }));
 
-  const currentLocations = (activeTab === 'mstc' || activeTab === 'baanknet') ? customLocations : LOCATIONS;
+  const currentLocations = activeTab === 'mstc' ? customLocations : LOCATIONS;
   const locationOptions = currentLocations.map(loc => ({ key: loc, label: loc }));
 
   const expandMstcOfficeMap = activeTab === 'mstc' ? customRegionalOffices.reduce((acc, office) => {
@@ -541,10 +541,14 @@ export function AuctionFilters({
   return (
     <div 
       ref={containerRef}
-      className="w-full h-full bg-white flex flex-col overflow-hidden relative lg:border lg:border-slate-200 lg:rounded-2xl lg:shadow-xs lg:h-[calc(100vh-140px)]"
+      className={clsx(
+        "fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out flex flex-col",
+        "lg:relative lg:translate-x-0 lg:w-full lg:bg-white lg:border lg:border-slate-200 lg:rounded-2xl lg:shadow-xs lg:overflow-hidden lg:h-[calc(100vh-140px)]",
+        isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:shadow-none"
+      )}
     >
       {/* Scrollable Content wrapper */}
-      <div className="flex-1 overflow-y-auto p-6 pb-24 scroll-smooth hide-scrollbar">
+      <div className="flex-1 overflow-y-auto p-6 pb-28 scroll-smooth custom-scrollbar" style={{ scrollbarWidth: 'thin' }}>
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-xl font-bold text-slate-900 flex items-center">
             <Filter className="w-5 h-5 mr-2 text-primary" />
@@ -558,7 +562,7 @@ export function AuctionFilters({
         {/* Categories */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Categories</h3>
-          {(activeTab === 'mstc' || activeTab === 'baanknet') ? (
+          {activeTab === 'mstc' ? (
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
@@ -586,9 +590,8 @@ export function AuctionFilters({
                 </Dropdown>
               </div>
 
-              {activeTab !== 'baanknet' && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
                   <Dropdown 
                     popupRender={() => renderMultiSelectMenu(
                       customSubcategoryOptions,
@@ -621,7 +624,6 @@ export function AuctionFilters({
                     </button>
                   </Dropdown>
                 </div>
-              )}
             </div>
           ) : (
             <div className="space-y-1">
@@ -840,20 +842,20 @@ export function AuctionFilters({
         {/* Location */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Location</h3>
-          <Dropdown 
-            popupRender={() => renderMultiSelectMenu(
-              locationOptions,
-              selectedLocations,
-              setSelectedLocations,
-              'All Locations'
-            )}
-            trigger={['click']} 
-            placement="bottomLeft"
-            align={{ overflow: { adjustX: false, adjustY: false } }}
-            getPopupContainer={() => containerRef.current || document.body}
-          >
-            <button 
-              type="button"
+            <Dropdown 
+              popupRender={() => renderMultiSelectMenu(
+                locationOptions,
+                selectedLocations,
+                setSelectedLocations,
+                'All Locations'
+              )}
+              trigger={['click']} 
+              placement="bottomLeft"
+              align={{ overflow: { adjustX: false, adjustY: false } }}
+              getPopupContainer={() => containerRef.current || document.body}
+            >
+              <button 
+                type="button"
               className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
             >
               <span className="truncate">
@@ -865,29 +867,31 @@ export function AuctionFilters({
         </div>
 
         {/* Pre-bid Requirement */}
-        <div className="mb-8">
-          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Pre-Bid Requirement</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'All', value: 'all' },
-              { label: 'Pre-bid Required', value: 'yes' },
-              { label: 'No Pre-bid Required', value: 'no' },
-            ].map((option) => (
-              <label key={option.value} className="flex items-center cursor-pointer">
-                <input 
-                  type="radio" 
-                  name="preBid" 
-                  checked={selectedPreBid === option.value}
-                  onChange={() => setSelectedPreBid(option.value)}
-                  className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
-                />
-                <span className="ml-3 text-sm text-slate-700">
-                  {option.label}
-                </span>
-              </label>
-            ))}
+        {activeTab === 'mstc' && (
+          <div className="mb-8">
+            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Pre-Bid Requirement</h3>
+            <div className="space-y-3">
+              {[
+                { label: 'All', value: 'all' },
+                { label: 'Pre-bid Required', value: 'yes' },
+                { label: 'No Pre-bid Required', value: 'no' },
+              ].map((option) => (
+                <label key={option.value} className="flex items-center cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="preBid" 
+                    checked={selectedPreBid === option.value}
+                    onChange={() => setSelectedPreBid(option.value)}
+                    className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
+                  />
+                  <span className="ml-3 text-sm text-slate-700">
+                    {option.label}
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
 
 
