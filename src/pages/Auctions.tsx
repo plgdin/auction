@@ -5,9 +5,7 @@ import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight,
 import { lazy, Suspense } from 'react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
-import { BaanknetCard } from '../components/auction/BaanknetCard';
 const MstcDetailsModal = lazy(() => import('../components/auction/MstcDetailsModal').then(module => ({ default: module.MstcDetailsModal })));
-const BaanknetDetailsModal = lazy(() => import('../components/auction/BaanknetDetailsModal').then(module => ({ default: module.BaanknetDetailsModal })));
 import { AuctionFilters } from '../components/auction/AuctionFilters';
 import { auctionService } from '../services/auctionService';
 import type { AuctionFilterParams } from '../services/auctionService';
@@ -15,8 +13,8 @@ import { useAuthStore } from '../store/authStore';
 import { useAppStore } from '../store/appStore';
 import { dashboardService } from '../services/dashboardService';
 import type { Auction } from '../types/database.types';
-import { MstcSearchService, expandMstcOffice, BaanknetSearchService } from '../services/publicService';
-import type { MstcSanitizedAuction, SearchSuggestion, BaanknetAuction } from '../services/publicService';
+import { MstcSearchService, expandMstcOffice } from '../services/publicService';
+import type { MstcSanitizedAuction, SearchSuggestion } from '../services/publicService';
 import clsx from 'clsx';
 import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
 import { recommendationService } from '../services/recommendationService';
@@ -138,27 +136,12 @@ export function Auctions() {
   const { user, isAuthenticated } = useAuthStore();
 
   const rawTab = searchParams.get('tab');
-  const activeTab = rawTab === 'commercial' ? 'commercial' : rawTab === 'baanknet' ? 'baanknet' : 'mstc';
+  const activeTab = rawTab === 'commercial' ? 'commercial' : 'mstc';
 
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [watchlistIds, setWatchlistIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // BaankNet eAuction specific states
-  const [baanknetAuctions, setBaanknetAuctions] = useState<BaanknetAuction[]>([]);
-  const [baanknetTotalCount, setBaanknetTotalCount] = useState(0);
-  const [isBaanknetLoading, setIsBaanknetLoading] = useState(false);
-  const [selectedPreviewBaanknetItem, setSelectedPreviewBaanknetItem] = useState<BaanknetAuction | null>(null);
-  const [baanknetOptions, setBaanknetOptions] = useState<{
-    categories: string[];
-    locations: string[];
-    regionalOffices: string[];
-  }>({
-    categories: [],
-    locations: [],
-    regionalOffices: []
-  });
 
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
   const [mstcTotalCount, setMstcTotalCount] = useState(0);
@@ -416,15 +399,15 @@ export function Auctions() {
 
   const mstcActiveFilters = [
     ...(submittedSearchQuery ? [{ label: 'Search', value: submittedSearchQuery }] : []),
-    ...(selectedMstcCategories.length ? [{ label: activeTab === 'baanknet' ? 'Property Type' : 'Category', value: selectedMstcCategories.join(', ') }] : []),
-    ...(selectedMstcSubcategories.length && activeTab !== 'baanknet' ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
+    ...(selectedMstcCategories.length ? [{ label: 'Category', value: selectedMstcCategories.join(', ') }] : []),
+    ...(selectedMstcSubcategories.length ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
     ...(selectedMstcLocations.length ? [{ label: 'Location', value: selectedMstcLocations.join(', ') }] : []),
-    ...(selectedMstcRegionalOffices.length ? [{ label: activeTab === 'baanknet' ? 'Lending Bank' : 'Regional office', value: selectedMstcRegionalOffices.join(', ') }] : []),
+    ...(selectedMstcRegionalOffices.length ? [{ label: 'Regional office', value: selectedMstcRegionalOffices.join(', ') }] : []),
     ...(startDate ? [{ label: 'From', value: startDate }] : []),
     ...(endDate ? [{ label: 'To', value: endDate }] : []),
-    ...(mstcHasAssetDocuments && activeTab !== 'baanknet' ? [{ label: 'Documents', value: 'Available' }] : []),
-    ...(mstcHasImages && activeTab !== 'baanknet' ? [{ label: 'Images', value: 'Available' }] : []),
-    ...(mstcIsReauction && activeTab !== 'baanknet' ? [{ label: 'Auction status', value: 'Re-auction' }] : []),
+    ...(mstcHasAssetDocuments ? [{ label: 'Documents', value: 'Available' }] : []),
+    ...(mstcHasImages ? [{ label: 'Images', value: 'Available' }] : []),
+    ...(mstcIsReauction ? [{ label: 'Auction status', value: 'Re-auction' }] : []),
   ];
 
   const isAnyFilterActive = !!(
@@ -550,45 +533,6 @@ export function Auctions() {
     }
   }, []);
 
-  const loadBaanknetData = useCallback(async () => {
-    setIsBaanknetLoading(true);
-    try {
-      const qParam = searchParams.get('q') || '';
-      const result = await BaanknetSearchService.searchBaanknetCatalog(qParam, {
-        category: selectedMstcCategories[0] || undefined,
-        location: selectedMstcLocations[0] || undefined,
-        regionalOffice: selectedMstcRegionalOffices[0] || undefined,
-        page,
-        limit,
-        sortBy
-      });
-
-      setBaanknetAuctions(result.data);
-      setBaanknetTotalCount(result.count);
-    } catch (error) {
-      console.error('Error loading BaankNet data:', error);
-    } finally {
-      setIsBaanknetLoading(false);
-    }
-  }, [
-    searchParams,
-    selectedMstcCategoriesJoined,
-    selectedMstcLocationsJoined,
-    selectedMstcRegionalOfficesJoined,
-    page,
-    limit,
-    sortBy
-  ]);
-
-  const loadBaanknetOptions = useCallback(async () => {
-    try {
-      const options = await BaanknetSearchService.getBaanknetFilterOptions();
-      setBaanknetOptions(options);
-    } catch (error) {
-      console.error('Error loading BaankNet filter options:', error);
-    }
-  }, []);
-
   useEffect(() => {
     if (activeTab === 'commercial') {
       loadData();
@@ -600,18 +544,6 @@ export function Auctions() {
       loadMstcData();
     }
   }, [activeTab, loadMstcData]);
-
-  useEffect(() => {
-    if (activeTab === 'baanknet') {
-      loadBaanknetData();
-    }
-  }, [activeTab, loadBaanknetData]);
-
-  useEffect(() => {
-    if (activeTab === 'baanknet') {
-      loadBaanknetOptions();
-    }
-  }, [activeTab, loadBaanknetOptions]);
 
   // Prefetch adjacent pages into PageCache after current page loads
   useEffect(() => {
@@ -884,9 +816,7 @@ export function Auctions() {
 
   const totalPages = activeTab === 'commercial'
     ? Math.ceil(totalCount / limit)
-    : activeTab === 'baanknet'
-      ? Math.ceil(baanknetTotalCount / limit)
-      : Math.ceil(mstcTotalCount / limit);
+    : Math.ceil(mstcTotalCount / limit);
 
   const startIndex = (page - 1) * limit;
   const paginatedMstcAuctions = mstcAuctions;
@@ -1031,10 +961,10 @@ export function Auctions() {
               preBid: mstcPreBid
             }}
             activeTab={activeTab}
-            customCategories={activeTab === 'baanknet' ? baanknetOptions.categories : mstcOptions.categories}
-            customSubcategories={activeTab === 'baanknet' ? {} : mstcOptions.subcategories}
-            customLocations={activeTab === 'baanknet' ? baanknetOptions.locations : mstcOptions.locations}
-            customRegionalOffices={activeTab === 'baanknet' ? baanknetOptions.regionalOffices : mstcOptions.regionalOffices}
+            customCategories={mstcOptions.categories}
+            customSubcategories={mstcOptions.subcategories}
+            customLocations={mstcOptions.locations}
+            customRegionalOffices={mstcOptions.regionalOffices}
           />
 
           {/* Pullable Side Tag Tab nested inside Drawer Container at absolute left-full */}
@@ -1141,9 +1071,7 @@ export function Auctions() {
                 <div className="min-w-0 flex items-center h-full">
                   <div className="space-y-1">
                     <div className="text-sm text-slate-700 font-semibold flex items-center h-full">
-                      {activeTab === 'baanknet'
-                        ? `Showing ${baanknetTotalCount} Bank Auctions`
-                        : `Showing ${mstcTotalCount} Government Catalogs`}
+                      Showing {mstcTotalCount} Government Catalogs
                     </div>
                     {mstcActiveFilters.length > 0 && (
                       <div className="flex flex-wrap items-center gap-1.5" aria-label="Applied filters">
@@ -1352,130 +1280,6 @@ export function Auctions() {
               </>
             )}
 
-            {/* BaankNet Bank Auctions Tab */}
-            {activeTab === 'baanknet' && (
-              <>
-                {isBaanknetLoading ? (
-                  <SkeletonGrid
-                    isGrid={isGridView}
-                    count={6}
-                    classes={clsx(
-                      "gap-6 flex-grow",
-                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
-                    )}
-                  />
-                ) : baanknetAuctions.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-355 flex-grow text-left">
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">No BaankNet auctions found</h3>
-                    <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
-                    <button
-                      onClick={() => {
-                        setSearchParams({ tab: 'baanknet' });
-                      }}
-                      className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
-                    >
-                      Clear search & filters
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className={clsx(
-                      "gap-6",
-                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
-                    )}>
-                      {baanknetAuctions.map(item => (
-                        <BaanknetCard
-                          key={item.id}
-                          item={item}
-                          isGrid={isGridView}
-                          onPreview={setSelectedPreviewBaanknetItem}
-                          isInterested={watchlistIds.includes(item.id)}
-                          onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="mt-10 flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 rounded-xl shadow-sm">
-                        <div className="flex flex-1 justify-between sm:hidden">
-                          <button
-                            onClick={() => handlePageChange(Math.max(1, page - 1))}
-                            disabled={page === 1}
-                            className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                          >
-                            Previous
-                          </button>
-                          <button
-                            onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                            disabled={page === totalPages}
-                            className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                          >
-                            Next
-                          </button>
-                        </div>
-                        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                          <div>
-                            <p className="text-sm text-slate-700">
-                              Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, baanknetTotalCount)}</span> of <span className="font-medium">{baanknetTotalCount}</span> results
-                            </p>
-                          </div>
-                          <div>
-                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                              <button
-                                onClick={() => handlePageChange(Math.max(1, page - 1))}
-                                disabled={page === 1}
-                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
-                              >
-                                <span className="sr-only">Previous</span>
-                                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-                              </button>
-
-                              {getPageNumbers(page, totalPages).map((p, i) => {
-                                if (p === '...') {
-                                  return (
-                                    <span
-                                      key={`dots-baanknet-${i}`}
-                                      className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-300 focus:outline-none"
-                                    >
-                                      ...
-                                    </span>
-                                  );
-                                }
-                                return (
-                                  <button
-                                    key={p}
-                                    onClick={() => handlePageChange(p as number)}
-                                    className={clsx(
-                                      "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset cursor-pointer",
-                                      page === p
-                                        ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
-                                        : "text-slate-900 ring-slate-300 hover:bg-slate-50"
-                                    )}
-                                  >
-                                    {p}
-                                  </button>
-                                );
-                              })}
-
-                              <button
-                                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                                disabled={page === totalPages}
-                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
-                              >
-                                <span className="sr-only">Next</span>
-                                <ChevronRight className="h-5 w-5" aria-hidden="true" />
-                              </button>
-                            </nav>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-
             {/* MSTC Gov Catalogs Tab */}
             {activeTab === 'mstc' && (
               <>
@@ -1626,22 +1430,6 @@ export function Auctions() {
             onClose={() => setSelectedPreviewItem(null)}
             isInterested={interestedMstcIds.includes(selectedPreviewItem.id)}
             onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewItem.id)}
-          />
-        </Suspense>
-      )}
-
-      {/* BaankNet Details Modal */}
-      {selectedPreviewBaanknetItem && (
-        <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-          </div>
-        }>
-          <BaanknetDetailsModal
-            item={selectedPreviewBaanknetItem}
-            onClose={() => setSelectedPreviewBaanknetItem(null)}
-            isInterested={watchlistIds.includes(selectedPreviewBaanknetItem.id)}
-            onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewBaanknetItem.id)}
           />
         </Suspense>
       )}

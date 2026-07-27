@@ -86,12 +86,10 @@ export default async function handler(req: any, res: any) {
         workerRunning: false,
         clearDbRunning: false,
         backfillRunning: false,
-        baanknetRunning: false,
         scraperLogs,
         workerLogs,
         clearDbLogs,
-        backfillLogs,
-        baanknetLogs: ['[System] Serverless mode active. Puppeteer GUI cannot run on Vercel. Run the scraper locally.']
+        backfillLogs
       });
       return;
     }
@@ -189,24 +187,6 @@ export default async function handler(req: any, res: any) {
         return;
       }
       if (cleanUrl === '/api/scraper/stop' || cleanUrl === '/api/scraper/input') {
-        res.status(200).json({ success: true });
-        return;
-      }
-
-      // BaankNet Multi-Module Scraper
-      if (cleanUrl === '/api/scraper/baanknet/start') {
-        res.status(400).json({
-          success: false,
-          message: 'The BaankNet Multi-Module Scraper requires Chromium binaries for Angular bootstrap. Run locally:\n\n' +
-            '  npx tsx scraper/baanknetScraper.ts                    # All 3 modules\n' +
-            '  npx tsx scraper/baanknetScraper.ts --module=eauction  # eAuction PSB only\n' +
-            '  npx tsx scraper/baanknetScraper.ts --module=property  # Property Listings only\n' +
-            '  npx tsx scraper/baanknetScraper.ts --module=ibc       # IBC eAuction only\n' +
-            '  npx tsx scraper/baanknetScraper.ts --headful          # Visible browser for debug'
-        });
-        return;
-      }
-      if (cleanUrl === '/api/scraper/baanknet/stop') {
         res.status(200).json({ success: true });
         return;
       }

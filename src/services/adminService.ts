@@ -316,27 +316,18 @@ export const adminService = {
       .select('*', { count: 'exact', head: true })
       .eq('asset_status', 'completed');
 
-    const { count: activeBaanknetListings } = await supabase
-      .from('baanknet_auctions')
-      .select('*', { count: 'exact', head: true });
-
     const now = new Date().toISOString();
     const { count: upcomingAuctions } = await supabase
       .from('mstc_auctions')
       .select('*', { count: 'exact', head: true })
       .gt('opening_date', now);
 
-    const { count: upcomingBaanknetAuctions } = await supabase
-      .from('baanknet_auctions')
-      .select('*', { count: 'exact', head: true })
-      .gt('auction_start_date', now);
-
     return {
       totalUsers: userCount || 0,
       activeAuctions: auctionCount || 0,
       activeTenders: tenderCount || 0,
-      activeListings: (activeListings || 0) + (activeBaanknetListings || 0),
-      upcomingAuctions: (upcomingAuctions || 0) + (upcomingBaanknetAuctions || 0)
+      activeListings: activeListings || 0,
+      upcomingAuctions: upcomingAuctions || 0
     };
   },
 
@@ -396,6 +387,122 @@ export const adminService = {
     }
   },
 
+  // Location & Region Analytics
+  async getLocationAnalytics() {
+    try {
+      // 1. Query mstc_auctions directly for real-time location breakdown
+      const { data: rawAuctions, error: auctionsError } = await supabase
+        .from('mstc_auctions')
+        .select('location, category_name');
+
+      if (auctionsError) {
+        console.error('Error fetching location analytics from mstc_auctions:', auctionsError);
+      }
+
+      const REGION_DISTRICT_MAP: Record<string, { state: string, district: string }> = {
+        'Tamil Nadu': { state: 'Tamil Nadu', district: 'Chennai & South Region' },
+        'Gujarat': { state: 'Gujarat', district: 'Vadodara & West Region' },
+        'Delhi & NCR': { state: 'Delhi & NCR', district: 'New Delhi & NCR Region' },
+        'Kerala': { state: 'Kerala', district: 'Trivandrum & Malabar Region' },
+        'Uttar Pradesh': { state: 'Uttar Pradesh', district: 'Lucknow & Central UP' },
+        'Maharashtra': { state: 'Maharashtra', district: 'Mumbai & Konkan Region' },
+        'Punjab & Haryana': { state: 'Punjab & Haryana', district: 'Chandigarh & Tri-City' },
+        'West Bengal': { state: 'West Bengal', district: 'Kolkata & Eastern Region' },
+        'Rajasthan': { state: 'Rajasthan', district: 'Jaipur & Western Region' },
+        'Andhra Pradesh': { state: 'Andhra Pradesh', district: 'Visakhapatnam & Coastal AP' },
+        'Karnataka': { state: 'Karnataka', district: 'Bengaluru & South Interior' },
+        'Chhattisgarh': { state: 'Chhattisgarh', district: 'Raipur & Central Region' },
+        'Assam & North East': { state: 'Assam & NE', district: 'Guwahati & North-East' },
+        'Telangana': { state: 'Telangana', district: 'Hyderabad & Deccan' },
+        'Madhya Pradesh': { state: 'Madhya Pradesh', district: 'Bhopal & Malwa Region' },
+        'Jharkhand': { state: 'Jharkhand', district: 'Ranchi & Chota Nagpur' },
+        'Odisha': { state: 'Odisha', district: 'Bhubaneswar & Coastal Odisha' },
+        'PTN': { state: 'Bihar', district: 'Patna & Bihar Region' },
+        'LKO': { state: 'Uttar Pradesh', district: 'Lucknow District' },
+        'ERO': { state: 'West Bengal', district: 'Kolkata District' },
+        'CDG': { state: 'Punjab & Haryana', district: 'Chandigarh District' },
+        'JPR': { state: 'Rajasthan', district: 'Jaipur District' },
+        'BBR': { state: 'Odisha', district: 'Bhubaneswar District' },
+        'RNC': { state: 'Jharkhand', district: 'Ranchi District' },
+        'SRO': { state: 'Tamil Nadu', district: 'Chennai District' },
+        'VZG': { state: 'Andhra Pradesh', district: 'Visakhapatnam District' },
+        'BPL': { state: 'Madhya Pradesh', district: 'Bhopal District' },
+        'WRO': { state: 'Maharashtra', district: 'Mumbai District' },
+        'BLR': { state: 'Karnataka', district: 'Bengaluru District' },
+        'TVC': { state: 'Kerala', district: 'Trivandrum District' },
+        'RPR': { state: 'Chhattisgarh', district: 'Raipur District' },
+        'VAD': { state: 'Gujarat', district: 'Vadodara District' },
+        'NRO': { state: 'Delhi & NCR', district: 'New Delhi District' },
+        'GHY': { state: 'Assam & NE', district: 'Guwahati District' },
+        'HYD': { state: 'Telangana', district: 'Hyderabad District' },
+        'HO': { state: 'West Bengal', district: 'Head Office (Kolkata)' }
+      };
+
+      const locationMap: Record<string, { count: number; categories: Record<string, number> }> = {};
+      let totalAuctions = 0;
+
+      (rawAuctions || []).forEach((item: any) => {
+        const loc = item.location?.trim() || 'India (General)';
+        const cat = item.category_name?.split('|')[0]?.trim() || item.category_name || 'Uncategorized';
+        
+        if (!locationMap[loc]) {
+          locationMap[loc] = { count: 0, categories: {} };
+        }
+        locationMap[loc].count += 1;
+        locationMap[loc].categories[cat] = (locationMap[loc].categories[cat] || 0) + 1;
+        totalAuctions += 1;
+      });
+
+      const locations = Object.entries(locationMap)
+        .map(([rawLoc, val]) => {
+          const info = REGION_DISTRICT_MAP[rawLoc] || { state: rawLoc, district: rawLoc };
+          const topCats = Object.entries(val.categories)
+            .map(([catName, cnt]) => ({ name: catName, count: cnt }))
+            .sort((a, b) => b.count - a.count);
+
+          return {
+            location: rawLoc,
+            state: info.state,
+            district: info.district,
+            count: val.count,
+            percentage: totalAuctions > 0 ? parseFloat(((val.count / totalAuctions) * 100).toFixed(1)) : 0,
+            topCategory: topCats[0]?.name || 'N/A',
+            categories: topCats
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+
+      // 2. Query location_daily_stats for historical trends if available
+      const { data: historicalLocData } = await supabase
+        .from('location_daily_stats')
+        .select('date, location, items_added');
+
+      const dailyMap: Record<string, Record<string, number>> = {};
+      (historicalLocData || []).forEach((stat: any) => {
+        const loc = stat.location || 'India (General)';
+        const count = stat.items_added || 0;
+        const date = stat.date;
+
+        if (!dailyMap[date]) dailyMap[date] = {};
+        dailyMap[date][loc] = (dailyMap[date][loc] || 0) + count;
+      });
+
+      const dailyTrends = Object.entries(dailyMap)
+        .map(([date, locs]) => ({ date, ...locs }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      return {
+        locations,
+        totalAuctions,
+        topRegion: locations[0]?.state ? `${locations[0].state} (${locations[0].district})` : locations[0]?.location || 'N/A',
+        dailyTrends
+      };
+    } catch (e) {
+      console.error('Failed fetching location analytics:', e);
+      return { locations: [], totalAuctions: 0, topRegion: 'N/A', dailyTrends: [] };
+    }
+  },
+
   // Scraper & Asset Worker Dashboard Services
   async getScraperAnalytics() {
     try {
@@ -434,41 +541,6 @@ export const adminService = {
     return data;
   },
 
-  async getBaanknetScraperAnalytics() {
-    try {
-      const [totalRes, upcomingRes, liveRes, closedRes] = await Promise.all([
-        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }),
-        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'upcoming'),
-        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'live'),
-        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).in('auction_status', ['closed', 'cancelled', 'ended']),
-      ]);
-
-      return {
-        total: totalRes.count || 0,
-        upcoming: upcomingRes.count || 0,
-        live: liveRes.count || 0,
-        closed: closedRes.count || 0,
-      };
-    } catch (error) {
-      console.error('Error fetching BaankNet scraper analytics:', error);
-      return { total: 0, upcoming: 0, live: 0, closed: 0 };
-    }
-  },
-
-  async getBaanknetScraperAuctions(limit: number = 100): Promise<any[]> {
-    const { data, error } = await supabase
-      .from('baanknet_auctions')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error('Error fetching BaankNet scraper auctions:', error);
-      return [];
-    }
-    return data;
-  },
-
   async getScraperLogs(limit: number = 100): Promise<AuditLog[]> {
     const { data, error } = await supabase
       .from('audit_logs')
@@ -481,23 +553,10 @@ export const adminService = {
       console.error('Error fetching scraper audit logs:', error);
       return [];
     }
-    return data;
-  },
-
-  async getBaanknetScraperLogs(limit: number = 100): Promise<AuditLog[]> {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .in('action', ['baanknet_auction_deleted', 'baanknet_auction_scraped'])
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error('Error fetching BaankNet scraper audit logs:', error);
-      return [];
-    }
     return data || [];
   },
+
+
 
   // Contact Messages Management
   async getContactMessages(): Promise<ContactMessage[]> {
