@@ -37,15 +37,28 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     };
   }, [item]);
   
+  // Distinguish actual item photos from document page preview images
+  const actualPhotos = useMemo(() => {
+    if (!summary) return [];
+    return (summary.extracted_images || []).filter(
+      (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('_page_') && !url.toLowerCase().includes('mstc-previews/') && !url.toLowerCase().endsWith('.pdf')
+    );
+  }, [summary?.extracted_images]);
+  
   const hasOtherMedia = (summary?.extracted_images || []).length > 0;
-
-  // Card preview: always show the catalog document page (like the MSTC header page).
-  // Extracted item photos are viewable inside the details modal.
+  const fallbackPreview = item.sanitized_document_path ? `mstc-previews/${item.id}.jpg` : null;
   const rawDisplayImage = useMemo(() => {
+    if (actualPhotos.length > 0) return actualPhotos[0];
     if (summary?.preview_image_url) return summary.preview_image_url;
-    if (item.sanitized_document_path) return `mstc-previews/${item.id}.jpg`;
-    return null;
-  }, [summary?.preview_image_url, item.sanitized_document_path, item.id]);
+    
+    // Look for any catalog pages inside extracted_images
+    const catalogPages = (summary?.extracted_images || []).filter(
+      (url: string) => (url.toLowerCase().includes('_catalog_page_') || url.toLowerCase().includes('_page_') || url.toLowerCase().includes('mstc-previews/')) && !url.toLowerCase().endsWith('.pdf')
+    );
+    if (catalogPages.length > 0) return catalogPages[0];
+    
+    return fallbackPreview;
+  }, [actualPhotos, summary, fallbackPreview]);
 
   const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);

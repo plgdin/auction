@@ -531,10 +531,10 @@ export function AuctionFilters({
   const currentLocations = activeTab === 'mstc' ? customLocations : LOCATIONS;
   const locationOptions = currentLocations.map(loc => ({ key: loc, label: loc }));
 
-  const expandMstcOfficeMap = customRegionalOffices.reduce((acc, office) => {
+  const expandMstcOfficeMap = activeTab === 'mstc' ? customRegionalOffices.reduce((acc, office) => {
     acc[office] = expandMstcOffice(office);
     return acc;
-  }, {} as Record<string, string>);
+  }, {} as Record<string, string>) : {};
 
 
 
@@ -585,45 +585,45 @@ export function AuctionFilters({
                     <span className="truncate">
                       {getTriggerLabel(selectedCategories, 'All Categories')}
                     </span>
-                    <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                    <DownOutlined className="w-3.5 h-3.5 text-slate-455 shrink-0 ml-2" />
                   </button>
                 </Dropdown>
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
-                <Dropdown 
-                  popupRender={() => renderMultiSelectMenu(
-                    customSubcategoryOptions,
-                    selectedSubcategories,
-                    setSelectedSubcategories,
-                    'All Sub-Categories'
-                  )}
-                  trigger={['click']} 
-                  disabled={selectedCategories.length === 0}
-                  placement="bottomLeft"
-                  align={{ overflow: { adjustX: false, adjustY: false } }}
-                  getPopupContainer={() => containerRef.current || document.body}
-                >
-                  <button 
-                    type="button"
-                    disabled={selectedCategories.length === 0}
-                    className={clsx(
-                      "w-full flex justify-between items-center px-3.5 py-2.5 border rounded-xl shadow-2xs text-sm transition-all text-left",
-                      selectedCategories.length === 0 
-                        ? "border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50" 
-                        : "border-slate-250 bg-white text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                  <Dropdown 
+                    popupRender={() => renderMultiSelectMenu(
+                      customSubcategoryOptions,
+                      selectedSubcategories,
+                      setSelectedSubcategories,
+                      'All Sub-Categories'
                     )}
+                    trigger={['click']} 
+                    disabled={selectedCategories.length === 0}
+                    placement="bottomLeft"
+                    align={{ overflow: { adjustX: false, adjustY: false } }}
+                    getPopupContainer={() => containerRef.current || document.body}
                   >
-                    <span className="truncate">
-                      {selectedCategories.length === 0 
-                        ? 'Select a category first' 
-                        : getTriggerLabel(selectedSubcategories, 'All Sub-Categories')}
-                    </span>
-                    <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
-                  </button>
-                </Dropdown>
-              </div>
+                    <button 
+                      type="button"
+                      disabled={selectedCategories.length === 0}
+                      className={clsx(
+                        "w-full flex justify-between items-center px-3.5 py-2.5 border rounded-xl shadow-2xs text-sm transition-all text-left",
+                        selectedCategories.length === 0 
+                          ? "border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50" 
+                          : "border-slate-250 bg-white text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                      )}
+                    >
+                      <span className="truncate">
+                        {selectedCategories.length === 0 
+                          ? 'Select a category first' 
+                          : getTriggerLabel(selectedSubcategories, 'All Sub-Categories')}
+                      </span>
+                      <DownOutlined className="w-3.5 h-3.5 text-slate-455 shrink-0 ml-2" />
+                    </button>
+                  </Dropdown>
+                </div>
             </div>
           ) : (
             <div className="space-y-1">
@@ -842,20 +842,20 @@ export function AuctionFilters({
         {/* Location */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Location</h3>
-          <Dropdown 
-            popupRender={() => renderMultiSelectMenu(
-              locationOptions,
-              selectedLocations,
-              setSelectedLocations,
-              'All Locations'
-            )}
-            trigger={['click']} 
-            placement="bottomLeft"
-            align={{ overflow: { adjustX: false, adjustY: false } }}
-            getPopupContainer={() => containerRef.current || document.body}
-          >
-            <button 
-              type="button"
+            <Dropdown 
+              popupRender={() => renderMultiSelectMenu(
+                locationOptions,
+                selectedLocations,
+                setSelectedLocations,
+                'All Locations'
+              )}
+              trigger={['click']} 
+              placement="bottomLeft"
+              align={{ overflow: { adjustX: false, adjustY: false } }}
+              getPopupContainer={() => containerRef.current || document.body}
+            >
+              <button 
+                type="button"
               className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
             >
               <span className="truncate">
@@ -867,29 +867,31 @@ export function AuctionFilters({
         </div>
 
         {/* Pre-bid Requirement */}
-        <div className="mb-8">
-          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Pre-Bid Requirement</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'All', value: 'all' },
-              { label: 'Pre-bid Required', value: 'yes' },
-              { label: 'No Pre-bid Required', value: 'no' },
-            ].map((option) => (
-              <label key={option.value} className="flex items-center cursor-pointer">
-                <input 
-                  type="radio" 
-                  name="preBid" 
-                  checked={selectedPreBid === option.value}
-                  onChange={() => setSelectedPreBid(option.value)}
-                  className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
-                />
-                <span className="ml-3 text-sm text-slate-700">
-                  {option.label}
-                </span>
-              </label>
-            ))}
+        {activeTab === 'mstc' && (
+          <div className="mb-8">
+            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Pre-Bid Requirement</h3>
+            <div className="space-y-3">
+              {[
+                { label: 'All', value: 'all' },
+                { label: 'Pre-bid Required', value: 'yes' },
+                { label: 'No Pre-bid Required', value: 'no' },
+              ].map((option) => (
+                <label key={option.value} className="flex items-center cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="preBid" 
+                    checked={selectedPreBid === option.value}
+                    onChange={() => setSelectedPreBid(option.value)}
+                    className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
+                  />
+                  <span className="ml-3 text-sm text-slate-700">
+                    {option.label}
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
 
 
