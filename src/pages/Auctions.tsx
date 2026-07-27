@@ -942,7 +942,6 @@ export function Auctions() {
           )}
         >
           <AuctionFilters
-            isOpen={isFiltersOpen}
             onClose={() => setIsFiltersOpen(false)}
             onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
             initialFilters={activeTab === 'commercial' ? filters : {

@@ -28,7 +28,6 @@ interface AuctionFiltersProps {
     hasImages?: boolean;
     isReauction?: boolean;
   }) => void;
-  isOpen: boolean;
   onClose: () => void;
   initialFilters: { 
     categoryIds?: string[]; 
@@ -62,7 +61,6 @@ interface CategoryNode {
 
 export function AuctionFilters({ 
   onFilterChange, 
-  isOpen, 
   onClose, 
   initialFilters,
   activeTab = 'commercial',
