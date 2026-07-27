@@ -201,6 +201,25 @@ export const valuationPipeline = {
         }
       }
 
+      // Check for catalog spot estimate / explicit market price overrides first
+      let hasExplicitMarketPrice = false;
+      let explicitPrice = 0;
+      const customPriceStr = rawItem.marketPrice;
+      if (customPriceStr) {
+        const cleanPrice = customPriceStr.replace(/,/g, '').trim();
+        const priceMatch = cleanPrice.match(/(?:₹|Ôé╣|â‚¹|Ã”Ã©â•£|rs\.?|inr)?\s*([\d\.]+)/i);
+        if (priceMatch) {
+          let parsedPrice = parseFloat(priceMatch[1]);
+          if (!isNaN(parsedPrice) && parsedPrice > 0) {
+            if (isPerKg && cleanPrice.toLowerCase().includes('/ ton')) {
+              parsedPrice = parsedPrice / 1000;
+            }
+            explicitPrice = Math.round(parsedPrice);
+            hasExplicitMarketPrice = true;
+          }
+        }
+      }
+
       const isFailedOrWithdrawn = descLower.includes('withdrawn') || 
                                   descLower.includes('cancelled') || 
                                   descLower.includes('unratified') || 
@@ -208,8 +227,8 @@ export const valuationPipeline = {
                                   descLower.includes('zero bids') || 
                                   descLower.includes('failed auction');
 
-      const isNotAvailable = isLotUnit || isUnparseableQty || isUnpriceable || isFailedOrWithdrawn || 
-                             (isUnknownCommodity || isMismatch);
+      const isNotAvailable = isFailedOrWithdrawn || 
+                            (!hasExplicitMarketPrice && (isLotUnit || isUnparseableQty || isUnpriceable || (isUnknownCommodity || isMismatch)));
 
       if (isNotAvailable) {
         valuedItems.push({
@@ -230,33 +249,28 @@ export const valuationPipeline = {
       }
 
       // 3. Resolve market pricing via Market Pricing Engine (Sync)
-      const marketRes = marketEngine.resolvePriceSync(rawItem.description, location || 'Mumbai', rawItem.description);
-      let avgPrice = marketRes.weightedPrice;
-      let pricingConfidence = marketRes.confidence;
-      let priceSource = marketRes.dominantSource;
+      let avgPrice = 0;
+      let pricingConfidence = 0;
+      let priceSource = '';
+      let sourcesCount = 1;
 
-      // Apply location logistical premium/discount
-      const reg = getRegionalMultiplier(location);
-      if (reg.multiplier !== 1.0) {
-        avgPrice = Math.round(avgPrice * reg.multiplier);
-        priceSource += ` [${reg.discountReason}]`;
-      }
+      if (hasExplicitMarketPrice) {
+        avgPrice = explicitPrice;
+        pricingConfidence = 85;
+        priceSource = 'Catalog Spot Estimate';
+        sourcesCount = 1;
+      } else {
+        const marketRes = marketEngine.resolvePriceSync(rawItem.description, location || 'Mumbai', rawItem.description);
+        avgPrice = marketRes.weightedPrice;
+        pricingConfidence = marketRes.confidence;
+        priceSource = marketRes.dominantSource;
+        sourcesCount = marketRes.sources?.length || 1;
 
-      // Apply catalog spot estimate overrides
-      const customPriceStr = rawItem.marketPrice;
-      if (customPriceStr) {
-        const cleanPrice = customPriceStr.replace(/,/g, '');
-        const priceMatch = cleanPrice.match(/(?:₹|Ôé╣|â‚¹|Ã”Ã©â•£)\s*(\d+)/);
-        if (priceMatch) {
-          let parsedPrice = parseInt(priceMatch[1], 10);
-          if (parsedPrice > 1) {
-            if (isPerKg && cleanPrice.toLowerCase().includes('/ ton')) {
-              parsedPrice = parsedPrice / 1000;
-            }
-            avgPrice = parsedPrice;
-            pricingConfidence = 85;
-            priceSource = 'Catalog Spot Estimate';
-          }
+        // Apply location logistical premium/discount
+        const reg = getRegionalMultiplier(location);
+        if (reg.multiplier !== 1.0) {
+          avgPrice = Math.round(avgPrice * reg.multiplier);
+          priceSource += ` [${reg.discountReason}]`;
         }
       }
 
@@ -277,7 +291,7 @@ export const valuationPipeline = {
         confidence: pricingConfidence,
         priceSource,
         internationalPrices: {
-          in: { price: itemUnitValue, convertedPrice: itemTotalValue, sources: marketRes.sources.length },
+          in: { price: itemUnitValue, convertedPrice: itemTotalValue, sources: sourcesCount },
           us: { price: usdUnit, convertedPrice: usdTotal, sources: 1 },
           uk: { price: gbpUnit, convertedPrice: gbpTotal, sources: 1 }
         }

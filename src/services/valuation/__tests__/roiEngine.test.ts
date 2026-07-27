@@ -318,6 +318,21 @@ export async function runRoiEngineTests(): Promise<boolean> {
     assert(valuationE.totalLotValue > 0, `Leyland item should be priceable and have positive value, got ${valuationE.totalLotValue}`);
     assert(!valuationE.items[0].notAvailable, `Leyland item should not be marked as notAvailable`);
 
+    // Catalog Item F: Explicit spot market price on a LOT/LS item (e.g. auction 22715)
+    const catalogItemF = [
+      {
+        sr: 1,
+        description: 'SCRAP MOTOR PUMP SETS AND TRANSFORMERS LYING AT SITE',
+        qty: '1',
+        unit: 'LOT',
+        marketPrice: '₹7,03,123'
+      }
+    ];
+    const valuationF = await roiEngine.calculateValuation(catalogItemF, costsD, false, 'Maharashtra');
+    assert(valuationF.totalLotValue > 0, `Explicit market price on LOT item should produce positive totalLotValue, got ${valuationF.totalLotValue}`);
+    assert(!valuationF.items[0].notAvailable, `LOT item with explicit market price should not be marked as notAvailable`);
+    assert(valuationF.totalLotValue === 703123, `totalLotValue should equal explicit market price 703123, got ${valuationF.totalLotValue}`);
+
   } catch (err: any) {
     console.error('Catalog Regression Tests Failed:', err.message);
     success = false;
