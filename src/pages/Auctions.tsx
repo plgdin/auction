@@ -924,10 +924,7 @@ export function Auctions() {
       </div>
 
       {/* Pullable Left Filter Drawer & Floating Side Tag anchored to far left screen border */}
-      <div className={clsx(
-        "fixed top-1/2 -translate-y-1/2 left-0 z-50 pointer-events-none transition-all duration-300",
-        (scrollPastHero || isFiltersOpen) ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-full"
-      )}>
+      <div className="fixed top-1/2 -translate-y-1/2 left-0 z-50 pointer-events-none transition-all duration-300 opacity-100 translate-x-0">
         {/* Backdrop Overlay */}
         <div 
           className={clsx(
@@ -967,19 +964,24 @@ export function Auctions() {
             customRegionalOffices={mstcOptions.regionalOffices}
           />
 
-          {/* Pullable Side Tag Tab nested inside Drawer Container at absolute left-full */}
           <button
             onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-            className="absolute left-full top-24 -translate-y-1/2 z-20 pointer-events-auto flex items-center gap-2 px-3 py-3.5 bg-primary text-white font-bold text-xs rounded-r-xl shadow-2xl hover:bg-primary/95 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-l-0 border-white/20 select-none group shrink-0"
+            className={clsx(
+              "absolute left-full top-24 z-20 pointer-events-auto flex items-center justify-between w-[130px] px-3 py-3.5 bg-primary text-white font-bold text-xs rounded-r-xl shadow-2xl hover:bg-primary/95 active:scale-95 transition-all duration-300 cursor-pointer border border-l-0 border-white/20 select-none group shrink-0",
+              !isFiltersOpen && "hover:scale-105",
+              (isFiltersOpen || scrollPastHero) ? "-translate-y-1/2 translate-x-0" : "-translate-y-1/2 -translate-x-[90px]"
+            )}
             title={isFiltersOpen ? "Close filters panel" : "Pull filters panel open"}
             aria-label="Toggle filters side panel"
           >
-            <SlidersHorizontal className="w-4 h-4 text-white shrink-0" />
-            <span className="font-semibold tracking-wider uppercase text-[11px] whitespace-nowrap">
-              {isFiltersOpen ? "Hide" : "Filters"}
-            </span>
-            {mstcActiveFilters.length > 0 && (
-              <span className="bg-white text-primary text-[10px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0 overflow-hidden">
+              <SlidersHorizontal className="w-4 h-4 text-white shrink-0" />
+              <span className="font-semibold tracking-wider uppercase text-[11px] whitespace-nowrap">
+                {isFiltersOpen ? "Hide" : "Filters"}
+              </span>
+            </div>
+            {mstcActiveFilters.length > 0 && !isFiltersOpen && (
+              <span className="absolute -top-1.5 -right-1.5 bg-white text-primary shadow-xs border border-primary/20 text-[10px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center shrink-0">
                 {mstcActiveFilters.length}
               </span>
             )}
