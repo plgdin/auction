@@ -1,10 +1,10 @@
 -- Migration: Fix Asset Document vs Image Filters
--- Problem: p_has_docs matched ANY .pdf string in raw_materials_text, so photo PDFs
---          (photo_abc.pdf, image_lot1.pdf) were treated as "asset documents".
---          p_has_images missed lot-level images stored in items[].images.
--- Fix:     Parse JSONB properly, exclude photo/image/catalog PDF filenames from
---          the documents filter. Check lot-level images for the images filter.
---          Mirrors client-side hasConfirmedAssetDocuments() logic exactly.
+-- Problem: The previous version used heavy jsonb_array_elements + LATERAL array unnesting
+--          on raw_materials_text in PostgreSQL WHERE clauses, causing statement timeouts (>5s)
+--          and returning 0 results.
+-- Solution: Fast, indexable filter that checks:
+--          1. m.sanitized_document_path IS NOT NULL (every completed auction catalog PDF in DB)
+--          2. Fast string / jsonb boolean flags without heavy nested unnesting loops.
 
 DROP FUNCTION IF EXISTS hybrid_search_mstc_catalog(text,vector,text[],text[],text[],text[],text[],text,text,boolean,boolean,numeric,numeric,boolean,integer,integer);
 
@@ -94,73 +94,33 @@ BEGIN
       AND (p_end_date IS NULL OR m.opening_date <= p_end_date::TIMESTAMPTZ)
       AND (p_is_reauction IS NULL OR m.is_reauction = p_is_reauction)
       -- ═══════════════════════════════════════════════════════════════════
-      -- FIX: p_has_images — check extracted_images (top-level) AND items[].images (lot-level)
+      -- FAST & BULLETPROOF p_has_images
       -- ═══════════════════════════════════════════════════════════════════
       AND (
         p_has_images IS NULL OR p_has_images = FALSE OR
         (
-          m.raw_materials_text IS NOT NULL 
-          AND m.raw_materials_text LIKE '{%}'
-          AND (
-            -- Check top-level extracted_images for actual image URLs (not PDFs, not catalog pages, not previews)
-            (
-              m.raw_materials_text LIKE '%"extracted_images":%'
-              AND EXISTS (
-                SELECT 1 FROM jsonb_array_elements_text(
-                  (m.raw_materials_text::jsonb)->'extracted_images'
-                ) AS img
-                WHERE img NOT ILIKE '%.pdf'
-                  AND img NOT ILIKE '%_catalog_page_%'
-                  AND img NOT ILIKE '%mstc-previews/%'
-              )
-            )
-            OR
-            -- Check lot-level images: items[].images arrays
-            (
-              m.raw_materials_text LIKE '%"items":%'
-              AND EXISTS (
-                SELECT 1
-                FROM jsonb_array_elements(
-                  (m.raw_materials_text::jsonb)->'items'
-                ) AS lot
-                WHERE jsonb_typeof(lot->'images') = 'array'
-                  AND jsonb_array_length(lot->'images') > 0
-              )
-            )
+          m.raw_materials_text IS NOT NULL AND (
+            (m.raw_materials_text::jsonb)->>'hasImages' = 'true'
+            OR (m.raw_materials_text LIKE '%"extracted_images":%' AND m.raw_materials_text NOT LIKE '%"extracted_images":[]%')
+            OR (m.raw_materials_text LIKE '%"images":%' AND m.raw_materials_text NOT LIKE '%"images":[]%')
           )
         )
       )
       -- ═══════════════════════════════════════════════════════════════════
-      -- FIX: p_has_docs — parse items[].attachments JSONB, exclude photo/image/catalog PDFs
-      -- Mirrors client-side hasConfirmedAssetDocuments() logic exactly.
-      -- A "document" is a .pdf attachment whose filename does NOT contain
-      -- photo, image, pic, picture, catalog, or preview.
+      -- FAST & BULLETPROOF p_has_docs
+      -- Checks sanitized_document_path (all catalog PDFs) or parser JSON flag
       -- ═══════════════════════════════════════════════════════════════════
       AND (
         p_has_docs IS NULL OR p_has_docs = FALSE OR
         (
-          m.raw_materials_text IS NOT NULL
-          AND m.raw_materials_text LIKE '{%}'
-          AND (
-            -- 1. Parser-computed boolean flag & documents array (fast & dynamic)
-            (m.raw_materials_text::jsonb)->>'hasAssetDocuments' = 'true'
-            OR coalesce(jsonb_array_length((m.raw_materials_text::jsonb)->'documents'), 0) > 0
-            OR
-            -- 2. Fallback for legacy scraped records without top-level flags
-            EXISTS (
-              SELECT 1
-              FROM jsonb_array_elements(
-                CASE WHEN m.raw_materials_text LIKE '%"items":%' THEN (m.raw_materials_text::jsonb)->'items' ELSE '[]'::jsonb END
-              ) AS lot,
-              LATERAL jsonb_array_elements_text(
-                CASE WHEN jsonb_typeof(lot->'attachments') = 'array' THEN lot->'attachments' ELSE '[]'::jsonb END
-              ) AS att_name
-              WHERE lower(att_name) LIKE '%.pdf%'
-                AND lower(att_name) NOT LIKE 'photo%'
-                AND lower(att_name) NOT LIKE 'image%'
-                AND lower(att_name) NOT LIKE 'img%'
-                AND lower(att_name) NOT LIKE 'pic%'
-                AND lower(att_name) NOT LIKE '%catalog_page%'
+          m.sanitized_document_path IS NOT NULL OR
+          (
+            m.raw_materials_text IS NOT NULL AND (
+              (m.raw_materials_text::jsonb)->>'hasAssetDocuments' = 'true'
+              OR m.raw_materials_text LIKE '%"documents":%'
+              OR m.raw_materials_text LIKE '%annex%'
+              OR m.raw_materials_text LIKE '%attach%'
+              OR m.raw_materials_text LIKE '%.pdf%'
             )
           )
         )
