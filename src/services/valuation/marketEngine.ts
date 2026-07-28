@@ -1,5 +1,6 @@
 import { marketPriceService } from '../marketPriceService';
 import { matchCommodity } from '../valuationService';
+import { safeRound, safeDivide } from './inputValidator';
 
 export interface PriceSourceDetails {
   source: string;
@@ -22,7 +23,8 @@ export interface MarketPriceResult {
 
 export const marketEngine = {
   /**
-   * Resolves a weighted pricing structure from multiple indices (MCX, LME, Regional scrap, quotes, etc.)
+   * Resolves a weighted pricing structure from multiple indices (MCX, LME, Regional scrap, quotes, etc.).
+   * Guaranteed to return a positive weighted price — never 0 or NaN for valid commodities.
    */
   resolvePriceSync(
     itemName: string,
@@ -31,7 +33,12 @@ export const marketEngine = {
   ): MarketPriceResult {
     // Standardize naming/lookup via matched commodity
     const comm = matchCommodity(description || itemName);
-    const dbPrice = marketPriceService.getCommodityPrice(comm.name) || comm.basePricePerKg || comm.basePricePerUnit || 50;
+    let dbPrice = marketPriceService.getCommodityPrice(comm.name) || comm.basePricePerKg || comm.basePricePerUnit || 50;
+
+    // Guard against zero/NaN/negative base price
+    if (!Number.isFinite(dbPrice) || dbPrice <= 0) {
+      dbPrice = comm.basePricePerKg || comm.basePricePerUnit || 50;
+    }
 
     const nowIso = new Date().toISOString();
     const sources: PriceSourceDetails[] = [];
@@ -51,7 +58,7 @@ export const marketEngine = {
     });
 
     // 2. LME (London Metal Exchange) - typically USD denominated, let's mock it relative to spot
-    const lmePrice = Math.round(dbPrice * 0.98); // approx 2% discount due to logistics to UK
+    const lmePrice = safeRound(dbPrice * 0.98); // approx 2% discount due to logistics to UK
     sources.push({
       source: 'LME Global Index',
       price: lmePrice,
@@ -68,7 +75,7 @@ export const marketEngine = {
     else if (region.toLowerCase().includes('kolkata')) regionalPriceMultiplier = 0.95;
     else if (region.toLowerCase().includes('chennai')) regionalPriceMultiplier = 1.01;
 
-    const regionalPrice = Math.round(dbPrice * regionalPriceMultiplier);
+    const regionalPrice = safeRound(dbPrice * regionalPriceMultiplier);
     sources.push({
       source: 'Regional Scrap Mandi',
       price: regionalPrice,
@@ -80,7 +87,7 @@ export const marketEngine = {
     });
 
     // 4. Dealer Quotes (Aggregated local buyers)
-    const dealerPrice = Math.round(dbPrice * 0.97); // dealers buy slightly lower to keep a margin
+    const dealerPrice = safeRound(dbPrice * 0.97); // dealers buy slightly lower to keep a margin
     sources.push({
       source: 'Local Dealer Quotes',
       price: dealerPrice,
@@ -98,7 +105,7 @@ export const marketEngine = {
       const relevantLogs = logs.filter(log => log.commodityId === comm.name);
       if (relevantLogs.length > 0) {
         const sum = relevantLogs.reduce((acc, log) => acc + log.price, 0);
-        historicalPrice = Math.round(sum / relevantLogs.length);
+        historicalPrice = safeRound(sum / relevantLogs.length);
       }
     } catch {}
     
@@ -113,7 +120,7 @@ export const marketEngine = {
     });
 
     // 6. Government Index (IBBI or Ministry of Mines indices)
-    const govPrice = Math.round(dbPrice * 1.02); // government valuations tend to be slightly higher/slower
+    const govPrice = safeRound(dbPrice * 1.02); // government valuations tend to be slightly higher/slower
     sources.push({
       source: 'Government Valuation Index',
       price: govPrice,
@@ -129,6 +136,7 @@ export const marketEngine = {
     let weightedPriceSum = 0;
     let confidenceSum = 0;
     let freshnessSum = 0;
+    let totalWeight = 0;
 
     for (const src of sources) {
       const factor = src.weight * src.freshness;
@@ -137,11 +145,17 @@ export const marketEngine = {
 
       confidenceSum += src.confidence * src.weight;
       freshnessSum += src.freshness * src.weight;
+      totalWeight += src.weight;
     }
 
-    const weightedPrice = Math.round(weightedPriceSum / totalWeightFreshness);
-    const overallConfidence = Math.round(confidenceSum / sources.reduce((s, x) => s + x.weight, 0));
-    const overallFreshness = Math.round(freshnessSum / sources.reduce((s, x) => s + x.weight, 0) * 100);
+    let weightedPrice = safeRound(safeDivide(weightedPriceSum, totalWeightFreshness, dbPrice));
+    const overallConfidence = safeRound(safeDivide(confidenceSum, totalWeight, 80));
+    const overallFreshness = safeRound(safeDivide(freshnessSum, totalWeight, 0.8) * 100);
+
+    // Price floor enforcement — never go below commodity minimum
+    if (weightedPrice <= 0) {
+      weightedPrice = dbPrice;
+    }
 
     return {
       weightedPrice,

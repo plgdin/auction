@@ -338,5 +338,92 @@ export async function runRoiEngineTests(): Promise<boolean> {
     success = false;
   }
 
+  // 9. Production Safety, Edge Cases & NaN/Infinity Resistance Tests
+  console.log('\n--- Running Production Safety & NaN Resistance Tests ---');
+  try {
+    // A. NaN/undefined/empty string values test
+    const rawItemsNaN = [
+      { sr: NaN, description: 'Copper scrap wire', qty: 'NaN', unit: '', marketPrice: 'undefined' }
+    ];
+    const costsNaN = {
+      currentBid: '' as any,
+      gstPercent: NaN,
+      tcsPercent: undefined as any,
+      transportation: 'NaN' as any
+    };
+    const valuationNaN = await roiEngine.calculateValuation(rawItemsNaN, costsNaN, false, 'Delhi');
+    assert(Number.isFinite(valuationNaN.totalLotValue), 'totalLotValue must be a finite number');
+    assert(Number.isFinite(valuationNaN.totalCost), 'totalCost must be a finite number');
+    assert(Number.isFinite(valuationNaN.estimatedProfit), 'estimatedProfit must be a finite number');
+    assert(Number.isFinite(valuationNaN.roiPercent), 'roiPercent must be a finite number');
+    assert(Number.isFinite(valuationNaN.breakEven), 'breakEven must be a finite number');
+    assert(!isNaN(valuationNaN.roiPercent), 'roiPercent must not be NaN');
+
+    // B. Zero items test
+    const valuationEmpty = await roiEngine.calculateValuation([], { currentBid: 1000 }, false, 'Mumbai');
+    assert(valuationEmpty.totalLotValue === 0, 'Empty items lot value should be 0');
+    assert(valuationEmpty.items.length === 0, 'Items array should be empty');
+
+    // C. Negative inputs test
+    const rawItemsNegative = [
+      { sr: -1, description: 'Copper wire', qty: '-10', unit: 'KG' }
+    ];
+    const costsNegative = {
+      currentBid: -50000,
+      gstPercent: -18,
+      tcsPercent: -1,
+      transportation: -1000
+    };
+    const valuationNegative = await roiEngine.calculateValuation(rawItemsNegative, costsNegative, false, 'Mumbai');
+    assert(valuationNegative.costs.currentBid === 0, 'Negative currentBid should be clamped to 0');
+    assert(valuationNegative.totalCost >= 0, 'Total cost must not be negative');
+    assert(valuationNegative.roiPercent === 0, 'ROI percent for negative lot values or costs should be 0');
+
+    // D. Massive inputs (Overflow resistance) test
+    const rawItemsHuge = [
+      { sr: 1, description: 'Heavy Copper Wire', qty: '999999999999', unit: 'MT' }
+    ];
+    const costsHuge = {
+      currentBid: 99999999999999,
+      gstPercent: 18,
+      tcsPercent: 1
+    };
+    const valuationHuge = await roiEngine.calculateValuation(rawItemsHuge, costsHuge, false, 'Mumbai');
+    assert(Number.isFinite(valuationHuge.totalLotValue), 'Massive quantity must not cause infinite lot value');
+    assert(Number.isFinite(valuationHuge.totalCost), 'Massive costs must not cause infinite total cost');
+
+    // E. Legacy consistency test
+    // Ensure the rewritten computeCostBreakdown and computeRoiMetrics are consistent with canonical engines
+    const { computeCostBreakdown, computeRoiMetrics } = await import('../../../utils/roiEngine');
+    const legacyCostsInput = {
+      currentBid: 500000,
+      gstPercent: 18,
+      tcsPercent: 1,
+      transportation: 15000,
+      loading: 5000
+    };
+    const breakdown = computeCostBreakdown(legacyCostsInput);
+    assert(breakdown.totalCost === 615900, `Legacy breakdown totalCost should be 615,900, got ${breakdown.totalCost}`);
+    assert(breakdown.fixedCosts === 20000, `Legacy breakdown fixedCosts should be 20,000, got ${breakdown.fixedCosts}`);
+
+    const metricsInput = {
+      lotValue: 800000,
+      totalCost: 615900,
+      fixedCosts: 20000,
+      taxFactor: 1.1918,
+      overallConfidence: 85,
+      closingBidMultiplier: 1.05,
+      formatPrice: (n: number) => String(n)
+    };
+    const metrics = computeRoiMetrics(metricsInput);
+    assert(metrics.roiPercent === 30, `Legacy metrics ROI should be 30%, got ${metrics.roiPercent}%`);
+    assert(metrics.estimatedProfit === 184100, `Legacy metrics profit should be 184,100, got ${metrics.estimatedProfit}`);
+    assert(metrics.breakEven === 654472, `Legacy metrics breakEven should be 654,472, got ${metrics.breakEven}`);
+
+  } catch (err: any) {
+    console.error('Production Safety Unit Tests Failed:', err.message);
+    success = false;
+  }
+
   return success;
 }

@@ -1,6 +1,7 @@
 import type { ValuationCosts } from './types';
 import { BID_MARGINS } from './roiConfig';
 import { costEngine } from './costEngine';
+import { safeRound, safeDivide } from './inputValidator';
 
 export interface ValuationBidding {
   idealBid: number;
@@ -12,8 +13,9 @@ export interface ValuationBidding {
 
 export const biddingEngine = {
   /**
-   * Generates bid levels targeting specific ROIs based on lot value and other expenses
+   * Generates bid levels targeting specific ROIs based on lot value and other expenses.
    * Formula: Bid = ( (LotValue / (1 + ROI/100)) - OtherExpenses ) / taxMultiplier
+   * All outputs are guaranteed to be non-negative finite integers.
    */
   generateBidRecommendations(totalLotValue: number, costs: ValuationCosts): ValuationBidding {
     const gstPercent = costs.gstPercent !== undefined ? costs.gstPercent : 18;
@@ -30,8 +32,10 @@ export const biddingEngine = {
       if (totalLotValue <= otherExpenses) {
         return 0;
       }
-      const bid = ((totalLotValue / (1 + targetRoi / 100)) - otherExpenses) / taxMultiplier;
-      return Math.round(Math.max(0, bid));
+      const roiDivisor = 1 + targetRoi / 100;
+      const costLimit = safeDivide(totalLotValue, roiDivisor, totalLotValue);
+      const bid = safeDivide(costLimit - otherExpenses, taxMultiplier, 0);
+      return safeRound(Math.max(0, bid));
     };
 
     // Generate specific target bids
@@ -50,3 +54,4 @@ export const biddingEngine = {
     };
   }
 };
+

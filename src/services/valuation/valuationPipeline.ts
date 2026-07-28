@@ -8,6 +8,7 @@ import { riskEngine } from './riskEngine';
 import { biddingEngine } from './biddingEngine';
 import { simulationEngine } from './simulationEngine';
 import { recommendationEngine } from './recommendationEngine';
+import { safeRound, safeDivide, validateAndSanitizeItems, validateAndSanitizeCosts } from './inputValidator';
 import type { ValuationCosts, ValuationOutput, ValuationItem } from './types';
 
 // Logistics discount helper matching original valuationService logic
@@ -106,6 +107,28 @@ function getDefaultWeightPerUnit(commodityName: string, modelId: string | null):
   return 100;
 }
 
+/** Creates a safe zero-value output when the pipeline encounters a catastrophic error */
+function createEmptyOutput(costs: ValuationCosts): ValuationOutput {
+  return {
+    items: [],
+    totalLotValue: 0,
+    totalCost: 0,
+    estimatedProfit: 0,
+    roiPercent: 0,
+    breakEven: 0,
+    costs,
+    risk: { score: 50, level: 'Medium Risk', breakdown: { priceVolatility: 50, marketTrend: 50, sellerReliability: 50, ocrConfidence: 50, photoQuality: 50, historicalError: 50, inspectionAvailable: 50, categoryRisk: 50, transportRisk: 50, environmentalRisk: 50 }, reasoning: ['Insufficient data for risk assessment.'] },
+    confidence: { overallScore: 0, breakdown: { ocr: 0, image: 0, weight: 0, material: 0, market: 0, seller: 0, history: 0, description: 0 } },
+    recommendation: { status: 'Watch', reasoning: ['Unable to compute valuation — data may be incomplete.'] },
+    bidding: { idealBid: 0, maxBid: 0, walkAwayPrice: 0, conservativeBid: 0, aggressiveBid: 0 },
+    simulation: { expectedRoi: 0, worstRoi: 0, bestRoi: 0, chanceOfProfit: 0 },
+    metadata: { calculatedAt: new Date().toISOString(), version: '2.1.0' },
+    riskAnalysis: { dataConfidence: 0, pricingConfidence: 0, overallConfidence: 0, riskLevel: 'Medium Risk', reasoning: 'Insufficient data.' },
+    recommendationReasoning: 'Unable to compute valuation.',
+    internationalTotals: { in: 0, us: 0, uk: 0 }
+  };
+}
+
 export const valuationPipeline = {
   executeSync(
     rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string }[],
@@ -113,6 +136,25 @@ export const valuationPipeline = {
     hasImages: boolean = false,
     location?: string
   ): ValuationOutput {
+    try {
+      return this._executeSyncCore(rawItems, costs, hasImages, location);
+    } catch (err) {
+      console.error('[ValuationPipeline] Catastrophic failure, returning safe empty output:', err);
+      return createEmptyOutput(costs);
+    }
+  },
+
+  /** Core pipeline logic — separated so the try/catch wrapper stays clean */
+  _executeSyncCore(
+    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string }[],
+    costs: ValuationCosts,
+    hasImages: boolean = false,
+    location?: string
+  ): ValuationOutput {
+    // Validate and sanitize inputs
+    const { items: sanitizedItems } = validateAndSanitizeItems(rawItems);
+    const sanitizedCosts = validateAndSanitizeCosts(costs);
+
     const valuedItems: ValuationItem[] = [];
     let totalLotValue = 0;
     
@@ -121,7 +163,7 @@ export const valuationPipeline = {
     let validItemsCount = 0;
     let containsUnserviceable = false;
 
-    for (const rawItem of rawItems) {
+    for (const rawItem of sanitizedItems) {
       // 1. Parse quantity & unit conversion
       const qtyStr = rawItem.qty || '1';
       const parts = qtyStr.split('+');
@@ -274,14 +316,14 @@ export const valuationPipeline = {
         }
       }
 
-      const itemTotalValue = Math.round(avgPrice * baseQty);
-      const itemUnitValue = Math.round(avgPrice * (baseQty / qty));
+      const itemTotalValue = safeRound(avgPrice * baseQty);
+      const itemUnitValue = safeRound(avgPrice * safeDivide(baseQty, qty, 1));
 
       // Calculate international conversions using standard currency conversions
-      const usdUnit = Math.round(currencyEngine.convert(itemUnitValue * 0.95, 'INR', 'USD'));
-      const usdTotal = Math.round(currencyEngine.convert(itemTotalValue * 0.95, 'INR', 'USD'));
-      const gbpUnit = Math.round(currencyEngine.convert(itemUnitValue * 0.90, 'INR', 'GBP'));
-      const gbpTotal = Math.round(currencyEngine.convert(itemTotalValue * 0.90, 'INR', 'GBP'));
+      const usdUnit = safeRound(currencyEngine.convert(itemUnitValue * 0.95, 'INR', 'USD'));
+      const usdTotal = safeRound(currencyEngine.convert(itemTotalValue * 0.95, 'INR', 'USD'));
+      const gbpUnit = safeRound(currencyEngine.convert(itemUnitValue * 0.90, 'INR', 'GBP'));
+      const gbpTotal = safeRound(currencyEngine.convert(itemTotalValue * 0.90, 'INR', 'GBP'));
 
       valuedItems.push({
         name: rawItem.description,
@@ -302,17 +344,17 @@ export const valuationPipeline = {
       validItemsCount++;
     }
 
-    totalLotValue = Math.round(totalLotValue);
-    const avgPricingConfidence = validItemsCount > 0 ? Math.round(totalOcrConfidence / validItemsCount) : 50;
+    totalLotValue = safeRound(totalLotValue);
+    const avgPricingConfidence = validItemsCount > 0 ? safeRound(safeDivide(totalOcrConfidence, validItemsCount, 50)) : 50;
 
     // 4. Calculate total costs and taxes using Cost Engine
-    const costResult = costEngine.calculateCosts(costs);
+    const costResult = costEngine.calculateCosts(sanitizedCosts);
     const totalCost = costResult.totalCost;
     const estimatedProfit = totalLotValue > 0 ? totalLotValue - totalCost : 0;
-    const roiPercent = totalLotValue > 0 && totalCost > 0 ? Math.round((estimatedProfit / totalCost) * 100) : 0;
+    const roiPercent = totalLotValue > 0 && totalCost > 0 ? safeRound(safeDivide(estimatedProfit, totalCost, 0) * 100) : 0;
     
     // Calculate mathematical break-even
-    const breakEven = costEngine.calculateBreakEven(totalLotValue, costs);
+    const breakEven = costEngine.calculateBreakEven(totalLotValue, sanitizedCosts);
 
     // 5. Evaluate overall confidence score via Confidence Engine
     const confidenceResult = confidenceEngine.calculateConfidence({
@@ -341,8 +383,8 @@ export const valuationPipeline = {
     });
 
     // 7. Run Monte Carlo simulation via Simulation Engine
-    const simulationResult = simulationEngine.runSimulation(totalLotValue, costs);
-
+    const simulationResult = simulationEngine.runSimulation(totalLotValue, sanitizedCosts);
+ 
     // 8. Generate recommendations via Recommendation Engine
     const recommendationResult = recommendationEngine.generateRecommendation({
       roiPercent,
@@ -350,18 +392,18 @@ export const valuationPipeline = {
       riskScore: riskResult.score,
       overallConfidence: confidenceResult.overallScore,
       marketTrend: 'flat',
-      currentBid: costs.currentBid || 0,
+      currentBid: sanitizedCosts.currentBid,
       totalLotValue
     });
-
+ 
     // 9. Generate bidding strategies via Bidding Engine
-    const biddingResult = biddingEngine.generateBidRecommendations(totalLotValue, costs);
+    const biddingResult = biddingEngine.generateBidRecommendations(totalLotValue, sanitizedCosts);
 
     // 10. Assemble structured output payload
     const internationalTotals = {
       in: totalLotValue,
-      us: Math.round(currencyEngine.convert(totalLotValue * 0.95, 'INR', 'USD')),
-      uk: Math.round(currencyEngine.convert(totalLotValue * 0.90, 'INR', 'GBP'))
+      us: safeRound(currencyEngine.convert(totalLotValue * 0.95, 'INR', 'USD')),
+      uk: safeRound(currencyEngine.convert(totalLotValue * 0.90, 'INR', 'GBP'))
     };
 
     return {
@@ -372,7 +414,7 @@ export const valuationPipeline = {
       roiPercent,
       breakEven,
       costs: {
-        ...costs,
+        ...sanitizedCosts,
         gstAmount: costResult.gstAmount,
         tcsAmount: costResult.tcsAmount
       },
@@ -383,10 +425,9 @@ export const valuationPipeline = {
       simulation: simulationResult,
       metadata: {
         calculatedAt: new Date().toISOString(),
-        version: '2.0.0'
+        version: '2.1.0'
       },
-      // Keep support for legacy consumers/modal mapping
-      // @ts-ignore
+      // Legacy compatibility fields — properly typed, no @ts-ignore needed
       riskAnalysis: {
         dataConfidence: confidenceResult.breakdown.ocr,
         pricingConfidence: confidenceResult.breakdown.market,
@@ -394,9 +435,7 @@ export const valuationPipeline = {
         riskLevel: riskResult.level,
         reasoning: riskResult.reasoning.join(' ')
       },
-      // @ts-ignore
       recommendationReasoning: recommendationResult.reasoning.join('. '),
-      // @ts-ignore
       internationalTotals
     };
   },
