@@ -474,6 +474,30 @@ export function Auctions() {
   const selectedMstcLocationsJoined = selectedMstcLocations.join(',');
   const selectedMstcRegionalOfficesJoined = selectedMstcRegionalOffices.join(',');
 
+  const mstcInitialFilters = useMemo(() => ({
+    categoryIds: selectedMstcCategories,
+    subcategories: selectedMstcSubcategories,
+    locations: selectedMstcLocations,
+    regionalOffices: selectedMstcRegionalOffices,
+    startDate,
+    endDate,
+    hasAssetDocuments: mstcHasAssetDocuments,
+    hasImages: mstcHasImages,
+    isReauction: mstcIsReauction,
+    preBid: mstcPreBid
+  }), [
+    selectedMstcCategoriesJoined,
+    selectedMstcSubcategoriesJoined,
+    selectedMstcLocationsJoined,
+    selectedMstcRegionalOfficesJoined,
+    startDate,
+    endDate,
+    mstcHasAssetDocuments,
+    mstcHasImages,
+    mstcIsReauction,
+    mstcPreBid
+  ]);
+
   const loadMstcData = useCallback(async () => {
     setIsMstcLoading(true);
     try {
@@ -949,18 +973,7 @@ export function Auctions() {
             <AuctionFilters
               onClose={() => setIsFiltersOpen(false)}
               onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
-              initialFilters={activeTab === 'commercial' ? filters : {
-                categoryIds: selectedMstcCategories,
-                subcategories: selectedMstcSubcategories,
-                locations: selectedMstcLocations,
-                regionalOffices: selectedMstcRegionalOffices,
-                startDate,
-                endDate,
-                hasAssetDocuments: mstcHasAssetDocuments,
-                hasImages: mstcHasImages,
-                isReauction: mstcIsReauction,
-                preBid: mstcPreBid
-              }}
+              initialFilters={activeTab === 'commercial' ? filters : mstcInitialFilters}
               activeTab={activeTab}
               customCategories={mstcOptions.categories}
               customSubcategories={mstcOptions.subcategories}

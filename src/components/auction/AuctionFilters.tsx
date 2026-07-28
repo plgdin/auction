@@ -24,8 +24,8 @@ interface AuctionFiltersProps {
     preBid?: string;
     startDate?: string;
     endDate?: string;
-    AssetDocuments?: boolean;
-    Images?: boolean;
+    hasAssetDocuments?: boolean;
+    hasImages?: boolean;
     isReauction?: boolean;
   }) => void;
   onClose: () => void;
@@ -103,6 +103,8 @@ export function AuctionFilters({
     loadCategories();
   }, []);
 
+  const initialFiltersKey = JSON.stringify(initialFilters);
+
   // Sync state with initialFilters when props change
   useEffect(() => {
     setSelectedSubcategories(
@@ -133,7 +135,8 @@ export function AuctionFilters({
     } else {
       setSelectedCategories([]);
     }
-  }, [initialFilters, categories]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFiltersKey, categories.length]);
 
   // Auto-expand ancestors of selected categories when they change
   useEffect(() => {
@@ -301,8 +304,8 @@ export function AuctionFilters({
       preBid: selectedPreBid !== 'all' ? selectedPreBid : undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
-      AssetDocuments: hasAssetDocuments || undefined,
-      Images: hasImages || undefined,
+      hasAssetDocuments: hasAssetDocuments || undefined,
+      hasImages: hasImages || undefined,
       isReauction: isReauction || undefined,
     });
     if (window.innerWidth < 1024) onClose();
@@ -332,8 +335,8 @@ export function AuctionFilters({
       preBid: 'all',
       startDate: undefined,
       endDate: undefined,
-      AssetDocuments: undefined,
-      Images: undefined,
+      hasAssetDocuments: undefined,
+      hasImages: undefined,
       isReauction: undefined,
     });
   };
