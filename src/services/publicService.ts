@@ -2147,11 +2147,8 @@ export const MstcSearchService = {
 
       return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery, hasDirectMatches };
 
-    } catch (error) {
-      console.error('Hybrid search failed:', error);
-      throw error;
     }
-  }, 'marketplaceSearch'),
+  },
 
   /**
    * Fetches a single MSTC auction by its UUID/ID, mapping raw categories appropriately.
