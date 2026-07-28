@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Filter, X, ChevronRight, ChevronDown, CalendarDays } from 'lucide-react';
+import { Filter, ChevronRight, ChevronDown, CalendarDays } from 'lucide-react';
 import { auctionService } from '../../services/auctionService';
 import { expandMstcOffice } from '../../services/publicService';
 import type { AuctionCategory } from '../../types/database.types';
@@ -301,8 +301,8 @@ export function AuctionFilters({
       preBid: selectedPreBid !== 'all' ? selectedPreBid : undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
-      hasAssetDocuments: hasAssetDocuments || undefined,
-      hasImages: hasImages || undefined,
+      AssetDocuments: hasAssetDocuments || undefined,
+      Images: hasImages || undefined,
       isReauction: isReauction || undefined,
     });
     if (window.innerWidth < 1024) onClose();
@@ -332,8 +332,8 @@ export function AuctionFilters({
       preBid: 'all',
       startDate: undefined,
       endDate: undefined,
-      hasAssetDocuments: undefined,
-      hasImages: undefined,
+      AssetDocuments: undefined,
+      Images: undefined,
       isReauction: undefined,
     });
   };
