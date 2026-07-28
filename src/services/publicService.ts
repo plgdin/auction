@@ -2138,15 +2138,13 @@ export const MstcSearchService = {
       // Map Categories (is_reauction is returned natively by RPC)
       let mapped = (searchData as any[]).map(item => {
         const { category, subcategory } = mapRawCategory(item.category_name);
-        return {
-          ...item,
-          is_reauction: !!item.is_reauction,
-          category_name: `${category} | ${subcategory}`
-        } as MstcSanitizedAuction;
+        return { ...item, is_reauction: !!item.is_reauction, category_name: `${category} | ${subcategory}` } as MstcSanitizedAuction;
       });
 
       return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery, hasDirectMatches };
-
+    } catch (error) {
+      console.error('Hybrid search failed:', error);
+      throw error;
     }
   },
 
