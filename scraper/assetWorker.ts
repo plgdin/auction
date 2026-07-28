@@ -873,6 +873,8 @@ async function extractAndProcessLotDocuments(
   attachmentMap: Record<string, string[]>;
   lotSpecificImagesMap: Record<string, string[]>;
   eligibilityNotes: string[];
+  documents: string[];
+  photos: string[];
 }> {
   // Reconstruct filenames if there are newlines or spaces
   const cleanedText = catalogText
@@ -892,8 +894,19 @@ async function extractAndProcessLotDocuments(
   const lotSpecificImagesMap: Record<string, string[]> = {};
   const eligibilityNotes: string[] = [];
 
+  const documents: string[] = [];
+  const photos: string[] = [];
+  for (const fileName of uniqueAttachments) {
+    const type = classifyAttachmentType(fileName);
+    if (type === "document") {
+      documents.push(fileName);
+    } else {
+      photos.push(fileName);
+    }
+  }
+
   if (uniqueAttachments.length === 0) {
-    return { imageUrls, attachmentMap, lotSpecificImagesMap, eligibilityNotes };
+    return { imageUrls, attachmentMap, lotSpecificImagesMap, eligibilityNotes, documents, photos };
   }
 
   log.info(
@@ -1207,6 +1220,8 @@ async function extractAndProcessLotDocuments(
     attachmentMap,
     lotSpecificImagesMap,
     eligibilityNotes: Array.from(new Set(eligibilityNotes)),
+    documents,
+    photos,
   };
 }
 
@@ -1471,8 +1486,9 @@ export async function processRecord(record: QueueRecord): Promise<void> {
       // Process attachments (passing pre-computed lotEmbeddings)
       let attachmentImageUrls: string[] = [];
       let attachmentMap: Record<string, string[]> = {};
+      let result: any = null;
       try {
-        const result = await extractAndProcessLotDocuments(
+        result = await extractAndProcessLotDocuments(
           parsedPdf.text,
           sanitizedAuctionNum,
           headers,
@@ -1531,8 +1547,8 @@ export async function processRecord(record: QueueRecord): Promise<void> {
       summaryObj.extracted_images = extractedImageUrls;
 
       // Classify attachments into structured documents vs photos
-      const docList: string[] = [];
-      const photoList: string[] = [];
+      const docList: string[] = result?.documents ? [...result.documents] : [];
+      const photoList: string[] = result?.photos ? [...result.photos] : [];
 
       if (summaryObj.items && Array.isArray(summaryObj.items)) {
         for (const item of summaryObj.items) {

@@ -108,20 +108,14 @@ BEGIN
       )
       -- ═══════════════════════════════════════════════════════════════════
       -- FAST & BULLETPROOF p_has_docs
-      -- Checks sanitized_document_path (all catalog PDFs) or parser JSON flag
+      -- Checks parser JSON flag and documents list
       -- ═══════════════════════════════════════════════════════════════════
       AND (
         p_has_docs IS NULL OR p_has_docs = FALSE OR
         (
-          m.sanitized_document_path IS NOT NULL OR
-          (
-            m.raw_materials_text IS NOT NULL AND (
-              (m.raw_materials_text::jsonb)->>'hasAssetDocuments' = 'true'
-              OR m.raw_materials_text LIKE '%"documents":%'
-              OR m.raw_materials_text LIKE '%annex%'
-              OR m.raw_materials_text LIKE '%attach%'
-              OR m.raw_materials_text LIKE '%.pdf%'
-            )
+          m.raw_materials_text IS NOT NULL AND (
+            (m.raw_materials_text::jsonb)->>'hasAssetDocuments' = 'true'
+            OR coalesce(jsonb_array_length((m.raw_materials_text::jsonb)->'documents'), 0) > 0
           )
         )
       )
