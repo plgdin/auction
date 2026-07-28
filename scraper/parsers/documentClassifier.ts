@@ -194,3 +194,32 @@ export function stripBoilerplateSections(text: string): string {
 
   return cleaned;
 }
+
+export type AttachmentType = "document" | "photo";
+
+/**
+ * Classify a lot attachment filename as a PDF document (annexure/spec/terms)
+ * vs a photo/image attachment.
+ *
+ * @param fileName - The filename (e.g. `Annex_27_5217.pdf` or `Photo_101.pdf`).
+ * @returns `"document"` if it represents asset documentation, `"photo"` if photo attachment.
+ */
+export function classifyAttachmentType(fileName: string): AttachmentType {
+  if (!fileName || typeof fileName !== "string") return "document";
+  const lower = fileName.toLowerCase();
+
+  // Photo / Image prefixes and keywords
+  const isPhoto =
+    lower.startsWith("photo_") ||
+    lower.startsWith("image_") ||
+    lower.startsWith("img_") ||
+    lower.startsWith("pic_") ||
+    lower.includes("photo") ||
+    lower.includes("image") ||
+    lower.includes("picture") ||
+    lower.includes("catalog_page");
+
+  if (isPhoto) return "photo";
+
+  return "document";
+}

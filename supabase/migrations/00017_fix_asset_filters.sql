@@ -141,35 +141,27 @@ BEGIN
         (
           m.raw_materials_text IS NOT NULL
           AND m.raw_materials_text LIKE '{%}'
-          AND m.raw_materials_text LIKE '%"items":%'
-          AND EXISTS (
-            SELECT 1
-            FROM jsonb_array_elements(
-              (m.raw_materials_text::jsonb)->'items'
-            ) AS lot,
-            LATERAL jsonb_array_elements_text(
-              CASE
-                WHEN jsonb_typeof(lot->'attachments') = 'array' THEN lot->'attachments'
-                ELSE '[]'::jsonb
-              END
-            ) AS att_name
-            WHERE lower(att_name) LIKE '%.pdf%'
-              AND (
-                lower(att_name) LIKE 'annex%' OR
-                lower(att_name) LIKE 'spec%' OR
-                lower(att_name) LIKE 'doc%' OR
-                lower(att_name) LIKE 'drawing%' OR
-                lower(att_name) LIKE 'cert%' OR
-                lower(att_name) LIKE 'inventory%' OR
-                (
-                  lower(att_name) NOT LIKE '%photo%' AND
-                  lower(att_name) NOT LIKE '%image%' AND
-                  lower(att_name) NOT LIKE '%pic%' AND
-                  lower(att_name) NOT LIKE '%picture%' AND
-                  lower(att_name) NOT LIKE '%catalog%' AND
-                  lower(att_name) NOT LIKE '%preview%'
-                )
-              )
+          AND (
+            -- 1. Parser-computed boolean flag & documents array (fast & dynamic)
+            (m.raw_materials_text::jsonb)->>'hasAssetDocuments' = 'true'
+            OR coalesce(jsonb_array_length((m.raw_materials_text::jsonb)->'documents'), 0) > 0
+            OR
+            -- 2. Fallback for legacy scraped records without top-level flags
+            EXISTS (
+              SELECT 1
+              FROM jsonb_array_elements(
+                CASE WHEN m.raw_materials_text LIKE '%"items":%' THEN (m.raw_materials_text::jsonb)->'items' ELSE '[]'::jsonb END
+              ) AS lot,
+              LATERAL jsonb_array_elements_text(
+                CASE WHEN jsonb_typeof(lot->'attachments') = 'array' THEN lot->'attachments' ELSE '[]'::jsonb END
+              ) AS att_name
+              WHERE lower(att_name) LIKE '%.pdf%'
+                AND lower(att_name) NOT LIKE 'photo%'
+                AND lower(att_name) NOT LIKE 'image%'
+                AND lower(att_name) NOT LIKE 'img%'
+                AND lower(att_name) NOT LIKE 'pic%'
+                AND lower(att_name) NOT LIKE '%catalog_page%'
+            )
           )
         )
       )

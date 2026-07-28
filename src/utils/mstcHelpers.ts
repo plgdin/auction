@@ -1161,36 +1161,35 @@ export const hasConfirmedAssetDocuments = (rawMaterialsText: string | null): boo
   if (!rawMaterialsText) return false;
   try {
     const parsed = JSON.parse(rawMaterialsText);
-    if (!parsed || !Array.isArray(parsed.items)) return false;
-    
+    if (!parsed) return false;
+
+    // Direct structured parser flags
+    if (typeof parsed.hasAssetDocuments === 'boolean') {
+      return parsed.hasAssetDocuments;
+    }
+    if (Array.isArray(parsed.documents) && parsed.documents.length > 0) {
+      return true;
+    }
+
+    if (!Array.isArray(parsed.items)) return false;
+
     return parsed.items.some((lot: any) => {
       if (!lot.attachments || !Array.isArray(lot.attachments)) return false;
       return lot.attachments.some((fileName: any) => {
         if (typeof fileName !== 'string') return false;
         const lower = fileName.toLowerCase();
         
-        // Must contain .pdf
         if (!lower.includes('.pdf')) return false;
 
-        // Explicit document prefixes (Annex, Spec, Doc, Drawing, Cert, Inventory)
-        const isExplicitDoc = 
-          lower.startsWith('annex') ||
-          lower.startsWith('spec') ||
-          lower.startsWith('doc') ||
-          lower.startsWith('drawing') ||
-          lower.startsWith('cert') ||
-          lower.startsWith('inventory');
-
-        if (isExplicitDoc) return true;
-
-        // Otherwise, exclude photos, images, pics, pictures, catalogs, previews
         const isPhotoOrCatalog = 
-          lower.includes('photo') || 
-          lower.includes('image') || 
-          lower.includes('pic') || 
-          lower.includes('picture') || 
-          lower.includes('catalog') || 
-          lower.includes('preview');
+          lower.startsWith('photo_') ||
+          lower.startsWith('image_') ||
+          lower.startsWith('img_') ||
+          lower.startsWith('pic_') ||
+          lower.includes('photo') ||
+          lower.includes('image') ||
+          lower.includes('picture') ||
+          lower.includes('catalog_page');
           
         return !isPhotoOrCatalog;
       });

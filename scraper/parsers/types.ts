@@ -63,4 +63,8 @@ export interface CatalogSummary {
   reviewReason?: string;
   auctionStartTime?: string;
   auctionCloseTime?: string;
+  hasAssetDocuments?: boolean;
+  hasImages?: boolean;
+  documents?: string[];
+  photos?: string[];
 }

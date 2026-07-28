@@ -43,7 +43,7 @@ import {
 import { parseMstcCatalogText, parseSubItemsFromText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
 import { performOcr, shouldPerformOcr } from "./utils/ocrUtils.js";
-import { isTermsOrInstructionPage } from "./parsers/documentClassifier.js";
+import { isTermsOrInstructionPage, classifyAttachmentType } from "./parsers/documentClassifier.js";
 
 function parsePdfDateTimeToISO(dateTimeStr: string | undefined): string | null {
   if (!dateTimeStr) return null;
@@ -1529,6 +1529,33 @@ export async function processRecord(record: QueueRecord): Promise<void> {
       // Inject preview and extracted images
       summaryObj.preview_image_url = previewImageUrl;
       summaryObj.extracted_images = extractedImageUrls;
+
+      // Classify attachments into structured documents vs photos
+      const docList: string[] = [];
+      const photoList: string[] = [];
+
+      if (summaryObj.items && Array.isArray(summaryObj.items)) {
+        for (const item of summaryObj.items) {
+          if (item.attachments && Array.isArray(item.attachments)) {
+            for (const att of item.attachments) {
+              const type = classifyAttachmentType(att);
+              if (type === "document" && !docList.includes(att)) {
+                docList.push(att);
+              } else if (type === "photo" && !photoList.includes(att)) {
+                photoList.push(att);
+              }
+            }
+          }
+        }
+      }
+
+      summaryObj.documents = docList;
+      summaryObj.photos = photoList;
+      summaryObj.hasAssetDocuments = docList.length > 0;
+      summaryObj.hasImages =
+        (summaryObj.extracted_images && summaryObj.extracted_images.length > 0) ||
+        photoList.length > 0 ||
+        (summaryObj.items && summaryObj.items.some((it) => it.images && it.images.length > 0));
 
       // Calculate total market price valuation
       try {
