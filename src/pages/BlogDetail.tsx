@@ -69,8 +69,33 @@ export function BlogDetail() {
     return null;
   }
 
+  const blogPostingSchema = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": blog.title,
+    "image": blog.image_url ? [blog.image_url] : undefined,
+    "datePublished": blog.created_at,
+    "author": [{
+      "@type": "Organization",
+      "name": "Lelam",
+      "url": "https://www.lelam.co"
+    }],
+    "publisher": {
+      "@type": "Organization",
+      "name": "Lelam",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.lelam.co/LOGOWITHTEXT.png"
+      }
+    },
+    "description": blog.title
+  };
+
   return (
     <div className="bg-white min-h-screen pb-20">
+      <script type="application/ld+json">
+        {JSON.stringify(blogPostingSchema)}
+      </script>
       {/* Hero Section */}
       <div className="relative w-full h-[400px] md:h-[500px] bg-slate-900">
         {blog.image_url ? (

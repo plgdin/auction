@@ -153,8 +153,26 @@ function AuctionDetailInner({
 
   const isActive = auction.status === 'active';
 
+  const auctionSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": auction.title,
+    "description": auction.description || `MSTC eAuction listing ${auction.title} at ${auction.location || 'India'}.`,
+    "category": auction.category_id,
+    "offers": {
+      "@type": "Offer",
+      "price": currentMaxBid || auction.starting_price || 0,
+      "priceCurrency": "INR",
+      "availability": isActive ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      "url": `https://www.lelam.co/auctions/${auction.id}`
+    }
+  };
+
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
+      <script type="application/ld+json">
+        {JSON.stringify(auctionSchema)}
+      </script>
       {/* Breadcrumbs */}
       <div className="bg-white border-b border-slate-200 py-4">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -335,7 +353,7 @@ function AuctionDetailInner({
                 View category
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {related.map(rel => (
                 <Link 
                   key={rel.id} 

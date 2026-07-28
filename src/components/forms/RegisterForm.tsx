@@ -168,7 +168,7 @@ export function RegisterForm() {
         {errors.confirmPassword && <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>}
       </div>
 
-      <div className="flex items-start mt-2">
+      <label htmlFor="acceptTerms" className="flex items-start mt-2 cursor-pointer select-none group">
         <div className="flex items-center h-5">
           <input
             id="acceptTerms"
@@ -177,20 +177,18 @@ export function RegisterForm() {
             className="h-4 w-4 accent-primary checked:bg-primary checked:border-primary focus:ring-primary border-slate-300 rounded-md cursor-pointer"
           />
         </div>
-        <div className="ml-2 text-xs">
-          <label htmlFor="acceptTerms" className="text-slate-600 dark:text-slate-400 font-medium">
-            I accept the{' '}
-            <Link to="/terms" target="_blank" className="text-primary hover:underline font-bold">
-              Terms & Conditions
-            </Link>{' '}
-            and{' '}
-            <Link to="/privacy" target="_blank" className="text-primary hover:underline font-bold">
-              Privacy Policy
-            </Link>
-          </label>
+        <div className="ml-2 text-xs text-slate-600 font-medium cursor-pointer">
+          I accept the{' '}
+          <Link to="/terms" target="_blank" className="text-primary hover:underline font-bold" onClick={(e) => e.stopPropagation()}>
+            Terms & Conditions
+          </Link>{' '}
+          and{' '}
+          <Link to="/privacy" target="_blank" className="text-primary hover:underline font-bold" onClick={(e) => e.stopPropagation()}>
+            Privacy Policy
+          </Link>
           {errors.acceptTerms && <p className="text-[11px] text-destructive mt-1">{errors.acceptTerms.message}</p>}
         </div>
-      </div>
+      </label>
 
       <div className="pt-2">
         <button

@@ -228,16 +228,16 @@ export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) 
         {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>}
       </div>
 
-      <div className="flex items-center">
-        <div className="relative flex items-center justify-center">
+      <label htmlFor="remember-me" className="inline-flex items-center cursor-pointer select-none group">
+        <div className="relative flex items-center justify-center pointer-events-none">
           <input
             id="remember-me"
             name="remember-me"
             type="checkbox"
-            className="peer h-5 w-5 rounded-full border border-slate-300 text-primary bg-white focus:outline-none checked:bg-primary checked:border-primary cursor-pointer appearance-none transition-all duration-200 shadow-2xs"
+            className="peer h-5 w-5 rounded-full border border-slate-300 text-primary bg-white focus:outline-none checked:bg-primary checked:border-primary appearance-none transition-all duration-200 shadow-2xs group-hover:border-primary/60"
           />
           <svg
-            className="absolute h-3 w-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity duration-200"
+            className="absolute h-3 w-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -246,10 +246,10 @@ export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) 
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <label htmlFor="remember-me" className="ml-2.5 block text-sm text-slate-650 select-none cursor-pointer">
+        <span className="ml-2.5 text-sm text-slate-650 group-hover:text-slate-900 transition-colors pointer-events-none">
           Keep me signed in for 30 days
-        </label>
-      </div>
+        </span>
+      </label>
 
       <div className="pt-2">
         <button

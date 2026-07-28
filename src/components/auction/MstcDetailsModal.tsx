@@ -794,9 +794,9 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           </div>
 
           {/* Modal Body */}
-          <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
+          <div className="flex-grow flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
             {/* Left Side: Details Scrollable */}
-            <div ref={scrollContainerRef} className="flex-grow overflow-y-auto p-6 space-y-6 bg-slate-50/25">
+            <div ref={scrollContainerRef} className="flex-grow shrink-0 md:shrink overflow-visible md:overflow-y-auto p-6 space-y-6 bg-slate-50/25">
               {modalTab === 'valuation' ? (
                 <div className="space-y-6">
                   {/* Cost Input Form Card */}
@@ -2115,7 +2115,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               const displayImage = signedImages.displayImage;
 
               return (
-                <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
+                <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-visible md:overflow-y-auto flex flex-col space-y-5">
                   {imagesLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-2">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>

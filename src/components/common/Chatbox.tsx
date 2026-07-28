@@ -13,24 +13,35 @@ export function Chatbox() {
   const [showBubble, setShowBubble] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHomePage, setIsHomePage] = useState(window.location.pathname === '/');
+  const [isAuthPage, setIsAuthPage] = useState(
+    window.location.pathname.startsWith('/auth') ||
+    window.location.pathname.startsWith('/login') ||
+    window.location.pathname.startsWith('/register')
+  );
 
   useEffect(() => {
-    const handleScroll = () => {
+    const handleLocationCheck = () => {
+      const path = window.location.pathname;
       setIsScrolled(window.scrollY > 50);
-      setIsHomePage(window.location.pathname === '/');
+      setIsHomePage(path === '/');
+      setIsAuthPage(path.startsWith('/auth') || path.startsWith('/login') || path.startsWith('/register'));
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    window.addEventListener('scroll', handleLocationCheck, { passive: true });
+    window.addEventListener('popstate', handleLocationCheck);
     
-    // Fallback to update location on navigation
-    const checkLocation = () => setIsHomePage(window.location.pathname === '/');
-    window.addEventListener('popstate', checkLocation);
+    // Polling interval to instantly detect client-side SPA routing changes
+    const interval = setInterval(handleLocationCheck, 200);
     
-    handleScroll();
+    handleLocationCheck();
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('popstate', checkLocation);
+      window.removeEventListener('scroll', handleLocationCheck);
+      window.removeEventListener('popstate', handleLocationCheck);
+      clearInterval(interval);
     };
   }, []);
+
+  if (isAuthPage) return null;
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'bot',
@@ -44,6 +55,14 @@ export function Chatbox() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBubbleRef = useRef<HTMLDivElement>(null);
+
+  // Auto-dismiss welcome bubble popup after 10 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowBubble(false);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Fetch FAQ database on mount
   useEffect(() => {

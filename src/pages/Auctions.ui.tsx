@@ -129,6 +129,55 @@ export function Auctions() {
     setSearchQuery(searchParams.get('q') || '');
   }, [searchParams]);
 
+  // Hybrid search examples cycling typing animation
+  const placeholderExamples = [
+    "Show me auctions in Delhi",
+    "Show me vehicle auctions",
+    "Show me property auctions",
+    "Copper scrap auctions in Mumbai",
+    "Iron and steel scrap near Kolkata",
+    "Auctions in Kolkata",
+    "Auctions in Tamil Nadu",
+    "Auctions in Chennai",
+    "Auctions in Bangalore"
+  ];
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
+  const [phExampleIdx, setPhExampleIdx] = useState(0);
+  const [phCharIdx, setPhCharIdx] = useState(0);
+  const [phPhase, setPhPhase] = useState<'typing' | 'pausing' | 'deleting'>('typing');
+
+  useEffect(() => {
+    const current = placeholderExamples[phExampleIdx];
+    let timer: ReturnType<typeof setTimeout>;
+
+    if (phPhase === 'typing') {
+      if (phCharIdx < current.length) {
+        timer = setTimeout(() => {
+          setAnimatedPlaceholder(current.substring(0, phCharIdx + 1));
+          setPhCharIdx(prev => prev + 1);
+        }, 70);
+      } else {
+        // Done typing, pause before deleting
+        timer = setTimeout(() => setPhPhase('pausing'), 2200);
+      }
+    } else if (phPhase === 'pausing') {
+      timer = setTimeout(() => setPhPhase('deleting'), 100);
+    } else if (phPhase === 'deleting') {
+      if (phCharIdx > 0) {
+        timer = setTimeout(() => {
+          setPhCharIdx(prev => prev - 1);
+          setAnimatedPlaceholder(current.substring(0, phCharIdx - 1));
+        }, 25);
+      } else {
+        // Done deleting, move to next example
+        setPhExampleIdx(prev => (prev + 1) % placeholderExamples.length);
+        setPhPhase('typing');
+      }
+    }
+
+    return () => clearTimeout(timer);
+  }, [phCharIdx, phPhase, phExampleIdx]);
+
   useEffect(() => {
     const userId = isAuthenticated && user ? user.id : 'anonymous';
     setInterestedMstcIds(dashboardService.getInterestedAuctions(userId));
@@ -514,31 +563,38 @@ export function Auctions() {
   return (
     <div className="bg-slate-50 min-h-screen">
       {/* Header Banner */}
-      <div className="relative bg-slate-900 overflow-hidden py-12">
+      <div className="relative bg-slate-900 overflow-hidden py-20 md:py-28">
         {/* Background decoration */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
           <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-800/20 to-transparent" />
         </div>
 
-        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Auctions Marketplace</h1>
-          <p className="text-slate-400 mb-6">Browse official government catalogs and MSTC eAuctions.</p>
+        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-center">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-3 tracking-tight">Auctions Marketplace</h1>
+          <p className="text-slate-400 text-sm sm:text-base md:text-lg mb-8 max-w-2xl font-medium leading-relaxed">Browse official government catalogs and MSTC eAuctions.</p>
 
-          <form onSubmit={handleSearch} className="max-w-3xl relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400" />
+          <form onSubmit={handleSearch} className="max-w-3xl w-full mx-auto relative">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <Search className="h-6 w-6 text-slate-400" />
             </div>
             <input
               type="text"
-              className="block w-full pl-11 pr-24 py-4 border-0 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 sm:text-lg shadow-lg text-slate-900"
-              placeholder={activeTab === 'commercial' ? "Search by title, reference number, or keywords..." : "Search MSTC catalog numbers, categories, or sellers..."}
+              className="block w-full pl-14 pr-28 py-5 border-0 rounded-2xl leading-6 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 text-lg shadow-xl text-slate-900"
+              placeholder=""
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {/* Custom animated placeholder with blinking cursor */}
+            {!searchQuery && (
+              <div className="absolute inset-y-0 left-14 right-28 flex items-center pointer-events-none select-none overflow-hidden">
+                <span className="text-lg text-slate-400 whitespace-nowrap">{animatedPlaceholder}</span>
+                <span className="inline-block w-0.5 h-6 bg-slate-400 ml-0.5 animate-[blink_1s_step-end_infinite]" />
+              </div>
+            )}
             <button
               type="submit"
-              className="absolute right-2 top-2 bottom-2 px-6 bg-slate-900 text-white font-medium rounded-lg hover:bg-black transition-colors"
+              className="absolute right-2.5 top-2.5 bottom-2.5 px-7 bg-slate-900 text-white font-semibold rounded-xl hover:bg-black transition-colors text-base"
             >
               Search
             </button>

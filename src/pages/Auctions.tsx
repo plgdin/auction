@@ -135,7 +135,8 @@ export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuthStore();
 
-  const activeTab = searchParams.get('tab') === 'commercial' ? 'commercial' : 'mstc';
+  const rawTab = searchParams.get('tab');
+  const activeTab = rawTab === 'commercial' ? 'commercial' : 'mstc';
 
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -186,18 +187,42 @@ export function Auctions() {
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [showFloatingFilter, setShowFloatingFilter] = useState(false);
+  const [columns, setColumns] = useState<2 | 3 | 4 | 5>(3);
 
+  const getGridColsClass = (cols: number) => {
+    switch (cols) {
+      case 2:
+        return "grid-cols-1 md:grid-cols-2";
+      case 4:
+        return "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4";
+      case 5:
+        return "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
+      case 3:
+      default:
+        return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+    }
+  };
+
+  // Lock body scroll when mobile filters drawer is active
+  useEffect(() => {
+    if (isFiltersOpen && window.innerWidth < 1024) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFiltersOpen]);
+
+  // Show floating filter tag only after scrolling past the hero section
+  const [scrollPastHero, setScrollPastHero] = useState(false);
   useEffect(() => {
     const handleScroll = () => {
-      // Show floating button when scrolled past the hero section (roughly 300px)
-      if (window.scrollY > 300) {
-        setShowFloatingFilter(true);
-      } else {
-        setShowFloatingFilter(false);
-      }
+      setScrollPastHero(window.scrollY > 280);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -206,6 +231,48 @@ export function Auctions() {
   useEffect(() => {
     setSearchQuery(searchParams.get('q') || '');
   }, [searchParams]);
+
+
+  // Autocomplete search suggestions states & refs
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isDeletingRef = useRef(false);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Fetch suggestions as-you-type (debounced)
+  useEffect(() => {
+    if (activeTab !== 'mstc') {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const list = await MstcSearchService.getMstcSearchSuggestions(searchQuery);
+      setSuggestions(list);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeTab]);
 
   // Hybrid search examples cycling typing animation
   const placeholderExamples = [
@@ -255,48 +322,6 @@ export function Auctions() {
 
     return () => clearTimeout(timer);
   }, [phCharIdx, phPhase, phExampleIdx]);
-
-
-  // Autocomplete search suggestions states & refs
-  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const isDeletingRef = useRef(false);
-
-  // Click outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        inputRef.current &&
-        !inputRef.current.contains(event.target as Node)
-      ) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  // Fetch suggestions as-you-type (debounced)
-  useEffect(() => {
-    if (activeTab !== 'mstc') {
-      setSuggestions([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      const list = await MstcSearchService.getMstcSearchSuggestions(searchQuery);
-      setSuggestions(list);
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, activeTab]);
 
   const selectSuggestion = (suggestion: SearchSuggestion) => {
     let queryText = suggestion.text;
@@ -360,7 +385,7 @@ export function Auctions() {
   const endDate = searchParams.get('endDate') || undefined;
   const sortBy = (searchParams.get('sortBy') as AuctionFilterParams['sortBy']) || 'newest';
   const page = parseInt(searchParams.get('page') || '1');
-  const limit = 12;
+  const limit = 60;
 
   const filters: AuctionFilterParams = {
     categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
@@ -799,7 +824,7 @@ export function Auctions() {
   return (
     <div className="bg-slate-50 min-h-screen">
       {/* Header Banner */}
-      <div className="relative bg-slate-900 overflow-hidden py-20 md:py-28">
+      <div className="relative bg-slate-900 py-20 md:py-28 overflow-hidden">
         {/* Background decoration */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
@@ -808,7 +833,9 @@ export function Auctions() {
 
         <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-center">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-3 tracking-tight">Auctions Marketplace</h1>
-          <p className="text-slate-400 text-sm sm:text-base md:text-lg mb-8 max-w-2xl mx-auto font-medium leading-relaxed">Browse official government catalogs and MSTC eAuctions.</p>
+          <p className="text-slate-400 text-sm sm:text-base md:text-lg mb-8 max-w-2xl font-medium leading-relaxed">
+            Browse official government catalogs, bank properties and MSTC eAuctions.
+          </p>
 
           <form onSubmit={handleSearch} className="max-w-3xl w-full mx-auto relative" onKeyDown={handleKeyDown}>
             <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
@@ -817,7 +844,7 @@ export function Auctions() {
             <input
               ref={inputRef}
               type="text"
-              className="block w-full pl-14 pr-28 py-5 border-0 rounded-2xl leading-6 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 text-lg shadow-xl text-slate-900"
+              className="block w-full pl-14 pr-28 py-5 border-0 rounded-2xl leading-6 bg-white focus:outline-none focus:ring-2 focus:ring-primary text-lg shadow-xl text-slate-900"
               placeholder=""
               value={searchQuery}
               onChange={handleInputChange}
@@ -833,7 +860,7 @@ export function Auctions() {
             )}
             <button
               type="submit"
-              className="absolute right-2.5 top-2.5 bottom-2.5 px-7 bg-slate-900 text-white font-semibold rounded-xl hover:bg-black transition-colors text-base z-10"
+              className="absolute right-2.5 top-2.5 bottom-2.5 px-7 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 transition-colors cursor-pointer text-base"
             >
               Search
             </button>
@@ -896,46 +923,30 @@ export function Auctions() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-        {/* Floating Filters Button */}
-        {showFloatingFilter && (
-          <button
-            onClick={() => setIsFiltersOpen(true)}
-            className="fixed bottom-24 lg:bottom-12 right-6 z-40 lg:hidden flex items-center justify-center gap-2 px-6 py-3.5 bg-primary-600 text-white font-semibold rounded-full shadow-2xl hover:bg-primary-700 hover:scale-105 active:scale-95 transition-all duration-200 border-2 border-white/20"
+      {/* Pullable Left Filter Drawer & Floating Side Tag anchored to far left screen border */}
+      <div className="fixed top-1/2 -translate-y-1/2 left-0 z-50 pointer-events-none">
+        {/* Backdrop Overlay */}
+        <div 
+          className={clsx(
+            "fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity duration-300 pointer-events-auto lg:hidden",
+            isFiltersOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
+          onClick={() => setIsFiltersOpen(false)}
+        />
+
+        {/* Sliding Flex Wrapper */}
+        <div 
+          className={clsx(
+            "relative flex items-start pointer-events-auto transition-transform duration-300 ease-in-out transform",
+            isFiltersOpen ? "translate-x-0" : "-translate-x-[340px] sm:-translate-x-[380px]"
+          )}
+        >
+          {/* Filter Drawer Container */}
+          <div 
+            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+            className="w-[340px] sm:w-[380px] max-h-[85vh] bg-white rounded-r-3xl rounded-l-none border-r border-y border-l-0 border-slate-200 shadow-2xl flex flex-col overflow-hidden"
           >
-            <SlidersHorizontal className="w-5 h-5" />
-            <span>Filters</span>
-            {isAnyFilterActive && (
-              <span className="bg-white text-primary-600 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold ml-1">
-                ✓
-              </span>
-            )}
-          </button>
-        )}
-
-        <div className="flex flex-col lg:flex-row gap-8">
-
-          {/* Mobile Filter Toggle */}
-          <div className="lg:hidden flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 w-full mb-4">
-            <button
-              onClick={() => setIsFiltersOpen(true)}
-              className="flex items-center text-slate-700 font-medium cursor-pointer"
-            >
-              <SlidersHorizontal className="w-5 h-5 mr-2" />
-              Filters
-            </button>
-            <div className="text-sm text-slate-500 font-medium">
-              {activeTab === 'commercial'
-                ? (!isAnyFilterActive ? '0 results' : `${totalCount} results`)
-                : `${mstcAuctions.length} results`
-              }
-            </div>
-          </div>
-
-          {/* Sidebar Filters */}
-          <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:self-start lg:overflow-visible z-20">
             <AuctionFilters
-              isOpen={isFiltersOpen}
               onClose={() => setIsFiltersOpen(false)}
               onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
               initialFilters={activeTab === 'commercial' ? filters : {
@@ -956,17 +967,51 @@ export function Auctions() {
               customLocations={mstcOptions.locations}
               customRegionalOffices={mstcOptions.regionalOffices}
             />
-            {/* Overlay for mobile filters */}
-            {isFiltersOpen && (
-              <div
-                className="fixed inset-0 bg-white/45 backdrop-blur-md z-30 lg:hidden"
-                onClick={() => setIsFiltersOpen(false)}
-              />
-            )}
           </div>
 
+          {/* Attached Side Tag Button */}
+          <button
+            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+            className={clsx(
+              "mt-16 shrink-0 flex items-center justify-between bg-primary text-white font-bold text-xs rounded-r-2xl rounded-l-none border border-l-0 border-white/20 shadow-2xl hover:bg-primary/95 active:scale-95 transition-all duration-300 cursor-pointer select-none group translate-x-0 overflow-hidden",
+              (!isFiltersOpen && !scrollPastHero)
+                ? "px-2.5 py-3 hover:px-3.5"
+                : "px-3.5 py-3"
+            )}
+            title={isFiltersOpen ? "Close filters panel" : "Open filters panel"}
+            aria-label="Toggle filters side panel"
+          >
+            <div className={clsx(
+              "flex items-center gap-1.5 shrink-0 overflow-hidden transition-all duration-300 ease-in-out",
+              (!isFiltersOpen && !scrollPastHero)
+                ? "max-w-0 opacity-0 group-hover:max-w-[120px] group-hover:opacity-100 group-hover:mr-1"
+                : "max-w-[120px] opacity-100 mr-1"
+            )}>
+              <SlidersHorizontal className="w-4 h-4 text-white shrink-0" />
+              <span className="font-semibold tracking-wider uppercase text-[11px] whitespace-nowrap">
+                Filters
+              </span>
+            </div>
+            {mstcActiveFilters.length > 0 && (
+              <span className="bg-white text-primary text-[10px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 mr-1">
+                {mstcActiveFilters.length}
+              </span>
+            )}
+            {isFiltersOpen ? (
+              <X className="w-4 h-4 text-white/90 group-hover:scale-110 transition-transform shrink-0" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-white/90 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="container max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+
           {/* Main Content */}
-          <div className="flex-grow flex flex-col lg:w-3/4">
+          <div className="flex-grow flex flex-col w-full">
 
             {/* Toolbar */}
             {activeTab === 'commercial' ? (
@@ -993,11 +1038,32 @@ export function Auctions() {
                     <option value="price_desc">Price: High to Low</option>
                   </select>
 
+                  {/* Column Switcher (Hidden on mobile) */}
+                  <div className="hidden md:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
+                    {[2, 3, 4, 5].map((cols) => (
+                      <button
+                        key={cols}
+                        onClick={() => {
+                          setIsGridView(true);
+                          setColumns(cols as any);
+                        }}
+                        className={clsx(
+                          "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
+                          isGridView && columns === cols
+                            ? "bg-white shadow-sm text-primary"
+                            : "text-slate-500 hover:text-slate-800"
+                        )}
+                      >
+                        {cols} Col
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
                     <button
                       onClick={() => setIsGridView(true)}
                       className={clsx(
-                        "p-1.5 rounded-md transition-colors",
+                        "p-1.5 rounded-md transition-colors cursor-pointer",
                         isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
@@ -1006,7 +1072,7 @@ export function Auctions() {
                     <button
                       onClick={() => setIsGridView(false)}
                       className={clsx(
-                        "p-1.5 rounded-md transition-colors",
+                        "p-1.5 rounded-md transition-colors cursor-pointer",
                         !isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
@@ -1016,28 +1082,73 @@ export function Auctions() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between sm:items-start gap-4">
-                <div className="min-w-0 space-y-2">
-                  <div className="text-sm text-slate-700 font-semibold">
-                    Showing {mstcTotalCount} Government Catalogs
-                  </div>
-                  {mstcActiveFilters.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5" aria-label="Applied filters">
-                      <span className="text-xs font-medium text-slate-500 mr-0.5">Applied filters:</span>
-                      {mstcActiveFilters.map(filter => (
-                        <span
-                          key={`${filter.label}-${filter.value}`}
-                          className="max-w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"
-                          title={`${filter.label}: ${filter.value}`}
-                        >
-                          <span className="font-semibold text-slate-700">{filter.label}:</span>{' '}
-                          <span className="break-words">{filter.value}</span>
-                        </span>
-                      ))}
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div className="min-w-0 flex items-center h-full">
+                  <div className="space-y-1">
+                    <div className="text-sm text-slate-700 font-semibold flex items-center h-full">
+                      Showing {mstcTotalCount} Government Catalogs
                     </div>
-                  )}
+                    {mstcActiveFilters.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5" aria-label="Applied filters">
+                        <span className="text-xs font-medium text-slate-500 mr-0.5">Applied filters:</span>
+                        {mstcActiveFilters.map(filter => (
+                          <span
+                            key={`${filter.label}-${filter.value}`}
+                            className="max-w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"
+                            title={`${filter.label}: ${filter.value}`}
+                          >
+                            <span className="font-semibold text-slate-700">{filter.label}:</span>{' '}
+                            <span className="break-words">{filter.value}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-4 w-full sm:w-auto">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  {/* Desktop Filter Toggle Button */}
+                  <button
+                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                    className={clsx(
+                      "hidden lg:flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border transition-all cursor-pointer",
+                      isFiltersOpen
+                        ? "bg-primary text-white border-primary shadow-sm"
+                        : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400"
+                    )}
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span>{isFiltersOpen ? "Hide Filters" : "Show Filters"}</span>
+                    {mstcActiveFilters.length > 0 && (
+                      <span className={clsx(
+                        "text-[11px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center -mr-1",
+                        isFiltersOpen ? "bg-white text-primary" : "bg-primary text-white"
+                      )}>
+                        {mstcActiveFilters.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Column Switcher (Hidden on mobile) */}
+                  <div className="hidden md:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
+                    {[2, 3, 4, 5].map((cols) => (
+                      <button
+                        key={cols}
+                        onClick={() => {
+                          setIsGridView(true);
+                          setColumns(cols as any);
+                        }}
+                        className={clsx(
+                          "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
+                          isGridView && columns === cols
+                            ? "bg-white shadow-sm text-primary"
+                            : "text-slate-500 hover:text-slate-800"
+                        )}
+                      >
+                        {cols} Col
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
                     <button
                       onClick={() => setIsGridView(true)}
@@ -1071,7 +1182,7 @@ export function Auctions() {
                     count={6}
                     classes={clsx(
                       "gap-6 flex-grow",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}
                   />
                 ) : auctions.length === 0 ? (
@@ -1091,7 +1202,7 @@ export function Auctions() {
                   <>
                     <div className={clsx(
                       "gap-6",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}>
                       {auctions.map(auction => (
                         <AuctionCard
@@ -1190,10 +1301,10 @@ export function Auctions() {
                 {isMstcLoading ? (
                   <SkeletonGrid
                     isGrid={isGridView}
-                    count={4}
+                    count={6}
                     classes={clsx(
                       "gap-6 flex-grow",
-                      isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}
                   />
                 ) : mstcAuctions.length === 0 ? (
@@ -1223,7 +1334,7 @@ export function Auctions() {
                     )}
                     <div className={clsx(
                       "gap-6",
-                      isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}>
                       {paginatedMstcAuctions.map(item => (
                         <MstcCard

@@ -390,10 +390,9 @@ export const adminService = {
   // Location & Region Analytics
   async getLocationAnalytics() {
     try {
-      // 1. Query mstc_auctions directly for real-time location breakdown
+      // 1. Query mstc_auctions directly via RPC for real-time location breakdown
       const { data: rawAuctions, error: auctionsError } = await supabase
-        .from('mstc_auctions')
-        .select('location, category_name');
+        .rpc('get_location_analytics');
 
       if (auctionsError) {
         console.error('Error fetching location analytics from mstc_auctions:', auctionsError);
@@ -444,13 +443,14 @@ export const adminService = {
       (rawAuctions || []).forEach((item: any) => {
         const loc = item.location?.trim() || 'India (General)';
         const cat = item.category_name?.split('|')[0]?.trim() || item.category_name || 'Uncategorized';
+        const count = Number(item.total_auctions) || 0;
         
         if (!locationMap[loc]) {
           locationMap[loc] = { count: 0, categories: {} };
         }
-        locationMap[loc].count += 1;
-        locationMap[loc].categories[cat] = (locationMap[loc].categories[cat] || 0) + 1;
-        totalAuctions += 1;
+        locationMap[loc].count += count;
+        locationMap[loc].categories[cat] = (locationMap[loc].categories[cat] || 0) + count;
+        totalAuctions += count;
       });
 
       const locations = Object.entries(locationMap)
@@ -472,19 +472,52 @@ export const adminService = {
         })
         .sort((a, b) => b.count - a.count);
 
-      // 2. Query location_daily_stats for historical trends if available
       const { data: historicalLocData } = await supabase
         .from('location_daily_stats')
-        .select('date, location, items_added');
+        .select('date, location, category_name, items_added')
+        .limit(10000);
 
+      const historicalTotalsMap: Record<string, { count: number, categories: Record<string, number> }> = {};
       const dailyMap: Record<string, Record<string, number>> = {};
+      
       (historicalLocData || []).forEach((stat: any) => {
         const loc = stat.location || 'India (General)';
         const count = stat.items_added || 0;
+        const cat = stat.category_name || 'Uncategorized';
         const date = stat.date;
+
+        if (!historicalTotalsMap[loc]) {
+          historicalTotalsMap[loc] = { count: 0, categories: {} };
+        }
+        historicalTotalsMap[loc].count += count;
+        historicalTotalsMap[loc].categories[cat] = (historicalTotalsMap[loc].categories[cat] || 0) + count;
 
         if (!dailyMap[date]) dailyMap[date] = {};
         dailyMap[date][loc] = (dailyMap[date][loc] || 0) + count;
+      });
+
+      const historicalTotals = Object.entries(historicalTotalsMap)
+        .map(([rawLoc, val]) => {
+          const info = REGION_DISTRICT_MAP[rawLoc] || { state: rawLoc, district: rawLoc };
+          const topCats = Object.entries(val.categories)
+            .map(([catName, cnt]) => ({ name: catName, count: cnt }))
+            .sort((a, b) => b.count - a.count);
+          
+          return {
+             location: rawLoc,
+             state: info.state,
+             district: info.district,
+             count: val.count,
+             percentage: 0,
+             topCategory: topCats[0]?.name || 'N/A',
+             categories: topCats
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+        
+      const historicalTotalCount = historicalTotals.reduce((sum, item) => sum + item.count, 0);
+      historicalTotals.forEach(item => {
+        item.percentage = historicalTotalCount > 0 ? parseFloat(((item.count / historicalTotalCount) * 100).toFixed(1)) : 0;
       });
 
       const dailyTrends = Object.entries(dailyMap)
@@ -493,6 +526,7 @@ export const adminService = {
 
       return {
         locations,
+        historicalTotals,
         totalAuctions,
         topRegion: locations[0]?.state ? `${locations[0].state} (${locations[0].district})` : locations[0]?.location || 'N/A',
         dailyTrends
