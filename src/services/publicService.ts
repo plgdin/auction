@@ -1945,7 +1945,7 @@ export const MstcSearchService = {
   /**
    * High-speed catalog search engine filtering through clean, deduplicated snapshots with Layman's search
    */
-  searchMarketplaceCatalog: PageCache.memoize(async function searchMarketplaceCatalog(
+  async searchMarketplaceCatalog(
     query: string,
     filters?: { 
       category?: string; 
