@@ -1169,10 +1169,21 @@ export const hasConfirmedAssetDocuments = (rawMaterialsText: string | null): boo
         if (typeof fileName !== 'string') return false;
         const lower = fileName.toLowerCase();
         
-        // Must end with or contain .pdf
-        const isPdf = lower.includes('.pdf');
-        
-        // Must NOT contain words like photo, image, pic, picture, catalog, preview
+        // Must contain .pdf
+        if (!lower.includes('.pdf')) return false;
+
+        // Explicit document prefixes (Annex, Spec, Doc, Drawing, Cert, Inventory)
+        const isExplicitDoc = 
+          lower.startsWith('annex') ||
+          lower.startsWith('spec') ||
+          lower.startsWith('doc') ||
+          lower.startsWith('drawing') ||
+          lower.startsWith('cert') ||
+          lower.startsWith('inventory');
+
+        if (isExplicitDoc) return true;
+
+        // Otherwise, exclude photos, images, pics, pictures, catalogs, previews
         const isPhotoOrCatalog = 
           lower.includes('photo') || 
           lower.includes('image') || 
@@ -1181,7 +1192,7 @@ export const hasConfirmedAssetDocuments = (rawMaterialsText: string | null): boo
           lower.includes('catalog') || 
           lower.includes('preview');
           
-        return isPdf && !isPhotoOrCatalog;
+        return !isPhotoOrCatalog;
       });
     });
   } catch {

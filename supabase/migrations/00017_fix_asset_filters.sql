@@ -154,12 +154,22 @@ BEGIN
               END
             ) AS att_name
             WHERE lower(att_name) LIKE '%.pdf%'
-              AND lower(att_name) NOT LIKE '%photo%'
-              AND lower(att_name) NOT LIKE '%image%'
-              AND lower(att_name) NOT LIKE '%pic%'
-              AND lower(att_name) NOT LIKE '%picture%'
-              AND lower(att_name) NOT LIKE '%catalog%'
-              AND lower(att_name) NOT LIKE '%preview%'
+              AND (
+                lower(att_name) LIKE 'annex%' OR
+                lower(att_name) LIKE 'spec%' OR
+                lower(att_name) LIKE 'doc%' OR
+                lower(att_name) LIKE 'drawing%' OR
+                lower(att_name) LIKE 'cert%' OR
+                lower(att_name) LIKE 'inventory%' OR
+                (
+                  lower(att_name) NOT LIKE '%photo%' AND
+                  lower(att_name) NOT LIKE '%image%' AND
+                  lower(att_name) NOT LIKE '%pic%' AND
+                  lower(att_name) NOT LIKE '%picture%' AND
+                  lower(att_name) NOT LIKE '%catalog%' AND
+                  lower(att_name) NOT LIKE '%preview%'
+                )
+              )
           )
         )
       )
