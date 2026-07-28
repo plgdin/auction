@@ -12,34 +12,34 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface AuctionFiltersProps {
-  onFilterChange: (filters: { 
-    categoryIds?: string[]; 
+  onFilterChange: (filters: {
+    categoryIds?: string[];
     subcategory?: string;
     subcategories?: string[];
-    listingType?: string; 
-    regionalOffice?: string; 
+    listingType?: string;
+    regionalOffice?: string;
     regionalOffices?: string[];
-    location?: string; 
+    location?: string;
     locations?: string[];
-    preBid?: string; 
-    startDate?: string; 
+    preBid?: string;
+    startDate?: string;
     endDate?: string;
-    hasAssetDocuments?: boolean;
-    hasImages?: boolean;
+    AssetDocuments?: boolean;
+    Images?: boolean;
     isReauction?: boolean;
   }) => void;
   onClose: () => void;
-  initialFilters: { 
-    categoryIds?: string[]; 
+  initialFilters: {
+    categoryIds?: string[];
     subcategory?: string;
     subcategories?: string[];
-    listingType?: string; 
-    regionalOffice?: string; 
+    listingType?: string;
+    regionalOffice?: string;
     regionalOffices?: string[];
-    location?: string; 
+    location?: string;
     locations?: string[];
-    preBid?: string; 
-    startDate?: string; 
+    preBid?: string;
+    startDate?: string;
     endDate?: string;
     hasAssetDocuments?: boolean;
     hasImages?: boolean;
@@ -59,9 +59,9 @@ interface CategoryNode {
   children: CategoryNode[];
 }
 
-export function AuctionFilters({ 
-  onFilterChange, 
-  onClose, 
+export function AuctionFilters({
+  onFilterChange,
+  onClose,
   initialFilters,
   activeTab = 'commercial',
   customCategories = [],
@@ -138,10 +138,10 @@ export function AuctionFilters({
   // Auto-expand ancestors of selected categories when they change
   useEffect(() => {
     if (selectedCategories.length === 0 || selectedCategories.length === categories.length || categories.length === 0) return;
-    
+
     const newExpanded = { ...expandedIds };
     let foundAny = false;
-    
+
     selectedCategories.forEach(id => {
       let currentId: string | null = id;
       while (currentId) {
@@ -157,7 +157,7 @@ export function AuctionFilters({
         }
       }
     });
-    
+
     if (foundAny) {
       setExpandedIds(newExpanded);
     }
@@ -216,12 +216,12 @@ export function AuctionFilters({
     return a.name.localeCompare(b.name);
   });
 
-  const displayedRoots = showAllCategories 
-    ? sortedRoots 
+  const displayedRoots = showAllCategories
+    ? sortedRoots
     : [
-        ...sortedRoots.slice(0, 6),
-        ...sortedRoots.filter((c, index) => index >= 6 && isDescendantSelected(c, selectedCategories))
-      ];
+      ...sortedRoots.slice(0, 6),
+      ...sortedRoots.filter((c, index) => index >= 6 && isDescendantSelected(c, selectedCategories))
+    ];
 
   const getSelectionState = (node: CategoryNode): 'checked' | 'unchecked' | 'indeterminate' => {
     const getDescendants = (n: CategoryNode): string[] => {
@@ -346,11 +346,11 @@ export function AuctionFilters({
 
     return (
       <div key={node.id} className="select-none">
-        <div 
+        <div
           className={clsx(
             "group flex items-center justify-between py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150",
-            isSelected 
-              ? "bg-primary-50/50 font-medium text-slate-900" 
+            isSelected
+              ? "bg-primary-50/50 font-medium text-slate-900"
               : "hover:bg-slate-50 text-slate-600 hover:text-slate-955"
           )}
           style={{ paddingLeft: `${Math.max(8, depth * 12)}px` }}
@@ -375,7 +375,7 @@ export function AuctionFilters({
                 )}
               </button>
             )}
-            
+
             <span className={clsx(
               "flex-shrink-0 flex items-center justify-center rounded transition-colors duration-150",
               hasChildren ? "" : "pl-5"
@@ -390,7 +390,7 @@ export function AuctionFilters({
                 <span className="w-4 h-4 rounded border border-slate-300 group-hover:border-slate-450 bg-white flex-shrink-0 duration-150 transition-colors" />
               )}
             </span>
-            
+
             <span className="text-sm leading-relaxed truncate">{node.name}</span>
           </div>
         </div>
@@ -429,24 +429,24 @@ export function AuctionFilters({
     placeholder: string
   ) => {
     return (
-      <div 
+      <div
         className="bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[200px] max-h-[240px] overflow-y-auto custom-scrollbar flex flex-col gap-0.5"
         style={{ scrollbarWidth: 'thin' }}
       >
         {/* "Select All / Reset" item */}
-        <div 
+        <div
           onClick={() => onChange([])}
           className={clsx(
             "flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium transition-colors select-none",
-            selectedValues.length === 0 
-              ? "bg-primary-50/70 text-primary" 
+            selectedValues.length === 0
+              ? "bg-primary-50/70 text-primary"
               : "hover:bg-slate-50 text-slate-700 hover:text-slate-900"
           )}
         >
           <span className={clsx(
             "w-4 h-4 rounded border transition-colors flex items-center justify-center flex-shrink-0",
-            selectedValues.length === 0 
-              ? "border-primary bg-primary" 
+            selectedValues.length === 0
+              ? "border-primary bg-primary"
               : "border-slate-300 bg-white"
           )}>
             {selectedValues.length === 0 && (
@@ -463,7 +463,7 @@ export function AuctionFilters({
         {options.map(opt => {
           const isChecked = selectedValues.includes(opt.key);
           return (
-            <div 
+            <div
               key={opt.key}
               onClick={() => {
                 if (isChecked) {
@@ -474,15 +474,15 @@ export function AuctionFilters({
               }}
               className={clsx(
                 "flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium transition-colors select-none",
-                isChecked 
-                  ? "bg-primary-50/40 text-primary font-semibold" 
+                isChecked
+                  ? "bg-primary-50/40 text-primary font-semibold"
                   : "hover:bg-slate-50 text-slate-600 hover:text-slate-900"
               )}
             >
               <span className={clsx(
                 "w-4 h-4 rounded border transition-colors flex items-center justify-center flex-shrink-0",
-                isChecked 
-                  ? "border-primary bg-primary" 
+                isChecked
+                  ? "border-primary bg-primary"
                   : "border-slate-300 bg-white"
               )}>
                 {isChecked && (
@@ -500,8 +500,8 @@ export function AuctionFilters({
   };
 
   const getTriggerLabel = (
-    selectedValues: string[], 
-    allLabel: string, 
+    selectedValues: string[],
+    allLabel: string,
     labelsMap?: Record<string, string>
   ) => {
     if (selectedValues.length === 0) return allLabel;
@@ -513,13 +513,13 @@ export function AuctionFilters({
 
   // Mapped options for MSTC & Commercial
   const customCategoryOptions = customCategories.map(cat => ({ key: cat, label: cat }));
-  
+
   const availableSubcategories = selectedCategories.length > 0
     ? selectedCategories.flatMap(cat => customSubcategories[cat] || [])
     : [];
 
   const customSubcategoryOptions = availableSubcategories.map(sub => ({ key: sub, label: sub }));
-  
+
   const currentRegionalOffices = activeTab === 'mstc' ? customRegionalOffices : REGIONAL_OFFICES;
   const regionalOfficeOptions = currentRegionalOffices.map(office => ({
     key: office,
@@ -537,23 +537,24 @@ export function AuctionFilters({
 
 
   return (
-    <div 
+    <div
       ref={containerRef}
+      style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
       className={clsx(
-        "flex flex-col h-full w-full bg-white relative rounded-r-2xl overflow-hidden",
+        "flex flex-col h-full w-full bg-white relative rounded-r-3xl rounded-l-none overflow-hidden border-r border-y border-slate-200/80 shadow-xl",
         "lg:relative lg:translate-x-0 lg:w-full lg:bg-white lg:border lg:border-slate-200 lg:rounded-2xl lg:shadow-xs lg:overflow-hidden lg:h-[calc(100vh-140px)]"
       )}
     >
       {/* Scrollable Content wrapper */}
-      <div className="flex-1 overflow-y-auto p-6 pb-28 scroll-smooth custom-scrollbar" style={{ scrollbarWidth: 'thin' }}>
+      <div
+        className="flex-1 overflow-y-auto p-6 pb-28 scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-xl font-bold text-slate-900 flex items-center">
             <Filter className="w-5 h-5 mr-2 text-primary" />
             Filters
           </h2>
-          <button onClick={onClose} className="lg:hidden text-slate-450 hover:text-slate-600">
-            <X className="w-6 h-6" />
-          </button>
         </div>
 
         {/* Categories */}
@@ -563,19 +564,19 @@ export function AuctionFilters({
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
-                <Dropdown 
+                <Dropdown
                   popupRender={() => renderMultiSelectMenu(
                     customCategoryOptions,
                     selectedCategories,
                     (cats) => handleMstcCategoryChange(cats),
                     'All Categories'
                   )}
-                  trigger={['click']} 
+                  trigger={['click']}
                   placement="bottomLeft"
                   align={{ overflow: { adjustX: false, adjustY: false } }}
                   getPopupContainer={() => containerRef.current || document.body}
                 >
-                  <button 
+                  <button
                     type="button"
                     className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
                   >
@@ -589,46 +590,46 @@ export function AuctionFilters({
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Category</label>
-                  <Dropdown 
-                    popupRender={() => renderMultiSelectMenu(
-                      customSubcategoryOptions,
-                      selectedSubcategories,
-                      setSelectedSubcategories,
-                      'All Sub-Categories'
-                    )}
-                    trigger={['click']} 
+                <Dropdown
+                  popupRender={() => renderMultiSelectMenu(
+                    customSubcategoryOptions,
+                    selectedSubcategories,
+                    setSelectedSubcategories,
+                    'All Sub-Categories'
+                  )}
+                  trigger={['click']}
+                  disabled={selectedCategories.length === 0}
+                  placement="bottomLeft"
+                  align={{ overflow: { adjustX: false, adjustY: false } }}
+                  getPopupContainer={() => containerRef.current || document.body}
+                >
+                  <button
+                    type="button"
                     disabled={selectedCategories.length === 0}
-                    placement="bottomLeft"
-                    align={{ overflow: { adjustX: false, adjustY: false } }}
-                    getPopupContainer={() => containerRef.current || document.body}
+                    className={clsx(
+                      "w-full flex justify-between items-center px-3.5 py-2.5 border rounded-xl shadow-2xs text-sm transition-all text-left",
+                      selectedCategories.length === 0
+                        ? "border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50"
+                        : "border-slate-250 bg-white text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                    )}
                   >
-                    <button 
-                      type="button"
-                      disabled={selectedCategories.length === 0}
-                      className={clsx(
-                        "w-full flex justify-between items-center px-3.5 py-2.5 border rounded-xl shadow-2xs text-sm transition-all text-left",
-                        selectedCategories.length === 0 
-                          ? "border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50" 
-                          : "border-slate-250 bg-white text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
-                      )}
-                    >
-                      <span className="truncate">
-                        {selectedCategories.length === 0 
-                          ? 'Select a category first' 
-                          : getTriggerLabel(selectedSubcategories, 'All Sub-Categories')}
-                      </span>
-                      <DownOutlined className="w-3.5 h-3.5 text-slate-455 shrink-0 ml-2" />
-                    </button>
-                  </Dropdown>
-                </div>
+                    <span className="truncate">
+                      {selectedCategories.length === 0
+                        ? 'Select a category first'
+                        : getTriggerLabel(selectedSubcategories, 'All Sub-Categories')}
+                    </span>
+                    <DownOutlined className="w-3.5 h-3.5 text-slate-455 shrink-0 ml-2" />
+                  </button>
+                </Dropdown>
+              </div>
             </div>
           ) : (
             <div className="space-y-1">
-              <div 
+              <div
                 className={clsx(
                   "group flex items-center justify-between py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150",
-                  isAllSelected 
-                    ? "bg-primary-50/50 font-medium text-slate-900" 
+                  isAllSelected
+                    ? "bg-primary-50/50 font-medium text-slate-900"
                     : "hover:bg-slate-50 text-slate-600 hover:text-slate-955"
                 )}
                 onClick={handleSelectAll}
@@ -683,9 +684,9 @@ export function AuctionFilters({
                 { label: 'Recently Added', value: 'recently_added' },
               ].map((option) => (
                 <label key={option.value} className="flex items-center cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="listingType" 
+                  <input
+                    type="radio"
+                    name="listingType"
                     checked={selectedListingType === option.value}
                     onChange={() => setSelectedListingType(option.value)}
                     className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
@@ -704,7 +705,7 @@ export function AuctionFilters({
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Asset Attachments</h3>
             <div className="space-y-3">
-              <label 
+              <label
                 onClick={() => setHasAssetDocuments(!hasAssetDocuments)}
                 className="flex items-center cursor-pointer group"
               >
@@ -722,9 +723,9 @@ export function AuctionFilters({
                     </svg>
                   )}
                 </div>
-                <span className="ml-3 text-sm text-slate-700 select-none">Has Asset Documents</span>
+                <span className="ml-3 text-sm text-slate-700 select-none">Asset Documents</span>
               </label>
-              <label 
+              <label
                 onClick={() => setHasImages(!hasImages)}
                 className="flex items-center cursor-pointer group"
               >
@@ -742,7 +743,7 @@ export function AuctionFilters({
                     </svg>
                   )}
                 </div>
-                <span className="ml-3 text-sm text-slate-700 select-none">Has Photos / Images</span>
+                <span className="ml-3 text-sm text-slate-700 select-none">Images</span>
               </label>
             </div>
           </div>
@@ -753,7 +754,7 @@ export function AuctionFilters({
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Auction Type</h3>
             <div className="space-y-3">
-              <label 
+              <label
                 onClick={() => setIsReauction(!isReauction)}
                 className="flex items-center cursor-pointer group"
               >
@@ -780,50 +781,50 @@ export function AuctionFilters({
         {/* Regional Office */}
         {activeTab === 'mstc' ? (
           <div className="mb-8">
-              <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
-                Regional Office
-              </h3>
-              <Dropdown 
-                popupRender={() => renderMultiSelectMenu(
-                  regionalOfficeOptions,
-                  selectedRegionalOffices,
-                  setSelectedRegionalOffices,
-                  'All Regional Offices'
-                )}
-                trigger={['click']} 
-                placement="bottomLeft"
-                align={{ overflow: { adjustX: false, adjustY: false } }}
-                getPopupContainer={() => containerRef.current || document.body}
-              >
-                <button 
-                  type="button"
-                  className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
-                >
-                  <span className="truncate">
-                    {getTriggerLabel(selectedRegionalOffices, 'All Regional Offices', expandMstcOfficeMap)}
-                  </span>
-                  <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
-                </button>
-              </Dropdown>
-          </div>
-        ) : (
-          <div className="mb-8">
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
               Regional Office
             </h3>
-            <Dropdown 
+            <Dropdown
               popupRender={() => renderMultiSelectMenu(
                 regionalOfficeOptions,
                 selectedRegionalOffices,
                 setSelectedRegionalOffices,
                 'All Regional Offices'
               )}
-              trigger={['click']} 
+              trigger={['click']}
               placement="bottomLeft"
               align={{ overflow: { adjustX: false, adjustY: false } }}
               getPopupContainer={() => containerRef.current || document.body}
             >
-              <button 
+              <button
+                type="button"
+                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+              >
+                <span className="truncate">
+                  {getTriggerLabel(selectedRegionalOffices, 'All Regional Offices', expandMstcOfficeMap)}
+                </span>
+                <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+              </button>
+            </Dropdown>
+          </div>
+        ) : (
+          <div className="mb-8">
+            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
+              Regional Office
+            </h3>
+            <Dropdown
+              popupRender={() => renderMultiSelectMenu(
+                regionalOfficeOptions,
+                selectedRegionalOffices,
+                setSelectedRegionalOffices,
+                'All Regional Offices'
+              )}
+              trigger={['click']}
+              placement="bottomLeft"
+              align={{ overflow: { adjustX: false, adjustY: false } }}
+              getPopupContainer={() => containerRef.current || document.body}
+            >
+              <button
                 type="button"
                 className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
               >
@@ -839,20 +840,20 @@ export function AuctionFilters({
         {/* Location */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Location</h3>
-            <Dropdown 
-              popupRender={() => renderMultiSelectMenu(
-                locationOptions,
-                selectedLocations,
-                setSelectedLocations,
-                'All Locations'
-              )}
-              trigger={['click']} 
-              placement="bottomLeft"
-              align={{ overflow: { adjustX: false, adjustY: false } }}
-              getPopupContainer={() => containerRef.current || document.body}
-            >
-              <button 
-                type="button"
+          <Dropdown
+            popupRender={() => renderMultiSelectMenu(
+              locationOptions,
+              selectedLocations,
+              setSelectedLocations,
+              'All Locations'
+            )}
+            trigger={['click']}
+            placement="bottomLeft"
+            align={{ overflow: { adjustX: false, adjustY: false } }}
+            getPopupContainer={() => containerRef.current || document.body}
+          >
+            <button
+              type="button"
               className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
             >
               <span className="truncate">
@@ -874,9 +875,9 @@ export function AuctionFilters({
                 { label: 'No Pre-bid Required', value: 'no' },
               ].map((option) => (
                 <label key={option.value} className="flex items-center cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="preBid" 
+                  <input
+                    type="radio"
+                    name="preBid"
                     checked={selectedPreBid === option.value}
                     onChange={() => setSelectedPreBid(option.value)}
                     className="w-4 h-4 accent-primary border-slate-300 focus:ring-primary"
@@ -911,9 +912,9 @@ export function AuctionFilters({
                 <CalendarDays className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
               </button>
             </PopoverTrigger>
-            <PopoverContent 
-              className="w-fit overflow-hidden p-0 rounded-2xl border border-slate-200 shadow-lg" 
-              align="start" 
+            <PopoverContent
+              className="w-fit overflow-hidden p-0 rounded-2xl border border-slate-200 shadow-lg"
+              align="start"
               sideOffset={4}
               side="bottom"
               avoidCollisions={true}
@@ -963,7 +964,7 @@ export function AuctionFilters({
       </div>
 
       {/* Floating Apply Changes Action Bar */}
-      <div 
+      <div
         className="absolute bottom-4 left-4 right-4 z-30 p-3 bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl shadow-lg flex items-center justify-between gap-3"
       >
         <button

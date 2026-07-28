@@ -408,3 +408,36 @@
 .animate-bounce-once {
   animation: bounce-once 0.4s ease-out;
 }
+
+/* Continuous infinite smooth marquee animation */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 30s linear infinite;
+}
+
+/* Falling gavels animation for auth background */
+@keyframes fall-down {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    transform: translateY(115vh) rotate(360deg);
+  }
+}
+
+.animate-falling-gavel {
+  animation: fall-down linear infinite;
+}
+
+/* Force pointer cursor on all checkboxes, radio buttons, and form labels */
+input[type="checkbox"],
+input[type="radio"],
+label[htmlFor] {
+  cursor: pointer !important;
+}

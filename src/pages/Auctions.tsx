@@ -194,7 +194,7 @@ export function Auctions() {
       case 2:
         return "grid-cols-1 md:grid-cols-2";
       case 4:
-        return "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
+        return "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4";
       case 5:
         return "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
       case 3:
@@ -924,7 +924,7 @@ export function Auctions() {
       </div>
 
       {/* Pullable Left Filter Drawer & Floating Side Tag anchored to far left screen border */}
-      <div className="fixed top-1/2 -translate-y-1/2 left-0 z-50 pointer-events-none transition-all duration-300 opacity-100 translate-x-0">
+      <div className="fixed top-1/2 -translate-y-1/2 left-0 z-50 pointer-events-none">
         {/* Backdrop Overlay */}
         <div 
           className={clsx(
@@ -934,58 +934,72 @@ export function Auctions() {
           onClick={() => setIsFiltersOpen(false)}
         />
 
-        {/* Filter Drawer Container popping from far left edge */}
+        {/* Sliding Flex Wrapper */}
         <div 
           className={clsx(
-            "relative z-10 w-[340px] sm:w-[380px] max-h-[85vh] bg-white rounded-r-2xl shadow-2xl flex flex-col border-r border-y border-slate-200 transition-transform duration-300 ease-in-out transform pointer-events-auto",
-            isFiltersOpen ? "translate-x-0" : "-translate-x-full"
+            "relative flex items-start pointer-events-auto transition-transform duration-300 ease-in-out transform",
+            isFiltersOpen ? "translate-x-0" : "-translate-x-[340px] sm:-translate-x-[380px]"
           )}
         >
-          <AuctionFilters
-            onClose={() => setIsFiltersOpen(false)}
-            onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
-            initialFilters={activeTab === 'commercial' ? filters : {
-              categoryIds: selectedMstcCategories,
-              subcategories: selectedMstcSubcategories,
-              locations: selectedMstcLocations,
-              regionalOffices: selectedMstcRegionalOffices,
-              startDate,
-              endDate,
-              hasAssetDocuments: mstcHasAssetDocuments,
-              hasImages: mstcHasImages,
-              isReauction: mstcIsReauction,
-              preBid: mstcPreBid
-            }}
-            activeTab={activeTab}
-            customCategories={mstcOptions.categories}
-            customSubcategories={mstcOptions.subcategories}
-            customLocations={mstcOptions.locations}
-            customRegionalOffices={mstcOptions.regionalOffices}
-          />
+          {/* Filter Drawer Container */}
+          <div 
+            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+            className="w-[340px] sm:w-[380px] max-h-[85vh] bg-white rounded-r-3xl rounded-l-none border-r border-y border-l-0 border-slate-200 shadow-2xl flex flex-col overflow-hidden"
+          >
+            <AuctionFilters
+              onClose={() => setIsFiltersOpen(false)}
+              onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
+              initialFilters={activeTab === 'commercial' ? filters : {
+                categoryIds: selectedMstcCategories,
+                subcategories: selectedMstcSubcategories,
+                locations: selectedMstcLocations,
+                regionalOffices: selectedMstcRegionalOffices,
+                startDate,
+                endDate,
+                hasAssetDocuments: mstcHasAssetDocuments,
+                hasImages: mstcHasImages,
+                isReauction: mstcIsReauction,
+                preBid: mstcPreBid
+              }}
+              activeTab={activeTab}
+              customCategories={mstcOptions.categories}
+              customSubcategories={mstcOptions.subcategories}
+              customLocations={mstcOptions.locations}
+              customRegionalOffices={mstcOptions.regionalOffices}
+            />
+          </div>
 
+          {/* Attached Side Tag Button */}
           <button
             onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
             className={clsx(
-              "absolute left-full top-24 z-20 pointer-events-auto flex items-center justify-between w-[130px] px-3 py-3.5 bg-primary text-white font-bold text-xs rounded-r-xl shadow-2xl hover:bg-primary/95 active:scale-95 transition-all duration-300 cursor-pointer border border-l-0 border-white/20 select-none group shrink-0",
-              !isFiltersOpen && "hover:scale-105",
-              (isFiltersOpen || scrollPastHero) ? "-translate-y-1/2 translate-x-0" : "-translate-y-1/2 -translate-x-[90px]"
+              "mt-16 shrink-0 flex items-center justify-between bg-primary text-white font-bold text-xs rounded-r-2xl rounded-l-none border border-l-0 border-white/20 shadow-2xl hover:bg-primary/95 active:scale-95 transition-all duration-300 cursor-pointer select-none group translate-x-0 overflow-hidden",
+              (!isFiltersOpen && !scrollPastHero)
+                ? "px-2.5 py-3 hover:px-3.5"
+                : "px-3.5 py-3"
             )}
-            title={isFiltersOpen ? "Close filters panel" : "Pull filters panel open"}
+            title={isFiltersOpen ? "Close filters panel" : "Open filters panel"}
             aria-label="Toggle filters side panel"
           >
-            <div className="flex items-center gap-1.5 shrink-0 overflow-hidden">
+            <div className={clsx(
+              "flex items-center gap-1.5 shrink-0 overflow-hidden transition-all duration-300 ease-in-out",
+              (!isFiltersOpen && !scrollPastHero)
+                ? "max-w-0 opacity-0 group-hover:max-w-[120px] group-hover:opacity-100 group-hover:mr-1"
+                : "max-w-[120px] opacity-100 mr-1"
+            )}>
               <SlidersHorizontal className="w-4 h-4 text-white shrink-0" />
               <span className="font-semibold tracking-wider uppercase text-[11px] whitespace-nowrap">
-                {isFiltersOpen ? "Hide" : "Filters"}
+                Filters
               </span>
             </div>
-            {mstcActiveFilters.length > 0 && !isFiltersOpen && (
-              <span className="absolute -top-1.5 -right-1.5 bg-white text-primary shadow-xs border border-primary/20 text-[10px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center shrink-0">
+            {mstcActiveFilters.length > 0 && (
+              <span className="bg-white text-primary text-[10px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 mr-1">
                 {mstcActiveFilters.length}
               </span>
             )}
             {isFiltersOpen ? (
-              <ChevronLeft className="w-4 h-4 text-white/90 group-hover:-translate-x-0.5 transition-transform shrink-0" />
+              <X className="w-4 h-4 text-white/90 group-hover:scale-110 transition-transform shrink-0" />
             ) : (
               <ChevronRight className="w-4 h-4 text-white/90 group-hover:translate-x-0.5 transition-transform shrink-0" />
             )}
@@ -993,7 +1007,7 @@ export function Auctions() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="container max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
 
           {/* Main Content */}

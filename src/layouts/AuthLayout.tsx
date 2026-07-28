@@ -1,9 +1,12 @@
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { PageTracker } from '../components/common/PageTracker';
 import { CookieConsent } from '../components/common/CookieConsent';
+import clsx from 'clsx';
 
 export function AuthLayout() {
+  const location = useLocation();
   const subtitlePhrase = 'Everything you need in a single platform.';
+  const isRegister = location.pathname.includes('/register') || location.pathname.includes('/signup');
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-between relative overflow-hidden font-sans">
@@ -29,11 +32,21 @@ export function AuthLayout() {
 
           {/* Footer of the branding column */}
           <div className="relative z-10 flex justify-between items-center border-t border-slate-800/50 pt-6 mt-6">
-            {/* Progress lines */}
-            <div className="flex gap-1.5">
-              <span className="w-8 h-1 rounded bg-primary-500"></span>
-              <span className="w-4 h-1 rounded bg-slate-700"></span>
-              <span className="w-4 h-1 rounded bg-slate-700"></span>
+            {/* Animated progress bar lines indicator */}
+            <div className="flex gap-1.5 items-center">
+              <span
+                className={clsx(
+                  "h-1 rounded transition-all duration-500 ease-in-out",
+                  !isRegister ? "w-8 bg-primary-500 shadow-sm" : "w-4 bg-slate-700"
+                )}
+              />
+              <span className="w-4 h-1 rounded bg-slate-700" />
+              <span
+                className={clsx(
+                  "h-1 rounded transition-all duration-500 ease-in-out",
+                  isRegister ? "w-8 bg-primary-500 shadow-sm" : "w-4 bg-slate-700"
+                )}
+              />
             </div>
           </div>
         </div>
@@ -55,10 +68,10 @@ export function AuthLayout() {
       <footer className="bg-slate-950 text-slate-500 py-5 px-6 md:px-16 flex flex-col md:flex-row justify-between items-center text-xs border-t border-slate-900 gap-4">
         <div className="flex flex-col gap-0.5">
           <div>
-            &copy; {new Date().getFullYear()} Lelam. All rights reserved.
+            &copy; {new Date().getFullYear()} lelam.co All rights reserved.
           </div>
           <div className="text-[10px] text-slate-605">
-            Lelam Company is not affiliated with MSTC.
+            lelam Company is not affiliated with MSTC.
           </div>
         </div>
         <div className="flex gap-6 font-medium">

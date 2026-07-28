@@ -52,7 +52,7 @@ export function FeaturedAuctionsSection() {
 
   return (
     <section className="py-16 sm:py-24 bg-white relative">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+      <div className="max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1536px] mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex justify-between items-end mb-12 border-b border-slate-200 pb-6">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Recommended Auctions</h2>
@@ -68,7 +68,7 @@ export function FeaturedAuctionsSection() {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col h-[420px] animate-pulse shadow-sm p-4">
                 <div className="h-40 bg-slate-100 rounded-xl mb-4 shrink-0" />
@@ -127,7 +127,7 @@ export function FeaturedAuctionsSection() {
                 </div>
 
                 {/* Tablet & Desktop Grid */}
-                <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {(auctions.length > 0 ? auctions : [
                     { id: '11111111-1111-1111-1111-111111111111', title: 'Industrial Heavy Machinery Lot', description: 'Surplus plant manufacturing machinery including CNC routers, lathes, and high capacity air compressors.', starting_price: 4500000, end_time: new Date().toISOString() },
                     { id: '22222222-2222-2222-2222-222222222222', title: 'Corporate E-Waste Disposal', description: 'Over 500 decommissioned workstations, laptops, servers and networking switches from a Fortune 500 client.', starting_price: 250000, end_time: new Date().toISOString() },
@@ -177,15 +177,15 @@ export function FeaturedAuctionsSection() {
                   
                   <div className="flex flex-col gap-4">
                     <Link
-                      to="/auth/login"
+                      to="/auth/register"
                       className="w-full py-3 px-6 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200 text-center"
                     >
-                      Sign In Now
+                      Sign Up Now
                     </Link>
                     <div className="text-sm text-slate-400">
-                      New to the platform?{' '}
-                      <Link to="/auth/register" className="text-slate-300 hover:text-white font-semibold underline">
-                        Create an account
+                      Already have an account?{' '}
+                      <Link to="/auth/login" className="text-slate-300 hover:text-white font-semibold underline">
+                        Sign in now
                       </Link>
                     </div>
                   </div>
