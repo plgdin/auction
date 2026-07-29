@@ -9,7 +9,7 @@ import { riskEngine } from '../services/valuation/riskEngine';
 import { recommendationEngine } from '../services/valuation/recommendationEngine';
 import { biddingEngine } from '../services/valuation/biddingEngine';
 import type { ValuationCosts } from '../services/valuation/types';
-import { safeNumber, safePositive, safeRound, safeDivide } from '../services/valuation/inputValidator';
+import { safeNumber, safeRound, safeDivide } from '../services/valuation/inputValidator';
 
 export interface CostBreakdownInput {
   currentBid: number;
@@ -184,7 +184,7 @@ export function computeRoiMetrics(input: RoiMetricsInput) {
 /**
  * Delegates to biddingEngine.generateBidRecommendations().
  */
-export function computeBidCaps(lotValue: number, fixedCosts: number, taxFactor: number) {
+export function computeBidCaps(lotValue: number, fixedCosts: number, _taxFactor: number) {
   // Reverse-engineer a minimal ValuationCosts from the legacy inputs
   // taxFactor = (1 + gstRate) * (1 + tcsRate)
   // We assume standard 18% GST + 1% TCS

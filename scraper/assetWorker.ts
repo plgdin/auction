@@ -42,7 +42,7 @@ import {
 } from "./utils/pdfUtils.js";
 import { parseMstcCatalogText, parseSubItemsFromText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
-import { performOcr, performOcrWithDetails, shouldPerformOcr } from "./utils/ocrUtils.js";
+import { performOcrWithDetails, shouldPerformOcr } from "./utils/ocrUtils.js";
 import { isTermsOrInstructionPage, classifyAttachmentType } from "./parsers/documentClassifier.js";
 
 function parsePdfDateTimeToISO(dateTimeStr: string | undefined): string | null {
