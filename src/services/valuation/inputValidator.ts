@@ -54,6 +54,7 @@ export interface RawItem {
   qty: string;
   unit: string;
   marketPrice?: string;
+  ocrConfidence?: number;
 }
 
 export interface ValidationWarning {
@@ -98,8 +99,9 @@ export function validateAndSanitizeItems(rawItems: unknown): ItemValidationResul
     const unit = typeof raw.unit === 'string' ? raw.unit.trim() : '';
     const sr = safeNumber(raw.sr, i + 1);
     const marketPrice = typeof raw.marketPrice === 'string' ? raw.marketPrice.trim() : undefined;
+    const ocrConfidence = raw.ocrConfidence !== undefined && raw.ocrConfidence !== null ? clamp(safeNumber(raw.ocrConfidence, 0), 0, 100) : undefined;
 
-    sanitized.push({ sr, description, qty, unit, marketPrice });
+    sanitized.push({ sr, description, qty, unit, marketPrice, ocrConfidence });
   }
 
   return { items: sanitized, warnings };
@@ -185,7 +187,7 @@ export function validateAndSanitizeCosts(costs: ValuationCosts): SanitizedCosts 
   };
 
   for (const field of COST_AMOUNT_FIELDS) {
-    sanitized[field] = safePositive((costs as Record<string, unknown>)[field]);
+    sanitized[field] = safePositive((costs as unknown as Record<string, unknown>)[field]);
   }
 
   return sanitized;

@@ -132,7 +132,7 @@ function createEmptyOutput(costs: ValuationCosts): ValuationOutput {
 
 export const valuationPipeline = {
   executeSync(
-    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string }[],
+    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string; ocrConfidence?: number }[],
     costs: ValuationCosts,
     hasImages: boolean = false,
     location?: string
@@ -147,7 +147,7 @@ export const valuationPipeline = {
 
   /** Core pipeline logic — separated so the try/catch wrapper stays clean */
   _executeSyncCore(
-    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string }[],
+    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string; ocrConfidence?: number }[],
     costs: ValuationCosts,
     hasImages: boolean = false,
     location?: string
@@ -160,7 +160,9 @@ export const valuationPipeline = {
     let totalLotValue = 0;
     
     // Track indicators to compute confidence and risk
-    let totalOcrConfidence = 0;
+    let totalPricingConfidenceSum = 0;
+    let totalExtractedOcrConfidenceSum = 0;
+    let itemsWithOcrCount = 0;
     let validItemsCount = 0;
     let containsUnserviceable = false;
     let maxSourcesCount = 1;
@@ -170,6 +172,11 @@ export const valuationPipeline = {
     for (const rawItem of sanitizedItems) {
       if ((rawItem.description || '').length > longestDescLen) {
         longestDescLen = (rawItem.description || '').length;
+      }
+
+      if (rawItem.ocrConfidence !== undefined && rawItem.ocrConfidence > 0) {
+        totalExtractedOcrConfidenceSum += rawItem.ocrConfidence;
+        itemsWithOcrCount++;
       }
 
       // 1. Parse quantity & unit conversion
@@ -354,12 +361,17 @@ export const valuationPipeline = {
       });
 
       totalLotValue += itemTotalValue;
-      totalOcrConfidence += pricingConfidence;
+      totalPricingConfidenceSum += pricingConfidence;
       validItemsCount++;
     }
 
     totalLotValue = safeRound(totalLotValue);
-    const avgPricingConfidence = validItemsCount > 0 ? safeRound(safeDivide(totalOcrConfidence, validItemsCount, 50)) : 50;
+    const avgPricingConfidence = validItemsCount > 0 ? safeRound(safeDivide(totalPricingConfidenceSum, validItemsCount, 50)) : 50;
+
+    // Calculate actual OCR confidence (from real Tesseract confidence extracted per item, or default)
+    const actualOcrConfidence = itemsWithOcrCount > 0
+      ? safeRound(safeDivide(totalExtractedOcrConfidenceSum, itemsWithOcrCount, 80))
+      : (validItemsCount > 0 ? 80 : 40);
 
     // 4. Calculate total costs and taxes using Cost Engine
     const costResult = costEngine.calculateCosts(sanitizedCosts);
@@ -379,9 +391,9 @@ export const valuationPipeline = {
 
     const descConfidence = longestDescLen > 100 ? 75 : longestDescLen > 30 ? 55 : 35;
 
-    // 5. Evaluate overall confidence score via Confidence Engine (honest assumptions)
+    // 5. Evaluate overall confidence score via Confidence Engine (honest assumptions + actual OCR confidence)
     const confidenceResult = confidenceEngine.calculateConfidence({
-      ocr: validItemsCount > 0 ? 80 : 40,
+      ocr: actualOcrConfidence,
       image: hasImages ? 85 : 45,
       weight: 50, // assumed: no weight sensor signal
       material: 50, // assumed: keyword-based matching
@@ -391,12 +403,12 @@ export const valuationPipeline = {
       description: descConfidence
     });
 
-    // 6. Evaluate risk rating via Risk Engine (honest assumptions)
+    // 6. Evaluate risk rating via Risk Engine (honest assumptions + actual OCR confidence)
     const riskResult = riskEngine.calculateRisk({
       priceVolatility: containsUnserviceable ? 65 : 35,
       marketTrend: 'flat',
       sellerReliability: 50, // assumed baseline
-      ocrConfidence: avgPricingConfidence,
+      ocrConfidence: actualOcrConfidence,
       photoQuality: hasImages ? 85 : 45,
       historicalError: 35, // assumed baseline error
       inspectionAvailable: false, // assumed worst case (not inspected)

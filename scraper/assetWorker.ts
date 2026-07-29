@@ -42,7 +42,7 @@ import {
 } from "./utils/pdfUtils.js";
 import { parseMstcCatalogText, parseSubItemsFromText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
-import { performOcr, shouldPerformOcr } from "./utils/ocrUtils.js";
+import { performOcr, performOcrWithDetails, shouldPerformOcr } from "./utils/ocrUtils.js";
 import { isTermsOrInstructionPage, classifyAttachmentType } from "./parsers/documentClassifier.js";
 
 function parsePdfDateTimeToISO(dateTimeStr: string | undefined): string | null {
@@ -161,6 +161,7 @@ interface ExtractedPage {
   publicUrl: string;
   combinedText: string;
   ocrText: string;
+  ocrConfidence?: number;
   embedding?: number[];
 }
 
@@ -995,8 +996,11 @@ async function extractAndProcessLotDocuments(
 
           // Smart OCR: only run OCR when selectable text is insufficient
           let ocrText = "";
+          let ocrConfidence = 100;
           if (shouldPerformOcr(pageSelectableText)) {
-            ocrText = await performOcr(page.imageBuffer);
+            const ocrRes = await performOcrWithDetails(page.imageBuffer);
+            ocrText = ocrRes.text;
+            ocrConfidence = ocrRes.confidence;
           }
           const combinedText = `${pageSelectableText || ""}\n${ocrText}`;
 
@@ -1006,6 +1010,7 @@ async function extractAndProcessLotDocuments(
             publicUrl,
             combinedText,
             ocrText,
+            ocrConfidence,
           });
 
           // Memory management: null out buffer and text after processing
@@ -1033,6 +1038,7 @@ async function extractAndProcessLotDocuments(
           publicUrl: "", // No image preview available
           combinedText: nativePage.text,
           ocrText: "",
+          ocrConfidence: 100,
         });
       }
     } else {
@@ -1057,7 +1063,9 @@ async function extractAndProcessLotDocuments(
             );
 
             // Always run OCR on embedded image fallbacks (no selectable text exists)
-            const ocrText = await performOcr(imgBuffer);
+            const ocrRes = await performOcrWithDetails(imgBuffer);
+            const ocrText = ocrRes.text;
+            const ocrConfidence = ocrRes.confidence;
             const combinedText = ocrText;
 
             pagesForAttachment.push({
@@ -1066,6 +1074,7 @@ async function extractAndProcessLotDocuments(
               publicUrl,
               combinedText,
               ocrText,
+              ocrConfidence,
             });
           } catch (uploadErr: any) {
             log.warn(

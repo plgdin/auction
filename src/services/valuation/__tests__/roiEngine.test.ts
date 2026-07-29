@@ -84,6 +84,16 @@ describe('confidenceEngine', () => {
     expect(confidence.overallScore).toBeGreaterThanOrEqual(50);
     expect(confidence.overallScore).toBeLessThanOrEqual(80);
   });
+
+  it('uses real item ocrConfidence in valuation pipeline when provided', async () => {
+    const rawItemWithOcr = [
+      { sr: 1, description: 'Scrap Copper Wire purity 99%', qty: '100', unit: 'KG', ocrConfidence: 94 }
+    ];
+    const valuation = await roiEngine.calculateValuation(rawItemWithOcr, { currentBid: 1000 }, false, 'Mumbai');
+    expect(valuation.confidence.breakdown.ocr).toBe(94);
+    // Verify riskEngine ocrConfidence risk component is 100 - 94 = 6 (not pricing confidence!)
+    expect(valuation.risk.breakdown.ocrConfidence).toBe(6);
+  });
 });
 
 describe('riskEngine', () => {
