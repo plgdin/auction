@@ -630,9 +630,11 @@ export function ReportsAnalytics() {
     triggerCsvDownload(lines.join('\n'), `category_inventory_${filterLabel}_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  const displayLocationDataset = locationTotalsTab === 'current' ? locationStats.locations : locationStats.historicalTotals;
+
   const downloadLocationCSV = () => {
     const headers = ['State', 'District / Regional HQ', 'Total Auctions', 'Share of Total (%)', 'Primary Category'];
-    const rows = locationStats.locations.map(loc =>
+    const rows = displayLocationDataset.map(loc =>
       [
         csvCell(loc.state || loc.location),
         csvCell(loc.district || loc.location),
@@ -641,7 +643,7 @@ export function ReportsAnalytics() {
         csvCell(loc.topCategory)
       ].join(',')
     );
-    triggerCsvDownload([headers.join(','), ...rows].join('\n'), `auctions_by_location_${new Date().toISOString().split('T')[0]}.csv`);
+    triggerCsvDownload([headers.join(','), ...rows].join('\n'), `auctions_by_location_${locationTotalsTab}_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   const downloadEmdCSV = () => {
@@ -1511,6 +1513,39 @@ export function ReportsAnalytics() {
 
       {activeTab === 'location' && (
         <div className="space-y-6 animate-fade-in">
+          {/* Header & Dataset Toggle */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Globe className="w-5 h-5 text-primary" /> Location Analytics Scope
+              </h3>
+              <p className="text-slate-500 text-xs mt-0.5">Switch between active catalog inventory and all-time historical records.</p>
+            </div>
+            
+            <div className="flex bg-slate-100 p-1 rounded-xl print:hidden">
+              <button
+                type="button"
+                onClick={() => { setLocationTotalsTab('current'); setSelectedRegionName(null); }}
+                className={clsx(
+                  "px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer select-none",
+                  locationTotalsTab === 'current' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                Current Inventory ({locationStats.locations.length} Regions)
+              </button>
+              <button
+                type="button"
+                onClick={() => { setLocationTotalsTab('history'); setSelectedRegionName(null); }}
+                className={clsx(
+                  "px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer select-none",
+                  locationTotalsTab === 'history' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                All-Time History ({locationStats.historicalTotals.length} Regions)
+              </button>
+            </div>
+          </div>
+
           {/* Location KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
@@ -1519,7 +1554,7 @@ export function ReportsAnalytics() {
               </div>
               <div>
                 <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Regions Tracked</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{locationStats.locations.length}</p>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{displayLocationDataset.length}</p>
               </div>
             </div>
 
@@ -1529,8 +1564,8 @@ export function ReportsAnalytics() {
               </div>
               <div>
                 <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Top Region</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5 truncate max-w-[200px]" title={locationStats.topRegion}>
-                  {locationStats.topRegion}
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5 truncate max-w-[200px]" title={displayLocationDataset[0]?.state || displayLocationDataset[0]?.location || 'N/A'}>
+                  {displayLocationDataset[0] ? (displayLocationDataset[0].state || displayLocationDataset[0].location) : 'N/A'}
                 </p>
               </div>
             </div>
@@ -1541,21 +1576,25 @@ export function ReportsAnalytics() {
               </div>
               <div>
                 <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Indexed Auctions</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{locationStats.totalAuctions.toLocaleString()}</p>
+                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">
+                  {displayLocationDataset.reduce((sum, item) => sum + item.count, 0).toLocaleString()}
+                </p>
               </div>
             </div>
           </div>
 
           {/* Regional Deep-Dive Inspector Panel */}
           {(() => {
-            const currentSelected = locationStats.locations.find(l => l.location === selectedRegionName) || locationStats.locations[0];
+            const currentSelected = displayLocationDataset.find(l => l.location === selectedRegionName) || displayLocationDataset[0];
             if (!currentSelected) return null;
             return (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-bold rounded-lg uppercase tracking-wider">Region Inspector</span>
+                      <span className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-bold rounded-lg uppercase tracking-wider">
+                        {locationTotalsTab === 'current' ? 'Current' : 'All-Time'} Region Inspector
+                      </span>
                       <h3 className="text-xl font-extrabold text-slate-900">{currentSelected.state || currentSelected.location}</h3>
                     </div>
                     <p className="text-slate-500 text-xs mt-1">HQ / District: <span className="font-semibold text-slate-700">{currentSelected.district || currentSelected.location}</span></p>
@@ -1568,7 +1607,7 @@ export function ReportsAnalytics() {
                       onChange={(e) => setSelectedRegionName(e.target.value)}
                       className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-primary/50 transition-all cursor-pointer"
                     >
-                      {locationStats.locations.map(loc => (
+                      {displayLocationDataset.map(loc => (
                         <option key={loc.location} value={loc.location}>
                           {loc.state || loc.location} ({loc.district || loc.location}) - {loc.count} items
                         </option>
@@ -1583,7 +1622,7 @@ export function ReportsAnalytics() {
                     <p className="text-xl font-black text-slate-900 mt-1">{currentSelected.count.toLocaleString()}</p>
                   </div>
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <p className="text-xs font-bold text-slate-400 uppercase">National Share</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase">Share of Scope</p>
                     <p className="text-xl font-black text-primary mt-1">{currentSelected.percentage}%</p>
                   </div>
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
@@ -1600,7 +1639,7 @@ export function ReportsAnalytics() {
                 {currentSelected.categories && currentSelected.categories.length > 0 && (
                   <div>
                     <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4 text-primary" /> Category Distribution in {currentSelected.state || currentSelected.location}
+                      <BarChart3 className="w-4 h-4 text-primary" /> Category Distribution in {currentSelected.state || currentSelected.location} ({locationTotalsTab === 'current' ? 'Current' : 'All-Time'})
                     </h4>
                     <div className="h-56">
                       <ResponsiveContainer width="100%" height="100%">
@@ -1625,13 +1664,13 @@ export function ReportsAnalytics() {
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
               <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-blue-600" /> Auctions Volume by Location
+                  <BarChart3 className="w-5 h-5 text-blue-600" /> Auctions Volume by Location ({locationTotalsTab === 'current' ? 'Current' : 'All-Time'})
                 </span>
                 <span className="text-xs text-slate-400 font-semibold">Top 10 Regions</span>
               </h3>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={locationStats.locations.slice(0, 10)} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
+                  <BarChart data={displayLocationDataset.slice(0, 10)} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis 
                       dataKey="location" 
@@ -1653,13 +1692,13 @@ export function ReportsAnalytics() {
             {/* Pie Chart: Region Market Share */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
               <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-                <PieIcon className="w-5 h-5 text-emerald-600" /> Regional Market Share
+                <PieIcon className="w-5 h-5 text-emerald-600" /> Regional Market Share ({locationTotalsTab === 'current' ? 'Current' : 'All-Time'})
               </h3>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={locationStats.locations.slice(0, 7).map(l => ({ name: l.location, value: l.count }))}
+                      data={displayLocationDataset.slice(0, 7).map(l => ({ name: l.location, value: l.count }))}
                       cx="50%"
                       cy="50%"
                       innerRadius={60}
@@ -1667,7 +1706,7 @@ export function ReportsAnalytics() {
                       paddingAngle={3}
                       dataKey="value"
                     >
-                      {locationStats.locations.slice(0, 7).map((entry, index) => (
+                      {displayLocationDataset.slice(0, 7).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -1684,9 +1723,9 @@ export function ReportsAnalytics() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-primary" /> Location & Region Breakdown
+                  <MapPin className="w-5 h-5 text-primary" /> Location & Region Breakdown ({locationTotalsTab === 'current' ? 'Current Inventory' : 'All-Time History'})
                 </h3>
-                <p className="text-slate-500 text-xs mt-0.5">Origin breakdown of all scrap auctions processed across India.</p>
+                <p className="text-slate-500 text-xs mt-0.5">Origin breakdown of scrap auctions processed across India.</p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative">
@@ -1706,7 +1745,7 @@ export function ReportsAnalytics() {
                   className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-primary/50 transition-all cursor-pointer"
                 >
                   <option value="all">All Primary Categories</option>
-                  {Array.from(new Set(locationStats.locations.map(l => l.topCategory))).filter(Boolean).map(cat => (
+                  {Array.from(new Set(displayLocationDataset.map(l => l.topCategory))).filter(Boolean).map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
@@ -1735,7 +1774,7 @@ export function ReportsAnalytics() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm font-semibold text-slate-700">
-                  {locationStats.locations
+                  {displayLocationDataset
                     .filter(loc => {
                       const matchesSearch = (loc.state || loc.location).toLowerCase().includes(locationSearchQuery.toLowerCase()) || (loc.district || '').toLowerCase().includes(locationSearchQuery.toLowerCase());
                       const matchesCategory = locationCategoryFilter === 'all' || loc.topCategory === locationCategoryFilter;
