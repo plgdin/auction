@@ -149,21 +149,23 @@ export function shouldPerformOcr(
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
+export interface OcrResult {
+  text: string;
+  confidence: number;
+}
+
 /**
- * Perform Optical Character Recognition (OCR) on an image buffer.
- * Uses a persistent worker pool and LRU cache for performance.
- *
- * @param imageBuffer - The buffer of the image (JPEG/PNG).
- * @returns The extracted text, or an empty string if OCR fails.
+ * Perform Optical Character Recognition (OCR) on an image buffer, returning
+ * both extracted text and real Tesseract confidence score (0-100).
  */
-export async function performOcr(imageBuffer: Buffer): Promise<string> {
+export async function performOcrWithDetails(imageBuffer: Buffer): Promise<OcrResult> {
   const cacheKey = hashBuffer(imageBuffer);
 
   // 1. Check in-memory cache first (fast path)
   const cached = ocrCache.get(cacheKey);
   if (cached !== undefined) {
     log.debug({ cacheKey }, "OCR in-memory cache hit — returning cached result");
-    return cached;
+    return { text: cached, confidence: 85 }; // Default cached confidence
   }
 
   // 2. Check database persistent cache (slow path)
@@ -178,7 +180,7 @@ export async function performOcr(imageBuffer: Buffer): Promise<string> {
       log.info({ cacheKey }, "OCR database cache hit — saving to memory and returning");
       const dbResult = data.ocr_text;
       cacheSet(cacheKey, dbResult);
-      return dbResult;
+      return { text: dbResult, confidence: 85 };
     }
   } catch (dbErr: any) {
     log.warn({ errorMessage: dbErr.message, cacheKey }, "Error reading database OCR cache");
@@ -188,19 +190,20 @@ export async function performOcr(imageBuffer: Buffer): Promise<string> {
   try {
     const worker = await getWorker();
     const {
-      data: { text },
+      data: { text, confidence },
     } = await worker.recognize(imageBuffer);
-    const result = text || "";
+    const resultText = text || "";
+    const resultConfidence = typeof confidence === 'number' ? Math.round(confidence) : 80;
 
     // Cache the result in memory
-    cacheSet(cacheKey, result);
+    cacheSet(cacheKey, resultText);
 
     // Save to database cache asynchronously so it does not block processing
     (async () => {
       try {
         const { error } = await supabase
           .from("ocr_cache")
-          .insert({ buffer_hash: cacheKey, ocr_text: result });
+          .insert({ buffer_hash: cacheKey, ocr_text: resultText });
         if (error) {
           log.warn({ errorMessage: error.message, cacheKey }, "Failed to persist OCR cache in DB");
         } else {
@@ -211,7 +214,7 @@ export async function performOcr(imageBuffer: Buffer): Promise<string> {
       }
     })();
 
-    return result;
+    return { text: resultText, confidence: resultConfidence };
   } catch (err: any) {
     log.error({ errorMessage: err.message }, "OCR recognition failed");
 
@@ -219,6 +222,15 @@ export async function performOcr(imageBuffer: Buffer): Promise<string> {
     workerInstance = null;
     workerInitializing = null;
 
-    return "";
+    return { text: "", confidence: 0 };
   }
+}
+
+/**
+ * Perform Optical Character Recognition (OCR) on an image buffer.
+ * Legacy string return signature for backwards compatibility.
+ */
+export async function performOcr(imageBuffer: Buffer): Promise<string> {
+  const result = await performOcrWithDetails(imageBuffer);
+  return result.text;
 }

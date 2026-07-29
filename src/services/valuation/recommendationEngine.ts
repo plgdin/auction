@@ -1,4 +1,4 @@
-import { ROI_RECOMMENDATION_THRESHOLDS } from './roiConfig';
+import { ROI_RECOMMENDATION_THRESHOLDS, CONFIDENCE_GATES } from './roiConfig';
 
 export interface RecommendationInputs {
   roiPercent: number;
@@ -8,6 +8,7 @@ export interface RecommendationInputs {
   marketTrend: 'up' | 'down' | 'flat';
   currentBid: number;
   totalLotValue: number;
+  sourceCount?: number;
 }
 
 export interface ValuationRecommendation {
@@ -19,7 +20,8 @@ export interface ValuationRecommendation {
     | 'Avoid (High Risk)'
     | 'Avoid (Low Confidence)'
     | 'Avoid (Market Downtrend)'
-    | 'Avoid (Overpriced)';
+    | 'Avoid (Overpriced)'
+    | 'Insufficient Data';
   reasoning: string[];
 }
 
@@ -28,11 +30,17 @@ export const recommendationEngine = {
    * Generates highly explainable, detailed recommendation codes and justifications
    */
   generateRecommendation(inputs: RecommendationInputs): ValuationRecommendation {
-    const { roiPercent, riskLevel, riskScore, overallConfidence, marketTrend, currentBid, totalLotValue } = inputs;
+    const { roiPercent, riskLevel, riskScore, overallConfidence, marketTrend, currentBid, totalLotValue, sourceCount = 1 } = inputs;
     const reasoning: string[] = [];
 
+    // Rule 0: Insufficient Data (Cannot compute lot value)
+    if (totalLotValue <= 0) {
+      reasoning.push('Lot item specifications could not be priced or converted to measurable units. Do not place bids without manual verification.');
+      return { status: 'Insufficient Data', reasoning };
+    }
+
     // Rule 1: Overpriced
-    if (totalLotValue > 0 && currentBid >= totalLotValue) {
+    if (currentBid >= totalLotValue) {
       reasoning.push('The current bid meets or exceeds the estimated market scrap value of the lot.');
       return { status: 'Avoid (Overpriced)', reasoning };
     }
@@ -61,16 +69,27 @@ export const recommendationEngine = {
       return { status: 'Avoid (Low Margin)', reasoning };
     }
 
-    // Rule 6: Strong Buy
+    // Rule 6: Strong Buy (Gated by minimum 2 independent data sources and 70% confidence)
     if (riskLevel === 'Low Risk' && roiPercent >= ROI_RECOMMENDATION_THRESHOLDS.strongBuyRoiPercent) {
-      reasoning.push(`High projected ROI (${roiPercent}%) combined with low risk parameters.`);
-      return { status: 'Strong Buy', reasoning };
+      if (overallConfidence >= CONFIDENCE_GATES.strongBuyMinConfidence && sourceCount >= CONFIDENCE_GATES.strongBuyMinSources) {
+        reasoning.push(`High projected ROI (${roiPercent}%) combined with low risk parameters and ${sourceCount} independent market sources.`);
+        return { status: 'Strong Buy', reasoning };
+      } else {
+        // Downgrade to Buy due to single source or confidence threshold
+        reasoning.push(`High projected ROI (${roiPercent}%) with low risk, but downgraded from Strong Buy due to single market source or moderate data confidence (${overallConfidence}%).`);
+        return { status: 'Buy', reasoning };
+      }
     }
 
-    // Rule 7: Buy
+    // Rule 7: Buy (Gated by minimum 55% overall confidence)
     if (roiPercent >= ROI_RECOMMENDATION_THRESHOLDS.buyRoiPercent) {
-      reasoning.push(`Good returns potential (${roiPercent}% ROI) with acceptable risk.`);
-      return { status: 'Buy', reasoning };
+      if (overallConfidence >= CONFIDENCE_GATES.buyMinConfidence) {
+        reasoning.push(`Good returns potential (${roiPercent}% ROI) with acceptable risk.`);
+        return { status: 'Buy', reasoning };
+      } else {
+        reasoning.push(`Good projected returns (${roiPercent}% ROI), but downgraded to Watch due to limited data verifiability (${overallConfidence}% confidence).`);
+        return { status: 'Watch', reasoning };
+      }
     }
 
     // Rule 8: Watch / Proceed with Caution

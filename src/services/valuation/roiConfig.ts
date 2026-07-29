@@ -33,13 +33,19 @@ export const ROI_RECOMMENDATION_THRESHOLDS = {
   strongBuyRoiPercent: 40,
   buyRoiPercent: 20,
   avoidHighRiskThreshold: 70, // Risk score > 70 is High Risk
-  avoidLowConfidenceThreshold: 50, // Confidence score < 50 is Low Confidence
+  avoidLowConfidenceThreshold: 40, // Confidence score < 40 is Low Confidence
   tightMarginThresholdPercent: 15,
+};
+
+export const CONFIDENCE_GATES = {
+  strongBuyMinConfidence: 70,
+  strongBuyMinSources: 2,
+  buyMinConfidence: 55,
 };
 
 export const BID_MARGINS = {
   idealRoiPercent: 25,
-  maxRoiPercent: 10, // Margin of profit
+  minAcceptableRoiPercent: 10, // Lowest target ROI margin (10%)
   conservativeRoiPercent: 40,
   aggressiveRoiPercent: 15,
 };

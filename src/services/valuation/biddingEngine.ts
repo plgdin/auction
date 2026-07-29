@@ -29,7 +29,8 @@ export const biddingEngine = {
     const { otherExpenses } = costEngine.calculateCosts(costs);
 
     const calculateBidForRoi = (targetRoi: number): number => {
-      if (totalLotValue <= otherExpenses) {
+      // Data-poor / unpriceable lot case or expenses exceed lot value case
+      if (totalLotValue <= 0 || totalLotValue <= otherExpenses) {
         return 0;
       }
       const roiDivisor = 1 + targetRoi / 100;
@@ -40,7 +41,7 @@ export const biddingEngine = {
 
     // Generate specific target bids
     const walkAwayPrice = calculateBidForRoi(0); // Break-even (0% ROI)
-    const maxBid = calculateBidForRoi(BID_MARGINS.maxRoiPercent); // Maximum bid to secure at least 10% ROI
+    const maxBid = calculateBidForRoi(BID_MARGINS.minAcceptableRoiPercent); // Maximum bid to secure at least 10% minimum target ROI
     const idealBid = calculateBidForRoi(BID_MARGINS.idealRoiPercent); // Bid for 25% target ROI
     const conservativeBid = calculateBidForRoi(BID_MARGINS.conservativeRoiPercent); // Bid for 40% target ROI
     const aggressiveBid = calculateBidForRoi(BID_MARGINS.aggressiveRoiPercent); // Bid for 15% target ROI

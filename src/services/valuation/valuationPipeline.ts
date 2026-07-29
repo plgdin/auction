@@ -1,4 +1,5 @@
 import { matchCommodity } from '../valuationService';
+import { marketPriceService } from '../marketPriceService';
 import { detectModelId } from '../../utils/metalValuationModels';
 import { currencyEngine } from './currencyEngine';
 import { costEngine } from './costEngine';
@@ -162,8 +163,15 @@ export const valuationPipeline = {
     let totalOcrConfidence = 0;
     let validItemsCount = 0;
     let containsUnserviceable = false;
+    let maxSourcesCount = 1;
+    let primaryCategory = 'Metals';
+    let longestDescLen = 0;
 
     for (const rawItem of sanitizedItems) {
+      if ((rawItem.description || '').length > longestDescLen) {
+        longestDescLen = (rawItem.description || '').length;
+      }
+
       // 1. Parse quantity & unit conversion
       const qtyStr = rawItem.qty || '1';
       const parts = qtyStr.split('+');
@@ -171,6 +179,8 @@ export const valuationPipeline = {
       let totalBaseQty = 0;
 
       const comm = matchCommodity(rawItem.description);
+      const commConfig = marketPriceService.getCommodityPrices().find(c => c.id === comm.name);
+      if (commConfig?.category) primaryCategory = commConfig.category;
       const isPerKg = comm.basePricePerKg !== undefined;
 
       for (const part of parts) {
@@ -308,6 +318,10 @@ export const valuationPipeline = {
         priceSource = marketRes.dominantSource;
         sourcesCount = marketRes.sources?.length || 1;
 
+        if (sourcesCount > maxSourcesCount) {
+          maxSourcesCount = sourcesCount;
+        }
+
         // Apply location logistical premium/discount
         const reg = getRegionalMultiplier(location);
         if (reg.multiplier !== 1.0) {
@@ -356,36 +370,45 @@ export const valuationPipeline = {
     // Calculate mathematical break-even
     const breakEven = costEngine.calculateBreakEven(totalLotValue, sanitizedCosts);
 
-    // 5. Evaluate overall confidence score via Confidence Engine
+    // Derive category baseline risk
+    let categoryRiskScore = 25; // Metals
+    if (primaryCategory === 'Agriculture' || primaryCategory === 'Energy') categoryRiskScore = 35;
+    else if (primaryCategory === 'Vehicles') categoryRiskScore = 45;
+    else if (primaryCategory === 'Electronics') categoryRiskScore = 55;
+    else if (primaryCategory === 'Property' || primaryCategory === 'Others') categoryRiskScore = 60;
+
+    const descConfidence = longestDescLen > 100 ? 75 : longestDescLen > 30 ? 55 : 35;
+
+    // 5. Evaluate overall confidence score via Confidence Engine (honest assumptions)
     const confidenceResult = confidenceEngine.calculateConfidence({
-      ocr: validItemsCount > 0 ? 95 : 50,
-      image: hasImages ? 92 : 55,
-      weight: 85,
-      material: 90,
-      market: avgPricingConfidence,
-      seller: 88,
-      history: 80,
-      description: 85
+      ocr: validItemsCount > 0 ? 80 : 40,
+      image: hasImages ? 85 : 45,
+      weight: 50, // assumed: no weight sensor signal
+      material: 50, // assumed: keyword-based matching
+      market: avgPricingConfidence, // honest, from market engine
+      seller: 50, // assumed: no seller history table yet
+      history: 50, // assumed baseline
+      description: descConfidence
     });
 
-    // 6. Evaluate risk rating via Risk Engine
+    // 6. Evaluate risk rating via Risk Engine (honest assumptions)
     const riskResult = riskEngine.calculateRisk({
-      priceVolatility: containsUnserviceable ? 60 : 35,
+      priceVolatility: containsUnserviceable ? 65 : 35,
       marketTrend: 'flat',
-      sellerReliability: 88,
-      ocrConfidence: 95,
-      photoQuality: hasImages ? 90 : 50,
-      historicalError: 15,
-      inspectionAvailable: true,
-      categoryRisk: 30,
+      sellerReliability: 50, // assumed baseline
+      ocrConfidence: avgPricingConfidence,
+      photoQuality: hasImages ? 85 : 45,
+      historicalError: 35, // assumed baseline error
+      inspectionAvailable: false, // assumed worst case (not inspected)
+      categoryRisk: categoryRiskScore,
       transportRisk: location && location.length > 15 ? 45 : 20,
-      environmentalRisk: containsUnserviceable ? 40 : 15
+      environmentalRisk: containsUnserviceable ? 50 : 15
     });
 
     // 7. Run Monte Carlo simulation via Simulation Engine
     const simulationResult = simulationEngine.runSimulation(totalLotValue, sanitizedCosts);
- 
-    // 8. Generate recommendations via Recommendation Engine
+
+    // 8. Generate recommendations via Recommendation Engine (with source count & confidence gates)
     const recommendationResult = recommendationEngine.generateRecommendation({
       roiPercent,
       riskLevel: riskResult.level,
@@ -393,9 +416,10 @@ export const valuationPipeline = {
       overallConfidence: confidenceResult.overallScore,
       marketTrend: 'flat',
       currentBid: sanitizedCosts.currentBid,
-      totalLotValue
+      totalLotValue,
+      sourceCount: maxSourcesCount
     });
- 
+
     // 9. Generate bidding strategies via Bidding Engine
     const biddingResult = biddingEngine.generateBidRecommendations(totalLotValue, sanitizedCosts);
 

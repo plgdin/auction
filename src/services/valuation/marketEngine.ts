@@ -23,8 +23,12 @@ export interface MarketPriceResult {
 
 export const marketEngine = {
   /**
-   * Resolves a weighted pricing structure from multiple indices (MCX, LME, Regional scrap, quotes, etc.).
-   * Guaranteed to return a positive weighted price — never 0 or NaN for valid commodities.
+   * Resolves market pricing using ONLY real, verified data sources:
+   * 1. Admin / Database Index Baseline (always present as baseline)
+   * 2. Historical MSTC Auction Winning Bids (included only if real logs exist)
+   * 3. MetalMandi Live Mandi Rates (included only if real scraped rate exists)
+   * 
+   * Confidence is scaled honestly by actual source count and price agreement between sources.
    */
   resolvePriceSync(
     itemName: string,
@@ -43,100 +47,63 @@ export const marketEngine = {
     const nowIso = new Date().toISOString();
     const sources: PriceSourceDetails[] = [];
 
-
-    // Let's model pricing inputs for each available index
-    // 1. MCX / Spot Market Index (India Exchange baseline)
-    const mcxPrice = dbPrice;
+    // Source 1: Admin / Database Index Baseline (Always present)
     sources.push({
-      source: 'MCX Spot Index',
-      price: mcxPrice,
-      weight: 0.35,
-      confidence: 98,
-      freshness: 1.0,
-      timestamp: nowIso,
-      region: 'Mumbai'
-    });
-
-    // 2. LME (London Metal Exchange) - typically USD denominated, let's mock it relative to spot
-    const lmePrice = safeRound(dbPrice * 0.98); // approx 2% discount due to logistics to UK
-    sources.push({
-      source: 'LME Global Index',
-      price: lmePrice,
-      weight: 0.20,
-      confidence: 95,
-      freshness: 0.95,
-      timestamp: nowIso,
-      region: 'London'
-    });
-
-    // 3. Regional Scrap Mandi Quotes (Location specific)
-    let regionalPriceMultiplier = 1.0;
-    if (region.toLowerCase().includes('delhi')) regionalPriceMultiplier = 0.98;
-    else if (region.toLowerCase().includes('kolkata')) regionalPriceMultiplier = 0.95;
-    else if (region.toLowerCase().includes('chennai')) regionalPriceMultiplier = 1.01;
-
-    const regionalPrice = safeRound(dbPrice * regionalPriceMultiplier);
-    sources.push({
-      source: 'Regional Scrap Mandi',
-      price: regionalPrice,
-      weight: 0.15,
-      confidence: 88,
-      freshness: 0.90,
-      timestamp: nowIso,
-      region
-    });
-
-    // 4. Dealer Quotes (Aggregated local buyers)
-    const dealerPrice = safeRound(dbPrice * 0.97); // dealers buy slightly lower to keep a margin
-    sources.push({
-      source: 'Local Dealer Quotes',
-      price: dealerPrice,
-      weight: 0.15,
-      confidence: 90,
+      source: 'Admin Commodity Baseline',
+      price: dbPrice,
+      weight: 0.40,
+      confidence: 70,
       freshness: 0.85,
       timestamp: nowIso,
-      region
+      region: 'India'
     });
 
-    // 5. Historical MSTC Auctions (Weighted average of past winning bids)
-    let historicalPrice = dbPrice;
+    // Source 2: Historical MSTC Auctions (Included ONLY if actual past auction logs exist for this commodity)
     try {
       const logs = marketPriceService.getPriceHistoryLogs();
       const relevantLogs = logs.filter(log => log.commodityId === comm.name);
       if (relevantLogs.length > 0) {
         const sum = relevantLogs.reduce((acc, log) => acc + log.price, 0);
-        historicalPrice = safeRound(sum / relevantLogs.length);
+        const historicalPrice = safeRound(sum / relevantLogs.length);
+        if (historicalPrice > 0) {
+          sources.push({
+            source: 'Historical Auctions Avg',
+            price: historicalPrice,
+            weight: 0.30,
+            confidence: 85,
+            freshness: 0.75,
+            timestamp: relevantLogs[0].timestamp || new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+            region: 'India'
+          });
+        }
       }
     } catch {}
-    
-    sources.push({
-      source: 'Historical Auctions Avg',
-      price: historicalPrice,
-      weight: 0.10,
-      confidence: 80,
-      freshness: 0.75, // Staler pricing
-      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      region: 'India'
-    });
 
-    // 6. Government Index (IBBI or Ministry of Mines indices)
-    const govPrice = safeRound(dbPrice * 1.02); // government valuations tend to be slightly higher/slower
-    sources.push({
-      source: 'Government Valuation Index',
-      price: govPrice,
-      weight: 0.05,
-      confidence: 85,
-      freshness: 0.80,
-      timestamp: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-      region: 'National'
-    });
+    // Source 3: MetalMandi Live Mandi Rate (Included ONLY if a real rate is cached from the scraper)
+    try {
+      const mandiRate = marketPriceService.getMetalMandiRateForCommodity(comm.name);
+      if (mandiRate && mandiRate.price_per_kg > 0) {
+        sources.push({
+          source: `MetalMandi (${mandiRate.grade_name})`,
+          price: mandiRate.price_per_kg,
+          weight: 0.50,
+          confidence: 90,
+          freshness: 0.95,
+          timestamp: mandiRate.updated_at || nowIso,
+          region
+        });
+      }
+    } catch {}
 
-    // Calculate weighted price: Sum(price * weight * freshness) / Sum(weight * freshness)
+    // Calculate weighted price across actual resolving sources
     let totalWeightFreshness = 0;
     let weightedPriceSum = 0;
     let confidenceSum = 0;
     let freshnessSum = 0;
     let totalWeight = 0;
+
+    let dominantSource = sources[0].source;
+    let highestWeight = -1;
 
     for (const src of sources) {
       const factor = src.weight * src.freshness;
@@ -146,21 +113,49 @@ export const marketEngine = {
       confidenceSum += src.confidence * src.weight;
       freshnessSum += src.freshness * src.weight;
       totalWeight += src.weight;
+
+      if (src.weight > highestWeight) {
+        highestWeight = src.weight;
+        dominantSource = src.source;
+      }
     }
 
     let weightedPrice = safeRound(safeDivide(weightedPriceSum, totalWeightFreshness, dbPrice));
-    const overallConfidence = safeRound(safeDivide(confidenceSum, totalWeight, 80));
-    const overallFreshness = safeRound(safeDivide(freshnessSum, totalWeight, 0.8) * 100);
-
-    // Price floor enforcement — never go below commodity minimum
     if (weightedPrice <= 0) {
       weightedPrice = dbPrice;
     }
 
+    // Honest confidence calculation based on real source count and agreement
+    let rawConfidence = safeRound(safeDivide(confidenceSum, totalWeight, 60));
+    
+    // Confidence caps based on actual source availability:
+    // 1 source: max 60% confidence (no independent verification)
+    // 2 sources: max 80% confidence
+    // 3+ sources: max 95% confidence
+    let confidenceCap = 60;
+    if (sources.length === 2) confidenceCap = 80;
+    else if (sources.length >= 3) confidenceCap = 95;
+
+    let overallConfidence = Math.min(rawConfidence, confidenceCap);
+
+    // Penalty if sources disagree significantly (>15% price spread between min and max price)
+    if (sources.length > 1) {
+      const prices = sources.map(s => s.price);
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const spreadRatio = safeDivide(maxPrice - minPrice, minPrice, 0);
+      if (spreadRatio > 0.15) {
+        const penalty = Math.round(spreadRatio * 30);
+        overallConfidence = Math.max(30, overallConfidence - penalty);
+      }
+    }
+
+    const overallFreshness = safeRound(safeDivide(freshnessSum, totalWeight, 0.8) * 100);
+
     return {
       weightedPrice,
       sources,
-      dominantSource: 'MCX Spot Index',
+      dominantSource,
       freshness: overallFreshness,
       confidence: overallConfidence,
       basePrice: dbPrice
