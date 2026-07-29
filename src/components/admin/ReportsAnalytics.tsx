@@ -182,7 +182,7 @@ export function ReportsAnalytics() {
   const [exportMessage, setExportMessage] = useState<string | null>(null);
 
   // Tabs state
-  const [activeTab, setActiveTab] = useState<'overview' | 'location' | 'emd' | 'wallet'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'location'>('overview');
 
   // Location stats state
   const [locationStats, setLocationStats] = useState<{
@@ -194,13 +194,13 @@ export function ReportsAnalytics() {
   }>({ locations: [], historicalTotals: [], totalAuctions: 0, topRegion: 'N/A', dailyTrends: [] });
   const [isLoadingLocations, setIsLoadingLocations] = useState(true);
   const [locationSearchQuery, setLocationSearchQuery] = useState('');
+  const [selectedRegionName, setSelectedRegionName] = useState<string | null>(null);
+  const [locationCategoryFilter, setLocationCategoryFilter] = useState<string>('all');
 
   // Live reports data state
   const [liveReportData, setLiveReportData] = useState<{
-    subscriptions: any[];
     growth: any[];
   }>({
-    subscriptions: [],
     growth: []
   });
 
@@ -283,35 +283,18 @@ export function ReportsAnalytics() {
     }
 
     async function loadReportMetrics() {
-      // Fallback defaults for subscription tracking
-      let subscriptions = [
-        { date: '1', active: 400, trial: 640 },
-        { date: '5', active: 300, trial: 539 },
-        { date: '10', active: 500, trial: 780 },
-        { date: '15', active: 878, trial: 990 },
-        { date: '20', active: 689, trial: 880 },
-        { date: '25', active: 939, trial: 1180 },
-        { date: '30', active: 1149, trial: 1330 },
-      ];
-
-      let growth = [
-        { month: 'Jan', buyers: 400, sellers: 40 },
-        { month: 'Feb', buyers: 600, sellers: 55 },
-        { month: 'Mar', buyers: 900, sellers: 80 },
-        { month: 'Apr', buyers: 1200, sellers: 110 },
-        { month: 'May', buyers: 1600, sellers: 140 },
-        { month: 'Jun', buyers: 2100, sellers: 180 },
-      ];
+      let growth: { month: string; buyers: number; sellers: number }[] = [];
 
       try {
-        // 1. Fetch user growth from profiles
+        // Fetch user growth from profiles
         const { data: profiles } = await supabase
           .from('profiles')
           .select('created_at, role');
 
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const growthMap: Record<string, { buyers: number, sellers: number }> = {};
+
         if (profiles && profiles.length > 0) {
-          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          const growthMap: Record<string, { buyers: number, sellers: number }> = {};
           profiles.forEach(p => {
             if (p.created_at) {
               const date = new Date(p.created_at);
@@ -324,52 +307,26 @@ export function ReportsAnalytics() {
               }
             }
           });
-          const currentMonth = new Date().getMonth();
-          const last6Months = [];
-          for (let i = 5; i >= 0; i--) {
-            const mIdx = (currentMonth - i + 12) % 12;
-            const mName = months[mIdx];
-            const val = growthMap[mName] || { buyers: 0, sellers: 0 };
-            last6Months.push({
-              month: mName,
-              buyers: val.buyers + (i * 2) + 20,
-              sellers: val.sellers + i + 2
-            });
-          }
-          growth = last6Months;
         }
 
-        // 2. Fetch subscription monitoring placeholders (based on bid activities or signups)
-        const { data: realBids } = await supabase
-          .from('bids')
-          .select('amount, created_at, status');
-
-        if (realBids && realBids.length > 0) {
-          const revMap: Record<string, { active: number, trial: number }> = {};
-          realBids.forEach(b => {
-            if (b.created_at) {
-              const day = new Date(b.created_at).getDate().toString();
-              if (!revMap[day]) revMap[day] = { active: 0, trial: 0 };
-              if (b.status === 'winning' || b.status === 'won') {
-                revMap[day].active += Math.round(b.amount / 1000);
-              }
-              revMap[day].trial += Math.round((b.amount * 1.25) / 1000);
-            }
+        const currentMonth = new Date().getMonth();
+        const last6Months = [];
+        for (let i = 5; i >= 0; i--) {
+          const mIdx = (currentMonth - i + 12) % 12;
+          const mName = months[mIdx];
+          const val = growthMap[mName] || { buyers: 0, sellers: 0 };
+          last6Months.push({
+            month: mName,
+            buyers: val.buyers,
+            sellers: val.sellers
           });
-          const sortedDays = Object.keys(revMap).sort((a, b) => parseInt(a) - parseInt(b));
-          if (sortedDays.length > 0) {
-            subscriptions = sortedDays.map(day => ({
-              date: day,
-              active: Math.round(revMap[day].active),
-              trial: Math.round(revMap[day].trial)
-            }));
-          }
         }
+        growth = last6Months;
       } catch (err) {
-        console.error('Error fetching dashboard live data, using defaults', err);
+        console.error('Error fetching dashboard growth data', err);
       }
 
-      setLiveReportData({ subscriptions, growth });
+      setLiveReportData({ growth });
     }
 
     async function loadFinancialData() {
@@ -378,170 +335,16 @@ export function ReportsAnalytics() {
         const globalData = await adminService.getGlobalAnalytics();
         const finData = await adminService.getFinancialAnalytics();
 
-        // 1. Generate 30 days of mock timelines as base
-        const mockEmdTimeline = [];
-        const mockWalletTimeline = [];
-        const mockBidsTimeline = [];
-        const now = new Date();
-        for (let i = 29; i >= 0; i--) {
-          const date = new Date(now);
-          date.setDate(now.getDate() - i);
-          const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          
-          // EMD
-          mockEmdTimeline.push({
-            date: dateStr,
-            held: Math.round(50000 + Math.random() * 250000),
-            released: Math.round(30000 + Math.random() * 200000)
-          });
-          
-          // Wallet
-          mockWalletTimeline.push({
-            date: dateStr,
-            deposits: Math.round(80000 + Math.random() * 400000),
-            withdrawals: Math.round(40000 + Math.random() * 300000)
-          });
-          
-          // Bids
-          mockBidsTimeline.push({
-            date: dateStr,
-            count: Math.round(5 + Math.random() * 25),
-            volume: Math.round(200000 + Math.random() * 1500000)
-          });
-        }
-
-        const mockEmdTx = [
-          { id: '1', user_id: 'usr-9281', amount: 150000, status: 'held', transaction_reference: 'TXN-EMD-7821', payment_method: 'NetBanking', created_at: new Date(now.getTime() - 2 * 3600000).toISOString() },
-          { id: '2', user_id: 'usr-4122', amount: 50000, status: 'released', transaction_reference: 'TXN-EMD-1029', payment_method: 'UPI', created_at: new Date(now.getTime() - 5 * 3600000).toISOString() },
-          { id: '3', user_id: 'usr-0912', amount: 250000, status: 'held', transaction_reference: 'TXN-EMD-8829', payment_method: 'RTGS', created_at: new Date(now.getTime() - 12 * 3600000).toISOString() },
-          { id: '4', user_id: 'usr-7721', amount: 80000, status: 'refunded', transaction_reference: 'TXN-EMD-4410', payment_method: 'Card', created_at: new Date(now.getTime() - 24 * 3600000).toISOString() },
-          { id: '5', user_id: 'usr-3341', amount: 120000, status: 'held', transaction_reference: 'TXN-EMD-9011', payment_method: 'NetBanking', created_at: new Date(now.getTime() - 36 * 3600000).toISOString() }
-        ];
-
-        const mockWalletTx = [
-          { id: '1', user_id: 'usr-9281', amount: 500000, transaction_type: 'deposit', status: 'completed', reference_id: 'DEP-UPI-9921', description: 'Wallet top-up', created_at: new Date(now.getTime() - 1 * 3600000).toISOString(), profiles: { first_name: 'Rahul', last_name: 'Verma' } },
-          { id: '2', user_id: 'usr-2031', amount: 200000, transaction_type: 'withdrawal', status: 'completed', reference_id: 'WTH-NEFT-5512', description: 'Wallet withdrawal', created_at: new Date(now.getTime() - 4 * 3600000).toISOString(), profiles: { first_name: 'Priyanka', last_name: 'Sen' } },
-          { id: '3', user_id: 'usr-4122', amount: 150000, transaction_type: 'deposit', status: 'completed', reference_id: 'DEP-NET-8821', description: 'Wallet top-up', created_at: new Date(now.getTime() - 8 * 3600000).toISOString(), profiles: { first_name: 'Amit', last_name: 'Patel' } },
-          { id: '4', user_id: 'usr-0912', amount: 300000, transaction_type: 'deposit', status: 'completed', reference_id: 'DEP-RTGS-3310', description: 'Wallet top-up via RTGS', created_at: new Date(now.getTime() - 15 * 3600000).toISOString(), profiles: { first_name: 'Siddharth', last_name: 'Joshi' } },
-          { id: '5', user_id: 'usr-6771', amount: 100000, transaction_type: 'withdrawal', status: 'pending', reference_id: 'WTH-UPI-7711', description: 'Wallet withdrawal requested', created_at: new Date(now.getTime() - 20 * 3600000).toISOString(), profiles: { first_name: 'Karan', last_name: 'Mehta' } }
-        ];
-
-        const mockBids = [
-          { id: 'b-1', amount: 550000, status: 'won', created_at: new Date(now.getTime() - 2 * 3600000).toISOString(), bidder_id: 'usr-9281', profiles: { first_name: 'Aditya', last_name: 'Kumar' }, auctions: { title: 'Auction of MS Scrap (Heavy & Melting)' } },
-          { id: 'b-2', amount: 120000, status: 'lost', created_at: new Date(now.getTime() - 6 * 3600000).toISOString(), bidder_id: 'usr-2031', profiles: { first_name: 'Rahul', last_name: 'Sharma' }, auctions: { title: 'Electrical Scrap Cables & Transformer' } },
-          { id: 'b-3', amount: 350000, status: 'winning', created_at: new Date(now.getTime() - 10 * 3600000).toISOString(), bidder_id: 'usr-4122', profiles: { first_name: 'Amit', last_name: 'Patel' }, auctions: { title: 'Aluminium Spot and Wire Scrap Lot' } },
-          { id: 'b-4', amount: 720000, status: 'lost', created_at: new Date(now.getTime() - 18 * 3600000).toISOString(), bidder_id: 'usr-0912', profiles: { first_name: 'Vikas', last_name: 'Singh' }, auctions: { title: 'Old Car Engines & End of Life Vehicles' } },
-          { id: 'b-5', amount: 150000, status: 'won', created_at: new Date(now.getTime() - 28 * 3600000).toISOString(), bidder_id: 'usr-3341', profiles: { first_name: 'Suresh', last_name: 'Rao' }, auctions: { title: 'Industrial Copper Telewire Scrap' } }
-        ];
-
-        // Process actual database records if they exist
-        const hasEmd = finData.emdTransactions && finData.emdTransactions.length > 0;
-        const hasBids = finData.bids && finData.bids.length > 0;
-        const hasWallet = finData.walletTransactions && finData.walletTransactions.length > 0;
-
-        // EMD Aggregates (calculated from real catalog)
-        let emdHeld = finData.realEmdHeld || 0;
-        let emdVolume = finData.realEmdVolume || 0;
-
-        // Bid Aggregates
-        let totalBids = 0;
-        let avgBidAmount = 0;
-        let maxBidAmount = 0;
-        if (hasBids) {
-          totalBids = finData.bids.length;
-          let sum = 0;
-          finData.bids.forEach((b: any) => {
-            const amt = Number(b.amount || 0);
-            sum += amt;
-            if (amt > maxBidAmount) maxBidAmount = amt;
-          });
-          avgBidAmount = totalBids > 0 ? Math.round(sum / totalBids) : 0;
-        } else {
-          totalBids = 1248;
-          avgBidAmount = 245000;
-          maxBidAmount = 4500000;
-        }
-
-        // Wallet Aggregates
-        let totalDeposits = 0;
-        let totalWithdrawals = 0;
-        if (hasWallet) {
-          finData.walletTransactions.forEach((w: any) => {
-            const amt = Number(w.amount || 0);
-            if (w.transaction_type === 'deposit') {
-              totalDeposits += amt;
-            } else if (w.transaction_type === 'withdrawal') {
-              totalWithdrawals += amt;
-            }
-          });
-        } else {
-          totalDeposits = 1450000;
-          totalWithdrawals = 890000;
-        }
-        const walletFlow = totalDeposits - totalWithdrawals;
-
-        // Timeline processing
-        let emdTimeline = mockEmdTimeline;
-        let bidsTimeline = mockBidsTimeline;
-        let walletTimeline = mockWalletTimeline;
-
-        if (finData.realEmdVolume > 0) {
-          emdTimeline = mockEmdTimeline.map(item => {
-            const real = finData.emdTimelineRaw[item.date];
-            return real ? { date: item.date, held: real.held, released: real.released } : { date: item.date, held: 0, released: 0 };
-          });
-        }
-
-        if (hasBids) {
-          const bidsByDate: Record<string, { count: number, volume: number }> = {};
-          finData.bids.forEach((b: any) => {
-            const dateStr = new Date(b.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            if (!bidsByDate[dateStr]) bidsByDate[dateStr] = { count: 0, volume: 0 };
-            bidsByDate[dateStr].count += 1;
-            bidsByDate[dateStr].volume += Number(b.amount || 0);
-          });
-          bidsTimeline = mockBidsTimeline.map(item => {
-            const real = bidsByDate[item.date];
-            return real ? { date: item.date, count: real.count, volume: real.volume } : { date: item.date, count: 0, volume: 0 };
-          });
-        }
-
-        if (hasWallet) {
-          const walletByDate: Record<string, { deposits: number, withdrawals: number }> = {};
-          finData.walletTransactions.forEach((w: any) => {
-            const dateStr = new Date(w.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            if (!walletByDate[dateStr]) walletByDate[dateStr] = { deposits: 0, withdrawals: 0 };
-            if (w.transaction_type === 'deposit') {
-              walletByDate[dateStr].deposits += Number(w.amount || 0);
-            } else if (w.transaction_type === 'withdrawal') {
-              walletByDate[dateStr].withdrawals += Number(w.amount || 0);
-            }
-          });
-          walletTimeline = mockWalletTimeline.map(item => {
-            const real = walletByDate[item.date];
-            return real ? { date: item.date, deposits: real.deposits, withdrawals: real.withdrawals } : { date: item.date, deposits: 0, withdrawals: 0 };
-          });
-        }
-
         setFinancialData({
-          emdTransactions: finData.emdTransactions,
-          walletTransactions: hasWallet ? finData.walletTransactions : mockWalletTx,
-          bids: hasBids ? finData.bids : mockBids,
+          emdTransactions: finData.emdTransactions || [],
+          walletTransactions: finData.walletTransactions || [],
+          bids: finData.bids || [],
           summary: {
             totalUsers: globalData.totalUsers || 0,
             activeListings: globalData.activeListings || 0,
-            totalBids,
-            emdHeld,
-            emdVolume,
-            walletFlow,
-            totalDeposits,
-            totalWithdrawals,
-            avgBidAmount,
-            maxBidAmount
-          },
-          emdTimeline,
-          walletTimeline,
-          bidsTimeline
+            emdHeld: finData.realEmdHeld || 0,
+            emdVolume: finData.realEmdVolume || 0
+          }
         });
       } catch (err) {
         console.error('Failed loading financial analytics', err);
@@ -977,7 +780,7 @@ export function ReportsAnalytics() {
 
       {/* Tab Navigation */}
       <div className="flex border-b border-slate-200 gap-6 print:hidden overflow-x-auto">
-        {(['overview', 'location', 'emd', 'wallet'] as const).map((tab) => (
+        {(['overview', 'location'] as const).map((tab) => (
           <button
             key={tab}
             type="button"
@@ -990,7 +793,7 @@ export function ReportsAnalytics() {
             )}
           >
             {tab === 'location' && <MapPin className="w-4 h-4" />}
-            {tab === 'emd' ? 'EMD Ledger' : tab === 'wallet' ? 'Wallet Ledger' : tab === 'location' ? 'Location Analytics' : tab}
+            {tab === 'location' ? 'Location Analytics' : 'Overview'}
           </button>
         ))}
       </div>
@@ -1400,56 +1203,23 @@ export function ReportsAnalytics() {
             )}
           </div>
 
-          {/* Lower Grid: Subscriptions & Growth Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Subscription Trends */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-                <TrendingUp className="w-5 h-5 mr-2 text-indigo-500" /> Platform Subscriptions
-              </h3>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={liveReportData.subscriptions} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorTrial" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                    <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                    <Tooltip />
-                    <Legend />
-                    <Area type="monotone" dataKey="trial" stroke="#94a3b8" fillOpacity={1} fill="url(#colorTrial)" name="Trial Signups" />
-                    <Area type="monotone" dataKey="active" stroke="#2563eb" fillOpacity={1} fill="url(#colorActive)" name="Active Subscriptions" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Platform Registration Growth */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-                <Users className="w-5 h-5 mr-2 text-purple-500" /> Platform Registration Growth
-              </h3>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={liveReportData.growth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="month" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                    <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                    <Tooltip cursor={{fill: '#f1f5f9'}} />
-                    <Legend />
-                    <Bar dataKey="buyers" fill="#3b82f6" name="New Buyers" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="sellers" fill="#8b5cf6" name="New Sellers" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+          {/* Platform Registration Growth Chart */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
+              <Users className="w-5 h-5 mr-2 text-purple-500" /> Platform Registration Growth
+            </h3>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={liveReportData.growth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="month" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                  <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                  <Tooltip cursor={{fill: '#f1f5f9'}} />
+                  <Legend />
+                  <Bar dataKey="buyers" fill="#3b82f6" name="New Buyers" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="sellers" fill="#8b5cf6" name="New Sellers" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -1776,6 +1546,79 @@ export function ReportsAnalytics() {
             </div>
           </div>
 
+          {/* Regional Deep-Dive Inspector Panel */}
+          {(() => {
+            const currentSelected = locationStats.locations.find(l => l.location === selectedRegionName) || locationStats.locations[0];
+            if (!currentSelected) return null;
+            return (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-bold rounded-lg uppercase tracking-wider">Region Inspector</span>
+                      <h3 className="text-xl font-extrabold text-slate-900">{currentSelected.state || currentSelected.location}</h3>
+                    </div>
+                    <p className="text-slate-500 text-xs mt-1">HQ / District: <span className="font-semibold text-slate-700">{currentSelected.district || currentSelected.location}</span></p>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs font-bold text-slate-500">Select Region:</label>
+                    <select
+                      value={currentSelected.location}
+                      onChange={(e) => setSelectedRegionName(e.target.value)}
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-primary/50 transition-all cursor-pointer"
+                    >
+                      {locationStats.locations.map(loc => (
+                        <option key={loc.location} value={loc.location}>
+                          {loc.state || loc.location} ({loc.district || loc.location}) - {loc.count} items
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p className="text-xs font-bold text-slate-400 uppercase">Auctions Count</p>
+                    <p className="text-xl font-black text-slate-900 mt-1">{currentSelected.count.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p className="text-xs font-bold text-slate-400 uppercase">National Share</p>
+                    <p className="text-xl font-black text-primary mt-1">{currentSelected.percentage}%</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p className="text-xs font-bold text-slate-400 uppercase">Primary Category</p>
+                    <p className="text-sm font-bold text-slate-800 mt-1 truncate" title={currentSelected.topCategory}>{currentSelected.topCategory}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p className="text-xs font-bold text-slate-400 uppercase">Categories Count</p>
+                    <p className="text-xl font-black text-slate-900 mt-1">{currentSelected.categories?.length || 0}</p>
+                  </div>
+                </div>
+
+                {/* Region Category Breakdown Bar Chart */}
+                {currentSelected.categories && currentSelected.categories.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-primary" /> Category Distribution in {currentSelected.state || currentSelected.location}
+                    </h4>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={currentSelected.categories.slice(0, 8)} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                          <XAxis dataKey="name" tick={{fontSize: 10, fill: '#64748b'}} interval={0} angle={-15} textAnchor="end" tickLine={false} axisLine={false} />
+                          <YAxis tick={{fontSize: 11, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                          <Tooltip cursor={{fill: '#f1f5f9'}} />
+                          <Bar dataKey="count" name="Auctions" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Location Visualizations Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Bar Chart: Auctions by Location */}
@@ -1845,7 +1688,7 @@ export function ReportsAnalytics() {
                 </h3>
                 <p className="text-slate-500 text-xs mt-0.5">Origin breakdown of all scrap auctions processed across India.</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <input
@@ -1856,6 +1699,18 @@ export function ReportsAnalytics() {
                     className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
+
+                <select
+                  value={locationCategoryFilter}
+                  onChange={(e) => setLocationCategoryFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-primary/50 transition-all cursor-pointer"
+                >
+                  <option value="all">All Primary Categories</option>
+                  {Array.from(new Set(locationStats.locations.map(l => l.topCategory))).filter(Boolean).map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+
                 <button
                   type="button"
                   onClick={downloadLocationCSV}
@@ -1876,13 +1731,25 @@ export function ReportsAnalytics() {
                     <th className="px-6 py-4 font-bold text-center">Share of Total</th>
                     <th className="px-6 py-4 font-bold">Primary Category</th>
                     <th className="px-6 py-4 font-bold">Distribution Bar</th>
+                    <th className="px-6 py-4 font-bold text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm font-semibold text-slate-700">
                   {locationStats.locations
-                    .filter(loc => (loc.state || loc.location).toLowerCase().includes(locationSearchQuery.toLowerCase()) || (loc.district || '').toLowerCase().includes(locationSearchQuery.toLowerCase()))
+                    .filter(loc => {
+                      const matchesSearch = (loc.state || loc.location).toLowerCase().includes(locationSearchQuery.toLowerCase()) || (loc.district || '').toLowerCase().includes(locationSearchQuery.toLowerCase());
+                      const matchesCategory = locationCategoryFilter === 'all' || loc.topCategory === locationCategoryFilter;
+                      return matchesSearch && matchesCategory;
+                    })
                     .map((loc) => (
-                      <tr key={loc.location} className="hover:bg-slate-50/70 transition-colors">
+                      <tr 
+                        key={loc.location} 
+                        onClick={() => setSelectedRegionName(loc.location)}
+                        className={clsx(
+                          "hover:bg-slate-50/70 transition-colors cursor-pointer",
+                          selectedRegionName === loc.location && "bg-blue-50/50"
+                        )}
+                      >
                         <td className="px-6 py-4 font-bold text-slate-900 flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-primary shrink-0" />
                           {loc.state || loc.location}
@@ -1909,295 +1776,21 @@ export function ReportsAnalytics() {
                             />
                           </div>
                         </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedRegionName(loc.location);
+                              window.scrollTo({ top: 400, behavior: 'smooth' });
+                            }}
+                            className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer select-none"
+                          >
+                            Inspect
+                          </button>
+                        </td>
                       </tr>
                     ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'emd' && (
-        <div className="space-y-6 animate-fade-in">
-          {/* KPI Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                <DollarSign className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total EMD Volume</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.emdVolume.toLocaleString()}</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <Lock className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">EMD Currently Held</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.emdHeld.toLocaleString()}</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <Unlock className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">EMD Released</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{(financialData.summary.emdVolume - financialData.summary.emdHeld).toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Chart: EMD Timeline */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-indigo-500" /> EMD Hold vs Release Timeline
-            </h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={financialData.emdTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorHeld" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f59e0b" stopOpacity="0.3"/>
-                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorReleased" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity="0.3"/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                  <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                  <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, undefined]} />
-                  <Legend />
-                  <Area type="monotone" dataKey="held" stroke="#f59e0b" fillOpacity={1} fill="url(#colorHeld)" name="EMD Held" strokeWidth={2} />
-                  <Area type="monotone" dataKey="released" stroke="#10b981" fillOpacity={1} fill="url(#colorReleased)" name="EMD Released" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* EMD Transactions Table */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
-            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-primary" /> EMD Transaction Ledger
-              </h3>
-              <button
-                type="button"
-                onClick={downloadEmdCSV}
-                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-lg flex items-center gap-2 transition-colors cursor-pointer select-none"
-              >
-                <Download className="w-4 h-4" /> Download CSV
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-550 font-bold">
-                    <th className="px-6 py-4 font-bold">Transaction Reference</th>
-                    <th className="px-6 py-4 font-bold">User Context</th>
-                    <th className="px-6 py-4 font-bold">Category</th>
-                    <th className="px-6 py-4 font-bold text-right">Amount</th>
-                    <th className="px-6 py-4 font-bold text-center">EMD %</th>
-                    <th className="px-6 py-4 font-bold text-center">Status</th>
-                    <th className="px-6 py-4 font-bold">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
-                  {financialData.emdTransactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-10 text-center text-slate-500 font-semibold">
-                        No EMD transactions found.
-                      </td>
-                    </tr>
-                  ) : (
-                    financialData.emdTransactions.slice(0, 100).map((tx: any) => {
-                      const userName = tx.profiles ? `${tx.profiles.first_name || ''} ${tx.profiles.last_name || ''}`.trim() : tx.user_id || 'N/A';
-                      return (
-                        <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 font-mono text-[11px] text-slate-600 font-bold">
-                            {tx.transaction_reference || 'N/A'}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-slate-800 font-bold">{userName}</div>
-                            <div className="text-[10px] text-slate-400 font-normal truncate max-w-[120px]">{tx.user_id}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="bg-slate-100 px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-600 uppercase">
-                              {tx.category_name || 'General'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right text-slate-900 font-black text-sm">
-                            ₹{Number(tx.amount || 0).toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 text-center font-mono text-[11px] text-slate-500">
-                            {tx.emd_pct !== undefined ? `${tx.emd_pct}%` : 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={clsx(
-                              "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase",
-                              tx.status === 'held' ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                              tx.status === 'released' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                              "bg-slate-50 text-slate-650 border border-slate-200"
-                            )}>
-                              {tx.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-slate-500 font-medium whitespace-nowrap">
-                            {new Date(tx.created_at).toLocaleString()}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'wallet' && (
-        <div className="space-y-6 animate-fade-in">
-          {/* KPI Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Deposits</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.totalDeposits.toLocaleString()}</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
-                <Activity className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Withdrawals</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.totalWithdrawals.toLocaleString()}</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <DollarSign className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Net Wallet Flow</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{financialData.summary.walletFlow.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Chart: Wallet Timeline */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-primary" /> Wallet Deposit vs Withdrawal Flow
-            </h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={financialData.walletTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                  <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
-                  <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, undefined]} cursor={{fill: '#f8fafc'}} />
-                  <Legend />
-                  <Bar dataKey="deposits" fill="#3b82f6" name="Deposits" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="withdrawals" fill="#ef4444" name="Withdrawals" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Wallet Transactions Table */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
-            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-primary" /> Wallet Ledger Log
-              </h3>
-              <button
-                type="button"
-                onClick={downloadWalletCSV}
-                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-lg flex items-center gap-2 transition-colors cursor-pointer select-none"
-              >
-                <Download className="w-4 h-4" /> Download CSV
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-550 font-bold">
-                    <th className="px-6 py-4 font-bold">Transaction ID</th>
-                    <th className="px-6 py-4 font-bold">User Name</th>
-                    <th className="px-6 py-4 font-bold">Type</th>
-                    <th className="px-6 py-4 font-bold text-right">Amount</th>
-                    <th className="px-6 py-4 font-bold text-center">Status</th>
-                    <th className="px-6 py-4 font-bold">Reference / Description</th>
-                    <th className="px-6 py-4 font-bold">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
-                  {financialData.walletTransactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-10 text-center text-slate-500 font-semibold">
-                        No wallet transactions found.
-                      </td>
-                    </tr>
-                  ) : (
-                    financialData.walletTransactions.slice(0, 100).map((tx: any) => {
-                      const userName = tx.profiles ? `${tx.profiles.first_name || ''} ${tx.profiles.last_name || ''}`.trim() : tx.user_id || 'N/A';
-                      return (
-                        <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 font-mono text-[11px] text-slate-500">
-                            {tx.id}
-                          </td>
-                          <td className="px-6 py-4 text-slate-800 font-bold">
-                            {userName}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={clsx(
-                              "px-2.5 py-0.5 rounded text-[10px] font-bold uppercase",
-                              tx.transaction_type === 'deposit' ? "bg-blue-50 text-blue-700 border border-blue-100" :
-                              tx.transaction_type === 'withdrawal' ? "bg-red-50 text-red-700 border border-red-100" :
-                              "bg-slate-100 text-slate-700"
-                            )}>
-                              {tx.transaction_type}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right text-slate-900 font-black text-sm">
-                            ₹{Number(tx.amount || 0).toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={clsx(
-                              "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
-                              tx.status === 'completed' ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"
-                            )}>
-                              {tx.status || 'completed'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-slate-600">
-                            <div className="font-semibold">{tx.description || 'Wallet transaction'}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">{tx.reference_id}</div>
-                          </td>
-                          <td className="px-6 py-4 text-slate-500 font-medium whitespace-nowrap">
-                            {new Date(tx.created_at).toLocaleString()}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
                 </tbody>
               </table>
             </div>
