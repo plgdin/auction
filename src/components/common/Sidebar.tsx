@@ -47,7 +47,7 @@ export function Sidebar() {
     { name: 'Blog Manager', id: 'blogs', icon: FileText },
     { name: 'User Management', id: 'users', icon: Users },
     { name: 'System Announcements', id: 'system', icon: Megaphone },
-    { name: 'Contact Messages', id: 'messages', icon: Mail },
+    { name: 'Customer Support', id: 'messages', icon: Mail },
   ];
 
   const handleLogout = async () => {
@@ -256,10 +256,11 @@ export function Sidebar() {
 
       {/* Slide-out Drawer (When menu toggled on mobile, tablet, laptop, PC) */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-[100] flex">
+        <div className="fixed inset-0 z-[100] flex" role="dialog" aria-modal="true" aria-label="Navigation Menu Drawer">
           <div 
             className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs animate-fade-in cursor-pointer" 
             onClick={toggleSidebar} 
+            aria-hidden="true"
           />
           <aside className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-300">
             {sidebarContent}
