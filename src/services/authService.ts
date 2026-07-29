@@ -52,6 +52,19 @@ export const authService = {
     return data;
   },
 
+  async signInWithIdToken(idToken: string) {
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'google',
+      token: idToken,
+    });
+    if (error) throw error;
+    if (data.user) {
+      const { logUserActivity } = await import('./auditService');
+      await logUserActivity('user_login', 'profile', data.user.id, { email: data.user.email || 'google-oauth' });
+    }
+    return data;
+  },
+
   async signOut() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
