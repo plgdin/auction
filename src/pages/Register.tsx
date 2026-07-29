@@ -1,7 +1,21 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useAuthStore } from '../store/authStore';
 import { RegisterForm } from '../components/forms/RegisterForm';
 
 export function Register() {
+  const navigate = useNavigate();
+  const { isAuthenticated, profile } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated && profile) {
+      if (profile.role === 'admin' || profile.role === 'superadmin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [isAuthenticated, profile, navigate]);
   return (
     <div className="space-y-5">
       <div className="space-y-1.5 text-center md:text-left">

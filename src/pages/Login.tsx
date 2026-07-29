@@ -1,9 +1,23 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useAuthStore } from '../store/authStore';
 import { LoginForm } from '../components/forms/LoginForm';
 
 export function Login() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated, profile } = useAuthStore();
   const isAdminLogin = location.pathname.includes('adminlogin');
+
+  useEffect(() => {
+    if (isAuthenticated && profile) {
+      if (profile.role === 'admin' || profile.role === 'superadmin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [isAuthenticated, profile, navigate]);
 
   return (
     <div className="space-y-5">
