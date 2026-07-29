@@ -1,4 +1,5 @@
 import { matchCommodity } from '../valuationService';
+import { marketPriceService } from '../marketPriceService';
 import { detectModelId } from '../../utils/metalValuationModels';
 import { currencyEngine } from './currencyEngine';
 import { costEngine } from './costEngine';
@@ -8,6 +9,7 @@ import { riskEngine } from './riskEngine';
 import { biddingEngine } from './biddingEngine';
 import { simulationEngine } from './simulationEngine';
 import { recommendationEngine } from './recommendationEngine';
+import { safeRound, safeDivide, validateAndSanitizeItems, validateAndSanitizeCosts } from './inputValidator';
 import type { ValuationCosts, ValuationOutput, ValuationItem } from './types';
 
 // Logistics discount helper matching original valuationService logic
@@ -106,22 +108,77 @@ function getDefaultWeightPerUnit(commodityName: string, modelId: string | null):
   return 100;
 }
 
+/** Creates a safe zero-value output when the pipeline encounters a catastrophic error */
+function createEmptyOutput(costs: ValuationCosts): ValuationOutput {
+  return {
+    items: [],
+    totalLotValue: 0,
+    totalCost: 0,
+    estimatedProfit: 0,
+    roiPercent: 0,
+    breakEven: 0,
+    costs,
+    risk: { score: 50, level: 'Medium Risk', breakdown: { priceVolatility: 50, marketTrend: 50, sellerReliability: 50, ocrConfidence: 50, photoQuality: 50, historicalError: 50, inspectionAvailable: 50, categoryRisk: 50, transportRisk: 50, environmentalRisk: 50 }, reasoning: ['Insufficient data for risk assessment.'] },
+    confidence: { overallScore: 0, breakdown: { ocr: 0, image: 0, weight: 0, material: 0, market: 0, seller: 0, history: 0, description: 0 } },
+    recommendation: { status: 'Watch', reasoning: ['Unable to compute valuation — data may be incomplete.'] },
+    bidding: { idealBid: 0, maxBid: 0, walkAwayPrice: 0, conservativeBid: 0, aggressiveBid: 0 },
+    simulation: { expectedRoi: 0, worstRoi: 0, bestRoi: 0, chanceOfProfit: 0 },
+    metadata: { calculatedAt: new Date().toISOString(), version: '2.1.0' },
+    riskAnalysis: { dataConfidence: 0, pricingConfidence: 0, overallConfidence: 0, riskLevel: 'Medium Risk', reasoning: 'Insufficient data.' },
+    recommendationReasoning: 'Unable to compute valuation.',
+    internationalTotals: { in: 0, us: 0, uk: 0 }
+  };
+}
+
 export const valuationPipeline = {
   executeSync(
-    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string }[],
+    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string; ocrConfidence?: number }[],
     costs: ValuationCosts,
     hasImages: boolean = false,
     location?: string
   ): ValuationOutput {
+    try {
+      return this._executeSyncCore(rawItems, costs, hasImages, location);
+    } catch (err) {
+      console.error('[ValuationPipeline] Catastrophic failure, returning safe empty output:', err);
+      return createEmptyOutput(costs);
+    }
+  },
+
+  /** Core pipeline logic — separated so the try/catch wrapper stays clean */
+  _executeSyncCore(
+    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string; ocrConfidence?: number }[],
+    costs: ValuationCosts,
+    hasImages: boolean = false,
+    location?: string
+  ): ValuationOutput {
+    // Validate and sanitize inputs
+    const { items: sanitizedItems } = validateAndSanitizeItems(rawItems);
+    const sanitizedCosts = validateAndSanitizeCosts(costs);
+
     const valuedItems: ValuationItem[] = [];
     let totalLotValue = 0;
     
     // Track indicators to compute confidence and risk
-    let totalOcrConfidence = 0;
+    let totalPricingConfidenceSum = 0;
+    let totalExtractedOcrConfidenceSum = 0;
+    let itemsWithOcrCount = 0;
     let validItemsCount = 0;
     let containsUnserviceable = false;
+    let maxSourcesCount = 1;
+    let primaryCategory = 'Metals';
+    let longestDescLen = 0;
 
-    for (const rawItem of rawItems) {
+    for (const rawItem of sanitizedItems) {
+      if ((rawItem.description || '').length > longestDescLen) {
+        longestDescLen = (rawItem.description || '').length;
+      }
+
+      if (rawItem.ocrConfidence !== undefined && rawItem.ocrConfidence > 0) {
+        totalExtractedOcrConfidenceSum += rawItem.ocrConfidence;
+        itemsWithOcrCount++;
+      }
+
       // 1. Parse quantity & unit conversion
       const qtyStr = rawItem.qty || '1';
       const parts = qtyStr.split('+');
@@ -129,6 +186,8 @@ export const valuationPipeline = {
       let totalBaseQty = 0;
 
       const comm = matchCommodity(rawItem.description);
+      const commConfig = marketPriceService.getCommodityPrices().find(c => c.id === comm.name);
+      if (commConfig?.category) primaryCategory = commConfig.category;
       const isPerKg = comm.basePricePerKg !== undefined;
 
       for (const part of parts) {
@@ -266,6 +325,10 @@ export const valuationPipeline = {
         priceSource = marketRes.dominantSource;
         sourcesCount = marketRes.sources?.length || 1;
 
+        if (sourcesCount > maxSourcesCount) {
+          maxSourcesCount = sourcesCount;
+        }
+
         // Apply location logistical premium/discount
         const reg = getRegionalMultiplier(location);
         if (reg.multiplier !== 1.0) {
@@ -274,14 +337,14 @@ export const valuationPipeline = {
         }
       }
 
-      const itemTotalValue = Math.round(avgPrice * baseQty);
-      const itemUnitValue = Math.round(avgPrice * (baseQty / qty));
+      const itemTotalValue = safeRound(avgPrice * baseQty);
+      const itemUnitValue = safeRound(avgPrice * safeDivide(baseQty, qty, 1));
 
       // Calculate international conversions using standard currency conversions
-      const usdUnit = Math.round(currencyEngine.convert(itemUnitValue * 0.95, 'INR', 'USD'));
-      const usdTotal = Math.round(currencyEngine.convert(itemTotalValue * 0.95, 'INR', 'USD'));
-      const gbpUnit = Math.round(currencyEngine.convert(itemUnitValue * 0.90, 'INR', 'GBP'));
-      const gbpTotal = Math.round(currencyEngine.convert(itemTotalValue * 0.90, 'INR', 'GBP'));
+      const usdUnit = safeRound(currencyEngine.convert(itemUnitValue * 0.95, 'INR', 'USD'));
+      const usdTotal = safeRound(currencyEngine.convert(itemTotalValue * 0.95, 'INR', 'USD'));
+      const gbpUnit = safeRound(currencyEngine.convert(itemUnitValue * 0.90, 'INR', 'GBP'));
+      const gbpTotal = safeRound(currencyEngine.convert(itemTotalValue * 0.90, 'INR', 'GBP'));
 
       valuedItems.push({
         name: rawItem.description,
@@ -298,70 +361,85 @@ export const valuationPipeline = {
       });
 
       totalLotValue += itemTotalValue;
-      totalOcrConfidence += pricingConfidence;
+      totalPricingConfidenceSum += pricingConfidence;
       validItemsCount++;
     }
 
-    totalLotValue = Math.round(totalLotValue);
-    const avgPricingConfidence = validItemsCount > 0 ? Math.round(totalOcrConfidence / validItemsCount) : 50;
+    totalLotValue = safeRound(totalLotValue);
+    const avgPricingConfidence = validItemsCount > 0 ? safeRound(safeDivide(totalPricingConfidenceSum, validItemsCount, 50)) : 50;
+
+    // Calculate actual OCR confidence (from real Tesseract confidence extracted per item, or default)
+    const actualOcrConfidence = itemsWithOcrCount > 0
+      ? safeRound(safeDivide(totalExtractedOcrConfidenceSum, itemsWithOcrCount, 80))
+      : (validItemsCount > 0 ? 80 : 40);
 
     // 4. Calculate total costs and taxes using Cost Engine
-    const costResult = costEngine.calculateCosts(costs);
+    const costResult = costEngine.calculateCosts(sanitizedCosts);
     const totalCost = costResult.totalCost;
     const estimatedProfit = totalLotValue > 0 ? totalLotValue - totalCost : 0;
-    const roiPercent = totalLotValue > 0 && totalCost > 0 ? Math.round((estimatedProfit / totalCost) * 100) : 0;
+    const roiPercent = totalLotValue > 0 && totalCost > 0 ? safeRound(safeDivide(estimatedProfit, totalCost, 0) * 100) : 0;
     
     // Calculate mathematical break-even
-    const breakEven = costEngine.calculateBreakEven(totalLotValue, costs);
+    const breakEven = costEngine.calculateBreakEven(totalLotValue, sanitizedCosts);
 
-    // 5. Evaluate overall confidence score via Confidence Engine
+    // Derive category baseline risk
+    let categoryRiskScore = 25; // Metals
+    if (primaryCategory === 'Agriculture' || primaryCategory === 'Energy') categoryRiskScore = 35;
+    else if (primaryCategory === 'Vehicles') categoryRiskScore = 45;
+    else if (primaryCategory === 'Electronics') categoryRiskScore = 55;
+    else if (primaryCategory === 'Property' || primaryCategory === 'Others') categoryRiskScore = 60;
+
+    const descConfidence = longestDescLen > 100 ? 75 : longestDescLen > 30 ? 55 : 35;
+
+    // 5. Evaluate overall confidence score via Confidence Engine (honest assumptions + actual OCR confidence)
     const confidenceResult = confidenceEngine.calculateConfidence({
-      ocr: validItemsCount > 0 ? 95 : 50,
-      image: hasImages ? 92 : 55,
-      weight: 85,
-      material: 90,
-      market: avgPricingConfidence,
-      seller: 88,
-      history: 80,
-      description: 85
+      ocr: actualOcrConfidence,
+      image: hasImages ? 85 : 45,
+      weight: 50, // assumed: no weight sensor signal
+      material: 50, // assumed: keyword-based matching
+      market: avgPricingConfidence, // honest, from market engine
+      seller: 50, // assumed: no seller history table yet
+      history: 50, // assumed baseline
+      description: descConfidence
     });
 
-    // 6. Evaluate risk rating via Risk Engine
+    // 6. Evaluate risk rating via Risk Engine (honest assumptions + actual OCR confidence)
     const riskResult = riskEngine.calculateRisk({
-      priceVolatility: containsUnserviceable ? 60 : 35,
+      priceVolatility: containsUnserviceable ? 65 : 35,
       marketTrend: 'flat',
-      sellerReliability: 88,
-      ocrConfidence: 95,
-      photoQuality: hasImages ? 90 : 50,
-      historicalError: 15,
-      inspectionAvailable: true,
-      categoryRisk: 30,
+      sellerReliability: 50, // assumed baseline
+      ocrConfidence: actualOcrConfidence,
+      photoQuality: hasImages ? 85 : 45,
+      historicalError: 35, // assumed baseline error
+      inspectionAvailable: false, // assumed worst case (not inspected)
+      categoryRisk: categoryRiskScore,
       transportRisk: location && location.length > 15 ? 45 : 20,
-      environmentalRisk: containsUnserviceable ? 40 : 15
+      environmentalRisk: containsUnserviceable ? 50 : 15
     });
 
     // 7. Run Monte Carlo simulation via Simulation Engine
-    const simulationResult = simulationEngine.runSimulation(totalLotValue, costs);
+    const simulationResult = simulationEngine.runSimulation(totalLotValue, sanitizedCosts);
 
-    // 8. Generate recommendations via Recommendation Engine
+    // 8. Generate recommendations via Recommendation Engine (with source count & confidence gates)
     const recommendationResult = recommendationEngine.generateRecommendation({
       roiPercent,
       riskLevel: riskResult.level,
       riskScore: riskResult.score,
       overallConfidence: confidenceResult.overallScore,
       marketTrend: 'flat',
-      currentBid: costs.currentBid || 0,
-      totalLotValue
+      currentBid: sanitizedCosts.currentBid,
+      totalLotValue,
+      sourceCount: maxSourcesCount
     });
 
     // 9. Generate bidding strategies via Bidding Engine
-    const biddingResult = biddingEngine.generateBidRecommendations(totalLotValue, costs);
+    const biddingResult = biddingEngine.generateBidRecommendations(totalLotValue, sanitizedCosts);
 
     // 10. Assemble structured output payload
     const internationalTotals = {
       in: totalLotValue,
-      us: Math.round(currencyEngine.convert(totalLotValue * 0.95, 'INR', 'USD')),
-      uk: Math.round(currencyEngine.convert(totalLotValue * 0.90, 'INR', 'GBP'))
+      us: safeRound(currencyEngine.convert(totalLotValue * 0.95, 'INR', 'USD')),
+      uk: safeRound(currencyEngine.convert(totalLotValue * 0.90, 'INR', 'GBP'))
     };
 
     return {
@@ -372,7 +450,7 @@ export const valuationPipeline = {
       roiPercent,
       breakEven,
       costs: {
-        ...costs,
+        ...sanitizedCosts,
         gstAmount: costResult.gstAmount,
         tcsAmount: costResult.tcsAmount
       },
@@ -383,10 +461,9 @@ export const valuationPipeline = {
       simulation: simulationResult,
       metadata: {
         calculatedAt: new Date().toISOString(),
-        version: '2.0.0'
+        version: '2.1.0'
       },
-      // Keep support for legacy consumers/modal mapping
-      // @ts-ignore
+      // Legacy compatibility fields — properly typed, no @ts-ignore needed
       riskAnalysis: {
         dataConfidence: confidenceResult.breakdown.ocr,
         pricingConfidence: confidenceResult.breakdown.market,
@@ -394,9 +471,7 @@ export const valuationPipeline = {
         riskLevel: riskResult.level,
         reasoning: riskResult.reasoning.join(' ')
       },
-      // @ts-ignore
       recommendationReasoning: recommendationResult.reasoning.join('. '),
-      // @ts-ignore
       internationalTotals
     };
   },

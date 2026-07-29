@@ -1,6 +1,7 @@
 import type { ValuationCosts } from './types';
 import { BID_MARGINS } from './roiConfig';
 import { costEngine } from './costEngine';
+import { safeRound, safeDivide } from './inputValidator';
 
 export interface ValuationBidding {
   idealBid: number;
@@ -12,8 +13,9 @@ export interface ValuationBidding {
 
 export const biddingEngine = {
   /**
-   * Generates bid levels targeting specific ROIs based on lot value and other expenses
+   * Generates bid levels targeting specific ROIs based on lot value and other expenses.
    * Formula: Bid = ( (LotValue / (1 + ROI/100)) - OtherExpenses ) / taxMultiplier
+   * All outputs are guaranteed to be non-negative finite integers.
    */
   generateBidRecommendations(totalLotValue: number, costs: ValuationCosts): ValuationBidding {
     const gstPercent = costs.gstPercent !== undefined ? costs.gstPercent : 18;
@@ -27,16 +29,19 @@ export const biddingEngine = {
     const { otherExpenses } = costEngine.calculateCosts(costs);
 
     const calculateBidForRoi = (targetRoi: number): number => {
-      if (totalLotValue <= otherExpenses) {
+      // Data-poor / unpriceable lot case or expenses exceed lot value case
+      if (totalLotValue <= 0 || totalLotValue <= otherExpenses) {
         return 0;
       }
-      const bid = ((totalLotValue / (1 + targetRoi / 100)) - otherExpenses) / taxMultiplier;
-      return Math.round(Math.max(0, bid));
+      const roiDivisor = 1 + targetRoi / 100;
+      const costLimit = safeDivide(totalLotValue, roiDivisor, totalLotValue);
+      const bid = safeDivide(costLimit - otherExpenses, taxMultiplier, 0);
+      return safeRound(Math.max(0, bid));
     };
 
     // Generate specific target bids
     const walkAwayPrice = calculateBidForRoi(0); // Break-even (0% ROI)
-    const maxBid = calculateBidForRoi(BID_MARGINS.maxRoiPercent); // Maximum bid to secure at least 10% ROI
+    const maxBid = calculateBidForRoi(BID_MARGINS.minAcceptableRoiPercent); // Maximum bid to secure at least 10% minimum target ROI
     const idealBid = calculateBidForRoi(BID_MARGINS.idealRoiPercent); // Bid for 25% target ROI
     const conservativeBid = calculateBidForRoi(BID_MARGINS.conservativeRoiPercent); // Bid for 40% target ROI
     const aggressiveBid = calculateBidForRoi(BID_MARGINS.aggressiveRoiPercent); // Bid for 15% target ROI
@@ -50,3 +55,4 @@ export const biddingEngine = {
     };
   }
 };
+

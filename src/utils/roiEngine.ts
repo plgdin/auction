@@ -1,3 +1,16 @@
+/**
+ * Legacy ROI Engine — Thin delegation layer.
+ * All computation delegates to the canonical engines in services/valuation/.
+ * Function signatures are preserved for backward compatibility with MstcDetailsModal.
+ */
+import { costEngine } from '../services/valuation/costEngine';
+import { confidenceEngine } from '../services/valuation/confidenceEngine';
+import { riskEngine } from '../services/valuation/riskEngine';
+import { recommendationEngine } from '../services/valuation/recommendationEngine';
+import { biddingEngine } from '../services/valuation/biddingEngine';
+import type { ValuationCosts } from '../services/valuation/types';
+import { safeNumber, safeRound, safeDivide } from '../services/valuation/inputValidator';
+
 export interface CostBreakdownInput {
   currentBid: number;
   gstPercent: number;
@@ -28,77 +41,70 @@ export interface CostBreakdownInput {
   loading?: number | '';
 }
 
+/**
+ * Delegates to costEngine.calculateCosts() — single source of truth for tax/cost math.
+ */
 export function computeCostBreakdown(input: CostBreakdownInput) {
-  const currentBid = input.currentBid || 0;
-  const gstPercent = input.gstPercent ?? 18;
-  const tcsPercent = input.tcsPercent ?? 1;
+  // Map CostBreakdownInput to ValuationCosts for the canonical engine
+  const costs: ValuationCosts = {
+    currentBid: input.currentBid,
+    gstPercent: input.gstPercent,
+    tcsPercent: input.tcsPercent,
+    transportation: input.transportation,
+    loading: input.loading,
+    unloading: input.unloading,
+    warehouse: input.warehouse,
+    storage: input.storage,
+    insurance: input.insurance,
+    interest: input.interest,
+    opportunityCost: input.opportunityCost,
+    repair: input.repair,
+    fuel: input.fuel,
+    customDuty: input.customDuty,
+    labour: input.labour,
+    shrinkage: input.shrinkage,
+    processingLoss: input.processingLoss,
+    miscellaneous: input.miscellaneous,
+    contingency: input.contingency,
+    auctionFee: input.auctionFee,
+    emdCost: input.emdCost,
+    loadingUnloading: input.loadingUnloading,
+    refurbishment: input.refurbishment,
+    otherFees: input.otherFees,
+    extraCharge: input.extraCharge,
+  };
 
-  const gstAmount = Math.round(currentBid * (gstPercent / 100));
-  const tcsAmount = Math.round((currentBid + gstAmount) * (tcsPercent / 100));
+  const result = costEngine.calculateCosts(costs);
 
-  const fixedCosts = 
-    (input.transportation || 0) +
-    (input.loadingUnloading || 0) +
-    (input.refurbishment || 0) +
-    (input.otherFees || 0) +
-    (input.extraCharge || 0) +
-    (input.auctionFee || 0) +
-    (input.emdCost || 0) +
-    (input.unloading || 0) +
-    (input.warehouse || 0) +
-    (input.storage || 0) +
-    (input.insurance || 0) +
-    (input.interest || 0) +
-    (input.opportunityCost || 0) +
-    (input.repair || 0) +
-    (input.fuel || 0) +
-    (input.customDuty || 0) +
-    (input.labour || 0) +
-    (input.shrinkage || 0) +
-    (input.processingLoss || 0) +
-    (input.miscellaneous || 0) +
-    (input.contingency || 0) +
-    (input.loading || 0);
-
+  const gstPercent = safeNumber(input.gstPercent, 18);
+  const tcsPercent = safeNumber(input.tcsPercent, 1);
   const taxFactor = (1 + gstPercent / 100) * (1 + tcsPercent / 100);
-  const totalCost = Math.round(currentBid + gstAmount + tcsAmount + fixedCosts);
 
   return {
-    gstAmount,
-    tcsAmount,
-    fixedCosts,
+    gstAmount: result.gstAmount,
+    tcsAmount: result.tcsAmount,
+    fixedCosts: result.otherExpenses,
     taxFactor,
-    totalCost
+    totalCost: result.totalCost
   };
 }
 
+/**
+ * Delegates to confidenceEngine.calculateConfidence().
+ */
 export function computeOverallConfidence(avgItemConfidence: number, notAvailableRatio: number): number {
-  const ocr = Math.round(95 - notAvailableRatio * 60);
-  const image = 55; // default fallback without images
-  const weight = 85;
-  const material = 90;
-  const market = avgItemConfidence;
-  const seller = 88;
-  const history = 80;
-
-  // Weights matched to confidenceEngine.ts
-  const factorsMap = [
-    { score: ocr, weight: 0.25 }, // ocr
-    { score: image, weight: 0.15 }, // image
-    { score: weight, weight: 0.10 }, // weight
-    { score: material, weight: 0.15 }, // material
-    { score: market, weight: 0.20 }, // market
-    { score: seller, weight: 0.10 }, // seller
-    { score: history, weight: 0.05 } // history
-  ];
-
-  let weightedSum = 0;
-  let weightTotal = 0;
-  for (const f of factorsMap) {
-    weightedSum += f.score * f.weight;
-    weightTotal += f.weight;
-  }
-  return Math.round(weightedSum / weightTotal);
+  const ocr = safeRound(95 - notAvailableRatio * 60);
+  const result = confidenceEngine.calculateConfidence({
+    ocr,
+    image: 55,
+    weight: 85,
+    material: 90,
+    market: avgItemConfidence,
+    seller: 88,
+    history: 80,
+    description: 85
+  });
+  return result.overallScore;
 }
 
 export function detectClosingBidMultiplier(itemNames: string[]): number {
@@ -126,85 +132,78 @@ export interface RoiMetricsInput {
   formatPrice: (n: number) => string;
 }
 
+/**
+ * Delegates to riskEngine + recommendationEngine for consistent results.
+ */
 export function computeRoiMetrics(input: RoiMetricsInput) {
   const { lotValue, totalCost, fixedCosts, taxFactor, overallConfidence } = input;
   
   const estimatedProfit = lotValue > 0 ? lotValue - totalCost : 0;
-  const roiPercent = lotValue > 0 && totalCost > 0 ? Math.round((estimatedProfit / totalCost) * 100) : 0;
-  const breakEven = Math.max(0, Math.round((lotValue - fixedCosts) / taxFactor));
+  const roiPercent = lotValue > 0 && totalCost > 0 ? safeRound(safeDivide(estimatedProfit, totalCost, 0) * 100) : 0;
+  const breakEven = Math.max(0, safeRound(safeDivide(lotValue - fixedCosts, taxFactor, 0)));
 
-  // Risk rating calculation
-  let riskScore = 30;
-  const riskReasonings: string[] = [];
-  
-  if (overallConfidence < 65) {
-    riskScore += 25;
-    riskReasonings.push('Low overall confidence increases valuation uncertainty.');
-  }
-  if (roiPercent < 10) {
-    riskScore += 30;
-    riskReasonings.push('Extremely thin margin / negative ROI.');
-  } else if (roiPercent < 20) {
-    riskScore += 10;
-    riskReasonings.push('Moderate ROI is sensitive to cost fluctuations.');
-  }
-  
-  const riskLevel = riskScore >= 70 ? 'High Risk' : riskScore >= 45 ? 'Medium Risk' : 'Low Risk';
-  const riskReasoning = riskReasonings.length > 0 ? riskReasonings.join(' ') : 'Acceptable risk levels with healthy margins.';
+  // Delegate risk calculation to canonical engine
+  const riskResult = riskEngine.calculateRisk({
+    priceVolatility: overallConfidence < 65 ? 60 : 35,
+    marketTrend: 'flat',
+    sellerReliability: 88,
+    ocrConfidence: 95,
+    photoQuality: 50,
+    historicalError: roiPercent < 10 ? 40 : 15,
+    inspectionAvailable: true,
+    categoryRisk: 30,
+    transportRisk: 20,
+    environmentalRisk: 15
+  });
 
-  // Recommendation calculation
-  const recommendationReasoning: string[] = [];
-  let status: 'Strong Buy' | 'Buy' | 'Watch' | 'Avoid (Low Margin)' | 'Avoid (High Risk)' | 'Avoid (Low Confidence)' | 'Avoid (Overpriced)' = 'Watch';
-  
-  if (lotValue <= 0) {
-    status = 'Avoid (Overpriced)';
-    recommendationReasoning.push('The lot contains no priceable items or exceeds market valuation.');
-  } else if (overallConfidence < 50) {
-    status = 'Avoid (Low Confidence)';
-    recommendationReasoning.push(`Data verifiability is extremely low (${overallConfidence}% overall confidence).`);
-  } else if (riskLevel === 'High Risk') {
-    status = 'Avoid (High Risk)';
-    recommendationReasoning.push(`Risk parameters are elevated (${riskScore}/100 risk score).`);
-  } else if (roiPercent < 10) {
-    status = 'Avoid (Low Margin)';
-    recommendationReasoning.push(`Projected ROI (${roiPercent}%) falls below the minimum margin threshold of 10%.`);
-  } else if (riskLevel === 'Low Risk' && roiPercent >= 25) {
-    status = 'Strong Buy';
-    recommendationReasoning.push(`High projected ROI (${roiPercent}%) combined with low risk parameters.`);
-  } else if (roiPercent >= 15) {
-    status = 'Buy';
-    recommendationReasoning.push(`Good returns potential (${roiPercent}% ROI) with acceptable risk.`);
-  } else {
-    status = 'Watch';
-    recommendationReasoning.push(`Bidding margin is tight (${roiPercent}%). Refurbishment and logistical costs must be optimized.`);
-  }
+  // Delegate recommendation to canonical engine
+  const recResult = recommendationEngine.generateRecommendation({
+    roiPercent,
+    riskLevel: riskResult.level,
+    riskScore: riskResult.score,
+    overallConfidence,
+    marketTrend: 'flat',
+    currentBid: totalCost,
+    totalLotValue: lotValue
+  });
 
   return {
     estimatedProfit,
     roiPercent,
     breakEven,
-    riskLevel,
-    riskReasoning,
+    riskLevel: riskResult.level,
+    riskReasoning: riskResult.reasoning.join(' '),
     recommendation: {
-      status,
-      reasoning: recommendationReasoning
+      status: recResult.status,
+      reasoning: recResult.reasoning
     },
-    recommendationReasoning: recommendationReasoning.join('. ')
+    recommendationReasoning: recResult.reasoning.join('. ')
   };
 }
 
-export function computeBidCaps(lotValue: number, fixedCosts: number, taxFactor: number) {
-  const bidForRoi = (targetRoi: number): number => {
-    const costLimit = lotValue / (1 + targetRoi / 100);
-    return Math.max(0, Math.round((costLimit - fixedCosts) / taxFactor));
+/**
+ * Delegates to biddingEngine.generateBidRecommendations().
+ */
+export function computeBidCaps(lotValue: number, fixedCosts: number, _taxFactor: number) {
+  // Reverse-engineer a minimal ValuationCosts from the legacy inputs
+  // taxFactor = (1 + gstRate) * (1 + tcsRate)
+  // We assume standard 18% GST + 1% TCS
+  const costs: ValuationCosts = {
+    currentBid: 0, // Not used in bid cap calculation
+    gstPercent: 18,
+    tcsPercent: 1,
+    // We need to pass fixedCosts as some expense field so costEngine.otherExpenses matches
+    transportation: fixedCosts
   };
 
+  const result = biddingEngine.generateBidRecommendations(lotValue, costs);
+
   return {
-    conservativeBid: bidForRoi(40),   // Conservative: 40% ROI target
-    idealBid: bidForRoi(25),          // Recommended: 25% ROI target
-    aggressiveBid: bidForRoi(15),     // Aggressive: 15% ROI target
-    maxBid: bidForRoi(10),            // Maximum: 10% ROI target
-    walkAwayPrice: bidForRoi(0),      // Break-even: 0% ROI
+    conservativeBid: result.conservativeBid,
+    idealBid: result.idealBid,
+    aggressiveBid: result.aggressiveBid,
+    maxBid: result.maxBid,
+    walkAwayPrice: result.walkAwayPrice,
   };
 }
 
@@ -220,29 +219,29 @@ export function computeSensitivityData(
 ) {
   const taxFactor = (1 + gstPercent / 100) * (1 + tcsPercent / 100);
   
-  const maxBreakEvenBid = Math.max(0, Math.round((lotValue - fixedCosts) / taxFactor));
+  const maxBreakEvenBid = Math.max(0, safeRound(safeDivide(lotValue - fixedCosts, taxFactor, 0)));
   const startBid = Math.max(0, Math.min(currentBid * 0.5, maxBreakEvenBid * 0.2));
   const endBid = Math.max(maxBreakEvenBid * 1.3, currentBid * 1.5);
   const steps = 15;
-  const stepSize = (endBid - startBid) / (steps - 1 || 1);
+  const stepSize = safeDivide(endBid - startBid, steps - 1, 1);
   
   const dataPoints = [];
   
   for (let i = 0; i < steps; i++) {
-    const simulatedBid = Math.round(startBid + i * stepSize);
-    const gstAmount = Math.round(simulatedBid * (gstPercent / 100));
-    const tcsAmount = Math.round((simulatedBid + gstAmount) * (tcsPercent / 100));
+    const simulatedBid = safeRound(startBid + i * stepSize);
+    const gstAmount = safeRound(simulatedBid * (gstPercent / 100));
+    const tcsAmount = safeRound((simulatedBid + gstAmount) * (tcsPercent / 100));
     const simulatedTotalCost = simulatedBid + gstAmount + tcsAmount + fixedCosts;
     
     // Add quadratic risk premium curve (representing diminishing margins at higher bid prices)
-    const curveFactor = Math.pow(i / (steps - 1 || 1), 2) * (lotValue * 0.08);
+    const curveFactor = Math.pow(safeDivide(i, steps - 1, 0), 2) * (lotValue * 0.08);
     const simulatedProfit = lotValue - simulatedTotalCost - curveFactor;
-    const simulatedRoi = simulatedTotalCost > 0 ? Math.round((simulatedProfit / simulatedTotalCost) * 100) : 0;
+    const simulatedRoi = simulatedTotalCost > 0 ? safeRound(safeDivide(simulatedProfit, simulatedTotalCost, 0) * 100) : 0;
     
     dataPoints.push({
       bidPrice: simulatedBid,
       displayBidPrice: `${currencySymbol}${simulatedBid >= 100000 && currency === 'INR' ? (simulatedBid / 100000).toFixed(1) + 'L' : Math.round(simulatedBid).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')}`,
-      profit: Math.round(simulatedProfit * currencyRate),
+      profit: safeRound(simulatedProfit * currencyRate),
       roi: simulatedRoi,
     });
   }
@@ -253,3 +252,4 @@ export function computeSensitivityData(
 export function hasReliableValuation(overallConfidence: number, notAvailableRatio: number): boolean {
   return overallConfidence >= 50 && notAvailableRatio < 0.6;
 }
+

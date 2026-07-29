@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DownOutlined } from '@ant-design/icons';
+import { Dropdown } from 'antd';
 import { X, Copy, Check, Download, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import ButtonWithIconDemo from '../ui/button-witn-icon';
@@ -539,6 +540,10 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [isValuating, setIsValuating] = useState(false);
   const [extraChargeType, setExtraChargeType] = useState<string>('none');
 
+  const [extraChargeOpen, setExtraChargeOpen] = useState(false);
+  const [gstOpen, setGstOpen] = useState(false);
+  const [tcsOpen, setTcsOpen] = useState(false);
+
   const extraChargeLabels: Record<string, string> = {
     none: `None (${formatPrice(0, currency)})`,
     customs_10: 'Customs Duty (10%)',
@@ -549,6 +554,65 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     brokerage_3: 'Brokerage & Clearance (3%)',
     warehousing_5k: `Warehousing Surcharge (fixed ${formatPrice(5000, currency)})`,
     inspection_2k: `Inspection / Quarantine (fixed ${formatPrice(2500, currency)})`,
+  };
+
+  const extraChargeOptions = Object.entries(extraChargeLabels).map(([key, label]) => ({
+    key,
+    label
+  }));
+
+  const gstOptions = [
+    { key: 0, label: '0% (Exempt)' },
+    { key: 5, label: '5% (Concessional)' },
+    { key: 12, label: '12% (Standard Low)' },
+    { key: 18, label: '18% (Standard Metal Scrap)' },
+    { key: 28, label: '28% (Luxury Goods)' },
+  ];
+
+  const tcsOptions = [
+    { key: 0, label: '0% (None)' },
+    { key: 1, label: '1% (Standard TCS)' },
+  ];
+
+  const renderSingleSelectMenu = <T extends string | number>(
+    options: { key: T; label: string }[],
+    selectedValue: T,
+    onChange: (value: T) => void
+  ) => {
+    return (
+      <div
+        className="bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[220px] max-h-[240px] overflow-y-auto custom-scrollbar flex flex-col gap-0.5 z-[1000]"
+        style={{ scrollbarWidth: 'thin' }}
+      >
+        {options.map(opt => {
+          const isSelected = opt.key === selectedValue;
+          return (
+            <div
+              key={opt.key}
+              onClick={() => onChange(opt.key)}
+              className={clsx(
+                "flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium transition-colors select-none",
+                isSelected
+                  ? "bg-primary-50/40 text-primary font-semibold"
+                  : "hover:bg-slate-50 text-slate-700 hover:text-slate-900"
+              )}
+            >
+              <span className={clsx(
+                "w-4 h-4 rounded-full border transition-colors flex items-center justify-center flex-shrink-0",
+                isSelected
+                  ? "border-primary bg-primary"
+                  : "border-slate-300 bg-white"
+              )}>
+                {isSelected && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                )}
+              </span>
+              <span className="truncate">{opt.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
 
@@ -905,55 +969,93 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                           </div>
-                          <select
-                            value={extraChargeType}
-                            onChange={(e) => setExtraChargeType(e.target.value)}
-                            className="w-full pl-7 pr-8 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer h-[38px] appearance-none"
+                          <Dropdown
+                            open={extraChargeOpen}
+                            onOpenChange={setExtraChargeOpen}
+                            popupRender={() => renderSingleSelectMenu(
+                              extraChargeOptions,
+                              extraChargeType,
+                              (val) => {
+                                setExtraChargeType(val);
+                                setExtraChargeOpen(false);
+                              }
+                            )}
+                            trigger={['click']}
+                            placement="bottomLeft"
+                            align={{ overflow: { adjustX: false, adjustY: false } }}
                           >
-                            {Object.entries(extraChargeLabels).map(([key, label]) => (
-                              <option key={key} value={key}>{label}</option>
-                            ))}
-                          </select>
-                          <DownOutlined className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450 pointer-events-none" />
+                            <button
+                              type="button"
+                              className="w-full flex justify-between items-center pl-7 pr-3.5 py-2 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm font-bold text-slate-900 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer h-[38px]"
+                            >
+                              <span className="truncate">
+                                {extraChargeLabels[extraChargeType]}
+                              </span>
+                              <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                            </button>
+                          </Dropdown>
                         </div>
                       </div>
 
                       <div>
                         <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1.5 font-sans">GST Rate (%)</label>
                         <div className="relative rounded-xl shadow-2xs">
-                          <select
-                            value={customCosts.gstPercent ?? 18}
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value, 10);
-                              setCustomCosts(prev => ({ ...prev, gstPercent: v }));
-                            }}
-                            className="w-full px-3 py-2 border border-slate-250 rounded-xl bg-white text-sm font-bold text-slate-900 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer h-[38px] appearance-none"
+                          <Dropdown
+                            open={gstOpen}
+                            onOpenChange={setGstOpen}
+                            popupRender={() => renderSingleSelectMenu(
+                              gstOptions,
+                              customCosts.gstPercent ?? 18,
+                              (val) => {
+                                setCustomCosts(prev => ({ ...prev, gstPercent: val }));
+                                setGstOpen(false);
+                              }
+                            )}
+                            trigger={['click']}
+                            placement="bottomLeft"
+                            align={{ overflow: { adjustX: false, adjustY: false } }}
                           >
-                            <option value={0}>0% (Exempt)</option>
-                            <option value={5}>5% (Concessional)</option>
-                            <option value={12}>12% (Standard Low)</option>
-                            <option value={18}>18% (Standard Metal Scrap)</option>
-                            <option value={28}>28% (Luxury Goods)</option>
-                          </select>
-                          <DownOutlined className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450 pointer-events-none" />
+                            <button
+                              type="button"
+                              className="w-full flex justify-between items-center px-3 py-2 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm font-bold text-slate-900 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer h-[38px]"
+                            >
+                              <span className="truncate">
+                                {gstOptions.find(o => o.key === (customCosts.gstPercent ?? 18))?.label}
+                              </span>
+                              <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                            </button>
+                          </Dropdown>
                         </div>
                       </div>
 
                       <div>
                         <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1.5 font-sans">TCS Rate (%)</label>
                         <div className="relative rounded-xl shadow-2xs">
-                          <select
-                            value={customCosts.tcsPercent ?? 1}
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value, 10);
-                              setCustomCosts(prev => ({ ...prev, tcsPercent: v }));
-                            }}
-                            className="w-full px-3 py-2 border border-slate-250 rounded-xl bg-white text-sm font-bold text-slate-900 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer h-[38px] appearance-none"
+                          <Dropdown
+                            open={tcsOpen}
+                            onOpenChange={setTcsOpen}
+                            popupRender={() => renderSingleSelectMenu(
+                              tcsOptions,
+                              customCosts.tcsPercent ?? 1,
+                              (val) => {
+                                setCustomCosts(prev => ({ ...prev, tcsPercent: val }));
+                                setTcsOpen(false);
+                              }
+                            )}
+                            trigger={['click']}
+                            placement="bottomLeft"
+                            align={{ overflow: { adjustX: false, adjustY: false } }}
                           >
-                            <option value={0}>0% (None)</option>
-                            <option value={1}>1% (Standard TCS)</option>
-                          </select>
-                          <DownOutlined className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450 pointer-events-none" />
+                            <button
+                              type="button"
+                              className="w-full flex justify-between items-center px-3 py-2 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm font-bold text-slate-900 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer h-[38px]"
+                            >
+                              <span className="truncate">
+                                {tcsOptions.find(o => o.key === (customCosts.tcsPercent ?? 1))?.label}
+                              </span>
+                              <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                            </button>
+                          </Dropdown>
                         </div>
                       </div>
                     </div>

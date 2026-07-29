@@ -3,6 +3,7 @@ import type { ValuationRisk } from './riskEngine';
 import type { ValuationRecommendation } from './recommendationEngine';
 import type { ValuationBidding } from './biddingEngine';
 import type { ValuationSimulation } from './simulationEngine';
+export type { SanitizedCosts } from './inputValidator';
 
 export interface ValuationItem {
   name: string;
@@ -66,7 +67,7 @@ export interface ValuationOutput {
     calculatedAt: string;
     version: string;
   };
-  // Legacy compatibility fields
+  // Legacy compatibility fields — properly typed for downstream consumers
   riskAnalysis?: {
     dataConfidence: number;
     pricingConfidence: number;

@@ -8,7 +8,7 @@ import type { ValuationItem, ValuationCosts, ValuationOutput } from './types';
 
 export const roiEngine = {
   async calculateValuation(
-    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string }[],
+    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string; ocrConfidence?: number }[],
     costs: ValuationCosts,
     hasImages: boolean = false,
     location?: string
@@ -17,7 +17,7 @@ export const roiEngine = {
   },
 
   calculateValuationSync(
-    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string }[],
+    rawItems: { sr: number; description: string; qty: string; unit: string; marketPrice?: string; ocrConfidence?: number }[],
     costs: ValuationCosts,
     hasImages: boolean = false,
     location?: string
