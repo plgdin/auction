@@ -43,40 +43,40 @@ export function CookieConsent() {
 
   return (
     <div 
-      className="fixed bottom-6 left-6 z-[1050] max-w-sm w-full bg-card border border-border rounded-xl shadow-xl animate-fade-in p-5 print:hidden"
+      className="fixed top-4 left-4 right-4 sm:right-auto sm:max-w-xs z-[1050] bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-xl shadow-2xl p-3 text-white animate-fade-in print:hidden ring-1 ring-white/10"
       role="region"
       aria-label="Cookie consent banner"
     >
-      <div className="flex items-start gap-4">
-        <div className="p-2.5 bg-primary/10 text-primary rounded-lg shrink-0">
-          <Cookie className="w-5 h-5" />
+      <div className="flex items-start gap-2.5">
+        <div className="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg shrink-0 mt-0.5">
+          <Cookie className="w-3.5 h-3.5 text-blue-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-foreground">
+          <div className="flex items-center justify-between gap-1">
+            <h4 className="text-xs font-bold text-white tracking-tight">
               Cookie Preferences
             </h4>
             <button 
               onClick={handleDismiss}
-              className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted transition-colors cursor-pointer"
+              className="text-slate-400 hover:text-white p-0.5 rounded transition-colors cursor-pointer"
               aria-label="Dismiss cookie banner"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
-          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-            Essential storage keeps your account signed in. Accept to use recent searches for personalized auction recommendations.
+          <p className="text-[11px] text-slate-300 mt-1 leading-tight">
+            We use essential cookies to maintain your session & bidding preferences.
           </p>
-          <div className="flex gap-2.5 mt-4">
+          <div className="flex gap-2 mt-2.5">
             <button
               onClick={handleDecline}
-              className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-border text-xs font-bold rounded-lg bg-card text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="flex-1 inline-flex items-center justify-center px-2 py-1 border border-slate-700 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
             >
               Decline
             </button>
             <button
               onClick={handleAccept}
-              className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-xs font-bold rounded-lg text-primary-foreground bg-primary hover:bg-primary/95 transition-colors cursor-pointer"
+              className="flex-1 inline-flex items-center justify-center px-2 py-1 text-[11px] font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-500 transition-colors cursor-pointer shadow-sm"
             >
               Accept All
             </button>

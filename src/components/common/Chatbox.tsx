@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageSquare, Send, X, Minimize2, Sparkles } from 'lucide-react';
 import { publicService } from '../../services/publicService';
 
@@ -18,6 +18,37 @@ export function Chatbox() {
     window.location.pathname.startsWith('/login') ||
     window.location.pathname.startsWith('/register')
   );
+  const [isQuotePage, setIsQuotePage] = useState(window.location.pathname.startsWith('/dashboard/quotes'));
+
+  // Draggable orb state (mobile only)
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number; dragging: boolean }>({ startX: 0, startY: 0, origX: 0, origY: 0, dragging: false });
+  const orbContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const el = orbContainerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    dragRef.current = { startX: touch.clientX, startY: touch.clientY, origX: rect.left, origY: rect.top, dragging: false };
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragRef.current.startX;
+    const dy = touch.clientY - dragRef.current.startY;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) dragRef.current.dragging = true;
+    if (!dragRef.current.dragging) return;
+    e.preventDefault();
+    const newX = Math.max(0, Math.min(window.innerWidth - 60, dragRef.current.origX + dx));
+    const newY = Math.max(0, Math.min(window.innerHeight - 60, dragRef.current.origY + dy));
+    setDragPos({ x: newX, y: newY });
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    // Reset dragging flag after a tick so click handler can check it
+    setTimeout(() => { dragRef.current.dragging = false; }, 50);
+  }, []);
 
   useEffect(() => {
     const handleLocationCheck = () => {
@@ -25,6 +56,7 @@ export function Chatbox() {
       setIsScrolled(window.scrollY > 50);
       setIsHomePage(path === '/');
       setIsAuthPage(path.startsWith('/auth') || path.startsWith('/login') || path.startsWith('/register'));
+      setIsQuotePage(path.startsWith('/dashboard/quotes'));
     };
 
     window.addEventListener('scroll', handleLocationCheck, { passive: true });
@@ -41,7 +73,6 @@ export function Chatbox() {
     };
   }, []);
 
-  if (isAuthPage) return null;
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'bot',
@@ -55,14 +86,18 @@ export function Chatbox() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBubbleRef = useRef<HTMLDivElement>(null);
+  const bubbleTimerStarted = useRef(false);
 
-  // Auto-dismiss welcome bubble popup after 10 seconds
+  // Auto-dismiss welcome bubble 10s after chatbot becomes visible (not on hero)
   useEffect(() => {
+    const onHero = isHomePage && !isScrolled;
+    if (onHero || bubbleTimerStarted.current) return;
+    bubbleTimerStarted.current = true;
     const timer = setTimeout(() => {
       setShowBubble(false);
     }, 10000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isHomePage, isScrolled]);
 
   // Fetch FAQ database on mount
   useEffect(() => {
@@ -262,6 +297,11 @@ CONTACT & ESCALATION:
     return 'orb-state-idle';
   };
 
+  if (isAuthPage || isQuotePage) return null;
+
+  // Hide on homepage hero (not scrolled yet)
+  const isOnHero = isHomePage && !isScrolled;
+
   return (
     <>
       <style>{`
@@ -312,10 +352,14 @@ CONTACT & ESCALATION:
       `}</style>
 
       {/* Floating Widget Container */}
-      <div className={`fixed ${!isHomePage || isScrolled ? 'bottom-16' : 'bottom-6'} md:bottom-6 right-4 md:right-6 z-[999] flex flex-col items-end pointer-events-none select-none font-sans transition-all duration-300 ease-in-out`}>
+      <div
+        ref={orbContainerRef}
+        className={`fixed z-[999] flex flex-col items-end pointer-events-none select-none font-sans transition-all duration-500 ease-in-out ${isOnHero ? 'scale-0 opacity-0' : 'scale-100 opacity-100'} ${dragPos ? '' : `${!isHomePage || isScrolled ? 'bottom-16' : 'bottom-6'} md:bottom-6 right-4 md:right-6`}`}
+        style={dragPos ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto' } : undefined}
+      >
         
         {/* Closed state bubble pop up */}
-        {!isOpen && showBubble && (
+        {!isOpen && showBubble && !isOnHero && (
           <div 
             ref={chatBubbleRef}
             className="pointer-events-auto bg-slate-100/95 backdrop-blur-md text-slate-800 p-4 rounded-2xl border border-slate-300 shadow-[0_12px_35px_rgba(15,23,42,0.1)] max-w-xs mb-4 mr-1 transition-all duration-300 transform translate-y-0 opacity-100 flex items-start gap-2 relative animate-bounce"
@@ -501,10 +545,14 @@ CONTACT & ESCALATION:
           type="button"
           aria-label={isOpen ? "Close Laila Assistant Chat" : "Open Laila Assistant Chat"}
           onClick={() => {
+            if (dragRef.current.dragging) return; // Ignore click if user was dragging
             setIsOpen(prev => !prev);
             setShowBubble(false);
           }}
-          className={`pointer-events-auto relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 border-2 border-[#005b99] shadow-[0_8px_32px_rgba(0,0,0,0.1),_0_0_15px_rgba(0,91,153,0.25)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.15),_0_0_20px_rgba(0,91,153,0.45)] transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer ${getOrbStateClass()}`}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          className={`pointer-events-auto relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 border-2 border-[#005b99] shadow-[0_8px_32px_rgba(0,0,0,0.1),_0_0_15px_rgba(0,91,153,0.25)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.15),_0_0_20px_rgba(0,91,153,0.45)] transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer touch-none ${getOrbStateClass()}`}
         >
           <span className="sr-only">{isOpen ? "Close Laila Assistant Chat" : "Open Laila Assistant Chat"}</span>
           {/* Fluid Wave layers inside Orb */}

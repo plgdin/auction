@@ -435,9 +435,34 @@
   animation: fall-down linear infinite;
 }
 
-/* Force pointer cursor on all checkboxes, radio buttons, and form labels */
+/* Force pointer cursor on all buttons, checkboxes, radio buttons, and form labels */
+button,
+input[type="button"],
+input[type="submit"],
 input[type="checkbox"],
 input[type="radio"],
 label[htmlFor] {
   cursor: pointer !important;
+}
+
+/* Hide native scrollbars on mobile & touch devices across website */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+    background: transparent;
+    display: none;
+  }
+  * {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

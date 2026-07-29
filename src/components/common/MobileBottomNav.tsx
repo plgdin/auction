@@ -9,7 +9,17 @@ export function MobileBottomNav() {
   const { user } = useAuthStore();
   const [isVisible, setIsVisible] = useState(false);
 
+  const isAuthRoute = location.pathname.startsWith('/auth') || 
+                      location.pathname === '/login' || 
+                      location.pathname === '/register' || 
+                      location.pathname === '/adminlogin';
+
   useEffect(() => {
+    if (isAuthRoute) {
+      setIsVisible(false);
+      return;
+    }
+
     const handleScroll = () => {
       // Show bottom navbar whenever user is scrolled past top hero area (50px)
       // Only apply this auto-hide logic on the home page.
@@ -23,7 +33,9 @@ export function MobileBottomNav() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [location.pathname]);
+  }, [location.pathname, isAuthRoute]);
+
+  if (isAuthRoute) return null;
 
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
@@ -36,7 +48,7 @@ export function MobileBottomNav() {
   return (
     <nav
       className={clsx(
-        "fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-xl border-t border-slate-200 py-2 px-2 flex justify-around items-center md:hidden shadow-2xl transition-all duration-300 ease-in-out",
+        "fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-xl border-t border-slate-200 py-2 px-2 flex justify-around items-center md:hidden shadow-2xl transition-all duration-300 ease-in-out",
         isVisible
           ? "translate-y-0 opacity-100"
           : "translate-y-full opacity-0 pointer-events-none"
@@ -55,11 +67,11 @@ export function MobileBottomNav() {
             className={clsx(
               "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all duration-200 cursor-pointer min-w-[60px]",
               isActive
-                ? "text-primary font-bold bg-primary/10 scale-105"
+                ? "text-primary font-bold bg-transparent"
                 : "text-slate-500 hover:text-slate-900 font-medium"
             )}
           >
-            <Icon className={clsx("w-5 h-5 mb-0.5", isActive ? "text-primary" : "text-slate-400")} />
+            <Icon className={clsx("w-5 h-5 mb-0.5 transition-colors", isActive ? "text-primary stroke-[2.5]" : "text-slate-400")} />
             <span className="text-[10px] tracking-tight">{item.name}</span>
           </Link>
         );

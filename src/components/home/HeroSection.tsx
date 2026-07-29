@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { GLSLHills } from '../ui/glsl-hills';
-import { MarqueeBanner } from './MarqueeBanner';
 
 /**
  * HeroSection with scroll-driven logo animation.
@@ -135,10 +134,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Glassy marquee banner pinned flush at absolute bottom edge of HeroSection */}
-      <div className="absolute bottom-0 left-0 right-0 z-20">
-        <MarqueeBanner />
-      </div>
+
 
     </div>
   );

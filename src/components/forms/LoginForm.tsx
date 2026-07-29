@@ -173,16 +173,16 @@ export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) 
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
       {authError && (
-        <div className="bg-destructive/10 border border-destructive/25 text-destructive px-4 py-3 rounded-xl text-sm">
+        <div className="bg-destructive/10 border border-destructive/25 text-destructive px-4 py-3 rounded-xl text-xs sm:text-sm font-medium animate-fade-in">
           {authError}
         </div>
       )}
       
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Email address</label>
-        <div className="relative rounded-xl shadow-xs">
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Email address</label>
+        <div className="relative rounded-xl shadow-2xs">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <Mail className="h-5 w-5" />
           </div>
@@ -190,24 +190,24 @@ export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) 
             {...register('email')}
             type="email"
             placeholder="name@company.com"
-            className="block w-full pl-10.5 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-sm"
+            className="block w-full pl-11 pr-4 h-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-base sm:text-sm"
           />
         </div>
-        {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>}
+        {errors.email && <p className="mt-1 text-xs text-destructive font-medium">{errors.email.message}</p>}
       </div>
 
       <div>
         <div className="flex justify-between items-center mb-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">Password</label>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">Password</label>
           <button
             type="button"
             onClick={() => navigate('/auth/forgot-password')}
-            className="text-xs font-medium text-primary hover:text-primary-700 transition-colors"
+            className="text-xs font-semibold text-primary hover:text-primary-700 transition-colors cursor-pointer"
           >
             Forgot password?
           </button>
         </div>
-        <div className="relative rounded-xl shadow-xs">
+        <div className="relative rounded-xl shadow-2xs">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <Lock className="h-5 w-5" />
           </div>
@@ -215,7 +215,7 @@ export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) 
             {...register('password')}
             type={showPassword ? 'text' : 'password'}
             placeholder="••••••••"
-            className="block w-full pl-10.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-sm"
+            className="block w-full pl-11 pr-11 h-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-base sm:text-sm"
           />
           <button
             type="button"
@@ -225,47 +225,49 @@ export function LoginForm({ isAdminLogin = false }: { isAdminLogin?: boolean }) 
             {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
           </button>
         </div>
-        {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>}
+        {errors.password && <p className="mt-1 text-xs text-destructive font-medium">{errors.password.message}</p>}
       </div>
 
-      <label htmlFor="remember-me" className="inline-flex items-center cursor-pointer select-none group">
-        <div className="relative flex items-center justify-center pointer-events-none">
-          <input
-            id="remember-me"
-            name="remember-me"
-            type="checkbox"
-            className="peer h-5 w-5 rounded-full border border-slate-300 text-primary bg-white focus:outline-none checked:bg-primary checked:border-primary appearance-none transition-all duration-200 shadow-2xs group-hover:border-primary/60"
-          />
-          <svg
-            className="absolute h-3 w-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            strokeWidth="3.5"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <span className="ml-2.5 text-sm text-slate-650 group-hover:text-slate-900 transition-colors pointer-events-none">
-          Keep me signed in for 30 days
-        </span>
-      </label>
+      <div className="flex items-center pt-1">
+        <label htmlFor="remember-me" className="flex items-center cursor-pointer select-none group">
+          <div className="relative flex items-center justify-center shrink-0">
+            <input
+              id="remember-me"
+              name="remember-me"
+              type="checkbox"
+              className="peer h-5 w-5 rounded-md border-2 border-slate-300 text-primary bg-white focus:outline-none checked:bg-primary checked:border-primary appearance-none transition-all duration-200 shadow-2xs group-hover:border-primary/60 cursor-pointer"
+            />
+            <svg
+              className="absolute h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth="3.5"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <span className="ml-2.5 text-xs sm:text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">
+            Keep me signed in for 30 days
+          </span>
+        </label>
+      </div>
 
       <div className="pt-2">
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-primary hover:bg-primary/95 hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200 cursor-pointer disabled:opacity-50"
+          className="w-full h-12 flex justify-center items-center py-3 px-4 rounded-xl shadow-md text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-primary/20 transition-all duration-200 cursor-pointer disabled:opacity-50"
         >
           {isLoading ? (
             <>
-              <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+              <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
               Signing in...
             </>
           ) : (
             <>
               Sign in
-              <LogIn className="ml-2 h-4 w-4" />
+              <LogIn className="ml-2 h-5 w-5" />
             </>
           )}
         </button>

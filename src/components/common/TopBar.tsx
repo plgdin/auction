@@ -42,7 +42,8 @@ export function TopBar() {
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-8 shrink-0">
       <button 
         onClick={toggleSidebar}
-        className="p-2 -ml-2 rounded-md hover:bg-secondary text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary lg:hidden"
+        className="p-2 -ml-2 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-primary transition-colors focus:outline-none cursor-pointer"
+        aria-label="Toggle navigation sidebar"
       >
         <Menu size={24} />
       </button>

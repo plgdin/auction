@@ -296,38 +296,21 @@ export const adminService = {
 
   // Global Analytics
   async getGlobalAnalytics() {
-    const { count: userCount } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: auctionCount } = await supabase
-      .from('auctions')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active');
-
-    const { count: tenderCount } = await supabase
-      .from('tenders')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'open');
-      
-    // Stats to match the website's real database numbers
-    const { count: activeListings } = await supabase
-      .from('mstc_auctions')
-      .select('*', { count: 'exact', head: true })
-      .eq('asset_status', 'completed');
-
     const now = new Date().toISOString();
-    const { count: upcomingAuctions } = await supabase
-      .from('mstc_auctions')
-      .select('*', { count: 'exact', head: true })
-      .gt('opening_date', now);
+    const [userRes, auctionRes, tenderRes, activeListingsRes, upcomingRes] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('auctions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('tenders').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+      supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).eq('asset_status', 'completed'),
+      supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).gt('opening_date', now)
+    ]);
 
     return {
-      totalUsers: userCount || 0,
-      activeAuctions: auctionCount || 0,
-      activeTenders: tenderCount || 0,
-      activeListings: activeListings || 0,
-      upcomingAuctions: upcomingAuctions || 0
+      totalUsers: userRes.count || 0,
+      activeAuctions: auctionRes.count || 0,
+      activeTenders: tenderRes.count || 0,
+      activeListings: activeListingsRes.count || 0,
+      upcomingAuctions: upcomingRes.count || 0
     };
   },
 
@@ -769,66 +752,69 @@ export const adminService = {
 
   async getFinancialAnalytics() {
     try {
-      // 1. Fetch EMD Transactions
-      const { data: emdTx, error: emdError } = await supabase
-        .from('emd_transactions')
-        .select(`
-          amount,
-          status,
-          created_at,
-          user_id,
-          transaction_reference,
-          payment_method,
-          auction_id,
-          profiles (
-            first_name,
-            last_name
-          )
-        `)
-        .order('created_at', { ascending: false });
+      const [
+        { data: emdTx, error: emdError },
+        { data: walletTx, error: walletError },
+        { data: bids, error: bidsError },
+        { data: mstcAuctions, error: mstcError }
+      ] = await Promise.all([
+        supabase
+          .from('emd_transactions')
+          .select(`
+            amount,
+            status,
+            created_at,
+            user_id,
+            transaction_reference,
+            payment_method,
+            auction_id,
+            profiles (
+              first_name,
+              last_name
+            )
+          `)
+          .order('created_at', { ascending: false }),
 
-      // 2. Fetch Wallet Transactions
-      const { data: walletTx, error: walletError } = await supabase
-        .from('wallet_transactions')
-        .select(`
-          id,
-          amount,
-          transaction_type,
-          status,
-          created_at,
-          user_id,
-          reference_id,
-          description,
-          profiles (
-            first_name,
-            last_name
-          )
-        `)
-        .order('created_at', { ascending: false });
+        supabase
+          .from('wallet_transactions')
+          .select(`
+            id,
+            amount,
+            transaction_type,
+            status,
+            created_at,
+            user_id,
+            reference_id,
+            description,
+            profiles (
+              first_name,
+              last_name
+            )
+          `)
+          .order('created_at', { ascending: false }),
 
-      // 3. Fetch Bids
-      const { data: bids, error: bidsError } = await supabase
-        .from('bids')
-        .select(`
-          id,
-          amount,
-          status,
-          created_at,
-          bidder_id,
-          profiles (
-            first_name,
-            last_name
-          ),
-          auctions (
-            title
-          )
-        `)
-        .order('created_at', { ascending: false });
+        supabase
+          .from('bids')
+          .select(`
+            id,
+            amount,
+            status,
+            created_at,
+            bidder_id,
+            profiles (
+              first_name,
+              last_name
+            ),
+            auctions (
+              title
+            )
+          `)
+          .order('created_at', { ascending: false }),
 
-      // 4. Fetch MSTC Auctions for real Pre-Bid EMD calculations
-      const { data: mstcAuctions, error: mstcError } = await supabase
-        .from('mstc_auctions')
-        .select('id, mstc_auction_number, raw_materials_text, opening_date, closing_date, asset_status, category_name');
+        supabase
+          .from('mstc_auctions')
+          .select('id, mstc_auction_number, opening_date, closing_date, asset_status, category_name')
+      ]);
 
       if (emdError || walletError || bidsError || mstcError) {
         console.error('Error fetching financial/bid/mstc analytics:', emdError || walletError || bidsError || mstcError);

@@ -70,45 +70,45 @@ export function RegisterForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {authError && (
-        <div className="bg-destructive/10 border border-destructive/25 text-destructive px-4 py-3 rounded-xl text-sm">
+        <div className="bg-destructive/10 border border-destructive/25 text-destructive px-4 py-3 rounded-xl text-xs sm:text-sm font-medium animate-fade-in">
           {authError}
         </div>
       )}
       
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-650 mb-1.5">First Name</label>
-          <div className="relative rounded-xl shadow-xs">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">First Name</label>
+          <div className="relative rounded-xl shadow-2xs">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
               <User className="h-4 w-4" />
             </div>
             <input
               {...register('firstName')}
               placeholder="John"
-              className="block w-full pl-9.5 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-sm"
+              className="block w-full pl-10 pr-3 h-11 sm:h-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-base sm:text-sm"
             />
           </div>
-          {errors.firstName && <p className="mt-1 text-xs text-destructive">{errors.firstName.message}</p>}
+          {errors.firstName && <p className="mt-1 text-xs text-destructive font-medium">{errors.firstName.message}</p>}
         </div>
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-650 mb-1.5">Last Name</label>
-          <div className="relative rounded-xl shadow-xs">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Last Name</label>
+          <div className="relative rounded-xl shadow-2xs">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
               <User className="h-4 w-4" />
             </div>
             <input
               {...register('lastName')}
               placeholder="Doe"
-              className="block w-full pl-9.5 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-sm"
+              className="block w-full pl-10 pr-3 h-11 sm:h-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-base sm:text-sm"
             />
           </div>
-          {errors.lastName && <p className="mt-1 text-xs text-destructive">{errors.lastName.message}</p>}
+          {errors.lastName && <p className="mt-1 text-xs text-destructive font-medium">{errors.lastName.message}</p>}
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-650 mb-1.5">Email address</label>
-        <div className="relative rounded-xl shadow-xs">
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Email address</label>
+        <div className="relative rounded-xl shadow-2xs">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <Mail className="h-5 w-5" />
           </div>
@@ -116,15 +116,15 @@ export function RegisterForm() {
             {...register('email')}
             type="email"
             placeholder="name@company.com"
-            className="block w-full pl-10.5 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-sm"
+            className="block w-full pl-11 pr-4 h-11 sm:h-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-base sm:text-sm"
           />
         </div>
-        {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>}
+        {errors.email && <p className="mt-1 text-xs text-destructive font-medium">{errors.email.message}</p>}
       </div>
 
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-650 mb-1.5">Password</label>
-        <div className="relative rounded-xl shadow-xs">
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Password</label>
+        <div className="relative rounded-xl shadow-2xs">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <Lock className="h-5 w-5" />
           </div>
@@ -132,7 +132,7 @@ export function RegisterForm() {
             {...register('password')}
             type={showPassword ? 'text' : 'password'}
             placeholder="••••••••"
-            className="block w-full pl-10.5 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-sm"
+            className="block w-full pl-11 pr-11 h-11 sm:h-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-base sm:text-sm"
           />
           <button
             type="button"
@@ -142,12 +142,12 @@ export function RegisterForm() {
             {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
           </button>
         </div>
-        {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>}
+        {errors.password && <p className="mt-1 text-xs text-destructive font-medium">{errors.password.message}</p>}
       </div>
 
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-650 mb-1.5">Confirm Password</label>
-        <div className="relative rounded-xl shadow-xs">
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Confirm Password</label>
+        <div className="relative rounded-xl shadow-2xs">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <Lock className="h-5 w-5" />
           </div>
@@ -155,7 +155,7 @@ export function RegisterForm() {
             {...register('confirmPassword')}
             type={showConfirmPassword ? 'text' : 'password'}
             placeholder="••••••••"
-            className="block w-full pl-10.5 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-sm"
+            className="block w-full pl-11 pr-11 h-11 sm:h-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-200 text-base sm:text-sm"
           />
           <button
             type="button"
@@ -165,40 +165,40 @@ export function RegisterForm() {
             {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
           </button>
         </div>
-        {errors.confirmPassword && <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>}
+        {errors.confirmPassword && <p className="mt-1 text-xs text-destructive font-medium">{errors.confirmPassword.message}</p>}
       </div>
 
-      <label htmlFor="acceptTerms" className="flex items-start mt-2 cursor-pointer select-none group">
-        <div className="flex items-center h-5">
+      <div>
+        <label htmlFor="acceptTerms" className="flex items-center gap-2 cursor-pointer select-none group">
           <input
             id="acceptTerms"
             type="checkbox"
             {...register('acceptTerms')}
-            className="h-4 w-4 accent-primary checked:bg-primary checked:border-primary focus:ring-primary border-slate-300 rounded-md cursor-pointer"
+            className="h-4.5 w-4.5 accent-primary checked:bg-primary checked:border-primary focus:ring-primary border-slate-300 rounded-md cursor-pointer shrink-0"
           />
-        </div>
-        <div className="ml-2 text-xs text-slate-600 font-medium cursor-pointer">
-          I accept the{' '}
-          <Link to="/terms" target="_blank" className="text-primary hover:underline font-bold" onClick={(e) => e.stopPropagation()}>
-            Terms & Conditions
-          </Link>{' '}
-          and{' '}
-          <Link to="/privacy" target="_blank" className="text-primary hover:underline font-bold" onClick={(e) => e.stopPropagation()}>
-            Privacy Policy
-          </Link>
-          {errors.acceptTerms && <p className="text-[11px] text-destructive mt-1">{errors.acceptTerms.message}</p>}
-        </div>
-      </label>
+          <span className="text-xs text-slate-600 font-medium cursor-pointer leading-normal">
+            I accept the{' '}
+            <Link to="/terms" target="_blank" className="text-primary hover:underline font-bold" onClick={(e) => e.stopPropagation()}>
+              Terms & Conditions
+            </Link>{' '}
+            and{' '}
+            <Link to="/privacy" target="_blank" className="text-primary hover:underline font-bold" onClick={(e) => e.stopPropagation()}>
+              Privacy Policy
+            </Link>
+          </span>
+        </label>
+        {errors.acceptTerms && <p className="text-[11px] text-destructive font-medium mt-1">{errors.acceptTerms.message}</p>}
+      </div>
 
       <div className="pt-2">
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-primary hover:bg-primary/95 hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200 cursor-pointer disabled:opacity-50"
+          className="w-full h-12 flex justify-center items-center py-3 px-4 rounded-xl shadow-md text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-primary/20 transition-all duration-200 cursor-pointer disabled:opacity-50"
         >
           {isLoading ? (
             <>
-              <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+              <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
               Registering...
             </>
           ) : (
