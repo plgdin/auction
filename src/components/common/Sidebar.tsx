@@ -60,7 +60,7 @@ export function Sidebar() {
         <Link to="/" className="flex items-center gap-2.5" onClick={() => sidebarOpen && toggleSidebar()}>
           <img src="/png_lelam_1.webp" alt="Lelam Logo" width={158} height={32} className="h-8 w-auto object-contain" />
         </Link>
-        <button onClick={toggleSidebar} className="lg:hidden text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
+        <button onClick={toggleSidebar} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer" aria-label="Close sidebar">
           <ArrowLeft className="w-5 h-5" />
         </button>
       </div>
@@ -249,16 +249,19 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Desktop Sticky Sidebar */}
-      <aside className="w-64 bg-white border-r border-border min-h-screen text-foreground flex flex-col hidden lg:flex sticky top-0 h-screen">
+      {/* Desktop Sticky Inline Sidebar */}
+      <aside className="w-64 bg-white border-r border-border min-h-screen text-foreground flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0">
         {sidebarContent}
       </aside>
 
-      {/* Mobile Drawer Backdrop & Modal Sidebar */}
+      {/* Slide-out Drawer (When menu toggled on mobile, tablet, laptop, PC) */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs" onClick={toggleSidebar} />
-          <aside className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
+        <div className="fixed inset-0 z-[100] flex">
+          <div 
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs animate-fade-in cursor-pointer" 
+            onClick={toggleSidebar} 
+          />
+          <aside className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-300">
             {sidebarContent}
           </aside>
         </div>

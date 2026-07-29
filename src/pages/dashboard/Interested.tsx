@@ -89,6 +89,10 @@ export function Interested() {
     }
   }, [user, activeTab, interestedMstcIds]);
 
+  if (!user) {
+    return null;
+  }
+
   const handleMstcInterestedToggle = (itemId: string) => {
     if (!user) return;
     toggleInterestedMstcId(user.id, itemId);

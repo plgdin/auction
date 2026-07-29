@@ -9,54 +9,59 @@ export function AuthLayout() {
   const isRegister = location.pathname.includes('/register') || location.pathname.includes('/signup');
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-between relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-between relative overflow-x-hidden font-sans">
       <PageTracker />
-      {/* Split screen container */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2">
+      
+      {/* Background ambient glow effect */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-primary/20 via-primary/5 to-transparent blur-3xl pointer-events-none z-0" />
 
-        {/* Branding Column (Left) */}
-        <div className="hidden md:flex bg-slate-900 relative overflow-hidden flex-col justify-between p-16 text-white">
-          {/* Background decoration */}
+      {/* Main Split Layout */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 relative z-10">
+
+        {/* Branding Column (Left - Desktop only) */}
+        <div className="hidden md:flex bg-slate-900/90 backdrop-blur-xl relative overflow-hidden flex-col justify-between p-12 lg:p-16 text-white border-r border-slate-800/60">
           <div className="absolute inset-0 z-0">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-primary-950 mix-blend-multiply" />
             <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-800/10 to-transparent" />
           </div>
 
           <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center">
-            <img src="/png_lelam_1.webp" alt="Lelam Logo" width={317} height={64} className="h-16 w-auto object-contain brightness-0 invert filter drop-shadow-md mb-8" />
+            <Link to="/" className="inline-block transition-transform hover:scale-105">
+              <img src="/png_lelam_1.webp" alt="Lelam Logo" width={317} height={64} className="h-14 lg:h-16 w-auto object-contain brightness-0 invert filter drop-shadow-md mb-8" />
+            </Link>
 
-            <p className="text-2xl font-bold text-primary-400 max-w-md leading-relaxed">
+            <p className="text-xl lg:text-2xl font-bold text-slate-200 max-w-md leading-relaxed">
               {subtitlePhrase}
             </p>
           </div>
 
-          {/* Footer of the branding column */}
           <div className="relative z-10 flex justify-between items-center border-t border-slate-800/50 pt-6 mt-6">
-            {/* Animated progress bar lines indicator */}
             <div className="flex gap-1.5 items-center">
               <span
                 className={clsx(
-                  "h-1 rounded transition-all duration-500 ease-in-out",
-                  !isRegister ? "w-8 bg-primary-500 shadow-sm" : "w-4 bg-slate-700"
+                  "h-1.5 rounded-full transition-all duration-500 ease-in-out",
+                  !isRegister ? "w-8 bg-primary shadow-sm" : "w-4 bg-slate-700"
                 )}
               />
-              <span className="w-4 h-1 rounded bg-slate-700" />
+              <span className="w-4 h-1.5 rounded-full bg-slate-700" />
               <span
                 className={clsx(
-                  "h-1 rounded transition-all duration-500 ease-in-out",
-                  isRegister ? "w-8 bg-primary-500 shadow-sm" : "w-4 bg-slate-700"
+                  "h-1.5 rounded-full transition-all duration-500 ease-in-out",
+                  isRegister ? "w-8 bg-primary shadow-sm" : "w-4 bg-slate-700"
                 )}
               />
             </div>
           </div>
         </div>
 
-        {/* Form Column (Right) */}
-        <div className="bg-white flex flex-col justify-center items-center py-16 px-6 sm:px-12 lg:px-20">
-          <div className="w-full max-w-md">
-            {/* Small branding for mobile views only */}
-            <div className="md:hidden flex flex-col items-center mb-8">
-              <img src="/png_lelam_1.webp" alt="Lelam Logo" width={238} height={48} className="h-12 w-auto object-contain filter drop-shadow-md" />
+        {/* Form Column (Right / Center on Mobile & Tablet) */}
+        <div className="flex flex-col justify-center items-center py-8 sm:py-12 px-4 sm:px-6 md:px-10 lg:px-16 min-h-[calc(100vh-60px)] md:min-h-0 bg-slate-950">
+          <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-100">
+            {/* Mobile Branding Header */}
+            <div className="md:hidden flex flex-col items-center mb-6">
+              <Link to="/" className="inline-block">
+                <img src="/png_lelam_1.webp" alt="Lelam Logo" width={238} height={48} className="h-10 sm:h-12 w-auto object-contain filter drop-shadow-sm" />
+              </Link>
             </div>
 
             <Outlet />
@@ -64,21 +69,18 @@ export function AuthLayout() {
         </div>
       </div>
 
-      {/* Main Footer */}
-      <footer className="bg-slate-950 text-slate-500 py-5 px-6 md:px-16 flex flex-col md:flex-row justify-between items-center text-xs border-t border-slate-900 gap-4">
-        <div className="flex flex-col gap-0.5">
-          <div>
-            &copy; {new Date().getFullYear()} lelam.co All rights reserved.
-          </div>
-          <div className="text-[10px] text-slate-605">
-            lelam Company is not affiliated with MSTC.
-          </div>
+      {/* Footer */}
+      <footer className="bg-slate-950 text-slate-400 py-4 px-4 sm:px-8 md:px-16 flex flex-col sm:flex-row justify-between items-center text-xs border-t border-slate-900 gap-2.5 z-10">
+        <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-center sm:text-left">
+          <span className="font-medium text-slate-400">&copy; {new Date().getFullYear()} lelam.co All rights reserved.</span>
+          <span className="hidden sm:inline text-slate-700">•</span>
+          <span className="text-[11px] text-slate-500">Not affiliated with MSTC.</span>
         </div>
-        <div className="flex gap-6 font-medium">
-          <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
-          <Link to="/terms" className="hover:text-slate-300 transition-colors">Terms of Service</Link>
-          <Link to="/cookies" className="hover:text-slate-300 transition-colors">Cookie Policy</Link>
-          <Link to="/support" className="hover:text-slate-300 transition-colors">Contact Support</Link>
+        <div className="flex flex-wrap justify-center gap-3.5 sm:gap-6 font-medium text-slate-400">
+          <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+          <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+          <Link to="/cookies" className="hover:text-white transition-colors">Cookies</Link>
+          <Link to="/support" className="hover:text-white transition-colors">Support</Link>
         </div>
       </footer>
       <CookieConsent />

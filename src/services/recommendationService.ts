@@ -238,7 +238,7 @@ export const recommendationService = {
     try {
       const { data: mstcData, error } = await supabase
         .from('mstc_auctions')
-        .select('*')
+        .select('id, mstc_auction_number, category_name, location, seller_name, opening_date, closing_date')
         .eq('asset_status', 'completed')
         .gt('closing_date', new Date().toISOString())
         .limit(100);

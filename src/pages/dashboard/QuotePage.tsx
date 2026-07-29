@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   FileText, Plus, Trash2, Printer, Save, Paperclip,
   Palette, Building2, User, Percent, FileCode, Check,
-  Bookmark, FileDown, ChevronDown, Truck, Send, X
+  Bookmark, FileDown, ChevronDown, Truck, Send, X, Eye
 } from 'lucide-react';
 import { useQuoteStore } from '../../store/quoteStore';
 import type { QuoteAttachment } from '../../store/quoteStore';
@@ -124,6 +124,7 @@ export function QuotePage() {
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const colorInputRef = useRef<HTMLInputElement>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
 
   // Logistics Quote State
   const [isLogisticsModalOpen, setIsLogisticsModalOpen] = useState(false);
@@ -1551,6 +1552,81 @@ export function QuotePage() {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Floating Mobile Preview Button (Phones Only) */}
+      <button
+        onClick={() => setIsMobilePreviewOpen(true)}
+        className="fixed bottom-20 right-4 z-40 md:hidden flex items-center gap-1.5 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs rounded-full shadow-2xl transition-all border border-blue-400/40 cursor-pointer print:hidden"
+        aria-label="Preview Quote"
+      >
+        <Eye className="w-4 h-4" />
+        <span>Preview Quote</span>
+      </button>
+
+      {/* Full-Screen Mobile Preview Modal (Phones Only) */}
+      {isMobilePreviewOpen && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-slate-950/90 backdrop-blur-md p-2 sm:p-6 overflow-y-auto animate-fade-in print:hidden">
+          <div className="flex items-center justify-between bg-white px-4 py-3 rounded-t-2xl border-b border-slate-200 shrink-0">
+            <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+              <Eye className="w-4 h-4 text-blue-600" />
+              Quote PDF Preview
+            </h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setIsMobilePreviewOpen(false);
+                  handlePrint();
+                }}
+                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Print PDF
+              </button>
+              <button
+                onClick={() => setIsMobilePreviewOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label="Close preview"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <div className="bg-slate-100 p-2 sm:p-4 rounded-b-2xl overflow-x-auto flex-1 flex justify-center">
+            <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-8 w-full max-w-3xl overflow-x-auto">
+              <div className="border border-slate-200 rounded-lg p-6 bg-white space-y-6 text-slate-800 text-xs">
+                <div className="flex justify-between items-start border-b border-slate-100 pb-4">
+                  <div>
+                    {activeQuote.senderLogoUrl ? (
+                      <img src={activeQuote.senderLogoUrl} alt="Logo" className="h-10 w-auto object-contain mb-2" />
+                    ) : (
+                      <h2 className="text-lg font-bold text-slate-900">{activeQuote.senderCompany || 'Company Name'}</h2>
+                    )}
+                    <p className="text-[11px] text-slate-500 whitespace-pre-line">{activeQuote.senderAddress}</p>
+                  </div>
+                  <div className="text-right">
+                    <h1 className="text-xl font-black uppercase tracking-wider" style={{ color: activeQuote.colorTheme }}>
+                      Quotation
+                    </h1>
+                    <p className="text-xs font-bold text-slate-700 mt-1"># {activeQuote.quoteNumber}</p>
+                    <p className="text-[11px] text-slate-500">Date: {activeQuote.date}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-150">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Billed To:</span>
+                    <p className="font-bold text-slate-800">{activeQuote.clientCompany || activeQuote.clientName || 'Client'}</p>
+                    <p className="text-[11px] text-slate-500 whitespace-pre-line">{activeQuote.clientAddress}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Summary:</span>
+                    <p className="font-bold text-slate-800">Total Items: {activeQuote.items.length}</p>
+                    <p className="text-sm font-black text-blue-600 mt-1">{formatPrice(grandTotal, currency)}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

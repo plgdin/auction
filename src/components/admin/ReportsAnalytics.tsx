@@ -258,44 +258,44 @@ export function ReportsAnalytics() {
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    async function loadLocationData() {
+    async function loadAllReportsData() {
       setIsLoadingLocations(true);
-      try {
-        const locData = await adminService.getLocationAnalytics();
-        setLocationStats(locData);
-      } catch (err) {
-        console.error('Failed loading location analytics', err);
-      } finally {
-        setIsLoadingLocations(false);
-      }
-    }
-
-    async function loadCategoryData() {
       setIsLoadingCategories(true);
-      try {
-        const catData = await adminService.getCategoryAnalytics();
-        setCategoryStats(groupStatsByParent(catData));
-      } catch (err) {
-        console.error('Failed loading categories', err);
-      } finally {
-        setIsLoadingCategories(false);
-      }
-    }
-
-    async function loadReportMetrics() {
-      let growth: { month: string; buyers: number; sellers: number }[] = [];
+      setIsLoadingFinancial(true);
 
       try {
-        // Fetch user growth from profiles
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('created_at, role');
+        const [locData, catData, globalData, finData, profilesRes] = await Promise.all([
+          adminService.getLocationAnalytics(),
+          adminService.getCategoryAnalytics(),
+          adminService.getGlobalAnalytics(),
+          adminService.getFinancialAnalytics(),
+          supabase.from('profiles').select('created_at, role')
+        ]);
 
+        if (locData) setLocationStats(locData);
+        if (catData) setCategoryStats(groupStatsByParent(catData));
+
+        if (globalData && finData) {
+          setFinancialData({
+            emdTransactions: finData.emdTransactions || [],
+            walletTransactions: finData.walletTransactions || [],
+            bids: finData.bids || [],
+            summary: {
+              totalUsers: globalData.totalUsers || 0,
+              activeListings: globalData.activeListings || 0,
+              emdHeld: finData.realEmdHeld || 0,
+              emdVolume: finData.realEmdVolume || 0
+            }
+          });
+        }
+
+        // Process user growth metrics
+        const profiles = profilesRes.data;
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const growthMap: Record<string, { buyers: number, sellers: number }> = {};
 
         if (profiles && profiles.length > 0) {
-          profiles.forEach(p => {
+          profiles.forEach((p: any) => {
             if (p.created_at) {
               const date = new Date(p.created_at);
               const monthStr = months[date.getMonth()];
@@ -321,42 +321,17 @@ export function ReportsAnalytics() {
             sellers: val.sellers
           });
         }
-        growth = last6Months;
+        setLiveReportData({ growth: last6Months });
       } catch (err) {
-        console.error('Error fetching dashboard growth data', err);
-      }
-
-      setLiveReportData({ growth });
-    }
-
-    async function loadFinancialData() {
-      setIsLoadingFinancial(true);
-      try {
-        const globalData = await adminService.getGlobalAnalytics();
-        const finData = await adminService.getFinancialAnalytics();
-
-        setFinancialData({
-          emdTransactions: finData.emdTransactions || [],
-          walletTransactions: finData.walletTransactions || [],
-          bids: finData.bids || [],
-          summary: {
-            totalUsers: globalData.totalUsers || 0,
-            activeListings: globalData.activeListings || 0,
-            emdHeld: finData.realEmdHeld || 0,
-            emdVolume: finData.realEmdVolume || 0
-          }
-        });
-      } catch (err) {
-        console.error('Failed loading financial analytics', err);
+        console.error('Failed loading reports data', err);
       } finally {
+        setIsLoadingLocations(false);
+        setIsLoadingCategories(false);
         setIsLoadingFinancial(false);
       }
     }
 
-    loadLocationData();
-    loadCategoryData();
-    loadReportMetrics();
-    loadFinancialData();
+    loadAllReportsData();
   }, []);
 
   useEffect(() => {
