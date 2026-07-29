@@ -270,11 +270,8 @@ export const adminService = {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch users: ${response.statusText}`);
-      }
-
-      return await response.json();
+      const data = await response.json();
+      return data && data.success && Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching users via API:', error);
       return [];

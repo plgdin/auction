@@ -42,8 +42,45 @@ export const storageService = {
    */
   async uploadFile(file: File, bucketName: string): Promise<string | null> {
     try {
+      // 0. File validation: Size and Extension checks
+      const allowedImageExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+      const allowedDocExts = ['pdf', 'docx', 'doc', 'xls', 'xlsx', 'png', 'jpg', 'jpeg'];
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+
+      if (bucketName === 'auction_images' || bucketName === 'blog_images') {
+        if (!allowedImageExts.includes(fileExt)) {
+          console.error(`File upload blocked: File extension .${fileExt} is not allowed for images.`);
+          try {
+            import('react-hot-toast').then(({ toast }) => toast.error('Only image files (jpg, png, webp, gif) are allowed.'));
+          } catch {}
+          return null;
+        }
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+          console.error(`File upload blocked: File size ${(file.size / (1024 * 1024)).toFixed(2)}MB exceeds 5MB limit.`);
+          try {
+            import('react-hot-toast').then(({ toast }) => toast.error('Image size must be less than 5MB.'));
+          } catch {}
+          return null;
+        }
+      } else {
+        // Document bucket
+        if (!allowedDocExts.includes(fileExt)) {
+          console.error(`File upload blocked: File extension .${fileExt} is not allowed for documents.`);
+          try {
+            import('react-hot-toast').then(({ toast }) => toast.error('File type not allowed. Allowed: pdf, doc, docx, xls, xlsx, images.'));
+          } catch {}
+          return null;
+        }
+        if (file.size > 15 * 1024 * 1024) { // 15MB limit
+          console.error(`File upload blocked: File size ${(file.size / (1024 * 1024)).toFixed(2)}MB exceeds 15MB limit.`);
+          try {
+            import('react-hot-toast').then(({ toast }) => toast.error('File size must be less than 15MB.'));
+          } catch {}
+          return null;
+        }
+      }
+
       // 1. Create a unique file name
-      const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
 
       // 2. Upload to Supabase Storage
