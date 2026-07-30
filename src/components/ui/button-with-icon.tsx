@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Heart, ArrowUpRight } from "lucide-react";
+import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ButtonWithIconProps {
@@ -63,10 +63,10 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
             "absolute right-1 w-8 h-8 rounded-full flex items-center justify-center",
             "bg-rose-50 text-rose-500",
             "transition-all duration-500 ease-out",
-            "group-hover:right-[calc(100%-36px)] group-hover:rotate-45 group-hover:bg-rose-100"
+            "group-hover:right-[calc(100%-36px)] group-hover:bg-rose-100"
           )}
         >
-          <ArrowUpRight size={15} strokeWidth={2.5} />
+          <Heart size={15} strokeWidth={2.5} className="transition-all duration-500 group-hover:fill-rose-500 group-hover:scale-110" />
         </div>
       )}
     </button>
