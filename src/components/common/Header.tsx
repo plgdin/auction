@@ -1,11 +1,17 @@
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Menu, X, Gavel, 
-  HelpCircle, Newspaper, BookOpen, Info, Mail, Home as HomeIcon, Sparkles
+  HelpCircle, Newspaper, BookOpen, Info, Mail, Home as HomeIcon, Sparkles,
+  Bell, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import clsx from 'clsx';
+import { adminService } from '../../services/adminService';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
+import React from 'react';
+import type { Notification as DbNotification } from '../../types/database.types';
 
 /*
 function CurrencyDropdown({ isTransparent }: { isTransparent?: boolean }) {
@@ -79,8 +85,94 @@ function CurrencyDropdown({ isTransparent }: { isTransparent?: boolean }) {
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
+
+  const [notifications, setNotifications] = useState<DbNotification[]>([]);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      adminService.getNotifications(user.id).then((data) => setNotifications(data as DbNotification[]));
+    }
+  }, [user]);
+
+  // Click outside to close notifications dropdown
+  useEffect(() => {
+    if (!isNotifOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.header-notification-container')) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [isNotifOpen]);
+
+  // Real-time notifications listener
+  useEffect(() => {
+    if (!user?.id) return;
+
+    if ('Notification' in window && window.Notification.permission === 'default') {
+      window.Notification.requestPermission();
+    }
+
+    const channel = supabase
+      .channel(`header_notifications_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newNotif = payload.new as DbNotification;
+          setNotifications(prev => [newNotif, ...prev]);
+
+          toast.success(
+            React.createElement('div', { className: 'space-y-0.5 text-left' },
+              React.createElement('p', { className: 'font-bold text-xs' }, newNotif.title),
+              React.createElement('p', { className: 'text-[10px] opacity-90 leading-normal line-clamp-2' }, newNotif.message)
+            ),
+            {
+              duration: 6000,
+              icon: '🔔',
+              style: {
+                borderRadius: '12px',
+                background: '#0f172a',
+                color: '#fff',
+              }
+            }
+          );
+
+          if ('Notification' in window && window.Notification.permission === 'granted') {
+            try {
+              new window.Notification(newNotif.title, {
+                body: newNotif.message,
+                icon: '/png_lelam_1.webp'
+              });
+            } catch (err) {
+              console.warn('Browser system notification failed:', err);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const handleMarkRead = async (id: string) => {
+    await adminService.markNotificationAsRead(id);
+    setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: true } : n));
+  };
   const [heroMounted, setHeroMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -183,6 +275,72 @@ export function Header() {
 
             <div className="flex items-center space-x-4 ml-4">
               {/* CurrencyDropdown is temporarily hidden */}
+
+              {isAuthenticated && (
+                <div className="relative header-notification-container">
+                  <button 
+                    onClick={() => setIsNotifOpen(!isNotifOpen)}
+                    className={clsx(
+                      "p-2.5 rounded-full hover:bg-slate-100/10 transition-colors relative cursor-pointer",
+                      isHeaderTransparent ? "text-white/80 hover:text-white" : "text-slate-650 hover:text-slate-900 hover:bg-slate-100"
+                    )}
+                    aria-label="Toggle notifications dropdown"
+                  >
+                    <Bell size={20} />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                    )}
+                  </button>
+
+                  {isNotifOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden text-slate-900">
+                      <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <h3 className="font-bold text-slate-900 text-sm">Notifications</h3>
+                        {unreadCount > 0 && (
+                          <span className="text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded-full">{unreadCount} New</span>
+                        )}
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="p-6 text-center text-slate-500 text-xs font-semibold">No new notifications.</div>
+                        ) : (
+                          <ul className="divide-y divide-slate-100">
+                            {notifications.slice(0, 5).map(notif => (
+                              <li 
+                                key={notif.id} 
+                                className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer text-left ${!notif.is_read ? 'bg-blue-50/40' : ''}`}
+                                onClick={() => { if (!notif.is_read) handleMarkRead(notif.id); }}
+                              >
+                                <div className="flex gap-2.5">
+                                  <div className={`mt-0.5 ${!notif.is_read ? 'text-primary' : 'text-slate-400'}`}>
+                                    {notif.title.toLowerCase().includes('success') || notif.title.toLowerCase().includes('won') ? <CheckCircle2 className="w-4 h-4" /> :
+                                     notif.title.toLowerCase().includes('alert') || notif.title.toLowerCase().includes('outbid') ? <AlertCircle className="w-4 h-4" /> :
+                                     <Info className="w-4 h-4" />}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className={`text-xs ${!notif.is_read ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'} truncate`}>{notif.title}</p>
+                                    <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{notif.message}</p>
+                                    <p className="text-[9px] text-slate-400 mt-1.5 uppercase font-bold">{new Date(notif.created_at).toLocaleDateString()}</p>
+                                  </div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                      <div className="p-2 border-t border-slate-100 bg-slate-50 text-center">
+                        <Link 
+                          to="/dashboard/notifications" 
+                          onClick={() => setIsNotifOpen(false)}
+                          className="block text-xs font-bold text-primary hover:text-primary-700 py-1"
+                        >
+                          View All Notifications
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {isAuthenticated ? (
                 <Link
@@ -307,13 +465,26 @@ export function Header() {
           isMobileMenuOpen ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
         )}>
           {isAuthenticated ? (
-            <Link
-              to="/dashboard"
-              className="w-full text-center py-3.5 px-6 rounded-2xl text-base font-bold text-white bg-primary hover:bg-primary/95 shadow-lg shadow-primary/30 transition-all cursor-pointer"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Go to Dashboard
-            </Link>
+            <div className="w-full flex items-center gap-3">
+              <Link
+                to="/dashboard/notifications"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-3.5 bg-slate-100 hover:bg-slate-200 text-slate-655 rounded-2xl flex items-center justify-center relative cursor-pointer"
+                title="Notifications"
+              >
+                <Bell size={22} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-3 right-3.5 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
+                )}
+              </Link>
+              <Link
+                to="/dashboard"
+                className="flex-1 text-center py-3.5 px-6 rounded-2xl text-base font-bold text-white bg-primary hover:bg-primary/95 shadow-lg shadow-primary/30 transition-all cursor-pointer"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Go to Dashboard
+              </Link>
+            </div>
           ) : (
             <Link
               to="/auth/login"

@@ -183,7 +183,9 @@ export function Auctions() {
     setInterestedMstcIds(dashboardService.getInterestedAuctions(userId));
   }, [isAuthenticated, user]);
 
-  const handleMstcInterestedToggle = (itemId: string) => {
+  const interestedSet = useMemo(() => new Set(interestedMstcIds), [interestedMstcIds]);
+
+  const handleMstcInterestedToggle = useCallback((itemId: string) => {
     const userId = isAuthenticated && user ? user.id : 'anonymous';
     const isNowInterested = dashboardService.toggleInterestedAuction(userId, itemId);
     setInterestedMstcIds(dashboardService.getInterestedAuctions(userId));
@@ -192,7 +194,7 @@ export function Auctions() {
     } else {
       toast.success('Removed from interested list');
     }
-  };
+  }, [isAuthenticated, user]);
 
   // Derived filter and paging variables from URL query parameters
   const categoryIds = searchParams.getAll('category');
@@ -894,8 +896,8 @@ export function Auctions() {
                         item={item}
                         isGrid={isGridView}
                         onPreview={setSelectedPreviewItem}
-                        isInterested={interestedMstcIds.includes(item.id)}
-                        onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
+                        isInterested={interestedSet.has(item.id)}
+                        onInterestedToggle={handleMstcInterestedToggle}
                       />
                     ))}
                   </div>

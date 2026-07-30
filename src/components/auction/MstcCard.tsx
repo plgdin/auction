@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel } from 'lucide-react';
+import { useState, useEffect, useMemo, memo } from 'react';
+import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Gavel } from 'lucide-react';
+import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime, hasConfirmedAssetDocuments } from '../../utils/mstcHelpers';
@@ -13,10 +14,10 @@ interface MstcCardProps {
   isGrid?: boolean;
   onPreview: (item: MstcSanitizedAuction) => void;
   isInterested?: boolean;
-  onInterestedToggle?: () => void;
+  onInterestedToggle?: (id: string) => void;
 }
 
-export function MstcCard({ item, isGrid = true, onPreview, isInterested = false, onInterestedToggle }: MstcCardProps) {
+export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview, isInterested = false, onInterestedToggle }: MstcCardProps) {
   const { currency } = useAppStore();
   const shortId = (item?.mstc_auction_number || '').split('/').pop() || item?.id?.substring(0, 8) || 'N/A';
   // Calculate summary asynchronously to prevent main-thread blocking when rendering many cards
@@ -377,7 +378,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               {item.sanitized_document_path ? (
                 <button
                   onClick={() => onPreview(item)}
-                  className="flex-grow sm:flex-none inline-flex justify-center items-center py-2 px-5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
                 >
                   <Eye className="w-4 h-4 mr-2" />
                   View Details
@@ -385,7 +386,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               ) : (
                 <button
                   disabled
-                  className="flex-grow sm:flex-none inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
                 >
                   <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
                   PDF Processing...
@@ -393,18 +394,10 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               )}
 
               {onInterestedToggle && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onInterestedToggle();
-                  }}
-                  className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
-                  title={isInterested ? "Remove from interested list" : "Add to interested list"}
-                  aria-label={isInterested ? "Remove from interested list" : "Add to interested list"}
-                >
-                  <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
-                </button>
+                <ButtonWithIconDemo
+                  isInterested={isInterested}
+                  onInterestedToggle={() => onInterestedToggle(item.id)}
+                />
               )}
             </div>
           </div>
@@ -523,7 +516,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           {item.sanitized_document_path ? (
             <button
               onClick={() => onPreview(item)}
-              className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+              className="flex-grow inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
             >
               <Eye className="w-4 h-4 mr-2" />
               View Details
@@ -531,7 +524,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           ) : (
             <button
               disabled
-              className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
+              className="flex-grow inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
             >
               <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
               PDF Processing...
@@ -539,21 +532,22 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           )}
 
           {onInterestedToggle && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onInterestedToggle();
-              }}
-              className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
-              title={isInterested ? "Remove from interested list" : "Add to interested list"}
-              aria-label={isInterested ? "Remove from interested list" : "Add to interested list"}
-            >
-              <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
-            </button>
+            <ButtonWithIconDemo
+              isInterested={isInterested}
+              onInterestedToggle={() => onInterestedToggle(item.id)}
+            />
           )}
         </div>
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item?.id === nextProps.item?.id &&
+    prevProps.item?.mstc_auction_number === nextProps.item?.mstc_auction_number &&
+    prevProps.isGrid === nextProps.isGrid &&
+    prevProps.isInterested === nextProps.isInterested &&
+    prevProps.onPreview === nextProps.onPreview &&
+    prevProps.onInterestedToggle === nextProps.onInterestedToggle
+  );
+});
