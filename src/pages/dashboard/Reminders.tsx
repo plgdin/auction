@@ -190,6 +190,7 @@ export function Reminders() {
     watchlist.forEach(a => {
       const { auctionStart, auctionEnd, inspectionStart, inspectionEnd } = getAuctionCalendarDates(a);
       
+      // Auction events
       events.push({
         id: `${a.id}-start`,
         title: a.title,
@@ -208,26 +209,31 @@ export function Reminders() {
         icon: '■'
       });
 
-      if (inspectionStart) {
-        events.push({
-          id: `${a.id}-insp-start`,
-          title: a.title,
-          type: 'inspection_start',
-          date: inspectionStart,
-          colorClass: 'bg-purple-100 border-purple-200 text-purple-800',
-          icon: '🔍'
-        });
-      }
+      // Inspection range events (for every day in the range)
+      if (inspectionStart && inspectionEnd) {
+        const startNormalized = new Date(inspectionStart);
+        startNormalized.setHours(0,0,0,0);
+        const endNormalized = new Date(inspectionEnd);
+        endNormalized.setHours(0,0,0,0);
+        
+        const curr = new Date(startNormalized);
+        while (curr.getTime() <= endNormalized.getTime()) {
+          const currTime = curr.getTime();
+          const isStart = currTime === startNormalized.getTime();
+          const isEnd = currTime === endNormalized.getTime();
 
-      if (inspectionEnd) {
-        events.push({
-          id: `${a.id}-insp-end`,
-          title: a.title,
-          type: 'inspection_end',
-          date: inspectionEnd,
-          colorClass: 'bg-indigo-100 border-indigo-200 text-indigo-800',
-          icon: '⌛'
-        });
+          events.push({
+            id: `${a.id}-insp-${curr.toDateString()}`,
+            title: a.title,
+            type: isStart ? 'inspection_start' : isEnd ? 'inspection_end' : 'inspection_day' as any,
+            date: new Date(curr),
+            colorClass: 'bg-purple-100 border-purple-200 text-purple-800',
+            icon: isEnd ? '⌛' : '🔍'
+          });
+
+          // Increment by 1 day
+          curr.setDate(curr.getDate() + 1);
+        }
       }
     });
     return events;
@@ -259,12 +265,12 @@ export function Reminders() {
       cells.push(
         <div 
           key={`day-${day}`} 
-          className={`h-24 p-2 border border-slate-150 flex flex-col justify-between hover:bg-slate-50 transition-colors ${isToday ? 'bg-primary/5 border-primary/30' : 'bg-white'}`}
+          className={`h-24 p-2 border border-slate-150 flex flex-col justify-start items-start hover:bg-slate-50 transition-colors ${isToday ? 'bg-primary/5 border-primary/30' : 'bg-white'}`}
         >
-          <span className={`text-xs font-bold ${isToday ? 'w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center' : 'text-slate-700'}`}>
+          <span className={`text-xs font-bold mb-1 ${isToday ? 'w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center' : 'text-slate-700'}`}>
             {day}
           </span>
-          <div className="space-y-1 overflow-y-auto max-h-16 custom-scrollbar mt-1 w-full">
+          <div className="space-y-1 overflow-y-auto flex-grow custom-scrollbar mt-1 w-full">
             {dayEvents.map(e => {
               const prefix = e.type === 'auction_start' 
                 ? 'Opens' 
@@ -272,7 +278,9 @@ export function Reminders() {
                 ? 'Closes' 
                 : e.type === 'inspection_start' 
                 ? 'Insp Start' 
-                : 'Insp End';
+                : e.type === 'inspection_end'
+                ? 'Insp End'
+                : 'Insp';
               return (
                 <div 
                   key={e.id} 
