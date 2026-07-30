@@ -60,7 +60,7 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
       type="button"
       onClick={handleClick}
       className={cn(
-        "group relative inline-flex items-center rounded-full cursor-pointer select-none shrink-0 overflow-hidden",
+        "group/btn relative inline-flex items-center rounded-full cursor-pointer select-none shrink-0 overflow-hidden",
         "font-semibold text-[13px] tracking-wide whitespace-nowrap",
         "h-10 pl-4 pr-12 hover:pl-12 hover:pr-4",
         "outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-300",
@@ -78,7 +78,7 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
         className={cn(
           "absolute top-1 bottom-1 right-1 w-8 rounded-full flex items-center justify-center",
           "bg-rose-50 transition-all duration-500 ease-out",
-          "group-hover:right-[calc(100%-36px)] group-hover:bg-rose-100"
+          "group-hover/btn:right-[calc(100%-36px)] group-hover/btn:bg-rose-100"
         )}
       >
         <Heart
@@ -86,7 +86,7 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
           strokeWidth={2.5}
           className={cn(
             "text-rose-400 fill-none transition-all duration-500",
-            "group-hover:fill-rose-500 group-hover:text-rose-500 group-hover:scale-110",
+            "group-hover/btn:fill-rose-500 group-hover/btn:text-rose-500 group-hover/btn:scale-110",
             isAnimating && "scale-125 fill-rose-500 text-rose-500"
           )}
         />
