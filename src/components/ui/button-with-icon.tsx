@@ -61,24 +61,29 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
       onClick={handleClick}
       className={cn(
         "group/btn relative inline-flex items-center rounded-full cursor-pointer select-none shrink-0 overflow-hidden",
-        "font-semibold text-[13px] tracking-wide whitespace-nowrap",
-        "h-10 pl-4 pr-12 hover:pl-12 hover:pr-4",
-        "outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-300",
-        "bg-white text-slate-700 border border-slate-200 shadow-sm hover:border-rose-300 hover:shadow-md hover:shadow-rose-100/50",
-        "transition-[padding,transform,background-color,border-color,box-shadow] duration-200 ease-out transform-gpu",
+        "h-10 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-300",
+        "bg-white border border-slate-200 shadow-sm hover:border-rose-300 hover:shadow-md hover:shadow-rose-100/50",
+        "transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out transform-gpu",
         isAnimating ? "scale-95" : "active:scale-95",
         className
       )}
     >
-      {/* Label — stays above the sliding circle */}
-      <span className="relative z-10 transition-all duration-200 ease-out">{label}</span>
+      {/* Invisible layout setter: defines exact button width statically without animating */}
+      <div className="invisible pl-4 pr-12 flex items-center h-full font-semibold text-[13px] tracking-wide whitespace-nowrap">
+        {label}
+      </div>
+
+      {/* Visible animated text label */}
+      <span className="absolute inset-y-0 left-0 pl-4 flex items-center font-semibold text-[13px] tracking-wide whitespace-nowrap text-slate-700 transition-transform duration-200 ease-out transform-gpu group-hover/btn:translate-x-8">
+        {label}
+      </span>
 
       {/* Sliding heart circle */}
       <div
         className={cn(
           "absolute top-1 bottom-1 right-1 w-8 rounded-full flex items-center justify-center",
-          "bg-rose-50 transition-all duration-200 ease-out",
-          "group-hover/btn:right-[calc(100%-36px)] group-hover/btn:bg-rose-100"
+          "bg-rose-50 transition-transform duration-200 ease-out transform-gpu",
+          "group-hover/btn:-translate-x-[calc(100%-4px)] group-hover/btn:bg-rose-100"
         )}
       >
         <Heart

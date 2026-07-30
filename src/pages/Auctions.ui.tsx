@@ -183,7 +183,7 @@ export function Auctions() {
     setInterestedMstcIds(dashboardService.getInterestedAuctions(userId));
   }, [isAuthenticated, user]);
 
-  const handleMstcInterestedToggle = (itemId: string) => {
+  const handleMstcInterestedToggle = useCallback((itemId: string) => {
     const userId = isAuthenticated && user ? user.id : 'anonymous';
     const isNowInterested = dashboardService.toggleInterestedAuction(userId, itemId);
     setInterestedMstcIds(dashboardService.getInterestedAuctions(userId));
@@ -192,7 +192,7 @@ export function Auctions() {
     } else {
       toast.success('Removed from interested list');
     }
-  };
+  }, [isAuthenticated, user]);
 
   // Derived filter and paging variables from URL query parameters
   const categoryIds = searchParams.getAll('category');
