@@ -34,7 +34,7 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
       onClick={handleClick}
       className={cn(
         "group/btn relative inline-flex items-center justify-center rounded-full cursor-pointer select-none shrink-0 overflow-hidden",
-        "h-10 w-[140px]",
+        "h-10 w-[154px]",
         "outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
         "transition-all duration-200 ease-out transform-gpu",
         isInterested
@@ -62,7 +62,7 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
         </div>
       ) : (
         <>
-          <span className="absolute left-3.5 font-semibold text-[13px] tracking-wide whitespace-nowrap text-slate-700 transition-transform duration-200 ease-out transform-gpu group-hover/btn:translate-x-6">
+          <span className="absolute left-3.5 font-semibold text-[13px] tracking-wide whitespace-nowrap text-slate-700 transition-transform duration-200 ease-out transform-gpu group-hover/btn:translate-x-7">
             {label}
           </span>
 
