@@ -62,7 +62,7 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
       className={cn(
         "group relative inline-flex items-center rounded-full cursor-pointer select-none shrink-0 overflow-hidden",
         "font-semibold text-[13px] tracking-wide whitespace-nowrap",
-        "h-10 pl-5 pr-13 hover:pl-13 hover:pr-5",
+        "h-10 pl-4 pr-12 hover:pl-12 hover:pr-4",
         "outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-300",
         "bg-white text-slate-700 border border-slate-200 shadow-sm hover:border-rose-300 hover:shadow-md hover:shadow-rose-100/50",
         "transition-all duration-500 ease-out transform-gpu",
