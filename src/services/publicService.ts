@@ -532,6 +532,10 @@ export const publicService = {
     return true;
   },
 
+  async submitContactForm(messageData: Partial<ContactMessage>): Promise<boolean> {
+    return this.submitContactMessage(messageData);
+  },
+
   getActiveFaqs: PageCache.memoize(async function getActiveFaqs(): Promise<FaqItem[]> {
     try {
       const { data, error } = await supabase

@@ -180,7 +180,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     if (isGrid) {
       return (
         <div className="flex flex-col gap-2 mb-3">
-          <div className="flex items-center justify-between w-full">
+          <div className="flex items-center justify-between gap-2 w-full">
             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
               <span className="text-xs font-semibold text-slate-500 font-mono">
                 Ref ID: {shortId}
@@ -198,15 +198,19 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                 )}
               </button>
             </div>
-          </div>
-          {(item.is_reauction || hasConfirmedAssetDocuments(item.raw_materials_text) || hasOtherMedia) && (
-            <div className="flex flex-wrap gap-1.5 justify-start">
-              {item.is_reauction && (
-                <span className="bg-amber-50 border border-amber-250 text-amber-800 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                  Re-auction
+
+            {item.is_reauction && (
+              <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                 </span>
-              )}
+                Re-auction
+              </span>
+            )}
+          </div>
+          {(hasConfirmedAssetDocuments(item.raw_materials_text) || hasOtherMedia) && (
+            <div className="flex flex-wrap gap-1.5 justify-start">
               {hasConfirmedAssetDocuments(item.raw_materials_text) && (
                 <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
                   Asset docs available
@@ -225,7 +229,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
 
     return (
       <div className="flex justify-between items-start gap-4 mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
             <span className="text-xs font-semibold text-slate-500 font-mono">
               Ref ID: {shortId}
@@ -243,25 +247,30 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               )}
             </button>
           </div>
-        </div>
-        <div className="flex flex-col items-end gap-1.5">
           {item.is_reauction && (
-            <span className="bg-amber-50 border border-amber-250 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+            <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
               Re-auction
             </span>
           )}
-          {hasConfirmedAssetDocuments(item.raw_materials_text) && (
-            <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
-              Asset documents available
-            </span>
-          )}
-          {hasOtherMedia && (
-            <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
-              Images available
-            </span>
-          )}
         </div>
+        {(hasConfirmedAssetDocuments(item.raw_materials_text) || hasOtherMedia) && (
+          <div className="flex flex-col items-end gap-1.5">
+            {hasConfirmedAssetDocuments(item.raw_materials_text) && (
+              <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+                Asset documents available
+              </span>
+            )}
+            {hasOtherMedia && (
+              <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+                Images available
+              </span>
+            )}
+          </div>
+        )}
       </div>
     );
   };
