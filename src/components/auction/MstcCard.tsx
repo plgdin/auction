@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel } from 'lucide-react';
+import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel, Info } from 'lucide-react';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime, hasConfirmedAssetDocuments } from '../../utils/mstcHelpers';
@@ -356,11 +356,29 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
                 <div className="flex items-center text-slate-655">
                   <Landmark className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>EMD: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}</strong></span>
+                  <span className="flex items-center gap-1">
+                    <span>EMD: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}</strong></span>
+                    <div className="relative group/tooltip inline-block ml-0.5">
+                      <Info className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                      <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                        Earnest Money Deposit required to bid on this auction.
+                        <div className="absolute top-full left-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                      </div>
+                    </div>
+                  </span>
                 </div>
                 <div className="flex items-center text-slate-655">
                   <ShieldCheck className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Pre-bid: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}</strong></span>
+                  <span className="flex items-center gap-1">
+                    <span>Pre-bid: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}</strong></span>
+                    <div className="relative group/tooltip inline-block ml-0.5">
+                      <Info className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                      <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                        Mandatory deposit required prior to auction start.
+                        <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                      </div>
+                    </div>
+                  </span>
                 </div>
               </div>
 
@@ -489,19 +507,46 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
-            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">EMD Required</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+              <span>EMD Required</span>
+              <div className="relative group/tooltip inline-block">
+                <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                  Earnest Money Deposit required to bid on this auction.
+                  <div className="absolute top-full left-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                </div>
+              </div>
+            </span>
             <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}>
               {summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
-            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+              <span>Pre-bid EMD</span>
+              <div className="relative group/tooltip inline-block">
+                <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                  Mandatory deposit required prior to auction start.
+                  <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                </div>
+              </div>
+            </span>
             <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}>
               {summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5 col-span-2">
-            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Auction Type</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+              <span>Auction Type</span>
+              <div className="relative group/tooltip inline-block">
+                <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-52 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                  Category (e.g. C-Customs, O-General, P-Property) dictating bidding rules.
+                  <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                </div>
+              </div>
+            </span>
             <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.auctionType || 'O-General'}>
               {summary?.auctionType || 'O-General'}
             </span>
