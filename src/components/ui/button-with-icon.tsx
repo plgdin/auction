@@ -24,51 +24,73 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
     setTimeout(() => setIsAnimating(false), 500);
   }, [isAnimating, onInterestedToggle]);
 
+  if (isInterested) {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        className={cn(
+          "inline-flex items-center gap-2 rounded-full cursor-pointer select-none shrink-0",
+          "font-semibold text-[13px] tracking-wide whitespace-nowrap",
+          "h-10 px-4",
+          "outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-rose-400",
+          "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md shadow-rose-500/25 hover:shadow-lg hover:shadow-rose-500/30",
+          "transition-all duration-300 ease-out transform-gpu",
+          isAnimating ? "scale-95" : "hover:scale-[1.03] active:scale-95",
+          className
+        )}
+      >
+        <span>Interested</span>
+        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-white/20 group-hover:bg-white/30 transition-colors">
+          <Heart
+            size={14}
+            strokeWidth={2.5}
+            className={cn(
+              "fill-white text-white transition-transform duration-300",
+              isAnimating && "scale-75"
+            )}
+          />
+        </span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={handleClick}
       className={cn(
-        "relative inline-flex items-center gap-2 rounded-full cursor-pointer select-none",
+        "group relative inline-flex items-center rounded-full cursor-pointer select-none shrink-0 overflow-hidden",
         "font-semibold text-[13px] tracking-wide whitespace-nowrap",
-        "h-10 px-4",
-        "outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-        "group transition-all duration-300 ease-out transform-gpu",
-        isInterested
-          ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md shadow-rose-500/25 hover:shadow-lg hover:shadow-rose-500/30 focus-visible:ring-rose-400"
-          : "bg-white text-slate-700 border border-slate-200 shadow-sm hover:border-rose-300 hover:shadow-md hover:shadow-rose-100/50 focus-visible:ring-slate-300",
-        isAnimating && "scale-95",
-        !isAnimating && "hover:scale-[1.03] active:scale-95",
+        "h-10 ps-4 pe-12 hover:ps-12 hover:pe-4",
+        "outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-300",
+        "bg-white text-slate-700 border border-slate-200 shadow-sm hover:border-rose-300 hover:shadow-md hover:shadow-rose-100/50",
+        "transition-all duration-500 ease-out transform-gpu",
+        isAnimating ? "scale-95" : "active:scale-95",
         className
       )}
     >
-      {/* Label */}
-      <span className="relative z-10">
-        {isInterested ? "Interested" : label}
-      </span>
+      {/* Label — stays above the sliding circle */}
+      <span className="relative z-10">{label}</span>
 
-      {/* Heart Icon */}
-      <span
+      {/* Sliding heart circle */}
+      <div
         className={cn(
-          "flex items-center justify-center w-7 h-7 rounded-full transition-all duration-300 ease-out transform-gpu shrink-0",
-          isInterested
-            ? "bg-white/20 group-hover:bg-white/30"
-            : "bg-rose-50 group-hover:bg-rose-100"
+          "absolute top-1 bottom-1 right-1 w-8 rounded-full flex items-center justify-center",
+          "bg-rose-50 transition-all duration-500 ease-out",
+          "group-hover:right-[calc(100%-36px)] group-hover:bg-rose-100"
         )}
       >
         <Heart
           size={14}
           strokeWidth={2.5}
           className={cn(
-            "transition-all duration-300 transform-gpu",
-            isInterested
-              ? "fill-white text-white"
-              : "text-rose-400 fill-none group-hover:text-rose-500 group-hover:fill-rose-500 group-hover:scale-110",
-            isAnimating && !isInterested && "scale-125 text-rose-500 fill-rose-500",
-            isAnimating && isInterested && "scale-75"
+            "text-rose-400 fill-none transition-all duration-500",
+            "group-hover:fill-rose-500 group-hover:text-rose-500 group-hover:scale-110",
+            isAnimating && "scale-125 fill-rose-500 text-rose-500"
           )}
         />
-      </span>
+      </div>
     </button>
   );
 };
