@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, memo } from 'react';
-import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Gavel } from 'lucide-react';
+import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel, Info } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
@@ -181,7 +181,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
     if (isGrid) {
       return (
         <div className="flex flex-col gap-2 mb-3">
-          <div className="flex items-center justify-between w-full">
+          <div className="flex items-center justify-between gap-2 w-full">
             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
               <span className="text-xs font-semibold text-slate-500 font-mono">
                 Ref ID: {shortId}
@@ -199,15 +199,19 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
                 )}
               </button>
             </div>
-          </div>
-          {(item.is_reauction || hasConfirmedAssetDocuments(item.raw_materials_text) || hasOtherMedia) && (
-            <div className="flex flex-wrap gap-1.5 justify-start">
-              {item.is_reauction && (
-                <span className="bg-amber-50 border border-amber-250 text-amber-800 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                  Re-auction
+
+            {item.is_reauction && (
+              <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                 </span>
-              )}
+                Re-auction
+              </span>
+            )}
+          </div>
+          {(hasConfirmedAssetDocuments(item.raw_materials_text) || hasOtherMedia) && (
+            <div className="flex flex-wrap gap-1.5 justify-start">
               {hasConfirmedAssetDocuments(item.raw_materials_text) && (
                 <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
                   Asset docs available
@@ -226,7 +230,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
 
     return (
       <div className="flex justify-between items-start gap-4 mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
             <span className="text-xs font-semibold text-slate-500 font-mono">
               Ref ID: {shortId}
@@ -244,25 +248,30 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
               )}
             </button>
           </div>
-        </div>
-        <div className="flex flex-col items-end gap-1.5">
           {item.is_reauction && (
-            <span className="bg-amber-50 border border-amber-250 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+            <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
               Re-auction
             </span>
           )}
-          {hasConfirmedAssetDocuments(item.raw_materials_text) && (
-            <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
-              Asset documents available
-            </span>
-          )}
-          {hasOtherMedia && (
-            <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
-              Images available
-            </span>
-          )}
         </div>
+        {(hasConfirmedAssetDocuments(item.raw_materials_text) || hasOtherMedia) && (
+          <div className="flex flex-col items-end gap-1.5">
+            {hasConfirmedAssetDocuments(item.raw_materials_text) && (
+              <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+                Asset documents available
+              </span>
+            )}
+            {hasOtherMedia && (
+              <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+                Images available
+              </span>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -348,11 +357,29 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
               <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
                 <div className="flex items-center text-slate-655">
                   <Landmark className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>EMD: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}</strong></span>
+                  <span className="flex items-center gap-1">
+                    <span>EMD: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}</strong></span>
+                    <div className="relative group/tooltip inline-block ml-0.5">
+                      <Info className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                      <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                        Earnest Money Deposit required to bid on this auction.
+                        <div className="absolute top-full left-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                      </div>
+                    </div>
+                  </span>
                 </div>
                 <div className="flex items-center text-slate-655">
                   <ShieldCheck className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Pre-bid: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}</strong></span>
+                  <span className="flex items-center gap-1">
+                    <span>Pre-bid: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}</strong></span>
+                    <div className="relative group/tooltip inline-block ml-0.5">
+                      <Info className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                      <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                        Mandatory deposit required prior to auction start.
+                        <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                      </div>
+                    </div>
+                  </span>
                 </div>
               </div>
 
@@ -473,19 +500,46 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
-            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">EMD Required</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+              <span>EMD Required</span>
+              <div className="relative group/tooltip inline-block">
+                <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                  Earnest Money Deposit required to bid on this auction.
+                  <div className="absolute top-full left-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                </div>
+              </div>
+            </span>
             <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}>
               {summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
-            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+              <span>Pre-bid EMD</span>
+              <div className="relative group/tooltip inline-block">
+                <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                  Mandatory deposit required prior to auction start.
+                  <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                </div>
+              </div>
+            </span>
             <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}>
               {summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5 col-span-2">
-            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Auction Type</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+              <span>Auction Type</span>
+              <div className="relative group/tooltip inline-block">
+                <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-52 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                  Category (e.g. C-Customs, O-General, P-Property) dictating bidding rules.
+                  <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                </div>
+              </div>
+            </span>
             <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.auctionType || 'O-General'}>
               {summary?.auctionType || 'O-General'}
             </span>

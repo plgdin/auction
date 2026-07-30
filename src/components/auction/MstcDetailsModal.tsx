@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DownOutlined } from '@ant-design/icons';
 import { Dropdown } from 'antd';
-import { X, Copy, Check, Download, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap } from 'lucide-react';
+import { X, Copy, Check, Download, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap, Info } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import ButtonWithIconDemo from '../ui/button-witn-icon';
 import { expandMstcOffice } from '../../services/publicService';
@@ -1303,7 +1303,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
                             <span>You Can Sell For</span>
                             <div className="relative group inline-block">
-                              <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                              <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                                 How much you can sell all items in this lot for, based on current market prices.
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -1321,7 +1321,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
                             <span>Total You'll Spend</span>
                             <div className="relative group inline-block">
-                              <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                              <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                                 Everything you'll spend — your bid, taxes, transport, loading, and all other costs added up.
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -1346,7 +1346,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <h5 className="text-[9px] font-bold uppercase tracking-widest flex items-center gap-1">
                             <span className="opacity-60">Your Profit</span>
                             <div className="relative group inline-block">
-                              <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                              <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                                 How much money you keep after selling. Green = you make money, Red = you lose money.
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -1374,7 +1374,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <h5 className="text-[9px] font-bold uppercase tracking-widest flex items-center gap-1">
                             <span className="opacity-60">% Return</span>
                             <div className="relative group inline-block">
-                              <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                              <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                                 For every ₹100 you spend, how much profit you make. Higher is better.
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -1683,7 +1683,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                   <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
                                     <span>Will I Make Money?</span>
                                     <div className="relative group inline-block">
-                                      <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                                      <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
                                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                                         Out of 5,000 scenarios, how often you end up making money (prices and weights can vary).
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -1699,7 +1699,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                   <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
                                     <span>Avg. Return</span>
                                     <div className="relative group inline-block">
-                                      <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                                      <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
                                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                                         On average, how much profit you'd make for every ₹100 spent across all scenarios.
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -1715,7 +1715,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                   <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
                                     <span>Best Scenario</span>
                                     <div className="relative group inline-block">
-                                      <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                                      <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
                                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                                         If everything goes really well — prices are high and you get full weight.
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -1731,7 +1731,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                   <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
                                     <span>Worst Scenario</span>
                                     <div className="relative group inline-block">
-                                      <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none tracking-normal ml-0.5">ⓘ</span>
+                                      <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
                                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                                         If things go badly — prices drop and you get less weight than expected.
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -1834,20 +1834,47 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 {/* Seller & Location Details */}
                 <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
                   <div className="flex flex-col">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Seller Name</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Seller Name</span>
+                      <div className="relative group inline-block">
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          The official organization or seller hosting this auction lot.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 leading-snug mt-0.5">
                       {formatSellerName(item.seller_name)}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Regional Office</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Regional Office</span>
+                      <div className="relative group inline-block">
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          MSTC regional branch office managing and facilitating this transaction.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 leading-snug mt-0.5">
                       {regionalOfficeName}
                     </span>
                   </div>
                   {item.location && (
                     <div className="flex flex-col border-t border-slate-100 pt-2">
-                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Location / State</span>
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <span>Location / State</span>
+                        <div className="relative group inline-block">
+                          <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                            Physical location or state where auction material is stored.
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                          </div>
+                        </div>
+                      </span>
                       <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">{locationName}</span>
                     </div>
                   )}
@@ -1855,7 +1882,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                       <span>Auction Type</span>
                       <div className="relative group inline-block">
-                        <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                           Identifies the category of the auction (e.g. C-Customs, O-General, P-Property) which dictates specific compliance rules and bidding procedures.
                           <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -1871,13 +1898,31 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 {/* Dates & Countdown */}
                 <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
                   <div className="flex flex-col">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Bid Opening Time</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Bid Opening Time</span>
+                      <div className="relative group inline-block">
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          Exact date and time when online bidding opens.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Bid Closing Time</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Bid Closing Time</span>
+                      <div className="relative group inline-block">
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          Deadline after which no further bids will be accepted.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {parsedCloseDate ? parsedCloseDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : new Date(item?.closing_date || Date.now()).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                     </span>
@@ -1886,7 +1931,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                       <span>Inspection Date Range</span>
                       <div className="relative group inline-block">
-                        <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                           The designated timeline for bidders to physically visit the warehouse or site to inspect material condition, quality, and quantity.
                           <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -2088,7 +2133,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
                         <span>EMD Details</span>
                         <div className="relative group inline-block">
-                          <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                          <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                             Earnest Money Deposit (EMD) is a security deposit to guarantee bid commitment. Refunded to unsuccessful bidders.
                             <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -2103,7 +2148,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
                         <span>Pre-bid EMD</span>
                         <div className="relative group inline-block">
-                          <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                          <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                             Pre-bid EMD is a mandatory deposit paid before the auction starts to qualify and receive bidding credentials.
                             <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
@@ -2119,7 +2164,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
                           <span>GST Tax Scheme</span>
                           <div className="relative group inline-block">
-                            <span className="text-blue-500 text-xs font-normal normal-case cursor-help transition-colors hover:text-blue-600 select-none">ⓘ</span>
+                            <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-56 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
                               Reverse Charge Mechanism (RCM) requires the buyer to pay the GST directly to the government instead of paying it to the seller.
                               <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
