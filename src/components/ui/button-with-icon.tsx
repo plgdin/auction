@@ -29,46 +29,46 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
       type="button"
       onClick={handleClick}
       className={cn(
-        "relative inline-flex items-center rounded-full cursor-pointer select-none",
-        "font-semibold text-[13px] tracking-wide",
-        "h-10 p-1 overflow-hidden",
+        "relative inline-flex items-center gap-2 rounded-full cursor-pointer select-none",
+        "font-semibold text-[13px] tracking-wide whitespace-nowrap",
+        "h-10 px-4",
         "outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-        "group transition-all duration-500 ease-out transform-gpu",
+        "group transition-all duration-300 ease-out transform-gpu",
         isInterested
-          ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md shadow-rose-500/25 hover:shadow-lg hover:shadow-rose-500/30 focus-visible:ring-rose-400 ps-4 pe-4"
-          : "bg-white text-slate-700 border border-slate-200 shadow-sm hover:border-rose-200 hover:shadow-md hover:shadow-rose-100/50 focus-visible:ring-slate-300 ps-4 pe-12 hover:ps-12 hover:pe-4",
+          ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md shadow-rose-500/25 hover:shadow-lg hover:shadow-rose-500/30 focus-visible:ring-rose-400"
+          : "bg-white text-slate-700 border border-slate-200 shadow-sm hover:border-rose-300 hover:shadow-md hover:shadow-rose-100/50 focus-visible:ring-slate-300",
         isAnimating && "scale-95",
-        !isAnimating && "active:scale-95",
+        !isAnimating && "hover:scale-[1.03] active:scale-95",
         className
       )}
     >
       {/* Label */}
-      <span className="relative z-10 transition-all duration-500 whitespace-nowrap">
+      <span className="relative z-10">
         {isInterested ? "Interested" : label}
       </span>
 
-      {/* Icon Container — slides from right to left on hover (only in non-interested state) */}
-      {isInterested ? (
+      {/* Heart Icon */}
+      <span
+        className={cn(
+          "flex items-center justify-center w-7 h-7 rounded-full transition-all duration-300 ease-out transform-gpu shrink-0",
+          isInterested
+            ? "bg-white/20 group-hover:bg-white/30"
+            : "bg-rose-50 group-hover:bg-rose-100"
+        )}
+      >
         <Heart
           size={14}
           strokeWidth={2.5}
           className={cn(
-            "ml-2 fill-white text-white transition-transform duration-300",
-            isAnimating && "scale-125"
+            "transition-all duration-300 transform-gpu",
+            isInterested
+              ? "fill-white text-white"
+              : "text-rose-400 fill-none group-hover:text-rose-500 group-hover:fill-rose-500 group-hover:scale-110",
+            isAnimating && !isInterested && "scale-125 text-rose-500 fill-rose-500",
+            isAnimating && isInterested && "scale-75"
           )}
         />
-      ) : (
-        <div
-          className={cn(
-            "absolute right-1 w-8 h-8 rounded-full flex items-center justify-center",
-            "bg-rose-50 text-rose-500",
-            "transition-all duration-500 ease-out",
-            "group-hover:right-[calc(100%-36px)] group-hover:bg-rose-100"
-          )}
-        >
-          <Heart size={15} strokeWidth={2.5} className="transition-all duration-500 group-hover:fill-rose-500 group-hover:scale-110" />
-        </div>
-      )}
+      </span>
     </button>
   );
 };
