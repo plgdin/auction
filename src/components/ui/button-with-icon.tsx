@@ -21,7 +21,7 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
     if (isAnimating) return;
     setIsAnimating(true);
     onInterestedToggle?.();
-    setTimeout(() => setIsAnimating(false), 500);
+    setTimeout(() => setIsAnimating(false), 300);
   }, [isAnimating, onInterestedToggle]);
 
   if (isInterested) {
@@ -35,18 +35,18 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
           "h-10 px-4",
           "outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-rose-400",
           "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md shadow-rose-500/25 hover:shadow-lg hover:shadow-rose-500/30",
-          "transition-all duration-300 ease-out transform-gpu",
+          "transition-[transform,background-color,box-shadow] duration-200 ease-out transform-gpu",
           isAnimating ? "scale-95" : "hover:scale-[1.03] active:scale-95",
           className
         )}
       >
         <span>Interested</span>
-        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-white/20 group-hover:bg-white/30 transition-colors">
+        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-white/20 group-hover:bg-white/30 transition-colors duration-200">
           <Heart
             size={14}
             strokeWidth={2.5}
             className={cn(
-              "fill-white text-white transition-transform duration-300",
+              "fill-white text-white transition-transform duration-200",
               isAnimating && "scale-75"
             )}
           />
@@ -65,19 +65,19 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
         "h-10 pl-4 pr-12 hover:pl-12 hover:pr-4",
         "outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-300",
         "bg-white text-slate-700 border border-slate-200 shadow-sm hover:border-rose-300 hover:shadow-md hover:shadow-rose-100/50",
-        "transition-all duration-500 ease-out transform-gpu",
+        "transition-[padding,transform,background-color,border-color,box-shadow] duration-200 ease-out transform-gpu",
         isAnimating ? "scale-95" : "active:scale-95",
         className
       )}
     >
       {/* Label — stays above the sliding circle */}
-      <span className="relative z-10 transition-all duration-500 ease-out">{label}</span>
+      <span className="relative z-10 transition-all duration-200 ease-out">{label}</span>
 
       {/* Sliding heart circle */}
       <div
         className={cn(
           "absolute top-1 bottom-1 right-1 w-8 rounded-full flex items-center justify-center",
-          "bg-rose-50 transition-all duration-500 ease-out",
+          "bg-rose-50 transition-all duration-200 ease-out",
           "group-hover/btn:right-[calc(100%-36px)] group-hover/btn:bg-rose-100"
         )}
       >
@@ -85,7 +85,7 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
           size={14}
           strokeWidth={2.5}
           className={cn(
-            "text-rose-400 fill-none transition-all duration-500",
+            "text-rose-400 fill-none transition-all duration-200",
             "group-hover/btn:fill-rose-500 group-hover/btn:text-rose-500 group-hover/btn:scale-110",
             isAnimating && "scale-125 fill-rose-500 text-rose-500"
           )}
