@@ -284,11 +284,11 @@ export function Reminders() {
               return (
                 <div 
                   key={e.id} 
-                  className={`text-[9px] px-1 py-0.5 rounded truncate font-bold border flex items-center gap-1 w-full ${e.colorClass}`}
+                  className={`text-[9px] px-1 py-1 rounded font-bold border flex items-start gap-1 w-full leading-tight whitespace-normal break-words ${e.colorClass}`}
                   title={`${e.title} (${prefix})`}
                 >
-                  <span className="shrink-0">{e.icon}</span>
-                  <span className="truncate">{prefix}: {e.title}</span>
+                  <span className="shrink-0 mt-0.5">{e.icon}</span>
+                  <span className="flex-1 text-left break-words">{prefix}: {e.title}</span>
                 </div>
               );
             })}
