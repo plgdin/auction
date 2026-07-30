@@ -265,16 +265,25 @@ export function Reminders() {
             {day}
           </span>
           <div className="space-y-1 overflow-y-auto max-h-16 custom-scrollbar mt-1 w-full">
-            {dayEvents.map(e => (
-              <div 
-                key={e.id} 
-                className={`text-[9px] px-1 py-0.5 rounded truncate font-bold border flex items-center gap-1 w-full ${e.colorClass}`}
-                title={`${e.title} (${e.type === 'auction_start' ? 'Starts' : e.type === 'auction_end' ? 'Closes' : e.type === 'inspection_start' ? 'Insp Start' : 'Insp End'})`}
-              >
-                <span className="shrink-0">{e.icon}</span>
-                <span className="truncate">{e.title}</span>
-              </div>
-            ))}
+            {dayEvents.map(e => {
+              const prefix = e.type === 'auction_start' 
+                ? 'Opens' 
+                : e.type === 'auction_end' 
+                ? 'Closes' 
+                : e.type === 'inspection_start' 
+                ? 'Insp Start' 
+                : 'Insp End';
+              return (
+                <div 
+                  key={e.id} 
+                  className={`text-[9px] px-1 py-0.5 rounded truncate font-bold border flex items-center gap-1 w-full ${e.colorClass}`}
+                  title={`${e.title} (${prefix})`}
+                >
+                  <span className="shrink-0">{e.icon}</span>
+                  <span className="truncate">{prefix}: {e.title}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       );
