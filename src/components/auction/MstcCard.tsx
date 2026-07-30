@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel } from 'lucide-react';
+import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime, hasConfirmedAssetDocuments } from '../../utils/mstcHelpers';
@@ -393,18 +394,10 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               )}
 
               {onInterestedToggle && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onInterestedToggle();
-                  }}
-                  className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
-                  title={isInterested ? "Remove from interested list" : "Add to interested list"}
-                  aria-label={isInterested ? "Remove from interested list" : "Add to interested list"}
-                >
-                  <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
-                </button>
+                <ButtonWithIconDemo
+                  isInterested={isInterested}
+                  onInterestedToggle={onInterestedToggle}
+                />
               )}
             </div>
           </div>
@@ -539,18 +532,10 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           )}
 
           {onInterestedToggle && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onInterestedToggle();
-              }}
-              className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
-              title={isInterested ? "Remove from interested list" : "Add to interested list"}
-              aria-label={isInterested ? "Remove from interested list" : "Add to interested list"}
-            >
-              <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
-            </button>
+            <ButtonWithIconDemo
+              isInterested={isInterested}
+              onInterestedToggle={onInterestedToggle}
+            />
           )}
         </div>
       </div>
