@@ -34,7 +34,6 @@ export function ContactSalesSection() {
       await publicService.submitContactForm({
         name: formData.name,
         email: formData.email,
-        phone: formData.phone,
         subject: `[Sales Inquiry] ${formData.company ? `${formData.company} - ` : ''}Landing Page Contact`,
         message: `Company: ${formData.company || 'N/A'}\nPhone: ${formData.phone}\n\nMessage:\n${formData.message || 'No additional notes provided.'}`,
       });
