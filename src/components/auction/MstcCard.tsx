@@ -1,5 +1,5 @@
-import { useState, useEffect, memo } from 'react';
-import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel } from 'lucide-react';
+import { useState, useEffect, useMemo, memo } from 'react';
+import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Gavel } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
