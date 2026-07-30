@@ -378,7 +378,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               {item.sanitized_document_path ? (
                 <button
                   onClick={() => onPreview(item)}
-                  className="flex-grow sm:flex-none inline-flex justify-center items-center py-2 px-5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
                 >
                   <Eye className="w-4 h-4 mr-2" />
                   View Details
@@ -386,7 +386,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               ) : (
                 <button
                   disabled
-                  className="flex-grow sm:flex-none inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
                 >
                   <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
                   PDF Processing...
@@ -516,7 +516,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           {item.sanitized_document_path ? (
             <button
               onClick={() => onPreview(item)}
-              className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+              className="flex-grow inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
             >
               <Eye className="w-4 h-4 mr-2" />
               View Details
@@ -524,7 +524,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           ) : (
             <button
               disabled
-              className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
+              className="flex-grow inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
             >
               <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
               PDF Processing...
