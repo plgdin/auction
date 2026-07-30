@@ -209,31 +209,27 @@ export function Reminders() {
         icon: '■'
       });
 
-      // Inspection range events (for every day in the range)
-      if (inspectionStart && inspectionEnd) {
-        const startNormalized = new Date(inspectionStart);
-        startNormalized.setHours(0,0,0,0);
-        const endNormalized = new Date(inspectionEnd);
-        endNormalized.setHours(0,0,0,0);
-        
-        const curr = new Date(startNormalized);
-        while (curr.getTime() <= endNormalized.getTime()) {
-          const currTime = curr.getTime();
-          const isStart = currTime === startNormalized.getTime();
-          const isEnd = currTime === endNormalized.getTime();
+      // Only push inspection start and end events
+      if (inspectionStart) {
+        events.push({
+          id: `${a.id}-insp-start`,
+          title: a.title,
+          type: 'inspection_start',
+          date: inspectionStart,
+          colorClass: 'bg-purple-100 border-purple-200 text-purple-800',
+          icon: '🔍'
+        });
+      }
 
-          events.push({
-            id: `${a.id}-insp-${curr.toDateString()}`,
-            title: a.title,
-            type: isStart ? 'inspection_start' : isEnd ? 'inspection_end' : 'inspection_day' as any,
-            date: new Date(curr),
-            colorClass: 'bg-purple-100 border-purple-200 text-purple-800',
-            icon: isEnd ? '⌛' : '🔍'
-          });
-
-          // Increment by 1 day
-          curr.setDate(curr.getDate() + 1);
-        }
+      if (inspectionEnd) {
+        events.push({
+          id: `${a.id}-insp-end`,
+          title: a.title,
+          type: 'inspection_end',
+          date: inspectionEnd,
+          colorClass: 'bg-indigo-100 border-indigo-200 text-indigo-800',
+          icon: '⌛'
+        });
       }
     });
     return events;
