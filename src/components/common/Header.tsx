@@ -11,6 +11,7 @@ import { adminService } from '../../services/adminService';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import React from 'react';
+import type { Notification as DbNotification } from '../../types/database.types';
 
 /*
 function CurrencyDropdown({ isTransparent }: { isTransparent?: boolean }) {
@@ -87,12 +88,12 @@ export function Header() {
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
 
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<DbNotification[]>([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
-      adminService.getNotifications(user.id).then(setNotifications);
+      adminService.getNotifications(user.id).then((data) => setNotifications(data as DbNotification[]));
     }
   }, [user]);
 
@@ -113,8 +114,8 @@ export function Header() {
   useEffect(() => {
     if (!user?.id) return;
 
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+    if ('Notification' in window && window.Notification.permission === 'default') {
+      window.Notification.requestPermission();
     }
 
     const channel = supabase
@@ -128,7 +129,7 @@ export function Header() {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          const newNotif = payload.new as Notification;
+          const newNotif = payload.new as DbNotification;
           setNotifications(prev => [newNotif, ...prev]);
 
           toast.success(
@@ -147,9 +148,9 @@ export function Header() {
             }
           );
 
-          if ('Notification' in window && Notification.permission === 'granted') {
+          if ('Notification' in window && window.Notification.permission === 'granted') {
             try {
-              new Notification(newNotif.title, {
+              new window.Notification(newNotif.title, {
                 body: newNotif.message,
                 icon: '/png_lelam_1.webp'
               });
