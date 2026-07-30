@@ -82,8 +82,8 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
       <div
         className={cn(
           "absolute top-1 bottom-1 right-1 w-8 rounded-full flex items-center justify-center",
-          "bg-rose-50 transition-transform duration-200 ease-out transform-gpu",
-          "group-hover/btn:-translate-x-[calc(100%-4px)] group-hover/btn:bg-rose-100"
+          "bg-rose-50 transition-[right,background-color] duration-200 ease-out",
+          "group-hover/btn:right-[calc(100%-36px)] group-hover/btn:bg-rose-100"
         )}
       >
         <Heart
