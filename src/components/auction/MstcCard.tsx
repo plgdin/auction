@@ -541,4 +541,13 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
       </div>
     </div>
   );
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item?.id === nextProps.item?.id &&
+    prevProps.item?.updated_at === nextProps.item?.updated_at &&
+    prevProps.isGrid === nextProps.isGrid &&
+    prevProps.isInterested === nextProps.isInterested &&
+    prevProps.onPreview === nextProps.onPreview &&
+    prevProps.onInterestedToggle === nextProps.onInterestedToggle
+  );
 });

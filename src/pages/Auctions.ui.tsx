@@ -183,6 +183,8 @@ export function Auctions() {
     setInterestedMstcIds(dashboardService.getInterestedAuctions(userId));
   }, [isAuthenticated, user]);
 
+  const interestedSet = useMemo(() => new Set(interestedMstcIds), [interestedMstcIds]);
+
   const handleMstcInterestedToggle = useCallback((itemId: string) => {
     const userId = isAuthenticated && user ? user.id : 'anonymous';
     const isNowInterested = dashboardService.toggleInterestedAuction(userId, itemId);
@@ -894,8 +896,8 @@ export function Auctions() {
                         item={item}
                         isGrid={isGridView}
                         onPreview={setSelectedPreviewItem}
-                        isInterested={interestedMstcIds.includes(item.id)}
-                        onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
+                        isInterested={interestedSet.has(item.id)}
+                        onInterestedToggle={handleMstcInterestedToggle}
                       />
                     ))}
                   </div>

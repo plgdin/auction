@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Lock } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -18,12 +18,19 @@ export function FeaturedAuctionsSection() {
   const [isLoading, setIsLoading] = useState(true);
   const { isAuthenticated, user } = useAuthStore();
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<any | null>(null);
-  const { interestedMstcIds, toggleInterestedMstcId } = useAppStore();
+  const interestedMstcIds = useAppStore(state => state.interestedMstcIds);
+  const toggleInterestedMstcId = useAppStore(state => state.toggleInterestedMstcId);
 
-  const handleMstcInterestedToggle = async (itemId: string) => {
+  const interestedSet = useMemo(() => new Set(interestedMstcIds), [interestedMstcIds]);
+
+  const handleMstcInterestedToggle = useCallback((itemId: string) => {
     if (!user) return;
     toggleInterestedMstcId(user.id, itemId);
-  };
+  }, [user, toggleInterestedMstcId]);
+
+  const handlePreview = useCallback((item: any) => {
+    setSelectedPreviewItem(item);
+  }, []);
 
   useEffect(() => {
     async function loadAuctions() {
@@ -112,9 +119,9 @@ export function FeaturedAuctionsSection() {
                         <MstcCard
                           item={auction as any}
                           isGrid={true}
-                          onPreview={(item) => setSelectedPreviewItem(item)}
-                          isInterested={interestedMstcIds.includes(auction.id)}
-                          onInterestedToggle={() => handleMstcInterestedToggle(auction.id)}
+                          onPreview={handlePreview}
+                          isInterested={interestedSet.has(auction.id)}
+                          onInterestedToggle={handleMstcInterestedToggle}
                         />
                       ) : (
                         <AuctionCard
@@ -140,9 +147,9 @@ export function FeaturedAuctionsSection() {
                           key={auction.id}
                           item={auction as any}
                           isGrid={true}
-                          onPreview={(item) => setSelectedPreviewItem(item)}
-                          isInterested={interestedMstcIds.includes(auction.id)}
-                          onInterestedToggle={() => handleMstcInterestedToggle(auction.id)}
+                          onPreview={handlePreview}
+                          isInterested={interestedSet.has(auction.id)}
+                          onInterestedToggle={handleMstcInterestedToggle}
                         />
                       );
                     } else {
