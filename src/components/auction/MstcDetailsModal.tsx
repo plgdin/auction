@@ -519,12 +519,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   }, [finalValuationData, customCosts, currency, currencySymbol, currencyRate]);
 
   const biddingRecommendations = React.useMemo(() => {
-    if (!finalValuationData || finalValuationData.totalLotValue <= 0) return null;
+    if (!finalValuationData) return null;
 
     const lotValue = finalValuationData.totalLotValue;
     const gstPercent = customCosts.gstPercent ?? 18;
     const tcsPercent = customCosts.tcsPercent ?? 1;
-    const taxFactor = (1 + gstPercent / 100) * (1 + tcsPercent / 100);
     
     const fixedCosts = (
       (customCosts.transportation || 0) +
@@ -534,7 +533,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
       (customCosts.extraCharge || 0)
     );
 
-    return computeBidCaps(lotValue, fixedCosts, taxFactor);
+    return computeBidCaps(lotValue, fixedCosts, gstPercent, tcsPercent, Number(customCosts.currentBid) || 0);
   }, [finalValuationData, customCosts]);
 
 

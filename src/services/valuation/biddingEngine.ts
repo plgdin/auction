@@ -28,13 +28,17 @@ export const biddingEngine = {
     // Calculate other expenses (excluding bid and taxes)
     const { otherExpenses } = costEngine.calculateCosts(costs);
 
+    const currentBid = Number(costs.currentBid) || 0;
+    const isDataPoor = totalLotValue <= 0;
+    const effectiveLotValue = isDataPoor ? (currentBid * taxMultiplier + otherExpenses) : totalLotValue;
+
     const calculateBidForRoi = (targetRoi: number): number => {
-      // Data-poor / unpriceable lot case or expenses exceed lot value case
-      if (totalLotValue <= 0 || totalLotValue <= otherExpenses) {
+      // Expenses exceed lot value (and it's not a data-poor fallback case)
+      if (effectiveLotValue <= 0 || (!isDataPoor && effectiveLotValue <= otherExpenses)) {
         return 0;
       }
       const roiDivisor = 1 + targetRoi / 100;
-      const costLimit = safeDivide(totalLotValue, roiDivisor, totalLotValue);
+      const costLimit = safeDivide(effectiveLotValue, roiDivisor, effectiveLotValue);
       const bid = safeDivide(costLimit - otherExpenses, taxMultiplier, 0);
       return safeRound(Math.max(0, bid));
     };

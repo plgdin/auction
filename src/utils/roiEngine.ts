@@ -184,14 +184,17 @@ export function computeRoiMetrics(input: RoiMetricsInput) {
 /**
  * Delegates to biddingEngine.generateBidRecommendations().
  */
-export function computeBidCaps(lotValue: number, fixedCosts: number, _taxFactor: number) {
-  // Reverse-engineer a minimal ValuationCosts from the legacy inputs
-  // taxFactor = (1 + gstRate) * (1 + tcsRate)
-  // We assume standard 18% GST + 1% TCS
+export function computeBidCaps(
+  lotValue: number,
+  fixedCosts: number,
+  gstPercent: number = 18,
+  tcsPercent: number = 1,
+  currentBid: number = 0
+) {
   const costs: ValuationCosts = {
-    currentBid: 0, // Not used in bid cap calculation
-    gstPercent: 18,
-    tcsPercent: 1,
+    currentBid,
+    gstPercent,
+    tcsPercent,
     // We need to pass fixedCosts as some expense field so costEngine.otherExpenses matches
     transportation: fixedCosts
   };

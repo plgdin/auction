@@ -44,15 +44,17 @@ export const costEngine = {
     const auctionFee = safePositive(costs.auctionFee);
     const emdCost = safePositive(costs.emdCost);
     
-    // Backwards compatibility with refurbishment / extraCharge / otherFees
+    // Backwards compatibility with refurbishment / extraCharge / otherFees / loadingUnloading
     const refurbishment = safePositive(costs.refurbishment);
     const extraCharge = safePositive(costs.extraCharge);
     const otherFees = safePositive(costs.otherFees);
+    const loadingUnloading = safePositive(costs.loadingUnloading);
 
     const otherExpenses = safeRound(
       transportation +
       loading +
       unloading +
+      loadingUnloading +
       warehouse +
       storage +
       insurance +

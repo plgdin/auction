@@ -166,7 +166,7 @@ export function Pricing({
                       <span className="text-5xl font-bold tracking-tight text-foreground">
                         <NumberFlow
                           value={
-                            isMonthly ? Number(plan.price) : Number(plan.yearlyPrice)
+                            isMonthly ? Number(plan.price) : Math.round(Number(plan.yearlyPrice) / 12)
                           }
                           format={{
                             style: "currency",
@@ -184,14 +184,14 @@ export function Pricing({
                       </span>
                     )}
 
-                    {!isFree && !isContact && plan.period !== "Next 3 months" && (
+                    {!isFree && !isContact && (
                       <span className="text-sm font-semibold leading-6 tracking-wide text-muted-foreground">
-                        / {isMonthly ? plan.period : (plan.period === "per month" ? "year" : plan.period)}
+                        / month
                       </span>
                     )}
                   </div>
 
-                  {/* Billing label with monthly equivalent helper */}
+                  {/* Billing label with annual helper */}
                   <p className="text-xs leading-5 text-muted-foreground mt-1 min-h-[20px]">
                     {isContact
                       ? "tailored for your organization"
@@ -199,11 +199,11 @@ export function Pricing({
                       ? "no credit card required"
                       : isMonthly
                       ? "billed monthly"
-                      : `billed annually (~₹${Math.round(Number(plan.yearlyPrice) / 12).toLocaleString('en-IN')}/mo equivalent)`}
+                      : `billed annually (₹${Number(plan.yearlyPrice).toLocaleString('en-IN')}/year)`}
                   </p>
 
                   <ul className="mt-6 gap-3 flex flex-col">
-                    {plan.features.map((feature, idx) => {
+                    {plan.features.slice(0, 5).map((feature, idx) => {
                       const isObj = typeof feature === 'object';
                       const text = isObj ? feature.text : feature;
                       const subtext = isObj ? feature.subtext : undefined;
