@@ -141,7 +141,7 @@ export function PricingPage() {
 
         {/* Desktop comparison table */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse table-fixed">
             <thead>
               <tr className="border-b-2 border-slate-200">
                 <th className="text-left py-4 pr-4 text-sm font-bold text-slate-500 uppercase tracking-wider w-[40%]">
