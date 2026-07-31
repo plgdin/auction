@@ -85,8 +85,14 @@ function CurrencyDropdown({ isTransparent }: { isTransparent?: boolean }) {
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, profile } = useAuthStore();
   const location = useLocation();
+
+  const planTag = isAuthenticated
+    ? (profile?.role === 'admin' || profile?.role === 'superadmin' ? 'Admin' :
+       profile?.subscription_plan === 'pro' ? 'Pro' :
+       profile?.subscription_plan === 'enterprise' ? 'Enterprise' : 'Free')
+    : 'App';
 
   const [notifications, setNotifications] = useState<DbNotification[]>([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -249,7 +255,15 @@ export function Header() {
           }}>
             <Link to="/" className="flex items-center gap-2">
               <img src="/png_lelam_1.webp" alt="Lelam Logo" width={188} height={38} className="w-auto object-contain" style={{ height: '38px' }} />
-              <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase tracking-widest mt-1">Beta</span>
+              <span className={clsx(
+                "text-[9px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wider shrink-0 mt-1 shadow-2xs font-sans leading-none",
+                planTag === 'Pro' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                planTag === 'Enterprise' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                planTag === 'Admin' ? "bg-purple-50 text-purple-700 border-purple-200" :
+                "bg-slate-100 text-slate-500 border-slate-200"
+              )}>
+                {planTag}
+              </span>
             </Link>
           </div>
 
@@ -407,7 +421,15 @@ export function Header() {
               height={32} 
               className="h-8 w-auto object-contain" 
             />
-            <span className="bg-primary/10 text-primary border border-primary/20 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest">Beta</span>
+            <span className={clsx(
+              "text-[8px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wider shrink-0 leading-none shadow-2xs font-sans",
+              planTag === 'Pro' ? "bg-amber-50 text-amber-700 border-amber-200" :
+              planTag === 'Enterprise' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+              planTag === 'Admin' ? "bg-purple-50 text-purple-700 border-purple-200" :
+              "bg-slate-100 text-slate-500 border-slate-200"
+            )}>
+              {planTag}
+            </span>
           </Link>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
