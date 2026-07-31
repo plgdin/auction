@@ -9,6 +9,9 @@ import { toast } from 'react-hot-toast';
 
 type AuctionWithMstc = Auction & { reference_number?: string; raw_materials_text?: string };
 
+import { MstcSearchService } from '../../services/publicService';
+import type { MstcSanitizedAuction } from '../../services/publicService';
+
 export function Reminders() {
   const { user } = useAuthStore();
   const [watchlist, setWatchlist] = useState<AuctionWithMstc[]>([]);
@@ -24,14 +27,42 @@ export function Reminders() {
       setIsLoading(true);
       try {
         const wIds = await auctionService.getUserWatchlistIds(user.id);
+        let standardAuctions: AuctionWithMstc[] = [];
         if (wIds.length > 0) {
           const auctions = await Promise.all(
             wIds.map(id => auctionService.getAuctionById(id))
           );
-          setWatchlist(auctions.filter((a): a is Auction => a !== null));
-        } else {
-          setWatchlist([]);
+          standardAuctions = auctions.filter((a): a is Auction => a !== null);
         }
+
+        const mstcIds = dashboardService.getInterestedAuctions(user.id);
+        let mstcAuctions: AuctionWithMstc[] = [];
+        if (mstcIds.length > 0) {
+          const items = await Promise.all(
+            mstcIds.map(id => MstcSearchService.getMstcAuctionById(id))
+          );
+          mstcAuctions = items
+            .filter((item): item is MstcSanitizedAuction => item !== null)
+            .map(item => ({
+              id: item.id,
+              title: `${item.mstc_auction_number} (${item.category_name || 'Government Lot'})`,
+              description: item.raw_materials_text || '',
+              category_id: '',
+              seller_id: item.seller_name,
+              status: 'active' as any,
+              starting_price: 0,
+              bid_increment: 0,
+              emd_amount: 0,
+              start_time: item.opening_date,
+              end_time: item.closing_date,
+              reference_number: item.mstc_auction_number,
+              raw_materials_text: item.raw_materials_text || '',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }));
+        }
+
+        setWatchlist([...standardAuctions, ...mstcAuctions]);
         setReminders(dashboardService.getReminderSettings(user.id));
       } catch (err) {
         console.error('Failed to load reminders data', err);
@@ -84,17 +115,130 @@ export function Reminders() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
-  // Find auctions for a specific calendar date (day)
-  const getAuctionsForDate = (day: number) => {
-    const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-    return watchlist.filter(a => {
-      const start = new Date(a.start_time);
-      const end = new Date(a.end_time);
-      return (
-        start.toDateString() === d.toDateString() ||
-        end.toDateString() === d.toDateString()
-      );
+  // Helper to parse MSTC custom dates (DD-MM-YYYY etc)
+  const parseMstcDateString = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    const match = dateStr.trim().match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
+    if (!match) return null;
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    let year = parseInt(match[3], 10);
+    if (year < 100) year += 2000;
+    const d = new Date(year, month - 1, day);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  // Extract start, end, and inspection dates for an auction
+  const getAuctionCalendarDates = (a: AuctionWithMstc) => {
+    let auctionStart = new Date(a.start_time);
+    let auctionEnd = new Date(a.end_time);
+    let inspectionStart: Date | null = null;
+    let inspectionEnd: Date | null = null;
+
+    if (a.raw_materials_text) {
+      try {
+        const parsed = JSON.parse(a.raw_materials_text);
+        if (parsed) {
+          const schedule = parsed.inspectionSchedule;
+          if (schedule) {
+            const dates = schedule.match(/\b\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}\b/g);
+            if (dates && dates.length === 2) {
+              inspectionStart = parseMstcDateString(dates[0]);
+              inspectionEnd = parseMstcDateString(dates[1]);
+            }
+          }
+          if (parsed.auctionStartTime) {
+            const match = parsed.auctionStartTime.trim().match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})$/);
+            if (match) {
+              const startD = new Date(parseInt(match[3], 10), parseInt(match[2], 10) - 1, parseInt(match[1], 10), parseInt(match[4], 10), parseInt(match[5], 10));
+              if (!isNaN(startD.getTime())) auctionStart = startD;
+            }
+          }
+          if (parsed.auctionCloseTime) {
+            const match = parsed.auctionCloseTime.trim().match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})$/);
+            if (match) {
+              const closeD = new Date(parseInt(match[3], 10), parseInt(match[2], 10) - 1, parseInt(match[1], 10), parseInt(match[4], 10), parseInt(match[5], 10));
+              if (!isNaN(closeD.getTime())) auctionEnd = closeD;
+            }
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (!inspectionStart || !inspectionEnd) {
+      inspectionStart = new Date(auctionStart.getTime() - 14 * 24 * 60 * 60 * 1000);
+      inspectionEnd = new Date(auctionStart.getTime() - 1 * 24 * 60 * 60 * 1000);
+    }
+
+    return { auctionStart, auctionEnd, inspectionStart, inspectionEnd };
+  };
+
+  interface CalendarEvent {
+    id: string;
+    title: string;
+    type: 'auction_start' | 'auction_end' | 'inspection_start' | 'inspection_end';
+    date: Date;
+    colorClass: string;
+    icon: string;
+  }
+
+  // Pre-calculate all events from the watchlist
+  const getCalendarEvents = (): CalendarEvent[] => {
+    const events: CalendarEvent[] = [];
+    watchlist.forEach(a => {
+      const { auctionStart, auctionEnd, inspectionStart, inspectionEnd } = getAuctionCalendarDates(a);
+      
+      // Auction events
+      events.push({
+        id: `${a.id}-start`,
+        title: a.title,
+        type: 'auction_start',
+        date: auctionStart,
+        colorClass: 'bg-blue-100 border-blue-200 text-blue-800',
+        icon: '▶'
+      });
+      
+      events.push({
+        id: `${a.id}-end`,
+        title: a.title,
+        type: 'auction_end',
+        date: auctionEnd,
+        colorClass: 'bg-amber-100 border-amber-200 text-amber-800',
+        icon: '■'
+      });
+
+      // Only push inspection start and end events
+      if (inspectionStart) {
+        events.push({
+          id: `${a.id}-insp-start`,
+          title: a.title,
+          type: 'inspection_start',
+          date: inspectionStart,
+          colorClass: 'bg-purple-100 border-purple-200 text-purple-800',
+          icon: '🔍'
+        });
+      }
+
+      if (inspectionEnd) {
+        events.push({
+          id: `${a.id}-insp-end`,
+          title: a.title,
+          type: 'inspection_end',
+          date: inspectionEnd,
+          colorClass: 'bg-indigo-100 border-indigo-200 text-indigo-800',
+          icon: '⌛'
+        });
+      }
     });
+    return events;
+  };
+
+  // Find events for a specific calendar date (day)
+  const getEventsForDate = (day: number) => {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    return getCalendarEvents().filter(e => e.date.toDateString() === d.toDateString());
   };
 
   const renderCalendar = () => {
@@ -111,27 +255,36 @@ export function Reminders() {
 
     // Days in month
     for (let day = 1; day <= daysInMonth; day++) {
-      const auctions = getAuctionsForDate(day);
+      const dayEvents = getEventsForDate(day);
       const isToday = new Date().toDateString() === new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
       
       cells.push(
         <div 
           key={`day-${day}`} 
-          className={`h-24 p-2 border border-slate-150 flex flex-col justify-between hover:bg-slate-50 transition-colors ${isToday ? 'bg-primary/5 border-primary/30' : 'bg-white'}`}
+          className={`h-24 p-2 border border-slate-150 flex flex-col justify-start items-start hover:bg-slate-50 transition-colors ${isToday ? 'bg-primary/5 border-primary/30' : 'bg-white'}`}
         >
-          <span className={`text-xs font-bold ${isToday ? 'w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center' : 'text-slate-700'}`}>
+          <span className={`text-xs font-bold mb-1 ${isToday ? 'w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center' : 'text-slate-700'}`}>
             {day}
           </span>
-          <div className="space-y-1 overflow-y-auto max-h-16 custom-scrollbar mt-1">
-            {auctions.map(a => {
-              const isStart = new Date(a.start_time).getDate() === day;
+          <div className="space-y-1 overflow-y-auto flex-grow custom-scrollbar mt-1 w-full">
+            {dayEvents.map(e => {
+              const prefix = e.type === 'auction_start' 
+                ? 'Opens' 
+                : e.type === 'auction_end' 
+                ? 'Closes' 
+                : e.type === 'inspection_start' 
+                ? 'Insp Start' 
+                : e.type === 'inspection_end'
+                ? 'Insp End'
+                : 'Insp';
               return (
                 <div 
-                  key={a.id} 
-                  className={`text-[10px] px-1.5 py-0.5 rounded truncate font-medium ${isStart ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}
-                  title={`${a.title} (${isStart ? 'Starts' : 'Ends'})`}
+                  key={e.id} 
+                  className={`text-[9px] px-1 py-0.5 rounded truncate font-bold border flex items-center gap-1 w-full ${e.colorClass}`}
+                  title={`${e.title} (${prefix})`}
                 >
-                  {isStart ? '▶ ' : '■ '} {a.title}
+                  <span className="shrink-0">{e.icon}</span>
+                  <span className="truncate">{prefix}: {e.title}</span>
                 </div>
               );
             })}
@@ -245,9 +398,11 @@ export function Reminders() {
             {renderCalendar()}
             
             {/* Calendar Legend */}
-            <div className="flex items-center gap-6 text-xs text-slate-500 px-2 bg-slate-50 py-2.5 rounded-lg border border-slate-200">
+            <div className="flex flex-wrap items-center gap-6 text-xs text-slate-505 px-3 bg-slate-50 py-3 rounded-lg border border-slate-200">
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-blue-100 border border-blue-200 inline-block"></span> Auction Opens</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-amber-100 border border-amber-200 inline-block"></span> Auction Closes</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-purple-100 border border-purple-200 inline-block"></span> Inspection Starts</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-indigo-100 border border-indigo-200 inline-block"></span> Inspection Ends</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-primary/20 border border-primary inline-block"></span> Today's Date</span>
             </div>
           </div>
@@ -303,6 +458,23 @@ export function Reminders() {
                               {item.title}
                             </h4>
                             <p className="text-xs text-slate-500 mt-0.5">REF: {item.reference_number}</p>
+                            
+                            {/* Auction and Inspection Date display */}
+                            {(() => {
+                              const { auctionStart, auctionEnd, inspectionStart, inspectionEnd } = getAuctionCalendarDates(item);
+                              return (
+                                <div className="mt-2 space-y-1 text-[11px] text-slate-600 font-medium bg-slate-50/50 p-2 rounded border border-slate-150">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px] w-16">Auction:</span>
+                                    <span>{auctionStart.toLocaleDateString()} {auctionStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} to {auctionEnd.toLocaleDateString()} {auctionEnd.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px] w-16">Inspection:</span>
+                                    <span>{inspectionStart ? `${inspectionStart.toLocaleDateString()} to ${inspectionEnd ? inspectionEnd.toLocaleDateString() : 'N/A'}` : 'N/A'}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                           
                           <button

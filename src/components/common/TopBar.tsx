@@ -5,6 +5,9 @@ import { useAppStore } from '../../store/appStore';
 import { useAuthStore } from '../../store/authStore';
 import { adminService } from '../../services/adminService';
 import type { Notification } from '../../types/database.types';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
+import React from 'react';
 
 export function TopBar() {
   const { toggleSidebar } = useAppStore();
@@ -17,6 +20,69 @@ export function TopBar() {
     if (user) {
       adminService.getNotifications(user.id).then(setNotifications);
     }
+  }, [user]);
+
+  // Real-time notifications listener (Push Notifications + Toast alerts)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // 1. Request browser push notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // 2. Subscribe to Supabase Realtime channel for new notifications
+    const channel = supabase
+      .channel(`new_notifications_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newNotif = payload.new as Notification;
+
+          // Append the new notification to the state list
+          setNotifications(prev => [newNotif, ...prev]);
+
+          // Trigger a beautiful web toast alert in the app
+          toast.success(
+            React.createElement('div', { className: 'space-y-0.5' },
+              React.createElement('p', { className: 'font-bold text-xs' }, newNotif.title),
+              React.createElement('p', { className: 'text-[10px] opacity-90 leading-normal line-clamp-2' }, newNotif.message)
+            ),
+            {
+              duration: 6000,
+              icon: '🔔',
+              style: {
+                borderRadius: '12px',
+                background: '#0f172a',
+                color: '#fff',
+              }
+            }
+          );
+
+          // Trigger native OS browser system notification
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification(newNotif.title, {
+                body: newNotif.message,
+                icon: '/png_lelam_1.webp'
+              });
+            } catch (err) {
+              console.warn('System notification failed to trigger:', err);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   useEffect(() => {

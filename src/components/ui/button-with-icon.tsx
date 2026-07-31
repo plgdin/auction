@@ -17,58 +17,74 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
 }) => {
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const handleClick = useCallback(() => {
-    if (isAnimating) return;
-    setIsAnimating(true);
-    onInterestedToggle?.();
-    setTimeout(() => setIsAnimating(false), 400);
-  }, [isAnimating, onInterestedToggle]);
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isAnimating) return;
+      setIsAnimating(true);
+      onInterestedToggle?.();
+      setTimeout(() => setIsAnimating(false), 250);
+    },
+    [isAnimating, onInterestedToggle]
+  );
 
   return (
     <button
       type="button"
       onClick={handleClick}
       className={cn(
-        "group relative inline-flex items-center gap-2 rounded-full cursor-pointer select-none transition-all duration-300 ease-out transform-gpu",
-        "font-semibold text-[13px] tracking-wide",
-        "px-4 py-2 pe-3",
+        "group/btn relative inline-flex items-center justify-center rounded-full cursor-pointer select-none shrink-0 overflow-hidden",
+        "h-10 w-[154px]",
         "outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+        "transition-all duration-200 ease-out transform-gpu",
         isInterested
           ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md shadow-rose-500/25 hover:shadow-lg hover:shadow-rose-500/30 focus-visible:ring-rose-400"
-          : "bg-white text-slate-700 border border-slate-200 shadow-sm hover:border-rose-200 hover:shadow-md hover:shadow-rose-100/50 focus-visible:ring-slate-300",
-        isAnimating && "scale-95",
-        !isAnimating && "hover:scale-[1.02] active:scale-95",
+          : "bg-white text-slate-700 border border-slate-200 shadow-sm hover:border-rose-300 hover:shadow-md hover:shadow-rose-100/50 focus-visible:ring-slate-300",
+        isAnimating ? "scale-95" : "active:scale-95",
         className
       )}
     >
-      {/* Label */}
-      <span className="relative z-10 transition-colors duration-200">
-        {isInterested ? "Interested" : label}
-      </span>
+      {isInterested ? (
+        <div className="flex items-center justify-center gap-2 w-full px-3">
+          <span className="font-semibold text-[13px] tracking-wide whitespace-nowrap">
+            Interested
+          </span>
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-white/20 shrink-0">
+            <Heart
+              size={14}
+              strokeWidth={2.5}
+              className={cn(
+                "fill-white text-white transition-transform duration-200",
+                isAnimating && "scale-75"
+              )}
+            />
+          </span>
+        </div>
+      ) : (
+        <>
+          <span className="absolute left-3.5 font-semibold text-[13px] tracking-wide whitespace-nowrap text-slate-700 transition-transform duration-200 ease-out transform-gpu group-hover/btn:translate-x-7">
+            {label}
+          </span>
 
-      {/* Heart Icon Container */}
-      <span
-        className={cn(
-          "relative flex items-center justify-center w-7 h-7 rounded-full transition-all duration-300 ease-out transform-gpu",
-          isInterested
-            ? "bg-white/20 group-hover:bg-white/30"
-            : "bg-rose-50 group-hover:bg-rose-100",
-          isAnimating && "animate-bounce-once"
-        )}
-      >
-        <Heart
-          size={14}
-          strokeWidth={2.5}
-          className={cn(
-            "transition-all duration-300 transform-gpu",
-            isInterested
-              ? "fill-white text-white scale-100"
-              : "text-rose-400 group-hover:text-rose-500 group-hover:scale-110 fill-none",
-            isAnimating && !isInterested && "scale-125 text-rose-500",
-            isAnimating && isInterested && "scale-75"
-          )}
-        />
-      </span>
+          <div
+            className={cn(
+              "absolute top-1 bottom-1 right-1 w-8 rounded-full flex items-center justify-center",
+              "bg-rose-50 transition-[right,background-color] duration-200 ease-out",
+              "group-hover/btn:right-[calc(100%-36px)] group-hover/btn:bg-rose-100"
+            )}
+          >
+            <Heart
+              size={14}
+              strokeWidth={2.5}
+              className={cn(
+                "text-rose-400 fill-none transition-all duration-200",
+                "group-hover/btn:fill-rose-500 group-hover/btn:text-rose-500 group-hover/btn:scale-110",
+                isAnimating && "scale-125 fill-rose-500 text-rose-500"
+              )}
+            />
+          </div>
+        </>
+      )}
     </button>
   );
 };

@@ -435,6 +435,20 @@
   animation: fall-down linear infinite;
 }
 
+/* Slow rotating animation for circling gradient border */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 5s linear infinite;
+}
+
 /* Force pointer cursor on all buttons, checkboxes, radio buttons, and form labels */
 button,
 input[type="button"],
