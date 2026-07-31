@@ -4,8 +4,9 @@ import { useAuthStore } from '../store/authStore';
 import { authService } from '../services/authService';
 import { formatPrice } from '../utils/currency';
 import { 
-  Lock, ArrowRight, CheckCircle2, 
-  AlertCircle, Loader2, CreditCard, ChevronRight
+  Lock, ArrowRight, CheckCircle2, AlertCircle, Loader2, 
+  CreditCard, ChevronRight, User, Building2, Check, ChevronLeft,
+  ShoppingBag
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
@@ -34,6 +35,9 @@ export function CheckoutPage() {
   const planId = searchParams.get('plan') || 'pro';
   const billingCycle = searchParams.get('billing') || 'monthly';
 
+  // Navigation steps: 1 = Account, 2 = Billing, 3 = Review
+  const [currentStep, setCurrentStep] = useState<number>(1);
+
   const [fullName, setFullName] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
@@ -50,18 +54,36 @@ export function CheckoutPage() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   // General flow states
+  const [isPageLoading, setIsPageLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<'details' | 'success'>('details');
   const [transactionId, setTransactionId] = useState('');
   const [gstError, setGstError] = useState<string | null>(null);
   const [sdkError, setSdkError] = useState<string | null>(null);
 
+  // Simulate initial loading block to match template skeleton
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsPageLoading(false);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Pre-fill profile name if logged in
   useEffect(() => {
     if (profile) {
       setFullName(`${profile.first_name || ''} ${profile.last_name || ''}`.trim());
+      // Auto advance to step 2 if already logged in on mount
+      setCurrentStep(2);
     }
   }, [profile]);
+
+  // Adjust step dynamically if user logs in
+  useEffect(() => {
+    if (isAuthenticated && currentStep === 1) {
+      setCurrentStep(2);
+    }
+  }, [isAuthenticated]);
 
   // Pricing calculations
   const subtotal = planId === 'pro' ? (billingCycle === 'annual' ? 21110 : 1999) : 0;
@@ -118,7 +140,6 @@ export function CheckoutPage() {
         setIsProcessing(false);
         setStep('success');
         setTransactionId(`FREE-${Date.now().toString().slice(-6)}`);
-        // No confetti for free signup to avoid wrappers cliches
       }, 1500);
       return;
     }
@@ -180,32 +201,155 @@ export function CheckoutPage() {
     }
   };
 
+  const validateStep = (stepNumber: number): boolean => {
+    switch (stepNumber) {
+      case 1:
+        return isAuthenticated;
+      case 2:
+        return !!(fullName.trim() && billingAddress.trim());
+      case 3:
+        return agreeTerms;
+      default:
+        return false;
+    }
+  };
+
+  const nextStep = () => {
+    if (currentStep === 1 && !isAuthenticated) {
+      return;
+    }
+    if (currentStep === 2) {
+      setGstError(null);
+      if (gstin) {
+        const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+        if (!gstRegex.test(gstin.toUpperCase())) {
+          setGstError('Invalid GSTIN format. Correct format is like: 22AAAAA1111A1Z1');
+          return;
+        }
+      }
+    }
+    setCurrentStep((prev) => Math.min(prev + 1, 3));
+  };
+
+  const prevStep = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  // Skeleton view to match template skeleton design
+  if (isPageLoading) {
+    return (
+      <div className="w-full max-w-6xl mx-auto p-6 md:p-12 flex flex-col gap-6 animate-pulse">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+          <div className="h-4 w-32 bg-slate-200 rounded" />
+          <div className="h-6 w-24 bg-slate-200 rounded-full" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 space-y-6">
+              <div className="h-6 w-48 bg-slate-200 rounded" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="h-3 w-16 bg-slate-200 rounded" />
+                    <div className="h-10 w-full bg-slate-200 rounded-xl" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 h-64" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <Link to="/pricing" className="text-sm font-semibold text-primary hover:underline">
-            ← Return to Pricing
-          </Link>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-2">
-            Secure Checkout
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Complete your subscription to Lelam platform tools
-          </p>
+        
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
+          <div className="flex items-start gap-3 flex-col">
+            <Link to="/pricing" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
+              <ChevronLeft className="h-4 w-4" />
+              Back to Pricing
+            </Link>
+            <div className="flex flex-col gap-1 text-left">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Secure Checkout
+              </h1>
+              <p className="text-slate-500 text-sm">
+                Complete your subscription securely
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <Lock className="h-3.5 w-3.5" />
+            SSL Secured
+          </span>
+        </div>
+
+        {/* Progress Steps */}
+        <div className="flex items-center justify-start gap-4 sm:gap-6 py-4 mb-8 overflow-x-auto">
+          {[
+            { step: 1, label: "Account", icon: User },
+            { step: 2, label: "Billing", icon: Building2 },
+            { step: 3, label: "Review", icon: Check },
+          ].map(({ step: sNum, label, icon: Icon }, index) => (
+            <div key={sNum} className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors font-bold text-sm ${
+                    currentStep >= sNum
+                      ? 'bg-primary border-primary text-white'
+                      : 'border-slate-200 text-slate-400'
+                  }`}
+                >
+                  {currentStep > sNum ? (
+                    <Check className="h-4 w-4 stroke-[3]" />
+                  ) : (
+                    <Icon className="h-4 w-4" />
+                  )}
+                </div>
+                <span
+                  className={`text-sm font-bold ${
+                    currentStep >= sNum ? 'text-slate-900' : 'text-slate-400'
+                  }`}
+                >
+                  {label}
+                </span>
+              </div>
+              {index < 2 && (
+                <div
+                  className={`w-8 h-0.5 ${
+                    currentStep > sNum ? 'bg-primary' : 'bg-slate-200'
+                  }`}
+                />
+              )}
+            </div>
+          ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Main Form Area */}
+          {/* Left Column: Form Steps */}
           <div className="lg:col-span-7">
             {step === 'details' ? (
               <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
-                {!isAuthenticated ? (
-                  <div>
+                
+                {/* STEP 1: Account Gate */}
+                {currentStep === 1 && (
+                  <div className="space-y-6 text-left">
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
+                      <User className="h-5 w-5 text-primary" />
+                      Account Authentication
+                    </h2>
+
                     <div className="flex border-b border-slate-200 mb-6 bg-slate-50 p-1.5 rounded-xl">
                       <button
                         onClick={() => { setAuthTab('login'); setAuthError(null); }}
-                        className={`flex-1 py-2.5 text-center font-bold text-sm rounded-lg transition-all ${
+                        className={`flex-1 py-2.5 text-center font-bold text-sm rounded-lg transition-all cursor-pointer ${
                           authTab === 'login' ? 'bg-white text-primary shadow-xs' : 'text-slate-500 hover:text-slate-700'
                         }`}
                       >
@@ -213,7 +357,7 @@ export function CheckoutPage() {
                       </button>
                       <button
                         onClick={() => { setAuthTab('register'); setAuthError(null); }}
-                        className={`flex-1 py-2.5 text-center font-bold text-sm rounded-lg transition-all ${
+                        className={`flex-1 py-2.5 text-center font-bold text-sm rounded-lg transition-all cursor-pointer ${
                           authTab === 'register' ? 'bg-white text-primary shadow-xs' : 'text-slate-500 hover:text-slate-700'
                         }`}
                       >
@@ -235,48 +379,48 @@ export function CheckoutPage() {
 
                       {authTab === 'register' && (
                         <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">First Name</label>
+                          <div className="space-y-1">
+                            <label className="block text-xs font-bold text-slate-500 uppercase">First Name *</label>
                             <input
                               type="text"
                               required
                               value={authFirstName}
                               onChange={(e) => setAuthFirstName(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
                             />
                           </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Last Name</label>
+                          <div className="space-y-1">
+                            <label className="block text-xs font-bold text-slate-500 uppercase">Last Name *</label>
                             <input
                               type="text"
                               required
                               value={authLastName}
                               onChange={(e) => setAuthLastName(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
                             />
                           </div>
                         </div>
                       )}
 
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email Address</label>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold text-slate-500 uppercase">Email Address *</label>
                         <input
                           type="email"
                           required
                           value={authEmail}
                           onChange={(e) => setAuthEmail(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Password</label>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold text-slate-500 uppercase">Password *</label>
                         <input
                           type="password"
                           required
                           value={authPassword}
                           onChange={(e) => setAuthPassword(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
                         />
                       </div>
 
@@ -298,8 +442,87 @@ export function CheckoutPage() {
                       </button>
                     </form>
                   </div>
-                ) : (
-                  <form onSubmit={handlePay} className="space-y-6">
+                )}
+
+                {/* STEP 2: Billing details */}
+                {currentStep === 2 && (
+                  <div className="space-y-6 text-left">
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
+                      <Building2 className="h-5 w-5 text-primary" />
+                      Billing Information
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold text-slate-500 uppercase">Full Name *</label>
+                        <input
+                          type="text"
+                          required
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold text-slate-500 uppercase">Business Name (Optional)</label>
+                        <input
+                          type="text"
+                          value={businessName}
+                          onChange={(e) => setBusinessName(e.target.value)}
+                          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-1">
+                        <label className="block text-xs font-bold text-slate-500 uppercase">GSTIN (Optional — for tax invoice claim)</label>
+                        <input
+                          type="text"
+                          value={gstin}
+                          onChange={(e) => setGstin(e.target.value)}
+                          placeholder="e.g. 22AAAAA1111A1Z1"
+                          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-mono uppercase font-semibold"
+                        />
+                        {gstError && <p className="text-red-500 text-xs font-bold mt-1">{gstError}</p>}
+                      </div>
+                      <div className="md:col-span-2 space-y-1">
+                        <label className="block text-xs font-bold text-slate-500 uppercase">Billing Address *</label>
+                        <textarea
+                          required
+                          value={billingAddress}
+                          onChange={(e) => setBillingAddress(e.target.value)}
+                          rows={3}
+                          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none resize-none font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between pt-4 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={prevStep}
+                        className="px-5 py-2.5 border border-slate-200 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-50 transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <ChevronLeft className="w-4 h-4" /> Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={nextStep}
+                        disabled={!validateStep(2)}
+                        className="px-6 py-2.5 bg-primary text-white font-bold rounded-xl text-sm hover:bg-primary/95 transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                      >
+                        Continue to Review <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 3: Review and checkout */}
+                {currentStep === 3 && (
+                  <form onSubmit={handlePay} className="space-y-6 text-left">
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
+                      <Check className="h-5 w-5 text-primary" />
+                      Review & Confirm
+                    </h2>
+
                     {sdkError && (
                       <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-sm flex items-start gap-2.5">
                         <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -307,110 +530,93 @@ export function CheckoutPage() {
                       </div>
                     )}
 
-                    {/* Step 1: Billing details */}
-                    <div>
-                      <h3 className="text-base font-bold text-slate-800 border-b pb-2 mb-4">
-                        1. Billing Information
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Full Name</label>
-                          <input
-                            type="text"
-                            required
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
-                          />
+                    <div className="space-y-4">
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5 text-xs text-slate-600 font-medium">
+                        <h4 className="font-bold text-slate-800 uppercase tracking-wide text-[10px] border-b pb-1.5 mb-2">Billing Identity</h4>
+                        <div className="flex justify-between">
+                          <span>Billing Name</span>
+                          <span className="font-bold text-slate-900">{fullName}</span>
                         </div>
-                        <div>
-                          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Business Name (Optional)</label>
-                          <input
-                            type="text"
-                            value={businessName}
-                            onChange={(e) => setBusinessName(e.target.value)}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">GSTIN (Optional — for tax invoice claim)</label>
-                          <input
-                            type="text"
-                            value={gstin}
-                            onChange={(e) => setGstin(e.target.value)}
-                            placeholder="e.g. 22AAAAA1111A1Z1"
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-mono uppercase"
-                          />
-                          {gstError && <p className="text-red-500 text-xs font-bold mt-1">{gstError}</p>}
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Billing Address</label>
-                          <textarea
-                            required
-                            value={billingAddress}
-                            onChange={(e) => setBillingAddress(e.target.value)}
-                            rows={3}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none resize-none"
-                          />
+                        {businessName && (
+                          <div className="flex justify-between">
+                            <span>Company Name</span>
+                            <span className="font-bold text-slate-900">{businessName}</span>
+                          </div>
+                        )}
+                        {gstin && (
+                          <div className="flex justify-between">
+                            <span>Your GSTIN</span>
+                            <span className="font-bold text-slate-900 font-mono">{gstin.toUpperCase()}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between border-t border-slate-200/50 pt-2 mt-1">
+                          <span>Address</span>
+                          <span className="font-bold text-slate-800 max-w-[240px] text-right truncate">{billingAddress}</span>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Step 2: Payment Gateway Notification */}
-                    {total > 0 && (
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex gap-3 text-left">
-                        <CreditCard className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-800">Secure Payment via Razorpay</h4>
-                          <p className="text-[11px] text-slate-500 leading-normal mt-0.5">
-                            Upon clicking proceed, the Razorpay payment window will overlay the page. You can pay via Cards, UPI, Net Banking, or Wallets securely.
-                          </p>
+                      {total > 0 && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex gap-3 text-left">
+                          <CreditCard className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-800">Secure Payment via Razorpay</h4>
+                            <p className="text-[11px] text-slate-500 leading-normal mt-0.5">
+                              Upon clicking complete, the Razorpay window will overlay the page. You can pay via Cards, UPI, Net Banking, or Wallets securely.
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* Step 3: Terms Checkbox */}
-                    <div className="flex items-start gap-3 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <input
-                        type="checkbox"
-                        id="agree-terms"
-                        required
-                        checked={agreeTerms}
-                        onChange={(e) => setAgreeTerms(e.target.checked)}
-                        className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary/20 mt-0.5 cursor-pointer"
-                      />
-                      <label htmlFor="agree-terms" className="leading-snug select-none cursor-pointer">
-                        I agree to Lelam's{' '}
-                        <Link to="/terms" target="_blank" className="text-primary font-bold hover:underline">
-                          Terms of Service
-                        </Link>{' '}
-                        and{' '}
-                        <Link to="/faq" target="_blank" className="text-primary font-bold hover:underline">
-                          Refund & Cancellation Policy
-                        </Link>
-                        .
-                      </label>
-                    </div>
-
-                    {/* Step 4: Action Button */}
-                    <button
-                      type="submit"
-                      disabled={isProcessing}
-                      className="w-full bg-primary text-white py-3 rounded-xl font-bold text-base hover:bg-primary/95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-md shadow-primary/20"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          Launching Razorpay Checkout...
-                        </>
-                      ) : planId === 'pro' ? (
-                        <span className="flex items-center gap-1.5">
-                          Proceed to Payment <ChevronRight className="w-4 h-4" />
-                        </span>
-                      ) : (
-                        'Activate Free Explorer Plan'
                       )}
-                    </button>
+
+                      {/* Terms check */}
+                      <div className="flex items-start gap-3 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                        <input
+                          type="checkbox"
+                          id="agree-terms"
+                          required
+                          checked={agreeTerms}
+                          onChange={(e) => setAgreeTerms(e.target.checked)}
+                          className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary/20 mt-0.5 cursor-pointer"
+                        />
+                        <label htmlFor="agree-terms" className="leading-snug select-none cursor-pointer font-medium text-slate-700">
+                          I agree to Lelam's{' '}
+                          <Link to="/terms" target="_blank" className="text-primary font-bold hover:underline">
+                            Terms of Service
+                          </Link>{' '}
+                          and{' '}
+                          <Link to="/faq" target="_blank" className="text-primary font-bold hover:underline">
+                            Refund & Cancellation Policy
+                          </Link>
+                          .
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between pt-4 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={prevStep}
+                        className="px-5 py-2.5 border border-slate-200 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-50 transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <ChevronLeft className="w-4 h-4" /> Back
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isProcessing || !agreeTerms}
+                        className="px-6 py-2.5 bg-primary text-white font-bold rounded-xl text-sm hover:bg-primary/95 transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-md shadow-primary/20"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" /> Launches Gateway...
+                          </>
+                        ) : planId === 'pro' ? (
+                          <>
+                            <Lock className="w-4 h-4" /> Complete Payment {formatPrice(total)}
+                          </>
+                        ) : (
+                          'Activate Free Plan'
+                        )}
+                      </button>
+                    </div>
                   </form>
                 )}
               </div>
@@ -426,12 +632,12 @@ export function CheckoutPage() {
 
                 <div className="space-y-2">
                   <h2 className="text-2xl font-black text-slate-900">Subscription Activated!</h2>
-                  <p className="text-sm text-slate-500 max-w-md mx-auto">
+                  <p className="text-sm text-slate-500 max-w-md mx-auto font-medium">
                     Your {planId === 'pro' ? 'Bidder Pro' : 'Explorer'} subscription has been successfully registered. You now have full access to platform tools.
                   </p>
                 </div>
 
-                {/* Simulated Invoice/Receipt details */}
+                {/* Receipt Details */}
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left max-w-md mx-auto space-y-3 font-medium text-slate-700 text-xs">
                   <h3 className="text-xs font-black uppercase text-slate-400 border-b pb-1.5 mb-2">Invoice details</h3>
                   <div className="flex justify-between">
@@ -440,11 +646,17 @@ export function CheckoutPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Merchant GSTIN</span>
-                    <span className="font-mono text-slate-850">27AADCL5842K1Z0</span>
+                    <span className="font-mono font-bold text-slate-900">27AADCL5842K1Z0</span>
                   </div>
+                  {gstin && (
+                    <div className="flex justify-between">
+                      <span>Customer GSTIN</span>
+                      <span className="font-mono font-bold text-slate-900">{gstin.toUpperCase()}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>Payment ID</span>
-                    <span className="font-mono font-bold text-slate-800">{transactionId}</span>
+                    <span className="font-mono font-bold text-slate-850">{transactionId}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Status</span>
@@ -474,15 +686,14 @@ export function CheckoutPage() {
             )}
           </div>
 
-          {/* Right Summary Column */}
+          {/* Right Column: Order Summary Card */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Order summary card - dark themed for visual weight and hierarchy */}
             <div className="bg-slate-900 text-white rounded-3xl border border-slate-800 shadow-xl p-6 space-y-6">
-              <h3 className="text-base font-black text-white border-b border-slate-800 pb-2">
-                Order Summary
+              <h3 className="text-base font-black text-white border-b border-slate-800 pb-2 flex items-center gap-2">
+                <ShoppingBag className="h-4.5 w-4.5" /> Order Summary
               </h3>
 
-              <div className="space-y-4">
+              <div className="space-y-4 text-left">
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="text-sm font-bold text-slate-200 uppercase tracking-wide">
@@ -518,7 +729,7 @@ export function CheckoutPage() {
               </div>
 
               {planId === 'pro' && (
-                <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-800">
+                <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-800 text-left">
                   <h4 className="text-xs font-bold text-primary mb-1.5">
                     Pro Access Features
                   </h4>
@@ -532,15 +743,15 @@ export function CheckoutPage() {
                 </div>
               )}
 
-              {/* Merchant Registered Identity details */}
-              <div className="border-t border-slate-800/80 pt-4 text-[10px] text-slate-400 space-y-1 leading-normal font-medium">
+              {/* Merchant Details */}
+              <div className="border-t border-slate-800/80 pt-4 text-[10px] text-slate-400 space-y-1 leading-normal font-medium text-left">
                 <p className="font-bold text-slate-300">Lelam Technologies Private Limited</p>
                 <p>Seller GSTIN: 27AADCL5842K1Z0</p>
                 <p>Support: support@lelam.in | +91 22 6902 4500</p>
               </div>
             </div>
 
-            {/* Trust and safety details - clean text format instead of rounded box stack */}
+            {/* Trust and safety details */}
             <div className="text-center pt-2 px-4 space-y-1.5">
               <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5 font-bold">
                 <Lock className="w-3.5 h-3.5 text-slate-400" />
