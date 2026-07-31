@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Check, Star } from "lucide-react";
+import { Check, Star, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useRef } from "react";
 import confetti from "canvas-confetti";
@@ -22,6 +22,7 @@ interface PricingPlan {
   buttonText: string;
   href: string;
   isPopular: boolean;
+  isContactSales?: boolean;
 }
 
 interface PricingProps {
@@ -33,7 +34,7 @@ interface PricingProps {
 export function Pricing({
   plans,
   title = "Simple, Transparent Pricing",
-  description = "Choose the plan that works for you\nAll plans include access to our platform, lead generation tools, and dedicated support.",
+  description = "Choose the plan that works for you\nAll plans include access to our platform.",
 }: PricingProps) {
   const [isMonthly, setIsMonthly] = useState(true);
   const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -74,7 +75,7 @@ export function Pricing({
         <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
           {title}
         </h2>
-        <p className="text-muted-foreground text-lg whitespace-pre-line">
+        <p className="text-muted-foreground text-lg whitespace-pre-line max-w-2xl mx-auto">
           {description}
         </p>
       </div>
@@ -91,121 +92,147 @@ export function Pricing({
           </Label>
         </label>
         <span className="ml-2 font-semibold">
-          Annual billing <span className="text-primary">(Save 20%)</span>
+          Annual billing <span className="text-primary">(Save 12%)</span>
         </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 sm:2 gap-4">
-        {plans.map((plan, index) => (
-          <motion.div
-            key={index}
-            initial={{ y: 50, opacity: 1 }}
-            whileInView={
-              isDesktop
-                ? {
-                    y: plan.isPopular ? -20 : 0,
-                    opacity: 1,
-                    x: index === 2 ? -30 : index === 0 ? 30 : 0,
-                    scale: index === 0 || index === 2 ? 0.94 : 1.0,
-                  }
-                : {}
-            }
-            viewport={{ once: true }}
-            transition={{
-              duration: 1.6,
-              type: "spring",
-              stiffness: 100,
-              damping: 30,
-              delay: 0.4,
-              opacity: { duration: 0.5 },
-            }}
-            className={cn(
-              `rounded-2xl border-[1px] p-6 bg-background text-center lg:flex lg:flex-col lg:justify-center relative`,
-              plan.isPopular ? "border-primary border-2" : "border-border",
-              "flex flex-col",
-              !plan.isPopular && "mt-5",
-              index === 0 || index === 2
-                ? "z-0 transform translate-x-0 translate-y-0 -translate-z-[50px] rotate-y-[10deg]"
-                : "z-10",
-              index === 0 && "origin-right",
-              index === 2 && "origin-left"
-            )}
-          >
-            {plan.isPopular && (
-              <div className="absolute top-0 right-0 bg-primary py-0.5 px-2 rounded-bl-xl rounded-tr-xl flex items-center">
-                <Star className="text-primary-foreground h-4 w-4 fill-current" />
-                <span className="text-primary-foreground ml-1 font-sans font-semibold">
-                  Popular
-                </span>
-              </div>
-            )}
-            <div className="flex-1 flex flex-col">
-              <p className="text-base font-semibold text-muted-foreground">
-                {plan.name}
-              </p>
-              <div className="mt-6 flex items-center justify-center gap-x-2">
-                <span className="text-5xl font-bold tracking-tight text-foreground">
-                  <NumberFlow
-                    value={
-                      isMonthly ? Number(plan.price) : Number(plan.yearlyPrice)
+        {plans.map((plan, index) => {
+          const isFree = Number(plan.price) === 0 && !plan.isContactSales;
+          const isContact = plan.isContactSales === true;
+
+          return (
+            <motion.div
+              key={index}
+              initial={{ y: 50, opacity: 1 }}
+              whileInView={
+                isDesktop
+                  ? {
+                      y: plan.isPopular ? -20 : 0,
+                      opacity: 1,
+                      x: index === 2 ? -30 : index === 0 ? 30 : 0,
+                      scale: index === 0 || index === 2 ? 0.94 : 1.0,
                     }
-                    format={{
-                      style: "currency",
-                      currency: "USD",
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }}
-                    transformTiming={{
-                      duration: 500,
-                      easing: "ease-out",
-                    }}
-                    willChange
-                    className="font-variant-numeric: tabular-nums"
-                  />
-                </span>
-                {plan.period !== "Next 3 months" && (
-                  <span className="text-sm font-semibold leading-6 tracking-wide text-muted-foreground">
-                    / {plan.period}
+                  : {}
+              }
+              viewport={{ once: true }}
+              transition={{
+                duration: 1.6,
+                type: "spring",
+                stiffness: 100,
+                damping: 30,
+                delay: 0.4,
+                opacity: { duration: 0.5 },
+              }}
+              className={cn(
+                `rounded-2xl border-[1px] p-6 bg-background text-center lg:flex lg:flex-col lg:justify-center relative`,
+                plan.isPopular ? "border-primary border-2" : "border-border",
+                "flex flex-col",
+                !plan.isPopular && "mt-5",
+                index === 0 || index === 2
+                  ? "z-0 transform translate-x-0 translate-y-0 -translate-z-[50px] rotate-y-[10deg]"
+                  : "z-10",
+                index === 0 && "origin-right",
+                index === 2 && "origin-left"
+              )}
+            >
+              {plan.isPopular && (
+                <div className="absolute top-0 right-0 bg-primary py-0.5 px-2 rounded-bl-xl rounded-tr-xl flex items-center">
+                  <Star className="text-primary-foreground h-4 w-4 fill-current" />
+                  <span className="text-primary-foreground ml-1 font-sans font-semibold">
+                    Popular
                   </span>
-                )}
+                </div>
+              )}
+              <div className="flex-1 flex flex-col">
+                <p className="text-base font-semibold text-muted-foreground">
+                  {plan.name}
+                </p>
+
+                {/* Price display: handles Free, Contact Sales, and numeric tiers */}
+                <div className="mt-6 flex items-center justify-center gap-x-2">
+                  {isContact ? (
+                    <span className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                      <Sparkles className="w-6 h-6 text-primary" />
+                      Custom
+                    </span>
+                  ) : isFree ? (
+                    <span className="text-5xl font-bold tracking-tight text-foreground">
+                      Free
+                    </span>
+                  ) : (
+                    <span className="text-5xl font-bold tracking-tight text-foreground">
+                      <NumberFlow
+                        value={
+                          isMonthly ? Number(plan.price) : Number(plan.yearlyPrice)
+                        }
+                        format={{
+                          style: "currency",
+                          currency: "INR",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        }}
+                        transformTiming={{
+                          duration: 500,
+                          easing: "ease-out",
+                        }}
+                        willChange
+                        className="font-variant-numeric: tabular-nums"
+                      />
+                    </span>
+                  )}
+
+                  {!isFree && !isContact && plan.period !== "Next 3 months" && (
+                    <span className="text-sm font-semibold leading-6 tracking-wide text-muted-foreground">
+                      / {isMonthly ? plan.period : (plan.period === "per month" ? "year" : plan.period)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Billing label */}
+                <p className="text-xs leading-5 text-muted-foreground mt-1">
+                  {isContact
+                    ? "tailored for your organization"
+                    : isFree
+                    ? "no credit card required"
+                    : isMonthly
+                    ? "billed monthly"
+                    : "billed annually"}
+                </p>
+
+                <ul className="mt-5 gap-2 flex flex-col">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary mt-1 flex-shrink-0" />
+                      <span className="text-left">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <hr className="w-full my-4" />
+
+                <Link
+                  to={plan.href}
+                  className={cn(
+                    buttonVariants({
+                      variant: "outline",
+                    }),
+                    "group relative w-full gap-2 overflow-hidden text-lg font-semibold tracking-tighter",
+                    "transform-gpu ring-offset-current transition-all duration-300 ease-out hover:ring-2 hover:ring-primary hover:ring-offset-1 hover:bg-primary hover:text-primary-foreground",
+                    plan.isPopular
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-foreground"
+                  )}
+                >
+                  {plan.buttonText}
+                </Link>
+                <p className="mt-6 text-xs leading-5 text-muted-foreground">
+                  {plan.description}
+                </p>
               </div>
-
-              <p className="text-xs leading-5 text-muted-foreground">
-                {isMonthly ? "billed monthly" : "billed annually"}
-              </p>
-
-              <ul className="mt-5 gap-2 flex flex-col">
-                {plan.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-primary mt-1 flex-shrink-0" />
-                    <span className="text-left">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <hr className="w-full my-4" />
-
-              <Link
-                to={plan.href}
-                className={cn(
-                  buttonVariants({
-                    variant: "outline",
-                  }),
-                  "group relative w-full gap-2 overflow-hidden text-lg font-semibold tracking-tighter",
-                  "transform-gpu ring-offset-current transition-all duration-300 ease-out hover:ring-2 hover:ring-primary hover:ring-offset-1 hover:bg-primary hover:text-primary-foreground",
-                  plan.isPopular
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background text-foreground"
-                )}
-              >
-                {plan.buttonText}
-              </Link>
-              <p className="mt-6 text-xs leading-5 text-muted-foreground">
-                {plan.description}
-              </p>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

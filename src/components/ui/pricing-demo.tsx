@@ -2,71 +2,88 @@
 
 import { Pricing } from "@/components/ui/pricing";
 
-const demoPlans = [
+const lelamPlans = [
   {
-    name: "STARTER",
-    price: "50",
-    yearlyPrice: "40",
-    period: "per month",
+    name: "EXPLORER",
+    price: "0",
+    yearlyPrice: "0",
+    period: "forever",
     features: [
-      "Up to 10 projects",
-      "Basic analytics",
-      "48-hour support response time",
-      "Limited API access",
-      "Community support",
+      "Auction search & browse with filters",
+      "View auction details & PDF catalogs",
+      "Save up to 10 auctions to watchlist",
+      "Basic commodity market prices",
+      "Blog, news & FAQ access",
+      "Direct redirect to MSTC portal",
+      "Email closing reminders",
     ],
-    description: "Perfect for individuals and small projects",
-    buttonText: "Start Free Trial",
+    description: "Start discovering auctions for free — no credit card needed",
+    buttonText: "Get Started Free",
     href: "/auth/register",
     isPopular: false,
+    isContactSales: false,
   },
   {
-    name: "PROFESSIONAL",
-    price: "99",
-    yearlyPrice: "79",
+    name: "BIDDER PRO",
+    price: "1999",
+    yearlyPrice: "21110",
     period: "per month",
     features: [
-      "Unlimited projects",
-      "Advanced analytics",
-      "24-hour support response time",
-      "Full API access",
-      "Priority support",
-      "Team collaboration",
-      "Custom integrations",
+      "Everything in Explorer",
+      "Unlimited watchlist items",
+      "AI Valuation Engine (Profit & Loss)",
+      "ML Scrap Price Predictor",
+      "Live market rates & price history charts",
+      "NLP natural language search",
+      "Document vault for auction paperwork",
+      "Custom reminders & deadline alerts",
+      "Vendor directory access",
+      "Inventory management",
+      "Logistics quote requests",
+      "International price comparison (IN/US/UK)",
+      "Up to 3 team member seats",
+      "Priority support (24hr response)",
     ],
-    description: "Ideal for growing teams and businesses",
-    buttonText: "Get Started",
+    description: "Everything you need to find, value, and win auctions",
+    buttonText: "Start 14-Day Free Trial",
     href: "/auth/register",
     isPopular: true,
+    isContactSales: false,
   },
   {
     name: "ENTERPRISE",
-    price: "299",
-    yearlyPrice: "239",
-    period: "per month",
+    price: "0",
+    yearlyPrice: "0",
+    period: "custom",
     features: [
-      "Everything in Professional",
-      "Custom solutions",
+      "Everything in Bidder Pro",
+      "Smart AI-powered bid recommendations",
+      "Multi-user team accounts (up to 5 seats)",
+      "Seller portal — list your own auctions",
+      "Bulk Valuation REST API",
+      "Custom commodity indices",
+      "White-label branded PDF reports",
+      "Advanced analytics & bid insights",
       "Dedicated account manager",
-      "1-hour support response time",
-      "SSO Authentication",
-      "Advanced security",
-      "Custom contracts",
-      "SLA agreement",
+      "99.9% uptime SLA agreement",
+      "SSO / SAML authentication",
+      "Compliance & audit trail",
+      "Priority onboarding & training",
     ],
-    description: "For large organizations with specific needs",
+    description: "For organizations that need scale, security, and dedicated support",
     buttonText: "Contact Sales",
     href: "/contact",
     isPopular: false,
+    isContactSales: true,
   },
 ];
 
 export function PricingBasic() {
   return (
     <Pricing 
-      plans={demoPlans}
+      plans={lelamPlans}
       title="Simple, Transparent Pricing"
-      description={"Choose the plan that works for you\nAll plans include access to our platform, lead generation tools, and dedicated support."}
+      description={"Choose the plan that fits your auction strategy\nAll plans include full access to our discovery platform with direct MSTC portal integration."}
     />
   );
 }
