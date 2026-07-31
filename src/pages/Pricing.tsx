@@ -147,56 +147,54 @@ export function PricingPage() {
                 <th className="text-left py-4 pr-4 text-sm font-bold text-slate-500 uppercase tracking-wider w-[40%]">
                   Feature
                 </th>
-                <th className="text-center py-4 px-4 text-sm font-bold text-slate-500 uppercase tracking-wider">
+                <th className="text-center py-4 px-4 text-sm font-bold text-slate-500 uppercase tracking-wider w-[20%]">
                   Explorer
                 </th>
-                <th className="text-center py-4 px-4 text-sm font-bold uppercase tracking-wider bg-primary/5 text-primary rounded-t-xl">
+                <th className="text-center py-4 px-4 text-sm font-bold uppercase tracking-wider bg-primary/5 text-primary rounded-t-xl w-[20%]">
                   Bidder Pro
                 </th>
-                <th className="text-center py-4 px-4 text-sm font-bold text-slate-500 uppercase tracking-wider">
+                <th className="text-center py-4 px-4 text-sm font-bold text-slate-500 uppercase tracking-wider w-[20%]">
                   Enterprise
                 </th>
               </tr>
             </thead>
-            <tbody>
-              {COMPARISON_CATEGORIES.map((category) => {
-                const Icon = category.icon;
-                return (
-                  <tbody key={category.name}>
-                    <tr>
-                      <td
-                        colSpan={4}
-                        className="pt-8 pb-3 text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-100"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Icon className="w-4 h-4 text-primary" />
-                          {category.name}
-                        </span>
+            {COMPARISON_CATEGORIES.map((category) => {
+              const Icon = category.icon;
+              return (
+                <tbody key={category.name}>
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="pt-8 pb-3 text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-100"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Icon className="w-4 h-4 text-primary" />
+                        {category.name}
+                      </span>
+                    </td>
+                  </tr>
+                  {category.features.map((feature) => (
+                    <tr
+                      key={feature.name}
+                      className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
+                    >
+                      <td className="py-3.5 pr-4 text-sm text-slate-700 font-medium">
+                        {feature.name}
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        {renderCellValue(feature.free)}
+                      </td>
+                      <td className="py-3.5 px-4 text-center bg-primary/5">
+                        {renderCellValue(feature.pro)}
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        {renderCellValue(feature.enterprise)}
                       </td>
                     </tr>
-                    {category.features.map((feature) => (
-                      <tr
-                        key={feature.name}
-                        className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
-                      >
-                        <td className="py-3.5 pr-4 text-sm text-slate-700 font-medium">
-                          {feature.name}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          {renderCellValue(feature.free)}
-                        </td>
-                        <td className="py-3.5 px-4 text-center bg-primary/5">
-                          {renderCellValue(feature.pro)}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          {renderCellValue(feature.enterprise)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                );
-              })}
-            </tbody>
+                  ))}
+                </tbody>
+              );
+            })}
           </table>
         </div>
 
