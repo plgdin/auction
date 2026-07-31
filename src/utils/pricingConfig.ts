@@ -180,13 +180,6 @@ export const COMPARISON_FEATURES: FeatureDef[] = [
     values: { explorer: false, pro: false, enterprise: true },
     cardHighlight: { enterprise: 'Advanced analytics & bid insights' }
   },
-  {
-    id: 'branded_reports',
-    name: 'White-label branded reports',
-    category: 'Dashboard & Tools',
-    values: { explorer: false, pro: false, enterprise: true },
-    cardHighlight: { enterprise: 'White-label branded PDF reports' }
-  },
   // Logistics & Operations
   {
     id: 'mstc_redirect',
