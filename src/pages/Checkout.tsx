@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { authService } from '../services/authService';
+import { supabase } from '../lib/supabase';
 import { formatPrice } from '../utils/currency';
 import { 
   Lock, ArrowRight, CheckCircle2, AlertCircle, Loader2, 
@@ -143,15 +144,27 @@ export function CheckoutPage() {
 
     setIsProcessing(true);
 
-    // If it's a free Explorer setup, skip payment gateways entirely
-    if (total === 0) {
+    const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey12345';
+    const isMockMode = rzpKey === 'rzp_test_mockkey12345' || rzpKey.includes('mockkey');
+
+    // If it's a free Explorer setup or using a dummy key, mock activation directly
+    if (total === 0 || isMockMode) {
       setTimeout(() => {
         setIsProcessing(false);
         setStep('success');
-        setTransactionId(`FREE-${Date.now().toString().slice(-6)}`);
+        setTransactionId(total === 0 ? `FREE-${Date.now().toString().slice(-6)}` : `MOCK-PAY-${Date.now().toString().slice(-6)}`);
         if (user?.id) {
           authService.updateProfile(user.id, { subscription_plan: planId as any }).then((updated) => {
             if (updated) setProfile(updated);
+          });
+        }
+        
+        // Trigger celebratory confetti for paid plans
+        if (planId !== 'explorer') {
+          confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.6 }
           });
         }
       }, 1500);
@@ -166,30 +179,90 @@ export function CheckoutPage() {
       return;
     }
 
+    let orderId = '';
+    let token = '';
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      token = data.session?.access_token || '';
+      
+      const orderResponse = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          amount: total * 100, // paise
+          currency: 'INR',
+          receipt: `rcpt_${Date.now()}`
+        })
+      });
+
+      const orderData = await orderResponse.json();
+      if (!orderData.success) {
+        setIsProcessing(false);
+        setSdkError(orderData.error?.message || orderData.error || 'Failed to create payment order. Please try again.');
+        return;
+      }
+      orderId = orderData.data.order_id;
+    } catch (err) {
+      setIsProcessing(false);
+      setSdkError('Failed to connect to the billing backend. Please try again.');
+      return;
+    }
+
     // Configure Razorpay Checkout options
     const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey12345',
+      key: rzpKey,
       amount: total * 100, // paise
       currency: 'INR',
       name: 'Lelam Technologies',
       description: `Lelam ${planId === 'pro' ? 'Bidder Pro' : 'Explorer'} plan (${billingCycle})`,
       image: '/favicon.svg',
-      handler: function (response: any) {
-        setIsProcessing(false);
-        setStep('success');
-        setTransactionId(response.razorpay_payment_id || `pay_${Date.now().toString().slice(-6)}`);
-        
-        // Confetti only for paid plan subscriptions
-        confetti({
-          particleCount: 150,
-          spread: 80,
-          origin: { y: 0.6 }
-        });
-
-        if (user?.id) {
-          authService.updateProfile(user.id, { subscription_plan: planId as any }).then((updated) => {
-            if (updated) setProfile(updated);
+      order_id: orderId,
+      handler: async function (response: any) {
+        setIsProcessing(true);
+        try {
+          const verifyResponse = await fetch('/api/verify-payment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              order_id: response.razorpay_order_id,
+              payment_id: response.razorpay_payment_id,
+              signature: response.razorpay_signature
+            })
           });
+
+          const verifyData = await verifyResponse.json();
+          if (!verifyData.success) {
+            setIsProcessing(false);
+            setSdkError(verifyData.error?.message || verifyData.error || 'Payment signature verification failed.');
+            return;
+          }
+
+          setIsProcessing(false);
+          setStep('success');
+          setTransactionId(response.razorpay_payment_id);
+          
+          // Confetti only for paid plan subscriptions
+          confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.6 }
+          });
+
+          if (user?.id) {
+            authService.updateProfile(user.id, { subscription_plan: planId as any }).then((updated) => {
+              if (updated) setProfile(updated);
+            });
+          }
+        } catch (err) {
+          setIsProcessing(false);
+          setSdkError('An error occurred during payment verification. Please contact support.');
         }
       },
       prefill: {
@@ -214,6 +287,13 @@ export function CheckoutPage() {
 
     try {
       const rzp = new (window as any).Razorpay(options);
+      
+      // Register event listener for failed payments as requested
+      rzp.on('payment.failed', function (response: any) {
+        setIsProcessing(false);
+        setSdkError(`Payment failed: ${response.error.description} (Code: ${response.error.code})`);
+      });
+      
       rzp.open();
     } catch (err) {
       setIsProcessing(false);
