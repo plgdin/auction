@@ -123,18 +123,13 @@ export function HeroSection() {
             opacity: 1 - scrollProgress * 1.5,
             transform: `translateY(${-scrollProgress * 20}px)`,
           }}>
-            <div className="relative group rounded-2xl p-[2px] overflow-hidden transition-transform duration-300 hover:-translate-y-0.5 w-full sm:w-auto shadow-xl shadow-primary/30 hover:shadow-primary/60">
-              {/* Smooth seamless rotating light beam border */}
-              <div className="absolute -inset-[150%] bg-[conic-gradient(from_0deg,transparent_0%,rgba(96,165,250,0.3)_4%,#60a5fa_12%,#ffffff_20%,#2563eb_32%,rgba(37,99,235,0.3)_40%,transparent_48%,transparent_100%)] animate-spin-slow pointer-events-none opacity-90 group-hover:opacity-100" />
-              
-              <Link
-                to="/auctions"
-                className="relative z-10 inline-flex items-center justify-center px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-semibold rounded-[14px] text-white bg-primary hover:bg-primary-700 active:bg-primary-800 transition-all duration-300 cursor-pointer w-full sm:w-auto"
-              >
-                Explore Auctions
-                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
+            <Link
+              to="/auctions"
+              className="group inline-flex items-center justify-center px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-semibold rounded-2xl text-white bg-primary hover:bg-primary-700 active:bg-primary-800 transition-all duration-300 shadow-xl shadow-primary/30 hover:shadow-primary/60 hover:-translate-y-0.5 cursor-pointer w-full sm:w-auto"
+            >
+              Explore Auctions
+              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
         </div>
       </div>
