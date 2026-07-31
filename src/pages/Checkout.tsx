@@ -11,6 +11,15 @@ import {
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
 
+// Primitives imports to match template specifications
+import { Button } from '../components/ui/button';
+import { Card, CardHeader, CardContent, CardFooter } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Checkbox } from '../components/ui/checkbox';
+import { Skeleton } from '../components/ui/skeleton';
+
 // Dynamic script loader for Razorpay SDK
 const loadRazorpayScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
@@ -240,25 +249,27 @@ export function CheckoutPage() {
     return (
       <div className="w-full max-w-6xl mx-auto p-6 md:p-12 flex flex-col gap-6 animate-pulse">
         <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-          <div className="h-4 w-32 bg-slate-200 rounded" />
-          <div className="h-6 w-24 bg-slate-200 rounded-full" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-6 w-24 rounded-full" />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 flex flex-col gap-6">
-            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 space-y-6">
-              <div className="h-6 w-48 bg-slate-200 rounded" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="h-3 w-16 bg-slate-200 rounded" />
-                    <div className="h-10 w-full bg-slate-200 rounded-xl" />
-                  </div>
-                ))}
-              </div>
-            </div>
+            <Card>
+              <CardContent className="p-6 md:p-8 space-y-6">
+                <Skeleton className="h-6 w-48" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div key={index} className="space-y-2">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-10 w-full rounded-xl" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
           <div className="space-y-6">
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 h-64" />
+            <Card className="h-64" />
           </div>
         </div>
       </div>
@@ -278,17 +289,17 @@ export function CheckoutPage() {
             </Link>
             <div className="flex flex-col gap-1 text-left">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Secure Checkout
+                Checkout
               </h1>
               <p className="text-slate-500 text-sm">
-                Complete your subscription securely
+                Complete your purchase securely
               </p>
             </div>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1.5 font-bold">
             <Lock className="h-3.5 w-3.5" />
             SSL Secured
-          </span>
+          </Badge>
         </div>
 
         {/* Progress Steps */}
@@ -336,273 +347,284 @@ export function CheckoutPage() {
           {/* Left Column: Form Steps */}
           <div className="lg:col-span-7">
             {step === 'details' ? (
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+              <div className="space-y-6">
                 
                 {/* STEP 1: Account Gate */}
                 {currentStep === 1 && (
-                  <div className="space-y-6 text-left">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
-                      <User className="h-5 w-5 text-primary" />
-                      Account Authentication
-                    </h2>
-
-                    <div className="flex border-b border-slate-200 mb-6 bg-slate-50 p-1.5 rounded-xl">
-                      <button
-                        onClick={() => { setAuthTab('login'); setAuthError(null); }}
-                        className={`flex-1 py-2.5 text-center font-bold text-sm rounded-lg transition-all cursor-pointer ${
-                          authTab === 'login' ? 'bg-white text-primary shadow-xs' : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                      >
-                        Sign In
-                      </button>
-                      <button
-                        onClick={() => { setAuthTab('register'); setAuthError(null); }}
-                        className={`flex-1 py-2.5 text-center font-bold text-sm rounded-lg transition-all cursor-pointer ${
-                          authTab === 'register' ? 'bg-white text-primary shadow-xs' : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                      >
-                        Create Account
-                      </button>
-                    </div>
-
-                    <form onSubmit={handleAuthSubmit} className="space-y-4">
-                      {authError && (
-                        <div className={`p-4 rounded-xl border text-sm flex items-start gap-2.5 ${
-                          authError.includes('Verification') 
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                            : 'bg-red-50 border-red-200 text-red-800'
-                        }`}>
-                          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                          <span>{authError}</span>
-                        </div>
-                      )}
-
-                      {authTab === 'register' && (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label className="block text-xs font-bold text-slate-500 uppercase">First Name *</label>
-                            <input
-                              type="text"
-                              required
-                              value={authFirstName}
-                              onChange={(e) => setAuthFirstName(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="block text-xs font-bold text-slate-500 uppercase">Last Name *</label>
-                            <input
-                              type="text"
-                              required
-                              value={authLastName}
-                              onChange={(e) => setAuthLastName(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-slate-500 uppercase">Email Address *</label>
-                        <input
-                          type="email"
-                          required
-                          value={authEmail}
-                          onChange={(e) => setAuthEmail(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
-                        />
+                  <Card className="flex flex-col gap-6">
+                    <CardHeader>
+                      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
+                        <User className="h-5 w-5 text-primary" />
+                        Account Authentication
+                      </h2>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-4 text-left">
+                      <div className="flex border-b border-slate-200 mb-6 bg-slate-50 p-1.5 rounded-xl">
+                        <button
+                          onClick={() => { setAuthTab('login'); setAuthError(null); }}
+                          className={`flex-1 py-2.5 text-center font-bold text-sm rounded-lg transition-all cursor-pointer ${
+                            authTab === 'login' ? 'bg-white text-primary shadow-xs' : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          Sign In
+                        </button>
+                        <button
+                          onClick={() => { setAuthTab('register'); setAuthError(null); }}
+                          className={`flex-1 py-2.5 text-center font-bold text-sm rounded-lg transition-all cursor-pointer ${
+                            authTab === 'register' ? 'bg-white text-primary shadow-xs' : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          Create Account
+                        </button>
                       </div>
 
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-slate-500 uppercase">Password *</label>
-                        <input
-                          type="password"
-                          required
-                          value={authPassword}
-                          onChange={(e) => setAuthPassword(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
-                        />
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={isAuthLoading}
-                        className="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm hover:bg-primary/95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-md shadow-primary/20"
-                      >
-                        {isAuthLoading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Please wait...
-                          </>
-                        ) : authTab === 'login' ? (
-                          'Sign In to Continue'
-                        ) : (
-                          'Create Account & Continue'
+                      <form onSubmit={handleAuthSubmit} className="space-y-4">
+                        {authError && (
+                          <div className={`p-4 rounded-xl border text-sm flex items-start gap-2.5 ${
+                            authError.includes('Verification') 
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                              : 'bg-red-50 border-red-200 text-red-800'
+                          }`}>
+                            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                            <span>{authError}</span>
+                          </div>
                         )}
-                      </button>
-                    </form>
-                  </div>
+
+                        {authTab === 'register' && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="flex flex-col gap-2">
+                              <Label htmlFor="authFirstName">First Name *</Label>
+                              <Input
+                                id="authFirstName"
+                                type="text"
+                                required
+                                value={authFirstName}
+                                onChange={(e) => setAuthFirstName(e.target.value)}
+                              />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <Label htmlFor="authLastName">Last Name *</Label>
+                              <Input
+                                id="authLastName"
+                                type="text"
+                                required
+                                value={authLastName}
+                                onChange={(e) => setAuthLastName(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="authEmail">Email Address *</Label>
+                          <Input
+                            id="authEmail"
+                            type="email"
+                            required
+                            value={authEmail}
+                            onChange={(e) => setAuthEmail(e.target.value)}
+                            leftIcon={<User className="h-4 w-4 text-slate-400" />}
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="authPassword">Password *</Label>
+                          <Input
+                            id="authPassword"
+                            type="password"
+                            required
+                            value={authPassword}
+                            onChange={(e) => setAuthPassword(e.target.value)}
+                            leftIcon={<Lock className="h-4 w-4 text-slate-400" />}
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={isAuthLoading}
+                          className="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm hover:bg-primary/95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-md shadow-primary/20"
+                        >
+                          {isAuthLoading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Please wait...
+                            </>
+                          ) : authTab === 'login' ? (
+                            'Sign In to Continue'
+                          ) : (
+                            'Create Account & Continue'
+                          )}
+                        </button>
+                      </form>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* STEP 2: Billing details */}
                 {currentStep === 2 && (
-                  <div className="space-y-6 text-left">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
-                      <Building2 className="h-5 w-5 text-primary" />
-                      Billing Information
-                    </h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-slate-500 uppercase">Full Name *</label>
-                        <input
-                          type="text"
-                          required
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
-                        />
+                  <Card className="flex flex-col gap-6">
+                    <CardHeader>
+                      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
+                        <Building2 className="h-5 w-5 text-primary" />
+                        Billing Information
+                      </h2>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-4 text-left font-medium">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="fullName">Full Name *</Label>
+                          <Input
+                            id="fullName"
+                            type="text"
+                            required
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="businessName">Business Name (Optional)</Label>
+                          <Input
+                            id="businessName"
+                            type="text"
+                            value={businessName}
+                            onChange={(e) => setBusinessName(e.target.value)}
+                          />
+                        </div>
+                        <div className="md:col-span-2 flex flex-col gap-2">
+                          <Label htmlFor="gstin">GSTIN (Optional — for tax invoice claim)</Label>
+                          <Input
+                            id="gstin"
+                            type="text"
+                            value={gstin}
+                            onChange={(e) => setGstin(e.target.value)}
+                            placeholder="e.g. 22AAAAA1111A1Z1"
+                            className="font-mono uppercase font-semibold"
+                          />
+                          {gstError && <p className="text-red-500 text-xs font-bold mt-1">{gstError}</p>}
+                        </div>
+                        <div className="md:col-span-2 flex flex-col gap-2">
+                          <Label htmlFor="billingAddress">Billing Address *</Label>
+                          <textarea
+                            id="billingAddress"
+                            required
+                            value={billingAddress}
+                            onChange={(e) => setBillingAddress(e.target.value)}
+                            rows={3}
+                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none resize-none font-medium"
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-slate-500 uppercase">Business Name (Optional)</label>
-                        <input
-                          type="text"
-                          value={businessName}
-                          onChange={(e) => setBusinessName(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-medium"
-                        />
-                      </div>
-                      <div className="md:col-span-2 space-y-1">
-                        <label className="block text-xs font-bold text-slate-500 uppercase">GSTIN (Optional — for tax invoice claim)</label>
-                        <input
-                          type="text"
-                          value={gstin}
-                          onChange={(e) => setGstin(e.target.value)}
-                          placeholder="e.g. 22AAAAA1111A1Z1"
-                          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-mono uppercase font-semibold"
-                        />
-                        {gstError && <p className="text-red-500 text-xs font-bold mt-1">{gstError}</p>}
-                      </div>
-                      <div className="md:col-span-2 space-y-1">
-                        <label className="block text-xs font-bold text-slate-500 uppercase">Billing Address *</label>
-                        <textarea
-                          required
-                          value={billingAddress}
-                          onChange={(e) => setBillingAddress(e.target.value)}
-                          rows={3}
-                          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none resize-none font-medium"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between pt-4 border-t border-slate-100">
-                      <button
-                        type="button"
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        size="lg"
                         onClick={prevStep}
-                        className="px-5 py-2.5 border border-slate-200 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-50 transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="flex items-center gap-2"
                       >
-                        <ChevronLeft className="w-4 h-4" /> Back
-                      </button>
-                      <button
-                        type="button"
+                        <ChevronLeft className="h-4 w-4" /> Back
+                      </Button>
+                      <Button
                         onClick={nextStep}
                         disabled={!validateStep(2)}
-                        className="px-6 py-2.5 bg-primary text-white font-bold rounded-xl text-sm hover:bg-primary/95 transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                        size="lg"
+                        className="flex items-center gap-2"
                       >
-                        Continue to Review <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+                        Continue to Review <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </CardFooter>
+                  </Card>
                 )}
 
                 {/* STEP 3: Review and checkout */}
                 {currentStep === 3 && (
-                  <form onSubmit={handlePay} className="space-y-6 text-left">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
-                      <Check className="h-5 w-5 text-primary" />
-                      Review & Confirm
-                    </h2>
-
-                    {sdkError && (
-                      <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-sm flex items-start gap-2.5">
-                        <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                        <span>{sdkError}</span>
-                      </div>
-                    )}
-
-                    <div className="space-y-4">
-                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5 text-xs text-slate-600 font-medium">
-                        <h4 className="font-bold text-slate-800 uppercase tracking-wide text-[10px] border-b pb-1.5 mb-2">Billing Identity</h4>
-                        <div className="flex justify-between">
-                          <span>Billing Name</span>
-                          <span className="font-bold text-slate-900">{fullName}</span>
-                        </div>
-                        {businessName && (
-                          <div className="flex justify-between">
-                            <span>Company Name</span>
-                            <span className="font-bold text-slate-900">{businessName}</span>
-                          </div>
-                        )}
-                        {gstin && (
-                          <div className="flex justify-between">
-                            <span>Your GSTIN</span>
-                            <span className="font-bold text-slate-900 font-mono">{gstin.toUpperCase()}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between border-t border-slate-200/50 pt-2 mt-1">
-                          <span>Address</span>
-                          <span className="font-bold text-slate-800 max-w-[240px] text-right truncate">{billingAddress}</span>
-                        </div>
-                      </div>
-
-                      {total > 0 && (
-                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex gap-3 text-left">
-                          <CreditCard className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
-                          <div>
-                            <h4 className="text-xs font-bold text-slate-800">Secure Payment via Razorpay</h4>
-                            <p className="text-[11px] text-slate-500 leading-normal mt-0.5">
-                              Upon clicking complete, the Razorpay window will overlay the page. You can pay via Cards, UPI, Net Banking, or Wallets securely.
-                            </p>
-                          </div>
+                  <Card className="flex flex-col gap-6">
+                    <CardHeader>
+                      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 pb-2 border-b border-slate-100">
+                        <Check className="h-5 w-5 text-primary" />
+                        Review & Confirm
+                      </h2>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-6 text-left">
+                      {sdkError && (
+                        <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-sm flex items-start gap-2.5">
+                          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                          <span>{sdkError}</span>
                         </div>
                       )}
 
-                      {/* Terms check */}
-                      <div className="flex items-start gap-3 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                        <input
-                          type="checkbox"
-                          id="agree-terms"
-                          required
-                          checked={agreeTerms}
-                          onChange={(e) => setAgreeTerms(e.target.checked)}
-                          className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary/20 mt-0.5 cursor-pointer"
-                        />
-                        <label htmlFor="agree-terms" className="leading-snug select-none cursor-pointer font-medium text-slate-700">
-                          I agree to Lelam's{' '}
-                          <Link to="/terms" target="_blank" className="text-primary font-bold hover:underline">
-                            Terms of Service
-                          </Link>{' '}
-                          and{' '}
-                          <Link to="/faq" target="_blank" className="text-primary font-bold hover:underline">
-                            Refund & Cancellation Policy
-                          </Link>
-                          .
-                        </label>
-                      </div>
-                    </div>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5 text-xs text-slate-600 font-medium">
+                          <h4 className="font-bold text-slate-800 uppercase tracking-wide text-[10px] border-b pb-1.5 mb-2">Billing Identity</h4>
+                          <div className="flex justify-between">
+                            <span>Billing Name</span>
+                            <span className="font-bold text-slate-900">{fullName}</span>
+                          </div>
+                          {businessName && (
+                            <div className="flex justify-between">
+                              <span>Company Name</span>
+                              <span className="font-bold text-slate-900">{businessName}</span>
+                            </div>
+                          )}
+                          {gstin && (
+                            <div className="flex justify-between">
+                              <span>Your GSTIN</span>
+                              <span className="font-bold text-slate-900 font-mono">{gstin.toUpperCase()}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between border-t border-slate-200/50 pt-2 mt-1">
+                            <span>Address</span>
+                            <span className="font-bold text-slate-800 max-w-[240px] text-right truncate">{billingAddress}</span>
+                          </div>
+                        </div>
 
-                    <div className="flex justify-between pt-4 border-t border-slate-100">
-                      <button
-                        type="button"
+                        {total > 0 && (
+                          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex gap-3 text-left">
+                            <CreditCard className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-800">Secure Payment via Razorpay</h4>
+                              <p className="text-[11px] text-slate-500 leading-normal mt-0.5">
+                                Upon clicking complete, the Razorpay payment window will overlay the page. You can pay via Cards, UPI, Net Banking, or Wallets securely.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Terms check */}
+                        <div className="flex items-start gap-3 border-t pt-4">
+                          <Checkbox
+                            id="agree-terms"
+                            checked={agreeTerms}
+                            onCheckedChange={(checked) => setAgreeTerms(checked)}
+                          />
+                          <Label htmlFor="agree-terms" className="text-sm leading-relaxed">
+                            I agree to Lelam's{' '}
+                            <Link to="/terms" target="_blank" className="text-primary font-bold hover:underline">
+                              Terms of Service
+                            </Link>{' '}
+                            and{' '}
+                            <Link to="/faq" target="_blank" className="text-primary font-bold hover:underline">
+                              Refund & Cancellation Policy
+                            </Link>
+                            .
+                          </Label>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        size="lg"
                         onClick={prevStep}
-                        className="px-5 py-2.5 border border-slate-200 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-50 transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="flex items-center gap-2"
                       >
-                        <ChevronLeft className="w-4 h-4" /> Back
-                      </button>
-                      <button
-                        type="submit"
+                        <ChevronLeft className="h-4 w-4" /> Back
+                      </Button>
+                      <Button
+                        onClick={handlePay}
                         disabled={isProcessing || !agreeTerms}
-                        className="px-6 py-2.5 bg-primary text-white font-bold rounded-xl text-sm hover:bg-primary/95 transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-md shadow-primary/20"
+                        size="lg"
+                        className="bg-green-600 hover:bg-green-700 flex items-center gap-2 text-white border-0"
                       >
                         {isProcessing ? (
                           <>
@@ -615,9 +637,9 @@ export function CheckoutPage() {
                         ) : (
                           'Activate Free Plan'
                         )}
-                      </button>
-                    </div>
-                  </form>
+                      </Button>
+                    </CardFooter>
+                  </Card>
                 )}
               </div>
             ) : (
@@ -656,7 +678,7 @@ export function CheckoutPage() {
                   )}
                   <div className="flex justify-between">
                     <span>Payment ID</span>
-                    <span className="font-mono font-bold text-slate-850">{transactionId}</span>
+                    <span className="font-mono font-bold text-slate-800">{transactionId}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Status</span>
@@ -721,7 +743,7 @@ export function CheckoutPage() {
                 )}
 
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-slate-350">Total Due</span>
+                  <span className="text-sm font-bold text-slate-400">Total Due</span>
                   <span className="text-lg font-black text-emerald-400 font-mono">
                     {formatPrice(total)}
                   </span>
@@ -767,3 +789,5 @@ export function CheckoutPage() {
     </div>
   );
 }
+
+export default CheckoutPage;
