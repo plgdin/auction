@@ -149,6 +149,11 @@ export function CheckoutPage() {
         setIsProcessing(false);
         setStep('success');
         setTransactionId(`FREE-${Date.now().toString().slice(-6)}`);
+        if (user?.id) {
+          authService.updateProfile(user.id, { subscription_plan: planId as any }).then((updated) => {
+            if (updated) setProfile(updated);
+          });
+        }
       }, 1500);
       return;
     }
@@ -180,6 +185,12 @@ export function CheckoutPage() {
           spread: 80,
           origin: { y: 0.6 }
         });
+
+        if (user?.id) {
+          authService.updateProfile(user.id, { subscription_plan: planId as any }).then((updated) => {
+            if (updated) setProfile(updated);
+          });
+        }
       },
       prefill: {
         name: fullName,

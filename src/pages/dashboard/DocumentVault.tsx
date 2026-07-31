@@ -39,7 +39,11 @@ const STANDARD_DOC_TYPES = [
 ];
 
 export function DocumentVault() {
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
+  const isPremium = profile?.subscription_plan === 'pro' || 
+                    profile?.subscription_plan === 'enterprise' || 
+                    profile?.role === 'admin' || 
+                    profile?.role === 'superadmin';
   const [activeTab, setActiveTab] = useState<'vault' | 'eligibility'>('vault');
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -299,7 +303,13 @@ export function DocumentVault() {
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
           />
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              if (!isPremium) {
+                toast.error('Document Upload is a Bidder Pro feature. Please upgrade.');
+                return;
+              }
+              fileInputRef.current?.click();
+            }}
             disabled={isUploading}
             className="px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-700 transition-all flex items-center disabled:opacity-50 shadow-xs cursor-pointer"
           >
@@ -308,8 +318,31 @@ export function DocumentVault() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200">
+      {!isPremium ? (
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center max-w-2xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-sm p-8 mt-6">
+          <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-6 shadow-inner">
+            <FolderLock className="w-8 h-8 animate-pulse" />
+          </div>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+            Unlock Document Vault & Compliance Checks
+          </h3>
+          <p className="mt-2.5 text-sm text-slate-600 leading-relaxed">
+            Organize your MSTC registrations, licenses, and KYC paperwork in one secure place. Get instant automated eligibility checks on any auction listings.
+          </p>
+
+          <div className="mt-8 flex gap-3">
+            <Link
+              to="/pricing"
+              className="px-6 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/95 transition-all text-center shadow-md shadow-primary/20 hover:scale-[1.02] cursor-pointer"
+            >
+              Upgrade to Bidder Pro
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Tabs */}
+          <div className="flex border-b border-slate-200">
         <button
           onClick={() => setActiveTab('vault')}
           className={`px-6 py-3 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'vault'
@@ -847,7 +880,8 @@ export function DocumentVault() {
           </div>
         </div>
       )}
-
+        </>
+      )}
     </div>
   );
 }

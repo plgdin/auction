@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DownOutlined } from '@ant-design/icons';
 import { Dropdown } from 'antd';
-import { X, Copy, Check, Download, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap, Info } from 'lucide-react';
+import { X, Copy, Check, Download, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap, Info, Sparkles, CheckCircle2 } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import ButtonWithIconDemo from '../ui/button-witn-icon';
 import { expandMstcOffice } from '../../services/publicService';
@@ -13,7 +13,7 @@ import { useQuoteStore } from '../../store/quoteStore';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice, CURRENCIES, formatPriceString } from '../../utils/currency';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuation/roiEngine';
 import { marketPriceService } from '../../services/marketPriceService';
@@ -127,7 +127,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     setIsDragging(false);
   };
 
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, profile } = useAuthStore();
+  const isPremium = profile?.subscription_plan === 'pro' || 
+                    profile?.subscription_plan === 'enterprise' || 
+                    profile?.role === 'admin' || 
+                    profile?.role === 'superadmin';
   const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
   const [viewing, setViewing] = useState(false);
@@ -862,7 +866,66 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
             {/* Left Side: Details Scrollable */}
             <div ref={scrollContainerRef} className="flex-grow shrink-0 md:shrink overflow-visible md:overflow-y-auto p-6 space-y-6 bg-slate-50/25">
               {modalTab === 'valuation' ? (
-                <div className="space-y-6">
+                !isPremium ? (
+                  <div className="flex flex-col items-center justify-center py-12 px-4 text-center max-w-2xl mx-auto">
+                    <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-6 shadow-inner">
+                      <Sparkles className="w-8 h-8 animate-pulse animate-duration-1000" />
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                      Unlock Bid Intelligence & AI Valuation
+                    </h3>
+                    <p className="mt-2.5 text-sm text-slate-600 leading-relaxed">
+                      Bidder Pro analyzes auction lot items using live market scrap prices, ML price predictors, and shipping estimations to help you determine highly profitable bidding targets.
+                    </p>
+
+                    <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-left w-full">
+                      <div className="p-4 bg-white rounded-2xl border border-slate-150 shadow-2xs flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">AI Valuation Engine</h4>
+                          <p className="text-[11px] text-slate-500 mt-1">Automatic profit & loss margin calculations for any lot items.</p>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-white rounded-2xl border border-slate-150 shadow-2xs flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Smart Bid Recommendations</h4>
+                          <p className="text-[11px] text-slate-500 mt-1">Walk-away, conservative, and aggressive target bid caps.</p>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-white rounded-2xl border border-slate-150 shadow-2xs flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Market Price History</h4>
+                          <p className="text-[11px] text-slate-500 mt-1">Visual charts showing live scrap rates and monthly price indices.</p>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-white rounded-2xl border border-slate-150 shadow-2xs flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Logistics & Quotes</h4>
+                          <p className="text-[11px] text-slate-500 mt-1">Instant shipping quotes from transport partners directly inside your catalog.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                      <Link
+                        to="/pricing"
+                        className="px-6 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/95 transition-all text-center shadow-md shadow-primary/20 hover:scale-[1.02] cursor-pointer"
+                      >
+                        Upgrade to Bidder Pro
+                      </Link>
+                      <button
+                        onClick={() => setModalTab('catalog')}
+                        className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-all text-center cursor-pointer"
+                      >
+                        Back to Catalog Details
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
                   {/* Cost Input Form Card */}
                   <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1770,7 +1833,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       )}
                     </>
                   )}
-                </div>
+                  </div>
+                )
               ) : (
                 <>
                   {/* Category & Auction Ref Title */}
