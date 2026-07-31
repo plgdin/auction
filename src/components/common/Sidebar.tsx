@@ -14,6 +14,10 @@ export function Sidebar() {
   const { logout, profile } = useAuthStore();
   const { activeAdminTab, setActiveAdminTab, sidebarOpen, toggleSidebar } = useAppStore();
   const isAdminSide = location.pathname.startsWith('/admin');
+  const isPremium = profile?.subscription_plan === 'pro' || 
+                    profile?.subscription_plan === 'enterprise' || 
+                    profile?.role === 'admin' || 
+                    profile?.role === 'superadmin';
 
   const handleAdminItemClick = (itemId: string) => {
     setActiveAdminTab(itemId);
@@ -119,7 +123,12 @@ export function Sidebar() {
                   "w-5 h-5 mr-3 shrink-0 transition-colors",
                   isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                 )} />
-                <span className="truncate">{item.name}</span>
+                <span className="truncate flex-grow">{item.name}</span>
+                {item.name === 'Document Vault' && !isPremium && (
+                  <span className="ml-auto bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200 uppercase tracking-wider shrink-0 font-sans leading-none">
+                    Pro
+                  </span>
+                )}
               </Link>
             );
           })
