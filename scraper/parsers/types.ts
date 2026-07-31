@@ -21,6 +21,7 @@ export interface CatalogItem {
   attachments?: string[];
   images?: string[];
   marketPrice?: string;
+  startPrice?: string;
   subItems?: SubItem[];
   pcbGroup?: string;
   productType?: string;

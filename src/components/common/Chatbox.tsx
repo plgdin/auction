@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageSquare, Send, X, Minimize2, Sparkles } from 'lucide-react';
+import { Bot, Send, X, Minimize2, Sparkles } from 'lucide-react';
 import { publicService } from '../../services/publicService';
+import { GradientOrb } from '../ui/gradient-orb';
 
 interface Message {
   sender: 'user' | 'bot';
@@ -24,6 +25,22 @@ export function Chatbox() {
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number; dragging: boolean; lastTouchTime: number }>({ startX: 0, startY: 0, origX: 0, origY: 0, dragging: false, lastTouchTime: 0 });
   const orbContainerRef = useRef<HTMLDivElement>(null);
+
+  // Click outside to close chatbot window
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (orbContainerRef.current && !orbContainerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isOpen]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -404,17 +421,17 @@ CONTACT & ESCALATION:
             <div className="p-4 bg-white/35 backdrop-blur-md border-b border-white/20 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Header Animated Orb */}
-                <div className={`relative w-8 h-8 rounded-full overflow-hidden bg-slate-100 border border-[#007ec7]/60 shadow-[0_0_10px_rgba(0,126,199,0.25)] ${getOrbStateClass()}`}>
-                  {/* Fluid Wave Layers inside Header Orb */}
-                  <div className="absolute bottom-0 left-0 right-0 h-full overflow-hidden rounded-full">
-                    <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-1 transition-all duration-300">
-                      <path d="M 0 50 C 25 35, 75 65, 100 50 C 125 35, 175 65, 200 50 L 200 100 L 0 100 Z"></path>
-                    </svg>
-                    <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-2 transition-all duration-300">
-                      <path d="M 0 50 C 25 65, 75 35, 100 50 C 125 65, 175 35, 200 50 L 200 100 L 0 100 Z"></path>
-                    </svg>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/45 rounded-full"></div>
+                <div className="relative w-8 h-8 rounded-full overflow-hidden bg-transparent shadow-[0_0_10px_rgba(0,126,199,0.25)]">
+                  <GradientOrb
+                    config={{
+                      background: 'transparent',
+                      hue: 0,
+                      rotationSpeed: 0.35,
+                      noiseScale: 0.75,
+                      innerRadius: 0.0,
+                    }}
+                    className="w-full h-full"
+                  />
                 </div>
                 
                 <div>
@@ -449,16 +466,17 @@ CONTACT & ESCALATION:
                   className={`flex gap-2.5 items-start ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   {msg.sender === 'bot' && (
-                    <div className={`relative w-7 h-7 rounded-full overflow-hidden bg-slate-100 border border-[#007ec7]/60 shadow-[0_0_8px_rgba(0,126,199,0.2)] shrink-0 mt-0.5 ${getOrbStateClass()}`}>
-                      <div className="absolute bottom-0 left-0 right-0 h-full overflow-hidden rounded-full">
-                        <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-1 transition-all duration-300">
-                          <path d="M 0 50 C 25 35, 75 65, 100 50 C 125 35, 175 65, 200 50 L 200 100 L 0 100 Z"></path>
-                        </svg>
-                        <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-2 transition-all duration-300">
-                          <path d="M 0 50 C 25 65, 75 35, 100 50 C 125 65, 175 35, 200 50 L 200 100 L 0 100 Z"></path>
-                        </svg>
-                      </div>
-                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/45 rounded-full"></div>
+                    <div className="relative w-7 h-7 rounded-full overflow-hidden bg-transparent shadow-[0_0_8px_rgba(0,126,199,0.2)] shrink-0 mt-0.5">
+                      <GradientOrb
+                        config={{
+                          background: 'transparent',
+                          hue: 0,
+                          rotationSpeed: 0.35,
+                          noiseScale: 0.75,
+                          innerRadius: 0.0,
+                        }}
+                        className="w-full h-full"
+                      />
                     </div>
                   )}
 
@@ -498,16 +516,17 @@ CONTACT & ESCALATION:
               
               {isThinking && (
                 <div className="flex justify-start gap-2.5 items-start">
-                  <div className="relative w-7 h-7 rounded-full overflow-hidden bg-slate-100 border border-[#007ec7]/60 shadow-[0_0_8px_rgba(0,126,199,0.2)] shrink-0 mt-0.5 orb-state-thinking">
-                    <div className="absolute bottom-0 left-0 right-0 h-full overflow-hidden rounded-full">
-                      <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-1 transition-all duration-300">
-                        <path d="M 0 50 C 25 35, 75 65, 100 50 C 125 35, 175 65, 200 50 L 200 100 L 0 100 Z"></path>
-                      </svg>
-                      <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-2 transition-all duration-300">
-                        <path d="M 0 50 C 25 65, 75 35, 100 50 C 125 65, 175 35, 200 50 L 200 100 L 0 100 Z"></path>
-                      </svg>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/45 rounded-full"></div>
+                  <div className="relative w-7 h-7 rounded-full overflow-hidden bg-transparent shadow-[0_0_8px_rgba(0,126,199,0.2)] shrink-0 mt-0.5">
+                    <GradientOrb
+                      config={{
+                        background: 'transparent',
+                        hue: 0,
+                        rotationSpeed: 0.35,
+                        noiseScale: 0.75,
+                        innerRadius: 0.0,
+                      }}
+                      className="w-full h-full"
+                    />
                   </div>
 
                   <div className="bg-white/70 border border-white/50 rounded-2xl rounded-tl-none p-3.5 flex items-center justify-center gap-1 h-9 w-14 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
@@ -565,17 +584,21 @@ CONTACT & ESCALATION:
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          className={`pointer-events-auto relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 border-2 border-[#007ec7] shadow-[0_8px_32px_rgba(0,0,0,0.1),_0_0_15px_rgba(0,126,199,0.25)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.15),_0_0_20px_rgba(0,126,199,0.45)] transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer touch-none ${getOrbStateClass()}`}
+          className={`pointer-events-auto relative w-14 h-14 rounded-full overflow-hidden bg-transparent shadow-[0_8px_32px_rgba(0,0,0,0.15),_0_0_15px_rgba(0,126,199,0.15)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.2),_0_0_20px_rgba(0,126,199,0.3)] transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer touch-none ${getOrbStateClass()}`}
         >
           <span className="sr-only">{isOpen ? "Close Laila Assistant Chat" : "Open Laila Assistant Chat"}</span>
-          {/* Fluid Wave layers inside Orb */}
-          <div className="absolute bottom-0 left-0 right-0 h-full overflow-hidden rounded-full pointer-events-none">
-            <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-1 transition-all duration-500">
-              <path d="M 0 50 C 25 35, 75 65, 100 50 C 125 35, 175 65, 200 50 L 200 100 L 0 100 Z"></path>
-            </svg>
-            <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-2 transition-all duration-500">
-              <path d="M 0 50 C 25 65, 75 35, 100 50 C 125 65, 175 35, 200 50 L 200 100 L 0 100 Z"></path>
-            </svg>
+          {/* GPU-rendered gradient orb background (optimized lag-free WebGL) */}
+          <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none bg-transparent">
+            <GradientOrb
+              config={{
+                background: 'transparent',
+                hue: 0, // Direct blue base colors (no rotation shift)
+                rotationSpeed: 0.35,
+                noiseScale: 0.75,
+                innerRadius: 0.0,
+              }}
+              className="w-full h-full"
+            />
           </div>
 
           {/* Sparkle highlight overlays when bot is thinking */}
@@ -590,8 +613,8 @@ CONTACT & ESCALATION:
 
           {/* Hover state icon indicator */}
           {!isThinking && (
-            <div className="absolute inset-0 flex items-center justify-center text-slate-700 opacity-0 hover:opacity-100 transition-opacity bg-white/40">
-              <MessageSquare size={20} className="text-slate-800 shadow-sm" />
+            <div className="absolute inset-0 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity bg-slate-950/60">
+              <Bot size={20} className="text-white drop-shadow-md" />
             </div>
           )}
         </button>

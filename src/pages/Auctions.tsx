@@ -289,6 +289,21 @@ export function Auctions() {
     handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+  const filterDrawerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isFiltersOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterDrawerRef.current && !filterDrawerRef.current.contains(event.target as Node)) {
+        setIsFiltersOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isFiltersOpen]);
 
   // Sync searchQuery local input state with query params
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
@@ -1028,6 +1043,7 @@ export function Auctions() {
 
         {/* Sliding Flex Wrapper */}
         <div 
+          ref={filterDrawerRef}
           className={clsx(
             "relative flex items-start pointer-events-auto transition-transform duration-300 ease-in-out transform",
             isFiltersOpen ? "translate-x-0" : "-translate-x-[340px] sm:-translate-x-[380px]"

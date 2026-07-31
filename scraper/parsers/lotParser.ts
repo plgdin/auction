@@ -29,6 +29,9 @@ const SPECIFIC_UNITS = new Set([
   "MT", "MTS", "KG", "KGS", "GM", "GMS", "TON", "TONS",
   "LTR", "LTRS", "CUM", "CFT", "CBM",
   "MTR", "MTRS", "RM", "RFT",
+  // Count units — allows description-level quantities like "45 NOS" to
+  // override generic "1 Lot" defaults when the primary regex fails.
+  "NOS", "NO", "PCS", "PC", "ITEMS", "ITEM", "UNITS", "UNIT", "SETS", "SET",
 ]);
 
 // ─── Description Block Quantity Extraction ──────────────────────────────────
@@ -749,7 +752,11 @@ export function parseLotBlocks(
       }
     }
 
-    // ── Extract Start Price / Market Price ───────────────────────────────
+    // ── Extract Start Price (reserve/minimum bid) ────────────────────────
+    // IMPORTANT: The "Start Price" from MSTC catalogs is the seller's
+    // reserve/minimum bid price — NOT a per-unit market rate. It must be
+    // stored separately from marketPrice to avoid inflating valuations.
+    let lotStartPrice: string | undefined = undefined;
     let lotMarketPrice: string | undefined = undefined;
 
     const startPriceInrMatch = block.match(
@@ -784,9 +791,7 @@ export function parseLotBlocks(
       !isNaN(parsedStartPriceNum) &&
       parsedStartPriceNum > 0
     ) {
-      const formattedPrice = parsedStartPriceNum.toLocaleString("en-IN");
-      const priceUnit = unit || "Lot";
-      lotMarketPrice = `₹${formattedPrice} / ${priceUnit}`;
+      lotStartPrice = `₹${parsedStartPriceNum.toLocaleString("en-IN")}`;
     }
 
     // ── Extract block attachments (expanded detection) ───────────────────
@@ -810,12 +815,16 @@ export function parseLotBlocks(
     if (subItems && subItems.length > 0) {
       const currentQtyLower = (qty || "").toLowerCase().trim();
       const currentUnitLower = (unit || "").toLowerCase().trim();
+      const numericQty = parseFloat(currentQtyLower.replace(/,/g, ""));
       const isGenericOrGarbage =
         currentQtyLower === "1" ||
         currentQtyLower === "1.0" ||
         currentUnitLower === "lot" ||
         currentUnitLower === "lots" ||
-        currentQtyLower.includes("+");
+        currentQtyLower.includes("+") ||
+        // Also trigger when qty is 1 regardless of unit — a single
+        // "1 NOS" parent with 15 sub-items should show "15 Items"
+        (numericQty === 1 && subItems.length > 1);
 
       if (isGenericOrGarbage) {
         finalQty = String(subItems.length);
@@ -859,6 +868,7 @@ export function parseLotBlocks(
       taxRate: `${gst} GST${tcs && tcs !== "0.0" && tcs !== "0" ? " + " + (tcs.endsWith("%") ? tcs : tcs + "%") + " TCS" : ""}`,
       attachments: attachments.length > 0 ? attachments : undefined,
       marketPrice: lotMarketPrice,
+      startPrice: lotStartPrice,
       subItems: subItems.length > 0 ? subItems : undefined,
       pcbGroup,
       productType,

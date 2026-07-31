@@ -273,8 +273,18 @@ export const valuationPipeline = {
             if (isPerKg && cleanPrice.toLowerCase().includes('/ ton')) {
               parsedPrice = parsedPrice / 1000;
             }
-            explicitPrice = Math.round(parsedPrice);
-            hasExplicitMarketPrice = true;
+
+            // Sanity check: if the parsed price is more than 10x the DB commodity
+            // baseline, it's almost certainly a start/reserve price, not a per-unit
+            // market rate. Let the market engine handle pricing instead.
+            const commDbPrice = commConfig ? (commConfig.currentPrice || 0) : 0;
+            const baselinePrice = commDbPrice || comm.basePricePerKg || comm.basePricePerUnit || 50;
+            if (baselinePrice > 0 && parsedPrice > baselinePrice * 10) {
+              // Skip — price is too high to be a per-unit rate
+            } else {
+              explicitPrice = Math.round(parsedPrice);
+              hasExplicitMarketPrice = true;
+            }
           }
         }
       }

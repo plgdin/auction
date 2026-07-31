@@ -606,6 +606,18 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
         const match = cleanP.match(/(?:₹|Ôé╣)\s*(\d+)/);
         parsedPrice = match ? parseInt(match[1], 10) : 0;
       }
+
+      // Sanity check: detect inflated start/reserve prices
+      if (parsedPrice > 0) {
+        const estimated = getEstimatedMarketPrice(desc, categoryName);
+        const estClean = estimated.replace(/,/g, '');
+        const estMatch = estClean.match(/(?:₹|Ôé╣)\s*(\d+)/);
+        const estPrice = estMatch ? parseInt(estMatch[1], 10) : 0;
+        if (estPrice > 0 && parsedPrice > estPrice * 10) {
+          parsedPrice = 0;
+        }
+      }
+
       if (parsedPrice <= 1) {
         mPrice = getEstimatedMarketPrice(desc, categoryName);
       }
@@ -649,12 +661,15 @@ export function cleanMaterialDescription(desc: string): string {
   cleaned = cleaned.replace(/\b(?:Details\s+)?FDT\s+(?:and|&)\s+IT\/?\s*$/gi, '');
   cleaned = cleaned.replace(/\b(?:Applicable\s+)?FDT\s+(?:and|&)\s+IT\/?\s*$/gi, '');
 
-  // 1. Remove "Note: ..." / "Note- ..." and everything after it
-  cleaned = cleaned.replace(/\bNote\s*[:.-].*$/gi, '');
+  // 1. Remove "Note: ..." / "Note- ..." ONLY when it's a block-level header
+  //    (preceded by newline or start-of-string AND followed by : or -).
+  //    Prevents stripping mid-sentence usage like "Please note that items..."
+  cleaned = cleaned.replace(/(?:^|\n)\s*Note\s*[:.-].*$/gim, '');
 
-  // 2. Remove "Location: ..." and everything after it
-  cleaned = cleaned.replace(/\bLocation\s*[:.-].*$/gi, '');
-  cleaned = cleaned.replace(/\bLot Location\s*[:.-].*$/gi, '');
+  // 2. Remove "Location: ..." / "Lot Location: ..." ONLY as block-level headers
+  //    Prevents stripping mid-sentence usage like "Location of plant is accessible..."
+  cleaned = cleaned.replace(/(?:^|\n)\s*Lot Location\s*[:.-].*$/gim, '');
+  cleaned = cleaned.replace(/(?:^|\n)\s*Location\s*[:.-].*$/gim, '');
 
   // 3. Remove "Total Qty: ... No" / "Qty- 250 Nos" / "Quantity ..."
   cleaned = cleaned.replace(/\b(?:Approx\s*)?(?:Qty|Quantity|QTY|Total\s*Qty)\s*[:.-]?\s*\d+[\d,.]*\s*(?:Nos?|No|Items?|Lots?|Units?|Kgs?|MT|Tons?|Pcs?|[a-zA-Z]+)?/gi, '');
@@ -864,6 +879,22 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
               const match = cleanP.match(/(?:₹|Ôé╣)\s*(\d+)/);
               parsedPrice = match ? parseInt(match[1], 10) : 0;
             }
+
+            // Sanity check: if the per-unit price is unreasonably high, it's likely
+            // a start/reserve price rather than a real per-unit market rate.
+            // Fall back to the estimated market price in that case.
+            if (parsedPrice > 0) {
+              const estimated = getEstimatedMarketPrice(desc, item.category_name);
+              const estClean = estimated.replace(/,/g, '');
+              const estMatch = estClean.match(/(?:₹|Ôé╣)\s*(\d+)/);
+              const estPrice = estMatch ? parseInt(estMatch[1], 10) : 0;
+              // If the parsed price is more than 10x the estimated per-unit price,
+              // it's almost certainly a total lot start price, not a per-unit rate
+              if (estPrice > 0 && parsedPrice > estPrice * 10) {
+                parsedPrice = 0; // Force fallback
+              }
+            }
+
             if (parsedPrice <= 1) {
               mPrice = getEstimatedMarketPrice(desc, item.category_name);
             }
