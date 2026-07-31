@@ -16,6 +16,21 @@ export const adminService = {
     return data;
   },
 
+  async getUserAuditLogs(userId: string, limit: number = 50): Promise<AuditLog[]> {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching user audit logs:', error);
+      return [];
+    }
+    return data;
+  },
+
   async logAction(logData: Partial<AuditLog>): Promise<AuditLog | null> {
     const { data, error } = await supabase
       .from('audit_logs')

@@ -642,6 +642,14 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
   useEffect(() => {
     if (item) {
+      // Log view activity to audit_logs
+      import('../../services/auditService').then(({ logUserActivity }) => {
+        logUserActivity('view_auction_details', 'auction', item.id, {
+          title: item.category_name || 'Auction Details',
+          reference_number: item.mstc_auction_number || 'N/A'
+        });
+      });
+
       const summary = generateCatalogSummary(item);
 
       let defaultBid = summary.totalMarketValue || 0;
