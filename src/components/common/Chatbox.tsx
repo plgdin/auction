@@ -29,7 +29,7 @@ export function Chatbox() {
   // Click outside to close chatbot window
   useEffect(() => {
     if (!isOpen) return;
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (orbContainerRef.current && !orbContainerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }

@@ -222,7 +222,18 @@ export function Sidebar() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-slate-800 truncate">{profile?.first_name} {profile?.last_name}</p>
-            <p className="text-[11px] text-slate-400 truncate capitalize">{profile?.role || 'Bidder'}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] font-medium text-slate-400 capitalize shrink-0">{profile?.role || 'Bidder'}</span>
+              <span className="text-[9px] text-slate-300 shrink-0">•</span>
+              <span className={clsx(
+                "text-[8px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wider shrink-0 leading-none",
+                profile?.subscription_plan === 'pro' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                profile?.subscription_plan === 'enterprise' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                "bg-slate-100 text-slate-500 border-slate-200"
+              )}>
+                {profile?.subscription_plan || 'explorer'}
+              </span>
+            </div>
           </div>
         </div>
 
