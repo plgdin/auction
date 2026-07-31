@@ -63,7 +63,7 @@ export function FeaturedAuctionsSection() {
         <div className="flex justify-between items-end mb-12 border-b border-slate-200 pb-6">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Recommended Auctions</h2>
-            <p className="mt-4 text-lg text-slate-655">
+            <p className="mt-4 text-lg text-slate-700">
               Personalized asset recommendations tailored to your procurement preferences.
             </p>
           </div>
@@ -205,7 +205,7 @@ export function FeaturedAuctionsSection() {
 
       {selectedPreviewItem && (
         <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
           </div>
         }>

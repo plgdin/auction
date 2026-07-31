@@ -486,7 +486,7 @@ export function ProfileSettings() {
                   </div>
                   <button
                     onClick={handleClearWatchlist}
-                    className="w-full text-center py-2 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    className="w-full text-center py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
                   >
                     Clear Watchlist
                   </button>
@@ -499,7 +499,7 @@ export function ProfileSettings() {
                   </div>
                   <button
                     onClick={() => navigate('/dashboard/documents')}
-                    className="w-full text-center py-2 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    className="w-full text-center py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
                   >
                     Manage Vault
                   </button>
@@ -565,7 +565,7 @@ export function ProfileSettings() {
             )}
             
             {pwSuccess && (
-              <div className="bg-green-55 border border-green-200 text-green-705 px-4 py-3 rounded-lg text-sm font-medium">
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm font-medium">
                 {pwSuccess}
               </div>
             )}

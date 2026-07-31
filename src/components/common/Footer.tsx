@@ -73,18 +73,18 @@ export function Footer() {
             <ul className="space-y-4 text-sm">
               <li className="flex items-start gap-3">
                 <MapPin className="text-primary shrink-0" size={20} />
-                <span className="text-slate-305">
+                <span className="text-slate-300">
                   No: 2, 20th Cross Lakshimpuram,<br />
                   Halasuru, Bangalore 560008
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="text-primary shrink-0" size={20} />
-                <span className="text-slate-305">+91 94477 53889</span>
+                <span className="text-slate-300">+91 94477 53889</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="text-primary shrink-0" size={20} />
-                <a href="mailto:support@lelam.co" className="text-slate-305 hover:text-white transition-colors">
+                <a href="mailto:support@lelam.co" className="text-slate-300 hover:text-white transition-colors">
                   support@lelam.co
                 </a>
               </li>

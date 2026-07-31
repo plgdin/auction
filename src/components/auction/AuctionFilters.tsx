@@ -354,7 +354,7 @@ export function AuctionFilters({
             "group flex items-center justify-between py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150",
             isSelected
               ? "bg-primary-50/50 font-medium text-slate-900"
-              : "hover:bg-slate-50 text-slate-600 hover:text-slate-955"
+              : "hover:bg-slate-50 text-slate-600 hover:text-slate-950"
           )}
           style={{ paddingLeft: `${Math.max(8, depth * 12)}px` }}
           onClick={() => {
@@ -390,7 +390,7 @@ export function AuctionFilters({
                   <span className="w-2 h-0.5 bg-white" />
                 </span>
               ) : (
-                <span className="w-4 h-4 rounded border border-slate-300 group-hover:border-slate-450 bg-white flex-shrink-0 duration-150 transition-colors" />
+                <span className="w-4 h-4 rounded border border-slate-300 group-hover:border-slate-400 bg-white flex-shrink-0 duration-150 transition-colors" />
               )}
             </span>
 
@@ -581,12 +581,12 @@ export function AuctionFilters({
                 >
                   <button
                     type="button"
-                    className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                    className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
                   >
                     <span className="truncate">
                       {getTriggerLabel(selectedCategories, 'All Categories')}
                     </span>
-                    <DownOutlined className="w-3.5 h-3.5 text-slate-455 shrink-0 ml-2" />
+                    <DownOutlined className="w-3.5 h-3.5 text-slate-500 shrink-0 ml-2" />
                   </button>
                 </Dropdown>
               </div>
@@ -613,7 +613,7 @@ export function AuctionFilters({
                       "w-full flex justify-between items-center px-3.5 py-2.5 border rounded-xl shadow-2xs text-sm transition-all text-left",
                       selectedCategories.length === 0
                         ? "border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50"
-                        : "border-slate-250 bg-white text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
                     )}
                   >
                     <span className="truncate">
@@ -621,7 +621,7 @@ export function AuctionFilters({
                         ? 'Select a category first'
                         : getTriggerLabel(selectedSubcategories, 'All Sub-Categories')}
                     </span>
-                    <DownOutlined className="w-3.5 h-3.5 text-slate-455 shrink-0 ml-2" />
+                    <DownOutlined className="w-3.5 h-3.5 text-slate-500 shrink-0 ml-2" />
                   </button>
                 </Dropdown>
               </div>
@@ -633,7 +633,7 @@ export function AuctionFilters({
                   "group flex items-center justify-between py-1.5 px-2 rounded-lg cursor-pointer transition-all duration-150",
                   isAllSelected
                     ? "bg-primary-50/50 font-medium text-slate-900"
-                    : "hover:bg-slate-50 text-slate-600 hover:text-slate-955"
+                    : "hover:bg-slate-50 text-slate-600 hover:text-slate-950"
                 )}
                 onClick={handleSelectAll}
               >
@@ -642,7 +642,7 @@ export function AuctionFilters({
                     {isAllSelected ? (
                       <span className="w-4 h-4 rounded border border-primary bg-primary flex-shrink-0 duration-150 transition-colors" />
                     ) : (
-                      <span className="w-4 h-4 rounded border border-slate-300 group-hover:border-slate-450 bg-white flex-shrink-0 duration-150 transition-colors" />
+                      <span className="w-4 h-4 rounded border border-slate-300 group-hover:border-slate-400 bg-white flex-shrink-0 duration-150 transition-colors" />
                     )}
                   </span>
                   <span className="text-sm leading-relaxed truncate">All Categories</span>
@@ -801,12 +801,12 @@ export function AuctionFilters({
             >
               <button
                 type="button"
-                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
               >
                 <span className="truncate">
                   {getTriggerLabel(selectedRegionalOffices, 'All Regional Offices', expandMstcOfficeMap)}
                 </span>
-                <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
               </button>
             </Dropdown>
           </div>
@@ -829,12 +829,12 @@ export function AuctionFilters({
             >
               <button
                 type="button"
-                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
               >
                 <span className="truncate">
                   {getTriggerLabel(selectedRegionalOffices, 'All Regional Offices')}
                 </span>
-                <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
               </button>
             </Dropdown>
           </div>
@@ -857,12 +857,12 @@ export function AuctionFilters({
           >
             <button
               type="button"
-              className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+              className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
             >
               <span className="truncate">
                 {getTriggerLabel(selectedLocations, 'All Locations')}
               </span>
-              <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+              <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
             </button>
           </Dropdown>
         </div>
@@ -903,7 +903,7 @@ export function AuctionFilters({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
               >
                 <span className="truncate">
                   {startDate && endDate
@@ -972,7 +972,7 @@ export function AuctionFilters({
       >
         <button
           onClick={handleReset}
-          className="px-4 py-2 border border-slate-250 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 transition-all duration-200 cursor-pointer"
+          className="px-4 py-2 border border-slate-200 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 transition-all duration-200 cursor-pointer"
         >
           Reset
         </button>

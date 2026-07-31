@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { authService } from '../services/authService';
 import { formatPrice } from '../utils/currency';
 import { 
-  Lock, ArrowRight, ShieldCheck, Sparkles, CheckCircle2, 
+  Lock, ArrowRight, CheckCircle2, 
   AlertCircle, Loader2, CreditCard, ChevronRight
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -38,6 +38,7 @@ export function CheckoutPage() {
   const [businessName, setBusinessName] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
   const [gstin, setGstin] = useState('');
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
   // Auth gate state (Login/Register tab)
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
@@ -117,11 +118,7 @@ export function CheckoutPage() {
         setIsProcessing(false);
         setStep('success');
         setTransactionId(`FREE-${Date.now().toString().slice(-6)}`);
-        confetti({
-          particleCount: 150,
-          spread: 80,
-          origin: { y: 0.6 }
-        });
+        // No confetti for free signup to avoid wrappers cliches
       }, 1500);
       return;
     }
@@ -139,7 +136,7 @@ export function CheckoutPage() {
       key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey12345',
       amount: total * 100, // paise
       currency: 'INR',
-      name: 'Lelam Subscriptions',
+      name: 'Lelam Technologies',
       description: `Lelam ${planId === 'pro' ? 'Bidder Pro' : 'Explorer'} plan (${billingCycle})`,
       image: '/favicon.svg',
       handler: function (response: any) {
@@ -147,6 +144,7 @@ export function CheckoutPage() {
         setStep('success');
         setTransactionId(response.razorpay_payment_id || `pay_${Date.now().toString().slice(-6)}`);
         
+        // Confetti only for paid plan subscriptions
         confetti({
           particleCount: 150,
           spread: 80,
@@ -244,7 +242,7 @@ export function CheckoutPage() {
                               required
                               value={authFirstName}
                               onChange={(e) => setAuthFirstName(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-slate-255 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
                             />
                           </div>
                           <div>
@@ -254,7 +252,7 @@ export function CheckoutPage() {
                               required
                               value={authLastName}
                               onChange={(e) => setAuthLastName(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-slate-255 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
                             />
                           </div>
                         </div>
@@ -267,7 +265,7 @@ export function CheckoutPage() {
                           required
                           value={authEmail}
                           onChange={(e) => setAuthEmail(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-255 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
                         />
                       </div>
 
@@ -278,7 +276,7 @@ export function CheckoutPage() {
                           required
                           value={authPassword}
                           onChange={(e) => setAuthPassword(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-255 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
                         />
                       </div>
 
@@ -322,7 +320,7 @@ export function CheckoutPage() {
                             required
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
-                            className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
                           />
                         </div>
                         <div>
@@ -331,7 +329,7 @@ export function CheckoutPage() {
                             type="text"
                             value={businessName}
                             onChange={(e) => setBusinessName(e.target.value)}
-                            className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
                           />
                         </div>
                         <div className="md:col-span-2">
@@ -341,7 +339,7 @@ export function CheckoutPage() {
                             value={gstin}
                             onChange={(e) => setGstin(e.target.value)}
                             placeholder="e.g. 22AAAAA1111A1Z1"
-                            className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-mono uppercase"
+                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-mono uppercase"
                           />
                           {gstError && <p className="text-red-500 text-xs font-bold mt-1">{gstError}</p>}
                         </div>
@@ -352,7 +350,7 @@ export function CheckoutPage() {
                             value={billingAddress}
                             onChange={(e) => setBillingAddress(e.target.value)}
                             rows={3}
-                            className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none resize-none"
+                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none resize-none"
                           />
                         </div>
                       </div>
@@ -365,13 +363,36 @@ export function CheckoutPage() {
                         <div>
                           <h4 className="text-xs font-bold text-slate-800">Secure Payment via Razorpay</h4>
                           <p className="text-[11px] text-slate-500 leading-normal mt-0.5">
-                            Upon clicking proceed, the Razorpay window will open overlaying the page. You can pay via Cards, UPI, Net Banking, or Wallets securely.
+                            Upon clicking proceed, the Razorpay payment window will overlay the page. You can pay via Cards, UPI, Net Banking, or Wallets securely.
                           </p>
                         </div>
                       </div>
                     )}
 
-                    {/* Step 3: Action Button */}
+                    {/* Step 3: Terms Checkbox */}
+                    <div className="flex items-start gap-3 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <input
+                        type="checkbox"
+                        id="agree-terms"
+                        required
+                        checked={agreeTerms}
+                        onChange={(e) => setAgreeTerms(e.target.checked)}
+                        className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary/20 mt-0.5 cursor-pointer"
+                      />
+                      <label htmlFor="agree-terms" className="leading-snug select-none cursor-pointer">
+                        I agree to Lelam's{' '}
+                        <Link to="/terms" target="_blank" className="text-primary font-bold hover:underline">
+                          Terms of Service
+                        </Link>{' '}
+                        and{' '}
+                        <Link to="/faq" target="_blank" className="text-primary font-bold hover:underline">
+                          Refund & Cancellation Policy
+                        </Link>
+                        .
+                      </label>
+                    </div>
+
+                    {/* Step 4: Action Button */}
                     <button
                       type="submit"
                       disabled={isProcessing}
@@ -414,7 +435,15 @@ export function CheckoutPage() {
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left max-w-md mx-auto space-y-3 font-medium text-slate-700 text-xs">
                   <h3 className="text-xs font-black uppercase text-slate-400 border-b pb-1.5 mb-2">Invoice details</h3>
                   <div className="flex justify-between">
-                    <span>Razorpay Payment ID</span>
+                    <span>Merchant</span>
+                    <span className="font-bold text-slate-800">Lelam Technologies Private Limited</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Merchant GSTIN</span>
+                    <span className="font-mono text-slate-850">27AADCL5842K1Z0</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Payment ID</span>
                     <span className="font-mono font-bold text-slate-800">{transactionId}</span>
                   </div>
                   <div className="flex justify-between">
@@ -447,53 +476,53 @@ export function CheckoutPage() {
 
           {/* Right Summary Column */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Order summary card */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
-              <h3 className="text-base font-bold text-slate-800 border-b pb-2">
+            {/* Order summary card - dark themed for visual weight and hierarchy */}
+            <div className="bg-slate-900 text-white rounded-3xl border border-slate-800 shadow-xl p-6 space-y-6">
+              <h3 className="text-base font-black text-white border-b border-slate-800 pb-2">
                 Order Summary
               </h3>
 
               <div className="space-y-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="text-sm font-bold text-slate-850 uppercase tracking-wide">
+                    <h4 className="text-sm font-bold text-slate-200 uppercase tracking-wide">
                       {planId === 'pro' ? 'Bidder Pro Plan' : 'Explorer Plan'}
                     </h4>
                     <p className="text-[11px] text-slate-400 font-medium mt-0.5">
                       Billed {billingCycle}
                     </p>
                   </div>
-                  <span className="text-sm font-extrabold text-slate-900 font-mono">
+                  <span className="text-sm font-extrabold text-white font-mono">
                     {formatPrice(subtotal)}
                   </span>
                 </div>
 
-                <hr className="border-slate-100" />
+                <hr className="border-slate-800" />
 
                 {planId === 'pro' && (
                   <>
-                    <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
+                    <div className="flex justify-between items-center text-xs font-semibold text-slate-400">
                       <span>GST (18%)</span>
                       <span className="font-mono">{formatPrice(gst)}</span>
                     </div>
-                    <hr className="border-slate-100" />
+                    <hr className="border-slate-800" />
                   </>
                 )}
 
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-slate-800">Total Due</span>
-                  <span className="text-lg font-black text-slate-950 font-mono">
+                  <span className="text-sm font-bold text-slate-350">Total Due</span>
+                  <span className="text-lg font-black text-emerald-400 font-mono">
                     {formatPrice(total)}
                   </span>
                 </div>
               </div>
 
               {planId === 'pro' && (
-                <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
-                  <h4 className="text-xs font-bold text-primary flex items-center gap-1.5 mb-1.5">
-                    <Sparkles className="w-3.5 h-3.5 fill-current" /> Pro Access Features
+                <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-800">
+                  <h4 className="text-xs font-bold text-primary mb-1.5">
+                    Pro Access Features
                   </h4>
-                  <ul className="space-y-1 text-slate-655 text-[11px] font-semibold leading-normal list-disc list-inside text-slate-600">
+                  <ul className="space-y-1 text-slate-300 text-[11px] font-semibold leading-normal list-disc list-inside">
                     <li>AI Valuation Engine (Profit & Loss)</li>
                     <li>ML Scrap Price Predictor</li>
                     <li>Live market rates & price history</li>
@@ -502,20 +531,24 @@ export function CheckoutPage() {
                   </ul>
                 </div>
               )}
+
+              {/* Merchant Registered Identity details */}
+              <div className="border-t border-slate-800/80 pt-4 text-[10px] text-slate-400 space-y-1 leading-normal font-medium">
+                <p className="font-bold text-slate-300">Lelam Technologies Private Limited</p>
+                <p>Seller GSTIN: 27AADCL5842K1Z0</p>
+                <p>Support: support@lelam.in | +91 22 6902 4500</p>
+              </div>
             </div>
 
-            {/* Trust and safety details */}
-            <div className="bg-slate-900 text-white rounded-3xl p-6 space-y-4 shadow-sm border border-slate-850">
-              <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Secure checkout guarantee
-              </h3>
-              <p className="text-[11px] text-slate-350 leading-relaxed font-medium">
-                Your credentials and payment data are protected using end-to-end TLS 1.3 encryption. Lelam complies fully with payment industry compliance and security audits.
+            {/* Trust and safety details - clean text format instead of rounded box stack */}
+            <div className="text-center pt-2 px-4 space-y-1.5">
+              <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5 font-bold">
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                Payments processed securely by Razorpay
               </p>
-              <div className="flex items-center gap-2 border-t border-slate-800 pt-3">
-                <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[10px] font-bold text-slate-400">SSL Encrypted / 256-Bit Cryptography</span>
-              </div>
+              <p className="text-[10px] text-slate-400 leading-normal max-w-xs mx-auto font-medium">
+                Lelam never views or stores your credit/debit card numbers or credentials.
+              </p>
             </div>
           </div>
         </div>

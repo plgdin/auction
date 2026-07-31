@@ -190,7 +190,7 @@ export function Wallet() {
                           <span className="block text-xs text-slate-400 mt-0.5">{tx.description}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center text-sm text-slate-650">
+                          <div className="flex items-center text-sm text-slate-600">
                             <Calendar className="w-4 h-4 mr-1.5 text-slate-400" />
                             {new Date(tx.created_at).toLocaleString()}
                           </div>
@@ -210,7 +210,7 @@ export function Wallet() {
                           <span className={clsx(
                             "px-2.5 py-1 text-xs font-semibold rounded-full capitalize",
                             tx.status === 'completed' ? "bg-green-100 text-green-800" :
-                            tx.status === 'pending' ? "bg-amber-150 text-amber-800" : "bg-red-100 text-red-800"
+                            tx.status === 'pending' ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"
                           )}>
                             {tx.status}
                           </span>
@@ -260,7 +260,7 @@ export function Wallet() {
                           <span className="text-xs text-slate-400 font-medium font-mono uppercase">REF: {tx.auction?.reference_number || 'N/A'}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center text-sm text-slate-650">
+                          <div className="flex items-center text-sm text-slate-600">
                             <Calendar className="w-4 h-4 mr-1.5 text-slate-400" />
                             {new Date(tx.created_at).toLocaleString()}
                           </div>
@@ -272,7 +272,7 @@ export function Wallet() {
                           <span className={clsx(
                             "px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wide",
                             tx.status === 'held' ? "bg-amber-100 text-amber-800" :
-                            tx.status === 'released' ? "bg-green-150 text-green-800" : "bg-slate-200 text-slate-650"
+                            tx.status === 'released' ? "bg-green-100 text-green-800" : "bg-slate-200 text-slate-600"
                           )}>
                             {tx.status}
                           </span>

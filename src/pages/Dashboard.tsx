@@ -289,35 +289,35 @@ export function Dashboard() {
               {/* Commodity Rate Grid - Live from Supabase */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
                 {/* Steel / Iron */}
-                <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Steel / Iron</span>
                   <p className="text-sm font-extrabold text-slate-900 mt-1">{formatPrice(livePrices.steel_iron_ferrous?.price || 38.5, currency)}/{livePrices.steel_iron_ferrous?.unit || 'kg'}</p>
                   <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">{livePrices.steel_iron_ferrous?.lastUpdated ? new Date(livePrices.steel_iron_ferrous.lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Loading...'}</span>
                 </div>
 
                 {/* Copper */}
-                <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Copper Scrap</span>
                   <p className="text-sm font-extrabold text-slate-900 mt-1">{formatPrice(livePrices.copper?.price || 780, currency)}/{livePrices.copper?.unit || 'kg'}</p>
                   <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">{livePrices.copper?.lastUpdated ? new Date(livePrices.copper.lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Loading...'}</span>
                 </div>
 
                 {/* Gold */}
-                <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
                   <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Gold 24K</span>
                   <p className="text-sm font-extrabold text-slate-900 mt-1">{formatPrice(livePrices.gold?.price || 7450, currency)}/{livePrices.gold?.unit || 'gram'}</p>
                   <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">{livePrices.gold?.lastUpdated ? new Date(livePrices.gold.lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Loading...'}</span>
                 </div>
 
                 {/* Silver */}
-                <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
                   <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Silver 999</span>
                   <p className="text-sm font-extrabold text-slate-900 mt-1">{formatPrice(livePrices.silver?.price || 91000, currency)}/{livePrices.silver?.unit || 'kg'}</p>
                   <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">{livePrices.silver?.lastUpdated ? new Date(livePrices.silver.lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Loading...'}</span>
                 </div>
 
                 {/* Aluminium */}
-                <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 col-span-2 sm:col-span-1">
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 col-span-2 sm:col-span-1">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Aluminium</span>
                   <p className="text-sm font-extrabold text-slate-900 mt-1">{formatPrice(livePrices.aluminium?.price || 235, currency)}/{livePrices.aluminium?.unit || 'kg'}</p>
                   <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">{livePrices.aluminium?.lastUpdated ? new Date(livePrices.aluminium.lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Loading...'}</span>
@@ -364,7 +364,7 @@ export function Dashboard() {
                   return (
                     <div 
                       key={auc.id} 
-                      className="bg-white border border-slate-150 hover:border-blue-400 rounded-xl p-5 hover:shadow-xs transition-all relative flex flex-col justify-between min-w-[280px] sm:min-w-[320px] md:min-w-0 snap-start shrink-0 md:shrink"
+                      className="bg-white border border-slate-100 hover:border-blue-400 rounded-xl p-5 hover:shadow-xs transition-all relative flex flex-col justify-between min-w-[280px] sm:min-w-[320px] md:min-w-0 snap-start shrink-0 md:shrink"
                     >
                       <div>
                         {/* Match Tags */}
@@ -461,7 +461,7 @@ export function Dashboard() {
                 {rankedAuctions.map((item, index) => (
                   <div 
                     key={`${item.id}-${index}`} 
-                    className="border border-slate-150 rounded-xl p-3.5 space-y-3 bg-slate-50/50 hover:bg-slate-50 transition-colors min-w-[260px] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink"
+                    className="border border-slate-100 rounded-xl p-3.5 space-y-3 bg-slate-50/50 hover:bg-slate-50 transition-colors min-w-[260px] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink"
                   >
                     <div className="flex justify-between items-start gap-3">
                       <div className="space-y-1">
@@ -530,7 +530,7 @@ export function Dashboard() {
               ) : (
                 <ul className="flex md:block overflow-x-auto snap-x no-scrollbar gap-3 pb-3 md:pb-0 md:divide-y md:divide-border -mx-1 px-1">
                   {recentBids.map((bid) => (
-                    <li key={bid.id} className="py-3 px-3.5 bg-slate-50/60 md:bg-transparent rounded-xl md:rounded-none border md:border-none border-slate-150 min-w-[240px] md:min-w-0 snap-start shrink-0 md:shrink">
+                    <li key={bid.id} className="py-3 px-3.5 bg-slate-50/60 md:bg-transparent rounded-xl md:rounded-none border md:border-none border-slate-100 min-w-[240px] md:min-w-0 snap-start shrink-0 md:shrink">
                       <div className="flex justify-between items-start mb-1">
                         <h4 className="text-sm font-bold text-foreground line-clamp-1 mr-4">{bid.auction.title}</h4>
                         <span className="text-sm font-bold text-primary shrink-0 font-mono">{formatPrice(bid.amount, currency)}</span>

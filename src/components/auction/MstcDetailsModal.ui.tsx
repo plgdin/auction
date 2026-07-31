@@ -359,11 +359,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs p-4 sm:p-6 md:p-8 animate-fade-in">
-        <div className="relative w-full max-w-7xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-205 animate-scale-up animate-duration-200">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 sm:p-6 md:p-8 animate-fade-in">
+        <div className="relative w-full max-w-7xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
           
           {/* Modal Header */}
-          <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
+          <div className="px-6 py-4.5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <div className="flex items-center gap-2.5">
               <span className="text-base font-bold text-slate-500 ">
                 Ref: {shortId}
@@ -378,7 +378,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 title="Copy Reference ID"
               >
                 {copiedRef ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-605" />
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
                 ) : (
                   <Copy className="w-3.5 h-3.5" />
                 )}
@@ -427,7 +427,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <h3 className="text-3xl font-black text-slate-950 leading-tight">{subCat}</h3>
                         </>
                       ) : (
-                        <h3 className="text-3xl font-black text-slate-955 leading-tight">{mainCat}</h3>
+                        <h3 className="text-3xl font-black text-slate-950 leading-tight">{mainCat}</h3>
                       )}
                     </div>
                   );
@@ -449,8 +449,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   className={clsx(
                     "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border font-bold text-xs transition-all shrink-0 cursor-pointer shadow-3xs",
                     copied
-                      ? "bg-emerald-50 border-emerald-250 text-emerald-700"
-                      : "bg-white border-slate-200 text-slate-707 hover:bg-slate-50 hover:text-primary hover:border-primary/30"
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary hover:border-primary/30"
                   )}
                 >
                   {copied ? (
@@ -626,10 +626,10 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   )}
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
+                <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
                   <table className="w-full text-left border-collapse text-[13.5px]">
                     <thead>
-                      <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 ">
+                      <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 ">
                         <th className="py-3 px-3.5 font-bold w-12 text-center">Lot</th>
                         <th className="py-3 px-3.5 font-bold">Material Description</th>
                         <th className="py-3 px-3.5 font-bold text-right">Quantity</th>
@@ -701,7 +701,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               );
                             })()}
                           </td>
-                          <td className="py-3 px-3.5 text-right  text-slate-955 font-bold">{row.qty} {row.unit}</td>
+                          <td className="py-3 px-3.5 text-right  text-slate-950 font-bold">{row.qty} {row.unit}</td>
                           <td className="py-3 px-3.5 text-center  text-xs text-emerald-600 font-bold bg-emerald-50/50">{row.marketPrice}</td>
                           <td className="py-2.5 px-3.5 text-center">
                             <button
@@ -732,7 +732,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       summary.complianceInfo.requiredDocuments.map((doc, idx) => (
                         <div key={idx} className="flex gap-2 items-start p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                           <div>
-                            <p className="text-xs font-bold text-slate-850 flex items-center gap-1.5 flex-wrap">
+                            <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
                               <span>{doc.name}</span>
                               {doc.type === 'conditional' && (
                                 <span className="bg-amber-100 text-amber-800 text-[9px] px-1 py-0.2 rounded font-semibold uppercase tracking-wider">
@@ -745,7 +745,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
                       ))
                     ) : (
-                      <ul className="list-disc pl-5 space-y-2 text-[13.5px] text-slate-705">
+                      <ul className="list-disc pl-5 space-y-2 text-[13.5px] text-slate-700">
                         {summary.eligibility.map((el, i) => (
                           <li key={i} className="leading-relaxed">{el}</li>
                         ))}
@@ -771,7 +771,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </div>
                         </div>
                       </span>
-                      <span className="font-bold text-slate-850 text-[13.5px]">
+                      <span className="font-bold text-slate-800 text-[13.5px]">
                         {summary.depositDetails.emd}
                       </span>
                     </div>
@@ -786,7 +786,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </div>
                         </div>
                       </span>
-                      <span className="font-bold text-slate-850 text-[13.5px]">
+                      <span className="font-bold text-slate-800 text-[13.5px]">
                         {summary.depositDetails.preBidDdg}
                       </span>
                     </div>
@@ -803,7 +803,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </div>
                         </span>
                         <div className="mt-1 flex flex-col gap-1">
-                          <span className="font-bold text-slate-850 text-[13.5px] flex items-center gap-1.5">
+                          <span className="font-bold text-slate-800 text-[13.5px] flex items-center gap-1.5">
                             {summary.complianceInfo.gstStatus.type}
                             {summary.complianceInfo.gstStatus.isRcm && (
                               <span className="bg-red-100 text-red-800 text-[9px] px-1 py-0.2 rounded font-semibold uppercase tracking-wider">
@@ -859,7 +859,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     const roi = predictedClosingBid > 0 ? (projectedProfit / predictedClosingBid) * 100 : 0;
 
                     return (
-                      <div className="space-y-3 text-[13.5px] text-slate-705">
+                      <div className="space-y-3 text-[13.5px] text-slate-700">
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Projected Turnover</span>
                           <span className="font-bold text-slate-900">
@@ -869,14 +869,14 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Predicted Closing Bid</span>
-                          <span className="font-bold text-indigo-650">
+                          <span className="font-bold text-indigo-600">
                             ₹{predictedClosingBid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                           <span className="text-slate-500 font-semibold">Projected Profit</span>
-                          <span className="font-bold text-emerald-605">
+                          <span className="font-bold text-emerald-600">
                             ₹{projectedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
@@ -918,16 +918,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {mstcContacts.map((contact, i) => (
-                              <div key={`mstc-${i}`} className="bg-blue-50/30 border border-blue-150/50 p-3.5 rounded-xl space-y-2">
+                              <div key={`mstc-${i}`} className="bg-blue-50/30 border border-blue-100/50 p-3.5 rounded-xl space-y-2">
                                 <span className="text-[10px]  text-blue-600 font-bold uppercase tracking-wider">{contact.role}</span>
                                 <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
                                 <div className="space-y-1">
-                                  <p className="text-xs text-slate-605  break-all flex items-center gap-1.5">
+                                  <p className="text-xs text-slate-600  break-all flex items-center gap-1.5">
                                     <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                                     <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">{contact.email}</a>
                                   </p>
                                   {contact.phone && contact.phone !== 'no contact info available' && (
-                                    <p className="text-xs text-slate-605  flex items-center gap-1.5">
+                                    <p className="text-xs text-slate-600  flex items-center gap-1.5">
                                       <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                                       <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="hover:text-primary transition-colors">{contact.phone}</a>
                                     </p>
@@ -948,16 +948,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {sellerContacts.map((contact, i) => (
-                              <div key={`seller-${i}`} className="bg-emerald-50/30 border border-emerald-150/50 p-3.5 rounded-xl space-y-2">
+                              <div key={`seller-${i}`} className="bg-emerald-50/30 border border-emerald-100/50 p-3.5 rounded-xl space-y-2">
                                 <span className="text-[10px]  text-emerald-600 font-bold uppercase tracking-wider">{contact.role}</span>
                                 <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
                                 <div className="space-y-1">
-                                  <p className="text-xs text-slate-605  break-all flex items-center gap-1.5">
+                                  <p className="text-xs text-slate-600  break-all flex items-center gap-1.5">
                                     <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                                     <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">{contact.email}</a>
                                   </p>
                                   {contact.phone && contact.phone !== 'no contact info available' && (
-                                    <p className="text-xs text-slate-605  flex items-center gap-1.5">
+                                    <p className="text-xs text-slate-600  flex items-center gap-1.5">
                                       <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                                       <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="hover:text-primary transition-colors">{contact.phone}</a>
                                     </p>
@@ -995,7 +995,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         if (imageUrls.length === 0) return null;
                         return (
                           <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2 flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2 flex items-center justify-between">
                               <span>Auction Images</span>
                               <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded ">{imageUrls.length} Photos</span>
                             </h4>
@@ -1027,9 +1027,9 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {/* Catalog Preview: Scrollable list of catalog pages */}
                       {catalogPages.length > 0 ? (
                         <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2 flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2 flex items-center justify-between">
                             <span>Catalog Document Preview</span>
-                            <span className="text-[9.5px] bg-slate-150 text-slate-700 border border-slate-255 font-bold px-2 py-0.5 rounded ">{catalogPages.length} Pages</span>
+                            <span className="text-[9.5px] bg-slate-100 text-slate-700 border border-slate-300 font-bold px-2 py-0.5 rounded ">{catalogPages.length} Pages</span>
                           </h4>
                           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
                             {catalogPages.map((url: string, idx: number) => (
@@ -1060,7 +1060,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
                       ) : displayImage && !imageUrls.includes(displayImage) ? (
                         <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2">
                             <span>Catalog Document Preview</span>
                           </h4>
                           <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
@@ -1084,7 +1084,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
                       ) : (
                         <div className="w-full py-12 flex flex-col items-center justify-center text-slate-400 gap-2 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                          <svg className="w-10 h-10 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <span className="text-xs font-semibold tracking-wide">No preview available</span>
@@ -1098,10 +1098,10 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           </div>
 
           {/* Modal Footer */}
-          <div className="px-6 py-4 border-t border-slate-150 bg-slate-50/50 flex flex-col sm:flex-row gap-3 sm:justify-end items-center">
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-3 sm:justify-end items-center">
             <button
               onClick={onClose}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl text-[15px] font-bold text-slate-650 hover:text-slate-850 hover:bg-slate-200 transition-all cursor-pointer text-center"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl text-[15px] font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-200 transition-all cursor-pointer text-center"
             >
               Close Details
             </button>
@@ -1112,7 +1112,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
             >
               {viewing ? (
                 <>
-                  <div className="w-4 h-4 mr-2 border-2 border-slate-850 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 mr-2 border-2 border-slate-800 border-t-transparent rounded-full animate-spin"></div>
                   Opening...
                 </>
               ) : (
@@ -1146,7 +1146,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col bg-slate-955/95 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-[100] flex flex-col bg-slate-950/95 backdrop-blur-md animate-fade-in"
           onClick={() => setLightboxImage(null)}
         >
           {/* Floating Controls Bar */}

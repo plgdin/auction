@@ -70,7 +70,7 @@ export function ResetPasswordForm() {
       )}
 
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-650 mb-1.5">New Password</label>
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">New Password</label>
         <div className="relative rounded-xl shadow-xs">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <Lock className="h-5 w-5" />
@@ -93,7 +93,7 @@ export function ResetPasswordForm() {
       </div>
 
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-650 mb-1.5">Confirm New Password</label>
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Confirm New Password</label>
         <div className="relative rounded-xl shadow-xs">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <Lock className="h-5 w-5" />

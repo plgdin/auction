@@ -333,7 +333,7 @@ export function Interested() {
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
         <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
           </div>
         }>
@@ -350,7 +350,7 @@ export function Interested() {
       {isAddWonModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/45 backdrop-blur-md">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-200 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="font-bold text-slate-900 text-lg">
                 {editingWonItem ? 'Edit Won Auction Details' : 'Register Won Auction'}
               </h3>
@@ -364,31 +364,31 @@ export function Interested() {
 
             <form onSubmit={handleRegisterWonSubmit} className="p-6 space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-650 uppercase tracking-wider block">Auction Title *</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Auction Title *</label>
                 <input
                   type="text"
                   required
                   value={wonTitle}
                   onChange={(e) => setWonTitle(e.target.value)}
                   placeholder="e.g. Heavy Duty Copper Scrap Lot"
-                  className="w-full px-3.5 py-2.5 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-650 uppercase tracking-wider block">Reference / Catalog No (Optional)</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Reference / Catalog No (Optional)</label>
                 <input
                   type="text"
                   value={wonRefNo}
                   onChange={(e) => setWonRefNo(e.target.value)}
                   placeholder="e.g. MSTC/N-DEL/24-25/0042"
-                  className="w-full px-3.5 py-2.5 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-650 uppercase tracking-wider block">Closing Bid (Optional)</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Closing Bid (Optional)</label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-2.5 text-slate-400 font-bold text-sm">₹</span>
                     <input
@@ -396,25 +396,25 @@ export function Interested() {
                       value={wonClosingBid}
                       onChange={(e) => setWonClosingBid(e.target.value)}
                       placeholder="Amount"
-                      className="w-full pl-7 pr-3.5 py-2.5 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className="w-full pl-7 pr-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-650 uppercase tracking-wider block">Award Date (Optional)</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Award Date (Optional)</label>
                   <input
                     type="date"
                     value={wonClosingDate}
                     onChange={(e) => setWonClosingDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
               </div>
 
               <div className="space-y-1 pt-2">
-                <label className="text-xs font-bold text-slate-650 uppercase tracking-wider block">Award Letter / Document (Optional)</label>
-                <div className="border border-dashed border-slate-255 rounded-xl p-4 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Award Letter / Document (Optional)</label>
+                <div className="border border-dashed border-slate-300 rounded-xl p-4 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors">
                   <Upload className="w-6 h-6 text-slate-400 mb-1.5" />
                   <span className="text-xs text-slate-500 font-semibold mb-1 text-center">
                     {wonFile ? wonFile.name : 'PDF, JPG or PNG up to 10MB'}
@@ -439,7 +439,7 @@ export function Interested() {
                 <button
                   type="button"
                   onClick={() => setIsAddWonModalOpen(false)}
-                  className="px-4 py-2.5 border border-slate-250 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
+                  className="px-4 py-2.5 border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>

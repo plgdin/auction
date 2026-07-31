@@ -129,7 +129,7 @@ export function FAQ() {
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
           </div>
         ) : displayedFaqs.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-350 p-6">
+          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 p-6">
             <p className="text-lg font-medium text-slate-500">No matches found for "{searchQuery}".</p>
             <button
               onClick={() => setSearchQuery('')}

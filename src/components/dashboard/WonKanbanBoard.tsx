@@ -396,7 +396,7 @@ function KanbanCard({
       draggable
       onDragStart={(e) => onDragStart(e, item.id)}
       onDragEnd={onDragEnd}
-      className={`group bg-white rounded-xl border border-slate-150 p-3 cursor-grab active:cursor-grabbing transition-all duration-150 hover:shadow-md hover:border-slate-250 ${
+      className={`group bg-white rounded-xl border border-slate-100 p-3 cursor-grab active:cursor-grabbing transition-all duration-150 hover:shadow-md hover:border-slate-200 ${
         isDragging ? 'opacity-40 shadow-lg scale-[1.02] rotate-1' : ''
       }`}
     >

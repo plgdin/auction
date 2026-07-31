@@ -175,10 +175,10 @@ function Calendar({
                 onChange={handleInputChange}
                 onBlur={handleBlur}
                 onFocus={handleFocus}
-                className="w-full px-2 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50/50 hover:border-slate-350 focus:bg-white focus:border-primary transition-all text-xs font-bold text-slate-700 shadow-2xs text-center h-9 pr-6 outline-none"
+                className="w-full px-2 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50/50 hover:border-slate-300 focus:bg-white focus:border-primary transition-all text-xs font-bold text-slate-700 shadow-2xs text-center h-9 pr-6 outline-none"
                 placeholder="Year"
               />
-              <ChevronDown size={14} className="text-slate-450 absolute right-2 pointer-events-none" />
+              <ChevronDown size={14} className="text-slate-400 absolute right-2 pointer-events-none" />
             </div>
           </AntdDropdown>
         );
@@ -222,10 +222,10 @@ function Calendar({
         >
           <button
             type="button"
-            className="inline-flex items-center justify-between gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50/50 hover:border-slate-350 transition-all text-xs font-bold text-slate-700 shadow-2xs cursor-pointer h-9 min-w-[85px] outline-none"
+            className="inline-flex items-center justify-between gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50/50 hover:border-slate-300 transition-all text-xs font-bold text-slate-700 shadow-2xs cursor-pointer h-9 min-w-[85px] outline-none"
           >
             <span>{selectedOption?.label || value}</span>
-            <ChevronDown size={14} className="text-slate-450 shrink-0" />
+            <ChevronDown size={14} className="text-slate-400 shrink-0" />
           </button>
         </AntdDropdown>
       );

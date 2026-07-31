@@ -40,13 +40,13 @@ function CurrencyDropdown({ isTransparent }: { isTransparent?: boolean }) {
           "flex items-center gap-2 px-3.5 py-2 border rounded-xl shadow-2xs text-sm transition-all cursor-pointer font-mono font-bold focus:outline-none focus:ring-2 focus:ring-primary/20",
           isTransparent
             ? "bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30"
-            : "bg-white text-slate-700 border-slate-250 hover:border-primary hover:bg-slate-50/55"
+            : "bg-white text-slate-700 border-slate-200 hover:border-primary hover:bg-slate-50/55"
         )}
         aria-expanded={open}
         aria-haspopup="listbox"
       >
         <span>{selected.label}</span>
-        <ChevronDown className={clsx('w-3 h-3 transition-transform', open && 'rotate-180', isTransparent ? 'text-white/60' : 'text-slate-450')} />
+        <ChevronDown className={clsx('w-3 h-3 transition-transform', open && 'rotate-180', isTransparent ? 'text-white/60' : 'text-slate-400')} />
       </button>
 
       {open && (
@@ -283,7 +283,7 @@ export function Header() {
                     onClick={() => setIsNotifOpen(!isNotifOpen)}
                     className={clsx(
                       "p-2.5 rounded-full hover:bg-slate-100/10 transition-colors relative cursor-pointer",
-                      isHeaderTransparent ? "text-white/80 hover:text-white" : "text-slate-650 hover:text-slate-900 hover:bg-slate-100"
+                      isHeaderTransparent ? "text-white/80 hover:text-white" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                     )}
                     aria-label="Toggle notifications dropdown"
                   >
@@ -394,7 +394,7 @@ export function Header() {
         )}
       >
         {/* Top Header Row with Logo & Close Button */}
-        <div className="flex items-center justify-between shrink-0 pb-4 border-b border-slate-150">
+        <div className="flex items-center justify-between shrink-0 pb-4 border-b border-slate-100">
           <Link 
             to="/" 
             className="flex items-center gap-2"
@@ -462,7 +462,7 @@ export function Header() {
 
         {/* Bottom Actions Area */}
         <div className={clsx(
-          "shrink-0 pt-6 border-t border-slate-150 flex flex-col items-center space-y-4 text-center w-full max-w-xs mx-auto transition-all duration-500 delay-150",
+          "shrink-0 pt-6 border-t border-slate-100 flex flex-col items-center space-y-4 text-center w-full max-w-xs mx-auto transition-all duration-500 delay-150",
           isMobileMenuOpen ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
         )}>
           {isAuthenticated ? (
@@ -470,7 +470,7 @@ export function Header() {
               <Link
                 to="/dashboard/notifications"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-3.5 bg-slate-100 hover:bg-slate-200 text-slate-655 rounded-2xl flex items-center justify-center relative cursor-pointer"
+                className="p-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl flex items-center justify-center relative cursor-pointer"
                 title="Notifications"
               >
                 <Bell size={22} />

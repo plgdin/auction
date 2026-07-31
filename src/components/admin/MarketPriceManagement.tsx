@@ -438,7 +438,7 @@ export function MarketPriceManagement() {
             </div>
             <input
               type="text"
-              className="block w-full pl-9 pr-3 py-2 border border-slate-250 rounded-xl bg-slate-50 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm font-semibold"
+              className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl bg-slate-50 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm font-semibold"
               placeholder="Search commodity or SKU ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -464,15 +464,15 @@ export function MarketPriceManagement() {
 
         {/* Commodity Grid Table */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
+          <div className="px-6 py-4.5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <div>
               <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Today's Market Indices</h3>
-              <p className="text-[11px] text-slate-450 mt-0.5">Edit today's price & expected bid multipliers below. Changes log to the ML history database.</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Edit today's price & expected bid multipliers below. Changes log to the ML history database.</p>
             </div>
             
             <button 
               onClick={handleResetDefaults}
-              className="text-[10px] text-slate-550 hover:text-red-500 font-bold border border-slate-200 hover:border-red-200 rounded-lg px-2.5 py-1.5 bg-white shadow-3xs transition-colors flex items-center gap-1 cursor-pointer"
+              className="text-[10px] text-slate-500 hover:text-red-500 font-bold border border-slate-200 hover:border-red-200 rounded-lg px-2.5 py-1.5 bg-white shadow-3xs transition-colors flex items-center gap-1 cursor-pointer"
             >
               <RefreshCw className="w-3 h-3" /> Reset & Clear
             </button>
@@ -481,7 +481,7 @@ export function MarketPriceManagement() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50/70 border-b border-slate-150 text-slate-500 font-mono">
+                <tr className="bg-slate-50/70 border-b border-slate-100 text-slate-500 font-mono">
                   <th className="py-3 px-4.5 font-bold">Commodity Name</th>
                   <th className="py-3 px-4 font-bold text-center w-24">Unit</th>
                   <th className="py-3 px-4 font-bold text-right w-36">Today's Price (INR)</th>
@@ -523,7 +523,7 @@ export function MarketPriceManagement() {
                                 </span>
                               )}
                             </span>
-                            <span className="text-[10px] text-slate-450 font-mono mt-0.5">{item.id}</span>
+                            <span className="text-[10px] text-slate-400 font-mono mt-0.5">{item.id}</span>
                           </button>
                         </td>
                         
@@ -597,8 +597,8 @@ export function MarketPriceManagement() {
                             }}
                             className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-200 border cursor-pointer ${
                               item.isPricingDisabled
-                                ? 'bg-rose-50 text-rose-650 border-rose-200 hover:bg-rose-100'
-                                : 'bg-emerald-50 text-emerald-650 border-emerald-200 hover:bg-emerald-100'
+                                ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                                : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
                             }`}
                           >
                             {item.isPricingDisabled ? 'Disabled' : 'Enabled'}
@@ -622,7 +622,7 @@ export function MarketPriceManagement() {
                             {item.isCustom && (
                               <button
                                 onClick={() => handleDeleteCustom(item.id, item.name)}
-                                className="p-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 hover:text-rose-750 transition-all cursor-pointer shadow-3xs"
+                                className="p-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 hover:text-rose-700 transition-all cursor-pointer shadow-3xs"
                                 title="Delete custom commodity"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -650,15 +650,15 @@ export function MarketPriceManagement() {
             <h4 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
               <Plus className="w-4.5 h-4.5 text-primary" /> Register Commodity / SKU
             </h4>
-            <p className="text-[11px] text-slate-450 mt-0.5">Add frequently discovered catalog items. Matches keywords in auction listings automatically.</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Add frequently discovered catalog items. Matches keywords in auction listings automatically.</p>
           </div>
 
           <form onSubmit={handleCreateCommodity} className="space-y-3">
             <div>
-              <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider font-mono mb-1">Commodity Name</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1">Commodity Name</label>
               <input
                 type="text"
-                className="w-full px-3 py-1.5 border border-slate-250 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-primary focus:outline-none"
+                className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-primary focus:outline-none"
                 placeholder="e.g. Copper Winding Scrap, Plastic Drums"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -667,9 +667,9 @@ export function MarketPriceManagement() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1">Category</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono mb-1">Category</label>
                 <select
-                  className="w-full px-2.5 py-1.5 border border-slate-250 rounded-xl text-xs font-bold focus:ring-1 focus:ring-primary focus:outline-none bg-white cursor-pointer"
+                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold focus:ring-1 focus:ring-primary focus:outline-none bg-white cursor-pointer"
                   value={newCategory}
                   onChange={(e: any) => setNewCategory(e.target.value)}
                 >
@@ -684,10 +684,10 @@ export function MarketPriceManagement() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1">Unit</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono mb-1">Unit</label>
                 <input
                   type="text"
-                  className="w-full px-3 py-1.5 border border-slate-250 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-primary focus:outline-none"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-primary focus:outline-none"
                   placeholder="e.g. kg, Ton, Unit, Liter"
                   value={newUnit}
                   onChange={(e) => setNewUnit(e.target.value)}
@@ -697,10 +697,10 @@ export function MarketPriceManagement() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1">Base Price (INR)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono mb-1">Base Price (INR)</label>
                 <input
                   type="number"
-                  className="w-full px-3 py-1.5 border border-slate-250 rounded-xl text-xs font-mono font-bold focus:ring-1 focus:ring-primary focus:outline-none"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:ring-1 focus:ring-primary focus:outline-none"
                   placeholder="e.g. 185"
                   value={newPrice}
                   onChange={(e) => setNewPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
@@ -708,13 +708,13 @@ export function MarketPriceManagement() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1">Expected Bid Mult</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono mb-1">Expected Bid Mult</label>
                 <input
                   type="number"
                   step="0.01"
                   min="0.1"
                   max="1.0"
-                  className="w-full px-3 py-1.5 border border-slate-250 rounded-xl text-xs font-mono font-bold focus:ring-1 focus:ring-primary focus:outline-none"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:ring-1 focus:ring-primary focus:outline-none"
                   placeholder="e.g. 0.75"
                   value={newMultiplier}
                   onChange={(e) => setNewMultiplier(e.target.value === '' ? '' : parseFloat(e.target.value))}
@@ -723,10 +723,10 @@ export function MarketPriceManagement() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider font-mono mb-1">Matching Keywords (comma separated)</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono mb-1">Matching Keywords (comma separated)</label>
               <textarea
                 rows={2}
-                className="w-full px-3 py-1.5 border border-slate-250 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-primary focus:outline-none resize-none"
+                className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-primary focus:outline-none resize-none"
                 placeholder="e.g. copper winding, winding wire, transformer coil"
                 value={newKeywords}
                 onChange={(e) => setNewKeywords(e.target.value)}
@@ -756,7 +756,7 @@ export function MarketPriceManagement() {
             <select
               value={selectedGraphCommId}
               onChange={(e) => setSelectedGraphCommId(e.target.value)}
-              className="bg-slate-950 border border-slate-850 text-[10px] rounded-lg px-2 py-1 focus:outline-none font-bold text-slate-300 cursor-pointer max-w-[140px]"
+              className="bg-slate-950 border border-slate-800 text-[10px] rounded-lg px-2 py-1 focus:outline-none font-bold text-slate-300 cursor-pointer max-w-[140px]"
             >
               {commodityData.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
@@ -766,7 +766,7 @@ export function MarketPriceManagement() {
 
           <div className="h-[180px] w-full">
             {graphData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-slate-500 text-xs bg-slate-950/40 border border-dashed border-slate-850 rounded-xl">
+              <div className="h-full flex items-center justify-center text-slate-500 text-xs bg-slate-950/40 border border-dashed border-slate-800 rounded-xl">
                 No logs available for this commodity
               </div>
             ) : (
@@ -808,7 +808,7 @@ export function MarketPriceManagement() {
             )}
           </div>
 
-          <div className="flex justify-between items-center text-[10px] text-slate-450 border-t border-slate-800/80 pt-3">
+          <div className="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-800/80 pt-3">
             <span>Price Unit: <b className="text-white font-mono font-bold">{selectedCommConfig ? selectedCommConfig.unit : 'N/A'}</b></span>
             <span>Logs Count: <b className="text-white font-mono font-bold">{graphData.length} entries</b></span>
           </div>
@@ -818,10 +818,10 @@ export function MarketPriceManagement() {
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
           <div>
             <h4 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">ML Export Engine</h4>
-            <p className="text-[11px] text-slate-450 mt-0.5">Download the recorded price logs to train regression models offline.</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Download the recorded price logs to train regression models offline.</p>
           </div>
 
-          <div className="bg-slate-50 p-4.5 rounded-2xl border border-slate-150 flex flex-col gap-3 text-xs">
+          <div className="bg-slate-50 p-4.5 rounded-2xl border border-slate-100 flex flex-col gap-3 text-xs">
             <div className="flex justify-between items-center text-[11px] border-b border-slate-200 pb-2">
               <span className="text-slate-500 font-semibold flex items-center gap-1"><Layers className="w-3.5 h-3.5" /> Total Logs Count:</span>
               <span className="font-mono font-black text-slate-900 bg-slate-200 px-2.5 py-0.5 rounded-full">{historyLogs.length}</span>
@@ -848,7 +848,7 @@ export function MarketPriceManagement() {
           <button
             onClick={handleClearHistory}
             disabled={historyLogs.length === 0}
-            className="w-full py-2.5 border border-dashed border-red-200 hover:border-red-300 hover:bg-red-50/50 disabled:opacity-40 text-red-650 disabled:hover:bg-transparent disabled:hover:border-red-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            className="w-full py-2.5 border border-dashed border-red-200 hover:border-red-300 hover:bg-red-50/50 disabled:opacity-40 text-red-600 disabled:hover:bg-transparent disabled:hover:border-red-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
             <Trash2 className="w-4 h-4" /> Wipe Training Database
           </button>
@@ -856,7 +856,7 @@ export function MarketPriceManagement() {
 
         {/* Audit Log list */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between gap-4">
-          <div className="border-b border-slate-150 pb-2 flex justify-between items-center">
+          <div className="border-b border-slate-100 pb-2 flex justify-between items-center">
             <h4 className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">Price Logger Audits</h4>
             <span className="text-[10px] text-slate-400 font-semibold">Page {historyPage} of {totalHistoryPages}</span>
           </div>
@@ -868,7 +868,7 @@ export function MarketPriceManagement() {
           ) : (
             <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
               {paginatedLogs.map((log) => (
-                <div key={log.id} className="p-3 bg-slate-50/80 hover:bg-slate-50 border border-slate-150 rounded-2xl flex justify-between items-start gap-2.5 text-[11px] transition-colors">
+                <div key={log.id} className="p-3 bg-slate-50/80 hover:bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-start gap-2.5 text-[11px] transition-colors">
                   <div className="space-y-1">
                     <div className="font-bold text-slate-900 leading-tight">{log.commodityName}</div>
                     <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
@@ -877,7 +877,7 @@ export function MarketPriceManagement() {
                   </div>
                   <div className="text-right space-y-1 shrink-0">
                     <div className="font-bold text-slate-950 font-mono">₹{log.price.toLocaleString('en-IN')}</div>
-                    <div className="text-[9px] font-bold text-emerald-650 bg-emerald-50 border border-emerald-150 px-1.5 py-0.5 rounded font-mono inline-block">
+                    <div className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded font-mono inline-block">
                       Mult: {log.multiplier} ({getRoiPreview(log.multiplier)})
                     </div>
                   </div>
@@ -895,7 +895,7 @@ export function MarketPriceManagement() {
               >
                 Prev
               </button>
-              <span className="text-slate-450">Page {historyPage} / {totalHistoryPages}</span>
+              <span className="text-slate-400">Page {historyPage} / {totalHistoryPages}</span>
               <button
                 onClick={() => setHistoryPage(prev => Math.min(totalHistoryPages, prev + 1))}
                 disabled={historyPage === totalHistoryPages}

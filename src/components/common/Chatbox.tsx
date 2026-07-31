@@ -422,7 +422,7 @@ CONTACT & ESCALATION:
                     Laila
                   </div>
                   {isThinking && (
-                    <div className="text-[10px] text-slate-550 font-medium font-mono tracking-wide">
+                    <div className="text-[10px] text-slate-500 font-medium font-mono tracking-wide">
                       Thinking...
                     </div>
                   )}

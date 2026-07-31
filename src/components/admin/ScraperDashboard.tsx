@@ -817,7 +817,7 @@ export function ScraperDashboard() {
               className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
                 reviewTab === 'needs-review'
                   ? 'border-primary text-primary font-extrabold'
-                  : 'border-transparent text-slate-400 hover:text-slate-655'
+                  : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
               Needs Review
@@ -837,7 +837,7 @@ export function ScraperDashboard() {
               className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
                 reviewTab === 'accepted'
                   ? 'border-primary text-primary font-extrabold'
-                  : 'border-transparent text-slate-400 hover:text-slate-655'
+                  : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
               Accepted / Resolved
@@ -857,7 +857,7 @@ export function ScraperDashboard() {
               className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
                 reviewTab === 'all-catalogs'
                   ? 'border-primary text-primary font-extrabold'
-                  : 'border-transparent text-slate-400 hover:text-slate-655'
+                  : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
               All Catalogs
@@ -917,7 +917,7 @@ export function ScraperDashboard() {
               
               {/* Left Column: List of Catalogs */}
               <div className="w-full lg:w-96 shrink-0 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-[750px]">
-                <div className="p-4 border-b border-slate-150 bg-slate-50/50 flex items-center justify-between shrink-0">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
                   <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
                     Catalogs ({filteredAuctions.length})
                   </span>
@@ -979,7 +979,7 @@ export function ScraperDashboard() {
                 ) : (
                   <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-slate-50/20">
                     <FileCheck className="w-12 h-12 text-slate-300 mb-3" />
-                    <p className="font-bold text-slate-650 text-sm">Select a catalog to view and edit</p>
+                    <p className="font-bold text-slate-600 text-sm">Select a catalog to view and edit</p>
                     <p className="text-xs text-slate-400 mt-1">Click any item on the left list to review and correct lot details.</p>
                   </div>
                 )}

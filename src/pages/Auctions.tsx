@@ -66,11 +66,11 @@ function AuctionCardSkeleton({ isGrid }: { isGrid: boolean }) {
   }
   return (
     <div className="flex flex-col sm:flex-row bg-white rounded-xl border border-slate-200 overflow-hidden animate-pulse p-5 gap-5 shadow-sm">
-      <div className="w-full sm:w-64 h-40 bg-slate-150 rounded-lg shrink-0" />
+      <div className="w-full sm:w-64 h-40 bg-slate-100 rounded-lg shrink-0" />
       <div className="flex-grow flex flex-col space-y-4 justify-between">
         <div className="space-y-2">
           <div className="h-3 bg-slate-200 rounded w-1/4" />
-          <div className="h-5 bg-slate-250 rounded w-1/2" />
+          <div className="h-5 bg-slate-200 rounded w-1/2" />
           <div className="h-4 bg-slate-200 rounded w-full" />
         </div>
         <div className="flex gap-4 pt-2">
@@ -1517,7 +1517,7 @@ export function Auctions() {
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
         <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
           </div>
         }>

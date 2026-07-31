@@ -86,7 +86,7 @@ function CustomSingleDropdown({
                   "flex items-center justify-between py-1.5 px-2.5 rounded-lg cursor-pointer text-xs font-semibold transition-colors select-none",
                   isSelected
                     ? "bg-primary-50/50 text-primary font-bold"
-                    : "hover:bg-slate-50 text-slate-605 hover:text-slate-900"
+                    : "hover:bg-slate-50 text-slate-600 hover:text-slate-900"
                 )}
               >
                 <span className="truncate">{opt.label}</span>
@@ -426,7 +426,7 @@ export function QuotePage() {
           <h3 className="text-lg font-bold text-slate-900 mb-4">Saved Quotes</h3>
           {quotes.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
-              <FileText className="w-12 h-12 text-slate-350 mx-auto mb-3" />
+              <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
               <p className="font-semibold">No saved quotes found</p>
               <p className="text-xs text-slate-400 mt-1">Start by adding items to your quote from the catalog details modal.</p>
             </div>
@@ -598,7 +598,7 @@ export function QuotePage() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-350 rounded-lg bg-white cursor-pointer shadow-3xs"
+                      className="px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg bg-white cursor-pointer shadow-3xs"
                     >
                       Upload Image
                     </button>
@@ -705,7 +705,7 @@ export function QuotePage() {
                     type="date"
                     value={activeQuote.date}
                     onChange={(e) => updateActiveQuoteMetadata({ date: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700"
                   />
                 </div>
                 <div className="space-y-1 col-span-2">
@@ -714,7 +714,7 @@ export function QuotePage() {
                     type="date"
                     value={activeQuote.validUntil}
                     onChange={(e) => updateActiveQuoteMetadata({ validUntil: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700"
                   />
                 </div>
               </div>
@@ -728,28 +728,28 @@ export function QuotePage() {
                     placeholder="Sender Name"
                     value={activeQuote.senderName}
                     onChange={(e) => updateActiveQuoteMetadata({ senderName: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750 placeholder:text-slate-400"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700 placeholder:text-slate-400"
                   />
                   <input
                     type="text"
                     placeholder="Company Name"
                     value={activeQuote.senderCompany}
                     onChange={(e) => updateActiveQuoteMetadata({ senderCompany: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750 placeholder:text-slate-400"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700 placeholder:text-slate-400"
                   />
                   <input
                     type="email"
                     placeholder="Sender Email Address"
                     value={activeQuote.senderEmail}
                     onChange={(e) => updateActiveQuoteMetadata({ senderEmail: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750 placeholder:text-slate-400"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700 placeholder:text-slate-400"
                   />
                   <textarea
                     placeholder="Sender Address / Registered Office"
                     value={activeQuote.senderAddress}
                     onChange={(e) => updateActiveQuoteMetadata({ senderAddress: e.target.value })}
                     rows={2}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750 placeholder:text-slate-400 resize-none"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700 placeholder:text-slate-400 resize-none"
                   />
                 </div>
               </div>
@@ -763,28 +763,28 @@ export function QuotePage() {
                     placeholder="Client Contact Name"
                     value={activeQuote.clientName}
                     onChange={(e) => updateActiveQuoteMetadata({ clientName: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750 placeholder:text-slate-400"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700 placeholder:text-slate-400"
                   />
                   <input
                     type="text"
                     placeholder="Client Company Name"
                     value={activeQuote.clientCompany}
                     onChange={(e) => updateActiveQuoteMetadata({ clientCompany: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750 placeholder:text-slate-400"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700 placeholder:text-slate-400"
                   />
                   <input
                     type="email"
                     placeholder="Client Email Address"
                     value={activeQuote.clientEmail}
                     onChange={(e) => updateActiveQuoteMetadata({ clientEmail: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750 placeholder:text-slate-400"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700 placeholder:text-slate-400"
                   />
                   <textarea
                     placeholder="Client Delivery Address / Billing Address"
                     value={activeQuote.clientAddress}
                     onChange={(e) => updateActiveQuoteMetadata({ clientAddress: e.target.value })}
                     rows={2}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750 placeholder:text-slate-400 resize-none"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700 placeholder:text-slate-400 resize-none"
                   />
                 </div>
               </div>
@@ -798,7 +798,7 @@ export function QuotePage() {
               </h3>
 
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-750">Enable GST / Taxes</span>
+                <span className="text-xs font-bold text-slate-700">Enable GST / Taxes</span>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -806,7 +806,7 @@ export function QuotePage() {
                     onChange={(e) => updateActiveQuoteMetadata({ gstEnabled: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-slate-250 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                 </label>
               </div>
 
@@ -900,7 +900,7 @@ export function QuotePage() {
                         {selectedAuctionDetails.items.map((row: any, idx: number) => (
                           <div
                             key={idx}
-                            className="p-2.5 bg-slate-50 border border-slate-200 hover:border-slate-350 rounded-lg text-xs flex justify-between items-start gap-3 transition-colors"
+                            className="p-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg text-xs flex justify-between items-start gap-3 transition-colors"
                           >
                             <div className="space-y-1 overflow-hidden">
                               <p className="font-bold text-slate-800 leading-snug break-words">
@@ -943,7 +943,7 @@ export function QuotePage() {
                     placeholder="e.g. Mixed Structural Steel Plate Waste"
                     value={manualItem.description}
                     onChange={(e) => setManualItem({ ...manualItem, description: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750 placeholder:text-slate-400"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700 placeholder:text-slate-400"
                   />
                 </div>
 
@@ -956,7 +956,7 @@ export function QuotePage() {
                       step="any"
                       value={manualItem.qty}
                       onChange={(e) => setManualItem({ ...manualItem, qty: Number(e.target.value) })}
-                      className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750"
+                      className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700"
                     />
                   </div>
                   <div className="space-y-1">
@@ -966,7 +966,7 @@ export function QuotePage() {
                       placeholder="MT, Kgs, Nos"
                       value={manualItem.unit}
                       onChange={(e) => setManualItem({ ...manualItem, unit: e.target.value })}
-                      className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-750 placeholder:text-slate-400"
+                      className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-slate-700 placeholder:text-slate-400"
                     />
                   </div>
                   <div className="space-y-1">
@@ -1061,7 +1061,7 @@ export function QuotePage() {
                 value={activeQuote.footerText}
                 onChange={(e) => updateActiveQuoteMetadata({ footerText: e.target.value })}
                 rows={3}
-                className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none font-medium text-slate-705 placeholder:text-slate-400"
+                className="w-full text-xs px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 hover:border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none font-medium text-slate-700 placeholder:text-slate-400"
               />
             </div>
 
@@ -1081,7 +1081,7 @@ export function QuotePage() {
               </button>
               <button
                 onClick={handleSave}
-                className="inline-flex justify-center items-center py-2 px-5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-350 shadow-2xs transition-all bg-white cursor-pointer"
+                className="inline-flex justify-center items-center py-2 px-5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 shadow-2xs transition-all bg-white cursor-pointer"
               >
                 <Save className="w-4 h-4 mr-2 text-slate-500" />
                 Save Layout
@@ -1137,7 +1137,7 @@ export function QuotePage() {
                             }} 
                           />
                         ) : (
-                          <div className="flex items-center gap-2 text-slate-750 font-black text-xl tracking-tight">
+                          <div className="flex items-center gap-2 text-slate-700 font-black text-xl tracking-tight">
                             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-mono" style={{ backgroundColor: activeQuote.colorTheme }}>
                               {activeQuote.senderCompany.charAt(0) || 'S'}
                             </div>
@@ -1209,10 +1209,10 @@ export function QuotePage() {
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono">Prepared For</span>
                       <div className="text-xs text-slate-700 space-y-1 leading-relaxed">
                         <p className="font-black text-slate-900 text-sm">{activeQuote.clientName || 'N/A'}</p>
-                        {activeQuote.clientCompany && <p className="font-bold text-slate-805">{activeQuote.clientCompany}</p>}
+                        {activeQuote.clientCompany && <p className="font-bold text-slate-800">{activeQuote.clientCompany}</p>}
                         {activeQuote.clientEmail && <p className="font-mono text-slate-500">{activeQuote.clientEmail}</p>}
                         {activeQuote.clientAddress && (
-                          <p className="whitespace-pre-line max-w-[320px] text-slate-550 mt-1">{activeQuote.clientAddress}</p>
+                          <p className="whitespace-pre-line max-w-[320px] text-slate-500 mt-1">{activeQuote.clientAddress}</p>
                         )}
                       </div>
                     </div>
@@ -1254,7 +1254,7 @@ export function QuotePage() {
                                 >
                                   <td className="py-1.5 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
                                   <td className="py-1.5 font-semibold text-slate-900 text-xs leading-snug pr-4">
-                                    <span className="line-clamp-2 print:line-clamp-none">{item.description || <span className="text-slate-350 italic font-normal">No description</span>}</span>
+                                    <span className="line-clamp-2 print:line-clamp-none">{item.description || <span className="text-slate-300 italic font-normal">No description</span>}</span>
                                   </td>
                                   <td className="py-1.5 text-right font-mono font-medium whitespace-nowrap text-xs">{item.qty} {item.unit}</td>
                                   <td className="py-1.5 text-right font-mono font-medium whitespace-nowrap text-xs">{formatPrice(item.price, currency)}</td>
@@ -1367,7 +1367,7 @@ export function QuotePage() {
                   <div className="flex justify-end mb-4 pt-1">
                     <div className="w-80 space-y-1.5 text-xs">
                       
-                      <div className="flex justify-between items-center text-slate-550 font-semibold">
+                      <div className="flex justify-between items-center text-slate-500 font-semibold">
                         <span>Items Subtotal:</span>
                         <span className="font-mono font-bold text-slate-800">
                           {formatPrice(subtotal, currency)}
@@ -1378,13 +1378,13 @@ export function QuotePage() {
                         <>
                           {taxSummary.map((t) => (
                             <React.Fragment key={t.rate}>
-                              <div className="flex justify-between items-center text-[11px] text-slate-450 border-t border-slate-50 pt-1 leading-snug">
+                              <div className="flex justify-between items-center text-[11px] text-slate-400 border-t border-slate-50 pt-1 leading-snug">
                                 <span>Central Tax (CGST) @{t.rate / 2}%:</span>
                                 <span className="font-mono">
                                   {formatPrice(t.amount / 2, currency)}
                                 </span>
                               </div>
-                              <div className="flex justify-between items-center text-[11px] text-slate-450 leading-snug">
+                              <div className="flex justify-between items-center text-[11px] text-slate-400 leading-snug">
                                 <span>State Tax (SGST) @{t.rate / 2}%:</span>
                                 <span className="font-mono">
                                   {formatPrice(t.amount / 2, currency)}
@@ -1398,7 +1398,7 @@ export function QuotePage() {
                       {activeQuote.gstEnabled && activeQuote.gstType === 'IGST' && (
                         <>
                           {taxSummary.map((t) => (
-                            <div key={t.rate} className="flex justify-between items-center text-[11px] text-slate-450 border-t border-slate-50 pt-1 leading-snug">
+                            <div key={t.rate} className="flex justify-between items-center text-[11px] text-slate-400 border-t border-slate-50 pt-1 leading-snug">
                               <span>Integrated Tax (IGST) @{t.rate}%:</span>
                               <span className="font-mono">
                                 {formatPrice(t.amount, currency)}
@@ -1409,7 +1409,7 @@ export function QuotePage() {
                       )}
 
                       {activeQuote.gstEnabled && totalTax > 0 && (
-                        <div className="flex justify-between items-center text-slate-550 border-t border-slate-100 pt-1.5 font-semibold">
+                        <div className="flex justify-between items-center text-slate-500 border-t border-slate-100 pt-1.5 font-semibold">
                           <span>Total GST Tax:</span>
                           <span className="font-mono font-bold text-slate-800">
                             {formatPrice(totalTax, currency)}
@@ -1418,7 +1418,7 @@ export function QuotePage() {
                       )}
 
                       <div className="flex justify-between items-center border-t border-slate-200 pt-3 text-sm">
-                        <span className="font-black text-slate-850">Proposal Total ({currency}):</span>
+                        <span className="font-black text-slate-800">Proposal Total ({currency}):</span>
                         <span className="font-mono font-black text-[16px]" style={{ color: activeQuote.colorTheme }}>
                           {formatPrice(grandTotal, currency)}
                         </span>
@@ -1614,7 +1614,7 @@ export function QuotePage() {
                     <p className="text-[11px] text-slate-500">Date: {activeQuote.date}</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-150">
+                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Billed To:</span>
                     <p className="font-bold text-slate-800">{activeQuote.clientCompany || activeQuote.clientName || 'Client'}</p>

@@ -151,7 +151,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           ))}
         </div>
         {hiddenCount > 0 && (
-          <p className="text-[10px] text-slate-450 mt-2 font-semibold pt-1.5 border-t border-slate-100">
+          <p className="text-[10px] text-slate-400 mt-2 font-semibold pt-1.5 border-t border-slate-100">
             + {hiddenCount} other categories
           </p>
         )}
@@ -890,7 +890,7 @@ export function ReportsAnalytics() {
                         onClick={() => { setDateFilter('7d'); setDateDropdownOpen(false); }}
                         className={clsx(
                           "w-full text-left px-4 py-2 text-sm font-semibold transition-colors cursor-pointer",
-                          dateFilter === '7d' ? "bg-primary/5 text-primary" : "text-slate-650 hover:bg-slate-50"
+                          dateFilter === '7d' ? "bg-primary/5 text-primary" : "text-slate-600 hover:bg-slate-50"
                         )}
                       >
                         Last 7 Days
@@ -900,7 +900,7 @@ export function ReportsAnalytics() {
                         onClick={() => { setDateFilter('30d'); setDateDropdownOpen(false); }}
                         className={clsx(
                           "w-full text-left px-4 py-2 text-sm font-semibold transition-colors cursor-pointer",
-                          dateFilter === '30d' ? "bg-primary/5 text-primary" : "text-slate-650 hover:bg-slate-50"
+                          dateFilter === '30d' ? "bg-primary/5 text-primary" : "text-slate-600 hover:bg-slate-50"
                         )}
                       >
                         Last 30 Days
@@ -910,7 +910,7 @@ export function ReportsAnalytics() {
                         onClick={() => { setDateFilter('all'); setDateDropdownOpen(false); }}
                         className={clsx(
                           "w-full text-left px-4 py-2 text-sm font-semibold transition-colors cursor-pointer",
-                          dateFilter === 'all' ? "bg-primary/5 text-primary" : "text-slate-650 hover:bg-slate-50"
+                          dateFilter === 'all' ? "bg-primary/5 text-primary" : "text-slate-600 hover:bg-slate-50"
                         )}
                       >
                         All-Time History
@@ -920,7 +920,7 @@ export function ReportsAnalytics() {
                         onClick={() => { setDateFilter('custom'); setDateDropdownOpen(false); }}
                         className={clsx(
                           "w-full text-left px-4 py-2 text-sm font-semibold transition-colors cursor-pointer",
-                          dateFilter === 'custom' ? "bg-primary/5 text-primary" : "text-slate-650 hover:bg-slate-50"
+                          dateFilter === 'custom' ? "bg-primary/5 text-primary" : "text-slate-600 hover:bg-slate-50"
                         )}
                       >
                         Custom Range
@@ -942,7 +942,7 @@ export function ReportsAnalytics() {
 
                   {categoryDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-64 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg p-2 z-50 animate-fade-in custom-scrollbar">
-                      <div className="flex justify-between items-center pb-2 mb-2 border-b border-slate-150 px-2">
+                      <div className="flex justify-between items-center pb-2 mb-2 border-b border-slate-100 px-2">
                         <button
                           type="button"
                           onClick={() => setSelectedChartCategories(displayTotals.map(c => c.name))}
@@ -1052,7 +1052,7 @@ export function ReportsAnalytics() {
                             <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: getCategoryColor(entry.name) }} />
                             <div className="min-w-0">
                               <p className="text-xs font-bold text-slate-800 truncate" title={entry.name}>{entry.name}</p>
-                              <p className="text-[10px] text-slate-550 font-bold mt-0.5">{entry.value} ({pct}%)</p>
+                              <p className="text-[10px] text-slate-500 font-bold mt-0.5">{entry.value} ({pct}%)</p>
                             </div>
                           </div>
                         );
@@ -1168,7 +1168,7 @@ export function ReportsAnalytics() {
                             <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                             <div className="min-w-0">
                               <p className="text-xs font-bold text-slate-800 truncate" title={entry.location}>{entry.location}</p>
-                              <p className="text-[10px] text-slate-550 font-bold mt-0.5">{entry.count} ({pct}%)</p>
+                              <p className="text-[10px] text-slate-500 font-bold mt-0.5">{entry.count} ({pct}%)</p>
                             </div>
                           </div>
                         );
@@ -1268,7 +1268,7 @@ export function ReportsAnalytics() {
                           <th className="pb-2.5 font-bold text-right">Count</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-650">
+                      <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-600">
                         {filteredDisplayLocationTotals.map((loc, idx) => {
                            const pct = totalLocationItems > 0 ? ((loc.count / totalLocationItems) * 100).toFixed(1) : '0.0';
                            const isExpanded = expandedLocation === `${loc.location}-${idx}`;
@@ -1390,7 +1390,7 @@ export function ReportsAnalytics() {
                           <th className="pb-2.5 font-bold text-right">Count</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-650">
+                      <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-600">
                         {filteredDisplayTotals.map((cat) => (
                           <tr key={cat.name} className="hover:bg-slate-50/50 transition-colors">
                             <td className="py-2.5 flex items-center gap-1.5 min-w-0">
@@ -1454,7 +1454,7 @@ export function ReportsAnalytics() {
                           <th className="pb-2.5 font-bold text-right">Auctions Count</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-650">
+                      <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-600">
                         {locationStats.locations.map((loc) => (
                           <tr key={loc.location} className="hover:bg-slate-50/50 transition-colors">
                             <td className="py-2.5 font-bold text-slate-900 flex items-center gap-2">

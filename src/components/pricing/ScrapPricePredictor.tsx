@@ -41,7 +41,7 @@ export function ScrapPricePredictor() {
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-      <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-900 text-white">
+      <div className="px-6 py-4.5 border-b border-slate-100 flex justify-between items-center bg-slate-900 text-white">
         <div>
           <h3 className="font-extrabold text-sm uppercase tracking-wider flex items-center gap-2">
             <BrainCircuit className="w-4.5 h-4.5 text-sky-400" /> ML Scrap Price Predictor
@@ -155,7 +155,7 @@ export function ScrapPricePredictor() {
         </div>
 
         {/* Right Col: Output & Comparison */}
-        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-150 flex flex-col space-y-5">
+        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col space-y-5">
           <div>
             <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
               <Calculator className="w-3.5 h-3.5" /> ML Predicted Price

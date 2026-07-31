@@ -60,7 +60,7 @@ export function ForgotPasswordForm() {
       )}
       
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-650 mb-1.5">Email address</label>
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Email address</label>
         <div className="relative rounded-xl shadow-xs">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <Mail className="h-5 w-5" />

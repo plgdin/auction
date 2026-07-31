@@ -261,7 +261,7 @@ export function Reminders() {
       cells.push(
         <div 
           key={`day-${day}`} 
-          className={`h-24 p-2 border border-slate-150 flex flex-col justify-start items-start hover:bg-slate-50 transition-colors ${isToday ? 'bg-primary/5 border-primary/30' : 'bg-white'}`}
+          className={`h-24 p-2 border border-slate-100 flex flex-col justify-start items-start hover:bg-slate-50 transition-colors ${isToday ? 'bg-primary/5 border-primary/30' : 'bg-white'}`}
         >
           <span className={`text-xs font-bold mb-1 ${isToday ? 'w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center' : 'text-slate-700'}`}>
             {day}
@@ -311,7 +311,7 @@ export function Reminders() {
         </div>
 
         {/* Days labels */}
-        <div className="grid grid-cols-7 text-center bg-slate-50 border-b border-slate-150 py-2">
+        <div className="grid grid-cols-7 text-center bg-slate-50 border-b border-slate-100 py-2">
           {dayLabels.map(label => (
             <span key={label} className="text-xs font-bold text-slate-500 uppercase tracking-wider">{label}</span>
           ))}
@@ -398,7 +398,7 @@ export function Reminders() {
             {renderCalendar()}
             
             {/* Calendar Legend */}
-            <div className="flex flex-wrap items-center gap-6 text-xs text-slate-505 px-3 bg-slate-50 py-3 rounded-lg border border-slate-200">
+            <div className="flex flex-wrap items-center gap-6 text-xs text-slate-500 px-3 bg-slate-50 py-3 rounded-lg border border-slate-200">
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-blue-100 border border-blue-200 inline-block"></span> Auction Opens</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-amber-100 border border-amber-200 inline-block"></span> Auction Closes</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-purple-100 border border-purple-200 inline-block"></span> Inspection Starts</span>
@@ -416,7 +416,7 @@ export function Reminders() {
                 Active Alerts
               </h2>
               {getUpcomingReminders().length === 0 ? (
-                <div className="py-6 text-center text-slate-450 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                <div className="py-6 text-center text-slate-400 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
                   <Info className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                   <p className="text-sm">No active alerts at the moment.</p>
                   <p className="text-xs text-slate-400 mt-1">Enable notifications below to see alert feeds.</p>
@@ -463,7 +463,7 @@ export function Reminders() {
                             {(() => {
                               const { auctionStart, auctionEnd, inspectionStart, inspectionEnd } = getAuctionCalendarDates(item);
                               return (
-                                <div className="mt-2 space-y-1 text-[11px] text-slate-600 font-medium bg-slate-50/50 p-2 rounded border border-slate-150">
+                                <div className="mt-2 space-y-1 text-[11px] text-slate-600 font-medium bg-slate-50/50 p-2 rounded border border-slate-100">
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px] w-16">Auction:</span>
                                     <span>{auctionStart.toLocaleDateString()} {auctionStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} to {auctionEnd.toLocaleDateString()} {auctionEnd.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
@@ -487,7 +487,7 @@ export function Reminders() {
                             className={`flex items-center px-2.5 py-1 rounded text-xs font-semibold border transition-all cursor-pointer ${
                               setting.enabled
                                 ? 'bg-primary/10 border-primary text-primary hover:bg-primary/20'
-                                : 'border-slate-200 text-slate-650 hover:bg-slate-50'
+                                : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                             }`}
                           >
                             {setting.enabled ? (
@@ -524,7 +524,7 @@ export function Reminders() {
                                       true
                                     );
                                   }}
-                                  className="w-12 text-center border border-slate-250 rounded bg-white px-1 py-0.5 font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                                  className="w-12 text-center border border-slate-200 rounded bg-white px-1 py-0.5 font-bold focus:outline-none focus:ring-1 focus:ring-primary"
                                 />
                                 <select
                                   value={setting.timeUnit ?? 'days'}
@@ -537,7 +537,7 @@ export function Reminders() {
                                       true
                                     );
                                   }}
-                                  className="border border-slate-250 rounded bg-white px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                                  className="border border-slate-200 rounded bg-white px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary font-medium"
                                 >
                                   <option value="minutes">Mins</option>
                                   <option value="hours">Hours</option>
@@ -561,7 +561,7 @@ export function Reminders() {
                                       true
                                     );
                                   }}
-                                  className="border border-slate-250 rounded bg-white px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                                  className="border border-slate-200 rounded bg-white px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary font-medium"
                                 >
                                   <option value={1}>1 time</option>
                                   <option value={2}>2 times</option>

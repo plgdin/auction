@@ -219,8 +219,8 @@ export function FaqManagement() {
         <div className={clsx(
           "p-4 rounded-xl text-sm font-medium transition-all shadow-2xs",
           message.toLowerCase().includes('error') || message.toLowerCase().includes('failed')
-            ? "bg-red-50 text-red-700 border border-red-150"
-            : "bg-emerald-50 text-emerald-700 border border-emerald-150"
+            ? "bg-red-50 text-red-700 border border-red-100"
+            : "bg-emerald-50 text-emerald-700 border border-emerald-100"
         )}>
           {message}
         </div>
@@ -278,7 +278,7 @@ export function FaqManagement() {
             <span><strong>Tip:</strong> Drag and drop rows using the handle to change display order hierarchy.</span>
           </p>
         ) : (
-          <p className="text-amber-600 flex items-center gap-1 px-3 py-2 bg-amber-500/5 border border-amber-150 rounded-xl max-w-fit shadow-3xs">
+          <p className="text-amber-600 flex items-center gap-1 px-3 py-2 bg-amber-500/5 border border-amber-100 rounded-xl max-w-fit shadow-3xs">
             <span><strong>Note:</strong> Reordering via drag & drop is disabled while search filters are active.</span>
           </p>
         )}
@@ -289,7 +289,7 @@ export function FaqManagement() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center p-16 space-y-3">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <p className="text-sm font-semibold text-slate-550">Loading FAQ records...</p>
+            <p className="text-sm font-semibold text-slate-500">Loading FAQ records...</p>
           </div>
         ) : filteredFaqs.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
@@ -299,7 +299,7 @@ export function FaqManagement() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-250 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-500">
                   <th className="px-6 py-4 w-16 text-center">Order</th>
                   <th className="px-6 py-4">Question & Answer</th>
                   <th className="px-6 py-4 w-36">Category</th>
@@ -354,7 +354,7 @@ export function FaqManagement() {
                             "px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border",
                             faq.is_active
                               ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
-                              : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-150"
+                              : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-100"
                           )}
                         >
                           {faq.is_active ? 'Active' : 'Inactive'}
@@ -371,7 +371,7 @@ export function FaqManagement() {
                           </button>
                           <button
                             onClick={() => handleDelete(faq.id)}
-                            className="p-1.5 border border-red-150 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 border border-red-100 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                             title="Delete FAQ"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -391,7 +391,7 @@ export function FaqManagement() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-slate-250 flex justify-between items-center bg-slate-50">
+            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
               <h3 className="text-lg font-bold text-slate-900">
                 {editingId ? 'Edit FAQ Item' : 'Create New FAQ Item'}
               </h3>

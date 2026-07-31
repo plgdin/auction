@@ -322,7 +322,7 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
     <div className="flex flex-col h-full overflow-hidden">
       
       {/* Editor Header */}
-      <div className="p-4 border-b border-slate-150 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4 shrink-0">
+      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4 shrink-0">
         <div>
           <div className="flex items-center gap-2">
             <span className="font-extrabold text-sm text-slate-800">Reviewing:</span>
@@ -387,7 +387,7 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
               type="text"
               value={mstcAuctionNumber}
               onChange={(e) => setMstcAuctionNumber(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-850 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
 
@@ -399,7 +399,7 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
               type="text"
               value={categoryName}
               onChange={(e) => setCategoryName(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-850 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
 
@@ -411,7 +411,7 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
               type="text"
               value={sellerName}
               onChange={(e) => setSellerName(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-850 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
 
@@ -423,7 +423,7 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-855 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-900 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
 
@@ -435,7 +435,7 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
               type="datetime-local"
               value={openingDate}
               onChange={(e) => setOpeningDate(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-850 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
 
@@ -447,7 +447,7 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
               type="datetime-local"
               value={closingDate}
               onChange={(e) => setClosingDate(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-850 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
 
@@ -459,7 +459,7 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
               type="text"
               value={sourcePdfUrl}
               onChange={(e) => setSourcePdfUrl(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-850 text-xs focus:ring-1 focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
 
@@ -471,7 +471,7 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
               type="text"
               value={sanitizedDocumentPath}
               onChange={(e) => setSanitizedDocumentPath(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-850 text-xs focus:ring-1 focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-800 text-xs focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
 
@@ -533,7 +533,7 @@ export const InlineCatalogEditor: React.FC<InlineCatalogEditorProps> = ({
           <div className="flex-1 min-h-0 overflow-y-auto">
             {editorTab === 'lots' ? (
               lots.length === 0 ? (
-                <div className="p-12 text-center bg-slate-50 rounded-xl border border-slate-150">
+                <div className="p-12 text-center bg-slate-50 rounded-xl border border-slate-100">
                   <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                   <p className="text-xs font-semibold text-slate-500">No lot data extracted.</p>
                   <button
