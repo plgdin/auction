@@ -276,7 +276,7 @@ export const PLANS: Plan[] = [
     period: 'forever',
     description: 'Start discovering auctions for free — no credit card needed',
     buttonText: 'Get Started Free',
-    href: '/auth/register',
+    href: '/checkout',
     isPopular: false,
     features: getCardFeaturesForPlan('explorer')
   },
@@ -288,7 +288,7 @@ export const PLANS: Plan[] = [
     period: 'per month',
     description: 'Everything you need to find, value, and win auctions',
     buttonText: 'Start 14-Day Free Trial',
-    href: '/auth/register',
+    href: '/checkout',
     isPopular: true,
     features: getCardFeaturesForPlan('pro')
   },

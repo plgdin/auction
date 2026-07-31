@@ -239,7 +239,7 @@ export function Pricing({
                   <hr className="w-full my-4 border-slate-100" />
 
                   <Link
-                    to={plan.href}
+                    to={plan.id === 'enterprise' ? plan.href : `${plan.href}?plan=${plan.id}&billing=${isMonthly ? 'monthly' : 'annual'}`}
                     className={cn(
                       buttonVariants({
                         variant: "outline",
