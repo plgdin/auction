@@ -29,6 +29,26 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  // Parse request body stream if not pre-parsed (Connect/Vite environment support)
+  if (!req.body) {
+    try {
+      req.body = await new Promise((resolve, reject) => {
+        let body = '';
+        req.on('data', (chunk: any) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            resolve(body ? JSON.parse(body) : {});
+          } catch (e) {
+            resolve({});
+          }
+        });
+        req.on('error', (err: any) => { reject(err); });
+      });
+    } catch (e) {
+      req.body = {};
+    }
+  }
+
   // Rate Limiting
   const ip = getClientIp(req);
   if (isRateLimited(ip, 20, 60 * 1000)) {

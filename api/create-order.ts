@@ -1,7 +1,6 @@
 import Razorpay from 'razorpay';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { isRateLimited, getClientIp } from './utils/rateLimiter.js';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -34,11 +33,24 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  // Rate Limiting
-  const ip = getClientIp(req);
-  if (isRateLimited(ip, 20, 60 * 1000)) {
-    res.status(429).json({ success: false, error: 'Too many requests' });
-    return;
+  // Parse request body stream if not pre-parsed (Connect/Vite environment support)
+  if (!req.body) {
+    try {
+      req.body = await new Promise((resolve, reject) => {
+        let body = '';
+        req.on('data', (chunk: any) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            resolve(body ? JSON.parse(body) : {});
+          } catch (e) {
+            resolve({});
+          }
+        });
+        req.on('error', (err: any) => { reject(err); });
+      });
+    } catch (e) {
+      req.body = {};
+    }
   }
 
   try {
