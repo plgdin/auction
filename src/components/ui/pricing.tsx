@@ -11,18 +11,19 @@ import { Link } from "react-router-dom";
 import { useState, useRef } from "react";
 import confetti from "canvas-confetti";
 import NumberFlow from "@number-flow/react";
+import type { CardFeatureHighlight } from "@/utils/pricingConfig";
 
 interface PricingPlan {
+  id: 'explorer' | 'pro' | 'enterprise';
   name: string;
-  price: string;
-  yearlyPrice: string;
+  price: string | null;
+  yearlyPrice: string | null;
   period: string;
-  features: string[];
+  features: (string | CardFeatureHighlight)[];
   description: string;
   buttonText: string;
   href: string;
   isPopular: boolean;
-  isContactSales?: boolean;
 }
 
 interface PricingProps {
@@ -91,15 +92,15 @@ export function Pricing({
             />
           </Label>
         </label>
-        <span className="ml-2 font-semibold">
+        <span className="ml-2 font-semibold text-slate-800">
           Annual billing <span className="text-primary">(Save 12%)</span>
         </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 sm:2 gap-4">
         {plans.map((plan, index) => {
-          const isFree = Number(plan.price) === 0 && !plan.isContactSales;
-          const isContact = plan.isContactSales === true;
+          const isFree = plan.price !== null && Number(plan.price) === 0;
+          const isContact = plan.price === null;
 
           return (
             <motion.div
@@ -126,7 +127,7 @@ export function Pricing({
               }}
               className={cn(
                 `rounded-2xl border-[1px] p-6 bg-background text-center lg:flex lg:flex-col lg:justify-center relative`,
-                plan.isPopular ? "border-primary border-2" : "border-border",
+                plan.isPopular ? "border-primary border-2 shadow-md" : "border-border shadow-sm",
                 "flex flex-col",
                 !plan.isPopular && "mt-5",
                 index === 0 || index === 2
@@ -139,96 +140,123 @@ export function Pricing({
               {plan.isPopular && (
                 <div className="absolute top-0 right-0 bg-primary py-0.5 px-2 rounded-bl-xl rounded-tr-xl flex items-center">
                   <Star className="text-primary-foreground h-4 w-4 fill-current" />
-                  <span className="text-primary-foreground ml-1 font-sans font-semibold">
+                  <span className="text-primary-foreground ml-1 font-sans font-semibold text-xs">
                     Popular
                   </span>
                 </div>
               )}
-              <div className="flex-1 flex flex-col">
-                <p className="text-base font-semibold text-muted-foreground">
-                  {plan.name}
-                </p>
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <p className="text-base font-semibold text-muted-foreground uppercase tracking-widest">
+                    {plan.name}
+                  </p>
 
-                {/* Price display: handles Free, Contact Sales, and numeric tiers */}
-                <div className="mt-6 flex items-center justify-center gap-x-2">
-                  {isContact ? (
-                    <span className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                      <Sparkles className="w-6 h-6 text-primary" />
-                      Custom
-                    </span>
-                  ) : isFree ? (
-                    <span className="text-5xl font-bold tracking-tight text-foreground">
-                      Free
-                    </span>
-                  ) : (
-                    <span className="text-5xl font-bold tracking-tight text-foreground">
-                      <NumberFlow
-                        value={
-                          isMonthly ? Number(plan.price) : Number(plan.yearlyPrice)
-                        }
-                        format={{
-                          style: "currency",
-                          currency: "INR",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        }}
-                        transformTiming={{
-                          duration: 500,
-                          easing: "ease-out",
-                        }}
-                        willChange
-                        className="font-variant-numeric: tabular-nums"
-                      />
-                    </span>
-                  )}
+                  {/* Price display: handles Free, Contact Sales, and numeric tiers */}
+                  <div className="mt-6 flex items-center justify-center gap-x-2">
+                    {isContact ? (
+                      <span className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                        <Sparkles className="w-6 h-6 text-primary" />
+                        Custom
+                      </span>
+                    ) : isFree ? (
+                      <span className="text-5xl font-bold tracking-tight text-foreground">
+                        Free
+                      </span>
+                    ) : (
+                      <span className="text-5xl font-bold tracking-tight text-foreground">
+                        <NumberFlow
+                          value={
+                            isMonthly ? Number(plan.price) : Number(plan.yearlyPrice)
+                          }
+                          format={{
+                            style: "currency",
+                            currency: "INR",
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          }}
+                          transformTiming={{
+                            duration: 500,
+                            easing: "ease-out",
+                          }}
+                          willChange
+                          className="font-variant-numeric: tabular-nums"
+                        />
+                      </span>
+                    )}
 
-                  {!isFree && !isContact && plan.period !== "Next 3 months" && (
-                    <span className="text-sm font-semibold leading-6 tracking-wide text-muted-foreground">
-                      / {isMonthly ? plan.period : (plan.period === "per month" ? "year" : plan.period)}
-                    </span>
-                  )}
+                    {!isFree && !isContact && plan.period !== "Next 3 months" && (
+                      <span className="text-sm font-semibold leading-6 tracking-wide text-muted-foreground">
+                        / {isMonthly ? plan.period : (plan.period === "per month" ? "year" : plan.period)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Billing label with monthly equivalent helper */}
+                  <p className="text-xs leading-5 text-muted-foreground mt-1 min-h-[20px]">
+                    {isContact
+                      ? "tailored for your organization"
+                      : isFree
+                      ? "no credit card required"
+                      : isMonthly
+                      ? "billed monthly"
+                      : `billed annually (~₹${Math.round(Number(plan.yearlyPrice) / 12).toLocaleString('en-IN')}/mo equivalent)`}
+                  </p>
+
+                  <ul className="mt-6 gap-3 flex flex-col">
+                    {plan.features.map((feature, idx) => {
+                      const isObj = typeof feature === 'object';
+                      const text = isObj ? feature.text : feature;
+                      const subtext = isObj ? feature.subtext : undefined;
+                      const isFeatureHighlighted = isObj ? feature.isHighlighted : false;
+
+                      return (
+                        <li key={idx} className="flex items-start gap-2.5">
+                          <Check className={cn("h-4.5 w-4.5 mt-0.5 flex-shrink-0", isFeatureHighlighted ? "text-primary stroke-[3]" : "text-slate-400")} />
+                          <div className="text-left">
+                            <span className={cn("text-sm text-slate-700 font-medium", isFeatureHighlighted && "font-bold text-slate-900")}>
+                              {text}
+                            </span>
+                            {subtext && (
+                              <span className="block text-[11px] text-emerald-600 font-bold mt-0.5 leading-snug">
+                                {subtext}
+                              </span>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
 
-                {/* Billing label */}
-                <p className="text-xs leading-5 text-muted-foreground mt-1">
-                  {isContact
-                    ? "tailored for your organization"
-                    : isFree
-                    ? "no credit card required"
-                    : isMonthly
-                    ? "billed monthly"
-                    : "billed annually"}
-                </p>
+                <div className="mt-6">
+                  <a
+                    href="#comparison-table"
+                    className="text-xs font-bold text-primary hover:text-primary/80 transition-colors flex items-center justify-center gap-1 cursor-pointer mb-4"
+                  >
+                    See full comparison ↓
+                  </a>
 
-                <ul className="mt-5 gap-2 flex flex-col">
-                  {plan.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-primary mt-1 flex-shrink-0" />
-                      <span className="text-left">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+                  <hr className="w-full my-4 border-slate-100" />
 
-                <hr className="w-full my-4" />
-
-                <Link
-                  to={plan.href}
-                  className={cn(
-                    buttonVariants({
-                      variant: "outline",
-                    }),
-                    "group relative w-full gap-2 overflow-hidden text-lg font-semibold tracking-tighter",
-                    "transform-gpu ring-offset-current transition-all duration-300 ease-out hover:ring-2 hover:ring-primary hover:ring-offset-1 hover:bg-primary hover:text-primary-foreground",
-                    plan.isPopular
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background text-foreground"
-                  )}
-                >
-                  {plan.buttonText}
-                </Link>
-                <p className="mt-6 text-xs leading-5 text-muted-foreground">
-                  {plan.description}
-                </p>
+                  <Link
+                    to={plan.href}
+                    className={cn(
+                      buttonVariants({
+                        variant: "outline",
+                      }),
+                      "group relative w-full gap-2 overflow-hidden text-lg font-semibold tracking-tighter",
+                      "transform-gpu ring-offset-current transition-all duration-300 ease-out hover:ring-2 hover:ring-primary hover:ring-offset-1 hover:bg-primary hover:text-primary-foreground",
+                      plan.isPopular
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-foreground"
+                    )}
+                  >
+                    {plan.buttonText}
+                  </Link>
+                  <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                    {plan.description}
+                  </p>
+                </div>
               </div>
             </motion.div>
           );

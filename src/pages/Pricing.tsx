@@ -3,76 +3,36 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Minus, ChevronDown, Zap, Shield, BarChart3, Brain, Truck, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { COMPARISON_FEATURES } from '../utils/pricingConfig';
 
-// Feature comparison data for the detailed table
-const COMPARISON_CATEGORIES = [
-  {
-    name: 'Discovery & Search',
-    icon: Zap,
-    features: [
-      { name: 'Auction search & browse', free: true, pro: true, enterprise: true },
-      { name: 'Category filters', free: true, pro: true, enterprise: true },
-      { name: 'Auction detail & PDF catalogs', free: true, pro: true, enterprise: true },
-      { name: 'NLP natural language search', free: false, pro: true, enterprise: true },
-      { name: 'Smart AI bid recommendations', free: false, pro: false, enterprise: true },
-    ],
-  },
-  {
-    name: 'Valuation & Pricing',
-    icon: Brain,
-    features: [
-      { name: 'Basic commodity prices', free: true, pro: true, enterprise: true },
-      { name: 'Live market rates & history charts', free: false, pro: true, enterprise: true },
-      { name: 'AI Valuation Engine (Profit & Loss)', free: false, pro: true, enterprise: true },
-      { name: 'ML Scrap Price Predictor', free: false, pro: true, enterprise: true },
-      { name: 'International price comparison', free: false, pro: true, enterprise: true },
-      { name: 'Custom commodity indices', free: false, pro: false, enterprise: true },
-      { name: 'Bulk Valuation REST API', free: false, pro: false, enterprise: true },
-    ],
-  },
-  {
-    name: 'Dashboard & Tools',
-    icon: BarChart3,
-    features: [
-      { name: 'Watchlist items', free: '10', pro: 'Unlimited', enterprise: 'Unlimited' },
-      { name: 'Document vault', free: false, pro: true, enterprise: true },
-      { name: 'Custom reminders & alerts', free: false, pro: true, enterprise: true },
-      { name: 'Inventory management', free: false, pro: true, enterprise: true },
-      { name: 'Vendor directory', free: false, pro: true, enterprise: true },
-      { name: 'Advanced analytics & insights', free: false, pro: false, enterprise: true },
-      { name: 'White-label branded reports', free: false, pro: false, enterprise: true },
-    ],
-  },
-  {
-    name: 'Logistics & Operations',
-    icon: Truck,
-    features: [
-      { name: 'MSTC portal redirect', free: true, pro: true, enterprise: true },
-      { name: 'Logistics quote requests', free: false, pro: true, enterprise: true },
-      { name: 'Seller portal access', free: false, pro: false, enterprise: true },
-    ],
-  },
-  {
-    name: 'Security & Support',
-    icon: Shield,
-    features: [
-      { name: 'Email notifications', free: true, pro: true, enterprise: true },
-      { name: 'Priority support (24hr)', free: false, pro: true, enterprise: true },
-      { name: 'SSO / SAML authentication', free: false, pro: false, enterprise: true },
-      { name: 'Compliance & audit trail', free: false, pro: false, enterprise: true },
-      { name: 'Dedicated account manager', free: false, pro: false, enterprise: true },
-      { name: '99.9% uptime SLA', free: false, pro: false, enterprise: true },
-    ],
-  },
-  {
-    name: 'Team & Organization',
-    icon: Users,
-    features: [
-      { name: 'Team seats', free: '1', pro: '3', enterprise: '5' },
-      { name: 'Priority onboarding & training', free: false, pro: false, enterprise: true },
-    ],
-  },
-];
+const CATEGORY_ICONS: Record<string, any> = {
+  'Discovery & Search': Zap,
+  'Valuation & Pricing': Brain,
+  'Dashboard & Tools': BarChart3,
+  'Logistics & Operations': Truck,
+  'Security & Support': Shield,
+  'Team & Organization': Users,
+};
+
+// Dynamically construct COMPARISON_CATEGORIES from the single source of truth COMPARISON_FEATURES
+const COMPARISON_CATEGORIES = Object.entries(
+  COMPARISON_FEATURES.reduce((acc, feature) => {
+    if (!acc[feature.category]) {
+      acc[feature.category] = [];
+    }
+    acc[feature.category].push({
+      name: feature.name,
+      free: feature.values.explorer,
+      pro: feature.values.pro,
+      enterprise: feature.values.enterprise,
+    });
+    return acc;
+  }, {} as Record<string, any[]>)
+).map(([name, features]) => ({
+  name,
+  icon: CATEGORY_ICONS[name] || Zap,
+  features,
+}));
 
 function renderCellValue(value: boolean | string) {
   if (typeof value === 'string') {
@@ -93,6 +53,10 @@ const PRICING_FAQ = [
   {
     q: 'Can I switch plans at any time?',
     a: 'Absolutely. You can upgrade or downgrade your plan at any time from your dashboard. When upgrading, you\'ll get immediate access to new features. When downgrading, your current plan stays active until the end of the billing period.',
+  },
+  {
+    q: 'Can I get a refund if I cancel my subscription?',
+    a: 'You can cancel your subscription at any time. Since we offer a 14-day free trial for Bidder Pro to evaluate all features, we generally do not issue refunds for active billing cycles. Your access will remain active until the end of your current cycle.',
   },
   {
     q: 'What payment methods do you accept?',
@@ -148,6 +112,15 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export function PricingPage() {
+  const [expandedMobileCategories, setExpandedMobileCategories] = useState<Record<string, boolean>>({});
+
+  const toggleMobileCategory = (name: string) => {
+    setExpandedMobileCategories((prev) => ({
+      ...prev,
+      [name]: !prev[name],
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Pricing Cards */}
@@ -156,7 +129,7 @@ export function PricingPage() {
       </div>
 
       {/* Feature Comparison Table */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+      <section id="comparison-table" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 scroll-mt-20">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
             Compare Plans in Detail
@@ -193,7 +166,7 @@ export function PricingPage() {
                     <tr>
                       <td
                         colSpan={4}
-                        className="pt-8 pb-3 text-xs font-black text-slate-800 uppercase tracking-widest"
+                        className="pt-8 pb-3 text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-100"
                       >
                         <span className="flex items-center gap-2">
                           <Icon className="w-4 h-4 text-primary" />
@@ -227,37 +200,60 @@ export function PricingPage() {
           </table>
         </div>
 
-        {/* Mobile comparison — collapsed cards */}
-        <div className="md:hidden space-y-6">
+        {/* Mobile comparison — collapsible cards */}
+        <div className="md:hidden space-y-4">
           {COMPARISON_CATEGORIES.map((category) => {
             const Icon = category.icon;
+            const isExpanded = !!expandedMobileCategories[category.name];
             return (
-              <div key={category.name} className="bg-slate-50 rounded-2xl p-4">
-                <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2 mb-4">
-                  <Icon className="w-4 h-4 text-primary" />
-                  {category.name}
-                </h3>
-                <div className="space-y-3">
-                  {category.features.map((feature) => (
-                    <div key={feature.name} className="bg-white rounded-xl p-3 border border-slate-100">
-                      <p className="text-sm font-semibold text-slate-800 mb-2">{feature.name}</p>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Explorer</p>
-                          {renderCellValue(feature.free)}
-                        </div>
-                        <div className="bg-primary/5 rounded-lg py-1">
-                          <p className="text-[9px] font-bold text-primary uppercase mb-1">Pro</p>
-                          {renderCellValue(feature.pro)}
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Enterprise</p>
-                          {renderCellValue(feature.enterprise)}
-                        </div>
+              <div key={category.name} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                <button
+                  onClick={() => toggleMobileCategory(category.name)}
+                  className="w-full text-xs font-black text-slate-800 uppercase tracking-widest flex items-center justify-between cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon className="w-4 h-4 text-primary" />
+                    {category.name}
+                  </span>
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${
+                      isExpanded ? 'rotate-180 text-primary' : ''
+                    }`}
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                      animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
+                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="space-y-3">
+                        {category.features.map((feature) => (
+                          <div key={feature.name} className="bg-white rounded-xl p-3 border border-slate-100 shadow-3xs">
+                            <p className="text-sm font-semibold text-slate-800 mb-2">{feature.name}</p>
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Explorer</p>
+                                {renderCellValue(feature.free)}
+                              </div>
+                              <div className="bg-primary/5 rounded-lg py-1">
+                                <p className="text-[9px] font-bold text-primary uppercase mb-1">Pro</p>
+                                {renderCellValue(feature.pro)}
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Enterprise</p>
+                                {renderCellValue(feature.enterprise)}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}
