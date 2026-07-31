@@ -4,15 +4,31 @@ import { useAuthStore } from '../store/authStore';
 import { authService } from '../services/authService';
 import { formatPrice } from '../utils/currency';
 import { 
-  Lock, CreditCard, Landmark, ArrowRight, ShieldCheck, 
-  Sparkles, CheckCircle2, QrCode, AlertCircle, Loader2 
+  Lock, ArrowRight, ShieldCheck, Sparkles, CheckCircle2, 
+  AlertCircle, Loader2, CreditCard, ChevronRight
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+
+// Dynamic script loader for Razorpay SDK
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if ((window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 export function CheckoutPage() {
   const [searchParams] = useSearchParams();
-  const { profile, isAuthenticated, setSession, setProfile } = useAuthStore();
+  const { user, profile, isAuthenticated, setSession, setProfile } = useAuthStore();
 
   // State for Billing cycle & details
   const planId = searchParams.get('plan') || 'pro';
@@ -22,14 +38,6 @@ export function CheckoutPage() {
   const [businessName, setBusinessName] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
   const [gstin, setGstin] = useState('');
-
-  // Payment state
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'upi' | 'netbanking'>('card');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-  const [upiId, setUpiId] = useState('');
-  const [selectedBank, setSelectedBank] = useState('sbi');
 
   // Auth gate state (Login/Register tab)
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
@@ -45,6 +53,7 @@ export function CheckoutPage() {
   const [step, setStep] = useState<'details' | 'success'>('details');
   const [transactionId, setTransactionId] = useState('');
   const [gstError, setGstError] = useState<string | null>(null);
+  const [sdkError, setSdkError] = useState<string | null>(null);
 
   // Pre-fill profile name if logged in
   useEffect(() => {
@@ -89,32 +98,88 @@ export function CheckoutPage() {
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
     setGstError(null);
+    setSdkError(null);
 
     // Validate GSTIN format if supplied
     if (gstin) {
       const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
       if (!gstRegex.test(gstin.toUpperCase())) {
-        setGstError('Invalid GSTIN format. Should be like 22AAAAA1111A1Z1');
+        setGstError('Invalid GSTIN format. Correct format is like: 22AAAAA1111A1Z1');
         return;
       }
     }
 
     setIsProcessing(true);
 
-    // Simulate payment processing delay
-    setTimeout(() => {
+    // If it's a free Explorer setup, skip payment gateways entirely
+    if (total === 0) {
+      setTimeout(() => {
+        setIsProcessing(false);
+        setStep('success');
+        setTransactionId(`FREE-${Date.now().toString().slice(-6)}`);
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 }
+        });
+      }, 1500);
+      return;
+    }
+
+    // Load Razorpay Checkout SDK script
+    const scriptLoaded = await loadRazorpayScript();
+    if (!scriptLoaded) {
       setIsProcessing(false);
-      setStep('success');
-      const txRef = `SUB-${planId.toUpperCase()}-${Date.now().toString().slice(-6)}`;
-      setTransactionId(txRef);
-      
-      // Fire confetti celebration
-      confetti({
-        particleCount: 150,
-        spread: 80,
-        origin: { y: 0.6 }
-      });
-    }, 2500);
+      setSdkError('Razorpay Payment Gateway failed to load. Please check your internet connection or adblocker.');
+      return;
+    }
+
+    // Configure Razorpay Checkout options
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey12345',
+      amount: total * 100, // paise
+      currency: 'INR',
+      name: 'Lelam Subscriptions',
+      description: `Lelam ${planId === 'pro' ? 'Bidder Pro' : 'Explorer'} plan (${billingCycle})`,
+      image: '/favicon.svg',
+      handler: function (response: any) {
+        setIsProcessing(false);
+        setStep('success');
+        setTransactionId(response.razorpay_payment_id || `pay_${Date.now().toString().slice(-6)}`);
+        
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 }
+        });
+      },
+      prefill: {
+        name: fullName,
+        email: user?.email || authEmail || '',
+      },
+      notes: {
+        plan_id: planId,
+        billing_cycle: billingCycle,
+        gstin: gstin || 'None',
+        business_name: businessName || 'None'
+      },
+      theme: {
+        color: '#0284c7', // Brand primary blue color
+      },
+      modal: {
+        ondismiss: () => {
+          setIsProcessing(false);
+        }
+      }
+    };
+
+    try {
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      setIsProcessing(false);
+      setSdkError('Could not initialize the payment gateway overlay. Please try again.');
+    }
   };
 
   return (
@@ -179,7 +244,7 @@ export function CheckoutPage() {
                               required
                               value={authFirstName}
                               onChange={(e) => setAuthFirstName(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                              className="w-full px-4 py-2.5 border border-slate-255 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
                             />
                           </div>
                           <div>
@@ -189,7 +254,7 @@ export function CheckoutPage() {
                               required
                               value={authLastName}
                               onChange={(e) => setAuthLastName(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                              className="w-full px-4 py-2.5 border border-slate-255 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
                             />
                           </div>
                         </div>
@@ -202,7 +267,7 @@ export function CheckoutPage() {
                           required
                           value={authEmail}
                           onChange={(e) => setAuthEmail(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                          className="w-full px-4 py-2.5 border border-slate-255 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
                         />
                       </div>
 
@@ -213,7 +278,7 @@ export function CheckoutPage() {
                           required
                           value={authPassword}
                           onChange={(e) => setAuthPassword(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
+                          className="w-full px-4 py-2.5 border border-slate-255 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none"
                         />
                       </div>
 
@@ -237,6 +302,13 @@ export function CheckoutPage() {
                   </div>
                 ) : (
                   <form onSubmit={handlePay} className="space-y-6">
+                    {sdkError && (
+                      <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-sm flex items-start gap-2.5">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <span>{sdkError}</span>
+                      </div>
+                    )}
+
                     {/* Step 1: Billing details */}
                     <div>
                       <h3 className="text-base font-bold text-slate-800 border-b pb-2 mb-4">
@@ -286,155 +358,18 @@ export function CheckoutPage() {
                       </div>
                     </div>
 
-                    {/* Step 2: Payment Method */}
-                    <div>
-                      <h3 className="text-base font-bold text-slate-800 border-b pb-2 mb-4">
-                        2. Payment Method
-                      </h3>
-                      <div className="grid grid-cols-3 gap-3 mb-6">
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod('card')}
-                          className={`p-3 border rounded-xl flex flex-col items-center gap-2 cursor-pointer transition-all ${
-                            paymentMethod === 'card' 
-                              ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary' 
-                              : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-                          }`}
-                        >
-                          <CreditCard className="w-5 h-5" />
-                          <span className="text-xs font-bold">Card</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod('upi')}
-                          className={`p-3 border rounded-xl flex flex-col items-center gap-2 cursor-pointer transition-all ${
-                            paymentMethod === 'upi' 
-                              ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary' 
-                              : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-                          }`}
-                        >
-                          <QrCode className="w-5 h-5" />
-                          <span className="text-xs font-bold">UPI</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod('netbanking')}
-                          className={`p-3 border rounded-xl flex flex-col items-center gap-2 cursor-pointer transition-all ${
-                            paymentMethod === 'netbanking' 
-                              ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary' 
-                              : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-                          }`}
-                        >
-                          <Landmark className="w-5 h-5" />
-                          <span className="text-xs font-bold">Net Banking</span>
-                        </button>
+                    {/* Step 2: Payment Gateway Notification */}
+                    {total > 0 && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex gap-3 text-left">
+                        <CreditCard className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800">Secure Payment via Razorpay</h4>
+                          <p className="text-[11px] text-slate-500 leading-normal mt-0.5">
+                            Upon clicking proceed, the Razorpay window will open overlaying the page. You can pay via Cards, UPI, Net Banking, or Wallets securely.
+                          </p>
+                        </div>
                       </div>
-
-                      {/* Payment inputs */}
-                      <AnimatePresence mode="wait">
-                        {paymentMethod === 'card' && (
-                          <motion.div
-                            key="card"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            className="space-y-4"
-                          >
-                            <div>
-                              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Card Number</label>
-                              <input
-                                type="text"
-                                required
-                                value={cardNumber}
-                                onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 16))}
-                                placeholder="1234 5678 1234 5678"
-                                className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-mono"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Expiry Date</label>
-                                <input
-                                  type="text"
-                                  required
-                                  value={cardExpiry}
-                                  onChange={(e) => setCardExpiry(e.target.value.slice(0, 5))}
-                                  placeholder="MM/YY"
-                                  className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-mono"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">CVV</label>
-                                <input
-                                  type="password"
-                                  required
-                                  value={cardCvv}
-                                  onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                                  placeholder="•••"
-                                  className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-mono"
-                                />
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-
-                        {paymentMethod === 'upi' && (
-                          <motion.div
-                            key="upi"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            className="space-y-4"
-                          >
-                            <div>
-                              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">UPI ID (VPA)</label>
-                              <input
-                                type="text"
-                                required
-                                value={upiId}
-                                onChange={(e) => setUpiId(e.target.value)}
-                                placeholder="name@upi"
-                                className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-mono"
-                              />
-                            </div>
-                            <div className="flex items-center gap-3.5 bg-slate-50 p-4 border border-slate-200 rounded-xl">
-                              <QrCode className="w-12 h-12 text-slate-650 flex-shrink-0" />
-                              <div className="text-left">
-                                <h4 className="text-xs font-bold text-slate-800">Scan QR Code Option</h4>
-                                <p className="text-[11px] text-slate-500 leading-normal">
-                                  Upon clicking pay, a QR code will be generated to complete checkout instantly on your mobile.
-                                </p>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-
-                        {paymentMethod === 'netbanking' && (
-                          <motion.div
-                            key="netbanking"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            className="space-y-4"
-                          >
-                            <div>
-                              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Select Bank</label>
-                              <select
-                                value={selectedBank}
-                                onChange={(e) => setSelectedBank(e.target.value)}
-                                className="w-full px-4 py-2.5 border border-slate-250 bg-white rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none font-bold text-slate-700"
-                              >
-                                <option value="sbi">State Bank of India (SBI)</option>
-                                <option value="hdfc">HDFC Bank</option>
-                                <option value="icici">ICICI Bank</option>
-                                <option value="axis">Axis Bank</option>
-                                <option value="kotak">Kotak Mahindra Bank</option>
-                              </select>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                    )}
 
                     {/* Step 3: Action Button */}
                     <button
@@ -445,12 +380,14 @@ export function CheckoutPage() {
                       {isProcessing ? (
                         <>
                           <Loader2 className="w-5 h-5 animate-spin" />
-                          Processing Security Tokens...
+                          Launching Razorpay Checkout...
                         </>
                       ) : planId === 'pro' ? (
-                        `Pay Securely ${formatPrice(total)}`
+                        <span className="flex items-center gap-1.5">
+                          Proceed to Payment <ChevronRight className="w-4 h-4" />
+                        </span>
                       ) : (
-                        'Complete Free Setup'
+                        'Activate Free Explorer Plan'
                       )}
                     </button>
                   </form>
@@ -477,7 +414,7 @@ export function CheckoutPage() {
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left max-w-md mx-auto space-y-3 font-medium text-slate-700 text-xs">
                   <h3 className="text-xs font-black uppercase text-slate-400 border-b pb-1.5 mb-2">Invoice details</h3>
                   <div className="flex justify-between">
-                    <span>Transaction ID</span>
+                    <span>Razorpay Payment ID</span>
                     <span className="font-mono font-bold text-slate-800">{transactionId}</span>
                   </div>
                   <div className="flex justify-between">
@@ -556,7 +493,7 @@ export function CheckoutPage() {
                   <h4 className="text-xs font-bold text-primary flex items-center gap-1.5 mb-1.5">
                     <Sparkles className="w-3.5 h-3.5 fill-current" /> Pro Access Features
                   </h4>
-                  <ul className="space-y-1 text-slate-650 text-[11px] font-semibold leading-normal list-disc list-inside">
+                  <ul className="space-y-1 text-slate-655 text-[11px] font-semibold leading-normal list-disc list-inside text-slate-600">
                     <li>AI Valuation Engine (Profit & Loss)</li>
                     <li>ML Scrap Price Predictor</li>
                     <li>Live market rates & price history</li>
