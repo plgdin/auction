@@ -1,10 +1,11 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText, Lock, SlidersHorizontal, Eye, EyeOff } from 'lucide-react';
+import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText, Lock, SlidersHorizontal, Eye, EyeOff, CreditCard } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
@@ -25,7 +26,7 @@ export function ProfileSettings() {
   const [isResettingRecommendations, setIsResettingRecommendations] = useState(false);
   const [recommendationResetError, setRecommendationResetError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'privacy' | 'security'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'privacy' | 'security' | 'billing'>('profile');
 
   // Change Password state
   const [newPassword, setNewPassword] = useState('');
@@ -122,6 +123,34 @@ export function ProfileSettings() {
     } catch (error) {
       console.error('Error requesting account deactivation:', error);
       alert('An error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  const handleCancelSubscription = async () => {
+    if (!user) return;
+    const currentPlan = 
+      profile?.subscription_plan === 'pro' ? 'Business' :
+      (profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? 'Individual' :
+      profile?.subscription_plan === 'enterprise' ? 'Enterprise' : 'Free';
+
+    const confirmed = window.confirm(
+      `Are you sure you want to cancel your ${currentPlan} subscription? You will lose access to all premium tools, quote builder, documents vault, and visual calendar at the end of your billing cycle.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsSubmitting(true);
+      const updatedProfile = await authService.updateProfile(user.id, {
+        subscription_plan: 'explorer'
+      });
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+        toast.success('Your subscription has been cancelled. Downgraded to the Free plan.');
+      }
+    } catch (error) {
+      console.error('Error cancelling subscription:', error);
+      toast.error('Failed to cancel subscription. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -255,6 +284,15 @@ export function ProfileSettings() {
         >
           <Lock className="w-4 h-4 mr-2" />
           Security
+        </button>
+        <button
+          onClick={() => setActiveTab('billing')}
+          className={`flex items-center px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
+            activeTab === 'billing' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          <CreditCard className="w-4 h-4 mr-2" />
+          Billing & Subscription
         </button>
       </div>
 
@@ -623,6 +661,62 @@ export function ProfileSettings() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {activeTab === 'billing' && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-slate-50 border-b border-slate-200 p-6 flex items-center">
+            <CreditCard className="w-6 h-6 text-primary mr-3" />
+            <h2 className="text-lg font-bold text-slate-900">Manage Subscription</h2>
+          </div>
+
+          <div className="p-6 space-y-6">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Plan</p>
+                <h3 className="text-xl font-black text-slate-800 mt-1">
+                  {profile?.subscription_plan === 'pro' ? 'Business Plan' :
+                   (profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? 'Individual Plan' :
+                   profile?.subscription_plan === 'enterprise' ? 'Enterprise Plan' : 'Free Plan'}
+                </h3>
+              </div>
+              <div>
+                {(!profile?.subscription_plan || profile.subscription_plan === 'explorer') ? (
+                  <Link
+                    to="/pricing"
+                    className="inline-flex items-center px-4 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-700 rounded-xl transition-all shadow-xs"
+                  >
+                    Upgrade Plan
+                  </Link>
+                ) : profile.subscription_plan === 'enterprise' ? (
+                  <Link
+                    to="/contact"
+                    className="inline-flex items-center px-4 py-2 text-xs font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-xl transition-all"
+                  >
+                    Contact Account Manager
+                  </Link>
+                ) : (
+                  <button
+                    onClick={handleCancelSubscription}
+                    disabled={isSubmitting}
+                    className="inline-flex items-center px-4 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel Subscription
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-6">
+              <h4 className="font-bold text-slate-800 mb-2">Subscription & Billing Guidelines</h4>
+              <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-500">
+                <li>Paid subscriptions (Individual & Business) are billed monthly or annually depending on your selection.</li>
+                <li>You can cancel your active paid plan at any time. When cancelled, your account will instantly downgrade to the Free plan.</li>
+                <li>For any invoice disputes, refunds, or custom Enterprise integrations, please contact our support team.</li>
+              </ul>
+            </div>
+          </div>
         </div>
       )}
     </div>
