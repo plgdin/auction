@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { authService } from '../services/authService';
 import { supabase } from '../lib/supabase';
@@ -7,7 +7,7 @@ import { formatPrice } from '../utils/currency';
 import { 
   Lock, ArrowRight, CheckCircle2, AlertCircle, Loader2, 
   CreditCard, ChevronRight, User, Building2, Check, ChevronLeft,
-  ShoppingBag
+  ShoppingBag, ChevronDown, Users, Plus, Minus, Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
@@ -37,8 +37,48 @@ const loadRazorpayScript = (): Promise<boolean> => {
   });
 };
 
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+];
+
+const isGibberish = (text: string): boolean => {
+  const clean = text.trim().toLowerCase();
+  if (clean.length < 4) return false;
+
+  // Must contain at least 3 alphabetic letters (prevents numeric-only keysmash like "239048239048")
+  const lettersOnly = clean.replace(/[^a-z]/g, '');
+  if (lettersOnly.length < 3) return true;
+
+  // All same char (e.g. "aaaaa", "11111")
+  if (/^(.)\1+$/.test(clean)) return true;
+
+  // Keyboard mash patterns (e.g. "asdf", "sdasdasd", "qwerty", "zxcv")
+  if (/^(asdf|qwerty|zxcv|1234|sdas|dasd|fgdf|ghjh)+$/.test(clean)) return true;
+
+  // Low vowel ratio for words without numbers (e.g. "sdasdasd", "bcdfghjkl")
+  if (lettersOnly.length >= 5 && !/\d/.test(clean)) {
+    const vowels = lettersOnly.match(/[aeiou]/g);
+    if (!vowels || vowels.length / lettersOnly.length < 0.15) {
+      return true;
+    }
+  }
+
+  // Repeating short sequence (e.g. "dasdasd", "asdasd")
+  if (/(.{2,4})\1{2,}/.test(clean)) return true;
+
+  return false;
+};
+
 export function CheckoutPage() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user, profile, isAuthenticated, setSession, setProfile } = useAuthStore();
 
   // State for Billing cycle & details
@@ -51,8 +91,34 @@ export function CheckoutPage() {
   const [fullName, setFullName] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [city, setCity] = useState('');
+  const [stateName, setStateName] = useState('');
+  const [isStateOpen, setIsStateOpen] = useState(false);
+  const [stateSearch, setStateSearch] = useState('');
+  const stateDropdownRef = useRef<HTMLDivElement>(null);
+  const [pincode, setPincode] = useState('');
+  const [isPincodeLoading, setIsPincodeLoading] = useState(false);
+  const [pincodeError, setPincodeError] = useState<string | null>(null);
   const [gstin, setGstin] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [seats, setSeats] = useState<number>(1);
+
+  // Close state dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (stateDropdownRef.current && !stateDropdownRef.current.contains(event.target as Node)) {
+        setIsStateOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredStates = INDIAN_STATES.filter((st) =>
+    st.toLowerCase().includes(stateName.toLowerCase())
+  );
 
   // Auth gate state (Login/Register tab)
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
@@ -79,6 +145,13 @@ export function CheckoutPage() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isPageLoading && !isAuthenticated) {
+      navigate('/auth/login?redirect=/pricing', { replace: true });
+    }
+  }, [isPageLoading, isAuthenticated, navigate]);
+
   // Pre-fill profile name if logged in
   useEffect(() => {
     if (profile) {
@@ -88,6 +161,38 @@ export function CheckoutPage() {
     }
   }, [profile]);
 
+  // Auto-fetch City and State from 6-digit Pincode
+  const fetchPincodeDetails = async (pin: string) => {
+    if (pin.length !== 6 || !/^\d{6}$/.test(pin)) return;
+    setIsPincodeLoading(true);
+    setPincodeError(null);
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+      const data = await res.json();
+      if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice?.length > 0) {
+        const po = data[0].PostOffice[0];
+        if (po.District) setCity(po.District);
+        if (po.State) {
+          const matchedState = INDIAN_STATES.find(s => s.toLowerCase() === po.State.toLowerCase()) || po.State;
+          setStateName(matchedState);
+        }
+      } else {
+        setPincodeError('Pincode not found. Please enter City & State manually.');
+      }
+    } catch (_) {
+      // Ignore network errors, allow manual entry
+    } finally {
+      setIsPincodeLoading(false);
+    }
+  };
+
+  // Sync formatted billing address for summary & receipt
+  useEffect(() => {
+    const parts = [addressLine1, addressLine2, city, stateName].filter(Boolean);
+    const formatted = parts.length > 0 ? `${parts.join(', ')}${pincode ? ` - ${pincode}` : ''}` : '';
+    setBillingAddress(formatted);
+  }, [addressLine1, addressLine2, city, stateName, pincode]);
+
   // Adjust step dynamically if user logs in
   useEffect(() => {
     if (isAuthenticated && currentStep === 1) {
@@ -96,7 +201,11 @@ export function CheckoutPage() {
   }, [isAuthenticated]);
 
   // Pricing calculations
-  const subtotal = planId === 'pro' ? (billingCycle === 'annual' ? 21110 : 1999) : 0;
+  const baseSubtotal = planId === 'pro' ? (billingCycle === 'annual' ? 21110 : 1999) : 0;
+  const seatUnitPrice = billingCycle === 'annual' ? 4990 : 499;
+  const extraSeats = Math.max(0, seats - 1);
+  const extraSeatsCost = planId === 'pro' ? extraSeats * seatUnitPrice : 0;
+  const subtotal = baseSubtotal + extraSeatsCost;
   const gst = Math.round(subtotal * 0.18);
   const total = subtotal + gst;
 
@@ -217,10 +326,28 @@ export function CheckoutPage() {
       key: rzpKey,
       amount: total * 100, // paise
       currency: 'INR',
-      name: 'Lelam Technologies',
+      name: 'Lelam Company',
       description: `Lelam ${planId === 'pro' ? 'Bidder Pro' : 'Explorer'} plan (${billingCycle})`,
       image: '/favicon.svg',
       order_id: orderId,
+      config: {
+        display: {
+          blocks: {
+            banks: {
+              name: 'Pay via Card, UPI or Net Banking',
+              instruments: [
+                { method: 'card' },
+                { method: 'upi' },
+                { method: 'netbanking' }
+              ]
+            }
+          },
+          sequence: ['block.banks'],
+          preferences: {
+            show_default_blocks: false
+          }
+        }
+      },
       handler: async function (response: any) {
         setIsProcessing(true);
         try {
@@ -301,12 +428,20 @@ export function CheckoutPage() {
     }
   };
 
+  const isStateValid = INDIAN_STATES.some(
+    (st) => st.toLowerCase() === stateName.trim().toLowerCase()
+  );
+  const isAddressValid = addressLine1.trim().length >= 5 && !isGibberish(addressLine1);
+  const isCityValid = city.trim().length >= 2 && !isGibberish(city) && !/\d/.test(city);
+  const isNameValid = fullName.trim().length >= 3 && !isGibberish(fullName) && !/\d/.test(fullName);
+  const isPincodeValid = /^[1-9][0-9]{5}$/.test(pincode.trim());
+
   const validateStep = (stepNumber: number): boolean => {
     switch (stepNumber) {
       case 1:
         return isAuthenticated;
       case 2:
-        return !!(fullName.trim() && billingAddress.trim());
+        return !!(isNameValid && isAddressValid && isCityValid && isStateValid && isPincodeValid);
       case 3:
         return agreeTerms;
       default:
@@ -387,10 +522,6 @@ export function CheckoutPage() {
               </p>
             </div>
           </div>
-          <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1.5 font-bold">
-            <Lock className="h-3.5 w-3.5" />
-            SSL Secured
-          </Badge>
         </div>
 
         {/* Progress Steps */}
@@ -570,7 +701,11 @@ export function CheckoutPage() {
                             required
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
+                            placeholder="John Doe"
                           />
+                          {fullName.length > 2 && isGibberish(fullName) && (
+                            <p className="text-red-500 text-xs font-bold mt-1">Please enter a valid full name.</p>
+                          )}
                         </div>
                         <div className="flex flex-col gap-2">
                           <Label htmlFor="businessName">Business Name (Optional)</Label>
@@ -579,6 +714,7 @@ export function CheckoutPage() {
                             type="text"
                             value={businessName}
                             onChange={(e) => setBusinessName(e.target.value)}
+                            placeholder="e.g. Acme Scrap Corp"
                           />
                         </div>
                         <div className="md:col-span-2 flex flex-col gap-2">
@@ -593,15 +729,139 @@ export function CheckoutPage() {
                           />
                           {gstError && <p className="text-red-500 text-xs font-bold mt-1">{gstError}</p>}
                         </div>
-                        <div className="md:col-span-2 flex flex-col gap-2">
-                          <Label htmlFor="billingAddress">Billing Address *</Label>
-                          <textarea
-                            id="billingAddress"
+
+                        {/* Pincode with Auto-Lookup */}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex justify-between items-center">
+                            <Label htmlFor="pincode">PIN Code *</Label>
+                            {isPincodeLoading && (
+                              <span className="text-[11px] text-primary font-semibold flex items-center gap-1">
+                                <Loader2 className="w-3 h-3 animate-spin" /> Auto-fetching location...
+                              </span>
+                            )}
+                          </div>
+                          <Input
+                            id="pincode"
+                            type="text"
                             required
-                            value={billingAddress}
-                            onChange={(e) => setBillingAddress(e.target.value)}
-                            rows={3}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none resize-none font-medium"
+                            maxLength={6}
+                            value={pincode}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                              setPincode(val);
+                              if (val.length === 6) {
+                                fetchPincodeDetails(val);
+                              }
+                            }}
+                            placeholder="e.g. 400001"
+                            className="font-mono font-bold tracking-wider"
+                          />
+                          {pincodeError && <p className="text-amber-600 text-xs font-medium mt-0.5">{pincodeError}</p>}
+                        </div>
+
+                        {/* City / District */}
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="city">City / District *</Label>
+                          <Input
+                            id="city"
+                            type="text"
+                            required
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            placeholder="e.g. Mumbai"
+                          />
+                          {city.length > 1 && isGibberish(city) && (
+                            <p className="text-red-500 text-xs font-bold mt-1">Please enter a valid city name.</p>
+                          )}
+                        </div>
+
+                        {/* State Combobox Input */}
+                        <div className="md:col-span-2 flex flex-col gap-2 relative" ref={stateDropdownRef}>
+                          <Label htmlFor="stateName">State *</Label>
+                          <div className="relative">
+                            <Input
+                              id="stateName"
+                              type="text"
+                              required
+                              value={stateName}
+                              onFocus={() => setIsStateOpen(true)}
+                              onChange={(e) => {
+                                setStateName(e.target.value);
+                                setIsStateOpen(true);
+                              }}
+                              placeholder="Select State"
+                              className="pr-10 font-semibold"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setIsStateOpen(!isStateOpen)}
+                              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                            >
+                              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isStateOpen ? 'rotate-180 text-primary' : ''}`} />
+                            </button>
+                          </div>
+                          {stateName.length > 2 && !isStateValid && (
+                            <p className="text-red-500 text-xs font-bold mt-1">Please select a valid Indian State from the dropdown.</p>
+                          )}
+
+                          {isStateOpen && (
+                            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 max-h-56 flex flex-col overflow-hidden animate-in fade-in-80 slide-in-from-top-2">
+                              <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin">
+                                {filteredStates.length > 0 ? (
+                                  filteredStates.map((st) => (
+                                    <button
+                                      key={st}
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        setStateName(st);
+                                        setIsStateOpen(false);
+                                      }}
+                                      className={`w-full text-left px-3.5 py-2 text-xs sm:text-sm font-medium rounded-xl flex items-center justify-between transition-colors cursor-pointer ${
+                                        stateName.toLowerCase() === st.toLowerCase()
+                                          ? 'bg-primary/10 text-primary font-bold'
+                                          : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                                      }`}
+                                    >
+                                      <span>{st}</span>
+                                      {stateName.toLowerCase() === st.toLowerCase() && <Check className="w-4 h-4 text-primary shrink-0" />}
+                                    </button>
+                                  ))
+                                ) : (
+                                  <div className="px-3 py-4 text-xs text-center text-slate-400 font-medium">
+                                    No matching state found
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Street Address Line 1 */}
+                        <div className="md:col-span-2 flex flex-col gap-2">
+                          <Label htmlFor="addressLine1">Flat / House No., Building, Street *</Label>
+                          <Input
+                            id="addressLine1"
+                            type="text"
+                            required
+                            value={addressLine1}
+                            onChange={(e) => setAddressLine1(e.target.value)}
+                            placeholder="e.g. Flat 402, Sunshine Towers, MG Road"
+                          />
+                          {addressLine1.length > 2 && isGibberish(addressLine1) && (
+                            <p className="text-red-500 text-xs font-bold mt-1">Please enter a valid street address (e.g. Flat 402, Sunshine Towers, MG Road).</p>
+                          )}
+                        </div>
+
+                        {/* Street Address Line 2 */}
+                        <div className="md:col-span-2 flex flex-col gap-2">
+                          <Label htmlFor="addressLine2">Area / Locality / Landmark (Optional)</Label>
+                          <Input
+                            id="addressLine2"
+                            type="text"
+                            value={addressLine2}
+                            onChange={(e) => setAddressLine2(e.target.value)}
+                            placeholder="e.g. Near City Mall, Bandra West"
                           />
                         </div>
                       </div>
@@ -644,28 +904,38 @@ export function CheckoutPage() {
                         </div>
                       )}
 
-                      <div className="space-y-4">
-                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5 text-xs text-slate-600 font-medium">
-                          <h4 className="font-bold text-slate-800 uppercase tracking-wide text-[10px] border-b pb-1.5 mb-2">Billing Identity</h4>
-                          <div className="flex justify-between">
-                            <span>Billing Name</span>
-                            <span className="font-bold text-slate-900">{fullName}</span>
-                          </div>
-                          {businessName && (
-                            <div className="flex justify-between">
-                              <span>Company Name</span>
-                              <span className="font-bold text-slate-900">{businessName}</span>
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 text-xs text-slate-600 font-medium">
+                          <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[10px] border-b border-slate-200/80 pb-2 flex items-center justify-between">
+                            <span>Billing Identity</span>
+                            <button
+                              type="button"
+                              onClick={() => setCurrentStep(2)}
+                              className="text-primary hover:underline font-bold tracking-normal normal-case text-xs cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <span className="text-slate-400 block text-[11px] font-semibold">Billing Name</span>
+                              <span className="font-bold text-slate-900">{fullName}</span>
                             </div>
-                          )}
-                          {gstin && (
-                            <div className="flex justify-between">
-                              <span>Your GSTIN</span>
-                              <span className="font-bold text-slate-900 font-mono">{gstin.toUpperCase()}</span>
+                            {businessName && (
+                              <div>
+                                <span className="text-slate-400 block text-[11px] font-semibold">Company Name</span>
+                                <span className="font-bold text-slate-900">{businessName}</span>
+                              </div>
+                            )}
+                            {gstin && (
+                              <div>
+                                <span className="text-slate-400 block text-[11px] font-semibold">GSTIN</span>
+                                <span className="font-bold text-slate-900 font-mono">{gstin.toUpperCase()}</span>
+                              </div>
+                            )}
+                            <div className="sm:col-span-2 border-t border-slate-200/60 pt-2">
+                              <span className="text-slate-400 block text-[11px] font-semibold mb-0.5">Billing Address</span>
+                              <span className="font-bold text-slate-800 leading-relaxed block">{billingAddress}</span>
                             </div>
-                          )}
-                          <div className="flex justify-between border-t border-slate-200/50 pt-2 mt-1">
-                            <span>Address</span>
-                            <span className="font-bold text-slate-800 max-w-[240px] text-right truncate">{billingAddress}</span>
                           </div>
                         </div>
 
@@ -675,7 +945,7 @@ export function CheckoutPage() {
                             <div>
                               <h4 className="text-xs font-bold text-slate-800">Secure Payment via Razorpay</h4>
                               <p className="text-[11px] text-slate-500 leading-normal mt-0.5">
-                                Upon clicking complete, the Razorpay payment window will overlay the page. You can pay via Cards, UPI, Net Banking, or Wallets securely.
+                                Supported methods: Credit Card, Debit Card, UPI, & Net Banking. (EMI & Pay Later disabled).
                               </p>
                             </div>
                           </div>
@@ -687,21 +957,21 @@ export function CheckoutPage() {
                             id="agree-terms"
                             checked={agreeTerms}
                             onCheckedChange={(checked) => setAgreeTerms(checked)}
+                            className="accent-blue-600 h-4.5 w-4.5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                           />
-                          <Label htmlFor="agree-terms" className="text-sm leading-relaxed">
+                          <Label htmlFor="agree-terms" className="text-sm leading-relaxed cursor-pointer">
                             I agree to Lelam's{' '}
-                            <Link to="/terms" target="_blank" className="text-primary font-bold hover:underline">
+                            <Link to="/terms" target="_blank" className="text-blue-600 font-bold hover:underline">
                               Terms of Service
                             </Link>{' '}
                             and{' '}
-                            <Link to="/faq" target="_blank" className="text-primary font-bold hover:underline">
+                            <Link to="/faq" target="_blank" className="text-blue-600 font-bold hover:underline">
                               Refund & Cancellation Policy
                             </Link>
                             .
                           </Label>
                         </div>
-                      </div>
-                    </CardContent>
+                      </CardContent>
                     <CardFooter className="flex justify-between">
                       <Button
                         variant="outline"
@@ -715,7 +985,7 @@ export function CheckoutPage() {
                         onClick={handlePay}
                         disabled={isProcessing || !agreeTerms}
                         size="lg"
-                        className="bg-green-600 hover:bg-green-700 flex items-center gap-2 text-white border-0"
+                        className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 flex items-center gap-2 text-white border-0 font-bold px-6 shadow-md shadow-emerald-600/20 disabled:opacity-50 cursor-pointer transition-all"
                       >
                         {isProcessing ? (
                           <>
@@ -755,11 +1025,7 @@ export function CheckoutPage() {
                   <h3 className="text-xs font-black uppercase text-slate-400 border-b pb-1.5 mb-2">Invoice details</h3>
                   <div className="flex justify-between">
                     <span>Merchant</span>
-                    <span className="font-bold text-slate-800">Lelam Technologies Private Limited</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Merchant GSTIN</span>
-                    <span className="font-mono font-bold text-slate-900">27AADCL5842K1Z0</span>
+                    <span className="font-bold text-slate-800">Lelam Company</span>
                   </div>
                   {gstin && (
                     <div className="flex justify-between">
@@ -801,66 +1067,148 @@ export function CheckoutPage() {
 
           {/* Right Column: Order Summary Card */}
           <div className="lg:col-span-5 space-y-6">
-            <div className="bg-slate-900 text-white rounded-3xl border border-slate-800 shadow-xl p-6 space-y-6">
-              <h3 className="text-base font-black text-white border-b border-slate-800 pb-2 flex items-center gap-2">
-                <ShoppingBag className="h-4.5 w-4.5" /> Order Summary
-              </h3>
+            <div className="bg-white text-slate-900 rounded-3xl border border-slate-200 shadow-md p-6 space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <ShoppingBag className="h-4.5 w-4.5 text-primary" /> Order Summary
+                </h3>
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+                  {planId === 'pro' ? 'Pro Access' : 'Explorer'}
+                </span>
+              </div>
 
               <div className="space-y-4 text-left">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="text-sm font-bold text-slate-200 uppercase tracking-wide">
+                    <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
                       {planId === 'pro' ? 'Bidder Pro Plan' : 'Explorer Plan'}
                     </h4>
-                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                       Billed {billingCycle}
                     </p>
                   </div>
-                  <span className="text-sm font-extrabold text-white font-mono">
-                    {formatPrice(subtotal)}
+                  <span className="text-base font-extrabold text-slate-900 font-mono">
+                    {formatPrice(baseSubtotal)}
                   </span>
                 </div>
 
-                <hr className="border-slate-800" />
+                {planId === 'pro' && (
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5 cursor-pointer">
+                          <Users className="w-4 h-4 text-primary" /> Team Seats
+                        </Label>
+                        <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                          {seats === 1 ? '1 seat included' : `${seats} team seats included`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => setSeats((prev) => Math.max(1, prev - 1))}
+                          disabled={seats <= 1}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-30 transition-colors font-bold text-sm cursor-pointer"
+                          aria-label="Decrease seats"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-7 text-center font-bold text-xs text-slate-900 font-mono">
+                          {seats}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSeats((prev) => Math.min(25, prev + 1))}
+                          disabled={seats >= 25}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-primary hover:bg-primary/95 text-white disabled:opacity-30 transition-colors font-bold text-sm cursor-pointer shadow-sm"
+                          aria-label="Increase seats"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-white" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {extraSeats > 0 && (
+                      <div className="flex justify-between items-center text-xs font-semibold text-slate-600 pt-2.5 border-t border-slate-200/60">
+                        <span>
+                          {extraSeats} Additional {extraSeats === 1 ? 'Seat' : 'Seats'} ({formatPrice(seatUnitPrice)}/{billingCycle === 'annual' ? 'yr' : 'mo'})
+                        </span>
+                        <span className="font-mono text-primary font-bold">{formatPrice(extraSeatsCost)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <hr className="border-slate-100" />
 
                 {planId === 'pro' && (
                   <>
-                    <div className="flex justify-between items-center text-xs font-semibold text-slate-400">
-                      <span>GST (18%)</span>
-                      <span className="font-mono">{formatPrice(gst)}</span>
+                    <div className="flex justify-between items-center text-xs font-medium text-slate-500">
+                      <span>Subtotal</span>
+                      <span className="font-mono text-slate-800 font-semibold">{formatPrice(subtotal)}</span>
                     </div>
-                    <hr className="border-slate-800" />
+                    <div className="flex justify-between items-center text-xs font-medium text-slate-500">
+                      <span>GST (18%)</span>
+                      <span className="font-mono text-slate-800 font-semibold">{formatPrice(gst)}</span>
+                    </div>
+                    <hr className="border-slate-100" />
                   </>
                 )}
 
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-slate-400">Total Due</span>
-                  <span className="text-lg font-black text-emerald-400 font-mono">
+                <div className="flex justify-between items-center pt-1">
+                  <span className="text-sm font-bold text-slate-900">Total Due</span>
+                  <span className="text-2xl font-black text-emerald-600 font-mono tracking-tight">
                     {formatPrice(total)}
                   </span>
                 </div>
               </div>
 
               {planId === 'pro' && (
-                <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-800 text-left">
-                  <h4 className="text-xs font-bold text-primary mb-1.5">
-                    Pro Access Features
+                <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl text-left space-y-3">
+                  <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" /> Package Features Included
                   </h4>
-                  <ul className="space-y-1 text-slate-300 text-[11px] font-semibold leading-normal list-disc list-inside">
-                    <li>AI Valuation Engine (Profit & Loss)</li>
-                    <li>ML Scrap Price Predictor</li>
-                    <li>Live market rates & price history</li>
-                    <li>Up to 3 team seats</li>
-                    <li>Document vault for paperwork</li>
+                  <ul className="space-y-2.5 text-slate-600 text-xs font-medium leading-normal">
+                    <li className="flex items-start gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <span><strong className="text-slate-900 font-semibold">AI Valuation Engine</strong> — Profit & loss estimates</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <span><strong className="text-slate-900 font-semibold">ML Scrap Price Predictor</strong> — Live price trends</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <span><strong className="text-slate-900 font-semibold">Live Commodity Rates</strong> — Historical market prices</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <span><strong className="text-slate-900 font-semibold">{seats} Team {seats === 1 ? 'Seat' : 'Seats'} Included</strong> — Shared bidding workspace</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <span><strong className="text-slate-900 font-semibold">Document Vault & EMD</strong> — Paperwork & HSN tracking</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <span><strong className="text-slate-900 font-semibold">Real-Time Auction Alerts</strong> — Instant WhatsApp & SMS</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <span><strong className="text-slate-900 font-semibold">Priority 24/7 VIP Support</strong> — Tender assistance</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <span><strong className="text-slate-900 font-semibold">Unlimited Catalog Downloads</strong> — MSTC & government PDFs</span>
+                    </li>
                   </ul>
                 </div>
               )}
 
               {/* Merchant Details */}
-              <div className="border-t border-slate-800/80 pt-4 text-[10px] text-slate-400 space-y-1 leading-normal font-medium text-left">
-                <p className="font-bold text-slate-300">Lelam Technologies Private Limited</p>
-                <p>Seller GSTIN: 27AADCL5842K1Z0</p>
-                <p>Support: support@lelam.in | +91 22 6902 4500</p>
+              <div className="border-t border-slate-100 pt-4 text-[10px] text-slate-400 space-y-1 leading-normal font-medium text-left">
+                <p className="font-bold text-slate-800 text-xs">Lelam Company</p>
+                <p className="text-slate-500 text-[11px]">Support: support@lelam.co | +91 94477 53889</p>
               </div>
             </div>
 
