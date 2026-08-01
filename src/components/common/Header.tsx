@@ -94,6 +94,15 @@ export function Header() {
        profile?.subscription_plan === 'enterprise' ? 'Enterprise' : 'Free')
     : 'App';
 
+  const isPaidSubscriberOrAdmin = isAuthenticated && (
+    profile?.subscription_plan === 'pro' || 
+    profile?.subscription_plan === 'go' || 
+    profile?.subscription_plan === 'go-subscription' || 
+    profile?.subscription_plan === 'enterprise' || 
+    profile?.role === 'admin' || 
+    profile?.role === 'superadmin'
+  );
+
   const [notifications, setNotifications] = useState<DbNotification[]>([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
@@ -351,21 +360,30 @@ export function Header() {
                 </div>
               )}
 
-              {isAuthenticated ? (
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
-                >
-                  Dashboard
-                </Link>
-              ) : (
-                <Link
-                  to="/auth/login"
-                  className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary/90 transition-colors"
-                >
-                  Sign In
-                </Link>
-              )}
+               {isAuthenticated ? (
+                 isPaidSubscriberOrAdmin ? (
+                   <Link
+                     to="/dashboard"
+                     className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
+                   >
+                     Dashboard
+                   </Link>
+                 ) : (
+                   <Link
+                     to="/pricing"
+                     className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 transition-all duration-300"
+                   >
+                     Upgrade Plan
+                   </Link>
+                 )
+               ) : (
+                 <Link
+                   to="/auth/login"
+                   className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary/90 transition-colors"
+                 >
+                   Sign In
+                 </Link>
+               )}
             </div>
           </nav>
 
@@ -488,13 +506,23 @@ export function Header() {
                   <span className="absolute top-3 right-3.5 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
                 )}
               </Link>
-              <Link
-                to="/dashboard"
-                className="flex-1 text-center py-3.5 px-6 rounded-2xl text-base font-bold text-white bg-primary hover:bg-primary/95 shadow-lg shadow-primary/30 transition-all cursor-pointer"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Go to Dashboard
-              </Link>
+              {isPaidSubscriberOrAdmin ? (
+                <Link
+                  to="/dashboard"
+                  className="flex-1 text-center py-3.5 px-6 rounded-2xl text-base font-bold text-white bg-primary hover:bg-primary/95 shadow-lg shadow-primary/30 transition-all cursor-pointer"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Go to Dashboard
+                </Link>
+              ) : (
+                <Link
+                  to="/pricing"
+                  className="flex-1 text-center py-3.5 px-6 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Upgrade Plan
+                </Link>
+              )}
             </div>
           ) : (
             <Link
