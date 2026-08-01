@@ -113,6 +113,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export function PricingPage() {
+  const [isYearly, setIsYearly] = useState(false);
   const [expandedMobileCategories, setExpandedMobileCategories] = useState<Record<string, boolean>>({});
 
   const toggleMobileCategory = (name: string) => {
@@ -126,7 +127,7 @@ export function PricingPage() {
     <div className="min-h-screen bg-white">
       {/* Pricing Cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <PricingSection3 />
+        <PricingSection3 isYearly={isYearly} onYearlyChange={setIsYearly} />
       </div>
 
       {/* Feature Comparison Table */}
@@ -144,21 +145,37 @@ export function PricingPage() {
         <div className="hidden md:block overflow-x-auto bg-gradient-to-b from-neutral-100 to-neutral-200 rounded-lg p-4 sm:p-6">
           <table className="w-full border-collapse table-fixed">
             <thead>
-              <tr className="border-b-2 border-blue-200/60">
-                <th className="text-left py-5 pr-4 text-base font-extrabold text-slate-600 uppercase tracking-wider w-[32%]">
+              <tr className="border-b-2 border-blue-200/60 text-slate-800">
+                <th className="text-left py-5 pr-4 text-base font-extrabold text-slate-600 uppercase tracking-wider w-[32%] align-top">
                   Feature
                 </th>
-                <th className="text-center py-5 px-3 text-sm font-extrabold text-slate-600 uppercase tracking-wider w-[17%]">
-                  Free
+                <th className="text-center py-5 px-3 w-[17%] align-top">
+                  <span className="block text-sm font-extrabold text-slate-600 uppercase tracking-wider">Free</span>
+                  <span className="block text-xs font-semibold text-slate-500 mt-1">₹0</span>
                 </th>
-                <th className="text-center py-5 px-3 text-sm font-extrabold text-slate-600 uppercase tracking-wider w-[17%]">
-                  Individual
+                <th className="text-center py-5 px-3 w-[17%] align-top">
+                  <span className="block text-sm font-extrabold text-slate-600 uppercase tracking-wider">Individual</span>
+                  <span className="block text-sm font-bold text-slate-900 mt-1">
+                    ₹{isYearly ? '8,438' : '799'}
+                    <span className="text-[10px] font-normal text-slate-500">/{isYearly ? 'yr' : 'mo'}</span>
+                  </span>
+                  {isYearly && (
+                    <span className="block text-[10px] text-slate-500 mt-0.5">Effective: ₹703/mo</span>
+                  )}
                 </th>
-                <th className="text-center py-5 px-3 text-sm font-black uppercase tracking-wider bg-gradient-to-b from-blue-100/80 to-blue-50/60 text-primary rounded-t-xl w-[17%] ring-1 ring-blue-200/60">
-                  Business
+                <th className="text-center py-5 px-3 bg-gradient-to-b from-blue-100/80 to-blue-50/60 rounded-t-xl w-[17%] ring-1 ring-blue-200/60 align-top">
+                  <span className="block text-sm font-black text-primary uppercase tracking-wider">Business</span>
+                  <span className="block text-sm font-black text-primary mt-1">
+                    ₹{isYearly ? '15,830' : '1,499'}
+                    <span className="text-[10px] font-normal text-primary/80">/{isYearly ? 'yr' : 'mo'}</span>
+                  </span>
+                  {isYearly && (
+                    <span className="block text-[10px] text-primary/80 mt-0.5">Effective: ₹1,319/mo</span>
+                  )}
                 </th>
-                <th className="text-center py-5 px-3 text-sm font-extrabold text-slate-600 uppercase tracking-wider w-[17%]">
-                  Enterprise
+                <th className="text-center py-5 px-3 w-[17%] align-top">
+                  <span className="block text-sm font-extrabold text-slate-600 uppercase tracking-wider">Enterprise</span>
+                  <span className="block text-xs font-semibold text-slate-500 mt-1">Custom</span>
                 </th>
               </tr>
             </thead>

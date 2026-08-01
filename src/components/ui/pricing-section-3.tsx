@@ -172,8 +172,17 @@ const PricingSwitch = ({
   );
 };
 
-export default function PricingSection3() {
-  const [isYearly, setIsYearly] = useState(false);
+export default function PricingSection3({
+  isYearly: externalIsYearly,
+  onYearlyChange,
+}: {
+  isYearly?: boolean;
+  onYearlyChange?: (value: boolean) => void;
+}) {
+  const [internalIsYearly, setInternalIsYearly] = useState(false);
+  const isYearly = externalIsYearly !== undefined ? externalIsYearly : internalIsYearly;
+  const setIsYearly = onYearlyChange || setInternalIsYearly;
+
   const pricingRef = useRef<HTMLDivElement>(null);
 
   const revealVariants = {
