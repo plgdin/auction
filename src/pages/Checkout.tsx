@@ -96,7 +96,9 @@ export function CheckoutPage() {
   }, [isAuthenticated]);
 
   // Pricing calculations
-  const subtotal = planId === 'pro' ? (billingCycle === 'annual' ? 21110 : 1999) : 0;
+  const subtotal = 
+    (planId === 'pro' || planId === 'premium') ? (billingCycle === 'annual' ? 21110 : 1999) :
+    (planId === 'go-subscription' || planId === 'go') ? (billingCycle === 'annual' ? 7990 : 799) : 0;
   const gst = Math.round(subtotal * 0.18);
   const total = subtotal + gst;
 
@@ -218,7 +220,7 @@ export function CheckoutPage() {
       amount: total * 100, // paise
       currency: 'INR',
       name: 'Lelam Technologies',
-      description: `Lelam ${planId === 'pro' ? 'Bidder Pro' : 'Explorer'} plan (${billingCycle})`,
+      description: `Lelam ${(planId === 'pro' || planId === 'premium') ? 'Bidder Pro' : (planId === 'go' || planId === 'go-subscription') ? 'Go Subscription' : 'Explorer'} plan (${billingCycle})`,
       image: '/favicon.svg',
       order_id: orderId,
       handler: async function (response: any) {
@@ -746,7 +748,7 @@ export function CheckoutPage() {
                 <div className="space-y-2">
                   <h2 className="text-2xl font-black text-slate-900">Subscription Activated!</h2>
                   <p className="text-sm text-slate-500 max-w-md mx-auto font-medium">
-                    Your {planId === 'pro' ? 'Bidder Pro' : 'Explorer'} subscription has been successfully registered. You now have full access to platform tools.
+                    Your {(planId === 'pro' || planId === 'premium') ? 'Bidder Pro' : (planId === 'go' || planId === 'go-subscription') ? 'Go Subscription' : 'Explorer'} subscription has been successfully registered. You now have full access to platform tools.
                   </p>
                 </div>
 
@@ -778,7 +780,7 @@ export function CheckoutPage() {
                   <div className="flex justify-between">
                     <span>Activated Plan</span>
                     <span className="font-bold text-slate-800">
-                      {planId === 'pro' ? 'Bidder Pro' : 'Explorer'} ({billingCycle})
+                      {(planId === 'pro' || planId === 'premium') ? 'Bidder Pro' : (planId === 'go' || planId === 'go-subscription') ? 'Go Subscription' : 'Explorer'} ({billingCycle})
                     </span>
                   </div>
                   <div className="flex justify-between border-t pt-2 mt-1">
