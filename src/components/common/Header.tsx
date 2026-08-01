@@ -371,7 +371,7 @@ export function Header() {
                  ) : (
                    <Link
                      to="/pricing"
-                     className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 transition-all duration-300"
+                     className="inline-flex items-center justify-center px-5 py-2.5 rounded-full border border-blue-200 bg-gradient-to-t from-blue-50 via-blue-100 to-blue-200 text-blue-950 font-black text-sm shadow-xs shadow-blue-200/50 hover:from-blue-100 hover:via-blue-200 hover:to-blue-300 transition-all duration-300 scale-95 hover:scale-100"
                    >
                      Upgrade Plan
                    </Link>
@@ -517,7 +517,7 @@ export function Header() {
               ) : (
                 <Link
                   to="/pricing"
-                  className="flex-1 text-center py-3.5 px-6 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                  className="flex-1 text-center py-3.5 px-6 rounded-2xl border border-blue-200 bg-gradient-to-t from-blue-50 via-blue-100 to-blue-200 text-blue-950 font-black text-base shadow-xs shadow-blue-200/50 hover:from-blue-100 hover:via-blue-200 hover:to-blue-300 transition-all duration-300"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Upgrade Plan
