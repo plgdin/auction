@@ -305,7 +305,7 @@ export function DocumentVault() {
           <button
             onClick={() => {
               if (!isPremium) {
-                toast.error('Document Upload is a Bidder Pro feature. Please upgrade.');
+                toast.error('Document Upload is a Business feature. Please upgrade.');
                 return;
               }
               fileInputRef.current?.click();
@@ -335,7 +335,7 @@ export function DocumentVault() {
               to="/pricing"
               className="px-6 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/95 transition-all text-center shadow-md shadow-primary/20 hover:scale-[1.02] cursor-pointer"
             >
-              Upgrade to Bidder Pro
+              Upgrade to Business
             </Link>
           </div>
         </div>

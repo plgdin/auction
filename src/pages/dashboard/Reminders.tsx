@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { auctionService } from '../../services/auctionService';
 import { dashboardService } from '../../services/dashboardService';
@@ -13,10 +14,42 @@ import { MstcSearchService } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 
 export function Reminders() {
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
+  const isPremium = profile?.subscription_plan === 'pro' || 
+                    profile?.subscription_plan === 'enterprise' || 
+                    profile?.role === 'admin' || 
+                    profile?.role === 'superadmin';
+
   const [watchlist, setWatchlist] = useState<AuctionWithMstc[]>([]);
   const [reminders, setReminders] = useState<ReminderSetting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  if (!isPremium) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center max-w-2xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-sm p-8 mt-6">
+          <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-6 shadow-inner">
+            <Bell className="w-8 h-8 animate-pulse" />
+          </div>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+            Unlock Calendar & Reminders
+          </h3>
+          <p className="mt-2.5 text-sm text-slate-600 leading-relaxed">
+            Never miss a closing date. Get email reminders, add auctions directly to your interactive visual bidding calendar, and configure custom alert intervals.
+          </p>
+
+          <div className="mt-8 flex gap-3">
+            <Link
+              to="/pricing"
+              className="px-6 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/95 transition-all text-center shadow-md shadow-primary/20 hover:scale-[1.02] cursor-pointer"
+            >
+              Upgrade to Business
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   // Calendar State
   const [currentDate, setCurrentDate] = useState(new Date());

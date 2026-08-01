@@ -24,6 +24,17 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
+  // Paywall check: Free users cannot access dashboard routes (must redirect to pricing)
+  if (
+    location.pathname.startsWith('/dashboard') &&
+    (!profile?.subscription_plan || 
+     profile.subscription_plan === 'explorer') &&
+    profile?.role !== 'admin' && 
+    profile?.role !== 'superadmin'
+  ) {
+    return <Navigate to="/pricing" replace />;
+  }
+
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
     // Role not authorized, redirect to general dashboard
     return <Navigate to="/dashboard" replace />;

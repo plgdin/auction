@@ -25,7 +25,7 @@ export interface Profile {
   phone?: string;
   avatar_url?: string;
   is_active: boolean;
-  subscription_plan?: 'explorer' | 'pro' | 'enterprise';
+  subscription_plan?: 'explorer' | 'go' | 'go-subscription' | 'pro' | 'enterprise';
   created_at: string;
   updated_at: string;
 }

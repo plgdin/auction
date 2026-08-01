@@ -1,4 +1,4 @@
-import { PricingBasic } from '../components/ui/pricing-demo';
+import PricingSection3 from '../components/ui/pricing-section-3';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Minus, ChevronDown, Zap, Shield, BarChart3, Brain, Truck, Users } from 'lucide-react';
@@ -22,8 +22,9 @@ const COMPARISON_CATEGORIES = Object.entries(
     }
     acc[feature.category].push({
       name: feature.name,
-      free: feature.values.explorer,
-      pro: feature.values.pro,
+      starter: feature.values.starter,
+      go: feature.values.go,
+      premium: feature.values.premium,
       enterprise: feature.values.enterprise,
     });
     return acc;
@@ -36,12 +37,12 @@ const COMPARISON_CATEGORIES = Object.entries(
 
 function renderCellValue(value: boolean | string) {
   if (typeof value === 'string') {
-    return <span className="text-xs font-bold text-slate-700">{value}</span>;
+    return <span className="text-sm font-black text-slate-800">{value}</span>;
   }
   if (value) {
-    return <Check className="w-4 h-4 text-emerald-500 mx-auto" />;
+    return <Check className="w-5.5 h-5.5 text-emerald-500 mx-auto stroke-[2.5]" />;
   }
-  return <Minus className="w-4 h-4 text-slate-300 mx-auto" />;
+  return <Minus className="w-5.5 h-5.5 text-slate-300 mx-auto" />;
 }
 
 // Pricing FAQ data
@@ -79,7 +80,7 @@ const PRICING_FAQ = [
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-slate-100 last:border-0">
+    <div className="border-b border-blue-100/60 last:border-0">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between py-5 text-left cursor-pointer group"
@@ -112,6 +113,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export function PricingPage() {
+  const [isYearly, setIsYearly] = useState(false);
   const [expandedMobileCategories, setExpandedMobileCategories] = useState<Record<string, boolean>>({});
 
   const toggleMobileCategory = (name: string) => {
@@ -125,36 +127,55 @@ export function PricingPage() {
     <div className="min-h-screen bg-white">
       {/* Pricing Cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <PricingBasic />
+        <PricingSection3 isYearly={isYearly} onYearlyChange={setIsYearly} />
       </div>
 
       {/* Feature Comparison Table */}
-      <section id="comparison-table" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 scroll-mt-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
+      <section id="comparison-table" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 scroll-mt-20">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
             Compare Plans in Detail
           </h2>
-          <p className="mt-3 text-slate-500 text-base max-w-xl mx-auto">
+          <p className="mt-4 text-slate-500 text-lg max-w-2xl mx-auto">
             See exactly what's included in each plan to find the right fit for your auction strategy.
           </p>
         </div>
 
         {/* Desktop comparison table */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto bg-gradient-to-b from-neutral-100 to-neutral-200 rounded-lg p-4 sm:p-6">
           <table className="w-full border-collapse table-fixed">
             <thead>
-              <tr className="border-b-2 border-slate-200">
-                <th className="text-left py-4 pr-4 text-sm font-bold text-slate-500 uppercase tracking-wider w-[40%]">
+              <tr className="border-b-2 border-blue-200/60 text-slate-800">
+                <th className="text-left py-5 pr-4 text-base font-extrabold text-slate-600 uppercase tracking-wider w-[32%] align-top">
                   Feature
                 </th>
-                <th className="text-center py-4 px-4 text-sm font-bold text-slate-500 uppercase tracking-wider w-[20%]">
-                  Explorer
+                <th className="text-center py-5 px-3 w-[17%] align-top">
+                  <span className="block text-sm font-extrabold text-slate-600 uppercase tracking-wider">Free</span>
+                  <span className="block text-xs font-semibold text-slate-500 mt-1">₹0</span>
                 </th>
-                <th className="text-center py-4 px-4 text-sm font-bold uppercase tracking-wider bg-primary/5 text-primary rounded-t-xl w-[20%]">
-                  Bidder Pro
+                <th className="text-center py-5 px-3 w-[17%] align-top">
+                  <span className="block text-sm font-extrabold text-slate-600 uppercase tracking-wider">Individual</span>
+                  <span className="block text-sm font-bold text-slate-900 mt-1">
+                    ₹{isYearly ? '8,438' : '799'}
+                    <span className="text-[10px] font-normal text-slate-500">/{isYearly ? 'yr' : 'mo'}</span>
+                  </span>
+                  {isYearly && (
+                    <span className="block text-[10px] text-slate-500 mt-0.5">Effective: ₹703/mo</span>
+                  )}
                 </th>
-                <th className="text-center py-4 px-4 text-sm font-bold text-slate-500 uppercase tracking-wider w-[20%]">
-                  Enterprise
+                <th className="text-center py-5 px-3 bg-gradient-to-b from-blue-100/80 to-blue-50/60 rounded-t-xl w-[17%] ring-1 ring-blue-200/60 align-top">
+                  <span className="block text-sm font-black text-primary uppercase tracking-wider">Business</span>
+                  <span className="block text-sm font-black text-primary mt-1">
+                    ₹{isYearly ? '15,830' : '1,499'}
+                    <span className="text-[10px] font-normal text-primary/80">/{isYearly ? 'yr' : 'mo'}</span>
+                  </span>
+                  {isYearly && (
+                    <span className="block text-[10px] text-primary/80 mt-0.5">Effective: ₹1,319/mo</span>
+                  )}
+                </th>
+                <th className="text-center py-5 px-3 w-[17%] align-top">
+                  <span className="block text-sm font-extrabold text-slate-600 uppercase tracking-wider">Enterprise</span>
+                  <span className="block text-xs font-semibold text-slate-500 mt-1">Custom</span>
                 </th>
               </tr>
             </thead>
@@ -164,30 +185,35 @@ export function PricingPage() {
                 <tbody key={category.name}>
                   <tr>
                     <td
-                      colSpan={4}
-                      className="pt-8 pb-3 text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-100"
+                      colSpan={5}
+                      className="pt-10 pb-4 text-sm font-black text-slate-900 uppercase tracking-widest border-b border-blue-200/40"
                     >
-                      <span className="flex items-center gap-2">
-                        <Icon className="w-4 h-4 text-primary" />
+                      <span className="flex items-center gap-2.5">
+                        <span className="h-8 w-8 rounded-lg bg-gradient-to-t from-blue-100 to-blue-50 border border-blue-200/60 grid place-content-center">
+                          <Icon className="w-4.5 h-4.5 text-primary" />
+                        </span>
                         {category.name}
                       </span>
                     </td>
                   </tr>
-                  {category.features.map((feature) => (
+                  {category.features.map((feature: any) => (
                     <tr
                       key={feature.name}
-                      className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
+                      className="border-b border-slate-200/50 hover:bg-white/40 transition-colors"
                     >
-                      <td className="py-3.5 pr-4 text-sm text-slate-700 font-medium">
+                      <td className="py-4 pr-4 text-base text-slate-800 font-semibold">
                         {feature.name}
                       </td>
-                      <td className="py-3.5 px-4 text-center">
-                        {renderCellValue(feature.free)}
+                      <td className="py-4 px-3 text-center">
+                        {renderCellValue(feature.starter)}
                       </td>
-                      <td className="py-3.5 px-4 text-center bg-primary/5">
-                        {renderCellValue(feature.pro)}
+                      <td className="py-4 px-3 text-center">
+                        {renderCellValue(feature.go)}
                       </td>
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-4 px-3 text-center bg-blue-50/40 ring-1 ring-blue-200/30 ring-inset">
+                        {renderCellValue(feature.premium)}
+                      </td>
+                      <td className="py-4 px-3 text-center">
                         {renderCellValue(feature.enterprise)}
                       </td>
                     </tr>
@@ -204,17 +230,19 @@ export function PricingPage() {
             const Icon = category.icon;
             const isExpanded = !!expandedMobileCategories[category.name];
             return (
-              <div key={category.name} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+              <div key={category.name} className="bg-gradient-to-b from-neutral-100 to-neutral-200 rounded-2xl p-5 border border-blue-200/40 shadow-sm">
                 <button
                   onClick={() => toggleMobileCategory(category.name)}
-                  className="w-full text-xs font-black text-slate-800 uppercase tracking-widest flex items-center justify-between cursor-pointer"
+                  className="w-full text-sm font-black text-slate-800 uppercase tracking-widest flex items-center justify-between cursor-pointer"
                 >
-                  <span className="flex items-center gap-2">
-                    <Icon className="w-4 h-4 text-primary" />
+                  <span className="flex items-center gap-2.5">
+                    <span className="h-7 w-7 rounded-lg bg-gradient-to-t from-blue-100 to-blue-50 border border-blue-200/60 grid place-content-center">
+                      <Icon className="w-4 h-4 text-primary" />
+                    </span>
                     {category.name}
                   </span>
                   <ChevronDown
-                    className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${
+                    className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${
                       isExpanded ? 'rotate-180 text-primary' : ''
                     }`}
                   />
@@ -228,21 +256,25 @@ export function PricingPage() {
                       transition={{ duration: 0.3, ease: 'easeInOut' }}
                       className="overflow-hidden"
                     >
-                      <div className="space-y-3">
-                        {category.features.map((feature) => (
-                          <div key={feature.name} className="bg-white rounded-xl p-3 border border-slate-100 shadow-3xs">
-                            <p className="text-sm font-semibold text-slate-800 mb-2">{feature.name}</p>
-                            <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="space-y-4">
+                        {category.features.map((feature: any) => (
+                          <div key={feature.name} className="bg-white/80 backdrop-blur-xs rounded-xl p-4 border border-blue-100/60 shadow-3xs">
+                            <p className="text-base font-bold text-slate-800 mb-3">{feature.name}</p>
+                            <div className="grid grid-cols-4 gap-1.5 text-center">
                               <div>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Explorer</p>
-                                {renderCellValue(feature.free)}
-                              </div>
-                              <div className="bg-primary/5 rounded-lg py-1">
-                                <p className="text-[9px] font-bold text-primary uppercase mb-1">Pro</p>
-                                {renderCellValue(feature.pro)}
+                                <p className="text-[10px] font-black text-slate-400 uppercase mb-1.5">Free</p>
+                                {renderCellValue(feature.starter)}
                               </div>
                               <div>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Enterprise</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase mb-1.5">Individual</p>
+                                {renderCellValue(feature.go)}
+                              </div>
+                              <div className="bg-blue-50/60 rounded-lg py-1 ring-1 ring-blue-200/40 ring-inset">
+                                <p className="text-[10px] font-black text-primary uppercase mb-1.5">Business</p>
+                                {renderCellValue(feature.premium)}
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase mb-1.5">Enterprise</p>
                                 {renderCellValue(feature.enterprise)}
                               </div>
                             </div>
@@ -258,25 +290,6 @@ export function PricingPage() {
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="bg-slate-50/70 py-16 sm:py-24">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
-              Frequently Asked Questions
-            </h2>
-            <p className="mt-3 text-slate-500 text-base">
-              Everything you need to know about Lelam pricing.
-            </p>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 sm:px-8 divide-y divide-slate-100">
-            {PRICING_FAQ.map((item) => (
-              <FaqItem key={item.q} q={item.q} a={item.a} />
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA Banner */}
       <section className="py-16 sm:py-24">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -289,16 +302,35 @@ export function PricingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               to="/auth/register"
-              className="inline-flex items-center justify-center px-8 py-3.5 rounded-xl text-base font-bold text-white bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center px-8 py-3.5 rounded-xl text-base font-bold text-white bg-gradient-to-t from-blue-900 to-blue-700 shadow-lg shadow-blue-950/30 border border-blue-800 transition-all hover:-translate-y-0.5 hover:opacity-95"
             >
               Start Free — No Credit Card
             </Link>
             <Link
               to="/contact"
-              className="inline-flex items-center justify-center px-8 py-3.5 rounded-xl text-base font-bold text-slate-700 bg-white border border-slate-200 hover:border-primary hover:text-primary shadow-sm transition-all hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center px-8 py-3.5 rounded-xl text-base font-bold text-blue-950 bg-gradient-to-t from-blue-50 via-blue-100 to-blue-200 border border-blue-300 shadow-sm transition-all hover:-translate-y-0.5 hover:opacity-95"
             >
               Talk to Sales
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="bg-gradient-to-b from-neutral-100 to-neutral-200/60 py-16 sm:py-24">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
+              Frequently Asked Questions
+            </h2>
+            <p className="mt-3 text-slate-500 text-base">
+              Everything you need to know about Lelam pricing.
+            </p>
+          </div>
+          <div className="bg-white/80 backdrop-blur-xs rounded-2xl border border-blue-200/40 shadow-sm px-6 sm:px-8 divide-y divide-blue-100/40">
+            {PRICING_FAQ.map((item) => (
+              <FaqItem key={item.q} q={item.q} a={item.a} />
+            ))}
           </div>
         </div>
       </section>
