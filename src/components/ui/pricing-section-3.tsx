@@ -13,14 +13,14 @@ import { Link } from "react-router-dom";
 const plans = [
   {
     id: "starter",
-    name: "Starter",
+    name: "Free",
     description: "Start discovering auctions for free — no credit card needed",
     price: 0,
     yearlyPrice: 0,
     buttonText: "Get started free",
     buttonVariant: "outline" as const,
     features: [
-      { text: "1 team seat", icon: <Briefcase size={20} /> },
+      { text: "1 user seat", icon: <Briefcase size={20} /> },
       { text: "10 watchlist items", icon: <Database size={20} /> },
     ],
     includes: [
@@ -36,18 +36,17 @@ const plans = [
   },
   {
     id: "go-subscription",
-    name: "Go Subscription",
+    name: "Individual",
     description: "Perfect for active bidders who want automated tools and extra limits",
     price: 799,
     yearlyPrice: 7990,
-    buttonText: "Get Go",
+    buttonText: "Get Individual",
     buttonVariant: "outline" as const,
     features: [
-      { text: "2 team seats", icon: <Briefcase size={20} /> },
       { text: "50 watchlist items", icon: <Database size={20} /> },
     ],
     includes: [
-      "Everything in Starter, plus:",
+      "Everything in Free, plus:",
       "GST, Tax & Transport Cost Estimator",
       "Basic Max Bid Calculator",
       "Custom reminders & alerts",
@@ -60,10 +59,10 @@ const plans = [
   },
   {
     id: "premium",
-    name: "Premium",
+    name: "Business",
     description: "Full suite of AI-powered tools to find, value, and win auctions",
-    price: 1999,
-    yearlyPrice: 21110,
+    price: 1499,
+    yearlyPrice: 14990,
     buttonText: "Start 14-Day Free Trial",
     buttonVariant: "default" as const,
     popular: true,
@@ -72,7 +71,7 @@ const plans = [
       { text: "Unlimited watchlist", icon: <Database size={20} /> },
     ],
     includes: [
-      "Everything in Go, plus:",
+      "Everything in Individual, plus:",
       "Profit & Loss Valuation Calculator",
       "Scrap vs. Resale Value Breakdown",
       "Valuation Risk & Margin Warnings",
@@ -97,7 +96,7 @@ const plans = [
       { text: "Unlimited everything", icon: <Database size={20} /> },
     ],
     includes: [
-      "Everything in Premium, plus:",
+      "Everything in Business, plus:",
       "What-If Bid Scenario Simulator",
       "Smart Top Bid Suggestions",
       "Custom commodity indices",

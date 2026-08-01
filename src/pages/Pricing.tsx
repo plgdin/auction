@@ -149,13 +149,13 @@ export function PricingPage() {
                   Feature
                 </th>
                 <th className="text-center py-5 px-3 text-sm font-extrabold text-slate-600 uppercase tracking-wider w-[17%]">
-                  Starter
+                  Free
                 </th>
                 <th className="text-center py-5 px-3 text-sm font-extrabold text-slate-600 uppercase tracking-wider w-[17%]">
-                  Go
+                  Individual
                 </th>
                 <th className="text-center py-5 px-3 text-sm font-black uppercase tracking-wider bg-gradient-to-b from-blue-100/80 to-blue-50/60 text-primary rounded-t-xl w-[17%] ring-1 ring-blue-200/60">
-                  Premium
+                  Business
                 </th>
                 <th className="text-center py-5 px-3 text-sm font-extrabold text-slate-600 uppercase tracking-wider w-[17%]">
                   Enterprise
@@ -245,15 +245,15 @@ export function PricingPage() {
                             <p className="text-base font-bold text-slate-800 mb-3">{feature.name}</p>
                             <div className="grid grid-cols-4 gap-1.5 text-center">
                               <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase mb-1.5">Starter</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase mb-1.5">Free</p>
                                 {renderCellValue(feature.starter)}
                               </div>
                               <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase mb-1.5">Go</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase mb-1.5">Individual</p>
                                 {renderCellValue(feature.go)}
                               </div>
                               <div className="bg-blue-50/60 rounded-lg py-1 ring-1 ring-blue-200/40 ring-inset">
-                                <p className="text-[10px] font-black text-primary uppercase mb-1.5">Premium</p>
+                                <p className="text-[10px] font-black text-primary uppercase mb-1.5">Business</p>
                                 {renderCellValue(feature.premium)}
                               </div>
                               <div>

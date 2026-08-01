@@ -226,7 +226,7 @@ export const COMPARISON_FEATURES: FeatureDef[] = [
     id: 'team_seats',
     name: 'Team seats',
     category: 'Team & Organization',
-    values: { starter: '1', go: '2', premium: '3', enterprise: '5+' },
+    values: { starter: '1', go: '1', premium: '3', enterprise: '5+' },
   },
   {
     id: 'priority_onboarding',
@@ -279,8 +279,8 @@ export const PLANS: Plan[] = [
   {
     id: 'pro',
     name: 'PREMIUM',
-    price: '1999',
-    yearlyPrice: '21110',
+    price: '1499',
+    yearlyPrice: '14990',
     period: 'per month',
     description: 'Everything you need to find, value, and win auctions',
     buttonText: 'Start 14-Day Free Trial',
