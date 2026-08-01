@@ -245,7 +245,7 @@ export interface CardFeatureHighlight {
 }
 
 export interface Plan {
-  id: 'explorer' | 'pro' | 'enterprise';
+  id: 'explorer' | 'go' | 'pro' | 'enterprise';
   name: string;
   price: string | null;
   yearlyPrice: string | null;
@@ -260,13 +260,13 @@ export interface Plan {
 export const PLANS: Plan[] = [
   {
     id: 'explorer',
-    name: 'STARTER',
+    name: 'Free',
     price: '0',
     yearlyPrice: '0',
     period: 'forever',
     description: 'Start discovering auctions for free — no credit card needed',
     buttonText: 'Get Started Free',
-    href: '/checkout',
+    href: '/checkout?plan=explorer',
     isPopular: false,
     features: [
       'Auction search & browse',
@@ -277,26 +277,47 @@ export const PLANS: Plan[] = [
     ],
   },
   {
+    id: 'go',
+    name: 'Individual',
+    price: '799',
+    yearlyPrice: '8438',
+    period: 'per month',
+    description: 'Perfect for active bidders who want automated tools and extra limits',
+    buttonText: 'Get Individual',
+    href: '/checkout?plan=go',
+    isPopular: false,
+    features: [
+      'GST, Tax & Transport Cost Estimator',
+      'Basic Max Bid Calculator',
+      'Custom reminders & alerts',
+      'Document vault for paperwork',
+      'Inventory management',
+      'Logistics quote requests',
+    ],
+  },
+  {
     id: 'pro',
-    name: 'PREMIUM',
+    name: 'Business',
     price: '1499',
     yearlyPrice: '15830',
     period: 'per month',
-    description: 'Everything you need to find, value, and win auctions',
+    description: 'Full suite of AI-powered tools to find, value, and win auctions',
     buttonText: 'Start 14-Day Free Trial',
-    href: '/checkout',
+    href: '/checkout?plan=pro',
     isPopular: true,
     features: [
-      'NLP natural language search',
+      'Profit & Loss Valuation Calculator',
+      'Scrap vs. Resale Value Breakdown',
+      'Valuation Risk & Margin Warnings',
       'Live market rates & price history',
-      { text: 'AI Valuation Engine (Profit & Loss)', subtext: 'Catch one overpriced lot before you bid and the plan pays for itself.', isHighlighted: true },
-      'ML Scrap Price Predictor',
-      'Unlimited watchlist items',
+      'Scrap Price Trend Forecasts',
+      'Smart Plain-English Search',
+      'International price comparison',
     ],
   },
   {
     id: 'enterprise',
-    name: 'ENTERPRISE',
+    name: 'Enterprise',
     price: null,
     yearlyPrice: null,
     period: 'custom',
@@ -305,10 +326,11 @@ export const PLANS: Plan[] = [
     href: '/contact',
     isPopular: false,
     features: [
-      'Smart AI-powered bid recommendations',
+      'What-If Bid Scenario Simulator',
+      'Smart Top Bid Suggestions',
       'Custom commodity indices',
-      'Bulk Valuation REST API',
-      'Seller portal — list your own auctions',
+      'Seller portal access',
+      'Single Sign-On (SSO)',
       'Dedicated account manager',
     ],
   },

@@ -14,7 +14,7 @@ import NumberFlow from "@number-flow/react";
 import type { CardFeatureHighlight } from "@/utils/pricingConfig";
 
 interface PricingPlan {
-  id: 'explorer' | 'pro' | 'enterprise';
+  id: 'explorer' | 'go' | 'pro' | 'enterprise';
   name: string;
   price: string | null;
   yearlyPrice: string | null;
