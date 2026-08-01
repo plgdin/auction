@@ -187,7 +187,10 @@ const fragmentShader = /* glsl */ `
     uv = vec2(c * uv.x - s * uv.y, s * uv.x + c * uv.y);
 
     vec4 col = draw(uv);
-    gl_FragColor = vec4(col.rgb * col.a, col.a);
+    // Make dark outer ring fully transparent instead of black
+    float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+    float alpha = col.a * smoothstep(0.02, 0.12, lum);
+    gl_FragColor = vec4(col.rgb * alpha, alpha);
   }
 `;
 
@@ -291,8 +294,14 @@ export function GradientOrb({
     <div className={`w-full h-full ${className}`} style={{ background: isTransparent ? "transparent" : config.background }}>
       {/* Camera is unused — the vertex shader outputs clip-space positions directly */}
       <Canvas 
-        gl={{ antialias: true, alpha: isTransparent, depth: false, stencil: false }}
+        gl={{ antialias: true, alpha: isTransparent, premultipliedAlpha: false, depth: false, stencil: false }}
         dpr={1}
+        style={{ background: 'transparent' }}
+        onCreated={({ gl }) => {
+          if (isTransparent) {
+            gl.setClearColor(0x000000, 0);
+          }
+        }}
       >
         {!isTransparent && <color attach="background" args={[config.background]} />}
         <GradientScene config={config} />

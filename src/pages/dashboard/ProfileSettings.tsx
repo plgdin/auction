@@ -10,6 +10,7 @@ import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
 import { recommendationService } from '../../services/recommendationService';
+import { getTrialStatus } from '../../utils/subscriptionUtils';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -675,11 +676,21 @@ export function ProfileSettings() {
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Plan</p>
-                <h3 className="text-xl font-black text-slate-800 mt-1">
+                <h3 className="text-xl font-black text-slate-800 mt-1 flex items-center gap-2">
                   {profile?.subscription_plan === 'pro' ? 'Business Plan' :
                    (profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? 'Individual Plan' :
                    profile?.subscription_plan === 'enterprise' ? 'Enterprise Plan' : 'Free Plan'}
                 </h3>
+                {getTrialStatus(user?.id).isExpired && (
+                  <p className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg mt-2 inline-block">
+                    Your 14-day free trial has ended. Your subscription is over.
+                  </p>
+                )}
+                {!getTrialStatus(user?.id).isExpired && profile?.subscription_plan === 'pro' && (
+                  <p className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg mt-2 inline-block">
+                    {getTrialStatus(user?.id).statusText}
+                  </p>
+                )}
               </div>
               <div>
                 {(!profile?.subscription_plan || profile.subscription_plan === 'explorer') ? (

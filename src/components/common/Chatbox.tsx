@@ -383,7 +383,7 @@ CONTACT & ESCALATION:
       {/* Floating Widget Container */}
       <div
         ref={orbContainerRef}
-        className={`fixed z-[9999] flex flex-col items-end pointer-events-none select-none font-sans transition-all duration-500 ease-in-out ${isOnHero ? 'scale-0 opacity-0' : 'scale-100 opacity-100'} ${dragPos ? '' : `${!isHomePage || isScrolled ? 'bottom-20 sm:bottom-16' : 'bottom-6'} md:bottom-6 right-3 sm:right-6`}`}
+        className={`fixed z-[9999] flex flex-col items-end pointer-events-none select-none font-sans transition-all duration-500 ease-in-out ${isOnHero ? 'opacity-0 translate-y-6 pointer-events-none' : 'opacity-100 translate-y-0'} ${dragPos ? '' : `${!isHomePage || isScrolled ? 'bottom-20 sm:bottom-16' : 'bottom-6'} md:bottom-6 right-3 sm:right-6`}`}
         style={dragPos ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto' } : undefined}
       >
         
@@ -584,7 +584,7 @@ CONTACT & ESCALATION:
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          className={`pointer-events-auto relative w-14 h-14 rounded-full overflow-hidden bg-transparent shadow-[0_8px_32px_rgba(0,0,0,0.15),_0_0_15px_rgba(0,126,199,0.15)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.2),_0_0_20px_rgba(0,126,199,0.3)] transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer touch-none ${getOrbStateClass()}`}
+          className={`pointer-events-auto relative w-[4.5rem] h-[4.5rem] rounded-full overflow-hidden bg-transparent shadow-none transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer touch-none ${getOrbStateClass()}`}
         >
           <span className="sr-only">{isOpen ? "Close Laila Assistant Chat" : "Open Laila Assistant Chat"}</span>
           {/* GPU-rendered gradient orb background (optimized lag-free WebGL) */}
@@ -608,8 +608,8 @@ CONTACT & ESCALATION:
             </div>
           )}
 
-          {/* Glass glare highlight */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/45 rounded-full pointer-events-none"></div>
+
+
 
           {/* Hover state icon indicator */}
           {!isThinking && (

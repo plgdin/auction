@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
+import { setTrialStartTimestamp } from '../utils/subscriptionUtils';
 
 // Primitives imports to match template specifications
 import { Button } from '../components/ui/button';
@@ -192,19 +193,25 @@ export function CheckoutPage() {
 
   // Adjust step dynamically if user logs in
   useEffect(() => {
-    if (isAuthenticated && currentStep === 1) {
+    if (isAuthenticated && currentStep < 2) {
       setCurrentStep(2);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentStep]);
 
   // Pricing calculations
-  const baseSubtotal = 
-    (planId === 'pro' || planId === 'premium') ? (billingCycle === 'annual' ? 15830 : 1499) :
-    (planId === 'go-subscription' || planId === 'go') ? (billingCycle === 'annual' ? 8438 : 799) : 0;
-  
+  const isExplorerFree = planId === 'explorer' || planId === 'starter' || planId === 'free';
+  const isTrial = (planId === 'pro' || planId === 'premium') && (searchParams.get('trial') === 'true' || searchParams.get('trial') === '1');
+  const isFreeActivation = isExplorerFree || isTrial;
+
+  const baseSubtotal = isFreeActivation 
+    ? 0 
+    : (planId === 'go' || planId === 'go-subscription')
+      ? (billingCycle === 'annual' ? 8438 : 799)
+      : (billingCycle === 'annual' ? 15830 : 1499);
+
   const seatUnitPrice = billingCycle === 'annual' ? 4990 : 499;
   const extraSeats = Math.max(0, seats - 1);
-  const extraSeatsCost = (planId === 'pro' || planId === 'premium') ? extraSeats * seatUnitPrice : 0;
+  const extraSeatsCost = isFreeActivation ? 0 : extraSeats * seatUnitPrice;
   const subtotal = baseSubtotal + extraSeatsCost;
   const gst = Math.round(subtotal * 0.18);
   const total = subtotal + gst;
@@ -253,29 +260,37 @@ export function CheckoutPage() {
 
     setIsProcessing(true);
 
-    const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey12345';
+    const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || (import.meta.env as any).RAZORPAY_KEY_ID || 'rzp_test_mockkey12345';
     const isMockMode = rzpKey === 'rzp_test_mockkey12345' || rzpKey.includes('mockkey');
 
-    // If it's a free Explorer setup or using a dummy key, mock activation directly
-    if (total === 0 || isMockMode) {
+    // If it's a free Explorer/Individual setup, 14-day trial, or using a dummy key, mock activation directly
+    if (total === 0 || isFreeActivation || isMockMode) {
       setTimeout(() => {
         setIsProcessing(false);
         setStep('success');
-        setTransactionId(total === 0 ? `FREE-${Date.now().toString().slice(-6)}` : `MOCK-PAY-${Date.now().toString().slice(-6)}`);
+        setTransactionId(
+          isTrial 
+            ? `TRIAL-14D-${Date.now().toString().slice(-6)}`
+            : isIndividualFree
+            ? `INDV-FREE-${Date.now().toString().slice(-6)}`
+            : `FREE-${Date.now().toString().slice(-6)}`
+        );
+        if (isTrial) {
+          setTrialStartTimestamp(user?.id);
+        }
         if (user?.id) {
-          authService.updateProfile(user.id, { subscription_plan: planId as any }).then((updated) => {
+          const planToSet = (planId === 'pro' || planId === 'premium') ? 'pro' : (planId === 'go' || planId === 'go-subscription') ? 'go' : 'explorer';
+          authService.updateProfile(user.id, { subscription_plan: planToSet as any }).then((updated) => {
             if (updated) setProfile(updated);
           });
         }
         
-        // Trigger celebratory confetti for paid plans
-        if (planId !== 'explorer') {
-          confetti({
-            particleCount: 150,
-            spread: 80,
-            origin: { y: 0.6 }
-          });
-        }
+        // Trigger celebratory confetti for trial / free plans
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 }
+        });
       }, 1500);
       return;
     }
@@ -328,7 +343,7 @@ export function CheckoutPage() {
       currency: 'INR',
       name: 'Lelam Company',
       description: `Lelam ${(planId === 'pro' || planId === 'premium') ? 'Bidder Pro' : (planId === 'go' || planId === 'go-subscription') ? 'Go Subscription' : 'Explorer'} plan (${billingCycle})`,
-      image: '/favicon.svg',
+      image: window.location.protocol === 'https:' ? '/favicon.svg' : undefined,
       order_id: orderId,
       config: {
         display: {
@@ -467,7 +482,11 @@ export function CheckoutPage() {
   };
 
   const prevStep = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
+    if (isAuthenticated) {
+      setCurrentStep((prev) => Math.max(prev - 1, 2));
+    } else {
+      setCurrentStep((prev) => Math.max(prev - 1, 1));
+    }
   };
 
   // Skeleton view to match template skeleton design
@@ -567,7 +586,7 @@ export function CheckoutPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column: Form Steps */}
-          <div className="lg:col-span-7">
+          <div className={step === 'success' ? 'lg:col-span-12' : 'lg:col-span-7'}>
             {step === 'details' ? (
               <div className="space-y-6">
                 
@@ -989,14 +1008,22 @@ export function CheckoutPage() {
                       >
                         {isProcessing ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" /> Launches Gateway...
+                            <Loader2 className="w-4 h-4 animate-spin" /> Activating...
                           </>
-                        ) : planId === 'pro' ? (
+                        ) : isTrial ? (
+                          <>
+                            <Sparkles className="w-4 h-4" /> Start 14-Day Free Trial
+                          </>
+                        ) : isIndividualFree ? (
+                          <>
+                            <Check className="w-4 h-4" /> Activate Individual Plan
+                          </>
+                        ) : total === 0 ? (
+                          'Activate Free Plan'
+                        ) : (
                           <>
                             <Lock className="w-4 h-4" /> Complete Payment {formatPrice(total)}
                           </>
-                        ) : (
-                          'Activate Free Plan'
                         )}
                       </Button>
                     </CardFooter>
@@ -1066,144 +1093,129 @@ export function CheckoutPage() {
           </div>
 
           {/* Right Column: Order Summary Card */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="bg-white text-slate-900 rounded-3xl border border-slate-200 shadow-md p-6 space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                  <ShoppingBag className="h-4.5 w-4.5 text-primary" /> Order Summary
-                </h3>
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
-                  {planId === 'pro' ? 'Pro Access' : 'Explorer'}
-                </span>
-              </div>
+          {step !== 'success' && (
+            <div className="lg:col-span-5 space-y-6">
+              <div className="bg-white text-slate-900 rounded-3xl border border-slate-200 shadow-md p-6 space-y-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <ShoppingBag className="h-4.5 w-4.5 text-primary" /> Order Summary
+                  </h3>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+                    {planId === 'pro' ? 'Pro Access' : 'Explorer'}
+                  </span>
+                </div>
 
-              <div className="space-y-4 text-left">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                      {planId === 'pro' ? 'Bidder Pro Plan' : 'Explorer Plan'}
+                <div className="space-y-4 text-left">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                        {planId === 'pro' ? 'Bidder Pro Plan' : 'Explorer Plan'}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                        Billed {billingCycle}
+                      </p>
+                    </div>
+                    <span className="text-base font-extrabold text-slate-900 font-mono">
+                      {formatPrice(baseSubtotal)}
+                    </span>
+                  </div>
+
+                  {planId === 'pro' && (
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5 cursor-pointer">
+                            <Users className="w-4 h-4 text-primary" /> Team Seats
+                          </Label>
+                          <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                            {seats === 1 ? '1 seat included' : `${seats} team seats included`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => setSeats((prev) => Math.max(1, prev - 1))}
+                            disabled={seats <= 1 || step === 'success'}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-30 transition-colors font-bold text-sm cursor-pointer"
+                            aria-label="Decrease seats"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-7 text-center font-bold text-xs text-slate-900 font-mono">
+                            {seats}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSeats((prev) => Math.min(25, prev + 1))}
+                            disabled={seats >= 25 || step === 'success'}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-primary hover:bg-primary/95 text-white disabled:opacity-30 transition-colors font-bold text-sm cursor-pointer shadow-sm"
+                            aria-label="Increase seats"
+                          >
+                            <Plus className="w-3.5 h-3.5 text-white" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {extraSeats > 0 && (
+                        <div className="flex justify-between items-center text-xs font-semibold text-slate-600 pt-2.5 border-t border-slate-200/60">
+                          <span>
+                            {extraSeats} Additional {extraSeats === 1 ? 'Seat' : 'Seats'} ({formatPrice(seatUnitPrice)}/{billingCycle === 'annual' ? 'yr' : 'mo'})
+                          </span>
+                          <span className="font-mono text-primary font-bold">{formatPrice(extraSeatsCost)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <hr className="border-slate-100" />
+
+                  {planId === 'pro' && (
+                    <>
+                      <div className="flex justify-between items-center text-xs font-medium text-slate-500">
+                        <span>Subtotal</span>
+                        <span className="font-mono text-slate-800 font-semibold">{formatPrice(subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs font-medium text-slate-500">
+                        <span>GST (18%)</span>
+                        <span className="font-mono text-slate-800 font-semibold">{formatPrice(gst)}</span>
+                      </div>
+                      <hr className="border-slate-100" />
+                    </>
+                  )}
+
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-sm font-bold text-slate-900">Total Due</span>
+                    <span className="text-2xl font-black text-emerald-600 font-mono tracking-tight">
+                      {formatPrice(total)}
+                    </span>
+                  </div>
+                </div>
+
+                {planId === 'pro' && (
+                  <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl text-left space-y-3">
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" /> Package Features Included
                     </h4>
-                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                      Billed {billingCycle}
-                    </p>
-                  </div>
-                  <span className="text-base font-extrabold text-slate-900 font-mono">
-                    {formatPrice(baseSubtotal)}
-                  </span>
-                </div>
-
-                {planId === 'pro' && (
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5 cursor-pointer">
-                          <Users className="w-4 h-4 text-primary" /> Team Seats
-                        </Label>
-                        <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                          {seats === 1 ? '1 seat included' : `${seats} team seats included`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-                        <button
-                          type="button"
-                          onClick={() => setSeats((prev) => Math.max(1, prev - 1))}
-                          disabled={seats <= 1}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-30 transition-colors font-bold text-sm cursor-pointer"
-                          aria-label="Decrease seats"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="w-7 text-center font-bold text-xs text-slate-900 font-mono">
-                          {seats}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setSeats((prev) => Math.min(25, prev + 1))}
-                          disabled={seats >= 25}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-primary hover:bg-primary/95 text-white disabled:opacity-30 transition-colors font-bold text-sm cursor-pointer shadow-sm"
-                          aria-label="Increase seats"
-                        >
-                          <Plus className="w-3.5 h-3.5 text-white" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {extraSeats > 0 && (
-                      <div className="flex justify-between items-center text-xs font-semibold text-slate-600 pt-2.5 border-t border-slate-200/60">
-                        <span>
-                          {extraSeats} Additional {extraSeats === 1 ? 'Seat' : 'Seats'} ({formatPrice(seatUnitPrice)}/{billingCycle === 'annual' ? 'yr' : 'mo'})
-                        </span>
-                        <span className="font-mono text-primary font-bold">{formatPrice(extraSeatsCost)}</span>
-                      </div>
-                    )}
+                    <ul className="space-y-2.5 text-slate-600 text-xs font-medium leading-normal">
+                      <li className="flex items-start gap-2.5">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span><strong className="text-slate-900 font-semibold">Document Vault & EMD</strong> — Paperwork & HSN tracking</span>
+                      </li>
+                      <li className="flex items-start gap-2.5">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span><strong className="text-slate-900 font-semibold">AI Valuation Engine</strong> — Profit & loss estimates</span>
+                      </li>
+                      <li className="flex items-start gap-2.5">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span><strong className="text-slate-900 font-semibold">ML Scrap Price Predictor</strong> — Live price trends</span>
+                      </li>
+                      <li className="flex items-start gap-2.5">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span><strong className="text-slate-900 font-semibold">Unlimited Catalog Downloads</strong> — MSTC & government PDFs</span>
+                      </li>
+                    </ul>
                   </div>
                 )}
-
-                <hr className="border-slate-100" />
-
-                {planId === 'pro' && (
-                  <>
-                    <div className="flex justify-between items-center text-xs font-medium text-slate-500">
-                      <span>Subtotal</span>
-                      <span className="font-mono text-slate-800 font-semibold">{formatPrice(subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs font-medium text-slate-500">
-                      <span>GST (18%)</span>
-                      <span className="font-mono text-slate-800 font-semibold">{formatPrice(gst)}</span>
-                    </div>
-                    <hr className="border-slate-100" />
-                  </>
-                )}
-
-                <div className="flex justify-between items-center pt-1">
-                  <span className="text-sm font-bold text-slate-900">Total Due</span>
-                  <span className="text-2xl font-black text-emerald-600 font-mono tracking-tight">
-                    {formatPrice(total)}
-                  </span>
-                </div>
-              </div>
-
-              {planId === 'pro' && (
-                <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl text-left space-y-3">
-                  <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-primary" /> Package Features Included
-                  </h4>
-                  <ul className="space-y-2.5 text-slate-600 text-xs font-medium leading-normal">
-                    <li className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                      <span><strong className="text-slate-900 font-semibold">AI Valuation Engine</strong> — Profit & loss estimates</span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                      <span><strong className="text-slate-900 font-semibold">ML Scrap Price Predictor</strong> — Live price trends</span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                      <span><strong className="text-slate-900 font-semibold">Live Commodity Rates</strong> — Historical market prices</span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                      <span><strong className="text-slate-900 font-semibold">{seats} Team {seats === 1 ? 'Seat' : 'Seats'} Included</strong> — Shared bidding workspace</span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                      <span><strong className="text-slate-900 font-semibold">Document Vault & EMD</strong> — Paperwork & HSN tracking</span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                      <span><strong className="text-slate-900 font-semibold">Real-Time Auction Alerts</strong> — Instant WhatsApp & SMS</span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                      <span><strong className="text-slate-900 font-semibold">Priority 24/7 VIP Support</strong> — Tender assistance</span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                      <span><strong className="text-slate-900 font-semibold">Unlimited Catalog Downloads</strong> — MSTC & government PDFs</span>
-                    </li>
-                  </ul>
-                </div>
-              )}
 
               {/* Merchant Details */}
               <div className="border-t border-slate-100 pt-4 text-[10px] text-slate-400 space-y-1 leading-normal font-medium text-left">
@@ -1223,6 +1235,7 @@ export function CheckoutPage() {
               </p>
             </div>
           </div>
+        )}
         </div>
       </div>
     </div>

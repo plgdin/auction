@@ -5,7 +5,7 @@ import { TimelineContent } from "@/components/ui/timeline-animation";
 import { VerticalCutReveal } from "@/components/ui/vertical-cut-reveal";
 import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
-import { Briefcase, CheckCheck, Database } from "lucide-react";
+import { Briefcase, Check, Database, Minus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -29,6 +29,7 @@ const plans = [
       "Basic commodity market prices",
       "Email closing reminders",
       "Direct link to official MSTC auctions",
+      "Instant Keyword Auction Alerts",
       "Blog, news & FAQ access",
     ],
     href: "/checkout?plan=explorer",
@@ -71,6 +72,7 @@ const plans = [
     ],
     includes: [
       "Everything in Individual, plus:",
+      "AI Win-Probability & Bid Optimization",
       "Profit & Loss Valuation Calculator",
       "Scrap vs. Resale Value Breakdown",
       "Valuation Risk & Margin Warnings",
@@ -78,6 +80,7 @@ const plans = [
       "Scrap Price Trend Forecasts",
       "Smart Plain-English Search",
       "International price comparison",
+      "Automated Competitor Bid History Analysis",
     ],
     href: "/checkout?plan=pro",
   },
@@ -102,6 +105,7 @@ const plans = [
       "Seller portal access",
       "Single Sign-On (SSO)",
       "Dedicated account manager",
+      "Custom API Integration & Dedicated Server",
     ],
     href: "/contact",
   },
@@ -206,7 +210,7 @@ export default function PricingSection3({
 
   return (
     <div
-      className="px-4 pt-20 pb-16 min-h-screen max-w-7xl mx-auto relative"
+      className="px-4 pt-20 pb-16 min-h-screen max-w-[1550px] mx-auto relative"
       ref={pricingRef}
     >
       <article className="flex sm:flex-row flex-col sm:pb-8 pb-4 sm:items-center items-start justify-between">
@@ -234,7 +238,7 @@ export default function PricingSection3({
             animationNum={0}
             timelineRef={pricingRef}
             customVariants={revealVariants}
-            className="text-gray-600 w-[80%]"
+            className="text-gray-600 max-w-2xl"
           >
             Trusted by millions, We help teams all around the world. Explore
             which option is right for you.
@@ -256,7 +260,7 @@ export default function PricingSection3({
         animationNum={2}
         timelineRef={pricingRef}
         customVariants={revealVariants}
-        className="grid xl:grid-cols-4 lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-6 mx-auto bg-gradient-to-b from-neutral-100 to-neutral-200 sm:p-3 rounded-lg"
+        className="grid xl:grid-cols-4 lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-6 mx-auto bg-gradient-to-b from-neutral-100 to-neutral-200 sm:p-4 rounded-lg w-full"
       >
         {plans.map((plan, index) => (
           <TimelineContent
@@ -355,7 +359,7 @@ export default function PricingSection3({
                                 : "text-blue-600 bg-white border-blue-200"
                             )}
                           >
-                            <CheckCheck className="h-4 w-4" />
+                            <Check className="h-4 w-4" />
                           </span>
                           <span
                             className={cn(
@@ -378,12 +382,10 @@ export default function PricingSection3({
                 >
                   <button
                     className={cn(
-                      "w-full mb-6 p-4 text-xl rounded-xl cursor-pointer font-semibold transition-all duration-200 hover:opacity-95",
+                      "w-full mb-6 p-4 text-xl rounded-xl cursor-pointer font-bold transition-all duration-200 hover:opacity-95 shadow-md",
                       plan.popular
                         ? "bg-gradient-to-t from-blue-50 via-blue-100 to-blue-200 shadow-lg shadow-blue-900/20 border border-blue-300 text-blue-950"
-                        : plan.buttonVariant === "outline"
-                          ? "bg-gradient-to-t from-blue-900 to-blue-700 shadow-lg shadow-blue-950/40 border border-blue-800 text-white"
-                          : "bg-gradient-to-t from-blue-50 via-blue-100 to-blue-200 border border-blue-300 text-blue-950"
+                        : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 border border-blue-600 shadow-blue-600/30 text-white"
                     )}
                   >
                     {plan.buttonText}
