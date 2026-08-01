@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../services/authService';
+import { useAuthStore } from '../../store/authStore';
 import { User, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 
 const registerSchema = z.object({

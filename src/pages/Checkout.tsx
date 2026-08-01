@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { authService } from '../services/authService';
 import { supabase } from '../lib/supabase';
@@ -15,7 +15,6 @@ import { motion } from 'framer-motion';
 // Primitives imports to match template specifications
 import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardContent, CardFooter } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
@@ -77,7 +76,6 @@ const isGibberish = (text: string): boolean => {
 
 export function CheckoutPage() {
   const [searchParams] = useSearchParams();
-  const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, isAuthenticated, setSession, setProfile } = useAuthStore();
 
@@ -96,7 +94,6 @@ export function CheckoutPage() {
   const [city, setCity] = useState('');
   const [stateName, setStateName] = useState('');
   const [isStateOpen, setIsStateOpen] = useState(false);
-  const [stateSearch, setStateSearch] = useState('');
   const stateDropdownRef = useRef<HTMLDivElement>(null);
   const [pincode, setPincode] = useState('');
   const [isPincodeLoading, setIsPincodeLoading] = useState(false);
