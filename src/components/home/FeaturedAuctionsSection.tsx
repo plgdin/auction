@@ -24,8 +24,7 @@ export function FeaturedAuctionsSection() {
   const interestedSet = useMemo(() => new Set(interestedMstcIds), [interestedMstcIds]);
 
   const handleMstcInterestedToggle = useCallback((itemId: string) => {
-    if (!user) return;
-    toggleInterestedMstcId(user.id, itemId);
+    toggleInterestedMstcId(user?.id || '', itemId);
   }, [user, toggleInterestedMstcId]);
 
   const handlePreview = useCallback((item: any) => {
