@@ -76,7 +76,9 @@ export const STOP_WORDS = new Set([
   'want', 'show', 'me', 'find', 'get', 'search', 'buy', 'purchase', 'looking', 'look',
   'please', 'give', 'list', 'display', 'auctions', 'auction', 'scrap', 'scraps', 'government',
   'mstc', 'price', 'range', 'lakh', 'lakhs', 'crore', 'crores', 'rs', 'rupees', 'value',
-  'emd', 'bid', 'bids', 'biud', 'deposit', 'deposits', 'required', 'requireds'
+  'emd', 'bid', 'bids', 'biud', 'deposit', 'deposits', 'required', 'requireds',
+  'amount', 'amounts', 'cost', 'costs', 'budget',
+  'product', 'products', 'stuff', 'thing', 'things', 'item', 'items'
 ]);
 
 export const GENERIC_KEYWORDS = new Set([
@@ -222,6 +224,10 @@ export function cleanQueryPriceTypos(query: string): string {
   // Unified Multipliers
   q = q.replace(/\blaksh\b/g, 'lakh');
 
+  // Domain specific normalizations
+  q = q.replace(/\bcustom\b/g, 'customs');
+  q = q.replace(/\bcfs\b/g, 'customs cfs');
+
   return q;
 }
 
@@ -302,14 +308,141 @@ export function cleanQueryFromPriceConstraint(query: string): string {
   const constraint = parsePriceConstraint(query);
   
   if (constraint) {
-    const numberPattern = /₹?\s*[\d\.,]+\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)?\b/gi;
-    result = result.replace(numberPattern, ' ');
+    // Only remove the specific numbers that are part of the price constraint
+    // For example, if constraint value is 50000, we should remove "50k", "50000", "50,000", "0.5 lakh"
+    // To be safe and not over-engineer, we'll remove the common price keywords and operators,
+    // and rely on regex to match currency patterns rather than all numbers.
+    const priceNumberPattern = /₹?\s*\d[\d\.,]*\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)\b/gi;
+    result = result.replace(priceNumberPattern, ' ');
+    
+    // Also remove raw numbers preceded or followed by price keywords (emd, prebid, rs, etc)
+    const rawPricePattern = /(?:pre\s*bid|pre-bid|prebid|emd|deposit|price|value|rs|rupees|amount|cost)\s*(?:of|is|at|\=)?\s*(?:under|below|less|above|over|more)?\s*₹?\s*([\d\.,]+)/gi;
+    result = result.replace(rawPricePattern, ' ');
+
     result = result.replace(/\b(under|below|less\s+than|less|above|over|more\s+than|more|equal\s+to|equal|is|of)\b/gi, ' ');
-    result = result.replace(/\b(pre\s*bid|pre-bid|prebid|emd|deposit|price|value)\b/gi, ' ');
+    result = result.replace(/\b(pre\s*bid|pre-bid|prebid|emd|deposit|price|value|rs|rupees|amount|cost)\b/gi, ' ');
     result = result.replace(/[<>=]/g, ' ');
   }
   
   return result.replace(/\s+/g, ' ').trim();
+}
+
+export interface DateConstraint {
+  startDate: string | null;
+  endDate: string | null;
+}
+
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+const MONTHS_SHORT = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+export function parseDateConstraint(query: string): DateConstraint | null {
+  let q = query.toLowerCase();
+  q = q.replace(/auguest/g, 'august');
+  
+  let startDate: Date | null = null;
+  let endDate: Date | null = null;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  
+  if (q.includes('today')) {
+    startDate = new Date(now);
+    endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + 1);
+  } else if (q.includes('tomorrow')) {
+    startDate = new Date(now);
+    startDate.setDate(startDate.getDate() + 1);
+    endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + 2);
+  } else if (q.includes('this week')) {
+    startDate = new Date(now);
+    endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + 7 - endDate.getDay());
+  } else if (q.includes('next week')) {
+    startDate = new Date(now);
+    startDate.setDate(startDate.getDate() + 7 - startDate.getDay());
+    endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 7);
+  } else if (q.includes('this month')) {
+    startDate = new Date(currentYear, currentMonth, 1);
+    endDate = new Date(currentYear, currentMonth + 1, 1);
+  } else if (q.includes('next month')) {
+    startDate = new Date(currentYear, currentMonth + 1, 1);
+    endDate = new Date(currentYear, currentMonth + 2, 1);
+  } else {
+    const relMatch = q.match(/(in|within|next)\s+(\d+)\s+(day|days|week|weeks|month|months)/i);
+    if (relMatch) {
+      const num = parseInt(relMatch[2], 10);
+      const unit = relMatch[3];
+      startDate = new Date(now);
+      endDate = new Date(now);
+      
+      if (unit.startsWith('day')) endDate.setDate(endDate.getDate() + num);
+      else if (unit.startsWith('week')) endDate.setDate(endDate.getDate() + num * 7);
+      else if (unit.startsWith('month')) endDate.setMonth(endDate.getMonth() + num);
+    } else {
+      const monthRegex = new RegExp(`\\b(${MONTHS.join('|')}|${MONTHS_SHORT.join('|')})\\b`, 'i');
+      const dateRegex = /\b(\d{1,2})(?:st|nd|rd|th)?\b/i;
+      
+      const hasMonth = q.match(monthRegex);
+      if (hasMonth) {
+        const monthStr = hasMonth[1].toLowerCase();
+        let monthIdx = MONTHS.indexOf(monthStr);
+        if (monthIdx === -1) monthIdx = MONTHS_SHORT.indexOf(monthStr);
+        
+        let targetYear = currentYear;
+        if (monthIdx < currentMonth) targetYear++;
+
+        const hasDate = q.match(dateRegex);
+        if (hasDate) {
+          const day = parseInt(hasDate[1], 10);
+          startDate = new Date(targetYear, monthIdx, day);
+          endDate = new Date(targetYear, monthIdx, day + 1);
+        } else {
+          startDate = new Date(targetYear, monthIdx, 1);
+          endDate = new Date(targetYear, monthIdx + 1, 1);
+        }
+      }
+    }
+  }
+
+  if (!startDate && !endDate) return null;
+  
+  return {
+    startDate: startDate ? startDate.toISOString() : null,
+    endDate: endDate ? endDate.toISOString() : null,
+  };
+}
+
+export function cleanQueryFromDateConstraint(query: string): string {
+  let result = query.toLowerCase();
+  result = result.replace(/auguest/g, 'august');
+  result = result.replace(/\b(today|tomorrow|this week|next week|this month|next month)\b/g, ' ');
+  result = result.replace(/\b(in|within|next)\s+(\d+)\s+(day|days|week|weeks|month|months)\b/g, ' ');
+  result = result.replace(/\b(happening|coming|closing|starting|ending)\b/g, ' ');
+  result = result.replace(/\b(on)\b/g, ' ');
+
+  const monthRegex = new RegExp(`\\b(${MONTHS.join('|')}|${MONTHS_SHORT.join('|')})\\b`, 'g');
+  const dateRegex = /\b(\d{1,2})(st|nd|rd|th)?\b/g;
+
+  if (result.match(monthRegex)) {
+    result = result.replace(monthRegex, ' ');
+    result = result.replace(dateRegex, ' ');
+  }
+
+  // Preserve original casing slightly better by returning what's left. (Lowercase is acceptable here).
+  return result.replace(/\s+/g, ' ').trim();
+}
+
+export function removeStopWords(query: string): string {
+  if (!query) return '';
+  const tokens = query.split(/\s+/);
+  const filtered = tokens.filter(t => {
+    const clean = t.toLowerCase().replace(/[^a-z0-9\-]/g, '');
+    if (!clean) return false;
+    return !STOP_WORDS.has(clean);
+  });
+  return filtered.join(' ').trim();
 }
 
 export function filterCompoundComponents(tokens: string[]): string[] {

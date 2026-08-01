@@ -15,7 +15,10 @@ import {
   filterCompoundComponents,
   matchWholeWord,
   getLevenshteinDistance,
-  cleanQueryPriceTypos
+  cleanQueryPriceTypos,
+  parseDateConstraint,
+  cleanQueryFromDateConstraint,
+  removeStopWords
 } from './nlpSearchUtils';
 
 // ─── India Location Lookup ────────────────────────────────────────────────────
@@ -1752,6 +1755,26 @@ export const MstcSearchService = {
         }
       }
 
+      // If the query was entirely composed of stop words (e.g. "show me"), return all (filtered by price)
+      if (substantiveTokens.length === 0 && optionalTokens.length === 0) {
+        if (priceConstraint) {
+          mapped = mapped.filter(item => {
+            const { preBid, totalValue, isEstimated } = estimateAuctionValues(item);
+            if (isEstimated) return false;
+            const matchValue = (val: number) => {
+              if (val <= 0) return false;
+              if (priceConstraint.operator === 'less') return val <= priceConstraint.value;
+              if (priceConstraint.operator === 'greater') return val >= priceConstraint.value;
+              return val === priceConstraint.value;
+            };
+            if (priceConstraint.field === 'pre_bid') return matchValue(preBid);
+            if (priceConstraint.field === 'total_value') return matchValue(totalValue);
+            return matchValue(preBid) || matchValue(totalValue);
+          });
+        }
+        return mapped.sort((a, b) => new Date(b.opening_date).getTime() - new Date(a.opening_date).getTime());
+      }
+
       // Determine scoped categories based on query tokens (intent classification)
       const targetCategories = new Set<string>();
       const categoryScores = new Map<string, number>();
@@ -1975,7 +1998,14 @@ export const MstcSearchService = {
     try {
       const cleanedQuery = cleanQueryPriceTypos(query);
       const pConstraint = parsePriceConstraint(cleanedQuery);
-      const workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
+      const dConstraint = parseDateConstraint(cleanedQuery);
+      let workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
+      workingQuery = cleanQueryFromDateConstraint(workingQuery);
+
+      const { canonical: locationCanonical, remainingQuery } = extractLocationFromQuery(workingQuery);
+      workingQuery = remainingQuery;
+      
+      const precisionSubcategory = detectPrecisionSubcategory(workingQuery);
 
       // ── AUCTION NUMBER DIRECT LOOKUP ─────────────────────────────────────────
       // If the query looks like an auction number (e.g. "MSTC/ZG/POSTMASTER/1/...")
@@ -2038,8 +2068,10 @@ export const MstcSearchService = {
         p_max_pre_bid = 0;
       }
       
+      const rpcQuery = removeStopWords(workingQuery);
+
       let embeddingStr: string | null = null;
-      if (workingQuery && workingQuery.length > 2) {
+      if (rpcQuery && rpcQuery.length > 0) {
         try {
           const { embeddingService } = await import('./embeddingService');
           const vectorPromise = embeddingService.generateEmbedding(workingQuery);
@@ -2056,23 +2088,49 @@ export const MstcSearchService = {
 
       const rpcPage = filters?.page || 1;
       const rpcLimit = filters?.limit || 12;
+      let finalStartDate = filters?.startDate || dConstraint?.startDate || null;
+      let finalEndDate = filters?.endDate || dConstraint?.endDate || null;
 
       let searchData: any[] | null = null;
       let totalCount = 0;
       let returnedCorrectedQuery: string | undefined = undefined;
       let error: any = null;
 
+      let finalLocations = filters?.locations?.length ? filters.locations : (filters?.location ? [filters.location] : null);
+      if (locationCanonical) {
+        // DB uses Title Case for states (e.g. "Kerala")
+        const titleCased = locationCanonical.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        finalLocations = finalLocations ? [...finalLocations, titleCased] : [titleCased];
+      }
+
+      let finalSubcategories = filters?.subcategories?.length ? filters.subcategories : (filters?.subcategory ? [filters.subcategory] : null);
+      if (precisionSubcategory) {
+        finalSubcategories = finalSubcategories ? [...finalSubcategories, precisionSubcategory] : [precisionSubcategory];
+      }
+
+      let finalCategories = filters?.categories?.length ? filters.categories : (filters?.category ? [filters.category] : null);
+
+      // If the query is just a price constraint (like "above 50k"), the RPC will do a full table scan 
+      // on JSONB fields which causes a statement timeout on production databases.
+      // We skip the RPC and immediately fallback to the client-side fetcher which parses in memory.
+      const isPurePriceQuery = !rpcQuery && (p_min_pre_bid !== undefined || p_max_pre_bid !== undefined) && 
+        !finalCategories?.length && !finalSubcategories?.length;
+      
+      if (isPurePriceQuery) {
+        throw new Error('Bypassing RPC for pure price query to avoid statement timeout.');
+      }
+
       // Run Hybrid RPC for EVERYTHING (empty query acts as pure filter)
       const rpcResult = await supabase.rpc('hybrid_search_mstc_catalog', {
-        p_search_query: workingQuery || null,
+        p_search_query: rpcQuery || null,
         p_embedding: embeddingStr as any,
-        p_categories: filters?.categories?.length ? filters.categories : (filters?.category ? [filters.category] : null),
-        p_subcategories: filters?.subcategories?.length ? filters.subcategories : (filters?.subcategory ? [filters.subcategory] : null),
-        p_locations: filters?.locations?.length ? filters.locations : (filters?.location ? [filters.location] : null),
+        p_categories: finalCategories,
+        p_subcategories: finalSubcategories,
+        p_locations: finalLocations,
         p_sellers: filters?.sellers?.length ? filters.sellers : (filters?.seller ? [filters.seller] : null),
         p_regional_offices: filters?.regionalOffices?.length ? filters.regionalOffices : (filters?.regionalOffice ? [filters.regionalOffice] : null),
-        p_start_date: filters?.startDate || null,
-        p_end_date: filters?.endDate || null,
+        p_start_date: finalStartDate,
+        p_end_date: finalEndDate,
         p_has_images: filters?.hasImages || null,
         p_has_docs: filters?.hasAssetDocuments || null,
         p_min_pre_bid: p_min_pre_bid ?? null,
@@ -2085,27 +2143,25 @@ export const MstcSearchService = {
       searchData = rpcResult.data;
       error = rpcResult.error;
 
-      // If the DB text/vector search returned 0 results but there was a meaningful
-      // query, ask the backend for a spell-check auto-correction!
-      if ((!searchData || searchData.length === 0) && workingQuery && workingQuery.trim() !== '') {
+      if ((!searchData || searchData.length === 0) && rpcQuery && rpcQuery.trim() !== '') {
         const { data: correctedQuery, error: correctionError } = await supabase.rpc('suggest_search_correction', {
-          p_query: workingQuery
+          p_query: rpcQuery
         });
 
-        if (!correctionError && correctedQuery && correctedQuery !== workingQuery) {
+        if (!correctionError && correctedQuery && correctedQuery !== rpcQuery) {
           if ((import.meta as any).env?.DEV) {
-            console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
+            console.log(`Auto-correcting search from "${rpcQuery}" to "${correctedQuery}"`);
           }
           const retryResult = await supabase.rpc('hybrid_search_mstc_catalog', {
             p_search_query: correctedQuery,
             p_embedding: embeddingStr as any,
             p_categories: filters?.categories?.length ? filters.categories : (filters?.category ? [filters.category] : null),
-            p_subcategories: filters?.subcategories?.length ? filters.subcategories : (filters?.subcategory ? [filters.subcategory] : null),
-            p_locations: filters?.locations?.length ? filters.locations : (filters?.location ? [filters.location] : null),
+            p_subcategories: finalSubcategories,
+            p_locations: finalLocations,
             p_sellers: filters?.sellers?.length ? filters.sellers : (filters?.seller ? [filters.seller] : null),
             p_regional_offices: filters?.regionalOffices?.length ? filters.regionalOffices : (filters?.regionalOffice ? [filters.regionalOffice] : null),
-            p_start_date: filters?.startDate || null,
-            p_end_date: filters?.endDate || null,
+            p_start_date: finalStartDate,
+            p_end_date: finalEndDate,
             p_has_images: filters?.hasImages || null,
             p_has_docs: filters?.hasAssetDocuments || null,
             p_min_pre_bid: p_min_pre_bid ?? null,
