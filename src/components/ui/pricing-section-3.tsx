@@ -20,7 +20,6 @@ const plans = [
     buttonText: "Get started free",
     buttonVariant: "outline" as const,
     features: [
-      { text: "1 user seat", icon: <Briefcase size={20} /> },
       { text: "10 watchlist items", icon: <Database size={20} /> },
     ],
     includes: [
@@ -67,7 +66,7 @@ const plans = [
     buttonVariant: "default" as const,
     popular: true,
     features: [
-      { text: "3 team seats", icon: <Briefcase size={20} /> },
+      { text: "Up to 5 seats", icon: <Briefcase size={20} /> },
       { text: "Unlimited watchlist", icon: <Database size={20} /> },
     ],
     includes: [
@@ -92,7 +91,7 @@ const plans = [
     buttonText: "Contact Sales",
     buttonVariant: "outline" as const,
     features: [
-      { text: "5+ team seats", icon: <Briefcase size={20} /> },
+      { text: "Up to 10 seats", icon: <Briefcase size={20} /> },
       { text: "Unlimited everything", icon: <Database size={20} /> },
     ],
     includes: [

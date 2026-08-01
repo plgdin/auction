@@ -226,7 +226,7 @@ export const COMPARISON_FEATURES: FeatureDef[] = [
     id: 'team_seats',
     name: 'Team seats',
     category: 'Team & Organization',
-    values: { starter: '1', go: '1', premium: '3', enterprise: '5+' },
+    values: { starter: 'None', go: 'None', premium: 'Up to 5', enterprise: 'Up to 10' },
   },
   {
     id: 'priority_onboarding',
