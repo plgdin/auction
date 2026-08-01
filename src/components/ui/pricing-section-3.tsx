@@ -39,7 +39,7 @@ const plans = [
     name: "Individual",
     description: "Perfect for active bidders who want automated tools and extra limits",
     price: 799,
-    yearlyPrice: 7990,
+    yearlyPrice: 8438,
     buttonText: "Get Individual",
     buttonVariant: "outline" as const,
     features: [
@@ -62,7 +62,7 @@ const plans = [
     name: "Business",
     description: "Full suite of AI-powered tools to find, value, and win auctions",
     price: 1499,
-    yearlyPrice: 14990,
+    yearlyPrice: 15830,
     buttonText: "Start 14-Day Free Trial",
     buttonVariant: "default" as const,
     popular: true,
@@ -163,7 +163,7 @@ const PricingSwitch = ({
           <span className="relative flex items-center gap-2">
             Yearly
             <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-bold text-primary">
-              Save 20%
+              Save 12%
             </span>
           </span>
         </button>

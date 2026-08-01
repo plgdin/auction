@@ -97,8 +97,8 @@ export function CheckoutPage() {
 
   // Pricing calculations
   const subtotal = 
-    (planId === 'pro' || planId === 'premium') ? (billingCycle === 'annual' ? 14990 : 1499) :
-    (planId === 'go-subscription' || planId === 'go') ? (billingCycle === 'annual' ? 7990 : 799) : 0;
+    (planId === 'pro' || planId === 'premium') ? (billingCycle === 'annual' ? 15830 : 1499) :
+    (planId === 'go-subscription' || planId === 'go') ? (billingCycle === 'annual' ? 8438 : 799) : 0;
   const gst = Math.round(subtotal * 0.18);
   const total = subtotal + gst;
 

@@ -280,7 +280,7 @@ export const PLANS: Plan[] = [
     id: 'pro',
     name: 'PREMIUM',
     price: '1499',
-    yearlyPrice: '14990',
+    yearlyPrice: '15830',
     period: 'per month',
     description: 'Everything you need to find, value, and win auctions',
     buttonText: 'Start 14-Day Free Trial',

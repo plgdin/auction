@@ -124,9 +124,9 @@ export function Sidebar() {
                   isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                 )} />
                 <span className="truncate flex-grow">{item.name}</span>
-                {item.name === 'Document Vault' && !isPremium && (
-                  <span className="ml-auto bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200 uppercase tracking-wider shrink-0 font-sans leading-none">
-                    Pro
+                {(item.name === 'Document Vault' || item.name === 'Quote Builder' || item.name === 'Calendar & Alerts') && !isPremium && (
+                  <span className="ml-auto bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200 uppercase tracking-wider shrink-0 font-sans leading-none">
+                    Business
                   </span>
                 )}
               </Link>
