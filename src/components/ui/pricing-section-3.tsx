@@ -278,32 +278,44 @@ export default function PricingSection3() {
                       </div>
                     )}
 
-                    <div className="flex items-baseline pt-4">
-                      {plan.price === 0 ? (
-                        <span className="text-4xl font-semibold">Free</span>
-                      ) : plan.price === null ? (
-                        <span className="text-4xl font-semibold">Custom</span>
-                      ) : (
-                        <>
-                          <span className="text-4xl font-semibold">
-                            ₹
-                            <NumberFlow
-                              format={{
-                                style: "decimal",
-                              }}
-                              value={isYearly ? plan.yearlyPrice : plan.price}
-                              className="text-4xl font-semibold"
-                            />
-                          </span>
-                          <span
-                            className={cn(
-                              "ml-1",
-                              plan.popular ? "text-blue-200" : "text-gray-600"
-                            )}
-                          >
-                            /{isYearly ? "year" : "month"}
-                          </span>
-                        </>
+                    <div className="flex flex-col pt-4">
+                      <div className="flex items-baseline">
+                        {plan.price === 0 ? (
+                          <span className="text-4xl font-semibold">Free</span>
+                        ) : plan.price === null ? (
+                          <span className="text-4xl font-semibold">Custom</span>
+                        ) : (
+                          <>
+                            <span className="text-4xl font-semibold">
+                              ₹
+                              <NumberFlow
+                                format={{
+                                  style: "decimal",
+                                }}
+                                value={isYearly ? plan.yearlyPrice : plan.price}
+                                className="text-4xl font-semibold"
+                              />
+                            </span>
+                            <span
+                              className={cn(
+                                "ml-1 text-sm",
+                                plan.popular ? "text-blue-200" : "text-gray-600"
+                              )}
+                            >
+                              /{isYearly ? "year" : "month"}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      {isYearly && plan.price !== 0 && plan.price !== null && (
+                        <span
+                          className={cn(
+                            "text-xs mt-1 font-medium",
+                            plan.popular ? "text-blue-300" : "text-gray-500"
+                          )}
+                        >
+                          Effective: ₹{Math.round(plan.yearlyPrice / 12)}/month
+                        </span>
                       )}
                     </div>
                   </div>
