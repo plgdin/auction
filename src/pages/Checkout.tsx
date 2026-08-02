@@ -271,8 +271,6 @@ export function CheckoutPage() {
         setTransactionId(
           isTrial 
             ? `TRIAL-14D-${Date.now().toString().slice(-6)}`
-            : isIndividualFree
-            ? `INDV-FREE-${Date.now().toString().slice(-6)}`
             : `FREE-${Date.now().toString().slice(-6)}`
         );
         if (isTrial) {
@@ -1014,10 +1012,6 @@ export function CheckoutPage() {
                           <>
                             <Sparkles className="w-4 h-4" /> Start 14-Day Free Trial
                           </>
-                        ) : isIndividualFree ? (
-                          <>
-                            <Check className="w-4 h-4" /> Activate Individual Plan
-                          </>
                         ) : total === 0 ? (
                           'Activate Free Plan'
                         ) : (
@@ -1135,7 +1129,7 @@ export function CheckoutPage() {
                           <button
                             type="button"
                             onClick={() => setSeats((prev) => Math.max(1, prev - 1))}
-                            disabled={seats <= 1 || step === 'success'}
+                            disabled={seats <= 1}
                             className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-30 transition-colors font-bold text-sm cursor-pointer"
                             aria-label="Decrease seats"
                           >
@@ -1147,7 +1141,7 @@ export function CheckoutPage() {
                           <button
                             type="button"
                             onClick={() => setSeats((prev) => Math.min(25, prev + 1))}
-                            disabled={seats >= 25 || step === 'success'}
+                            disabled={seats >= 25}
                             className="w-7 h-7 flex items-center justify-center rounded-lg bg-primary hover:bg-primary/95 text-white disabled:opacity-30 transition-colors font-bold text-sm cursor-pointer shadow-sm"
                             aria-label="Increase seats"
                           >

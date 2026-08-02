@@ -5,7 +5,7 @@ import { TimelineContent } from "@/components/ui/timeline-animation";
 import { VerticalCutReveal } from "@/components/ui/vertical-cut-reveal";
 import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
-import { Briefcase, Check, Database, Minus } from "lucide-react";
+import { Briefcase, Check, Database } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
