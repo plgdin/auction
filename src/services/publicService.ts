@@ -2002,6 +2002,12 @@ export const MstcSearchService = {
       let workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
       workingQuery = cleanQueryFromDateConstraint(workingQuery);
 
+      let isReauctionSearch = filters?.isReauction;
+      if (/\bre[- ]?auctions?\b/i.test(workingQuery)) {
+        isReauctionSearch = true;
+        workingQuery = workingQuery.replace(/\bre[- ]?auctions?\b/ig, '').trim();
+      }
+
       const { canonical: locationCanonical, remainingQuery } = extractLocationFromQuery(workingQuery);
       workingQuery = remainingQuery;
       
@@ -2135,7 +2141,7 @@ export const MstcSearchService = {
         p_has_docs: filters?.hasAssetDocuments || null,
         p_min_pre_bid: p_min_pre_bid ?? null,
         p_max_pre_bid: p_max_pre_bid ?? null,
-        p_is_reauction: filters?.isReauction ?? null,
+        p_is_reauction: isReauctionSearch ?? null,
         p_page: rpcPage,
         p_limit: rpcLimit
       });
@@ -2166,7 +2172,7 @@ export const MstcSearchService = {
             p_has_docs: filters?.hasAssetDocuments || null,
             p_min_pre_bid: p_min_pre_bid ?? null,
             p_max_pre_bid: p_max_pre_bid ?? null,
-            p_is_reauction: filters?.isReauction ?? null,
+            p_is_reauction: isReauctionSearch ?? null,
             p_page: rpcPage,
             p_limit: rpcLimit
           });

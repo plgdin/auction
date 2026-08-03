@@ -85,7 +85,7 @@ function CurrencyDropdown({ isTransparent }: { isTransparent?: boolean }) {
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated, user, profile } = useAuthStore();
+  const { isAuthenticated, user, profile, isLoading } = useAuthStore();
   const location = useLocation();
 
   const planTag = isAuthenticated
@@ -360,30 +360,32 @@ export function Header() {
                 </div>
               )}
 
-               {isAuthenticated ? (
-                 isPaidSubscriberOrAdmin ? (
-                   <Link
-                     to="/dashboard"
-                     className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
-                   >
-                     Dashboard
-                   </Link>
-                 ) : (
-                   <Link
-                     to="/pricing"
-                     className="inline-flex items-center justify-center px-6 py-3 rounded-full border border-blue-300 bg-gradient-to-t from-blue-100 via-blue-200 to-blue-300 text-blue-950 font-black text-base shadow-xs shadow-blue-300/60 hover:from-blue-200 hover:via-blue-300 hover:to-blue-400 transition-all duration-300 scale-100 hover:scale-105"
-                   >
-                     Upgrade Plan
-                   </Link>
-                 )
-               ) : (
-                 <Link
-                   to="/auth/login"
-                   className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary/90 transition-colors"
-                 >
-                   Sign In
-                 </Link>
-               )}
+                {isLoading ? (
+                  <div className="w-24 h-10 bg-slate-100/50 animate-pulse rounded-md" />
+                ) : isAuthenticated ? (
+                  isPaidSubscriberOrAdmin ? (
+                    <Link
+                      to="/dashboard"
+                      className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
+                    >
+                      Dashboard
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/pricing"
+                      className="inline-flex items-center justify-center px-6 py-3 rounded-full border border-blue-300 bg-gradient-to-t from-blue-100 via-blue-200 to-blue-300 text-blue-950 font-black text-base shadow-xs shadow-blue-300/60 hover:from-blue-200 hover:via-blue-300 hover:to-blue-400 transition-all duration-300 scale-100 hover:scale-105"
+                    >
+                      Upgrade Plan
+                    </Link>
+                  )
+                ) : (
+                  <Link
+                    to="/auth/login"
+                    className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary/90 transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                )}
             </div>
           </nav>
 
@@ -493,7 +495,9 @@ export function Header() {
           "shrink-0 pt-6 border-t border-slate-100 flex flex-col items-center space-y-4 text-center w-full max-w-xs mx-auto transition-all duration-500 delay-150",
           isMobileMenuOpen ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
         )}>
-          {isAuthenticated ? (
+          {isLoading ? (
+            <div className="w-full h-14 bg-slate-100/50 animate-pulse rounded-2xl" />
+          ) : isAuthenticated ? (
             <div className="w-full flex items-center gap-3">
               <Link
                 to="/dashboard/notifications"

@@ -128,7 +128,7 @@ const fragmentShader = /* glsl */ `
   const vec3 baseColor0 = vec3(0.0, 0.49, 0.78);     // Lelam brand blue (#007ec7)
   const vec3 baseColor1 = vec3(0.0, 0.78, 1.0);      // vibrant cyan
   const vec3 baseColor2 = vec3(0.03, 0.15, 0.55);    // deep indigo
-  const vec3 baseColor3 = vec3(0.0, 0.05, 0.2);      // midnight blue
+  const vec3 baseColor3 = vec3(0.0, 0.45, 0.75);     // vibrant blue rim
 
   float light1(float intensity, float attenuation, float dist) {
     return intensity / (1.0 + dist * attenuation);
@@ -178,18 +178,19 @@ const fragmentShader = /* glsl */ `
   void main() {
     vec2 center = iResolution.xy * 0.5;
     float size = min(iResolution.x, iResolution.y);
-    // Scale down the multiplier (e.g. from 2.0 to 1.15) to zoom in on the orb
-    // so it fills the screen/canvas boundaries cleanly.
-    vec2 uv = (vUv * iResolution.xy - center) / size * 1.15;
+    // Scale multiplier to zoom in on the orb so it fills the canvas cleanly
+    vec2 uv = (vUv * iResolution.xy - center) / size * 1.25;
 
     float s = sin(rot);
     float c = cos(rot);
     uv = vec2(c * uv.x - s * uv.y, s * uv.x + c * uv.y);
 
     vec4 col = draw(uv);
-    // Make dark outer ring fully transparent instead of black
+    // Make dark outer ring fully transparent with zero black circle outline
     float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
-    float alpha = col.a * smoothstep(0.02, 0.12, lum);
+    float alpha = col.a * smoothstep(0.12, 0.28, lum);
+    float distFromCenter = length(uv);
+    alpha *= smoothstep(0.75, 0.55, distFromCenter);
     gl_FragColor = vec4(col.rgb * alpha, alpha);
   }
 `;

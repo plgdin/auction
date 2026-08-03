@@ -234,12 +234,13 @@ export const recommendationService = {
     const response = await auctionService.getAuctions({ limit: 100 });
     let allAuctions: any[] = response.data || [];
 
-    // Get active upcoming MSTC auctions
+    // Get active upcoming MSTC auctions with completed PDF processing
     try {
       const { data: mstcData, error } = await supabase
         .from('mstc_auctions')
-        .select('id, mstc_auction_number, category_name, location, seller_name, opening_date, closing_date')
+        .select('*')
         .eq('asset_status', 'completed')
+        .not('sanitized_document_path', 'is', null)
         .gt('closing_date', new Date().toISOString())
         .limit(100);
 
@@ -256,25 +257,28 @@ export const recommendationService = {
 
           const { preBid, totalValue } = estimateAuctionValues(item);
 
+          const lotTitle = item.lot_name || item.raw_materials_text?.split('\n')?.[0]?.slice(0, 60) || `${subCat} - ${item.seller_name}`;
+
           return {
             ...item,
             id: item.id,
-            title: `${subCat} - ${item.seller_name}`,
+            title: lotTitle,
             description: item.raw_materials_text || '',
-            starting_price: totalValue,
+            starting_price: totalValue || item.starting_price || 150000,
             reserve_price: null,
             bid_increment: 0,
-            emd_amount: preBid,
+            emd_amount: preBid || item.emd_amount,
             start_time: item.opening_date,
             end_time: item.closing_date,
             terms_conditions: item.raw_materials_text || '',
             status: 'active',
             reference_number: item.mstc_auction_number,
-            location: item.location || 'India',
+            location: item.location || item.state || 'India',
             category_id,
             category: {
               name: mainCat
             },
+            sanitized_document_path: item.sanitized_document_path || 'processed',
             is_mstc: true
           };
         });

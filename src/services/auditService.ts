@@ -10,6 +10,16 @@ let cachedIp: string | null = null;
 export async function getClientIpAddress(): Promise<string> {
   if (cachedIp) return cachedIp;
   
+  try {
+    const sessionIp = sessionStorage.getItem('lelam_cached_ip');
+    if (sessionIp) {
+      cachedIp = sessionIp;
+      return sessionIp;
+    }
+  } catch (e) {
+    // Ignore session storage errors
+  }
+
   const services = [
     'https://api.ipify.org?format=json',
     'https://ipinfo.io/json',
@@ -24,6 +34,9 @@ export async function getClientIpAddress(): Promise<string> {
         const ip = data.ip || data.clientIp || data.ipAddress;
         if (ip) {
           cachedIp = ip;
+          try {
+            sessionStorage.setItem('lelam_cached_ip', ip);
+          } catch (e) {}
           return ip;
         }
       }

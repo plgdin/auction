@@ -168,6 +168,16 @@ export const storageService = {
     transform?: any
   ): Promise<string | null> {
     try {
+      if (!urlOrPath) return null;
+
+      // Handle external URLs immediately (e.g. Unsplash, external icons) without calling Supabase Storage
+      if (urlOrPath.startsWith('http')) {
+        const supabaseDomain = (supabase as any).supabaseUrl || '';
+        if (supabaseDomain && !urlOrPath.includes(supabaseDomain)) {
+          return urlOrPath;
+        }
+      }
+
       const finalPath = extractStoragePath(urlOrPath, bucketName);
       const cacheKey = `${bucketName}:${finalPath}:${transform ? JSON.stringify(transform) : 'none'}`;
       
@@ -188,7 +198,7 @@ export const storageService = {
         .createSignedUrl(finalPath, 3600, options);
 
       if (error) {
-        console.error('Error creating signed URL:', error);
+        console.warn('Storage signed URL warning:', error.message || error);
         return null;
       }
 
@@ -201,7 +211,7 @@ export const storageService = {
       }
       return null;
     } catch (err) {
-      console.error('Unexpected error creating signed URL:', err);
+      console.warn('Storage signed URL exception warning:', err);
       return null;
     }
   },
@@ -427,13 +437,13 @@ export const storageService = {
         .createSignedUrl(storagePath, expiresIn);
 
       if (error) {
-        console.error('Error creating signed URL:', error);
+        console.warn('Error creating bucket signed URL:', error.message || error);
         return null;
       }
 
       return data.signedUrl;
     } catch (err) {
-      console.error('Unexpected error getting signed URL:', err);
+      console.warn('Unexpected error getting bucket signed URL:', err);
       return null;
     }
   },
