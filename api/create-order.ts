@@ -96,6 +96,16 @@ export default async function handler(req: any, res: any) {
     });
   } catch (error: any) {
     console.error('Error creating Razorpay order:', error);
+    if (error.statusCode === 401) {
+      res.status(401).json({
+        success: false,
+        error: {
+          code: 'GATEWAY_AUTHENTICATION_FAILED',
+          message: 'Payment gateway authentication failed. Please verify your Razorpay API keys in your .env file.'
+        }
+      });
+      return;
+    }
     res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 }
