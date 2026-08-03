@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../services/authService';
+import { useAuthStore } from '../../store/authStore';
 import { User, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 
 const registerSchema = z.object({
@@ -54,7 +55,21 @@ export function RegisterForm() {
               setIsLoading(true);
               setAuthError(null);
               try {
-                await authService.signInWithIdToken(response.credential);
+                const { session } = await authService.signInWithIdToken(response.credential);
+                const profile = await authService.getProfile(session.user.id);
+                useAuthStore.getState().setSession(session);
+                useAuthStore.getState().setProfile(profile);
+
+                const searchParams = new URLSearchParams(window.location.search);
+                const redirectParam = searchParams.get('redirect');
+
+                if (profile?.role === 'admin' || profile?.role === 'superadmin') {
+                  navigate('/admin', { replace: true });
+                } else if (redirectParam) {
+                  navigate(redirectParam, { replace: true });
+                } else {
+                  navigate('/dashboard', { replace: true });
+                }
               } catch (error: any) {
                 setAuthError(error.message || 'Google registration failed');
                 setIsLoading(false);
@@ -66,8 +81,9 @@ export function RegisterForm() {
             theme: 'outline',
             size: 'large',
             text: 'continue_with',
-            shape: 'rectangular',
-            width: googleBtnRef.current.parentElement?.clientWidth || 380,
+            shape: 'pill',
+            logo_alignment: 'center',
+            width: Math.min(googleBtnRef.current.parentElement?.clientWidth || 380, 380),
           });
         } catch (err) {
           console.error('Error initializing Google Sign-In:', err);
@@ -258,8 +274,8 @@ export function RegisterForm() {
         <div className="flex-grow border-t border-slate-200"></div>
       </div>
 
-      <div className="flex justify-center w-full min-h-[44px]">
-        <div ref={googleBtnRef} className="w-full flex justify-center [&>iframe]:!w-full [&>div]:!w-full [&>iframe]:!max-w-none [&>div]:!max-w-none"></div>
+      <div className="flex justify-center items-center w-full min-h-[44px]">
+        <div ref={googleBtnRef} className="w-full flex justify-center items-center [&>div]:!mx-auto [&>iframe]:!mx-auto"></div>
       </div>
     </form>
   );

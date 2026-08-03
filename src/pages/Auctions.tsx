@@ -234,8 +234,7 @@ export function Auctions() {
   };
 
   const handleMstcInterestedToggle = (itemId: string) => {
-    if (!user) return;
-    toggleInterestedMstcId(user.id, itemId);
+    toggleInterestedMstcId(user?.id || '', itemId);
   };
 
 

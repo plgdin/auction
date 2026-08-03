@@ -41,7 +41,17 @@ export const useAppStore = create<AppState>((set) => ({
     set({ interestedMstcIds: ids });
   },
   toggleInterestedMstcId: (userId, itemId) => {
-    if (!userId) return;
+    if (!userId) {
+      toast.error('Please log in to save auctions to your interested list.', {
+        icon: '🔒',
+        style: {
+          borderRadius: '10px',
+          background: '#0f172a',
+          color: '#fff',
+        },
+      });
+      return;
+    }
     const isAdded = dashboardService.toggleInterestedAuction(userId, itemId);
     const ids = dashboardService.getInterestedAuctions(userId);
     set({ interestedMstcIds: ids });

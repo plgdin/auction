@@ -33,7 +33,7 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
       type="button"
       onClick={handleClick}
       className={cn(
-        "group/btn relative inline-flex items-center justify-center rounded-full cursor-pointer select-none shrink-0 overflow-hidden",
+        "group/btn relative inline-flex items-center justify-center rounded-full cursor-pointer select-none shrink-0 overflow-hidden px-1",
         "h-10 w-[154px]",
         "outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
         "transition-all duration-200 ease-out transform-gpu",
@@ -45,10 +45,7 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
       )}
     >
       {isInterested ? (
-        <div className="flex items-center justify-center gap-2 w-full px-3">
-          <span className="font-semibold text-[13px] tracking-wide whitespace-nowrap">
-            Interested
-          </span>
+        <div className="flex items-center justify-center gap-2 w-full px-2">
           <span className="flex items-center justify-center w-7 h-7 rounded-full bg-white/20 shrink-0">
             <Heart
               size={14}
@@ -59,18 +56,21 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
               )}
             />
           </span>
+          <span className="font-semibold text-[13px] tracking-wide whitespace-nowrap">
+            Interested
+          </span>
         </div>
       ) : (
-        <>
-          <span className="absolute left-3.5 font-semibold text-[13px] tracking-wide whitespace-nowrap text-slate-700 transition-transform duration-200 ease-out transform-gpu group-hover/btn:translate-x-7">
+        <div className="flex items-center justify-between w-full relative px-2.5">
+          <span className="font-semibold text-[13px] tracking-wide whitespace-nowrap text-slate-700 transition-all duration-300 ease-out group-hover/btn:translate-x-8">
             {label}
           </span>
 
           <div
             className={cn(
-              "absolute top-1 bottom-1 right-1 w-8 rounded-full flex items-center justify-center",
-              "bg-rose-50 transition-[right,background-color] duration-200 ease-out",
-              "group-hover/btn:right-[calc(100%-36px)] group-hover/btn:bg-rose-100"
+              "w-7 h-7 rounded-full flex items-center justify-center shrink-0",
+              "bg-rose-50 transition-all duration-300 ease-out",
+              "group-hover/btn:-translate-x-[104px] group-hover/btn:bg-rose-100"
             )}
           >
             <Heart
@@ -83,7 +83,7 @@ export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
               )}
             />
           </div>
-        </>
+        </div>
       )}
     </button>
   );

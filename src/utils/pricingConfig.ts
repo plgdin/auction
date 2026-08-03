@@ -55,6 +55,25 @@ export const COMPARISON_FEATURES: FeatureDef[] = [
     values: { starter: false, go: false, premium: false, enterprise: true },
   },
   {
+    id: 'keyword_alerts',
+    name: 'Instant Keyword Auction Alerts',
+    category: 'Discovery & Search',
+    values: { starter: true, go: true, premium: true, enterprise: true },
+  },
+
+  {
+    id: 'competitor_bid_history',
+    name: 'Automated Competitor Bid History Analysis',
+    category: 'Valuation & Pricing',
+    values: { starter: false, go: false, premium: true, enterprise: true },
+  },
+  {
+    id: 'custom_api_integration',
+    name: 'Custom API Integration & Dedicated Server',
+    category: 'Security & Support',
+    values: { starter: false, go: false, premium: false, enterprise: true },
+  },
+  {
     id: 'blog_news_faq',
     name: 'Blog, news & FAQ access',
     category: 'Discovery & Search',
@@ -82,6 +101,12 @@ export const COMPARISON_FEATURES: FeatureDef[] = [
   {
     id: 'live_market_rates',
     name: 'Live market rates & history charts',
+    category: 'Valuation & Pricing',
+    values: { starter: false, go: false, premium: true, enterprise: true },
+  },
+  {
+    id: 'ai_win_probability',
+    name: 'AI Win-Probability & Bid Optimization',
     category: 'Valuation & Pricing',
     values: { starter: false, go: false, premium: true, enterprise: true },
   },
@@ -306,6 +331,7 @@ export const PLANS: Plan[] = [
     href: '/checkout?plan=pro',
     isPopular: true,
     features: [
+      'AI Win-Probability & Bid Optimization',
       'Profit & Loss Valuation Calculator',
       'Scrap vs. Resale Value Breakdown',
       'Valuation Risk & Margin Warnings',

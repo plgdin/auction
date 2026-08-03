@@ -55,8 +55,8 @@ export function AuthLayout() {
         </div>
 
         {/* Form Column (Right / Center on Mobile & Tablet) */}
-        <div className="flex flex-col justify-center items-center py-8 sm:py-12 px-4 sm:px-6 md:px-10 lg:px-16 min-h-[calc(100vh-60px)] md:min-h-0 bg-slate-950">
-          <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-100">
+        <div className="bg-white flex flex-col justify-center items-center py-8 sm:py-12 px-4 sm:px-6 md:px-10 lg:px-16 min-h-[calc(100vh-60px)] md:min-h-0">
+          <div className="w-full max-w-sm sm:max-w-md">
             {/* Mobile Branding Header */}
             <div className="md:hidden flex flex-col items-center mb-6">
               <Link to="/" className="inline-block">

@@ -67,7 +67,7 @@ export function HeroSection() {
     : 1 - Math.pow(-2 * scrollProgress + 2, 2) / 2;
 
   return (
-    <div ref={heroRef} className="relative overflow-hidden -mt-[81px] min-h-[100dvh] sm:min-h-0 pt-12 pb-48 sm:pt-[193px] sm:pb-60 lg:pt-[225px] lg:pb-72 flex flex-col justify-center items-center text-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div ref={heroRef} className="relative overflow-hidden -mt-[81px] min-h-[100dvh] pt-12 pb-48 sm:pt-[193px] sm:pb-60 lg:pt-[225px] lg:pb-72 flex flex-col justify-center items-center text-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
       {/* GLSL Hills Background */}
       <div className="absolute inset-0 z-0 pointer-events-none" style={{ opacity: 0.75 * (1 - scrollProgress) }}>
         <GLSLHills width="100%" height="100%" />
