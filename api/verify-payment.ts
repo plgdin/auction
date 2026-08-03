@@ -1,7 +1,9 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import Razorpay from 'razorpay';
 import * as dotenv from 'dotenv';
 import { isRateLimited, getClientIp } from './utils/rateLimiter.js';
+import { sendEmail, getPaymentConfirmationTemplate } from './utils/email.js';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -11,6 +13,11 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
+});
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || '',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
 });
 
 export default async function handler(req: any, res: any) {
@@ -87,6 +94,44 @@ export default async function handler(req: any, res: any) {
       res.status(400).json({ success: false, error: 'Payment signature verification failed' });
       return;
     }
+
+    // 1. Fetch order details from Razorpay to get the pricing and plan name metadata
+    const order = await razorpay.orders.fetch(order_id);
+    const planId = String(order.notes?.planId || 'premium');
+    const billingCycle = String(order.notes?.billingCycle || 'monthly');
+    const amountInRs = Number(order.amount) / 100;
+
+    let planName = 'Explorer';
+    if (planId === 'go' || planId === 'go-subscription') planName = 'Individual';
+    else if (planId === 'pro' || planId === 'premium') planName = 'Business';
+
+    // 2. Fetch user name details from profiles if not available in auth metadata
+    let firstName = user.user_metadata?.first_name || '';
+    if (!firstName) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name')
+        .eq('id', user.id)
+        .single();
+      firstName = profile?.first_name || '';
+    }
+
+    // 3. Dispatch the payment invoice email
+    const emailHtml = getPaymentConfirmationTemplate(
+      firstName,
+      planName,
+      amountInRs,
+      payment_id,
+      billingCycle
+    );
+
+    sendEmail({
+      to: user.email || '',
+      subject: `Payment Receipt: Your subscription is active!`,
+      html: emailHtml
+    }).catch(err => {
+      console.error('Failed to dispatch payment receipt email:', err);
+    });
 
     res.status(200).json({
       success: true,

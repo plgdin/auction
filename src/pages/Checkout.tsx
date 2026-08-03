@@ -146,7 +146,8 @@ export function CheckoutPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isPageLoading && !isAuthenticated) {
-      navigate('/auth/login?redirect=/pricing', { replace: true });
+      const redirectPath = `/checkout${window.location.search}`;
+      navigate(`/auth/login?redirect=${encodeURIComponent(redirectPath)}`, { replace: true });
     }
   }, [isPageLoading, isAuthenticated, navigate]);
 
@@ -317,7 +318,10 @@ export function CheckoutPage() {
         body: JSON.stringify({
           amount: total * 100, // paise
           currency: 'INR',
-          receipt: `rcpt_${Date.now()}`
+          receipt: `rcpt_${Date.now()}`,
+          planId,
+          billingCycle,
+          extraSeats
         })
       });
 

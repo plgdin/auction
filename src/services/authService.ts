@@ -20,6 +20,21 @@ export const authService = {
     });
     if (error) throw error;
     if (data.user) {
+      // Trigger welcome email dispatch
+      fetch('/api/send-signup-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          firstName,
+          lastName,
+        }),
+      }).catch((err) => {
+        console.error('Failed to trigger signup confirmation email:', err);
+      });
+
       import('./auditService').then(({ logUserActivity }) => {
         logUserActivity('user_register', 'profile', data.user!.id, { email, firstName, lastName });
       });

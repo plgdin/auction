@@ -68,7 +68,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const { amount, currency, receipt } = req.body;
+    const { amount, currency, receipt, planId, billingCycle, extraSeats } = req.body;
     if (!amount || typeof amount !== 'number' || amount < 100) {
       res.status(400).json({ success: false, error: 'Bad Request: Amount must be >= 100 paise' });
       return;
@@ -79,6 +79,11 @@ export default async function handler(req: any, res: any) {
       amount,
       currency: currency || 'INR',
       receipt: receipt || `rcpt_${Date.now()}`,
+      notes: {
+        planId: planId || '',
+        billingCycle: billingCycle || '',
+        extraSeats: String(extraSeats || '0'),
+      }
     });
 
     res.status(200).json({
