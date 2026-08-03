@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 dotenv.config();
 
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const SMTP_HOST = process.env.SMTP_HOST || '';
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
 const SMTP_USER = process.env.SMTP_USER || '';
@@ -13,7 +14,7 @@ const SMTP_FROM = process.env.SMTP_FROM || 'Lelam Company <no-reply@lelam.co>';
 // Check if credentials exist for a real SMTP transport
 const hasSmtpConfig = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
 
-const transporter = hasSmtpConfig
+const transporter = (!RESEND_API_KEY && hasSmtpConfig)
   ? nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT,
@@ -32,6 +33,36 @@ interface EmailOptions {
 }
 
 export async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
+  // 1. Try Resend HTTP API if key is present
+  if (RESEND_API_KEY) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: SMTP_FROM || 'onboarding@resend.dev',
+          to,
+          subject,
+          html,
+        }),
+      });
+
+      const resData: any = await response.json();
+      if (response.ok) {
+        console.log(`[Email] Email sent to ${to} via Resend: "${subject}" (ID: ${resData.id})`);
+        return true;
+      } else {
+        console.error('[Email] Resend API error:', resData);
+      }
+    } catch (error) {
+      console.error('[Email] Failed to send email via Resend API:', error);
+    }
+  }
+
+  // 2. Try SMTP as fallback
   if (transporter) {
     try {
       await transporter.sendMail({
