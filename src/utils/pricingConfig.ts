@@ -328,7 +328,7 @@ export const PLANS: Plan[] = [
     period: 'per month',
     description: 'Full suite of AI-powered tools to find, value, and win auctions',
     buttonText: 'Start 14-Day Free Trial',
-    href: '/checkout?plan=pro',
+    href: '/checkout?plan=pro&trial=true',
     isPopular: true,
     features: [
       'AI Win-Probability & Bid Optimization',

@@ -200,8 +200,15 @@ export function CheckoutPage() {
   }, [isAuthenticated, currentStep]);
 
   // Pricing calculations
+  const getPlanName = (id: string) => {
+    const cleanId = id.toLowerCase();
+    if (cleanId === 'pro' || cleanId === 'premium') return 'Business';
+    if (cleanId === 'go' || cleanId === 'go-subscription') return 'Individual';
+    return 'Free';
+  };
+
   const isExplorerFree = planId === 'explorer' || planId === 'starter' || planId === 'free';
-  const isTrial = (planId === 'pro' || planId === 'premium') && (searchParams.get('trial') === 'true' || searchParams.get('trial') === '1');
+  const isTrial = (planId === 'pro' || planId === 'premium') && (searchParams.get('trial') !== 'false');
   const isFreeActivation = isExplorerFree || isTrial;
 
   const baseSubtotal = isFreeActivation 
@@ -1041,7 +1048,7 @@ export function CheckoutPage() {
                 <div className="space-y-2">
                   <h2 className="text-2xl font-black text-slate-900">Subscription Activated!</h2>
                   <p className="text-sm text-slate-500 max-w-md mx-auto font-medium">
-                    Your {(planId === 'pro' || planId === 'premium') ? 'Bidder Pro' : (planId === 'go' || planId === 'go-subscription') ? 'Go Subscription' : 'Explorer'} subscription has been successfully registered. You now have full access to platform tools.
+                    Your {getPlanName(planId)} subscription has been successfully registered. You now have full access to platform tools.
                   </p>
                 </div>
 
@@ -1069,7 +1076,7 @@ export function CheckoutPage() {
                   <div className="flex justify-between">
                     <span>Activated Plan</span>
                     <span className="font-bold text-slate-800">
-                      {(planId === 'pro' || planId === 'premium') ? 'Bidder Pro' : (planId === 'go' || planId === 'go-subscription') ? 'Go Subscription' : 'Explorer'} ({billingCycle})
+                      {getPlanName(planId)} Plan ({billingCycle})
                     </span>
                   </div>
                   <div className="flex justify-between border-t pt-2 mt-1">
@@ -1099,7 +1106,7 @@ export function CheckoutPage() {
                     <ShoppingBag className="h-4.5 w-4.5 text-primary" /> Order Summary
                   </h3>
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
-                    {planId === 'pro' ? 'Pro Access' : 'Explorer'}
+                    {getPlanName(planId)} Access
                   </span>
                 </div>
 
@@ -1107,7 +1114,7 @@ export function CheckoutPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                        {planId === 'pro' ? 'Bidder Pro Plan' : 'Explorer Plan'}
+                        {getPlanName(planId)} Plan
                       </h4>
                       <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                         Billed {billingCycle}
@@ -1118,7 +1125,7 @@ export function CheckoutPage() {
                     </span>
                   </div>
 
-                  {planId === 'pro' && (
+                  {(planId === 'pro' || planId === 'premium') && (
                     <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
@@ -1167,7 +1174,7 @@ export function CheckoutPage() {
 
                   <hr className="border-slate-100" />
 
-                  {planId === 'pro' && (
+                  {!isFreeActivation && (
                     <>
                       <div className="flex justify-between items-center text-xs font-medium text-slate-500">
                         <span>Subtotal</span>
@@ -1189,7 +1196,7 @@ export function CheckoutPage() {
                   </div>
                 </div>
 
-                {planId === 'pro' && (
+                {(planId === 'pro' || planId === 'premium') && (
                   <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl text-left space-y-3">
                     <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-primary" /> Package Features Included
@@ -1210,6 +1217,32 @@ export function CheckoutPage() {
                       <li className="flex items-start gap-2.5">
                         <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                         <span><strong className="text-slate-900 font-semibold">Unlimited Catalog Downloads</strong> — MSTC & government PDFs</span>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+
+                {(planId === 'go' || planId === 'go-subscription') && (
+                  <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl text-left space-y-3">
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" /> Package Features Included
+                    </h4>
+                    <ul className="space-y-2.5 text-slate-600 text-xs font-medium leading-normal">
+                      <li className="flex items-start gap-2.5">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span><strong className="text-slate-900 font-semibold">Estimator Tool</strong> — GST, Tax & transport cost estimator</span>
+                      </li>
+                      <li className="flex items-start gap-2.5">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span><strong className="text-slate-900 font-semibold">Max Bid Calculator</strong> — Calculate optimal bidding limit</span>
+                      </li>
+                      <li className="flex items-start gap-2.5">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span><strong className="text-slate-900 font-semibold">Custom Alerts</strong> — Custom alerts & closing reminders</span>
+                      </li>
+                      <li className="flex items-start gap-2.5">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span><strong className="text-slate-900 font-semibold">Document Vault</strong> — Document vault for paper organization</span>
                       </li>
                     </ul>
                   </div>

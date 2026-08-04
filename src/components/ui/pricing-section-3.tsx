@@ -82,7 +82,7 @@ const plans = [
       "International price comparison",
       "Automated Competitor Bid History Analysis",
     ],
-    href: "/checkout?plan=pro",
+    href: "/checkout?plan=pro&trial=true",
   },
   {
     id: "enterprise",
