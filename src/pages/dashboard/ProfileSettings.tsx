@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText, Lock, SlidersHorizontal, Eye, EyeOff, CreditCard } from 'lucide-react';
+import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText, Lock, SlidersHorizontal, Eye, EyeOff, CreditCard, Frown, X, Gift, AlertTriangle, Sparkles } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
@@ -128,20 +128,52 @@ export function ProfileSettings() {
       setIsSubmitting(false);
     }
   };
-  const handleCancelSubscription = async () => {
+  // Cancellation Retention Flow States
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelStep, setCancelStep] = useState(1);
+  const [cancelReason, setCancelReason] = useState('');
+  const [customFeedback, setCustomFeedback] = useState('');
+  const [preferredPricing, setPreferredPricing] = useState('');
+  const [couponApplied, setCouponApplied] = useState(false);
+
+  const handleCancelSubscription = () => {
+    setIsCancelModalOpen(true);
+    setCancelStep(1);
+    setCancelReason('');
+    setCustomFeedback('');
+    setPreferredPricing('');
+    setCouponApplied(false);
+  };
+
+  const applyRetentionCoupon = async () => {
+    setCouponApplied(true);
+    import('canvas-confetti').then((module) => {
+      const confetti = module.default;
+      confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
+    }).catch(err => console.log('Confetti import deferred'));
+
+    toast.success('Awesome! Coupon STAY30 has been successfully applied to your account for 30% off your next renewals.');
+    
+    try {
+      import('../../services/auditService').then(({ logUserActivity }) => {
+        logUserActivity('apply_retention_coupon', 'profile', user?.id || '', { couponCode: 'STAY30' });
+      });
+    } catch (_) {}
+
+    setTimeout(() => {
+      setIsCancelModalOpen(false);
+    }, 2000);
+  };
+
+  const confirmCancellation = async () => {
     if (!user) return;
-    const currentPlan = 
-      profile?.subscription_plan === 'pro' ? 'Business' :
-      (profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? 'Individual' :
-      profile?.subscription_plan === 'enterprise' ? 'Enterprise' : 'Free';
-
-    const confirmed = window.confirm(
-      `Are you sure you want to cancel your ${currentPlan} subscription? You will lose access to all premium tools, quote builder, documents vault, and visual calendar at the end of your billing cycle.`
-    );
-    if (!confirmed) return;
-
     try {
       setIsSubmitting(true);
+      setIsCancelModalOpen(false);
       const updatedProfile = await authService.updateProfile(user.id, {
         subscription_plan: 'explorer'
       });
@@ -726,6 +758,249 @@ export function ProfileSettings() {
                 <li>You can cancel your active paid plan at any time. When cancelled, your account will instantly downgrade to the Free plan.</li>
                 <li>For any invoice disputes, refunds, or custom Enterprise integrations, please contact our support team.</li>
               </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isCancelModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                  <Frown className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg font-black text-slate-900">We're Sad to See You Go</h3>
+                  <p className="text-xs text-slate-500 font-medium">Step {cancelStep} of 3</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsCancelModalOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors border-0 bg-transparent cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-6 overflow-y-auto flex-1 text-left space-y-4">
+              {cancelStep === 1 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-600 leading-relaxed font-semibold">
+                    Could you tell us why you are considering cancelling your subscription? Your feedback helps us improve.
+                  </p>
+                  
+                  <div className="space-y-2">
+                    {[
+                      { id: 'expensive', label: 'It is too expensive / out of budget' },
+                      { id: 'missing_features', label: 'Missing critical features I need' },
+                      { id: 'hard_use', label: 'Too difficult or complex to use' },
+                      { id: 'temporary', label: 'Temporary project completed, no longer needed' },
+                      { id: 'other', label: 'Other reason' }
+                    ].map((opt) => (
+                      <label 
+                        key={opt.id}
+                        className={`flex items-start p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                          cancelReason === opt.id 
+                            ? 'border-primary bg-primary/5 text-primary' 
+                            : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="cancelReason"
+                          value={opt.id}
+                          checked={cancelReason === opt.id}
+                          onChange={(e) => setCancelReason(e.target.value)}
+                          className="mt-1 mr-3 h-4 w-4 text-primary focus:ring-primary border-slate-300"
+                        />
+                        <span className="text-xs font-bold">{opt.label}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {cancelReason && (
+                    <div className="space-y-2 pt-2">
+                      <label className="text-xs font-bold text-slate-700">
+                        {cancelReason === 'missing_features' ? 'What features would have kept you?' : 'Tell us more (optional):'}
+                      </label>
+                      <textarea
+                        value={customFeedback}
+                        onChange={(e) => setCustomFeedback(e.target.value)}
+                        placeholder="Your thoughts..."
+                        className="w-full min-h-[80px] p-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-800"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {cancelStep === 2 && (
+                <div className="space-y-6">
+                  {cancelReason === 'expensive' ? (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3">
+                        <Gift className="w-8 h-8 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-sm font-black text-emerald-800">Special Retention Discount!</h4>
+                          <p className="text-xs text-emerald-700 mt-1 leading-relaxed font-medium">
+                            We value having you as a subscriber. We'd love to offer you 30% off your subscription for the next 3 months! Use this coupon code or click below to apply it immediately.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center space-y-2">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Your discount coupon code</span>
+                        <span className="font-mono text-2xl font-black text-slate-800 bg-white border px-4 py-1.5 rounded-lg shadow-xs inline-block tracking-wider">
+                          STAY30
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <label className="text-xs font-bold text-slate-700 block">
+                          What monthly price would you prefer or feel is fair? (INR / month)
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['₹299', '₹499', '₹999'].map((priceOpt) => (
+                            <button
+                              key={priceOpt}
+                              onClick={() => setPreferredPricing(priceOpt)}
+                              className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                                preferredPricing === priceOpt 
+                                  ? 'bg-primary border-primary text-white shadow-xs' 
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                              }`}
+                            >
+                              {priceOpt}/mo
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-start gap-3">
+                        <Sparkles className="w-8 h-8 text-primary shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-sm font-black text-blue-800">Exclusive Reward to Stay!</h4>
+                          <p className="text-xs text-blue-700 mt-1 leading-relaxed font-medium">
+                            We are committed to resolving your concerns. As a thank you for your feedback, we've prepared a 30% off coupon code for you. Apply it to get immediate savings on your next renewals!
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center space-y-2">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Use coupon code</span>
+                        <span className="font-mono text-2xl font-black text-slate-800 bg-white border px-4 py-1.5 rounded-lg shadow-xs inline-block tracking-wider">
+                          STAY30
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {cancelStep === 3 && (
+                <div className="space-y-5">
+                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3">
+                    <AlertTriangle className="w-8 h-8 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-black text-rose-800">Confirm Deactivation</h4>
+                      <p className="text-xs text-rose-700 mt-1 leading-relaxed font-medium">
+                        If you proceed, your subscription will end immediately. You will immediately lose access to all premium tools:
+                      </p>
+                    </div>
+                  </div>
+
+                  <ul className="space-y-2.5 text-xs text-slate-600 font-medium pl-2">
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-500 font-bold">✕</span>
+                      <span>AI Win-Probability & Bid Optimization Engine</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-500 font-bold">✕</span>
+                      <span>Real-time Scrap vs. Resale Valuation Margins</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-500 font-bold">✕</span>
+                      <span>Automated closing alerts, reminders & visual calendar</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-500 font-bold">✕</span>
+                      <span>GST, taxes, transport estimator and catalog document vault</span>
+                    </li>
+                  </ul>
+
+                  <p className="text-xs font-bold text-slate-400 text-center uppercase tracking-wide pt-2">
+                    Are you absolutely sure you want to degrade?
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-6 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+              {cancelStep === 1 && (
+                <>
+                  <button
+                    onClick={() => setIsCancelModalOpen(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
+                  >
+                    Keep Premium
+                  </button>
+                  <button
+                    onClick={() => setCancelStep(2)}
+                    disabled={!cancelReason}
+                    className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-700 rounded-xl disabled:opacity-50 transition-all cursor-pointer shadow-md shadow-primary/10"
+                  >
+                    Continue
+                  </button>
+                </>
+              )}
+
+              {cancelStep === 2 && (
+                <>
+                  <button
+                    onClick={() => setCancelStep(3)}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 bg-transparent hover:text-slate-800 transition-all border-0 cursor-pointer"
+                  >
+                    No thanks, continue cancellation
+                  </button>
+                  
+                  {couponApplied ? (
+                    <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                      ✓ Coupon Applied!
+                    </span>
+                  ) : (
+                    <button
+                      onClick={applyRetentionCoupon}
+                      className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all cursor-pointer shadow-md shadow-emerald-600/10 flex items-center gap-1.5"
+                    >
+                      <Gift className="w-3.5 h-3.5" /> Apply Coupon & Save 30%
+                    </button>
+                  )}
+                </>
+              )}
+
+              {cancelStep === 3 && (
+                <>
+                  <button
+                    onClick={() => setIsCancelModalOpen(false)}
+                    className="px-5 py-2.5 text-xs font-bold text-white bg-primary hover:bg-primary-700 rounded-xl transition-all cursor-pointer shadow-md shadow-primary/20"
+                  >
+                    Keep My Subscription
+                  </button>
+                  <button
+                    onClick={confirmCancellation}
+                    className="px-4 py-2.5 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all cursor-pointer border-0 bg-transparent"
+                  >
+                    Cancel Subscription anyway
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

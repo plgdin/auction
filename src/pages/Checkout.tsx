@@ -135,6 +135,33 @@ export function CheckoutPage() {
   const [gstError, setGstError] = useState<string | null>(null);
   const [sdkError, setSdkError] = useState<string | null>(null);
 
+  // Coupon Code States
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
+
+  const handleApplyCoupon = () => {
+    setCouponError(null);
+    setCouponSuccess(null);
+    const code = couponCode.trim().toUpperCase();
+    if (!code) return;
+
+    if (code === 'STAY30') {
+      setAppliedDiscount(0.3);
+      setCouponSuccess('Coupon STAY30 applied! 30% discount has been applied.');
+    } else if (code === 'STAY50') {
+      setAppliedDiscount(0.5);
+      setCouponSuccess('Coupon STAY50 applied! 50% discount has been applied.');
+    } else if (code === 'LELAM10') {
+      setAppliedDiscount(0.1);
+      setCouponSuccess('Coupon LELAM10 applied! 10% discount has been applied.');
+    } else {
+      setCouponError('Invalid coupon code. Try using STAY30 or LELAM10.');
+      setAppliedDiscount(0);
+    }
+  };
+
   // Simulate initial loading block to match template skeleton
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -220,7 +247,9 @@ export function CheckoutPage() {
   const seatUnitPrice = billingCycle === 'annual' ? 4990 : 499;
   const extraSeats = Math.max(0, seats - 1);
   const extraSeatsCost = isFreeActivation ? 0 : extraSeats * seatUnitPrice;
-  const subtotal = baseSubtotal + extraSeatsCost;
+  const subtotalBeforeDiscount = baseSubtotal + extraSeatsCost;
+  const discountAmount = Math.round(subtotalBeforeDiscount * appliedDiscount);
+  const subtotal = subtotalBeforeDiscount - discountAmount;
   const gst = Math.round(subtotal * 0.18);
   const total = subtotal + gst;
 
@@ -1178,8 +1207,14 @@ export function CheckoutPage() {
                     <>
                       <div className="flex justify-between items-center text-xs font-medium text-slate-500">
                         <span>Subtotal</span>
-                        <span className="font-mono text-slate-800 font-semibold">{formatPrice(subtotal)}</span>
+                        <span className="font-mono text-slate-800 font-semibold">{formatPrice(subtotalBeforeDiscount)}</span>
                       </div>
+                      {appliedDiscount > 0 && (
+                        <div className="flex justify-between items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-100">
+                          <span>Discount ({appliedDiscount * 100}% Off)</span>
+                          <span className="font-mono">- {formatPrice(discountAmount)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between items-center text-xs font-medium text-slate-500">
                         <span>GST (18%)</span>
                         <span className="font-mono text-slate-800 font-semibold">{formatPrice(gst)}</span>
@@ -1195,6 +1230,30 @@ export function CheckoutPage() {
                     </span>
                   </div>
                 </div>
+
+                {!isFreeActivation && (
+                  <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl text-left space-y-2">
+                    <Label className="text-xs font-bold text-slate-700 block">Have a promo code?</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        placeholder="e.g. STAY30"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        className="bg-white rounded-xl text-xs py-1.5 focus:ring-primary/20 h-9"
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        className="bg-primary hover:bg-primary/95 text-white font-bold text-xs h-9 px-4 rounded-xl cursor-pointer"
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    {couponError && <p className="text-[11px] font-bold text-red-600 mt-1">{couponError}</p>}
+                    {couponSuccess && <p className="text-[11px] font-bold text-emerald-600 mt-1">{couponSuccess}</p>}
+                  </div>
+                )}
 
                 {(planId === 'pro' || planId === 'premium') && (
                   <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl text-left space-y-3">
