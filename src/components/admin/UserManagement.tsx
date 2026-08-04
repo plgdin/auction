@@ -109,18 +109,25 @@ export function UserManagement() {
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <button
-                    onClick={() => handleViewActivity(user)}
-                    className={clsx(
-                      "px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wide border transition-all cursor-pointer inline-flex items-center gap-1.5 hover:scale-[1.02]",
-                      user.subscription_plan === 'pro' ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" :
-                      user.subscription_plan === 'enterprise' ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" :
-                      "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => handleViewActivity(user)}
+                      className={clsx(
+                        "px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wide border transition-all cursor-pointer inline-flex items-center gap-1.5 hover:scale-[1.02] w-fit",
+                        user.subscription_plan === 'pro' ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" :
+                        user.subscription_plan === 'enterprise' ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" :
+                        "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                      )}
+                    >
+                      <span>{user.subscription_plan || 'explorer'}</span>
+                      <Activity className="w-3 h-3" />
+                    </button>
+                    {user.subscription_expires_at && (
+                      <span className="text-[10px] font-bold text-slate-400 font-mono">
+                        Expires: {new Date(user.subscription_expires_at).toLocaleDateString()}
+                      </span>
                     )}
-                  >
-                    <span>{user.subscription_plan || 'explorer'}</span>
-                    <Activity className="w-3 h-3" />
-                  </button>
+                  </div>
                 </td>
                 <td className="px-6 py-4">
                   {user.organization_id ? (

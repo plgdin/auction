@@ -315,7 +315,13 @@ export function CheckoutPage() {
         }
         if (user?.id) {
           const planToSet = (planId === 'pro' || planId === 'premium') ? 'pro' : (planId === 'go' || planId === 'go-subscription') ? 'go' : 'explorer';
-          authService.updateProfile(user.id, { subscription_plan: planToSet as any }).then((updated) => {
+          const durationDays = isTrial ? 7 : (billingCycle === 'annual' ? 365 : 30);
+          const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+
+          authService.updateProfile(user.id, { 
+            subscription_plan: planToSet as any,
+            subscription_expires_at: expiresAt
+          }).then((updated) => {
             if (updated) setProfile(updated);
           });
         }
@@ -447,7 +453,12 @@ export function CheckoutPage() {
           });
 
           if (user?.id) {
-            authService.updateProfile(user.id, { subscription_plan: planId as any }).then((updated) => {
+            const durationDays = billingCycle === 'annual' ? 365 : 30;
+            const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+            authService.updateProfile(user.id, { 
+              subscription_plan: planId as any,
+              subscription_expires_at: expiresAt
+            }).then((updated) => {
               if (updated) setProfile(updated);
             });
           }

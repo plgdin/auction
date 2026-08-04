@@ -19,7 +19,7 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const { initializeAuth, user } = useAuthStore();
+  const { initializeAuth, user, profile } = useAuthStore();
   const { setCurrencyRates, fetchInterestedMstcIds } = useAppStore();
   const [showChatbot, setShowChatbot] = useState(false);
 
@@ -34,6 +34,37 @@ function App() {
       fetchInterestedMstcIds('');
     }
   }, [user, fetchInterestedMstcIds]);
+
+  // Subscription expiry check (1 week prior warning)
+  useEffect(() => {
+    async function checkSubscriptionRenewal() {
+      if (!user || !profile || !profile.subscription_expires_at) return;
+      if (profile.subscription_plan === 'explorer') return;
+
+      const expiryDate = new Date(profile.subscription_expires_at);
+      const diffMs = expiryDate.getTime() - Date.now();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+      // 7 days or less
+      if (diffDays > 0 && diffDays <= 7) {
+        const lastNotifiedKey = `lelam_expiry_notified_${user.id}_${profile.subscription_expires_at}`;
+        if (localStorage.getItem(lastNotifiedKey)) return;
+
+        const { adminService } = await import('./services/adminService');
+        const notif = await adminService.sendNotification({
+          user_id: user.id,
+          title: 'Subscription Expiration Warning',
+          message: `Your ${profile.subscription_plan === 'pro' ? 'Business' : 'Individual'} plan is renewing/expiring in ${diffDays} days on ${expiryDate.toLocaleDateString()}. Please make sure your billing details are correct.`,
+          is_read: false
+        });
+
+        if (notif) {
+          localStorage.setItem(lastNotifiedKey, 'true');
+        }
+      }
+    }
+    checkSubscriptionRenewal();
+  }, [user, profile]);
 
   // Allow chatbot to load immediately instead of artificial delay
   useEffect(() => {

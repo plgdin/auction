@@ -105,11 +105,16 @@ export default async function handler(req: any, res: any) {
     if (planId === 'go' || planId === 'go-subscription') planName = 'Individual';
     else if (planId === 'pro' || planId === 'premium') planName = 'Business';
 
-    // 2. Update user profile to paid status server-side (guarantees update even on network disconnect)
     const planToSet = (planId === 'pro' || planId === 'premium') ? 'pro' : (planId === 'go' || planId === 'go-subscription') ? 'go' : 'explorer';
+    const durationDays = billingCycle === 'annual' ? 365 : 30;
+    const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ subscription_plan: planToSet })
+      .update({ 
+        subscription_plan: planToSet,
+        subscription_expires_at: expiresAt
+      })
       .eq('id', user.id);
 
     if (updateError) {
