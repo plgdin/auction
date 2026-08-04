@@ -63,7 +63,7 @@ const plans = [
     description: "Full suite of AI-powered tools to find, value, and win auctions",
     price: 1499,
     yearlyPrice: 15830,
-    buttonText: "Start 14-Day Free Trial",
+    buttonText: "Start 7-Day Free Trial",
     buttonVariant: "default" as const,
     popular: true,
     features: [

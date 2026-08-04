@@ -7,7 +7,7 @@ export interface SubscriptionStatus {
   isTrial: boolean;
 }
 
-const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const setTrialStartTimestamp = (userId?: string) => {
   const now = Date.now();
@@ -21,8 +21,8 @@ export const getTrialStatus = (userId?: string): SubscriptionStatus => {
   if (!stored) {
     return {
       isExpired: false,
-      daysRemaining: 14,
-      statusText: '14-Day Free Trial Active',
+      daysRemaining: 7,
+      statusText: '7-Day Free Trial Active',
       isTrial: true,
     };
   }
@@ -30,9 +30,9 @@ export const getTrialStatus = (userId?: string): SubscriptionStatus => {
   const startTime = parseInt(stored, 10);
   const elapsed = Date.now() - startTime;
   const daysElapsed = elapsed / (1000 * 60 * 60 * 24);
-  const daysRemaining = Math.max(0, Math.ceil(14 - daysElapsed));
+  const daysRemaining = Math.max(0, Math.ceil(7 - daysElapsed));
 
-  if (elapsed >= FOURTEEN_DAYS_MS) {
+  if (elapsed >= SEVEN_DAYS_MS) {
     return {
       isExpired: true,
       daysRemaining: 0,

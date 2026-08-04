@@ -683,7 +683,7 @@ export function ProfileSettings() {
                 </h3>
                 {getTrialStatus(user?.id).isExpired && (
                   <p className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg mt-2 inline-block">
-                    Your 14-day free trial has ended. Your subscription is over.
+                    Your 7-day free trial has ended. Your subscription is over.
                   </p>
                 )}
                 {!getTrialStatus(user?.id).isExpired && profile?.subscription_plan === 'pro' && (

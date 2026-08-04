@@ -49,7 +49,7 @@ function renderCellValue(value: boolean | string) {
 const PRICING_FAQ = [
   {
     q: 'Is there a free trial for Bidder Pro?',
-    a: 'Yes! Every new account starts with a 14-day free trial of Bidder Pro. No credit card required. You can downgrade to the Explorer plan at any time.',
+    a: 'Yes! Every new account starts with a 7-day free trial of Bidder Pro. No credit card required. You can downgrade to the Explorer plan at any time.',
   },
   {
     q: 'Can I switch plans at any time?',
@@ -57,7 +57,7 @@ const PRICING_FAQ = [
   },
   {
     q: 'Can I get a refund if I cancel my subscription?',
-    a: 'You can cancel your subscription at any time. Since we offer a 14-day free trial for Bidder Pro to evaluate all features, we generally do not issue refunds for active billing cycles. Your access will remain active until the end of your current cycle.',
+    a: 'You can cancel your subscription at any time. Since we offer a 7-day free trial for Bidder Pro to evaluate all features, we generally do not issue refunds for active billing cycles. Your access will remain active until the end of your current cycle.',
   },
   {
     q: 'What payment methods do you accept?',
