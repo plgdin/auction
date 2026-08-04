@@ -86,7 +86,7 @@ function CurrencyDropdown({ isTransparent }: { isTransparent?: boolean }) {
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { isAuthenticated, user, profile, logout } = useAuthStore();
+  const { isAuthenticated, user, profile, logout, isLoading } = useAuthStore();
   const location = useLocation();
 
   // Click outside to close profile dropdown
@@ -373,97 +373,99 @@ export function Header() {
                   )}
                 </div>
               )}
-               {isAuthenticated ? (
-                 <div className="flex items-center gap-3">
-                   {isPaidSubscriberOrAdmin ? (
-                     <Link
-                       to="/dashboard"
-                       className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-primary hover:bg-primary/95 transition-colors"
-                     >
-                       Dashboard
-                     </Link>
-                   ) : (
-                     <Link
-                       to="/pricing"
-                       className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-primary hover:bg-primary/95 transition-colors"
-                     >
-                       Upgrade Plan
-                     </Link>
-                   )}
-                   
-                   <div className="relative header-profile-container">
-                     <button
-                       onClick={() => setIsProfileOpen(!isProfileOpen)}
-                       className={clsx(
-                         "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-bold transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20",
-                         isHeaderTransparent
-                           ? "bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30"
-                           : "bg-white text-slate-700 border-slate-200 hover:border-primary hover:bg-slate-50/55"
-                       )}
-                       aria-expanded={isProfileOpen}
-                       aria-haspopup="true"
-                     >
-                       <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs uppercase border border-primary/20">
-                         {profile?.first_name ? profile.first_name[0] : (user?.email ? user.email[0] : 'U')}
-                       </div>
-                       <span className="hidden lg:inline max-w-[85px] truncate">
-                         {profile?.first_name || 'Account'}
-                       </span>
-                       <ChevronDown size={14} className={clsx("transition-transform duration-300", isProfileOpen && "rotate-180")} />
-                     </button>
+                {isLoading ? (
+                  <div className="w-24 h-10 bg-slate-100/50 animate-pulse rounded-md" />
+                ) : isAuthenticated ? (
+                  <div className="flex items-center gap-3">
+                    {isPaidSubscriberOrAdmin ? (
+                      <Link
+                        to="/dashboard"
+                        className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
+                      >
+                        Dashboard
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/pricing"
+                        className="inline-flex items-center justify-center px-6 py-3 rounded-full border border-blue-300 bg-gradient-to-t from-blue-100 via-blue-200 to-blue-300 text-blue-950 font-black text-base shadow-xs shadow-blue-300/60 hover:from-blue-200 hover:via-blue-300 hover:to-blue-400 transition-all duration-300 scale-100 hover:scale-105"
+                      >
+                        Upgrade Plan
+                      </Link>
+                    )}
+                    
+                    <div className="relative header-profile-container">
+                      <button
+                        onClick={() => setIsProfileOpen(!isProfileOpen)}
+                        className={clsx(
+                          "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-bold transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20",
+                          isHeaderTransparent
+                            ? "bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-primary hover:bg-slate-50/55"
+                        )}
+                        aria-expanded={isProfileOpen}
+                        aria-haspopup="true"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs uppercase border border-primary/20">
+                          {profile?.first_name ? profile.first_name[0] : (user?.email ? user.email[0] : 'U')}
+                        </div>
+                        <span className="hidden lg:inline max-w-[85px] truncate">
+                          {profile?.first_name || 'Account'}
+                        </span>
+                        <ChevronDown size={14} className={clsx("transition-transform duration-300", isProfileOpen && "rotate-180")} />
+                      </button>
 
-                     {isProfileOpen && (
-                       <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden text-slate-900">
-                         <div className="p-4 border-b border-slate-100 bg-slate-50 text-left">
-                           <p className="font-bold text-slate-900 text-sm truncate">
-                             {profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}` : 'User Account'}
-                           </p>
-                           <p className="text-xs text-slate-500 truncate mt-0.5">{user?.email}</p>
-                           <div className="mt-2 inline-block text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded shadow-2xs uppercase tracking-wider">
-                             Plan: {profile?.subscription_plan || 'free'}
-                           </div>
-                         </div>
-                         <div className="p-1 flex flex-col gap-0.5">
-                           <Link
-                             to="/dashboard"
-                             onClick={() => setIsProfileOpen(false)}
-                             className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 hover:text-slate-950 hover:bg-slate-50 font-semibold text-xs transition-colors"
-                           >
-                             <Gavel size={14} className="text-slate-400" />
-                             Dashboard
-                           </Link>
-                           <Link
-                             to="/pricing"
-                             onClick={() => setIsProfileOpen(false)}
-                             className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 hover:text-slate-955 hover:bg-slate-50 font-semibold text-xs transition-colors"
-                           >
-                             <Sparkles size={14} className="text-slate-400" />
-                             Upgrade / Pricing
-                           </Link>
-                           <button
-                             onClick={async () => {
-                               setIsProfileOpen(false);
-                               await logout();
-                               window.location.href = '/';
-                             }}
-                             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 font-bold text-xs transition-colors border-0 bg-transparent text-left cursor-pointer"
-                           >
-                             <LogOut size={14} className="text-red-400" />
-                             Sign Out
-                           </button>
-                         </div>
-                       </div>
-                     )}
-                   </div>
-                 </div>
-               ) : (
-                 <Link
-                   to="/auth/login"
-                   className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary/90 transition-colors"
-                 >
-                   Sign In
-                 </Link>
-               )}
+                      {isProfileOpen && (
+                        <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden text-slate-900">
+                          <div className="p-4 border-b border-slate-100 bg-slate-50 text-left">
+                            <p className="font-bold text-slate-900 text-sm truncate">
+                              {profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}` : 'User Account'}
+                            </p>
+                            <p className="text-xs text-slate-500 truncate mt-0.5">{user?.email}</p>
+                            <div className="mt-2 inline-block text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded shadow-2xs uppercase tracking-wider">
+                              Plan: {profile?.subscription_plan || 'free'}
+                            </div>
+                          </div>
+                          <div className="p-1 flex flex-col gap-0.5">
+                            <Link
+                              to="/dashboard"
+                              onClick={() => setIsProfileOpen(false)}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 hover:text-slate-950 hover:bg-slate-50 font-semibold text-xs transition-colors"
+                            >
+                              <Gavel size={14} className="text-slate-400" />
+                              Dashboard
+                            </Link>
+                            <Link
+                              to="/pricing"
+                              onClick={() => setIsProfileOpen(false)}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 hover:text-slate-955 hover:bg-slate-50 font-semibold text-xs transition-colors"
+                            >
+                              <Sparkles size={14} className="text-slate-400" />
+                              Upgrade / Pricing
+                            </Link>
+                            <button
+                              onClick={async () => {
+                                setIsProfileOpen(false);
+                                await logout();
+                                window.location.href = '/';
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 font-bold text-xs transition-colors border-0 bg-transparent text-left cursor-pointer"
+                            >
+                              <LogOut size={14} className="text-red-400" />
+                              Sign Out
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <Link
+                    to="/auth/login"
+                    className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary/90 transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                )}
             </div>
           </nav>
 
@@ -573,7 +575,9 @@ export function Header() {
           "shrink-0 pt-6 border-t border-slate-100 flex flex-col items-center space-y-4 text-center w-full max-w-xs mx-auto transition-all duration-500 delay-150",
           isMobileMenuOpen ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
         )}>
-          {isAuthenticated ? (
+          {isLoading ? (
+            <div className="w-full h-14 bg-slate-100/50 animate-pulse rounded-2xl" />
+          ) : isAuthenticated ? (
             <div className="w-full flex flex-col gap-3">
               <div className="w-full flex items-center gap-3">
                 <Link
@@ -593,12 +597,12 @@ export function Header() {
                     className="flex-1 text-center py-3.5 px-6 rounded-2xl text-base font-bold text-white bg-primary hover:bg-primary/95 shadow-lg shadow-primary/30 transition-all cursor-pointer"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Dashboard
+                    Go to Dashboard
                   </Link>
                 ) : (
                   <Link
                     to="/pricing"
-                    className="flex-1 text-center py-4 px-6 rounded-2xl border border-blue-300 bg-gradient-to-t from-blue-100 via-blue-200 to-blue-300 text-blue-950 font-black text-base shadow-xs shadow-blue-300/60 hover:from-blue-200 hover:via-blue-300 hover:to-blue-400 transition-all duration-300"
+                    className="flex-1 text-center py-4 px-6 rounded-2xl border border-blue-300 bg-gradient-to-t from-blue-100 via-blue-200 to-blue-300 text-blue-950 font-black text-lg shadow-xs shadow-blue-300/60 hover:from-blue-200 hover:via-blue-300 hover:to-blue-400 transition-all duration-300"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Upgrade Plan

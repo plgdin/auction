@@ -291,10 +291,19 @@ export function Auctions() {
   const filterDrawerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!isFiltersOpen) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      if (filterDrawerRef.current && !filterDrawerRef.current.contains(event.target as Node)) {
-        setIsFiltersOpen(false);
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Element;
+      if (!target) return;
+      if (
+        filterDrawerRef.current?.contains(target as Node) ||
+        target.closest('.ant-dropdown') ||
+        target.closest('[role="dialog"]') ||
+        target.closest('[data-radix-popper-content-wrapper]') ||
+        target.closest('.rdp')
+      ) {
+        return;
       }
+      setIsFiltersOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
@@ -1090,7 +1099,7 @@ export function Auctions() {
               </span>
             </div>
             {mstcActiveFilters.length > 0 && (
-              <span className="bg-white text-primary text-[10px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 mr-1">
+              <span className="bg-white text-primary text-[10px] font-black w-5 h-5 rounded-full inline-flex items-center justify-center leading-none text-center shrink-0 mr-1 select-none">
                 {mstcActiveFilters.length}
               </span>
             )}
@@ -1178,35 +1187,33 @@ export function Auctions() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <div className="min-w-0 flex items-center h-full">
-                  <div className="space-y-1">
-                    <div className="text-sm text-slate-700 font-semibold flex items-center h-full">
-                      Showing {mstcTotalCount} Government Catalogs
-                    </div>
-                    {mstcActiveFilters.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5" aria-label="Applied filters">
-                        <span className="text-xs font-medium text-slate-500 mr-0.5">Applied filters:</span>
-                        {mstcActiveFilters.map(filter => (
-                          <span
-                            key={`${filter.label}-${filter.value}`}
-                            className="max-w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"
-                            title={`${filter.label}: ${filter.value}`}
-                          >
-                            <span className="font-semibold text-slate-700">{filter.label}:</span>{' '}
-                            <span className="break-words">{filter.value}</span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 overflow-hidden">
+                <div className="min-w-0 flex-1 space-y-2 max-w-full">
+                  <div className="text-sm text-slate-800 font-bold flex items-center">
+                    Showing {mstcTotalCount} Government Catalogs
                   </div>
+                  {mstcActiveFilters.length > 0 && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 max-w-full" aria-label="Applied filters">
+                      <span className="text-xs font-semibold text-slate-500 shrink-0">Applied filters:</span>
+                      {mstcActiveFilters.map(filter => (
+                        <span
+                          key={`${filter.label}-${filter.value}`}
+                          className="inline-flex items-center gap-1 max-w-[260px] rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700 shrink-0"
+                          title={`${filter.label}: ${filter.value}`}
+                        >
+                          <span className="font-bold text-slate-900 shrink-0">{filter.label}:</span>{' '}
+                          <span className="truncate">{filter.value}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-2.5 shrink-0 self-start lg:self-center">
                   {/* Desktop Filter Toggle Button */}
                   <button
                     onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                     className={clsx(
-                      "hidden lg:flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border transition-all cursor-pointer",
+                      "hidden lg:inline-flex items-center gap-2 px-3.5 h-10 text-sm font-semibold rounded-lg border transition-all cursor-pointer shrink-0 whitespace-nowrap",
                       isFiltersOpen
                         ? "bg-primary text-white border-primary shadow-sm"
                         : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400"
@@ -1216,7 +1223,7 @@ export function Auctions() {
                     <span>{isFiltersOpen ? "Hide Filters" : "Show Filters"}</span>
                     {mstcActiveFilters.length > 0 && (
                       <span className={clsx(
-                        "text-[11px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center -mr-1",
+                        "text-[10px] font-black w-5 h-5 rounded-full inline-flex items-center justify-center leading-none text-center -mr-1 shrink-0 select-none",
                         isFiltersOpen ? "bg-white text-primary" : "bg-primary text-white"
                       )}>
                         {mstcActiveFilters.length}
@@ -1225,7 +1232,7 @@ export function Auctions() {
                   </button>
 
                   {/* Column Switcher (Hidden on mobile) */}
-                  <div className="hidden md:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
+                  <div className="hidden md:flex items-center h-10 bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
                     {[2, 3, 4, 5].map((cols) => (
                       <button
                         key={cols}
@@ -1234,7 +1241,7 @@ export function Auctions() {
                           setColumns(cols as any);
                         }}
                         className={clsx(
-                          "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
+                          "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer h-full flex items-center justify-center",
                           isGridView && columns === cols
                             ? "bg-white shadow-sm text-primary"
                             : "text-slate-500 hover:text-slate-800"
@@ -1245,24 +1252,24 @@ export function Auctions() {
                     ))}
                   </div>
 
-                  <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
+                  <div className="hidden sm:flex items-center h-10 bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
                     <button
                       onClick={() => setIsGridView(true)}
                       className={clsx(
-                        "p-1.5 rounded-md transition-colors cursor-pointer",
+                        "p-1.5 rounded-md transition-colors cursor-pointer h-full flex items-center justify-center",
                         isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
-                      <LayoutGrid className="w-5 h-5" />
+                      <LayoutGrid className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setIsGridView(false)}
                       className={clsx(
-                        "p-1.5 rounded-md transition-colors cursor-pointer",
+                        "p-1.5 rounded-md transition-colors cursor-pointer h-full flex items-center justify-center",
                         !isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
-                      <List className="w-5 h-5" />
+                      <List className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

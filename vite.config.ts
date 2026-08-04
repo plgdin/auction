@@ -261,6 +261,22 @@ export default defineConfig({
             if (normalizedId.includes('@xenova') || normalizedId.includes('onnxruntime')) {
               return 'transformers';
             }
+            // Three.js & 3D WebGL rendering — very heavy
+            if (normalizedId.includes('three') || normalizedId.includes('ogl') || normalizedId.includes('@react-three')) {
+              return 'three-vendor';
+            }
+            // Jodit rich text editor — only used in admin dashboard
+            if (normalizedId.includes('jodit')) {
+              return 'jodit-vendor';
+            }
+            // Form validation libraries
+            if (normalizedId.includes('zod') || normalizedId.includes('react-hook-form') || normalizedId.includes('@hookform/resolvers')) {
+              return 'form-vendor';
+            }
+            // Confetti helper
+            if (normalizedId.includes('canvas-confetti')) {
+              return 'confetti-vendor';
+            }
             // UI framework — only used in admin/dashboard pages
             if (normalizedId.includes('antd') || normalizedId.includes('@ant-design')) {
               return 'antd-vendor';

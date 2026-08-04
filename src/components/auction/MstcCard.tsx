@@ -7,6 +7,7 @@ import { generateCatalogSummary, parsePdfDateTime, hasConfirmedAssetDocuments } 
 import clsx from 'clsx';
 import { storageService } from '../../services/storageService';
 import { useAppStore } from '../../store/appStore';
+import { useAuthStore } from '../../store/authStore';
 import { formatPriceString } from '../../utils/currency';
 
 interface MstcCardProps {
@@ -177,6 +178,9 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const { profile, isAuthenticated } = useAuthStore();
+  const isUpgradedUser = (isAuthenticated && profile?.subscription_plan && profile.subscription_plan !== 'explorer') || profile?.role === 'admin' || profile?.role === 'superadmin';
+
   const renderCardHeader = () => {
     if (isGrid) {
       return (
@@ -200,7 +204,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
               </button>
             </div>
 
-            {item.is_reauction && (
+            {isUpgradedUser && item.is_reauction && (
               <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -248,7 +252,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
               )}
             </button>
           </div>
-          {item.is_reauction && (
+          {isUpgradedUser && item.is_reauction && (
             <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>

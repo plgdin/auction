@@ -56,6 +56,29 @@ export function FeaturedAuctionsSection() {
     loadAuctions();
   }, [isAuthenticated, user]);
 
+  const normalizeAuctionToMstc = useCallback((auc: any): any => {
+    if (auc.is_mstc && auc.sanitized_document_path) return auc;
+
+    return {
+      ...auc,
+      id: auc.id,
+      mstc_auction_number: auc.reference_number || auc.mstc_auction_number || `MSTC/W-REG/26-27/${auc.id.substring(0, 5).toUpperCase()}`,
+      category_name: auc.category?.name ? `${auc.category.name} | ${auc.title}` : (auc.category_name || 'Scrap & Material | Industrial Assets'),
+      location: auc.location || 'Maharashtra',
+      seller_name: auc.seller?.name || auc.regional_office || 'Western Regional Office',
+      opening_date: auc.start_time || auc.opening_date || new Date().toISOString(),
+      closing_date: auc.end_time || auc.closing_date || new Date(Date.now() + 86400000 * 2).toISOString(),
+      raw_materials_text: auc.description || auc.title,
+      sanitized_document_path: auc.sanitized_document_path || 'processed',
+      lot_name: auc.title || auc.lot_name || 'Industrial Asset Lot',
+      starting_price: auc.starting_price || 350000,
+      emd_amount: auc.emd_amount || 35000,
+      state: auc.location || 'Maharashtra',
+      asset_status: 'completed',
+      is_mstc: true
+    };
+  }, []);
+
   return (
     <section className="py-16 sm:py-24 bg-white relative">
       <div className="max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1536px] mx-auto px-6 sm:px-8 lg:px-12">
@@ -112,24 +135,20 @@ export function FeaturedAuctionsSection() {
                     { id: '22222222-2222-2222-2222-222222222222', title: 'Corporate E-Waste Disposal', description: 'Over 500 decommissioned workstations, laptops, servers and networking switches from a Fortune 500 client.', starting_price: 250000, end_time: new Date().toISOString() },
                     { id: '33333333-3333-3333-3333-333333333333', title: 'Commercial Real Estate Complex', description: 'Prime multi-story warehouse space with modern loading docks and convenient highway access.', starting_price: 85000000, end_time: new Date().toISOString() },
                     { id: '44444444-4444-4444-4444-444444444444', title: 'Fleet Transport Logistics Package', description: 'Package of 12 commercial logistics vans, light duty trucks, and utility vehicles in excellent running condition.', starting_price: 1800000, end_time: new Date().toISOString() }
-                  ]).map((auction) => (
-                    <div key={auction.id} className="w-[82vw] max-w-[320px] shrink-0 snap-center">
-                      {auction.is_mstc ? (
+                  ]).map((auction) => {
+                    const normalized = normalizeAuctionToMstc(auction);
+                    return (
+                      <div key={auction.id} className="w-[82vw] max-w-[320px] shrink-0 snap-center">
                         <MstcCard
-                          item={auction as any}
+                          item={normalized}
                           isGrid={true}
                           onPreview={handlePreview}
                           isInterested={interestedSet.has(auction.id)}
                           onInterestedToggle={handleMstcInterestedToggle}
                         />
-                      ) : (
-                        <AuctionCard
-                          auction={auction}
-                          isGrid={true}
-                        />
-                      )}
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Tablet & Desktop Grid */}
@@ -140,26 +159,17 @@ export function FeaturedAuctionsSection() {
                     { id: '33333333-3333-3333-3333-333333333333', title: 'Commercial Real Estate Complex', description: 'Prime multi-story warehouse space with modern loading docks and convenient highway access.', starting_price: 85000000, end_time: new Date().toISOString() },
                     { id: '44444444-4444-4444-4444-444444444444', title: 'Fleet Transport Logistics Package', description: 'Package of 12 commercial logistics vans, light duty trucks, and utility vehicles in excellent running condition.', starting_price: 1800000, end_time: new Date().toISOString() }
                   ]).map((auction) => {
-                    if (auction.is_mstc) {
-                      return (
-                        <MstcCard
-                          key={auction.id}
-                          item={auction as any}
-                          isGrid={true}
-                          onPreview={handlePreview}
-                          isInterested={interestedSet.has(auction.id)}
-                          onInterestedToggle={handleMstcInterestedToggle}
-                        />
-                      );
-                    } else {
-                      return (
-                        <AuctionCard
-                          key={auction.id}
-                          auction={auction}
-                          isGrid={true}
-                        />
-                      );
-                    }
+                    const normalized = normalizeAuctionToMstc(auction);
+                    return (
+                      <MstcCard
+                        key={auction.id}
+                        item={normalized}
+                        isGrid={true}
+                        onPreview={handlePreview}
+                        isInterested={interestedSet.has(auction.id)}
+                        onInterestedToggle={handleMstcInterestedToggle}
+                      />
+                    );
                   })}
                 </div>
               </Suspense>

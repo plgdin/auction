@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
-import { Filter, ChevronRight, ChevronDown, CalendarDays } from 'lucide-react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { Filter, ChevronRight, ChevronDown, CalendarDays, Sparkles, Zap, X, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { auctionService } from '../../services/auctionService';
 import { expandMstcOffice } from '../../services/publicService';
 import type { AuctionCategory } from '../../types/database.types';
@@ -10,6 +11,7 @@ import { formatDateRange } from 'little-date';
 import type { DateRange } from 'react-day-picker';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuthStore } from '../../store/authStore';
 
 interface AuctionFiltersProps {
   onFilterChange: (filters: {
@@ -88,12 +90,16 @@ export function AuctionFilters({
   const [hasAssetDocuments, setHasAssetDocuments] = useState<boolean>(initialFilters.hasAssetDocuments || false);
   const [hasImages, setHasImages] = useState<boolean>(initialFilters.hasImages || false);
   const [isReauction, setIsReauction] = useState<boolean>(initialFilters.isReauction || false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
     if (initialFilters.startDate) return new Date(initialFilters.startDate);
     return new Date();
   });
+
+  const { profile, isAuthenticated } = useAuthStore();
+  const isUpgradedUser = (isAuthenticated && profile?.subscription_plan && profile.subscription_plan !== 'explorer') || profile?.role === 'admin' || profile?.role === 'superadmin';
 
   useEffect(() => {
     async function loadCategories() {
@@ -166,7 +172,7 @@ export function AuctionFilters({
     }
   }, [selectedCategories, categories]);
 
-  const mainCategoryNames = [
+  const mainCategoryNames = useMemo(() => [
     'Agricultural Produce',
     'Plant/Machineries',
     'Transport Vehicles',
@@ -174,17 +180,17 @@ export function AuctionFilters({
     'Electrical Items',
     'Minerals',
     'Metal'
-  ];
+  ], []);
 
-  const buildCategoryTree = (flatList: AuctionCategory[]): CategoryNode[] => {
+  const rootNodes = useMemo(() => {
     const map = new Map<string, CategoryNode>();
     const roots: CategoryNode[] = [];
 
-    flatList.forEach(cat => {
+    categories.forEach(cat => {
       map.set(cat.id, { ...cat, children: [] });
     });
 
-    flatList.forEach(cat => {
+    categories.forEach(cat => {
       const node = map.get(cat.id)!;
       if (cat.parent_id && map.has(cat.parent_id)) {
         map.get(cat.parent_id)!.children.push(node);
@@ -194,51 +200,64 @@ export function AuctionFilters({
     });
 
     return roots;
-  };
+  }, [categories]);
 
-  const isDescendantSelected = (node: CategoryNode, selectedIds: string[]): boolean => {
-    if (selectedIds.includes(node.id)) return true;
-    if (node.children) {
-      return node.children.some(child => isDescendantSelected(child, selectedIds));
-    }
-    return false;
-  };
-
-  const toggleExpand = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpandedIds((prev: Record<string, boolean>) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const rootNodes = buildCategoryTree(categories);
-
-  const sortedRoots = [...rootNodes].sort((a, b) => {
-    const aMain = mainCategoryNames.includes(a.name);
-    const bMain = mainCategoryNames.includes(b.name);
-    if (aMain && !bMain) return -1;
-    if (!aMain && bMain) return 1;
-    return a.name.localeCompare(b.name);
-  });
-
-  const displayedRoots = showAllCategories
-    ? sortedRoots
-    : [
-      ...sortedRoots.slice(0, 6),
-      ...sortedRoots.filter((c, index) => index >= 6 && isDescendantSelected(c, selectedCategories))
-    ];
-
-  const getSelectionState = (node: CategoryNode): 'checked' | 'unchecked' | 'indeterminate' => {
-    const getDescendants = (n: CategoryNode): string[] => {
-      let ids = [n.id];
-      if (n.children) {
-        n.children.forEach(child => {
+  const descendantsMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    const getDescendants = (node: CategoryNode): string[] => {
+      if (map.has(node.id)) return map.get(node.id)!;
+      let ids = [node.id];
+      if (node.children) {
+        node.children.forEach(child => {
           ids = [...ids, ...getDescendants(child)];
         });
       }
+      map.set(node.id, ids);
       return ids;
     };
+    rootNodes.forEach(root => getDescendants(root));
+    return map;
+  }, [rootNodes]);
 
-    const descendantIds = getDescendants(node);
-    const checkedCount = descendantIds.filter(id => selectedCategories.includes(id)).length;
+  const sortedRoots = useMemo(() => {
+    return [...rootNodes].sort((a, b) => {
+      const aMain = mainCategoryNames.includes(a.name);
+      const bMain = mainCategoryNames.includes(b.name);
+      if (aMain && !bMain) return -1;
+      if (!aMain && bMain) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [rootNodes, mainCategoryNames]);
+
+  const selectedCategorySet = useMemo(() => new Set(selectedCategories), [selectedCategories]);
+
+  const isDescendantSelected = useCallback((node: CategoryNode): boolean => {
+    const descendantIds = descendantsMap.get(node.id) || [node.id];
+    return descendantIds.some(id => selectedCategorySet.has(id));
+  }, [descendantsMap, selectedCategorySet]);
+
+  const toggleExpand = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedIds((prev: Record<string, boolean>) => ({ ...prev, [id]: !prev[id] }));
+  }, []);
+
+  const displayedRoots = useMemo(() => {
+    return showAllCategories
+      ? sortedRoots
+      : [
+        ...sortedRoots.slice(0, 6),
+        ...sortedRoots.filter((c, index) => index >= 6 && isDescendantSelected(c))
+      ];
+  }, [showAllCategories, sortedRoots, isDescendantSelected]);
+
+  const getSelectionState = useCallback((node: CategoryNode): 'checked' | 'unchecked' | 'indeterminate' => {
+    const descendantIds = descendantsMap.get(node.id) || [node.id];
+    let checkedCount = 0;
+    for (let i = 0; i < descendantIds.length; i++) {
+      if (selectedCategorySet.has(descendantIds[i])) {
+        checkedCount++;
+      }
+    }
 
     if (checkedCount === 0) {
       return 'unchecked';
@@ -247,33 +266,20 @@ export function AuctionFilters({
     } else {
       return 'indeterminate';
     }
-  };
+  }, [descendantsMap, selectedCategorySet]);
 
-  const handleToggleCategory = (node: CategoryNode) => {
-    const getDescendants = (n: CategoryNode): string[] => {
-      let ids = [n.id];
-      if (n.children) {
-        n.children.forEach(child => {
-          ids = [...ids, ...getDescendants(child)];
-        });
-      }
-      return ids;
-    };
-
-    const descendantIds = getDescendants(node);
-
+  const handleToggleCategory = useCallback((node: CategoryNode) => {
+    const descendantIds = descendantsMap.get(node.id) || [node.id];
     setSelectedCategories(prev => {
       const selectionState = getSelectionState(node);
       if (selectionState === 'checked') {
-        // Deselect node and all descendants
         return prev.filter(id => !descendantIds.includes(id));
       } else {
-        // Select node and all descendants
         const toAdd = descendantIds.filter(id => !prev.includes(id));
         return [...prev, ...toAdd];
       }
     });
-  };
+  }, [descendantsMap, getSelectionState]);
 
   const isAllSelected = categories.length > 0 && selectedCategories.length === categories.length;
 
@@ -308,7 +314,7 @@ export function AuctionFilters({
       hasImages: hasImages || undefined,
       isReauction: isReauction || undefined,
     });
-    if (window.innerWidth < 1024) onClose();
+    onClose();
   };
 
   const handleReset = () => {
@@ -758,8 +764,15 @@ export function AuctionFilters({
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Auction Type</h3>
             <div className="space-y-3">
               <label
-                onClick={() => setIsReauction(!isReauction)}
-                className="flex items-center cursor-pointer group"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (!isUpgradedUser) {
+                    setShowUpgradeModal(true);
+                    return;
+                  }
+                  setIsReauction(!isReauction);
+                }}
+                className="flex items-center cursor-pointer group select-none"
               >
                 <div
                   className={clsx(
@@ -775,7 +788,15 @@ export function AuctionFilters({
                     </svg>
                   )}
                 </div>
-                <span className="ml-3 text-sm text-slate-700 select-none">Re-auction Only</span>
+                <span className="ml-3 text-sm text-slate-700 select-none flex items-center gap-2 font-medium">
+                  Re-auction Only
+                  {!isUpgradedUser && (
+                    <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-xs uppercase tracking-wider">
+                      <Lock className="w-2.5 h-2.5" />
+                      Pro
+                    </span>
+                  )}
+                </span>
               </label>
             </div>
           </div>
@@ -983,6 +1004,58 @@ export function AuctionFilters({
           Apply Filters
         </button>
       </div>
+
+      {/* Upgrade Plan Modal Popup */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn pointer-events-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-100 relative text-center animate-scaleIn">
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-14 h-14 bg-gradient-to-tr from-amber-500 to-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-rose-500/25">
+              <Sparkles className="w-7 h-7 animate-pulse" />
+            </div>
+
+            <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Upgrade Plan Required</h3>
+            
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              Re-Auction tracking & filters are exclusive to <span className="font-bold text-slate-900">Go</span> & <span className="font-bold text-slate-900">Pro</span> plan members.
+            </p>
+
+            <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200/70 text-xs text-amber-900 text-left space-y-1.5">
+              <div className="flex items-center gap-2 font-bold text-amber-950">
+                <Zap className="w-4 h-4 text-amber-600 shrink-0" />
+                Why filter Re-Auctions?
+              </div>
+              <p className="text-amber-800 leading-snug">
+                Re-auctioned lots feature reduced reserve prices and lower competition, yielding up to 40% higher margin on procurement.
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Maybe Later
+              </button>
+              <Link
+                to="/pricing"
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 text-white text-sm font-semibold shadow-md shadow-rose-500/25 hover:shadow-lg hover:shadow-rose-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                Upgrade Plan
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
