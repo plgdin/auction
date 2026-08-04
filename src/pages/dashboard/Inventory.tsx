@@ -159,6 +159,15 @@ export function Inventory() {
     setInventory(updated);
     setReportingItem(null);
     toast.error(`Issue reported for ${reportingItem.description}`);
+
+    import('../../services/auditService').then(({ logUserActivity }) => {
+      logUserActivity('inventory_issue_report', 'inventory', selectedAuction.id, {
+        itemName: reportingItem.description,
+        issueType,
+        severity,
+        description
+      });
+    }).catch(() => {});
   };
 
   const handleResolveIssue = (itemId: string) => {
@@ -168,6 +177,12 @@ export function Inventory() {
     setInventory(updated);
     setActiveMenuId(null);
     toast.success('Issue resolved');
+
+    import('../../services/auditService').then(({ logUserActivity }) => {
+      logUserActivity('inventory_issue_resolve', 'inventory', selectedAuction.id, {
+        itemId
+      });
+    }).catch(() => {});
   };
 
   const handleLockVerification = () => {
@@ -179,6 +194,10 @@ export function Inventory() {
     if (updated) {
       setInventory(updated);
       toast.success('Inventory verification locked and saved successfully.');
+
+      import('../../services/auditService').then(({ logUserActivity }) => {
+        logUserActivity('inventory_lock', 'inventory', selectedAuction.id);
+      }).catch(() => {});
     }
   };
 

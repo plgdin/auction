@@ -604,8 +604,23 @@ export function Auctions() {
         limit
       };
 
-      let result = await MstcSearchService.searchMarketplaceCatalog(qParam, searchFilters);
+       let result = await MstcSearchService.searchMarketplaceCatalog(qParam, searchFilters);
       let showingSimilar = !!qParam.trim() && result.data.length > 0 && result.hasDirectMatches === false;
+
+      if (qParam.trim() !== '' || selectedMstcCategories.length > 0 || selectedMstcLocations.length > 0 || selectedMstcRegionalOffices.length > 0) {
+        import('../services/auditService').then(({ logUserActivity }) => {
+          logUserActivity('mstc_catalog_search', 'search', undefined, {
+            query: qParam || null,
+            filters: {
+              categories: selectedMstcCategories,
+              subcategories: selectedMstcSubcategories,
+              locations: selectedMstcLocations,
+              regionalOffices: selectedMstcRegionalOffices,
+              page
+            }
+          });
+        }).catch(() => {});
+      }
 
       // Don't dump ALL catalogs as a fallback — just show empty state
       // The spell correction in publicService already tried to fix typos

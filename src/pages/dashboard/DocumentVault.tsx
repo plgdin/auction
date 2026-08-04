@@ -198,6 +198,15 @@ export function DocumentVault() {
           setCustomDocType('');
           setEntityType('User Vault');
           setCustomEntity('');
+
+          import('../../services/auditService').then(({ logUserActivity }) => {
+            logUserActivity('document_upload', 'document', dbDoc.id, {
+              documentName: selectedFile.name,
+              documentType: finalDocType,
+              associatedEntity: finalEntity
+            });
+          }).catch(() => {});
+
           loadDocuments();
         } else {
           toast.error('Failed to save document metadata in database', { id: 'vault_upload' });
@@ -223,6 +232,13 @@ export function DocumentVault() {
       if (success) {
         toast.success('Document deleted');
         setDocuments(prev => prev.filter(doc => doc.id !== docId));
+
+        import('../../services/auditService').then(({ logUserActivity }) => {
+          logUserActivity('document_delete', 'document', docId, {
+            documentName: name,
+            source
+          });
+        }).catch(() => {});
       } else {
         toast.error('Failed to delete document');
       }

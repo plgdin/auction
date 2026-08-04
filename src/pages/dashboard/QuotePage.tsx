@@ -404,11 +404,25 @@ export function QuotePage() {
   const handleSave = () => {
     saveActiveQuote();
     toast.success('Quote saved successfully');
+
+    import('../../services/auditService').then(({ logUserActivity }) => {
+      logUserActivity('proposal_save', 'quote', activeQuote.id, {
+        clientName: activeQuote.clientName,
+        grandTotal
+      });
+    }).catch(() => {});
   };
 
   const handlePrint = () => {
     // Dismiss any active toast notifications so they don't get captured in the PDF print DOM
     toast.dismiss();
+
+    import('../../services/auditService').then(({ logUserActivity }) => {
+      logUserActivity('proposal_print_download', 'quote', activeQuote.id, {
+        clientName: activeQuote.clientName,
+        grandTotal
+      });
+    }).catch(() => {});
     
     // Small delay to ensure React commits the DOM removal before printing
     setTimeout(() => {

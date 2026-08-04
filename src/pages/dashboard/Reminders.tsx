@@ -117,6 +117,15 @@ export function Reminders() {
     dashboardService.updateReminderSettings(user.id, auctionId, timeValue, timeUnit, remindersCount, enabled);
     setReminders(dashboardService.getReminderSettings(user.id));
     toast.success(enabled ? `Reminder configured successfully` : 'Reminder disabled');
+
+    import('../../services/auditService').then(({ logUserActivity }) => {
+      logUserActivity('reminder_update', 'reminder', auctionId, {
+        timeValue,
+        timeUnit,
+        remindersCount,
+        enabled
+      });
+    }).catch(() => {});
   };
 
   // Helper to get active setting for an auction

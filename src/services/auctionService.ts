@@ -538,6 +538,11 @@ export const auctionService = {
         .delete()
         .eq('id', existing.id);
       if (error) throw error;
+
+      import('./auditService').then(({ logUserActivity }) => {
+        logUserActivity('watchlist_remove', 'auction', auctionId);
+      }).catch(() => {});
+
       return false; // Removed
     } else {
       // Add
@@ -545,6 +550,11 @@ export const auctionService = {
         .from('watchlists')
         .insert([{ user_id: userId, auction_id: auctionId }]);
       if (error) throw error;
+
+      import('./auditService').then(({ logUserActivity }) => {
+        logUserActivity('watchlist_add', 'auction', auctionId);
+      }).catch(() => {});
+
       return true; // Added
     }
   },

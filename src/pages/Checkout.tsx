@@ -326,6 +326,17 @@ export function CheckoutPage() {
           spread: 80,
           origin: { y: 0.6 }
         });
+
+        import('../services/auditService').then(({ logUserActivity }) => {
+          logUserActivity('checkout_success_free_or_trial', 'payment', planId, {
+            planId,
+            billingCycle,
+            seats,
+            isTrial,
+            couponApplied: appliedDiscount > 0 ? couponCode : undefined,
+            discountPct: appliedDiscount > 0 ? appliedDiscount * 100 : undefined
+          });
+        }).catch(() => {});
       }, 1500);
       return;
     }
@@ -440,9 +451,27 @@ export function CheckoutPage() {
               if (updated) setProfile(updated);
             });
           }
+
+          import('../services/auditService').then(({ logUserActivity }) => {
+            logUserActivity('checkout_success_razorpay', 'payment', planId, {
+              planId,
+              billingCycle,
+              seats,
+              orderId: response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              couponApplied: appliedDiscount > 0 ? couponCode : undefined,
+              discountPct: appliedDiscount > 0 ? appliedDiscount * 100 : undefined
+            });
+          }).catch(() => {});
         } catch (err) {
           setIsProcessing(false);
           setSdkError('An error occurred during payment verification. Please contact support.');
+          
+          import('../services/auditService').then(({ logUserActivity }) => {
+            logUserActivity('checkout_verification_error', 'payment', planId, {
+              error: err instanceof Error ? err.message : String(err)
+            });
+          }).catch(() => {});
         }
       },
       prefill: {
@@ -472,6 +501,13 @@ export function CheckoutPage() {
       rzp.on('payment.failed', function (response: any) {
         setIsProcessing(false);
         setSdkError(`Payment failed: ${response.error.description} (Code: ${response.error.code})`);
+
+        import('../services/auditService').then(({ logUserActivity }) => {
+          logUserActivity('checkout_payment_failed', 'payment', planId, {
+            errorDescription: response.error.description,
+            errorCode: response.error.code
+          });
+        }).catch(() => {});
       });
       
       rzp.open();
