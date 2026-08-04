@@ -105,7 +105,18 @@ export default async function handler(req: any, res: any) {
     if (planId === 'go' || planId === 'go-subscription') planName = 'Individual';
     else if (planId === 'pro' || planId === 'premium') planName = 'Business';
 
-    // 2. Fetch user name details from profiles if not available in auth metadata
+    // 2. Update user profile to paid status server-side (guarantees update even on network disconnect)
+    const planToSet = (planId === 'pro' || planId === 'premium') ? 'pro' : (planId === 'go' || planId === 'go-subscription') ? 'go' : 'explorer';
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ subscription_plan: planToSet })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error('Failed to update subscription plan in user profile:', updateError);
+    }
+
+    // 3. Fetch user name details from profiles if not available in auth metadata
     let firstName = user.user_metadata?.first_name || '';
     if (!firstName) {
       const { data: profile } = await supabase
