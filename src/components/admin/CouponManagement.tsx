@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
 import type { PromoCode } from '../../types/database.types';
-import { Tag, Edit2, Trash2, Plus, XCircle, Search, Calendar, Loader2, ToggleLeft, ToggleRight, CheckCircle } from 'lucide-react';
+import { Tag, Edit2, Trash2, Plus, XCircle, Search, Calendar, Loader2, CheckCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -13,7 +13,7 @@ const couponSchema = z.object({
     .min(3, "Code must be at least 3 characters")
     .max(20, "Code must be at most 20 characters")
     .regex(/^[A-Z0-9_-]+$/, "Code must be uppercase alphanumeric (dashes/underscores allowed)"),
-  discount_percent: z.coerce.number()
+  discount_percent: z.number()
     .int("Must be a whole number")
     .min(1, "Discount must be at least 1%")
     .max(100, "Discount cannot exceed 100%"),
@@ -388,7 +388,7 @@ export function CouponManagement() {
                   <input
                     type="number"
                     placeholder="e.g. 30"
-                    {...register('discount_percent')}
+                    {...register('discount_percent', { valueAsNumber: true })}
                     className={clsx(
                       "w-full bg-slate-50 pl-3.5 pr-8 py-2.5 text-sm rounded-xl border focus:outline-hidden focus:ring-2 focus:ring-primary/20 transition-all font-semibold",
                       errors.discount_percent ? "border-red-300 focus:border-red-500" : "border-slate-200 focus:border-primary"
