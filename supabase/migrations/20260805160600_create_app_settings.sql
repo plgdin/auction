@@ -55,11 +55,11 @@ BEGIN
         'bidder_id', OLD.bidder_id::TEXT,
         'auction_id', OLD.auction_id::TEXT
       )
-    )::TEXT,
+    ),
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || v_api_secret
-    )::JSONB
+    )
   );
 
   RETURN NEW;
@@ -91,11 +91,11 @@ BEGIN
         'auction_id', NEW.auction_id::TEXT,
         'amount', NEW.amount
       )
-    )::TEXT,
+    ),
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || v_api_secret
-    )::JSONB
+    )
   );
 
   RETURN NEW;
@@ -127,11 +127,11 @@ BEGIN
         'amount', NEW.amount,
         'reference_id', COALESCE(NEW.reference_id, NEW.id::TEXT)
       )
-    )::TEXT,
+    ),
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || v_api_secret
-    )::JSONB
+    )
   );
 
   RETURN NEW;
@@ -216,11 +216,11 @@ BEGIN
       'user_id', NEW.id::TEXT,
       'email', NEW.email,
       'first_name', COALESCE(v_first_name, '')
-    )::TEXT,
+    ),
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || v_api_secret
-    )::JSONB
+    )
   );
 
   RETURN NEW;
