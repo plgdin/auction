@@ -15,10 +15,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 const validateCouponSchema = z.object({
-  code: z.string({
-    required_error: "Coupon code parameter is required.",
-    invalid_type_error: "Coupon code parameter is required."
-  })
+  code: z.string()
     .min(3, "Coupon code must be at least 3 characters")
     .max(20, "Coupon code must be at most 20 characters")
     .regex(/^[a-zA-Z0-9_-]+$/, "Coupon code format is invalid")

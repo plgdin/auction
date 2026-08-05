@@ -267,6 +267,7 @@ export function CheckoutPage() {
     try {
       if (authTab === 'login') {
         const { session } = await authService.signIn(authEmail, authPassword);
+        if (!session) throw new Error("Failed to start session.");
         const profileData = await authService.getProfile(session.user.id);
         setSession(session);
         setProfile(profileData);
