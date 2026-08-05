@@ -2003,9 +2003,15 @@ export const MstcSearchService = {
       workingQuery = cleanQueryFromDateConstraint(workingQuery);
 
       let isReauctionSearch = filters?.isReauction;
-      if (/\bre[- ]?auctions?\b/i.test(workingQuery)) {
-        isReauctionSearch = true;
-        workingQuery = workingQuery.replace(/\bre[- ]?auctions?\b/ig, '').trim();
+      const reauctionRegex = /(?:(?:don'?t\s+(?:show\s+(?:me\s+)?)?|not\s+|no\s+|without\s+|exclude\s+)\s*)?\bre[- ]?auctions?\b/ig;
+      const reauctionMatch = workingQuery.match(reauctionRegex);
+      if (reauctionMatch && reauctionMatch.length > 0) {
+        if (/(don'?t|not|no|without|exclude)/i.test(reauctionMatch[0])) {
+          isReauctionSearch = false;
+        } else {
+          isReauctionSearch = true;
+        }
+        workingQuery = workingQuery.replace(reauctionRegex, '').trim();
       }
 
       const { canonical: locationCanonical, remainingQuery } = extractLocationFromQuery(workingQuery);
