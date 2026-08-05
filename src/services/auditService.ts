@@ -79,7 +79,7 @@ export async function logUserActivity(
           user_id: userId,
           action,
           entity_type: entityType || null,
-          entity_id: entityId || null,
+          entity_id: entityId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entityId) ? entityId : null,
           details,
           ip_address: ip
         }

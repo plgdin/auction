@@ -15,10 +15,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
 });
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
-});
 
 const createOrderSchema = z.object({
   amount: z.number().positive(),
@@ -39,6 +35,29 @@ export default async function handler(req: any, res: any) {
     res.status(405).json({ success: false, error: 'Method Not Allowed' });
     return;
   }
+
+  // Re-read env on each request to pick up hot-reloaded .env changes
+  dotenv.config({ path: '.env.local', override: true });
+  dotenv.config({ override: true });
+
+  const keyId = (process.env.VITE_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || '').trim();
+  const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+
+  if (!keyId || !keySecret) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'MISSING_GATEWAY_KEYS',
+        message: 'Payment gateway configuration issue. Please contact support.'
+      }
+    });
+    return;
+  }
+
+  const razorpay = new Razorpay({
+    key_id: keyId,
+    key_secret: keySecret,
+  });
 
   // Parse request body stream if not pre-parsed (Connect/Vite environment support)
   if (!req.body) {

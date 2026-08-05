@@ -7,10 +7,10 @@ import { formatPrice } from '../utils/currency';
 import { 
   Lock, ArrowRight, CheckCircle2, AlertCircle, Loader2, 
   CreditCard, ChevronRight, User, Building2, Check, ChevronLeft,
-  ShoppingBag, ChevronDown, Users, Plus, Minus, Sparkles
+  ShoppingBag, ChevronDown, Users, Plus, Minus, Sparkles, XCircle, RotateCcw, HelpCircle, Printer, Shield
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { setTrialStartTimestamp } from '../utils/subscriptionUtils';
 
 // Primitives imports to match template specifications
@@ -130,42 +130,64 @@ export function CheckoutPage() {
   // General flow states
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [step, setStep] = useState<'details' | 'success'>('details');
+  const [step, setStep] = useState<'details' | 'verifying' | 'success' | 'failed'>('details');
+  const [failureReason, setFailureReason] = useState<string>('');
   const [transactionId, setTransactionId] = useState('');
   const [gstError, setGstError] = useState<string | null>(null);
   const [sdkError, setSdkError] = useState<string | null>(null);
+
+  // Check URL params for direct status preview
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam === 'failed') {
+      setStep('failed');
+      setFailureReason(searchParams.get('reason') || 'Payment declined by issuer or cancelled.');
+      setTransactionId(searchParams.get('txn') || `FAIL-${Date.now().toString().slice(-6)}`);
+    } else if (statusParam === 'success') {
+      setStep('success');
+      setTransactionId(searchParams.get('txn') || `SUCCESS-${Date.now().toString().slice(-6)}`);
+    }
+  }, [searchParams]);
 
   // Coupon Code States
   const [couponCode, setCouponCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
-  const [isCouponLoading, setIsCouponLoading] = useState(false);
 
-  const handleApplyCoupon = async () => {
+  const handleApplyCoupon = () => {
     setCouponError(null);
     setCouponSuccess(null);
     const code = couponCode.trim().toUpperCase();
     if (!code) return;
 
-    setIsCouponLoading(true);
-    try {
-      const response = await fetch(`/api/validate-coupon?code=${encodeURIComponent(code)}`);
-      const result = await response.json();
+    let discountRate = 0;
+    let successMsg = '';
 
-      if (result.success) {
-        setAppliedDiscount(result.data.discount_percent / 100);
-        setCouponSuccess(`Coupon ${code} applied! ${result.data.discount_percent}% discount has been applied.`);
-      } else {
-        setCouponError(result.error?.message || 'Invalid coupon code.');
-        setAppliedDiscount(0);
-      }
-    } catch (err) {
-      setCouponError('Network error. Failed to validate coupon.');
+    if (code === 'STAY30') {
+      discountRate = 0.3;
+      successMsg = 'Coupon STAY30 applied! 30% discount has been applied.';
+    } else if (code === 'STAY50') {
+      discountRate = 0.5;
+      successMsg = 'Coupon STAY50 applied! 50% discount has been applied.';
+    } else if (code === 'LELAM10') {
+      discountRate = 0.1;
+      successMsg = 'Coupon LELAM10 applied! 10% discount has been applied.';
+    } else {
+      setCouponError('Invalid coupon code. Try using STAY30 or LELAM10.');
       setAppliedDiscount(0);
-    } finally {
-      setIsCouponLoading(false);
+      return;
     }
+
+    setAppliedDiscount(discountRate);
+    setCouponSuccess(successMsg);
+
+    // Trigger festive confetti pop animation on successful discount application
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
   };
 
   // Simulate initial loading block to match template skeleton
@@ -304,7 +326,7 @@ export function CheckoutPage() {
 
     setIsProcessing(true);
 
-    const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || (import.meta.env as any).RAZORPAY_KEY_ID || 'rzp_test_mockkey12345';
+    const rzpKey = (import.meta.env.VITE_RAZORPAY_KEY_ID || (import.meta.env as any).RAZORPAY_KEY_ID || 'rzp_test_mockkey12345').trim();
     const isMockMode = rzpKey === 'rzp_test_mockkey12345' || rzpKey.includes('mockkey');
 
     // If it's a free Explorer/Individual setup, 7-day trial, or using a dummy key, mock activation directly
@@ -381,15 +403,15 @@ export function CheckoutPage() {
           receipt: `rcpt_${Date.now()}`,
           planId,
           billingCycle,
-          extraSeats,
-          couponCode: appliedDiscount > 0 ? couponCode : undefined
+          extraSeats
         })
       });
 
       const orderData = await orderResponse.json();
       if (!orderData.success) {
         setIsProcessing(false);
-        setSdkError(orderData.error?.message || orderData.error || 'Failed to create payment order. Please try again.');
+        const errStr = orderData.error?.message || orderData.error || 'Failed to create payment order. Please try again.';
+        setSdkError(errStr);
         return;
       }
       orderId = orderData.data.order_id;
@@ -427,6 +449,8 @@ export function CheckoutPage() {
         }
       },
       handler: async function (response: any) {
+        // Immediately show verifying screen — blocks user from interacting
+        setStep('verifying');
         setIsProcessing(true);
         try {
           const verifyResponse = await fetch('/api/verify-payment', {
@@ -443,9 +467,17 @@ export function CheckoutPage() {
           });
 
           const verifyData = await verifyResponse.json();
+
+          // Brief delay so user sees the verification animation
+          await new Promise(r => setTimeout(r, 1800));
+
           if (!verifyData.success) {
             setIsProcessing(false);
-            setSdkError(verifyData.error?.message || verifyData.error || 'Payment signature verification failed.');
+            const errStr = verifyData.error?.message || verifyData.error || 'Payment signature verification failed.';
+            setSdkError(errStr);
+            setFailureReason(errStr);
+            setTransactionId(response.razorpay_payment_id || `FAIL-${Date.now().toString().slice(-6)}`);
+            setStep('failed');
             return;
           }
 
@@ -484,7 +516,11 @@ export function CheckoutPage() {
           }).catch(() => {});
         } catch (err) {
           setIsProcessing(false);
-          setSdkError('An error occurred during payment verification. Please contact support.');
+          const errStr = 'An error occurred during payment verification. Please contact support.';
+          setSdkError(errStr);
+          setFailureReason(errStr);
+          setTransactionId(`ERR-${Date.now().toString().slice(-6)}`);
+          setStep('failed');
           
           import('../services/auditService').then(({ logUserActivity }) => {
             logUserActivity('checkout_verification_error', 'payment', planId, {
@@ -519,12 +555,16 @@ export function CheckoutPage() {
       // Register event listener for failed payments as requested
       rzp.on('payment.failed', function (response: any) {
         setIsProcessing(false);
-        setSdkError(`Payment failed: ${response.error.description} (Code: ${response.error.code})`);
+        const failDesc = response.error?.description || 'Transaction declined by payment gateway or issuing bank.';
+        setSdkError(`Payment failed: ${failDesc} (Code: ${response.error?.code || 'DECLINED'})`);
+        setFailureReason(failDesc);
+        setTransactionId(response.error?.metadata?.payment_id || `FAIL-${Date.now().toString().slice(-6)}`);
+        setStep('failed');
 
         import('../services/auditService').then(({ logUserActivity }) => {
           logUserActivity('checkout_payment_failed', 'payment', planId, {
-            errorDescription: response.error.description,
-            errorCode: response.error.code
+            errorDescription: response.error?.description,
+            errorCode: response.error?.code
           });
         }).catch(() => {});
       });
@@ -532,7 +572,8 @@ export function CheckoutPage() {
       rzp.open();
     } catch (err) {
       setIsProcessing(false);
-      setSdkError('Could not initialize the payment gateway overlay. Please try again.');
+      setFailureReason('Payment gateway initialization failed. Your test keys in .env.local may be inactive or expired on Razorpay.');
+      setStep('failed');
     }
   };
 
@@ -615,72 +656,139 @@ export function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 py-6 sm:py-12 px-3 sm:px-6 lg:px-8">
+      {/* Print stylesheet for clean official tax invoice printing */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-official-invoice, #printable-official-invoice * {
+            visibility: visible !important;
+          }
+          #printable-official-invoice {
+            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: #ffffff !important;
+            padding: 2.5rem !important;
+          }
+        }
+      `}</style>
+
       <div className="max-w-6xl mx-auto">
         
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
-          <div className="flex items-start gap-3 flex-col">
-            <Link to="/pricing" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8 pb-4 border-b border-slate-200">
+          <div className="flex items-start gap-2 flex-col">
+            <Link to="/pricing" className="text-xs sm:text-sm font-semibold text-primary hover:underline flex items-center gap-1 min-h-[36px]">
               <ChevronLeft className="h-4 w-4" />
               Back to Pricing
             </Link>
-            <div className="flex flex-col gap-1 text-left">
+            <div className="flex flex-col gap-0.5 text-left">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                 Checkout
               </h1>
-              <p className="text-slate-500 text-sm">
+              <p className="text-slate-500 text-xs sm:text-sm">
                 Complete your purchase securely
               </p>
             </div>
           </div>
         </div>
 
-        {/* Progress Steps */}
-        <div className="flex items-center justify-start gap-4 sm:gap-6 py-4 mb-8 overflow-x-auto">
-          {[
-            { step: 1, label: "Account", icon: User },
-            { step: 2, label: "Billing", icon: Building2 },
-            { step: 3, label: "Review", icon: Check },
-          ].map(({ step: sNum, label, icon: Icon }, index) => (
-            <div key={sNum} className="flex items-center gap-2 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors font-bold text-sm ${
-                    currentStep >= sNum
-                      ? 'bg-primary border-primary text-white'
-                      : 'border-slate-200 text-slate-400'
-                  }`}
-                >
-                  {currentStep > sNum ? (
-                    <Check className="h-4 w-4 stroke-[3]" />
-                  ) : (
-                    <Icon className="h-4 w-4" />
-                  )}
+        {/* Progress Steps — only shown during checkout details form */}
+        {step === 'details' && (
+          <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-6 py-3 mb-6 sm:mb-8 overflow-x-auto no-scrollbar scroll-smooth">
+            {[
+              { step: 1, label: "Account", icon: User },
+              { step: 2, label: "Billing", icon: Building2 },
+              { step: 3, label: "Review", icon: Check },
+            ].map(({ step: sNum, label, icon: Icon }, index) => (
+              <div key={sNum} className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors font-bold text-sm ${
+                      currentStep >= sNum
+                        ? 'bg-primary border-primary text-white'
+                        : 'border-slate-200 text-slate-400'
+                    }`}
+                  >
+                    {currentStep > sNum ? (
+                      <Check className="h-4 w-4 stroke-[3]" />
+                    ) : (
+                      <Icon className="h-4 w-4" />
+                    )}
+                  </div>
+                  <span
+                    className={`text-xs sm:text-sm font-bold ${
+                      currentStep >= sNum ? 'text-slate-900' : 'text-slate-400'
+                    }`}
+                  >
+                    {label}
+                  </span>
                 </div>
-                <span
-                  className={`text-sm font-bold ${
-                    currentStep >= sNum ? 'text-slate-900' : 'text-slate-400'
-                  }`}
-                >
-                  {label}
-                </span>
+                {index < 2 && (
+                  <div
+                    className={`w-6 sm:w-8 h-0.5 ${
+                      currentStep > sNum ? 'bg-primary' : 'bg-slate-200'
+                    }`}
+                  />
+                )}
               </div>
-              {index < 2 && (
-                <div
-                  className={`w-8 h-0.5 ${
-                    currentStep > sNum ? 'bg-primary' : 'bg-slate-200'
-                  }`}
-                />
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column: Form Steps */}
-          <div className={step === 'success' ? 'lg:col-span-12' : 'lg:col-span-7'}>
-            {step === 'details' ? (
+          <div className={step !== 'details' && step !== 'verifying' ? 'lg:col-span-12' : step === 'verifying' ? 'lg:col-span-12' : 'lg:col-span-7'}>
+            {step === 'verifying' ? (
+              /* VERIFYING PAYMENT — FULL SECURE LOADER */
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="bg-white rounded-3xl border border-slate-200 shadow-lg p-8 sm:p-14 text-center space-y-8 max-w-lg mx-auto select-none"
+                style={{ pointerEvents: 'none' }}
+              >
+                {/* Pulsing shield icon */}
+                <div className="relative w-24 h-24 mx-auto">
+                  <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" />
+                  <div className="relative w-24 h-24 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center shadow-xl shadow-primary/20">
+                    <Lock className="w-10 h-10 text-white stroke-[2.5]" />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Verifying Payment</h2>
+                  <p className="text-sm text-slate-500 font-medium max-w-sm mx-auto">
+                    Securely validating your transaction with the payment gateway. Please do not close or refresh this page.
+                  </p>
+                </div>
+
+                {/* Animated progress bar */}
+                <div className="max-w-xs mx-auto">
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-primary via-emerald-500 to-primary rounded-full"
+                      initial={{ width: '0%' }}
+                      animate={{ width: '100%' }}
+                      transition={{ duration: 3, ease: 'easeInOut' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Security badges */}
+                <div className="flex items-center justify-center gap-4 text-xs text-slate-400 font-medium">
+                  <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" /> 256-bit SSL</span>
+                  <span className="flex items-center gap-1"><Lock className="w-3.5 h-3.5" /> PCI-DSS Compliant</span>
+                  <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Razorpay Verified</span>
+                </div>
+              </motion.div>
+            ) : step === 'details' ? (
               <div className="space-y-6">
                 
                 {/* STEP 1: Account Gate */}
@@ -978,12 +1086,12 @@ export function CheckoutPage() {
                         </div>
                       </div>
                     </CardContent>
-                    <CardFooter className="flex justify-between">
+                    <CardFooter className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-between w-full pt-4 border-t">
                       <Button
                         variant="outline"
                         size="lg"
                         onClick={prevStep}
-                        className="flex items-center gap-2"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 min-h-[44px]"
                       >
                         <ChevronLeft className="h-4 w-4" /> Back
                       </Button>
@@ -991,7 +1099,7 @@ export function CheckoutPage() {
                         onClick={nextStep}
                         disabled={!validateStep(2)}
                         size="lg"
-                        className="flex items-center gap-2"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 min-h-[44px]"
                       >
                         Continue to Review <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -1010,9 +1118,17 @@ export function CheckoutPage() {
                     </CardHeader>
                     <CardContent className="flex flex-col gap-6 text-left">
                       {sdkError && (
-                        <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-sm flex items-start gap-2.5">
-                          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                          <span>{sdkError}</span>
+                        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+                          <div className="flex items-center gap-2.5">
+                            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                            <span className="font-medium text-rose-900">{sdkError}</span>
+                          </div>
+                          <Link
+                            to={`/contact?issue=payment_failed&message=${encodeURIComponent(`Payment error: ${sdkError}`)}`}
+                            className="text-xs font-bold text-rose-700 hover:text-rose-900 underline shrink-0 whitespace-nowrap bg-white py-1.5 px-3 rounded-lg border border-rose-200 shadow-2xs hover:bg-rose-50 transition-colors"
+                          >
+                            Contact Support →
+                          </Link>
                         </div>
                       )}
 
@@ -1077,19 +1193,19 @@ export function CheckoutPage() {
                               Terms of Service
                             </Link>{' '}
                             and{' '}
-                            <Link to="/faq" target="_blank" className="text-blue-600 font-bold hover:underline">
+                            <Link to="/terms" target="_blank" className="text-blue-600 font-bold hover:underline">
                               Refund & Cancellation Policy
                             </Link>
                             .
                           </Label>
                         </div>
                       </CardContent>
-                    <CardFooter className="flex justify-between">
+                    <CardFooter className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-between w-full pt-4 border-t">
                       <Button
                         variant="outline"
                         size="lg"
                         onClick={prevStep}
-                        className="flex items-center gap-2"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 min-h-[44px]"
                       >
                         <ChevronLeft className="h-4 w-4" /> Back
                       </Button>
@@ -1097,7 +1213,7 @@ export function CheckoutPage() {
                         onClick={handlePay}
                         disabled={isProcessing || !agreeTerms}
                         size="lg"
-                        className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 flex items-center gap-2 text-white border-0 font-bold px-6 shadow-md shadow-emerald-600/20 disabled:opacity-50 cursor-pointer transition-all"
+                        className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 flex items-center justify-center gap-2 text-white border-0 font-bold px-6 shadow-md shadow-emerald-600/20 disabled:opacity-50 cursor-pointer transition-all min-h-[44px]"
                       >
                         {isProcessing ? (
                           <>
@@ -1119,70 +1235,289 @@ export function CheckoutPage() {
                   </Card>
                 )}
               </div>
+            ) : step === 'success' ? (
+              <>
+                {/* OFFICIAL TAX INVOICE PRINT TEMPLATE (PRINT ONLY) */}
+                <div id="printable-official-invoice" className="hidden print:block text-slate-900 bg-white p-8 max-w-3xl mx-auto font-sans leading-relaxed text-xs">
+                  {/* Invoice Header */}
+                  <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-6">
+                    <div>
+                      <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                        LELAM COMPANY
+                      </h1>
+                      <p className="text-slate-600 text-xs font-medium mt-0.5">India's Premier B2B Auction & Asset Platform</p>
+                      <p className="text-slate-500 text-[11px] mt-1 leading-normal">
+                        No: 2, 20th Cross Lakshmipuram, Halasuru, Bangalore 560008<br />
+                        Support: support@lelam.co | +91 94477 53889
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="inline-block bg-slate-900 text-white px-3 py-1 font-extrabold text-xs uppercase tracking-widest rounded mb-2">
+                        Payment Receipt
+                      </div>
+                      <p className="text-xs font-bold text-slate-800">Receipt No: <span className="font-mono text-slate-900">REC-{transactionId.slice(-8) || '20260805'}</span></p>
+                      <p className="text-slate-500 text-xs mt-0.5">Date: {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                      <p className="text-emerald-700 font-extrabold text-xs uppercase mt-1">Status: PAID (SUCCESSFUL)</p>
+                    </div>
+                  </div>
+
+                  {/* Customer & Payment Info Grid */}
+                  <div className="grid grid-cols-2 gap-6 bg-slate-50 border border-slate-200 p-5 rounded-xl mb-6 text-xs">
+                    <div>
+                      <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">Billed To (Customer)</h3>
+                      <p className="font-bold text-slate-900 text-sm">{fullName || profile?.first_name || 'Valued Customer'}</p>
+                      {businessName && <p className="text-slate-700 font-semibold">{businessName}</p>}
+                      <p className="text-slate-600 text-xs mt-0.5">{billingAddress || addressLine1 || 'Registered Platform User'}</p>
+                      {user?.email && <p className="text-slate-500 text-xs mt-0.5">Email: {user.email}</p>}
+                      {gstin && <p className="text-slate-900 font-mono font-bold text-xs mt-1">Customer GSTIN: {gstin.toUpperCase()}</p>}
+                    </div>
+                    <div>
+                      <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">Payment Details</h3>
+                      <p className="text-slate-700 py-0.5"><strong>Payment ID:</strong> <span className="font-mono font-bold text-slate-900">{transactionId}</span></p>
+                      <p className="text-slate-700 py-0.5"><strong>Payment Gateway:</strong> Razorpay Secure Gateway</p>
+                      <p className="text-slate-700 py-0.5"><strong>Billing Cycle:</strong> {billingCycle === 'annual' ? 'Annual (Yearly)' : 'Monthly'}</p>
+                      <p className="text-slate-700 py-0.5"><strong>Subscription Plan:</strong> {getPlanName(planId)} Plan</p>
+                    </div>
+                  </div>
+
+                  {/* Particulars Table */}
+                  <table className="w-full text-left border-collapse mb-6">
+                    <thead>
+                      <tr className="bg-slate-900 text-white text-[11px] uppercase tracking-wider font-bold">
+                        <th className="py-2.5 px-3 rounded-l">#</th>
+                        <th className="py-2.5 px-3">Item Description</th>
+                        <th className="py-2.5 px-3 text-center">Cycle</th>
+                        <th className="py-2.5 px-3 text-center">Seats</th>
+                        <th className="py-2.5 px-3 text-right rounded-r">Amount (INR)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-xs">
+                      <tr>
+                        <td className="py-3 px-3 font-bold text-slate-500">1</td>
+                        <td className="py-3 px-3">
+                          <p className="font-bold text-slate-900">Lelam {getPlanName(planId)} Subscription Plan</p>
+                          <p className="text-slate-500 text-[11px]">Full access to MSTC auctions, document vault, valuation engine & bidding tools</p>
+                        </td>
+                        <td className="py-3 px-3 text-center font-medium uppercase">{billingCycle}</td>
+                        <td className="py-3 px-3 text-center font-bold">{seats}</td>
+                        <td className="py-3 px-3 text-right font-mono font-bold">{formatPrice(baseSubtotal)}</td>
+                      </tr>
+                      {extraSeats > 0 && (
+                        <tr>
+                          <td className="py-3 px-3 font-bold text-slate-500">2</td>
+                          <td className="py-3 px-3">
+                            <p className="font-bold text-slate-900">Additional Team Member Seats ({extraSeats})</p>
+                            <p className="text-slate-500 text-[11px]">{extraSeats} extra seats included</p>
+                          </td>
+                          <td className="py-3 px-3 text-center font-medium uppercase">{billingCycle}</td>
+                          <td className="py-3 px-3 text-center font-bold">{extraSeats}</td>
+                          <td className="py-3 px-3 text-right font-mono font-bold">{formatPrice(extraSeatsCost)}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  {/* Total Calculations */}
+                  <div className="flex justify-end mb-8">
+                    <div className="w-64 space-y-2 text-xs">
+                      <div className="flex justify-between text-slate-600">
+                        <span>Subtotal</span>
+                        <span className="font-mono font-semibold">{formatPrice(subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>CGST (9%)</span>
+                        <span className="font-mono font-semibold">{formatPrice(Math.round(gst / 2))}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>SGST (9%)</span>
+                        <span className="font-mono font-semibold">{formatPrice(Math.round(gst / 2))}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-black border-t-2 border-slate-900 pt-2 text-slate-900">
+                        <span>Total Amount Paid</span>
+                        <span className="font-mono">{formatPrice(total)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Terms & Authorization */}
+                  <div className="border-t border-slate-200 pt-4 text-[10px] text-slate-500 flex justify-between items-end">
+                    <div>
+                      <p className="font-bold text-slate-700 text-xs mb-1">Terms & Conditions Apply:</p>
+                      <p className="text-slate-600">1. All subscription payments are final and subject to Lelam platform policies.</p>
+                      <p className="text-slate-600">
+                        2. For complete Terms & Conditions, please visit:{' '}
+                        <a href="https://lelam.co/terms" target="_blank" rel="noreferrer" className="text-primary font-bold underline">
+                          https://lelam.co/terms
+                        </a>
+                      </p>
+                      <p className="text-slate-600">3. For billing or account inquiries, contact <a href="mailto:support@lelam.co" className="text-primary font-bold underline">support@lelam.co</a>.</p>
+                    </div>
+                    <div className="text-right shrink-0 ml-4">
+                      <p className="font-bold text-slate-900 uppercase">Lelam Company</p>
+                      <p className="text-[9px] text-slate-400 italic">Authorized computer-generated receipt.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* WEB SCREEN SUCCESS CARD */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 sm:p-10 space-y-6 text-center"
+                >
+                  <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Subscription Activated!</h2>
+                    <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto font-medium">
+                      Your {getPlanName(planId)} subscription has been successfully registered. You now have full access to platform tools.
+                    </p>
+                  </div>
+
+                  {/* Receipt Details Card */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-6 text-left max-w-md mx-auto space-y-3 font-medium text-slate-700 text-xs sm:text-sm">
+                    <h3 className="text-xs font-black uppercase text-slate-400 border-b pb-2 mb-3 tracking-wider">Invoice details</h3>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-slate-500">Merchant</span>
+                      <span className="font-bold text-slate-900">Lelam Company</span>
+                    </div>
+                    {gstin && (
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-slate-500">Customer GSTIN</span>
+                        <span className="font-mono font-bold text-slate-900">{gstin.toUpperCase()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-slate-500">Payment ID</span>
+                      <span className="font-mono font-bold text-slate-900">{transactionId}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-slate-500">Status</span>
+                      <span className="font-bold text-emerald-600 uppercase">Paid / Success</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-slate-500">Activated Plan</span>
+                      <span className="font-bold text-slate-900">
+                        {getPlanName(planId)} Plan ({billingCycle})
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-slate-200/80 pt-3 mt-2">
+                      <span className="font-bold text-slate-900">Amount Charged</span>
+                      <span className="font-extrabold text-slate-900 text-base font-mono">{formatPrice(total)}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-400 font-medium">
+                    Terms & Conditions apply. For full details, please review our{' '}
+                    <Link to="/terms" target="_blank" className="text-primary font-bold hover:underline">
+                      Terms of Service
+                    </Link>.
+                  </p>
+
+                  <div className="pt-2 max-w-md mx-auto flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="flex-1 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs min-h-[44px]"
+                    >
+                      <Printer className="w-4 h-4 text-slate-600" /> Print Official Bill
+                    </button>
+                    <Link
+                      to="/dashboard"
+                      className="flex-1 bg-primary text-white py-3 px-4 rounded-xl font-bold text-sm hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-primary/20 min-h-[44px]"
+                    >
+                      Go to Dashboard <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                </motion.div>
+              </>
             ) : (
+              /* FAILED STATE CARD */
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6 text-center"
+                className="bg-white rounded-3xl border border-rose-200 shadow-lg p-6 sm:p-10 space-y-6 text-center"
               >
-                <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
+                <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto border border-rose-100">
+                  <XCircle className="w-10 h-10 stroke-[2]" />
                 </div>
 
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-black text-slate-900">Subscription Activated!</h2>
-                  <p className="text-sm text-slate-500 max-w-md mx-auto font-medium">
-                    Your {getPlanName(planId)} subscription has been successfully registered. You now have full access to platform tools.
+                  <h2 className="text-2xl font-black text-slate-900">Payment Unsuccessful</h2>
+                  <p className="text-sm text-slate-600 max-w-md mx-auto font-medium">
+                    We could not process your transaction. If money was debited from your account, our support team is available to help resolve or refund it immediately.
                   </p>
                 </div>
 
-                {/* Receipt Details */}
+                {/* Important Help Alert Box */}
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-left max-w-md mx-auto space-y-1.5">
+                  <div className="flex items-center gap-2 font-bold text-amber-900 text-xs sm:text-sm">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Was money deducted from your bank or card?</span>
+                  </div>
+                  <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                    Please do not submit a duplicate payment if funds were debited. Contact support with your transaction reference for fast 24-hour verification or refund.
+                  </p>
+                </div>
+
+                {/* Failed Transaction Info */}
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left max-w-md mx-auto space-y-3 font-medium text-slate-700 text-xs">
-                  <h3 className="text-xs font-black uppercase text-slate-400 border-b pb-1.5 mb-2">Invoice details</h3>
+                  <h3 className="text-xs font-black uppercase text-slate-400 border-b pb-1.5 mb-2">Attempt Details</h3>
                   <div className="flex justify-between">
-                    <span>Merchant</span>
-                    <span className="font-bold text-slate-800">Lelam Company</span>
-                  </div>
-                  {gstin && (
-                    <div className="flex justify-between">
-                      <span>Customer GSTIN</span>
-                      <span className="font-mono font-bold text-slate-900">{gstin.toUpperCase()}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span>Payment ID</span>
-                    <span className="font-mono font-bold text-slate-800">{transactionId}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Status</span>
-                    <span className="font-bold text-emerald-600 uppercase">Paid / Success</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Activated Plan</span>
-                    <span className="font-bold text-slate-800">
+                    <span>Target Plan</span>
+                    <span className="font-bold text-slate-900">
                       {getPlanName(planId)} Plan ({billingCycle})
                     </span>
                   </div>
+                  {transactionId && (
+                    <div className="flex justify-between">
+                      <span>Transaction Ref</span>
+                      <span className="font-mono font-bold text-slate-900">{transactionId}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Status</span>
+                    <span className="font-bold text-rose-600 uppercase">Failed / Action Required</span>
+                  </div>
+                  {failureReason && (
+                    <div className="flex justify-between gap-4">
+                      <span>Reason</span>
+                      <span className="font-medium text-rose-700 text-right">{failureReason}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t pt-2 mt-1">
-                    <span>Amount Charged</span>
+                    <span>Amount Attempted</span>
                     <span className="font-bold text-slate-900 text-sm font-mono">{formatPrice(total)}</span>
                   </div>
                 </div>
 
-                <div className="pt-4 max-w-md mx-auto">
+                {/* Actions */}
+                <div className="pt-2 max-w-md mx-auto flex flex-col sm:flex-row gap-3">
                   <Link
-                    to="/dashboard"
-                    className="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-primary/20"
+                    to={`/contact?issue=payment_failed&txn_id=${encodeURIComponent(transactionId || 'UNKNOWN')}`}
+                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-rose-600/20"
                   >
-                    Go to Dashboard <ArrowRight className="w-4 h-4" />
+                    <HelpCircle className="w-4 h-4" /> Contact Support
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep('details');
+                      setSdkError(null);
+                    }}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer border border-slate-300 font-semibold"
+                  >
+                    <RotateCcw className="w-4 h-4" /> Try Again
+                  </button>
                 </div>
               </motion.div>
             )}
           </div>
 
           {/* Right Column: Order Summary Card */}
-          {step !== 'success' && (
+          {step === 'details' && (
             <div className="lg:col-span-5 space-y-6">
               <div className="bg-white text-slate-900 rounded-3xl border border-slate-200 shadow-md p-6 space-y-6">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -1264,12 +1599,27 @@ export function CheckoutPage() {
                         <span>Subtotal</span>
                         <span className="font-mono text-slate-800 font-semibold">{formatPrice(subtotalBeforeDiscount)}</span>
                       </div>
-                      {appliedDiscount > 0 && (
-                        <div className="flex justify-between items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-100">
-                          <span>Discount ({appliedDiscount * 100}% Off)</span>
-                          <span className="font-mono">- {formatPrice(discountAmount)}</span>
-                        </div>
-                      )}
+
+                      <AnimatePresence>
+                        {appliedDiscount > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                            exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                            transition={{ duration: 0.35, ease: 'easeOut' }}
+                            className="overflow-hidden"
+                          >
+                            <div className="flex justify-between items-center text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200/80 shadow-2xs my-1">
+                              <span className="flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-bounce" />
+                                Discount ({appliedDiscount * 100}% Off)
+                              </span>
+                              <span className="font-mono text-emerald-800 font-extrabold text-sm">- {formatPrice(discountAmount)}</span>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
                       <div className="flex justify-between items-center text-xs font-medium text-slate-500">
                         <span>GST (18%)</span>
                         <span className="font-mono text-slate-800 font-semibold">{formatPrice(gst)}</span>
@@ -1280,9 +1630,15 @@ export function CheckoutPage() {
 
                   <div className="flex justify-between items-center pt-1">
                     <span className="text-sm font-bold text-slate-900">Total Due</span>
-                    <span className="text-2xl font-black text-emerald-600 font-mono tracking-tight">
+                    <motion.span
+                      key={total}
+                      initial={{ scale: 1.3, color: '#16a34a' }}
+                      animate={{ scale: 1, color: '#059669' }}
+                      transition={{ type: 'spring', stiffness: 350, damping: 18 }}
+                      className="text-2xl font-black text-emerald-600 font-mono tracking-tight"
+                    >
                       {formatPrice(total)}
-                    </span>
+                    </motion.span>
                   </div>
                 </div>
 
@@ -1294,23 +1650,28 @@ export function CheckoutPage() {
                         type="text"
                         placeholder="e.g. STAY30"
                         value={couponCode}
-                        disabled={isCouponLoading || isProcessing}
                         onChange={(e) => setCouponCode(e.target.value)}
                         className="bg-white rounded-xl text-xs py-1.5 focus:ring-primary/20 h-9"
                       />
                       <Button
                         type="button"
                         onClick={handleApplyCoupon}
-                        disabled={isCouponLoading || isProcessing}
-                        className="bg-primary hover:bg-primary/95 text-white font-bold text-xs h-9 px-4 rounded-xl cursor-pointer flex items-center gap-1.5"
+                        className="bg-primary hover:bg-primary/95 text-white font-bold text-xs h-9 px-4 rounded-xl cursor-pointer shadow-xs active:scale-95 transition-transform"
                       >
-                        {isCouponLoading ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : 'Apply'}
+                        Apply
                       </Button>
                     </div>
                     {couponError && <p className="text-[11px] font-bold text-red-600 mt-1">{couponError}</p>}
-                    {couponSuccess && <p className="text-[11px] font-bold text-emerald-600 mt-1">{couponSuccess}</p>}
+                    {couponSuccess && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-[11px] font-bold text-emerald-600 mt-1 flex items-center gap-1"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        {couponSuccess}
+                      </motion.p>
+                    )}
                   </div>
                 )}
 
