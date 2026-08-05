@@ -13,8 +13,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
+  key_id: (process.env.VITE_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || '').trim(),
+  key_secret: (process.env.RAZORPAY_KEY_SECRET || '').trim(),
 });
 
 export default async function handler(req: any, res: any) {
@@ -96,16 +96,13 @@ export default async function handler(req: any, res: any) {
     });
   } catch (error: any) {
     console.error('Error creating Razorpay order:', error);
-    if (error.statusCode === 401) {
-      res.status(401).json({
-        success: false,
-        error: {
-          code: 'GATEWAY_AUTHENTICATION_FAILED',
-          message: 'Payment gateway authentication failed. Please verify your Razorpay API keys in your .env file.'
-        }
-      });
-      return;
-    }
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
+    const errMessage = error.error?.description || error.error?.message || error.message || 'Failed to create Razorpay order.';
+    res.status(400).json({
+      success: false,
+      error: {
+        code: error.error?.code || 'RAZORPAY_ORDER_FAILED',
+        message: errMessage
+      }
+    });
   }
 }

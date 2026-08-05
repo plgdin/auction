@@ -1,18 +1,21 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Phone, MapPin, Send, ChevronDown, Bug, HelpCircle, CreditCard, ShieldAlert, PackageSearch, MessageSquare } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, ChevronDown, Bug, HelpCircle, CreditCard, ShieldAlert, PackageSearch, MessageSquare, AlertTriangle, Receipt } from 'lucide-react';
 import { publicService } from '../services/publicService';
 import clsx from 'clsx';
 
 const ISSUE_TYPES = [
   { value: '', label: 'Select an issue type', icon: MessageSquare },
-  { value: 'bug_report', label: 'Bug Report / Technical Issue', icon: Bug },
+  { value: 'payment_failed', label: 'Payment Failed / Money Deducted', icon: AlertTriangle },
+  { value: 'payment_issue', label: 'Payment & EMD Issue', icon: CreditCard },
+  { value: 'billing_issue', label: 'Subscription & Billing Inquiry', icon: Receipt },
   { value: 'bidding_help', label: 'Bidding & Auction Help', icon: HelpCircle },
-  { value: 'payment_issue', label: 'Payment / EMD Issue', icon: CreditCard },
   { value: 'account_issue', label: 'Account & Access Issue', icon: ShieldAlert },
   { value: 'catalog_issue', label: 'Catalog / Listing Issue', icon: PackageSearch },
+  { value: 'bug_report', label: 'Bug Report / Technical Issue', icon: Bug },
   { value: 'general_inquiry', label: 'General Inquiry', icon: MessageSquare },
 ];
 
@@ -29,6 +32,7 @@ const contactSchema = z.object({
 type ContactFormValues = z.infer<typeof contactSchema>;
 
 export function Contact() {
+  const [searchParams] = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -46,6 +50,36 @@ export function Contact() {
     resolver: zodResolver(contactSchema),
     defaultValues: { issueType: '' },
   });
+
+  // Pre-select issue from URL query parameters if present
+  useEffect(() => {
+    const paramIssue = searchParams.get('issue');
+    const paramSubject = searchParams.get('subject');
+    const paramTxn = searchParams.get('txn_id') || searchParams.get('txn');
+    const paramMessage = searchParams.get('message');
+
+    if (paramIssue) {
+      const found = ISSUE_TYPES.find((item) => item.value === paramIssue);
+      if (found) {
+        setSelectedIssue(found);
+        setValue('issueType', found.value, { shouldValidate: true });
+      }
+    }
+
+    if (paramSubject) {
+      setValue('subject', paramSubject, { shouldValidate: true });
+    } else if (paramIssue === 'payment_failed') {
+      setValue('subject', 'Payment Failed / Money Deducted Issue', { shouldValidate: true });
+    }
+
+    if (paramMessage) {
+      setValue('message', paramMessage, { shouldValidate: true });
+    } else if (paramTxn) {
+      setValue('message', `Payment attempted on checkout. Reference/Transaction ID: ${paramTxn}.\n\nPlease describe what happened: `, { shouldValidate: true });
+    } else if (paramIssue === 'payment_failed') {
+      setValue('message', 'My payment failed during checkout or money was deducted from my account. Please verify my transaction status and assist me.', { shouldValidate: true });
+    }
+  }, [searchParams, setValue]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -242,6 +276,18 @@ export function Contact() {
                     </div>
                     {errors.issueType && <p className="mt-1 text-sm text-destructive">{errors.issueType.message}</p>}
                   </div>
+
+                  {selectedIssue.value === 'payment_failed' && (
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-start gap-3 animate-in fade-in duration-200">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Payment Issue Priority Assistance</p>
+                        <p className="mt-0.5 text-amber-800">
+                          If money was deducted from your bank/UPI or card during checkout, please include your payment reference or transaction ID. Our payment team will verify and credit/refund your account within 24 hours.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">Subject</label>
