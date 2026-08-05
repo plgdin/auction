@@ -24,6 +24,26 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  // Parse request body stream if not pre-parsed (Connect/Vite environment support)
+  if (!req.body) {
+    try {
+      req.body = await new Promise((resolve, reject) => {
+        let body = '';
+        req.on('data', (chunk: any) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            resolve(body ? JSON.parse(body) : {});
+          } catch (e) {
+            resolve({});
+          }
+        });
+        req.on('error', (err: any) => { reject(err); });
+      });
+    } catch (e) {
+      req.body = {};
+    }
+  }
+
   // Rate Limiting: 5 requests per minute per IP
   const ip = getClientIp(req);
   if (isRateLimited(ip, 5, 60 * 1000)) {
@@ -32,7 +52,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    // 1. Authenticate — require valid Supabase JWT
+    // 1. Authenticate — require valid Supabase JWT or INTERNAL_API_SECRET
     const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '').trim();
     if (!token) {
@@ -40,10 +60,30 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      res.status(401).json({ success: false, error: 'Unauthorized: Invalid token' });
-      return;
+    const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || '';
+    let user: any = null;
+
+    if (INTERNAL_API_SECRET && token === INTERNAL_API_SECRET) {
+      // Authenticated via machine-to-machine trigger secret
+      const { user_id } = req.body;
+      if (!user_id) {
+        res.status(400).json({ success: false, error: 'Missing user_id parameter.' });
+        return;
+      }
+      const { data: adminUser, error: authError } = await supabase.auth.admin.getUserById(user_id);
+      if (authError || !adminUser?.user) {
+        res.status(400).json({ success: false, error: 'User not found.' });
+        return;
+      }
+      user = adminUser.user;
+    } else {
+      // Authenticated via client user session token
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !authUser) {
+        res.status(401).json({ success: false, error: 'Unauthorized: Invalid token' });
+        return;
+      }
+      user = authUser;
     }
 
     // 2. Pull email from the verified user record — never trust req.body.email

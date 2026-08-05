@@ -167,6 +167,43 @@ describe('Email Security and Delivery Tests', () => {
       // Ensure sendEmail (fetch) was NOT triggered
       expect(global.fetch).not.toHaveBeenCalled();
     });
+
+    it('allows machine-to-machine trigger auth using internal API secret', async () => {
+      const req = {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer test-secret'
+        },
+        body: {
+          user_id: 'user-123'
+        }
+      };
+      let statusValue = 200;
+      let jsonValue = {};
+      const res = {
+        setHeader: vi.fn(),
+        status: (code: number) => { statusValue = code; return res; },
+        json: (data: any) => { jsonValue = data; return res; }
+      };
+
+      mockGetUserById.mockResolvedValueOnce({
+        data: { user: { id: 'user-123', email: 'user@example.com' } },
+        error: null
+      });
+
+      mockSingle.mockResolvedValueOnce({
+        data: { first_name: 'Aditya', welcome_email_sent: false },
+        error: null
+      });
+
+      await sendSignupEmailHandler(req, res);
+      expect(statusValue).toBe(200);
+      expect(jsonValue).toEqual({ success: true, message: 'Signup confirmation email sent successfully.' });
+      
+      // Ensure database update was called to flag email as sent
+      expect(mockFrom).toHaveBeenCalledWith('profiles');
+      expect(mockUpdate).toHaveBeenCalledWith({ welcome_email_sent: true });
+    });
   });
 
   describe('POST /api/send-transactional-email', () => {
