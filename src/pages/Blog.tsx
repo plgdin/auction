@@ -4,6 +4,7 @@ import type { Blog as BlogType } from '../types/database.types';
 import { format } from 'date-fns';
 import { Sparkles, Calendar, User, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { sanitizeHtml } from '../utils/blogHtmlParser';
 
 export function Blog() {
   const [blogs, setBlogs] = useState<BlogType[]>([]);
@@ -71,7 +72,7 @@ export function Blog() {
               <span className="flex items-center"><Calendar className="w-4 h-4 mr-2" /> {format(new Date(blog.published_at || blog.created_at), 'MMMM d, yyyy')}</span>
               <span className="flex items-center"><User className="w-4 h-4 mr-2" /> {blog.author_name || 'Admin'}</span>
             </div>
-            <div className="prose prose-lg mx-auto text-left prose-slate prose-img:rounded-xl prose-a:text-primary line-clamp-6" dangerouslySetInnerHTML={{ __html: blog.content }} />
+            <div className="prose prose-lg mx-auto text-left prose-slate prose-img:rounded-xl prose-a:text-primary line-clamp-6" dangerouslySetInnerHTML={{ __html: sanitizeHtml(blog.content) }} />
             <Link to={`/blog/${blog.slug || blog.id}`} className="mt-8 inline-flex items-center px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-600 transition-colors">
               Read Full Article <ArrowRight className="w-4 h-4 ml-2" />
             </Link>
@@ -122,7 +123,7 @@ export function Blog() {
                     <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6 leading-tight group-hover:text-primary transition-colors">
                       {topBlog.title}
                     </h2>
-                    <div className="text-slate-600 line-clamp-3 mb-8 prose" dangerouslySetInnerHTML={{ __html: topBlog.content }} />
+                    <div className="text-slate-600 line-clamp-3 mb-8 prose" dangerouslySetInnerHTML={{ __html: sanitizeHtml(topBlog.content) }} />
                     
                     <div className="mt-auto flex items-center text-primary font-semibold group-hover:text-primary-600 transition-colors">
                       Read Article <ArrowRight className="w-4 h-4 ml-1.5 transform group-hover:translate-x-1 transition-transform" />
@@ -182,7 +183,7 @@ export function Blog() {
                     <span className="flex items-center"><User className="w-3.5 h-3.5 mr-1" /> {blog.author_name || 'Admin'}</span>
                   </div>
                   <h4 className="text-xl font-bold text-slate-900 mb-4 leading-tight group-hover:text-primary transition-colors">{blog.title}</h4>
-                  <div className="prose prose-sm text-slate-600 mb-6 flex-grow line-clamp-3" dangerouslySetInnerHTML={{ __html: blog.content }} />
+                  <div className="prose prose-sm text-slate-600 mb-6 flex-grow line-clamp-3" dangerouslySetInnerHTML={{ __html: sanitizeHtml(blog.content) }} />
                   
                   <div className="mt-auto flex items-center text-primary font-semibold group-hover:text-primary-600 transition-colors text-sm">
                     Read More <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />

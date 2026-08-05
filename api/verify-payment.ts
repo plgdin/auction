@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';
 import { isRateLimited, getClientIp } from './utils/rateLimiter.js';
 import { sendEmail, getPaymentConfirmationTemplate } from './utils/email.js';
 import { handleCorsPreflightIfNeeded, setCorsHeaders } from './utils/cors.js';
+import { z } from 'zod';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -21,11 +22,16 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET || '',
 });
 
+const verifyPaymentSchema = z.object({
+  order_id: z.string().min(1, "order_id is required"),
+  payment_id: z.string().min(1, "payment_id is required"),
+  signature: z.string().min(1, "signature is required"),
+});
+
 export default async function handler(req: any, res: any) {
   // CORS — restricted to allowed origins
   if (handleCorsPreflightIfNeeded(req, res)) return;
   setCorsHeaders(req, res);
-
 
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, error: 'Method Not Allowed' });
@@ -74,24 +80,71 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const { order_id, payment_id, signature } = req.body;
-    if (!order_id || !payment_id || !signature) {
-      res.status(400).json({ success: false, error: 'Bad Request: Missing required parameters' });
+    // 1. Zod input parameters validation
+    const validation = verifyPaymentSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({ success: false, error: 'Bad Request: Invalid parameters', details: validation.error.issues });
       return;
     }
 
-    // Verify signature
+    const { order_id, payment_id, signature } = validation.data;
+
+    // 2. Verify signature using timingSafeEqual to block timing attacks
     const generatedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
       .update(`${order_id}|${payment_id}`)
       .digest('hex');
 
-    if (generatedSignature !== signature) {
+    const signatureBuf = Buffer.from(signature);
+    const generatedBuf = Buffer.from(generatedSignature);
+
+    if (signatureBuf.length !== generatedBuf.length || !crypto.timingSafeEqual(signatureBuf, generatedBuf)) {
       res.status(400).json({ success: false, error: 'Payment signature verification failed' });
       return;
     }
 
-    // 1. Fetch order details from Razorpay to get the pricing and plan name metadata
+    // 3. Fetch order details from database to prevent payment replay
+    const { data: dbOrder, error: dbError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', order_id)
+      .maybeSingle();
+
+    if (dbError || !dbOrder) {
+      console.error('[verify-payment] Order not found in database:', dbError);
+      res.status(403).json({ success: false, error: 'Forbidden: Transaction not found.' });
+      return;
+    }
+
+    if (dbOrder.user_id !== user.id) {
+      console.error(`[verify-payment] Security alert: User ${user.id} tried to redeem order created by ${dbOrder.user_id}`);
+      res.status(403).json({ success: false, error: 'Forbidden: Order does not belong to this user.' });
+      return;
+    }
+
+    if (dbOrder.status === 'verified') {
+      // Idempotent success response
+      res.status(200).json({
+        success: true,
+        message: 'Payment already verified successfully.'
+      });
+      return;
+    }
+
+    // Update order status atomically using status constraint to lock it
+    const { error: orderUpdateError } = await supabase
+      .from('orders')
+      .update({ status: 'verified' })
+      .eq('id', order_id)
+      .eq('status', 'created');
+
+    if (orderUpdateError) {
+      console.error('Failed to mark order as verified:', orderUpdateError);
+      res.status(500).json({ success: false, error: 'Internal Server Error' });
+      return;
+    }
+
+    // 4. Fetch order details from Razorpay to get the pricing and plan name metadata
     const order = await razorpay.orders.fetch(order_id);
     const planId = String(order.notes?.planId || 'premium');
     const billingCycle = String(order.notes?.billingCycle || 'monthly');

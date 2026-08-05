@@ -2,6 +2,8 @@ import Razorpay from 'razorpay';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { handleCorsPreflightIfNeeded, setCorsHeaders } from './utils/cors.js';
+import { isRateLimited, getClientIp } from './utils/rateLimiter.js';
+import { z } from 'zod';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -18,11 +20,20 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET || '',
 });
 
+const createOrderSchema = z.object({
+  amount: z.number().positive(),
+  currency: z.string().optional().default('INR'),
+  receipt: z.string().optional(),
+  planId: z.string().min(1, "planId is required"),
+  billingCycle: z.enum(['monthly', 'annual']),
+  extraSeats: z.coerce.number().int().nonnegative().optional().default(0),
+  couponCode: z.string().optional().nullable(),
+});
+
 export default async function handler(req: any, res: any) {
   // CORS — restricted to allowed origins
   if (handleCorsPreflightIfNeeded(req, res)) return;
   setCorsHeaders(req, res);
-
 
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, error: 'Method Not Allowed' });
@@ -49,6 +60,13 @@ export default async function handler(req: any, res: any) {
     }
   }
 
+  // 1. IP-based Rate Limiting (10 requests/minute)
+  const ip = getClientIp(req);
+  if (isRateLimited(ip, 10, 60 * 1000)) {
+    res.status(429).json({ success: false, error: 'Too many requests. Please try again later.' });
+    return;
+  }
+
   try {
     // Authenticate User
     const authHeader = req.headers.authorization || '';
@@ -64,7 +82,20 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const { amount: clientAmount, currency, receipt, planId, billingCycle, extraSeats, couponCode } = req.body;
+    // 2. User-based Rate Limiting (5 requests/minute) to prevent spamming payment creations
+    if (isRateLimited(`order:${user.id}`, 5, 60 * 1000)) {
+      res.status(429).json({ success: false, error: 'Rate limit exceeded for creating orders. Please try again later.' });
+      return;
+    }
+
+    // 3. Schema validation using Zod
+    const validation = createOrderSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({ success: false, error: 'Bad Request: Invalid parameters', details: validation.error.issues });
+      return;
+    }
+
+    const { amount: clientAmount, currency, receipt, planId, billingCycle, extraSeats, couponCode } = validation.data;
 
     // Calculate subtotal & total dynamically on server to ensure pricing integrity
     const isExplorerFree = planId === 'explorer' || planId === 'starter' || planId === 'free';
@@ -84,7 +115,7 @@ export default async function handler(req: any, res: any) {
     const subtotalBeforeDiscount = baseSubtotal + extraSeatsCost;
 
     let appliedDiscount = 0;
-    if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
+    if (couponCode && couponCode.trim()) {
       const code = couponCode.trim().toUpperCase();
       const { data: promo, error: promoError } = await supabase
         .from('promo_codes')
@@ -134,6 +165,24 @@ export default async function handler(req: any, res: any) {
         couponApplied: appliedDiscount > 0 ? String(couponCode).toUpperCase() : 'None',
       }
     });
+
+    // 4. Save order to the database to associate it with the user and block payment replay
+    const { error: dbError } = await supabase
+      .from('orders')
+      .insert({
+        id: order.id,
+        user_id: user.id,
+        plan_id: planId,
+        billing_cycle: billingCycle,
+        amount: calculatedTotal,
+        status: 'created'
+      });
+
+    if (dbError) {
+      console.error('[create-order] Failed to save order in database:', dbError);
+      res.status(500).json({ success: false, error: 'Database error creating transaction.' });
+      return;
+    }
 
     res.status(200).json({
       success: true,

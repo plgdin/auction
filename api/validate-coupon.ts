@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { isRateLimited, getClientIp } from './utils/rateLimiter.js';
 import { handleCorsPreflightIfNeeded, setCorsHeaders } from './utils/cors.js';
+import { z } from 'zod';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -13,11 +14,20 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
 });
 
+const validateCouponSchema = z.object({
+  code: z.string({
+    required_error: "Coupon code parameter is required.",
+    invalid_type_error: "Coupon code parameter is required."
+  })
+    .min(3, "Coupon code must be at least 3 characters")
+    .max(20, "Coupon code must be at most 20 characters")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Coupon code format is invalid")
+});
+
 export default async function handler(req: any, res: any) {
   // CORS — restricted to allowed origins
   if (handleCorsPreflightIfNeeded(req, res)) return;
   setCorsHeaders(req, res);
-
 
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.status(405).json({ success: false, error: 'Method Not Allowed' });
@@ -57,9 +67,8 @@ export default async function handler(req: any, res: any) {
     }
   }
 
-  // Retrieve code from query (GET) or body (POST)
   const rawCode = req.method === 'GET' ? req.query?.code : req.body?.code;
-  if (!rawCode || typeof rawCode !== 'string') {
+  if (rawCode === undefined || rawCode === null || String(rawCode).trim() === '') {
     res.status(400).json({
       success: false,
       error: {
@@ -70,7 +79,19 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const code = rawCode.trim().toUpperCase();
+  const parseResult = validateCouponSchema.safeParse({ code: rawCode });
+  if (!parseResult.success) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'BAD_REQUEST',
+        message: parseResult.error.issues[0]?.message || 'Invalid parameters'
+      }
+    });
+    return;
+  }
+
+  const code = parseResult.data.code.trim().toUpperCase();
 
   try {
     // 2. Query promo code from Supabase

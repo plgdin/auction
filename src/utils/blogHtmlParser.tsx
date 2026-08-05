@@ -24,11 +24,61 @@ const parseStyleString = (styleStr: string): Record<string, string> => {
   return styleObj;
 };
 
+/**
+ * Lightweight, dependency-free HTML sanitizer using native DOMParser.
+ * Removes dangerous tags (script, iframe, object, embed, etc.) and
+ * cleans event listener attributes (on*) and javascript: protocols.
+ */
+export function sanitizeHtml(htmlString: string): string {
+  if (!htmlString) return '';
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlString, 'text/html');
+  
+  const cleanNode = (node: Element) => {
+    const tagName = node.tagName.toLowerCase();
+    
+    // Remove dangerous tags completely
+    if (['script', 'iframe', 'object', 'embed', 'link', 'style'].includes(tagName)) {
+      node.remove();
+      return;
+    }
+    
+    // Clean dangerous attributes
+    const attrs = Array.from(node.attributes);
+    attrs.forEach((attr) => {
+      const name = attr.name.toLowerCase();
+      const value = attr.value.toLowerCase().trim();
+      
+      // Remove inline event handlers (onclick, onload, onerror, etc.)
+      if (name.startsWith('on')) {
+        node.removeAttribute(attr.name);
+      }
+      // Remove javascript: and data: URIs in href or src
+      else if ((name === 'href' || name === 'src') && (value.startsWith('javascript:') || value.startsWith('data:text/html'))) {
+        node.removeAttribute(attr.name);
+      }
+    });
+    
+    // Clean child elements recursively
+    const children = Array.from(node.children);
+    children.forEach(cleanNode);
+  };
+  
+  if (doc.body) {
+    const children = Array.from(doc.body.children);
+    children.forEach(cleanNode);
+    return doc.body.innerHTML;
+  }
+  
+  return '';
+}
+
 export function parseHtmlWithLinkPreviews(htmlString: string): React.ReactNode[] {
   if (!htmlString) return [];
   
+  const sanitized = sanitizeHtml(htmlString);
   const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlString, 'text/html');
+  const doc = parser.parseFromString(sanitized, 'text/html');
   
   const domToReact = (node: Node, key: string): React.ReactNode => {
     if (node.nodeType === Node.TEXT_NODE) {

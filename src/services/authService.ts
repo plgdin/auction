@@ -28,17 +28,39 @@ export const authService = {
   },
 
   async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
-    if (data.user) {
-      import('./auditService').then(({ logUserActivity }) => {
-        logUserActivity('user_login', 'profile', data.user!.id, { email });
-      });
+    // 1. Check if user is locked out
+    const { data: lockoutTime, error: lockoutError } = await supabase.rpc('check_login_lockout', { p_email: email });
+    if (lockoutError) {
+      console.error('Error checking login lockout:', lockoutError);
+    } else if (lockoutTime) {
+      const lockedUntilDate = new Date(lockoutTime);
+      if (lockedUntilDate > new Date()) {
+        const minutesLeft = Math.ceil((lockedUntilDate.getTime() - Date.now()) / 60000);
+        throw new Error(`Account temporarily locked due to repeated failed logins. Please try again in ${minutesLeft} minutes.`);
+      }
     }
-    return data;
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      
+      if (data.user) {
+        // 2. Reset failed logins upon success
+        await supabase.rpc('reset_failed_logins');
+        
+        import('./auditService').then(({ logUserActivity }) => {
+          logUserActivity('user_login', 'profile', data.user!.id, { email });
+        });
+      }
+      return data;
+    } catch (err: any) {
+      // 3. Record failed login attempt to trigger lockout count
+      await supabase.rpc('record_failed_login', { p_email: email });
+      throw err;
+    }
   },
 
   async signInWithOAuth(provider: 'google' | 'apple') {

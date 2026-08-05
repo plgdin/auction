@@ -5,6 +5,7 @@ import createOrderHandler from '../create-order';
 // Mock Supabase client functions using vi.hoisted so they are available inside hoisted mocks
 const { mockFrom, mockSelect, mockEq, mockMaybeSingle } = vi.hoisted(() => {
   const mockMaybeSingle = vi.fn();
+  const mockInsert = vi.fn(() => Promise.resolve({ error: null }));
   const mockEq = vi.fn(() => ({
     maybeSingle: mockMaybeSingle
   }));
@@ -12,7 +13,8 @@ const { mockFrom, mockSelect, mockEq, mockMaybeSingle } = vi.hoisted(() => {
     eq: mockEq
   }));
   const mockFrom = vi.fn(() => ({
-    select: mockSelect
+    select: mockSelect,
+    insert: mockInsert
   }));
   return { mockFrom, mockSelect, mockEq, mockMaybeSingle };
 });
