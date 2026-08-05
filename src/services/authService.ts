@@ -50,17 +50,104 @@ export const authService = {
       if (data.user) {
         // 2. Reset failed logins upon success
         await supabase.rpc('reset_failed_logins');
+
+        // Check if 2FA is enabled in their profile
+        const profile = await this.getProfile(data.user.id);
+        if (profile?.two_factor_enabled) {
+          // Sign out immediately so they don't have an active frontend session
+          await supabase.auth.signOut();
+          
+          // Trigger the OTP email
+          await supabase.auth.signInWithOtp({
+            email,
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth/login`,
+              shouldCreateUser: false,
+            },
+          });
+          
+          return { user: data.user, session: null, mfaRequired: true };
+        }
         
         import('./auditService').then(({ logUserActivity }) => {
           logUserActivity('user_login', 'profile', data.user!.id, { email });
         });
       }
-      return data;
+      return { user: data.user, session: data.session, mfaRequired: false };
     } catch (err: any) {
       // 3. Record failed login attempt to trigger lockout count
       await supabase.rpc('record_failed_login', { p_email: email });
       throw err;
     }
+  },
+
+  async signInWithOtp(email: string) {
+    // Check login lockout status first
+    const { data: lockoutTime, error: lockoutError } = await supabase.rpc('check_login_lockout', { p_email: email });
+    if (lockoutError) {
+      console.error('Error checking login lockout:', lockoutError);
+    } else if (lockoutTime) {
+      const lockedUntilDate = new Date(lockoutTime);
+      if (lockedUntilDate > new Date()) {
+        const minutesLeft = Math.ceil((lockedUntilDate.getTime() - Date.now()) / 60000);
+        throw new Error(`Account temporarily locked due to repeated failed logins. Please try again in ${minutesLeft} minutes.`);
+      }
+    }
+
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/login`,
+      },
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async verifyOtp(email: string, token: string) {
+    // Check login lockout status first
+    const { data: lockoutTime, error: lockoutError } = await supabase.rpc('check_login_lockout', { p_email: email });
+    if (lockoutError) {
+      console.error('Error checking login lockout:', lockoutError);
+    } else if (lockoutTime) {
+      const lockedUntilDate = new Date(lockoutTime);
+      if (lockedUntilDate > new Date()) {
+        const minutesLeft = Math.ceil((lockedUntilDate.getTime() - Date.now()) / 60000);
+        throw new Error(`Account temporarily locked due to repeated failed logins. Please try again in ${minutesLeft} minutes.`);
+      }
+    }
+
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'email',
+      });
+      if (error) throw error;
+
+      if (data.user) {
+        // Reset failed logins upon success
+        await supabase.rpc('reset_failed_logins');
+        
+        const { logUserActivity } = await import('./auditService');
+        await logUserActivity('user_login', 'profile', data.user.id, { email, method: 'otp' });
+      }
+      return data;
+    } catch (err: any) {
+      // Record failed login attempt to trigger lockout count
+      await supabase.rpc('record_failed_login', { p_email: email });
+      throw err;
+    }
+  },
+
+  async verifyRecoveryOtp(email: string, token: string) {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'recovery',
+    });
+    if (error) throw error;
+    return data;
   },
 
   async signInWithOAuth(provider: 'google' | 'apple') {

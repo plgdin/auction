@@ -67,6 +67,28 @@ export function ProfileSettings() {
     }
   };
 
+  const handleToggle2fa = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isChecked = e.target.checked;
+    if (!user) return;
+    setIsSubmitting(true);
+    try {
+      const updated = await authService.updateProfile(user.id, {
+        two_factor_enabled: isChecked,
+      });
+      if (updated) {
+        setProfile(updated);
+        toast.success(isChecked ? 'Email 2FA enabled successfully!' : 'Email 2FA disabled successfully.');
+      } else {
+        toast.error('Failed to update 2FA setting.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to update 2FA setting.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleClearWatchlist = () => {
     if (!user) return;
     if (window.confirm('Are you sure you want to clear your interested watchlist? This will remove all items.')) {
@@ -694,6 +716,28 @@ export function ProfileSettings() {
               </button>
             </div>
           </form>
+
+          {/* Email 2FA Toggle Section */}
+          <div className="p-6 border-t border-slate-100 bg-slate-50/50">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center">
+              <Shield className="w-4 h-4 mr-2 text-primary" /> Two-Factor Authentication (2FA)
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Enhance your account's security. Require a 6-digit one-time verification code sent to your email whenever you sign in.
+            </p>
+            <label className="inline-flex items-center cursor-pointer group">
+              <input
+                type="checkbox"
+                className="form-checkbox h-5 w-5 text-primary border-slate-300 rounded focus:ring-primary transition-all duration-200 cursor-pointer"
+                checked={profile?.two_factor_enabled || false}
+                onChange={handleToggle2fa}
+                disabled={isSubmitting}
+              />
+              <span className="ml-3 text-sm font-bold text-slate-700 group-hover:text-slate-900 transition-colors">
+                Enable Email Two-Factor Authentication (2FA)
+              </span>
+            </label>
+          </div>
         </div>
       )}
 

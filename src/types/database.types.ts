@@ -25,6 +25,7 @@ export interface Profile {
   phone?: string;
   avatar_url?: string;
   is_active: boolean;
+  two_factor_enabled?: boolean;
   subscription_plan?: 'explorer' | 'go' | 'go-subscription' | 'pro' | 'enterprise';
   subscription_expires_at?: string;
   created_at: string;
