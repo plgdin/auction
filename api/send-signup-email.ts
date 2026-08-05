@@ -62,20 +62,31 @@ export default async function handler(req: any, res: any) {
 
     const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || '';
     let user: any = null;
+    let isInternalCall = false;
 
     if (INTERNAL_API_SECRET && token === INTERNAL_API_SECRET) {
+      isInternalCall = true;
       // Authenticated via machine-to-machine trigger secret
-      const { user_id } = req.body;
+      const { user_id, email: bodyEmail, first_name: bodyFirstName } = req.body;
       if (!user_id) {
         res.status(400).json({ success: false, error: 'Missing user_id parameter.' });
         return;
       }
-      const { data: adminUser, error: authError } = await supabase.auth.admin.getUserById(user_id);
-      if (authError || !adminUser?.user) {
-        res.status(400).json({ success: false, error: 'User not found.' });
-        return;
+      
+      if (bodyEmail) {
+        user = {
+          id: user_id,
+          email: bodyEmail,
+          user_metadata: { first_name: bodyFirstName || '' }
+        };
+      } else {
+        const { data: adminUser, error: authError } = await supabase.auth.admin.getUserById(user_id);
+        if (authError || !adminUser?.user) {
+          res.status(400).json({ success: false, error: 'User not found.' });
+          return;
+        }
+        user = adminUser.user;
       }
-      user = adminUser.user;
     } else {
       // Authenticated via client user session token
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
@@ -86,34 +97,44 @@ export default async function handler(req: any, res: any) {
       user = authUser;
     }
 
-    // 2. Pull email from the verified user record — never trust req.body.email
+    // 2. Pull email from the verified user record
     const email = user.email;
     if (!email) {
       res.status(400).json({ success: false, error: 'User has no email address.' });
       return;
     }
 
-    // 3. Check idempotency flag — prevent duplicate sends
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('first_name, welcome_email_sent')
-      .eq('id', user.id)
-      .single();
+    // 3. Check idempotency flag
+    let welcomeEmailAlreadySent = false;
+    let firstName = '';
 
-    if (profileError) {
-      console.error('[send-signup-email] Error fetching profile:', profileError);
-      res.status(500).json({ success: false, error: 'Failed to fetch user profile.' });
-      return;
+    if (isInternalCall) {
+      // Trigger function has already checked and set the flag atomically in DB transaction
+      welcomeEmailAlreadySent = false;
+      firstName = user.user_metadata?.first_name || '';
+    } else {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('first_name, welcome_email_sent')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('[send-signup-email] Error fetching profile:', profileError);
+        res.status(500).json({ success: false, error: 'Failed to fetch user profile.' });
+        return;
+      }
+
+      welcomeEmailAlreadySent = !!profile?.welcome_email_sent;
+      firstName = profile?.first_name || user.user_metadata?.first_name || '';
     }
 
-    if (profile?.welcome_email_sent) {
-      // Already sent — idempotent success, no re-send
+    if (welcomeEmailAlreadySent) {
       res.status(200).json({ success: true, message: 'Welcome email already sent.' });
       return;
     }
 
     // 4. Send the welcome email
-    const firstName = profile?.first_name || user.user_metadata?.first_name || '';
     const html = getSignupWelcomeTemplate(firstName);
     const success = await sendEmail({
       to: email,
@@ -122,18 +143,17 @@ export default async function handler(req: any, res: any) {
     });
 
     if (success) {
-      // 5. Mark as sent atomically
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ welcome_email_sent: true })
-        .eq('id', user.id)
-        .eq('welcome_email_sent', false); // Atomic: only update if still false
+      // 5. Mark as sent atomically (only if not already done by DB trigger)
+      if (!isInternalCall) {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ welcome_email_sent: true })
+          .eq('id', user.id)
+          .eq('welcome_email_sent', false);
 
-      if (updateError) {
-        console.error('[send-signup-email] Failed to set welcome_email_sent flag:', updateError);
-        // Email was sent but flag update failed — still return success
-        // (next call will be a no-op due to the flag check, and worst case
-        // a duplicate email is better than a confusing error)
+        if (updateError) {
+          console.error('[send-signup-email] Failed to set welcome_email_sent flag:', updateError);
+        }
       }
 
       res.status(200).json({ success: true, message: 'Signup confirmation email sent successfully.' });

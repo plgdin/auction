@@ -175,7 +175,9 @@ describe('Email Security and Delivery Tests', () => {
           authorization: 'Bearer test-secret'
         },
         body: {
-          user_id: 'user-123'
+          user_id: 'user-123',
+          email: 'user@example.com',
+          first_name: 'Aditya'
         }
       };
       let statusValue = 200;
@@ -186,23 +188,14 @@ describe('Email Security and Delivery Tests', () => {
         json: (data: any) => { jsonValue = data; return res; }
       };
 
-      mockGetUserById.mockResolvedValueOnce({
-        data: { user: { id: 'user-123', email: 'user@example.com' } },
-        error: null
-      });
-
-      mockSingle.mockResolvedValueOnce({
-        data: { first_name: 'Aditya', welcome_email_sent: false },
-        error: null
-      });
-
       await sendSignupEmailHandler(req, res);
       expect(statusValue).toBe(200);
       expect(jsonValue).toEqual({ success: true, message: 'Signup confirmation email sent successfully.' });
       
-      // Ensure database update was called to flag email as sent
-      expect(mockFrom).toHaveBeenCalledWith('profiles');
-      expect(mockUpdate).toHaveBeenCalledWith({ welcome_email_sent: true });
+      // Ensure it sent the email (global.fetch)
+      expect(global.fetch).toHaveBeenCalled();
+      // Ensure database update was skipped (as trigger marks it sent within transaction)
+      expect(mockFrom).not.toHaveBeenCalled();
     });
   });
 
