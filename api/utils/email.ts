@@ -33,6 +33,17 @@ interface EmailOptions {
 }
 
 export async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
+  const vercelEnv = process.env.VERCEL_ENV || '';
+  const isProduction = vercelEnv === 'production' || process.env.NODE_ENV === 'production';
+  const isPreview = vercelEnv === 'preview';
+
+  // Preview environments never send real emails — force console-log fallback
+  // to prevent test signups on preview branches from spamming real inboxes
+  if (isPreview) {
+    logMockEmail(to, subject, html);
+    return true;
+  }
+
   // 1. Try Resend HTTP API if key is present
   if (RESEND_API_KEY) {
     try {
@@ -43,7 +54,7 @@ export async function sendEmail({ to, subject, html }: EmailOptions): Promise<bo
           'Authorization': `Bearer ${RESEND_API_KEY}`,
         },
         body: JSON.stringify({
-          from: SMTP_FROM || 'onboarding@resend.dev',
+          from: SMTP_FROM,
           to,
           subject,
           html,
@@ -75,17 +86,29 @@ export async function sendEmail({ to, subject, html }: EmailOptions): Promise<bo
       return true;
     } catch (error) {
       console.error('[Email] Failed to send email via SMTP:', error);
-      // Fall through to console logging on failure so we can debug
     }
   }
 
-  // Fallback to beautiful console log preview
+  // 3. No provider available
+  if (isProduction) {
+    // In production, a missing provider is a critical configuration error —
+    // surface it as a visible failure instead of a silent no-op success
+    console.error(`[Email] CRITICAL: No email provider configured. Email to ${to} ("${subject}") was NOT sent. Set RESEND_API_KEY or SMTP_HOST/SMTP_USER/SMTP_PASS.`);
+    return false;
+  }
+
+  // Development: console-log preview for convenience
+  logMockEmail(to, subject, html);
+  return true;
+}
+
+/** Console-log preview of an email for local dev / preview environments */
+function logMockEmail(to: string, subject: string, html: string): void {
   console.log('\n' + '='.repeat(80));
   console.log(`[MOCK EMAIL LOG] TO: ${to}`);
   console.log(`[MOCK EMAIL LOG] SUBJECT: ${subject}`);
   console.log(`[MOCK EMAIL LOG] FROM: ${SMTP_FROM}`);
   console.log('-'.repeat(80));
-  // Print stripped HTML text for easy terminal preview
   const plainText = html
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace(/<[^>]+>/g, '\n')
@@ -95,7 +118,6 @@ export async function sendEmail({ to, subject, html }: EmailOptions): Promise<bo
     .join('\n');
   console.log(plainText);
   console.log('='.repeat(80) + '\n');
-  return true;
 }
 
 // ─── EMAIL TEMPLATES ─────────────────────────────────────────────────────────
@@ -121,7 +143,7 @@ export function getSignupWelcomeTemplate(firstName: string): string {
       max-width: 600px;
       margin: 40px auto;
       background: #ffffff;
-      border: 1px border #e2e8f0;
+      border: 1px solid #e2e8f0;
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
@@ -406,6 +428,373 @@ export function getPaymentConfirmationTemplate(
     <div class="footer">
       <p>&copy; ${new Date().getFullYear()} Lelam Company. All rights reserved.</p>
       <p>If you have any questions regarding this payment, please reach out to support@lelam.co.</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
+// ─── TRANSACTIONAL EMAIL TEMPLATES ──────────────────────────────────────────
+
+export function getBidConfirmationTemplate(
+  firstName: string,
+  auctionTitle: string,
+  bidAmount: number,
+  auctionUrl: string
+): string {
+  const name = firstName || 'Bidder';
+  const formattedAmount = `₹${bidAmount.toLocaleString('en-IN')}`;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Bid Confirmation - Lelam Company</title>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: #334155;
+      background-color: #f8fafc;
+      margin: 0;
+      padding: 0;
+    }
+    .wrapper {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    }
+    .header {
+      background: linear-gradient(135deg, #065f46 0%, #10b981 100%);
+      padding: 32px;
+      text-align: center;
+    }
+    .header h1 {
+      color: #ffffff;
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+    }
+    .content {
+      padding: 32px;
+    }
+    .bid-card {
+      background-color: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .bid-amount {
+      font-size: 28px;
+      font-weight: 800;
+      color: #065f46;
+      margin: 8px 0;
+    }
+    .btn-container {
+      text-align: center;
+      margin: 24px 0 8px 0;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #10b981;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 12px 28px;
+      font-weight: 600;
+      font-size: 14px;
+      border-radius: 9999px;
+    }
+    .footer {
+      background-color: #f1f5f9;
+      padding: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      border-top: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>Bid Confirmed ✓</h1>
+    </div>
+    <div class="content">
+      <p>Dear ${name},</p>
+      <p>Your bid has been successfully recorded in our ledger.</p>
+
+      <div class="bid-card">
+        <div style="font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Auction</div>
+        <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin: 4px 0 12px 0;">${auctionTitle}</div>
+        <div style="font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Your Bid</div>
+        <div class="bid-amount">${formattedAmount}</div>
+      </div>
+
+      <p>You will be notified immediately if you are outbid.</p>
+
+      <div class="btn-container">
+        <a href="${auctionUrl}" class="btn" target="_blank">View Live Auction</a>
+      </div>
+    </div>
+    <div class="footer">
+      <p>&copy; ${new Date().getFullYear()} Lelam Company. All rights reserved.</p>
+      <p>This is an automated notification. Please do not reply directly.</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
+export function getOutbidAlertTemplate(
+  firstName: string,
+  auctionTitle: string,
+  auctionUrl: string
+): string {
+  const name = firstName || 'Bidder';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Outbid Alert - Lelam Company</title>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: #334155;
+      background-color: #f8fafc;
+      margin: 0;
+      padding: 0;
+    }
+    .wrapper {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    }
+    .header {
+      background: linear-gradient(135deg, #92400e 0%, #f59e0b 100%);
+      padding: 32px;
+      text-align: center;
+    }
+    .header h1 {
+      color: #ffffff;
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+    }
+    .content {
+      padding: 32px;
+    }
+    .alert-card {
+      background-color: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .alert-card p {
+      margin: 0;
+      font-weight: 600;
+      color: #92400e;
+    }
+    .btn-container {
+      text-align: center;
+      margin: 24px 0 8px 0;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #f59e0b;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 12px 28px;
+      font-weight: 600;
+      font-size: 14px;
+      border-radius: 9999px;
+    }
+    .footer {
+      background-color: #f1f5f9;
+      padding: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      border-top: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>⚠️ You Have Been Outbid</h1>
+    </div>
+    <div class="content">
+      <p>Dear ${name},</p>
+      <p>Another participant has placed a higher bid on an auction you are competing in.</p>
+
+      <div class="alert-card">
+        <p>${auctionTitle}</p>
+      </div>
+
+      <p>The auction is still active. Click below to return to the bidding room and place a counter-bid before time runs out.</p>
+
+      <div class="btn-container">
+        <a href="${auctionUrl}" class="btn" target="_blank">Place New Bid</a>
+      </div>
+    </div>
+    <div class="footer">
+      <p>&copy; ${new Date().getFullYear()} Lelam Company. All rights reserved.</p>
+      <p>This is an automated notification. Please do not reply directly.</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
+export function getEmdReceiptTemplate(
+  firstName: string,
+  amount: number,
+  referenceId: string
+): string {
+  const name = firstName || 'Valued Customer';
+  const formattedAmount = `₹${amount.toLocaleString('en-IN')}`;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Deposit Receipt - Lelam Company</title>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: #334155;
+      background-color: #f8fafc;
+      margin: 0;
+      padding: 0;
+    }
+    .wrapper {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    }
+    .header {
+      background: linear-gradient(135deg, #0c4a6e 0%, #0284c7 100%);
+      padding: 32px;
+      text-align: center;
+    }
+    .header h1 {
+      color: #ffffff;
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+    }
+    .content {
+      padding: 32px;
+    }
+    .receipt-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    .receipt-table td {
+      padding: 12px 0;
+      font-size: 14px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .receipt-table .label {
+      color: #64748b;
+      width: 45%;
+    }
+    .receipt-table .value {
+      font-weight: 600;
+      color: #334155;
+      text-align: right;
+    }
+    .receipt-table .total .label,
+    .receipt-table .total .value {
+      font-weight: 700;
+      font-size: 16px;
+      color: #10b981;
+      border-top: 2px solid #e2e8f0;
+      border-bottom: none;
+      padding-top: 16px;
+    }
+    .btn-container {
+      text-align: center;
+      margin: 24px 0 8px 0;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #0284c7;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 12px 28px;
+      font-weight: 600;
+      font-size: 14px;
+      border-radius: 9999px;
+    }
+    .footer {
+      background-color: #f1f5f9;
+      padding: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      border-top: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>Deposit Received</h1>
+    </div>
+    <div class="content">
+      <p>Dear ${name},</p>
+      <p>We have successfully processed your wallet deposit.</p>
+
+      <table class="receipt-table">
+        <tr>
+          <td class="label">Transaction Reference</td>
+          <td class="value" style="font-family: monospace;">${referenceId}</td>
+        </tr>
+        <tr>
+          <td class="label">Date</td>
+          <td class="value">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
+        </tr>
+        <tr class="total">
+          <td class="label">Amount Deposited</td>
+          <td class="value">${formattedAmount}</td>
+        </tr>
+      </table>
+
+      <p>These funds are now available in your ledger to participate in active auctions.</p>
+
+      <div class="btn-container">
+        <a href="https://lelam.co/wallet" class="btn" target="_blank">View Wallet Balance</a>
+      </div>
+    </div>
+    <div class="footer">
+      <p>&copy; ${new Date().getFullYear()} Lelam Company. All rights reserved.</p>
+      <p>If you have any questions, please reach out to support@lelam.co.</p>
     </div>
   </div>
 </body>

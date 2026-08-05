@@ -4,6 +4,7 @@ import Razorpay from 'razorpay';
 import * as dotenv from 'dotenv';
 import { isRateLimited, getClientIp } from './utils/rateLimiter.js';
 import { sendEmail, getPaymentConfirmationTemplate } from './utils/email.js';
+import { handleCorsPreflightIfNeeded, setCorsHeaders } from './utils/cors.js';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -21,15 +22,10 @@ const razorpay = new Razorpay({
 });
 
 export default async function handler(req: any, res: any) {
-  // CORS Headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  // CORS — restricted to allowed origins
+  if (handleCorsPreflightIfNeeded(req, res)) return;
+  setCorsHeaders(req, res);
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
 
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, error: 'Method Not Allowed' });
