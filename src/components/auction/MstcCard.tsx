@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, memo } from 'react';
-import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Gavel, Info } from 'lucide-react';
+import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Gavel, Info, Lock } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
@@ -32,13 +32,13 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
         setSummary(generateCatalogSummary(item));
       }
     }, 10); // Small delay to let React commit the initial DOM
-    
+
     return () => {
       isMounted = false;
       clearTimeout(timer);
     };
   }, [item]);
-  
+
   // Distinguish actual item photos from document page preview images
   const actualPhotos = useMemo(() => {
     if (!summary) return [];
@@ -46,19 +46,19 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
       (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('_page_') && !url.toLowerCase().includes('mstc-previews/') && !url.toLowerCase().endsWith('.pdf')
     );
   }, [summary?.extracted_images]);
-  
+
   const hasOtherMedia = (summary?.extracted_images || []).length > 0;
   const fallbackPreview = item.sanitized_document_path ? `mstc-previews/${item.id}.jpg` : null;
   const rawDisplayImage = useMemo(() => {
     if (actualPhotos.length > 0) return actualPhotos[0];
     if (summary?.preview_image_url) return summary.preview_image_url;
-    
+
     // Look for any catalog pages inside extracted_images
     const catalogPages = (summary?.extracted_images || []).filter(
       (url: string) => (url.toLowerCase().includes('_catalog_page_') || url.toLowerCase().includes('_page_') || url.toLowerCase().includes('mstc-previews/')) && !url.toLowerCase().endsWith('.pdf')
     );
     if (catalogPages.length > 0) return catalogPages[0];
-    
+
     return fallbackPreview;
   }, [actualPhotos, summary, fallbackPreview]);
 
@@ -94,18 +94,18 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
   // Parse start and close dates
   const parsedStartDate = summary?.auctionStartTime ? parsePdfDateTime(summary.auctionStartTime) : null;
   const auctionDate = parsedStartDate || new Date(item.opening_date);
-  
+
   const parsedCloseDate = summary?.auctionCloseTime ? parsePdfDateTime(summary.auctionCloseTime) : null;
-  
+
   const biddingPeriodStr = (() => {
     const startDate = parsedStartDate || new Date(item.opening_date);
     const endDate = parsedCloseDate || new Date(item.closing_date);
-    
+
     const formatDateOrdinal = (d: Date) => {
       const day = d.getDate();
       const month = d.toLocaleDateString(undefined, { month: 'short' });
       const year = d.getFullYear();
-      
+
       let suffix = 'th';
       if (day < 11 || day > 13) {
         switch (day % 10) {
@@ -128,22 +128,22 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
 
     const startDayStr = formatDateOrdinal(startDate);
     const endDayStr = formatDateOrdinal(endDate);
-    
+
     const startTimeStr = formatTimeAmpm(startDate);
     const endTimeStr = formatTimeAmpm(endDate);
-    
+
     if (startDayStr === endDayStr) {
       return `${startDayStr} ${startTimeStr} - ${endTimeStr}`;
     } else {
       return `${startDayStr} ${startTimeStr} - ${endDayStr} ${endTimeStr}`;
     }
   })();
-  
+
   const now = new Date();
   const diffMs = auctionDate.getTime() - now.getTime();
   const isStarted = diffMs <= 0;
   const isClosed = parsedCloseDate ? (now.getTime() > parsedCloseDate.getTime()) : false;
-  
+
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const isUrgent = diffDays < 3;
@@ -161,8 +161,8 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
     <span className={clsx(
       "font-bold text-xs px-2.5 py-1 rounded-md border flex items-center gap-1",
       isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
-      isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
-      "text-emerald-700 bg-emerald-50 border-emerald-200"
+        isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
+          "text-emerald-700 bg-emerald-50 border-emerald-200"
     )}>
       <Clock className="w-3.5 h-3.5" />
       Starts in {diffDays}d {diffHours}h
@@ -280,17 +280,20 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
     );
   };
 
+  const isBlurOverlay = !isUpgradedUser && item.is_reauction;
+
   if (!isGrid) {
     // LIST VIEW
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/50 transition-all group p-5 flex flex-col sm:flex-row gap-5 justify-between">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/50 transition-all group relative">
+        <div className={clsx("p-5 flex flex-col sm:flex-row gap-5 justify-between", isBlurOverlay && "blur-[6px] select-none pointer-events-none")}>
         {imageLoading ? (
           <div className="w-[120px] h-[120px] rounded-xl border border-slate-100 overflow-hidden shrink-0 bg-slate-100 animate-pulse hidden sm:block"></div>
         ) : signedDisplayImage ? (
           <div className="w-[120px] h-[120px] rounded-xl border border-slate-100 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
-            <img 
-              src={signedDisplayImage} 
-              alt="Catalog Image" 
+            <img
+              src={signedDisplayImage}
+              alt="Catalog Image"
               loading="lazy"
               decoding="async"
               onLoad={() => setHighResLoaded(true)}
@@ -313,7 +316,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
         <div className="flex-1 flex flex-col justify-between">
           <div>
             {renderCardHeader()}
-            
+
             {(() => {
               const parts = (item?.category_name || '').split(' | ');
               const mainCat = parts[0] || 'Unknown';
@@ -434,20 +437,31 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
           </div>
         </div>
       </div>
-    );
-  }
+      {isBlurOverlay && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/20">
+          <div className="bg-slate-900/90 backdrop-blur-md text-white rounded-xl p-4 shadow-xl max-w-[220px] flex flex-col items-center gap-2 text-center border border-slate-700/50">
+            <Lock className="w-6 h-6 text-amber-400" />
+            <span className="font-bold text-sm">Premium Feature</span>
+            <span className="text-xs text-slate-300">Upgrade your account to view Re-auction details</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
   // GRID VIEW
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full p-5 justify-between">
-      <div>
-        <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full relative">
+      <div className={clsx("flex flex-col h-full p-5 justify-between", isBlurOverlay && "blur-[6px] select-none pointer-events-none")}>
+        <div>
+          <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
           {imageLoading ? (
             <div className="w-full h-full bg-slate-100 animate-pulse"></div>
           ) : signedDisplayImage ? (
-            <img 
-              src={signedDisplayImage} 
-              alt="Catalog Image" 
+            <img
+              src={signedDisplayImage}
+              alt="Catalog Image"
               loading="lazy"
               decoding="async"
               onLoad={() => setHighResLoaded(true)}
@@ -597,6 +611,17 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
           )}
         </div>
       </div>
+      </div>
+      
+      {isBlurOverlay && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/20">
+          <div className="bg-slate-900/90 backdrop-blur-md text-white rounded-xl p-5 shadow-xl max-w-[220px] flex flex-col items-center gap-2 text-center border border-slate-700/50">
+            <Lock className="w-7 h-7 text-amber-400 mb-1" />
+            <span className="font-bold text-sm">Premium Feature</span>
+            <span className="text-xs text-slate-300">Upgrade your account to view Re-auction details</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }, (prevProps, nextProps) => {

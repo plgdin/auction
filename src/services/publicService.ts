@@ -2092,8 +2092,12 @@ export const MstcSearchService = {
         }
       }
 
-      const rpcPage = filters?.page || 1;
-      const rpcLimit = filters?.limit || 12;
+      const isDateSortHack = !!dConstraint && !rpcQuery;
+      const rpcPage = isDateSortHack ? 1 : (filters?.page || 1);
+      const actualPage = filters?.page || 1;
+      const actualLimit = filters?.limit || 12;
+      const rpcLimit = isDateSortHack ? 1000 : actualLimit;
+      
       let finalStartDate = filters?.startDate || dConstraint?.startDate || null;
       let finalEndDate = filters?.endDate || dConstraint?.endDate || null;
 
@@ -2193,13 +2197,20 @@ export const MstcSearchService = {
       
       if (searchData && searchData.length > 0) {
         totalCount = Number(searchData[0].total_count) || 0;
+        if (isDateSortHack) {
+          searchData.sort((a, b) => new Date(a.opening_date).getTime() - new Date(b.opening_date).getTime());
+          searchData = searchData.slice((actualPage - 1) * actualLimit, actualPage * actualLimit);
+        }
       }
 
       if (error) {
         throw error;
       }
 
-      const hasDirectMatches = !!(searchData && searchData.length > 0 && searchData.some((r: any) => r.search_rank > 0));
+      const isPureFilterQuery = !rpcQuery || rpcQuery.trim() === '';
+      const hasDirectMatches = isPureFilterQuery 
+        ? true 
+        : !!(searchData && searchData.length > 0 && searchData.some((r: any) => r.search_rank > 0));
 
       // Map Categories (is_reauction is returned natively by RPC)
       let mapped = (searchData as any[]).map(item => {
