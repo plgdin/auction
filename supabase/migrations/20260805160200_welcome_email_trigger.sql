@@ -11,7 +11,23 @@ AS $$
 DECLARE
   v_api_url TEXT;
   v_api_secret TEXT;
+  v_should_send BOOLEAN := false;
 BEGIN
+  -- Determine if welcome email should be sent (TG_OP is only accessible inside the function body)
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.email_confirmed_at IS NOT NULL THEN
+      v_should_send := true;
+    END IF;
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF NEW.email_confirmed_at IS NOT NULL AND OLD.email_confirmed_at IS NULL THEN
+      v_should_send := true;
+    END IF;
+  END IF;
+
+  IF NOT v_should_send THEN
+    RETURN NEW;
+  END IF;
+
   -- Read signup url configuration setting
   v_api_url := current_setting('app.settings.signup_email_url', true);
   
@@ -49,8 +65,4 @@ $$;
 CREATE OR REPLACE TRIGGER on_auth_user_confirmed
   AFTER INSERT OR UPDATE OF email_confirmed_at ON auth.users
   FOR EACH ROW
-  WHEN (
-    NEW.email_confirmed_at IS NOT NULL 
-    AND (OLD.email_confirmed_at IS NULL OR TG_OP = 'INSERT')
-  )
   EXECUTE FUNCTION public.notify_signup_welcome_email();
