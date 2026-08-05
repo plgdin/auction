@@ -68,8 +68,60 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const { amount, currency, receipt, planId, billingCycle, extraSeats } = req.body;
-    if (!amount || typeof amount !== 'number' || amount < 100) {
+    const { amount: clientAmount, currency, receipt, planId, billingCycle, extraSeats, couponCode } = req.body;
+
+    // Calculate subtotal & total dynamically on server to ensure pricing integrity
+    const isExplorerFree = planId === 'explorer' || planId === 'starter' || planId === 'free';
+    
+    let baseSubtotal = 0;
+    if (!isExplorerFree) {
+      if (planId === 'go' || planId === 'go-subscription') {
+        baseSubtotal = billingCycle === 'annual' ? 8438 : 799;
+      } else {
+        baseSubtotal = billingCycle === 'annual' ? 15830 : 1499;
+      }
+    }
+
+    const seatUnitPrice = billingCycle === 'annual' ? 4990 : 499;
+    const extraSeatsNum = Math.max(0, Number(extraSeats) || 0);
+    const extraSeatsCost = isExplorerFree ? 0 : extraSeatsNum * seatUnitPrice;
+    const subtotalBeforeDiscount = baseSubtotal + extraSeatsCost;
+
+    let appliedDiscount = 0;
+    if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
+      const code = couponCode.trim().toUpperCase();
+      const { data: promo, error: promoError } = await supabase
+        .from('promo_codes')
+        .select('discount_percent, is_active, expires_at')
+        .eq('code', code)
+        .maybeSingle();
+
+      if (promoError) {
+        console.error('Error validating coupon in create-order:', promoError);
+      } else if (promo && promo.is_active) {
+        const isNotExpired = !promo.expires_at || new Date(promo.expires_at) > new Date();
+        if (isNotExpired) {
+          appliedDiscount = promo.discount_percent / 100;
+        }
+      }
+    }
+
+    const discountAmount = Math.round(subtotalBeforeDiscount * appliedDiscount);
+    const subtotal = subtotalBeforeDiscount - discountAmount;
+    const gst = Math.round(subtotal * 0.18);
+    const calculatedTotal = subtotal + gst;
+    const amount = calculatedTotal * 100; // in paise
+
+    // Verify client-sent amount aligns with calculated amount (within 200 paise / 2 INR margin for rounding)
+    if (clientAmount && Math.abs(clientAmount - amount) > 200) {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Security alert: Submitted amount does not match server calculation.' 
+      });
+      return;
+    }
+
+    if (amount < 100) {
       res.status(400).json({ success: false, error: 'Bad Request: Amount must be >= 100 paise' });
       return;
     }
@@ -83,6 +135,7 @@ export default async function handler(req: any, res: any) {
         planId: planId || '',
         billingCycle: billingCycle || '',
         extraSeats: String(extraSeats || '0'),
+        couponApplied: appliedDiscount > 0 ? String(couponCode).toUpperCase() : 'None',
       }
     });
 

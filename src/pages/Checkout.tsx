@@ -140,25 +140,31 @@ export function CheckoutPage() {
   const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
+  const [isCouponLoading, setIsCouponLoading] = useState(false);
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     setCouponError(null);
     setCouponSuccess(null);
     const code = couponCode.trim().toUpperCase();
     if (!code) return;
 
-    if (code === 'STAY30') {
-      setAppliedDiscount(0.3);
-      setCouponSuccess('Coupon STAY30 applied! 30% discount has been applied.');
-    } else if (code === 'STAY50') {
-      setAppliedDiscount(0.5);
-      setCouponSuccess('Coupon STAY50 applied! 50% discount has been applied.');
-    } else if (code === 'LELAM10') {
-      setAppliedDiscount(0.1);
-      setCouponSuccess('Coupon LELAM10 applied! 10% discount has been applied.');
-    } else {
-      setCouponError('Invalid coupon code. Try using STAY30 or LELAM10.');
+    setIsCouponLoading(true);
+    try {
+      const response = await fetch(`/api/validate-coupon?code=${encodeURIComponent(code)}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setAppliedDiscount(result.data.discount_percent / 100);
+        setCouponSuccess(`Coupon ${code} applied! ${result.data.discount_percent}% discount has been applied.`);
+      } else {
+        setCouponError(result.error?.message || 'Invalid coupon code.');
+        setAppliedDiscount(0);
+      }
+    } catch (err) {
+      setCouponError('Network error. Failed to validate coupon.');
       setAppliedDiscount(0);
+    } finally {
+      setIsCouponLoading(false);
     }
   };
 
@@ -374,7 +380,8 @@ export function CheckoutPage() {
           receipt: `rcpt_${Date.now()}`,
           planId,
           billingCycle,
-          extraSeats
+          extraSeats,
+          couponCode: appliedDiscount > 0 ? couponCode : undefined
         })
       });
 
@@ -1286,15 +1293,19 @@ export function CheckoutPage() {
                         type="text"
                         placeholder="e.g. STAY30"
                         value={couponCode}
+                        disabled={isCouponLoading || isProcessing}
                         onChange={(e) => setCouponCode(e.target.value)}
                         className="bg-white rounded-xl text-xs py-1.5 focus:ring-primary/20 h-9"
                       />
                       <Button
                         type="button"
                         onClick={handleApplyCoupon}
-                        className="bg-primary hover:bg-primary/95 text-white font-bold text-xs h-9 px-4 rounded-xl cursor-pointer"
+                        disabled={isCouponLoading || isProcessing}
+                        className="bg-primary hover:bg-primary/95 text-white font-bold text-xs h-9 px-4 rounded-xl cursor-pointer flex items-center gap-1.5"
                       >
-                        Apply
+                        {isCouponLoading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : 'Apply'}
                       </Button>
                     </div>
                     {couponError && <p className="text-[11px] font-bold text-red-600 mt-1">{couponError}</p>}

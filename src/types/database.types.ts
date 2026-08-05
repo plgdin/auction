@@ -283,3 +283,13 @@ export interface LogisticsRequest {
   created_at: string;
   updated_at: string;
 }
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  discount_percent: number;
+  is_active: boolean;
+  expires_at: string | null;
+  created_at: string;
+}
+

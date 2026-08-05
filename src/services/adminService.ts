@@ -1,5 +1,4 @@
-import { supabase } from '../lib/supabase';
-import type { AuditLog, Notification, Announcement, FaqItem, NewsUpdate, ContactMessage } from '../types/database.types';
+import type { AuditLog, Notification, Announcement, FaqItem, NewsUpdate, ContactMessage, PromoCode } from '../types/database.types';
 
 export const adminService = {
   async getAuditLogs(limit: number = 50): Promise<AuditLog[]> {
@@ -956,5 +955,56 @@ export const adminService = {
       console.error('Error fetching security logs:', e);
       return [];
     }
+  },
+
+  async getPromoCodesAdmin(): Promise<PromoCode[]> {
+    const { data, error } = await supabase
+      .from('promo_codes')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching promo codes:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async createPromoCode(promoData: Partial<PromoCode>): Promise<boolean> {
+    const { error } = await supabase
+      .from('promo_codes')
+      .insert([promoData]);
+
+    if (error) {
+      console.error('Error creating promo code:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async updatePromoCode(id: string, promoData: Partial<PromoCode>): Promise<boolean> {
+    const { error } = await supabase
+      .from('promo_codes')
+      .update(promoData)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating promo code:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async deletePromoCode(id: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('promo_codes')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting promo code:', error);
+      return false;
+    }
+    return true;
   }
 };

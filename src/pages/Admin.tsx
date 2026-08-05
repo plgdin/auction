@@ -9,6 +9,7 @@ import { AuditLogsView } from '../components/admin/AuditLogsView';
 import { MarketPriceManagement } from '../components/admin/MarketPriceManagement';
 import { FaqManagement } from '../components/admin/FaqManagement';
 import { BlogManagement } from '../components/admin/BlogManagement';
+import { CouponManagement } from '../components/admin/CouponManagement';
 import { useAppStore } from '../store/appStore';
 
 export function Admin() {
@@ -38,6 +39,8 @@ export function Admin() {
         return <BlogManagement />;
       case 'messages':
         return <ContactMessages />;
+      case 'coupons':
+        return <CouponManagement />;
       default:
         return <AdminOverview />;
     }

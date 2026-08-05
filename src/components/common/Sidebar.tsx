@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Gavel, Heart, Bell, 
   Settings, Building2, LogOut, FolderLock, Users, Calendar, ClipboardCheck,
-  ArrowLeft, FileText, Cpu, Megaphone, BarChart3, Mail, TrendingUp, HelpCircle, ShieldAlert, Truck
+  ArrowLeft, FileText, Cpu, Megaphone, BarChart3, Mail, TrendingUp, HelpCircle, ShieldAlert, Truck, Tag
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
@@ -47,6 +47,7 @@ export function Sidebar() {
     { name: 'Market Price Manager', id: 'market-prices', icon: TrendingUp },
     { name: 'FAQ Manager', id: 'faq', icon: HelpCircle },
     { name: 'News & Media Manager', id: 'news', icon: FileText },
+    { name: 'Promo Codes', id: 'coupons', icon: Tag },
     { name: 'Advanced Reports', id: 'reports', icon: BarChart3 },
     { name: 'Blog Manager', id: 'blogs', icon: FileText },
     { name: 'User Management', id: 'users', icon: Users },
