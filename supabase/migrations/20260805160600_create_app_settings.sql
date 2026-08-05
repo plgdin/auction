@@ -46,7 +46,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  PERFORM extensions.http_post(
+  PERFORM net.http_post(
     url := v_api_url,
     body := jsonb_build_object(
       'type', 'outbid_alert',
@@ -63,7 +63,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, net;
 
 
 -- 4. Update notify_bid_confirmation_email to read from app_settings
@@ -81,7 +81,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  PERFORM extensions.http_post(
+  PERFORM net.http_post(
     url := v_api_url,
     body := jsonb_build_object(
       'type', 'bid_confirmation',
@@ -99,7 +99,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, net;
 
 
 -- 5. Update notify_deposit_receipt_email to read from app_settings
@@ -117,7 +117,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  PERFORM extensions.http_post(
+  PERFORM net.http_post(
     url := v_api_url,
     body := jsonb_build_object(
       'type', 'emd_receipt',
@@ -135,14 +135,14 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, net;
 
 
 -- 6. Update notify_signup_welcome_email to read from app_settings
 CREATE OR REPLACE FUNCTION public.notify_signup_welcome_email()
 RETURNS trigger
 LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public, extensions
+SECURITY DEFINER SET search_path = public, net
 AS $$
 DECLARE
   v_api_url TEXT;
@@ -209,7 +209,7 @@ BEGIN
   WHERE id = NEW.id;
 
   -- Send HTTP post with email and first_name directly to prevent DB query latency / race conditions
-  PERFORM extensions.http_post(
+  PERFORM net.http_post(
     url := v_api_url,
     body := jsonb_build_object(
       'user_id', NEW.id::TEXT,
