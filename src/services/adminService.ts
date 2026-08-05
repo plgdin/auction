@@ -1,3 +1,4 @@
+import { supabase } from '../lib/supabase';
 import type { AuditLog, Notification, Announcement, FaqItem, NewsUpdate, ContactMessage, PromoCode } from '../types/database.types';
 
 export const adminService = {
