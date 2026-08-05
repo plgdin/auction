@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
 import type { PromoCode } from '../../types/database.types';
 import { Tag, Edit2, Trash2, Plus, XCircle, Search, Calendar, Loader2, ToggleLeft, ToggleRight, CheckCircle } from 'lucide-react';
