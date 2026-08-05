@@ -231,9 +231,10 @@ export function Sidebar() {
                 "text-[8px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wider shrink-0 leading-none",
                 profile?.subscription_plan === 'pro' ? "bg-amber-50 text-amber-700 border-amber-200" :
                 profile?.subscription_plan === 'enterprise' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                (profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? "bg-blue-50 text-blue-700 border-blue-200" :
                 "bg-slate-100 text-slate-500 border-slate-200"
               )}>
-                {profile?.subscription_plan || 'explorer'}
+                {(profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? 'individual' : (profile?.subscription_plan || 'explorer')}
               </span>
             </div>
           </div>

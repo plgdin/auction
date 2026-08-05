@@ -105,7 +105,8 @@ export function Header() {
   const planTag = isAuthenticated
     ? (profile?.role === 'admin' || profile?.role === 'superadmin' ? 'Admin' :
        profile?.subscription_plan === 'pro' ? 'Pro' :
-       profile?.subscription_plan === 'enterprise' ? 'Enterprise' : 'Free')
+       profile?.subscription_plan === 'enterprise' ? 'Enterprise' :
+       (profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? 'Individual' : 'Free')
     : 'App';
 
   const isPaidSubscriberOrAdmin = isAuthenticated && (
