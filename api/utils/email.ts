@@ -126,7 +126,6 @@ function logMockEmail(to: string, subject: string, html: string): void {
 function getEmailWrapperHTML(
   title: string,
   preheader: string,
-  headerBg: string,
   contentHtml: string
 ): string {
   return `<!DOCTYPE html>
@@ -173,7 +172,6 @@ function getEmailWrapperHTML(
 
 export function getSignupWelcomeTemplate(firstName: string): string {
   const name = firstName || 'there';
-  const headerBg = 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)';
   const contentHtml = `
     <div style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 16px;">Welcome to the future of bidding, ${name}!</div>
     <p style="margin: 0 0 16px 0; font-size: 14px; color: #334155; line-height: 1.6;">Your account has been successfully registered. You are now ready to explore and bid on official government catalogs, bank properties, and commercial asset liquidations.</p>
@@ -210,7 +208,7 @@ export function getSignupWelcomeTemplate(firstName: string): string {
       </tr>
     </table>
   `;
-  return getEmailWrapperHTML('Welcome to Lelam', 'Start exploring active B2B eAuctions', headerBg, contentHtml);
+  return getEmailWrapperHTML('Welcome to Lelam', 'Start exploring active B2B eAuctions', contentHtml);
 }
 
 export function getPaymentConfirmationTemplate(
@@ -222,7 +220,6 @@ export function getPaymentConfirmationTemplate(
 ): string {
   const name = firstName || 'Valued Customer';
   const priceStr = `₹${amountInRs.toLocaleString('en-IN')}`;
-  const headerBg = 'linear-gradient(135deg, #0c4a6e 0%, #0284c7 100%)';
   
   const contentHtml = `
     <div style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 24px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px;">Subscription Receipt</div>
@@ -274,7 +271,7 @@ export function getPaymentConfirmationTemplate(
       </tr>
     </table>
   `;
-  return getEmailWrapperHTML('Payment Successful', `Subscription Receipt for Lelam ${planName}`, headerBg, contentHtml);
+  return getEmailWrapperHTML('Payment Successful', `Subscription Receipt for Lelam ${planName}`, contentHtml);
 }
 
 export function getBidConfirmationTemplate(
@@ -285,7 +282,6 @@ export function getBidConfirmationTemplate(
 ): string {
   const name = firstName || 'Bidder';
   const formattedAmount = `₹${bidAmount.toLocaleString('en-IN')}`;
-  const headerBg = 'linear-gradient(135deg, #065f46 0%, #10b981 100%)';
 
   const contentHtml = `
     <p style="margin: 0 0 16px 0; font-size: 14px; color: #334155;">Dear ${name},</p>
@@ -312,7 +308,7 @@ export function getBidConfirmationTemplate(
       </tr>
     </table>
   `;
-  return getEmailWrapperHTML('Bid Confirmed', `Bid confirmation for ${auctionTitle}`, headerBg, contentHtml);
+  return getEmailWrapperHTML('Bid Confirmed', `Bid confirmation for ${auctionTitle}`, contentHtml);
 }
 
 export function getOutbidAlertTemplate(
@@ -321,7 +317,6 @@ export function getOutbidAlertTemplate(
   auctionUrl: string
 ): string {
   const name = firstName || 'Bidder';
-  const headerBg = 'linear-gradient(135deg, #92400e 0%, #f59e0b 100%)';
 
   const contentHtml = `
     <p style="margin: 0 0 16px 0; font-size: 14px; color: #334155;">Dear ${name},</p>
@@ -345,7 +340,7 @@ export function getOutbidAlertTemplate(
       </tr>
     </table>
   `;
-  return getEmailWrapperHTML('You Have Been Outbid', `Outbid alert for ${auctionTitle}`, headerBg, contentHtml);
+  return getEmailWrapperHTML('You Have Been Outbid', `Outbid alert for ${auctionTitle}`, contentHtml);
 }
 
 export function getEmdReceiptTemplate(
@@ -355,7 +350,6 @@ export function getEmdReceiptTemplate(
 ): string {
   const name = firstName || 'Valued Customer';
   const formattedAmount = `₹${amount.toLocaleString('en-IN')}`;
-  const headerBg = 'linear-gradient(135deg, #0c4a6e 0%, #0284c7 100%)';
 
   const contentHtml = `
     <p style="margin: 0 0 16px 0; font-size: 14px; color: #334155;">Dear ${name},</p>
@@ -386,5 +380,5 @@ export function getEmdReceiptTemplate(
       </tr>
     </table>
   `;
-  return getEmailWrapperHTML('Deposit Received', `Wallet deposit confirmation of ${formattedAmount}`, headerBg, contentHtml);
+  return getEmailWrapperHTML('Deposit Received', `Wallet deposit confirmation of ${formattedAmount}`, contentHtml);
 }
