@@ -7,7 +7,7 @@ import { formatPrice } from '../utils/currency';
 import { 
   Lock, ArrowRight, CheckCircle2, AlertCircle, Loader2, 
   CreditCard, ChevronRight, User, Building2, Check, ChevronLeft,
-  ShoppingBag, ChevronDown, Users, Plus, Minus, Sparkles, XCircle, RotateCcw, HelpCircle, Printer
+  ShoppingBag, ChevronDown, Users, Plus, Minus, Sparkles, XCircle, RotateCcw, HelpCircle, Printer, Shield
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -130,7 +130,7 @@ export function CheckoutPage() {
   // General flow states
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [step, setStep] = useState<'details' | 'success' | 'failed'>('details');
+  const [step, setStep] = useState<'details' | 'verifying' | 'success' | 'failed'>('details');
   const [failureReason, setFailureReason] = useState<string>('');
   const [transactionId, setTransactionId] = useState('');
   const [gstError, setGstError] = useState<string | null>(null);
@@ -448,6 +448,8 @@ export function CheckoutPage() {
         }
       },
       handler: async function (response: any) {
+        // Immediately show verifying screen — blocks user from interacting
+        setStep('verifying');
         setIsProcessing(true);
         try {
           const verifyResponse = await fetch('/api/verify-payment', {
@@ -464,6 +466,10 @@ export function CheckoutPage() {
           });
 
           const verifyData = await verifyResponse.json();
+
+          // Brief delay so user sees the verification animation
+          await new Promise(r => setTimeout(r, 1800));
+
           if (!verifyData.success) {
             setIsProcessing(false);
             const errStr = verifyData.error?.message || verifyData.error || 'Payment signature verification failed.';
@@ -691,83 +697,97 @@ export function CheckoutPage() {
               </p>
             </div>
           </div>
-
-          {/* Development / Test view switcher */}
-          <div className="flex items-center gap-1.5 bg-white border border-slate-200 p-1.5 rounded-xl shadow-xs text-xs font-semibold">
-            <span className="text-slate-400 text-[10px] uppercase font-bold px-1 hidden sm:inline">Preview:</span>
-            <button
-              type="button"
-              onClick={() => { setStep('details'); setSdkError(null); }}
-              className={`px-2.5 py-1 rounded-lg transition-colors text-xs font-bold ${step === 'details' ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-            >
-              Form
-            </button>
-            <button
-              type="button"
-              onClick={() => { setStep('success'); setTransactionId(`SUCCESS-${Date.now().toString().slice(-6)}`); }}
-              className={`px-2.5 py-1 rounded-lg transition-colors text-xs font-bold ${step === 'success' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-            >
-              Success
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStep('failed');
-                setFailureReason('Issuer bank declined transaction or card authentication failed');
-                setTransactionId(`FAIL-${Date.now().toString().slice(-6)}`);
-              }}
-              className={`px-2.5 py-1 rounded-lg transition-colors text-xs font-bold ${step === 'failed' ? 'bg-rose-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-            >
-              Failed
-            </button>
-          </div>
         </div>
 
-        {/* Progress Steps */}
-        <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-6 py-3 mb-6 sm:mb-8 overflow-x-auto no-scrollbar scroll-smooth">
-          {[
-            { step: 1, label: "Account", icon: User },
-            { step: 2, label: "Billing", icon: Building2 },
-            { step: 3, label: "Review", icon: Check },
-          ].map(({ step: sNum, label, icon: Icon }, index) => (
-            <div key={sNum} className="flex items-center gap-2 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors font-bold text-sm ${
-                    currentStep >= sNum
-                      ? 'bg-primary border-primary text-white'
-                      : 'border-slate-200 text-slate-400'
-                  }`}
-                >
-                  {currentStep > sNum ? (
-                    <Check className="h-4 w-4 stroke-[3]" />
-                  ) : (
-                    <Icon className="h-4 w-4" />
-                  )}
+        {/* Progress Steps — only shown during checkout details form */}
+        {step === 'details' && (
+          <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-6 py-3 mb-6 sm:mb-8 overflow-x-auto no-scrollbar scroll-smooth">
+            {[
+              { step: 1, label: "Account", icon: User },
+              { step: 2, label: "Billing", icon: Building2 },
+              { step: 3, label: "Review", icon: Check },
+            ].map(({ step: sNum, label, icon: Icon }, index) => (
+              <div key={sNum} className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors font-bold text-sm ${
+                      currentStep >= sNum
+                        ? 'bg-primary border-primary text-white'
+                        : 'border-slate-200 text-slate-400'
+                    }`}
+                  >
+                    {currentStep > sNum ? (
+                      <Check className="h-4 w-4 stroke-[3]" />
+                    ) : (
+                      <Icon className="h-4 w-4" />
+                    )}
+                  </div>
+                  <span
+                    className={`text-xs sm:text-sm font-bold ${
+                      currentStep >= sNum ? 'text-slate-900' : 'text-slate-400'
+                    }`}
+                  >
+                    {label}
+                  </span>
                 </div>
-                <span
-                  className={`text-xs sm:text-sm font-bold ${
-                    currentStep >= sNum ? 'text-slate-900' : 'text-slate-400'
-                  }`}
-                >
-                  {label}
-                </span>
+                {index < 2 && (
+                  <div
+                    className={`w-6 sm:w-8 h-0.5 ${
+                      currentStep > sNum ? 'bg-primary' : 'bg-slate-200'
+                    }`}
+                  />
+                )}
               </div>
-              {index < 2 && (
-                <div
-                  className={`w-6 sm:w-8 h-0.5 ${
-                    currentStep > sNum ? 'bg-primary' : 'bg-slate-200'
-                  }`}
-                />
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column: Form Steps */}
-          <div className={step !== 'details' ? 'lg:col-span-12' : 'lg:col-span-7'}>
-            {step === 'details' ? (
+          <div className={step !== 'details' && step !== 'verifying' ? 'lg:col-span-12' : step === 'verifying' ? 'lg:col-span-12' : 'lg:col-span-7'}>
+            {step === 'verifying' ? (
+              /* VERIFYING PAYMENT — FULL SECURE LOADER */
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="bg-white rounded-3xl border border-slate-200 shadow-lg p-8 sm:p-14 text-center space-y-8 max-w-lg mx-auto select-none"
+                style={{ pointerEvents: 'none' }}
+              >
+                {/* Pulsing shield icon */}
+                <div className="relative w-24 h-24 mx-auto">
+                  <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" />
+                  <div className="relative w-24 h-24 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center shadow-xl shadow-primary/20">
+                    <Lock className="w-10 h-10 text-white stroke-[2.5]" />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Verifying Payment</h2>
+                  <p className="text-sm text-slate-500 font-medium max-w-sm mx-auto">
+                    Securely validating your transaction with the payment gateway. Please do not close or refresh this page.
+                  </p>
+                </div>
+
+                {/* Animated progress bar */}
+                <div className="max-w-xs mx-auto">
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-primary via-emerald-500 to-primary rounded-full"
+                      initial={{ width: '0%' }}
+                      animate={{ width: '100%' }}
+                      transition={{ duration: 3, ease: 'easeInOut' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Security badges */}
+                <div className="flex items-center justify-center gap-4 text-xs text-slate-400 font-medium">
+                  <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5" /> 256-bit SSL</span>
+                  <span className="flex items-center gap-1"><Lock className="w-3.5 h-3.5" /> PCI-DSS Compliant</span>
+                  <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Razorpay Verified</span>
+                </div>
+              </motion.div>
+            ) : step === 'details' ? (
               <div className="space-y-6">
                 
                 {/* STEP 1: Account Gate */}
@@ -1172,7 +1192,7 @@ export function CheckoutPage() {
                               Terms of Service
                             </Link>{' '}
                             and{' '}
-                            <Link to="/faq" target="_blank" className="text-blue-600 font-bold hover:underline">
+                            <Link to="/terms" target="_blank" className="text-blue-600 font-bold hover:underline">
                               Refund & Cancellation Policy
                             </Link>
                             .
