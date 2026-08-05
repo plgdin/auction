@@ -120,13 +120,13 @@ export function getLevenshteinDistance(a: string, b: string): number {
 
 export function getInflections(word: string): string[] {
   const inflections = new Set<string>([word]);
-  
+
   if (word.endsWith('ies')) {
     inflections.add(word.slice(0, -3) + 'y');
   } else if (word.endsWith('y')) {
     inflections.add(word.slice(0, -1) + 'ies');
   }
-  
+
   if (word.endsWith('es')) {
     inflections.add(word.slice(0, -2));
     inflections.add(word.slice(0, -1));
@@ -140,19 +140,19 @@ export function getInflections(word: string): string[] {
       }
     }
   }
-  
+
   return Array.from(inflections).filter(w => w.length > 1);
 }
 
 export function extractTokens(text: string): string[] {
   if (!text) return [];
   const lowercase = text.toLowerCase();
-  
+
   const words = lowercase
     .replace(/[^a-z0-9\s\-]/g, ' ')
     .split(/[\s\-]+/)
     .filter(Boolean);
-    
+
   const tokens = new Set<string>();
   for (const word of words) {
     if (STOP_WORDS.has(word)) continue;
@@ -163,19 +163,19 @@ export function extractTokens(text: string): string[] {
       }
     }
   }
-  
+
   const compounds = [
     { pattern: /two\s*wheelers?/g, token: 'two-wheeler' },
     { pattern: /four\s*wheelers?/g, token: 'four-wheeler' },
     { pattern: /three\s*wheelers?/g, token: 'three-wheeler' }
   ];
-  
+
   for (const comp of compounds) {
     if (comp.pattern.test(lowercase)) {
       tokens.add(comp.token);
     }
   }
-  
+
   return Array.from(tokens);
 }
 
@@ -240,7 +240,7 @@ export interface PriceConstraint {
 export function parsePriceConstraint(query: string): PriceConstraint | null {
   const cleaned = cleanQueryPriceTypos(query);
   let q = cleaned.toLowerCase();
-  
+
   // Replace mathematical operators with spaces around them
   q = q.replace(/<=/g, ' under ');
   q = q.replace(/>=/g, ' above ');
@@ -250,7 +250,7 @@ export function parsePriceConstraint(query: string): PriceConstraint | null {
 
   // Regex to match a number followed by a multiplier (k, lakh, cr, etc.)
   const multiplierRegex = /(\d+(?:\.\d+)?)\s*(lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)\b/gi;
-  
+
   let usedMultiplier = false;
   q = q.replace(multiplierRegex, (_match, numStr, mult) => {
     let val = parseFloat(numStr);
@@ -271,10 +271,10 @@ export function parsePriceConstraint(query: string): PriceConstraint | null {
   const numMatch = q.match(/₹?\s*(\d+)/);
   if (!numMatch) return null;
   const value = parseInt(numMatch[1], 10);
-  
+
   const hasPriceWord = /(pre\s*bid|pre-bid|emd|deposit|price|value)/i.test(q);
   const hasOpWord = /(under|below|less|above|over|more)/i.test(q);
-  
+
   // If no explicit price/operator words and no multiplier/currency, ignore unless it's a very round large number
   if (!hasPriceWord && !hasOpWord && !usedMultiplier && !q.includes('₹')) {
     if (value < 10000 || value % 1000 !== 0) {
@@ -306,7 +306,7 @@ export function parsePriceConstraint(query: string): PriceConstraint | null {
 export function cleanQueryFromPriceConstraint(query: string): string {
   let result = cleanQueryPriceTypos(query);
   const constraint = parsePriceConstraint(query);
-  
+
   if (constraint) {
     // Only remove the specific numbers that are part of the price constraint
     // For example, if constraint value is 50000, we should remove "50k", "50000", "50,000", "0.5 lakh"
@@ -314,7 +314,7 @@ export function cleanQueryFromPriceConstraint(query: string): string {
     // and rely on regex to match currency patterns rather than all numbers.
     const priceNumberPattern = /₹?\s*\d[\d\.,]*\s*(?:lakhs?|lacs?|lac|laksh?|l|crores?|crs?|thousands?|k)\b/gi;
     result = result.replace(priceNumberPattern, ' ');
-    
+
     // Also remove raw numbers preceded or followed by price keywords (emd, prebid, rs, etc)
     const rawPricePattern = /(?:pre\s*bid|pre-bid|prebid|emd|deposit|price|value|rs|rupees|amount|cost)\s*(?:of|is|at|\=)?\s*(?:under|below|less|above|over|more)?\s*₹?\s*([\d\.,]+)/gi;
     result = result.replace(rawPricePattern, ' ');
@@ -323,7 +323,7 @@ export function cleanQueryFromPriceConstraint(query: string): string {
     result = result.replace(/\b(pre\s*bid|pre-bid|prebid|emd|deposit|price|value|rs|rupees|amount|cost)\b/gi, ' ');
     result = result.replace(/[<>=]/g, ' ');
   }
-  
+
   return result.replace(/\s+/g, ' ').trim();
 }
 
@@ -338,13 +338,13 @@ const MONTHS_SHORT = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 's
 export function parseDateConstraint(query: string): DateConstraint | null {
   let q = query.toLowerCase();
   q = q.replace(/auguest/g, 'august');
-  
+
   let startDate: Date | null = null;
   let endDate: Date | null = null;
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
-  
+
   if (q.includes('today')) {
     startDate = new Date(now);
     endDate = new Date(now);
@@ -370,26 +370,35 @@ export function parseDateConstraint(query: string): DateConstraint | null {
     startDate = new Date(currentYear, currentMonth + 1, 1);
     endDate = new Date(currentYear, currentMonth + 2, 1);
   } else {
-    const relMatch = q.match(/(in|within|next)\s+(\d+)\s+(day|days|week|weeks|month|months)/i);
+    const relMatch = q.match(/(in|within|next|after|from)\s+(\d+)\s+(day|days|week|weeks|month|months)/i);
     if (relMatch) {
+      const prep = relMatch[1].toLowerCase();
       const num = parseInt(relMatch[2], 10);
-      const unit = relMatch[3];
-      startDate = new Date(now);
-      endDate = new Date(now);
+      const unit = relMatch[3].toLowerCase();
       
-      if (unit.startsWith('day')) endDate.setDate(endDate.getDate() + num);
-      else if (unit.startsWith('week')) endDate.setDate(endDate.getDate() + num * 7);
-      else if (unit.startsWith('month')) endDate.setMonth(endDate.getMonth() + num);
+      startDate = new Date(now);
+      
+      if (prep === 'after' || prep === 'from') {
+        if (unit.startsWith('day')) startDate.setDate(startDate.getDate() + num);
+        else if (unit.startsWith('week')) startDate.setDate(startDate.getDate() + num * 7);
+        else if (unit.startsWith('month')) startDate.setMonth(startDate.getMonth() + num);
+        endDate = null;
+      } else {
+        endDate = new Date(now);
+        if (unit.startsWith('day')) endDate.setDate(endDate.getDate() + num);
+        else if (unit.startsWith('week')) endDate.setDate(endDate.getDate() + num * 7);
+        else if (unit.startsWith('month')) endDate.setMonth(endDate.getMonth() + num);
+      }
     } else {
       const monthRegex = new RegExp(`\\b(${MONTHS.join('|')}|${MONTHS_SHORT.join('|')})\\b`, 'i');
       const dateRegex = /\b(\d{1,2})(?:st|nd|rd|th)?\b/i;
-      
+
       const hasMonth = q.match(monthRegex);
       if (hasMonth) {
         const monthStr = hasMonth[1].toLowerCase();
         let monthIdx = MONTHS.indexOf(monthStr);
         if (monthIdx === -1) monthIdx = MONTHS_SHORT.indexOf(monthStr);
-        
+
         let targetYear = currentYear;
         if (monthIdx < currentMonth) targetYear++;
 
@@ -407,7 +416,7 @@ export function parseDateConstraint(query: string): DateConstraint | null {
   }
 
   if (!startDate && !endDate) return null;
-  
+
   return {
     startDate: startDate ? startDate.toISOString() : null,
     endDate: endDate ? endDate.toISOString() : null,
@@ -418,7 +427,7 @@ export function cleanQueryFromDateConstraint(query: string): string {
   let result = query.toLowerCase();
   result = result.replace(/auguest/g, 'august');
   result = result.replace(/\b(today|tomorrow|this week|next week|this month|next month)\b/g, ' ');
-  result = result.replace(/\b(in|within|next)\s+(\d+)\s+(day|days|week|weeks|month|months)\b/g, ' ');
+  result = result.replace(/\b(in|within|next|after|from)\s+(\d+)\s+(day|days|week|weeks|month|months)\b/g, ' ');
   result = result.replace(/\b(happening|coming|closing|starting|ending)\b/g, ' ');
   result = result.replace(/\b(on)\b/g, ' ');
 
@@ -447,7 +456,7 @@ export function removeStopWords(query: string): string {
 
 export function filterCompoundComponents(tokens: string[]): string[] {
   const result = new Set<string>(tokens);
-  
+
   if (result.has('four-wheeler')) {
     result.delete('four');
     result.delete('fours');
@@ -466,7 +475,7 @@ export function filterCompoundComponents(tokens: string[]): string[] {
     result.delete('wheeler');
     result.delete('wheelers');
   }
-  
+
   return Array.from(result);
 }
 
@@ -496,7 +505,7 @@ export function buildTaxonomyFromCategories(categories: any[]): {
       // It's a subcategory
       const parent = catMap.get(cat.parent_id);
       const parentName = parent ? parent.name : '';
-      
+
       const subTokens = extractTokens(cat.name);
       for (const token of subTokens) {
         if (!subcategoryKeywords[token]) {
