@@ -1,5 +1,5 @@
 # User-agent directives for Lelam.co (B2B eAuctions & Bidding Analytics Platform)
-# Last Updated: 2026-07-28
+# Last Updated: 2026-08-05
 # Optimized for maximum crawl efficiency, Lighthouse validation, search engines, and AI agents.
 
 User-agent: *
@@ -12,6 +12,7 @@ Allow: /quotes
 Allow: /about
 Allow: /contact
 Allow: /faq
+Allow: /pricing
 Allow: /notices
 Allow: /news
 Allow: /blog
@@ -30,6 +31,8 @@ Disallow: /auth/*
 Disallow: /admin/
 Disallow: /admin/*
 Disallow: /adminlogin
+Disallow: /checkout
+Disallow: /checkout/*
 Disallow: /dashboard/
 Disallow: /dashboard/*
 Disallow: /seller/
