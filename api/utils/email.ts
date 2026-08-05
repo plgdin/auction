@@ -144,9 +144,9 @@ function getEmailWrapperHTML(
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);">
           <!-- Header -->
           <tr>
-            <td align="center" style="background: ${headerBg}; padding: 32px 24px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.025em; font-family: 'Inter', sans-serif;">Lelam Company</h1>
-              <div style="color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600; margin-top: 6px; letter-spacing: 0.08em; text-transform: uppercase;">${title}</div>
+            <td align="center" style="background-color: #ffffff; padding: 32px 24px; text-align: center; border-bottom: 1px solid #f1f5f9;">
+              <img src="https://lelam.co/png_lelam_1.webp" alt="Lelam.co" style="display: block; margin: 0 auto 12px auto; height: 32px; max-width: 100%; border: 0; outline: none; text-decoration: none;" />
+              <div style="color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">${title}</div>
             </td>
           </tr>
           <!-- Body Content -->
