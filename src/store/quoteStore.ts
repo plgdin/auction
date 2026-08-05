@@ -58,6 +58,7 @@ interface QuoteStore {
   loadQuote: (quoteId: string) => void;
   deleteQuote: (quoteId: string) => void;
   createNewQuote: () => void;
+  resetQuoteStore: () => void;
 }
 
 const initialQuote = (): Quote => ({
@@ -184,6 +185,9 @@ export const useQuoteStore = create<QuoteStore>()(
 
       createNewQuote: () => {
         set({ activeQuote: initialQuote() });
+      },
+      resetQuoteStore: () => {
+        set({ quotes: [], activeQuote: initialQuote() });
       },
     }),
     {
