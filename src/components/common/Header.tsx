@@ -423,7 +423,7 @@ export function Header() {
                             </p>
                             <p className="text-xs text-slate-500 truncate mt-0.5">{user?.email}</p>
                             <div className="mt-2 inline-block text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded shadow-2xs uppercase tracking-wider">
-                              Plan: {profile?.subscription_plan || 'free'}
+                              Plan: {(profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? 'Individual' : (profile?.subscription_plan || 'free')}
                             </div>
                           </div>
                           <div className="p-1 flex flex-col gap-0.5">

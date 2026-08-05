@@ -129,6 +129,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
   const { isAuthenticated, profile } = useAuthStore();
   const isPremium = profile?.subscription_plan === 'pro' || 
+                    profile?.subscription_plan === 'go' || 
+                    profile?.subscription_plan === 'go-subscription' || 
                     profile?.subscription_plan === 'enterprise' || 
                     profile?.role === 'admin' || 
                     profile?.role === 'superadmin';
