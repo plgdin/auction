@@ -135,6 +135,7 @@ export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile, isAuthenticated } = useAuthStore();
   const isUpgradedUser = (isAuthenticated && profile?.subscription_plan && profile.subscription_plan !== 'explorer') || profile?.role === 'admin' || profile?.role === 'superadmin';
+  const isBusinessUser = (isAuthenticated && profile?.subscription_plan === 'pro') || profile?.role === 'admin' || profile?.role === 'superadmin';
 
   const rawTab = searchParams.get('tab');
   const activeTab = rawTab === 'commercial' ? 'commercial' : 'mstc';
@@ -592,7 +593,7 @@ export function Auctions() {
       const qParam = searchParams.get('q') || '';
 
       const isReauctionSearch = qParam.toLowerCase().replace(/[^a-z0-9]/g, '').includes('reauction');
-      if (!isUpgradedUser && (isReauctionSearch || mstcIsReauction)) {
+      if (!isBusinessUser && (isReauctionSearch || mstcIsReauction)) {
         setMstcAuctions([]);
         setMstcTotalCount(0);
         setIsShowingSimilarMstc(false);
@@ -659,7 +660,8 @@ export function Auctions() {
     mstcPreBid,
     page,
     limit,
-    isUpgradedUser
+    isUpgradedUser,
+    isBusinessUser
   ]);
 
   const loadMstcOptions = useCallback(async () => {

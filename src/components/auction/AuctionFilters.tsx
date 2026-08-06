@@ -100,6 +100,7 @@ export function AuctionFilters({
 
   const { profile, isAuthenticated } = useAuthStore();
   const isUpgradedUser = (isAuthenticated && profile?.subscription_plan && profile.subscription_plan !== 'explorer') || profile?.role === 'admin' || profile?.role === 'superadmin';
+  const isBusinessUser = (isAuthenticated && profile?.subscription_plan === 'pro') || profile?.role === 'admin' || profile?.role === 'superadmin';
 
   useEffect(() => {
     async function loadCategories() {
@@ -766,7 +767,7 @@ export function AuctionFilters({
               <label
                 onClick={(e) => {
                   e.preventDefault();
-                  if (!isUpgradedUser) {
+                  if (!isBusinessUser) {
                     setShowUpgradeModal(true);
                     return;
                   }
@@ -790,7 +791,7 @@ export function AuctionFilters({
                 </div>
                 <span className="ml-3 text-sm text-slate-700 select-none flex items-center gap-2 font-medium">
                   Re-auction Only
-                  {!isUpgradedUser && (
+                  {!isBusinessUser && (
                     <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-xs uppercase tracking-wider">
                       <Lock className="w-2.5 h-2.5" />
                       Pro

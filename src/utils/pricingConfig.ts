@@ -64,7 +64,7 @@ export const COMPARISON_FEATURES: FeatureDef[] = [
     id: 'reauction_visibility',
     name: 'Spot Re-auctioned Lots (Unsold & Re-listed)',
     category: 'Discovery & Search',
-    values: { starter: false, go: false, premium: true, enterprise: true },
+    values: { starter: false, go: false, premium: true, enterprise: false },
   },
 
   {

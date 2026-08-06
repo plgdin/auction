@@ -180,6 +180,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
 
   const { profile, isAuthenticated } = useAuthStore();
   const isUpgradedUser = (isAuthenticated && profile?.subscription_plan && profile.subscription_plan !== 'explorer') || profile?.role === 'admin' || profile?.role === 'superadmin';
+  const isBusinessUser = (isAuthenticated && profile?.subscription_plan === 'pro') || profile?.role === 'admin' || profile?.role === 'superadmin';
 
   const renderCardHeader = () => {
     if (isGrid) {
@@ -204,7 +205,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
               </button>
             </div>
 
-            {isUpgradedUser && item.is_reauction && (
+            {isBusinessUser && item.is_reauction && (
               <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -252,7 +253,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
               )}
             </button>
           </div>
-          {isUpgradedUser && item.is_reauction && (
+          {isBusinessUser && item.is_reauction && (
             <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
