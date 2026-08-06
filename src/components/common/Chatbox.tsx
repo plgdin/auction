@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Bot, Send, X, Minimize2, Sparkles } from 'lucide-react';
+import { Send, X, Minimize2, Sparkles } from 'lucide-react';
 import { publicService } from '../../services/publicService';
-import { GradientOrb } from '../ui/gradient-orb';
+import { VoicePoweredOrb } from '../ui/voice-powered-orb';
 
 interface Message {
   sender: 'user' | 'bot';
@@ -421,15 +421,9 @@ CONTACT & ESCALATION:
             <div className="p-4 bg-white/35 backdrop-blur-md border-b border-white/20 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Header Animated Orb */}
-                <div className="relative w-8 h-8 rounded-full overflow-hidden bg-transparent shadow-[0_0_10px_rgba(0,126,199,0.25)]">
-                  <GradientOrb
-                    config={{
-                      background: 'transparent',
-                      hue: 0,
-                      rotationSpeed: 0.35,
-                      noiseScale: 0.75,
-                      innerRadius: 0.0,
-                    }}
+                <div className="relative w-8 h-8 rounded-full overflow-hidden shadow-[0_0_10px_rgba(0,126,199,0.25)]">
+                  <VoicePoweredOrb
+                    enableVoiceControl={false}
                     className="w-full h-full"
                   />
                 </div>
@@ -466,15 +460,9 @@ CONTACT & ESCALATION:
                   className={`flex gap-2.5 items-start ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   {msg.sender === 'bot' && (
-                    <div className="relative w-7 h-7 rounded-full overflow-hidden bg-transparent shadow-[0_0_8px_rgba(0,126,199,0.2)] shrink-0 mt-0.5">
-                      <GradientOrb
-                        config={{
-                          background: 'transparent',
-                          hue: 0,
-                          rotationSpeed: 0.35,
-                          noiseScale: 0.75,
-                          innerRadius: 0.0,
-                        }}
+                    <div className="relative w-7 h-7 rounded-full overflow-hidden shadow-[0_0_8px_rgba(0,126,199,0.2)] shrink-0 mt-0.5">
+                      <VoicePoweredOrb
+                        enableVoiceControl={false}
                         className="w-full h-full"
                       />
                     </div>
@@ -516,15 +504,9 @@ CONTACT & ESCALATION:
               
               {isThinking && (
                 <div className="flex justify-start gap-2.5 items-start">
-                  <div className="relative w-7 h-7 rounded-full overflow-hidden bg-transparent shadow-[0_0_8px_rgba(0,126,199,0.2)] shrink-0 mt-0.5">
-                    <GradientOrb
-                      config={{
-                        background: 'transparent',
-                        hue: 0,
-                        rotationSpeed: 0.35,
-                        noiseScale: 0.75,
-                        innerRadius: 0.0,
-                      }}
+                  <div className="relative w-7 h-7 rounded-full overflow-hidden shadow-[0_0_8px_rgba(0,126,199,0.2)] shrink-0 mt-0.5">
+                    <VoicePoweredOrb
+                      enableVoiceControl={false}
                       className="w-full h-full"
                     />
                   </div>
@@ -588,15 +570,9 @@ CONTACT & ESCALATION:
         >
           <span className="sr-only">{isOpen ? "Close Laila Assistant Chat" : "Open Laila Assistant Chat"}</span>
           {/* GPU-rendered gradient orb background (optimized lag-free WebGL) */}
-          <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none bg-transparent">
-            <GradientOrb
-              config={{
-                background: 'transparent',
-                hue: 0, // Direct blue base colors (no rotation shift)
-                rotationSpeed: 0.35,
-                noiseScale: 0.75,
-                innerRadius: 0.0,
-              }}
+          <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
+            <VoicePoweredOrb
+              enableVoiceControl={false}
               className="w-full h-full"
             />
           </div>
@@ -605,16 +581,6 @@ CONTACT & ESCALATION:
           {isThinking && (
             <div className="absolute inset-0 flex items-center justify-center text-slate-500 animate-pulse">
               <Sparkles size={18} className="animate-spin" style={{ animationDuration: '4s' }} />
-            </div>
-          )}
-
-
-
-
-          {/* Hover state icon indicator */}
-          {!isThinking && (
-            <div className="absolute inset-0 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity bg-slate-950/60">
-              <Bot size={20} className="text-white drop-shadow-md" />
             </div>
           )}
         </button>

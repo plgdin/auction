@@ -1,12 +1,8 @@
 "use client";
 
 import { useRef, useMemo, useEffect } from "react";
-import { Canvas, useFrame, useThree, extend } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-
-// R3F v9 requires explicit registration of Three.js constructors
-// before they can be used as JSX elements (<mesh>, <shaderMaterial>, etc.)
-extend({ Mesh: THREE.Mesh, ShaderMaterial: THREE.ShaderMaterial, Color: THREE.Color });
 
 /**
  * Configuration options for the gradient orb.
@@ -125,10 +121,10 @@ const fragmentShader = /* glsl */ `
     return vec4(colorIn.rgb / (a + 1e-5), a);
   }
 
-  const vec3 baseColor0 = vec3(0.0, 0.49, 0.78);     // Lelam brand blue (#007ec7)
-  const vec3 baseColor1 = vec3(0.0, 0.78, 1.0);      // vibrant cyan
-  const vec3 baseColor2 = vec3(0.03, 0.15, 0.55);    // deep indigo
-  const vec3 baseColor3 = vec3(0.0, 0.45, 0.75);     // vibrant blue rim
+  const vec3 baseColor0 = vec3(0.239, 0.353, 1.0);   // blue
+  const vec3 baseColor1 = vec3(0.616, 0.0, 1.0);     // purple
+  const vec3 baseColor2 = vec3(1.0, 0.373, 0.122);   // orange
+  const vec3 baseColor3 = vec3(0.0, 0.0, 0.0);       // black
 
   float light1(float intensity, float attenuation, float dist) {
     return intensity / (1.0 + dist * attenuation);
@@ -165,11 +161,12 @@ const fragmentShader = /* glsl */ `
     v1 *= light1(1.0, 50.0, d0);
 
     float v2 = smoothstep(1.0, mix(innerRadius, 1.0, n0 * 0.5), len);
+    float v3 = smoothstep(innerRadius, mix(innerRadius, 1.0, 0.5), len);
 
     vec3 col = mix(color1, color2, cl);
     col = mix(col, color0, n0);
     col = mix(color3, col, v0);
-    col = (col + v1) * v2; // Removed v3 to fill the center of the orb
+    col = (col + v1) * v2 * v3;
     col = clamp(col, 0.0, 1.0);
 
     return extractAlpha(col);
@@ -178,20 +175,14 @@ const fragmentShader = /* glsl */ `
   void main() {
     vec2 center = iResolution.xy * 0.5;
     float size = min(iResolution.x, iResolution.y);
-    // Scale multiplier to zoom in on the orb so it fills the canvas cleanly
-    vec2 uv = (vUv * iResolution.xy - center) / size * 1.25;
+    vec2 uv = (vUv * iResolution.xy - center) / size * 2.0;
 
     float s = sin(rot);
     float c = cos(rot);
     uv = vec2(c * uv.x - s * uv.y, s * uv.x + c * uv.y);
 
     vec4 col = draw(uv);
-    // Make dark outer ring fully transparent with zero black circle outline
-    float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
-    float alpha = col.a * smoothstep(0.12, 0.28, lum);
-    float distFromCenter = length(uv);
-    alpha *= smoothstep(0.75, 0.55, distFromCenter);
-    gl_FragColor = vec4(col.rgb * alpha, alpha);
+    gl_FragColor = vec4(col.rgb * col.a, col.a);
   }
 `;
 
@@ -289,12 +280,12 @@ export function GradientOrb({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const config = useMemo(() => ({ ...defaults, ...configOverrides }), [configKey]);
 
-  const isTransparent = config.background === "transparent" || config.background === "";
+  const isTransparent = config.background === 'transparent' || config.background === '';
 
   return (
-    <div className={`w-full h-full ${className}`} style={{ background: isTransparent ? "transparent" : config.background }}>
+    <div className={`w-full h-full ${className}`} style={{ background: isTransparent ? 'transparent' : config.background }}>
       {/* Camera is unused — the vertex shader outputs clip-space positions directly */}
-      <Canvas 
+      <Canvas
         gl={{ antialias: true, alpha: isTransparent, premultipliedAlpha: false, depth: false, stencil: false }}
         dpr={1}
         style={{ background: 'transparent' }}
