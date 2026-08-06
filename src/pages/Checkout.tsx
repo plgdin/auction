@@ -615,9 +615,6 @@ export function CheckoutPage() {
     box-sizing: border-box;
   }
   .invoice-download-root * { box-sizing: border-box; margin: 0; padding: 0; }
-  .invoice-download-root .header { border-bottom: 3px solid #0f172a; padding-bottom: 24px; margin-bottom: 24px; }
-  .invoice-download-root .header-left { float: left; width: 60%; }
-  .invoice-download-root .header-right { float: right; width: 40%; text-align: right; }
   .invoice-download-root .company h1 { font-size: 22px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
   .invoice-download-root .company .tagline { color: #64748b; font-size: 11px; font-weight: 500; margin-top: 2px; }
   .invoice-download-root .company .address { margin-top: 8px; line-height: 1.7; color: #475569; font-size: 11px; }
@@ -626,14 +623,14 @@ export function CheckoutPage() {
   .invoice-download-root .mono { font-family: 'Courier New', monospace; font-weight: 700; color: #0f172a; }
   .invoice-download-root .status { color: #059669; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-top: 6px; }
   
-  .invoice-download-root .info-grid { background: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 12px; margin-bottom: 28px; }
-  .invoice-download-root .info-col-left { float: left; width: 48%; }
-  .invoice-download-root .info-col-right { float: right; width: 48%; }
-  .invoice-download-root .info-grid h3 { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: 10px; }
-  .invoice-download-root .info-grid .name { font-size: 16px; font-weight: 700; color: #0f172a; }
-  .invoice-download-root .info-grid p { font-size: 12px; color: #475569; margin: 3px 0; }
+  .invoice-download-root .info-grid-table { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 28px; width: 100%; border-collapse: collapse; }
+  .invoice-download-root .info-grid-table td.info-col { width: 50%; padding: 24px; vertical-align: top; }
+  .invoice-download-root .info-grid-table td.info-col-border { border-right: 1px solid #e2e8f0; }
+  .invoice-download-root .info-grid-table h3 { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: 10px; }
+  .invoice-download-root .info-grid-table .name { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+  .invoice-download-root .info-grid-table p { font-size: 12px; color: #475569; margin: 3px 0; }
   
-  .invoice-download-root table.items { width: 100%; border-collapse: collapse; margin-bottom: 28px; clear: both; }
+  .invoice-download-root table.items { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
   .invoice-download-root table.items thead tr { background: #0f172a; color: #fff; }
   .invoice-download-root table.items thead th { padding: 11px 14px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; text-align: left; }
   .invoice-download-root table.items thead th:last-child { text-align: right; }
@@ -646,8 +643,6 @@ export function CheckoutPage() {
   .invoice-download-root .item-name { font-weight: 700; color: #0f172a; font-size: 13px; }
   .invoice-download-root .item-desc { font-size: 10px; color: #64748b; margin-top: 3px; }
   
-  .invoice-download-root .totals-wrap { margin-bottom: 32px; clear: both; }
-  .invoice-download-root .totals-box { float: right; width: 280px; }
   .invoice-download-root .totals-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 12px; color: #475569; }
   .invoice-download-root .totals-row .val { font-family: 'Courier New', monospace; font-weight: 600; color: #334155; }
   .invoice-download-root .totals-row.discount { color: #059669; font-weight: 600; }
@@ -655,62 +650,65 @@ export function CheckoutPage() {
   .invoice-download-root .totals-row.grand { border-top: 3px solid #0f172a; padding-top: 12px; margin-top: 6px; font-size: 15px; font-weight: 900; color: #0f172a; }
   .invoice-download-root .totals-row.grand .val { color: #0f172a; font-size: 15px; }
   
-  .invoice-download-root .footer-section { border-top: 1px solid #e2e8f0; padding-top: 20px; clear: both; margin-top: 24px; }
-  .invoice-download-root .footer-left { float: left; width: 60%; }
-  .invoice-download-root .footer-right { float: right; width: 35%; text-align: right; }
   .invoice-download-root .terms h4 { font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 6px; }
   .invoice-download-root .terms p { font-size: 10px; color: #64748b; margin: 2px 0; line-height: 1.6; }
   .invoice-download-root .terms a { color: #0284c7; font-weight: 700; text-decoration: underline; }
   .invoice-download-root .auth .company-name { font-weight: 900; font-size: 12px; text-transform: uppercase; color: #0f172a; }
   .invoice-download-root .auth .note { font-size: 9px; color: #94a3b8; font-style: italic; margin-top: 4px; }
-  .invoice-download-root .clearfix::after { content: ""; clear: both; display: table; }
 </style>
 
 <div class="invoice-download-root">
   <div class="page">
-    <div class="header clearfix">
-      <div class="header-left">
-        <div class="company">
-          <h1>LELAM COMPANY</h1>
-          <div class="tagline">India's Premier B2B Auction & Asset Platform</div>
-          <div class="address">No: 2, 20th Cross Lakshmipuram, Halasuru, Bangalore 560008<br>Support: support@lelam.co | +91 94477 53889</div>
-        </div>
-      </div>
-      <div class="header-right">
-        <div class="receipt-badge">Payment Receipt</div>
-        <p><strong>Receipt No:</strong> <span class="mono">${receiptNo}</span></p>
-        <p>Date: ${dateStr}</p>
-        <p class="status">\u2713 Status: PAID (SUCCESSFUL)</p>
-      </div>
-    </div>
+    <!-- Header Layout -->
+    <table style="width: 100%; border-collapse: collapse; border-bottom: 3px solid #0f172a; margin-bottom: 24px;">
+      <tr>
+        <td style="width: 60%; vertical-align: top; padding-bottom: 24px;">
+          <div class="company">
+            <h1>LELAM COMPANY</h1>
+            <div class="tagline">India's Premier B2B Auction & Asset Platform</div>
+            <div class="address">No: 2, 20th Cross Lakshmipuram, Halasuru, Bangalore 560008<br>Support: support@lelam.co | +91 94477 53889</div>
+          </div>
+        </td>
+        <td style="width: 40%; text-align: right; vertical-align: top; padding-bottom: 24px;">
+          <div class="receipt-badge">Payment Receipt</div>
+          <p style="font-size: 12px; color: #475569; margin: 3px 0;"><strong>Receipt No:</strong> <span class="mono">${receiptNo}</span></p>
+          <p style="font-size: 12px; color: #475569; margin: 3px 0;">Date: ${dateStr}</p>
+          <p class="status">\u2713 Status: PAID (SUCCESSFUL)</p>
+        </td>
+      </tr>
+    </table>
     
     <div class="body">
-      <div class="info-grid clearfix">
-        <div class="info-col-left">
-          <h3>Billed To (Customer)</h3>
-          <p class="name">${fullName || profile?.first_name || 'Valued Customer'}</p>
-          ${businessName ? `<p style="font-weight: 600; color: #334155;">${businessName}</p>` : ''}
-          <p>${billingAddress || addressLine1 || 'Registered Platform User'}</p>
-          ${user?.email ? `<p>Email: ${user.email}</p>` : ''}
-          ${gstin ? `<p class="mono" style="margin-top: 6px; font-size: 12px;">Customer GSTIN: ${gstin.toUpperCase()}</p>` : ''}
-        </div>
-        <div class="info-col-right">
-          <h3>Payment Details</h3>
-          <p><strong>Payment ID:</strong> <span class="mono">${transactionId}</span></p>
-          <p><strong>Payment Gateway:</strong> Razorpay Secure Gateway</p>
-          <p><strong>Billing Cycle:</strong> ${billingCycle === 'annual' ? 'Annual (Yearly)' : 'Monthly'}</p>
-          <p><strong>Subscription Plan:</strong> ${getPlanName(planId)} Plan</p>
-        </div>
-      </div>
+      <!-- Billing Info Layout -->
+      <table class="info-grid-table">
+        <tr>
+          <td class="info-col info-col-border">
+            <h3>Billed To (Customer)</h3>
+            <p class="name">${fullName || profile?.first_name || 'Valued Customer'}</p>
+            ${businessName ? `<p style="font-weight: 600; color: #334155;">${businessName}</p>` : ''}
+            <p>${billingAddress || addressLine1 || 'Registered Platform User'}</p>
+            ${user?.email ? `<p>Email: ${user.email}</p>` : ''}
+            ${gstin ? `<p class="mono" style="margin-top: 6px; font-size: 12px;">Customer GSTIN: ${gstin.toUpperCase()}</p>` : ''}
+          </td>
+          <td class="info-col">
+            <h3>Payment Details</h3>
+            <p><strong>Payment ID:</strong> <span class="mono">${transactionId}</span></p>
+            <p><strong>Payment Gateway:</strong> Razorpay Secure Gateway</p>
+            <p><strong>Billing Cycle:</strong> ${billingCycle === 'annual' ? 'Annual (Yearly)' : 'Monthly'}</p>
+            <p><strong>Subscription Plan:</strong> ${getPlanName(planId)} Plan</p>
+          </td>
+        </tr>
+      </table>
       
+      <!-- Items Purchase Details -->
       <table class="items">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Item Description</th>
-            <th class="center">Cycle</th>
-            <th class="center">Seats</th>
-            <th>Amount (INR)</th>
+            <th style="width: 5%">#</th>
+            <th style="width: 50%">Item Description</th>
+            <th class="center" style="width: 15%">Cycle</th>
+            <th class="center" style="width: 10%">Seats</th>
+            <th style="width: 20%; text-align: right;">Amount (INR)</th>
           </tr>
         </thead>
         <tbody>
@@ -738,48 +736,57 @@ export function CheckoutPage() {
         </tbody>
       </table>
       
-      <div class="totals-wrap clearfix">
-        <div class="totals-box">
-          <div class="totals-row">
-            <span>Subtotal</span>
-            <span class="val">${fmt(subtotalBeforeDiscount)}</span>
-          </div>
-          ${discountAmount > 0 ? `
-          <div class="totals-row discount">
-            <span>Discount (${appliedDiscount * 100}% Off)</span>
-            <span class="val">- ${fmt(discountAmount)}</span>
-          </div>` : ''}
-          <div class="totals-row">
-            <span>CGST (9%)</span>
-            <span class="val">${fmt(cgstAmount)}</span>
-          </div>
-          <div class="totals-row">
-            <span>SGST (9%)</span>
-            <span class="val">${fmt(sgstAmount)}</span>
-          </div>
-          <div class="totals-row grand">
-            <span>Total Amount Paid</span>
-            <span class="val">${fmt(total)}</span>
-          </div>
-        </div>
-      </div>
+      <!-- Summary Totals Section -->
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 32px;">
+        <tr>
+          <td style="width: 60%;"></td>
+          <td style="width: 40%; vertical-align: top;">
+            <div class="totals-box">
+              <div class="totals-row">
+                <span>Subtotal</span>
+                <span class="val">${fmt(subtotalBeforeDiscount)}</span>
+              </div>
+              ${discountAmount > 0 ? `
+              <div class="totals-row discount">
+                <span>Discount (${appliedDiscount * 100}% Off)</span>
+                <span class="val">- ${fmt(discountAmount)}</span>
+              </div>` : ''}
+              <div class="totals-row">
+                <span>CGST (9%)</span>
+                <span class="val">${fmt(cgstAmount)}</span>
+              </div>
+              <div class="totals-row">
+                <span>SGST (9%)</span>
+                <span class="val">${fmt(sgstAmount)}</span>
+              </div>
+              <div class="totals-row grand">
+                <span>Total Amount Paid</span>
+                <span class="val">${fmt(total)}</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </table>
       
-      <div class="footer-section clearfix">
-        <div class="footer-left">
-          <div class="terms">
-            <h4>Terms & Conditions Apply:</h4>
-            <p>1. All subscription payments are final and subject to Lelam platform policies.</p>
-            <p>2. For complete Terms & Conditions: <a href="https://lelam.co/terms">https://lelam.co/terms</a></p>
-            <p>3. For billing inquiries: <a href="mailto:support@lelam.co">support@lelam.co</a></p>
-          </div>
-        </div>
-        <div class="footer-right">
-          <div class="auth">
-            <p class="company-name">Lelam Company</p>
-            <p class="note">Authorized computer-generated receipt.</p>
-          </div>
-        </div>
-      </div>
+      <!-- Footer Policy & Authorization -->
+      <table style="width: 100%; border-collapse: collapse; border-top: 1px solid #e2e8f0; margin-top: 24px;">
+        <tr>
+          <td style="width: 60%; vertical-align: bottom; padding-top: 20px;">
+            <div class="terms">
+              <h4>Terms & Conditions Apply:</h4>
+              <p>1. All subscription payments are final and subject to Lelam platform policies.</p>
+              <p>2. For complete Terms & Conditions, please visit: <a href="https://lelam.co/terms">https://lelam.co/terms</a></p>
+              <p>3. For billing or account inquiries, contact <a href="mailto:support@lelam.co">support@lelam.co</a>.</p>
+            </div>
+          </td>
+          <td style="width: 40%; text-align: right; vertical-align: bottom; padding-top: 20px;">
+            <div class="auth">
+              <p class="company-name" style="font-weight: 900; font-size: 12px; text-transform: uppercase; color: #0f172a;">LELAM COMPANY</p>
+              <p class="note" style="font-size: 9px; color: #94a3b8; font-style: italic; margin-top: 4px;">Authorized computer-generated receipt.</p>
+            </div>
+          </td>
+        </tr>
+      </table>
     </div>
   </div>
 </div>
@@ -798,23 +805,26 @@ export function CheckoutPage() {
     try {
       const htmlContent = generateInvoiceHTML();
       
-      // Inject directly into the main document body context.
-      // Opacity 0 and position fixed keeps it rendering correctly in flow without flash or overlap.
-      const tempContainer = document.createElement('div');
-      tempContainer.id = 'lelam-invoice-pdf-render-root';
-      tempContainer.style.position = 'fixed';
-      tempContainer.style.left = '0';
-      tempContainer.style.top = '0';
-      tempContainer.style.width = '800px';
-      tempContainer.style.opacity = '0';
-      tempContainer.style.zIndex = '-9999';
-      tempContainer.style.pointerEvents = 'none';
-      tempContainer.innerHTML = htmlContent;
-      
-      document.body.appendChild(tempContainer);
+      // Inject standard sandboxed wrapping containers.
+      // We pass the inner relative element to html2pdf, preventing absolute coordinate displacement.
+      const outerContainer = document.createElement('div');
+      outerContainer.id = 'lelam-invoice-pdf-outer-root';
+      outerContainer.style.position = 'fixed';
+      outerContainer.style.left = '0';
+      outerContainer.style.top = '0';
+      outerContainer.style.width = '800px';
+      outerContainer.style.opacity = '0';
+      outerContainer.style.zIndex = '-9999';
+      outerContainer.style.pointerEvents = 'none';
 
-      // Brief delay for the browser's DOM parser to compile style sheets inside parent document context
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      const innerContainer = document.createElement('div');
+      innerContainer.innerHTML = htmlContent;
+      outerContainer.appendChild(innerContainer);
+      
+      document.body.appendChild(outerContainer);
+
+      // Give browser rendering threads time to parse the CSS layout and styles fully
+      await new Promise((resolve) => setTimeout(resolve, 400));
 
       const opt = {
         margin:       [10, 10, 10, 10],
@@ -824,8 +834,8 @@ export function CheckoutPage() {
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
-      await (window as any).html2pdf().set(opt).from(tempContainer).save();
-      document.body.removeChild(tempContainer);
+      await (window as any).html2pdf().set(opt).from(innerContainer).save();
+      document.body.removeChild(outerContainer);
     } catch (err) {
       console.error('Failed to generate PDF invoice:', err);
       alert('An error occurred while generating your PDF invoice. Please try again.');
