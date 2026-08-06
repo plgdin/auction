@@ -280,7 +280,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
     );
   };
 
-  const isBlurOverlay = !isUpgradedUser && item.is_reauction;
+  const isBlurOverlay = false;
 
   if (!isGrid) {
     // LIST VIEW
