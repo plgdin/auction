@@ -777,24 +777,41 @@ export function CheckoutPage() {
     try {
       const htmlContent = generateInvoiceHTML();
       
-      // Extract only style and page container for cleaner rendering without html/body tags wrapper
-      const tempContainer = document.createElement('div');
-      tempContainer.style.position = 'absolute';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.top = '-9999px';
-      tempContainer.innerHTML = htmlContent;
-      document.body.appendChild(tempContainer);
+      // Render inside a sandboxed visually-hidden iframe to prevent DOM structure collapsing
+      // and ensure fonts, inline styles, and standard HTML nodes load completely.
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '0';
+      iframe.style.top = '0';
+      iframe.style.width = '800px';
+      iframe.style.height = '1150px';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      iframe.style.zIndex = '-9999';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        throw new Error('Could not access iframe document context');
+      }
+
+      iframeDoc.open();
+      iframeDoc.write(htmlContent);
+      iframeDoc.close();
+
+      // Small delay for CSS layouts and images to paint inside the iframe container
+      await new Promise((resolve) => setTimeout(resolve, 350));
 
       const opt = {
-        margin:       [12, 12, 12, 12],
+        margin:       [10, 10, 10, 10],
         filename:     `Lelam-Invoice-${transactionId || 'receipt'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+        html2canvas:  { scale: 2.5, useCORS: true, letterRendering: true },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
-      await (window as any).html2pdf().set(opt).from(tempContainer).save();
-      document.body.removeChild(tempContainer);
+      await (window as any).html2pdf().set(opt).from(iframeDoc.body).save();
+      document.body.removeChild(iframe);
     } catch (err) {
       console.error('Failed to generate PDF invoice:', err);
       alert('An error occurred while generating your PDF invoice. Please try again.');
