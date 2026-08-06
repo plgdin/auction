@@ -134,7 +134,6 @@ function getPageNumbers(currentPage: number, totalPages: number): (number | stri
 export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile, isAuthenticated } = useAuthStore();
-  const isUpgradedUser = (isAuthenticated && profile?.subscription_plan && profile.subscription_plan !== 'explorer') || profile?.role === 'admin' || profile?.role === 'superadmin';
   const isBusinessUser = (isAuthenticated && profile?.subscription_plan === 'pro') || profile?.role === 'admin' || profile?.role === 'superadmin';
 
   const rawTab = searchParams.get('tab');
@@ -660,7 +659,6 @@ export function Auctions() {
     mstcPreBid,
     page,
     limit,
-    isUpgradedUser,
     isBusinessUser
   ]);
 
