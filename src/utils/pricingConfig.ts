@@ -60,6 +60,12 @@ export const COMPARISON_FEATURES: FeatureDef[] = [
     category: 'Discovery & Search',
     values: { starter: true, go: true, premium: true, enterprise: true },
   },
+  {
+    id: 'reauction_visibility',
+    name: 'Spot Re-auctioned Lots (Unsold & Re-listed)',
+    category: 'Discovery & Search',
+    values: { starter: false, go: false, premium: true, enterprise: true },
+  },
 
   {
     id: 'competitor_bid_history',
@@ -339,6 +345,7 @@ export const PLANS: Plan[] = [
       'Scrap Price Trend Forecasts',
       'Smart Plain-English Search',
       'International price comparison',
+      { text: 'Spot Re-auctioned Lots — Less Competition', isHighlighted: true },
     ],
   },
   {

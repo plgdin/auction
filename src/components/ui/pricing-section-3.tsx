@@ -81,6 +81,7 @@ const plans = [
       "Smart Plain-English Search",
       "International price comparison",
       "Automated Competitor Bid History Analysis",
+      "Spot Re-auctioned Lots — Less Competition",
     ],
     href: "/checkout?plan=pro&trial=true",
   },
