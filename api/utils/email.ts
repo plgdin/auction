@@ -211,67 +211,167 @@ export function getSignupWelcomeTemplate(firstName: string): string {
   return getEmailWrapperHTML('Welcome to Lelam', 'Start exploring active B2B eAuctions', contentHtml);
 }
 
-export function getPaymentConfirmationTemplate(
-  firstName: string,
-  planName: string,
-  amountInRs: number,
-  transactionId: string,
-  billingCycle: string
-): string {
-  const name = firstName || 'Valued Customer';
-  const priceStr = `₹${amountInRs.toLocaleString('en-IN')}`;
-  
+export interface PaymentInvoiceData {
+  firstName: string;
+  planName: string;
+  transactionId: string;
+  billingCycle: string;
+  baseSubtotal: number;
+  extraSeats: number;
+  extraSeatsCost: number;
+  discountAmount: number;
+  couponCode: string | null;
+  subtotal: number;
+  cgst: number;
+  sgst: number;
+  total: number;
+  userEmail: string;
+}
+
+export function getPaymentConfirmationTemplate(data: PaymentInvoiceData): string {
+  const name = data.firstName || 'Valued Customer';
+  const fmtPrice = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+  const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const receiptNo = `REC-${data.transactionId.slice(-8)}`;
+  const totalSeats = 1 + data.extraSeats;
+
   const contentHtml = `
-    <div style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 24px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px;">Subscription Receipt</div>
-    <p style="margin: 0 0 16px 0; font-size: 14px; color: #334155;">Dear ${name},</p>
-    <p style="margin: 0 0 24px 0; font-size: 14px; color: #334155; line-height: 1.6;">Thank you for your payment. Your subscription is active, and your account privileges have been updated immediately.</p>
-    
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 20px 0; border-collapse: collapse;">
+    <!-- Invoice Title -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+      <tr>
+        <td>
+          <div style="font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 6px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px;">Tax Invoice / Payment Receipt</div>
+          <p style="margin: 0 0 4px 0; font-size: 14px; color: #334155;">Dear ${name},</p>
+          <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">Thank you for your payment. Your subscription is now active and your account privileges have been updated immediately.</p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Receipt Meta Info -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 24px;">
+      <tr><td style="padding: 16px 20px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td style="font-size: 12px; color: #64748b; padding: 4px 0; width: 40%;">Receipt No:</td>
+            <td style="font-size: 12px; font-weight: 700; color: #0f172a; text-align: right; padding: 4px 0; font-family: 'Courier New', Courier, monospace;">${receiptNo}</td>
+          </tr>
+          <tr>
+            <td style="font-size: 12px; color: #64748b; padding: 4px 0;">Date:</td>
+            <td style="font-size: 12px; font-weight: 600; color: #334155; text-align: right; padding: 4px 0;">${dateStr}</td>
+          </tr>
+          <tr>
+            <td style="font-size: 12px; color: #64748b; padding: 4px 0;">Status:</td>
+            <td style="font-size: 12px; font-weight: 800; color: #059669; text-align: right; padding: 4px 0; text-transform: uppercase;">&#10003; Paid (Successful)</td>
+          </tr>
+          <tr>
+            <td style="font-size: 12px; color: #64748b; padding: 4px 0;">Payment ID:</td>
+            <td style="font-size: 12px; font-weight: 700; color: #0f172a; text-align: right; padding: 4px 0; font-family: 'Courier New', Courier, monospace;">${data.transactionId}</td>
+          </tr>
+          <tr>
+            <td style="font-size: 12px; color: #64748b; padding: 4px 0;">Payment Gateway:</td>
+            <td style="font-size: 12px; font-weight: 600; color: #334155; text-align: right; padding: 4px 0;">Razorpay Secure</td>
+          </tr>
+          ${data.userEmail ? `<tr>
+            <td style="font-size: 12px; color: #64748b; padding: 4px 0;">Account Email:</td>
+            <td style="font-size: 12px; font-weight: 600; color: #334155; text-align: right; padding: 4px 0;">${data.userEmail}</td>
+          </tr>` : ''}
+        </table>
+      </td></tr>
+    </table>
+
+    <!-- Itemized Invoice Table -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 8px; border-collapse: collapse;">
       <thead>
         <tr>
-          <th style="text-align: left; font-size: 12px; text-transform: uppercase; color: #64748b; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">Description</th>
-          <th style="text-align: right; font-size: 12px; text-transform: uppercase; color: #64748b; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">Billing Cycle</th>
-          <th style="text-align: right; font-size: 12px; text-transform: uppercase; color: #64748b; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">Amount</th>
+          <th style="text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; background-color: #0f172a; padding: 10px 12px; font-weight: 700;">#</th>
+          <th style="text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; background-color: #0f172a; padding: 10px 12px; font-weight: 700;">Description</th>
+          <th style="text-align: center; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; background-color: #0f172a; padding: 10px 12px; font-weight: 700;">Cycle</th>
+          <th style="text-align: right; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; background-color: #0f172a; padding: 10px 12px; font-weight: 700;">Amount</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td style="padding: 12px 0; font-size: 14px; border-bottom: 1px solid #f1f5f9; color: #334155;">Lelam ${planName} Subscription Plan</td>
-          <td style="padding: 12px 0; font-size: 14px; border-bottom: 1px solid #f1f5f9; text-align: right; text-transform: capitalize; color: #334155;">${billingCycle}</td>
-          <td style="padding: 12px 0; font-size: 14px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 600; color: #334155;">${priceStr}</td>
+          <td style="padding: 12px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #94a3b8; font-weight: 700;">1</td>
+          <td style="padding: 12px; font-size: 13px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-weight: 700;">
+            Lelam ${data.planName} Plan
+            <div style="font-size: 11px; color: #64748b; font-weight: 400; margin-top: 2px;">Full platform access &bull; ${totalSeats} seat${totalSeats > 1 ? 's' : ''}</div>
+          </td>
+          <td style="padding: 12px; font-size: 12px; border-bottom: 1px solid #e2e8f0; text-align: center; text-transform: capitalize; color: #334155;">${data.billingCycle}</td>
+          <td style="padding: 12px; font-size: 13px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #334155; font-family: 'Courier New', Courier, monospace;">${fmtPrice(data.baseSubtotal)}</td>
         </tr>
+        ${data.extraSeats > 0 ? `
         <tr>
-          <td style="padding: 16px 0; font-size: 16px; font-weight: 700; color: #0f172a; border-top: 2px solid #e2e8f0;">Total Paid</td>
-          <td style="padding: 16px 0; border-top: 2px solid #e2e8f0;"></td>
-          <td style="padding: 16px 0; font-size: 16px; font-weight: 700; color: #0284c7; text-align: right; border-top: 2px solid #e2e8f0;">${priceStr}</td>
-        </tr>
+          <td style="padding: 12px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #94a3b8; font-weight: 700;">2</td>
+          <td style="padding: 12px; font-size: 13px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-weight: 700;">
+            Additional Team Seats (${data.extraSeats})
+            <div style="font-size: 11px; color: #64748b; font-weight: 400; margin-top: 2px;">${data.extraSeats} extra team member seat${data.extraSeats > 1 ? 's' : ''}</div>
+          </td>
+          <td style="padding: 12px; font-size: 12px; border-bottom: 1px solid #e2e8f0; text-align: center; text-transform: capitalize; color: #334155;">${data.billingCycle}</td>
+          <td style="padding: 12px; font-size: 13px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #334155; font-family: 'Courier New', Courier, monospace;">${fmtPrice(data.extraSeatsCost)}</td>
+        </tr>` : ''}
       </tbody>
     </table>
 
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border-radius: 12px; padding: 16px; margin: 24px 0; border: 1px solid #e2e8f0;">
+    <!-- Totals -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
       <tr>
-        <td style="font-size: 13px; color: #64748b; padding: 4px 0; width: 40%;">Transaction Reference:</td>
-        <td style="font-size: 13px; font-weight: 600; color: #334155; text-align: right; padding: 4px 0; font-family: monospace;">${transactionId}</td>
-      </tr>
-      <tr>
-        <td style="font-size: 13px; color: #64748b; padding: 4px 0;">Payment Provider:</td>
-        <td style="font-size: 13px; font-weight: 600; color: #334155; text-align: right; padding: 4px 0;">Razorpay</td>
-      </tr>
-      <tr>
-        <td style="font-size: 13px; color: #64748b; padding: 4px 0;">Receipt Date:</td>
-        <td style="font-size: 13px; font-weight: 600; color: #334155; text-align: right; padding: 4px 0;">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
+        <td width="50%"></td>
+        <td width="50%">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style="padding: 6px 0; font-size: 12px; color: #64748b;">Subtotal</td>
+              <td style="padding: 6px 0; font-size: 12px; font-weight: 600; color: #334155; text-align: right; font-family: 'Courier New', Courier, monospace;">${fmtPrice(data.baseSubtotal + data.extraSeatsCost)}</td>
+            </tr>
+            ${data.discountAmount > 0 ? `
+            <tr>
+              <td style="padding: 6px 0; font-size: 12px; color: #059669; font-weight: 600;">Discount${data.couponCode ? ` (${data.couponCode})` : ''}</td>
+              <td style="padding: 6px 0; font-size: 12px; font-weight: 700; color: #059669; text-align: right; font-family: 'Courier New', Courier, monospace;">- ${fmtPrice(data.discountAmount)}</td>
+            </tr>` : ''}
+            <tr>
+              <td style="padding: 6px 0; font-size: 12px; color: #64748b;">CGST (9%)</td>
+              <td style="padding: 6px 0; font-size: 12px; font-weight: 600; color: #334155; text-align: right; font-family: 'Courier New', Courier, monospace;">${fmtPrice(data.cgst)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 12px; color: #64748b;">SGST (9%)</td>
+              <td style="padding: 6px 0; font-size: 12px; font-weight: 600; color: #334155; text-align: right; font-family: 'Courier New', Courier, monospace;">${fmtPrice(data.sgst)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 0 6px 0; font-size: 14px; font-weight: 800; color: #0f172a; border-top: 2px solid #0f172a;">Total Amount Paid</td>
+              <td style="padding: 12px 0 6px 0; font-size: 15px; font-weight: 800; color: #0284c7; text-align: right; font-family: 'Courier New', Courier, monospace; border-top: 2px solid #0f172a;">${fmtPrice(data.total)}</td>
+            </tr>
+          </table>
+        </td>
       </tr>
     </table>
 
+    <!-- Terms -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px; border-top: 1px solid #e2e8f0;">
+      <tr><td style="padding-top: 16px;">
+        <div style="font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 6px;">Terms & Conditions:</div>
+        <div style="font-size: 10px; color: #64748b; line-height: 1.6;">
+          1. All subscription payments are final and subject to Lelam platform policies.<br>
+          2. For complete Terms & Conditions: <a href="https://lelam.co/terms" style="color: #0284c7; font-weight: 600; text-decoration: underline;">https://lelam.co/terms</a><br>
+          3. For billing inquiries: <a href="mailto:support@lelam.co" style="color: #0284c7; font-weight: 600; text-decoration: underline;">support@lelam.co</a>
+        </div>
+        <div style="font-size: 9px; color: #94a3b8; font-style: italic; margin-top: 8px;">This is an authorized computer-generated receipt. No signature required.</div>
+      </td></tr>
+    </table>
+
+    <!-- CTA Buttons -->
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 24px 0 8px 0;">
       <tr>
         <td align="center">
-          <a href="https://lelam.co/dashboard" style="display: inline-block; background-color: #0284c7; color: #ffffff !important; text-decoration: none; padding: 12px 28px; font-weight: 600; font-size: 14px; border-radius: 8px;" target="_blank">Go to Dashboard</a>
+          <a href="https://lelam.co/checkout?status=success&txn=${encodeURIComponent(data.transactionId)}" style="display: inline-block; background-color: #0f172a; color: #ffffff !important; text-decoration: none; padding: 12px 28px; font-weight: 600; font-size: 14px; border-radius: 8px;" target="_blank">View & Download Invoice</a>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding-top: 10px;">
+          <a href="https://lelam.co/dashboard" style="display: inline-block; color: #0284c7; text-decoration: underline; font-size: 13px; font-weight: 500;" target="_blank">Go to Dashboard &rarr;</a>
         </td>
       </tr>
     </table>
   `;
-  return getEmailWrapperHTML('Payment Successful', `Subscription Receipt for Lelam ${planName}`, contentHtml);
+  return getEmailWrapperHTML('Payment Receipt & Tax Invoice', `Subscription Receipt — ${data.planName} Plan (${fmtPrice(data.total)})`, contentHtml);
 }
 
 export function getBidConfirmationTemplate(

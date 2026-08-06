@@ -168,10 +168,31 @@ export default async function handler(req: any, res: any) {
     const planId = String(order.notes?.planId || 'premium');
     const billingCycle = String(order.notes?.billingCycle || 'monthly');
     const amountInRs = Number(order.amount) / 100;
+    const extraSeatsNum = parseInt(String(order.notes?.extraSeats || '0')) || 0;
+    const couponApplied = String(order.notes?.couponApplied || '');
 
     let planName = 'Explorer';
     if (planId === 'go' || planId === 'go-subscription') planName = 'Individual';
     else if (planId === 'pro' || planId === 'premium') planName = 'Business';
+
+    // Reconstruct invoice breakdown from order total using same pricing formulas as client
+    const isExplorerFree = planId === 'explorer' || planId === 'starter' || planId === 'free';
+    let baseSubtotal = 0;
+    if (!isExplorerFree) {
+      if (planId === 'go' || planId === 'go-subscription') {
+        baseSubtotal = billingCycle === 'annual' ? 8438 : 799;
+      } else {
+        baseSubtotal = billingCycle === 'annual' ? 15830 : 1499;
+      }
+    }
+    const seatUnitPrice = billingCycle === 'annual' ? 4990 : 499;
+    const extraSeatsCost = isExplorerFree ? 0 : extraSeatsNum * seatUnitPrice;
+    const subtotalAfterDiscount = Math.round(amountInRs / 1.18);
+    const subtotalBeforeDiscount = baseSubtotal + extraSeatsCost;
+    const discountAmount = Math.max(0, subtotalBeforeDiscount - subtotalAfterDiscount);
+    const gstTotal = amountInRs - subtotalAfterDiscount;
+    const cgst = Math.round(gstTotal / 2);
+    const sgst = Math.round(gstTotal / 2);
 
     const planToSet = (planId === 'pro' || planId === 'premium') ? 'pro' : (planId === 'go' || planId === 'go-subscription') ? 'go' : 'explorer';
     const durationDays = billingCycle === 'annual' ? 365 : 30;
@@ -189,7 +210,7 @@ export default async function handler(req: any, res: any) {
       console.error('Failed to update subscription plan in user profile:', updateError);
     }
 
-    // 3. Fetch user name details from profiles if not available in auth metadata
+    // 5. Fetch user name details from profiles if not available in auth metadata
     let firstName = user.user_metadata?.first_name || '';
     if (!firstName) {
       const { data: profile } = await supabase
@@ -200,18 +221,27 @@ export default async function handler(req: any, res: any) {
       firstName = profile?.first_name || '';
     }
 
-    // 3. Dispatch the payment invoice email
-    const emailHtml = getPaymentConfirmationTemplate(
+    // 6. Dispatch the payment invoice email with full invoice breakdown
+    const emailHtml = getPaymentConfirmationTemplate({
       firstName,
       planName,
-      amountInRs,
-      payment_id,
-      billingCycle
-    );
+      transactionId: payment_id,
+      billingCycle,
+      baseSubtotal,
+      extraSeats: extraSeatsNum,
+      extraSeatsCost,
+      discountAmount,
+      couponCode: couponApplied && couponApplied !== 'None' ? couponApplied : null,
+      subtotal: subtotalAfterDiscount,
+      cgst,
+      sgst,
+      total: amountInRs,
+      userEmail: user.email || '',
+    });
 
     sendEmail({
       to: user.email || '',
-      subject: `Payment Receipt: Your subscription is active!`,
+      subject: `Payment Receipt — Lelam ${planName} Plan`,
       html: emailHtml
     }).catch(err => {
       console.error('Failed to dispatch payment receipt email:', err);

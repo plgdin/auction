@@ -7,7 +7,7 @@ import { formatPrice } from '../utils/currency';
 import { 
   Lock, ArrowRight, CheckCircle2, AlertCircle, Loader2, 
   CreditCard, ChevronRight, User, Building2, Check, ChevronLeft,
-  ShoppingBag, ChevronDown, Users, Plus, Minus, Sparkles, XCircle, RotateCcw, HelpCircle, Printer, Shield
+  ShoppingBag, ChevronDown, Users, Plus, Minus, Sparkles, XCircle, RotateCcw, HelpCircle, Printer, Shield, Download
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -575,6 +575,191 @@ export function CheckoutPage() {
       setFailureReason('Payment gateway initialization failed. Your test keys in .env.local may be inactive or expired on Razorpay.');
       setStep('failed');
     }
+  };
+
+  const generateInvoiceHTML = (): string => {
+    const receiptNo = `REC-${transactionId.slice(-8) || '20260805'}`;
+    const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const cgstAmount = Math.round(gst / 2);
+    const sgstAmount = Math.round(gst / 2);
+    const fmt = (n: number) => `\u20B9${n.toLocaleString('en-IN')}`;
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice ${receiptNo} — Lelam Company</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1e293b; background: #f8fafc; padding: 0; font-size: 13px; line-height: 1.5; }
+  .page { max-width: 800px; margin: 32px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; padding: 32px 40px; border-bottom: 3px solid #0f172a; }
+  .company h1 { font-size: 22px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
+  .company .tagline { color: #64748b; font-size: 11px; font-weight: 500; margin-top: 2px; }
+  .company .address { margin-top: 8px; line-height: 1.7; color: #475569; font-size: 11px; }
+  .receipt-badge { display: inline-block; background: #0f172a; color: #fff; padding: 5px 14px; font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; border-radius: 4px; margin-bottom: 10px; }
+  .meta-right { text-align: right; }
+  .meta-right p { font-size: 12px; color: #475569; margin: 3px 0; }
+  .mono { font-family: 'Courier New', monospace; font-weight: 700; color: #0f172a; }
+  .status { color: #059669; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-top: 6px; }
+  .body { padding: 32px 40px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 12px; margin-bottom: 28px; }
+  .info-grid h3 { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: 10px; }
+  .info-grid .name { font-size: 16px; font-weight: 700; color: #0f172a; }
+  .info-grid p { font-size: 12px; color: #475569; margin: 3px 0; }
+  table.items { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
+  table.items thead tr { background: #0f172a; color: #fff; }
+  table.items thead th { padding: 11px 14px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; text-align: left; }
+  table.items thead th:last-child { text-align: right; }
+  table.items thead th.center { text-align: center; }
+  table.items thead th:first-child { border-radius: 8px 0 0 0; }
+  table.items thead th:last-child { border-radius: 0 8px 0 0; }
+  table.items tbody td { padding: 14px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: top; }
+  table.items tbody td:last-child { text-align: right; font-family: 'Courier New', monospace; font-weight: 700; }
+  table.items tbody td.center { text-align: center; }
+  .item-name { font-weight: 700; color: #0f172a; font-size: 13px; }
+  .item-desc { font-size: 10px; color: #64748b; margin-top: 3px; }
+  .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 32px; }
+  .totals-box { width: 280px; }
+  .totals-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 12px; color: #475569; }
+  .totals-row .val { font-family: 'Courier New', monospace; font-weight: 600; color: #334155; }
+  .totals-row.discount { color: #059669; font-weight: 600; }
+  .totals-row.discount .val { color: #059669; font-weight: 700; }
+  .totals-row.grand { border-top: 3px solid #0f172a; padding-top: 12px; margin-top: 6px; font-size: 15px; font-weight: 900; color: #0f172a; }
+  .totals-row.grand .val { color: #0f172a; font-size: 15px; }
+  .footer-section { border-top: 1px solid #e2e8f0; padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .terms h4 { font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 6px; }
+  .terms p { font-size: 10px; color: #64748b; margin: 2px 0; line-height: 1.6; }
+  .terms a { color: #0284c7; font-weight: 700; text-decoration: underline; }
+  .auth { text-align: right; }
+  .auth .company-name { font-weight: 900; font-size: 12px; text-transform: uppercase; color: #0f172a; }
+  .auth .note { font-size: 9px; color: #94a3b8; font-style: italic; margin-top: 4px; }
+  @media print { body { background: #fff; padding: 0; } .page { margin: 0; border: none; border-radius: 0; box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="company">
+      <h1>LELAM COMPANY</h1>
+      <div class="tagline">India's Premier B2B Auction & Asset Platform</div>
+      <div class="address">No: 2, 20th Cross Lakshmipuram, Halasuru, Bangalore 560008<br>Support: support@lelam.co | +91 94477 53889</div>
+    </div>
+    <div class="meta-right">
+      <div class="receipt-badge">Payment Receipt</div>
+      <p><strong>Receipt No:</strong> <span class="mono">${receiptNo}</span></p>
+      <p>Date: ${dateStr}</p>
+      <p class="status">\u2713 Status: PAID (SUCCESSFUL)</p>
+    </div>
+  </div>
+  <div class="body">
+    <div class="info-grid">
+      <div>
+        <h3>Billed To (Customer)</h3>
+        <p class="name">${fullName || profile?.first_name || 'Valued Customer'}</p>
+        ${businessName ? `<p style="font-weight: 600; color: #334155;">${businessName}</p>` : ''}
+        <p>${billingAddress || addressLine1 || 'Registered Platform User'}</p>
+        ${user?.email ? `<p>Email: ${user.email}</p>` : ''}
+        ${gstin ? `<p class="mono" style="margin-top: 6px; font-size: 12px;">Customer GSTIN: ${gstin.toUpperCase()}</p>` : ''}
+      </div>
+      <div>
+        <h3>Payment Details</h3>
+        <p><strong>Payment ID:</strong> <span class="mono">${transactionId}</span></p>
+        <p><strong>Payment Gateway:</strong> Razorpay Secure Gateway</p>
+        <p><strong>Billing Cycle:</strong> ${billingCycle === 'annual' ? 'Annual (Yearly)' : 'Monthly'}</p>
+        <p><strong>Subscription Plan:</strong> ${getPlanName(planId)} Plan</p>
+      </div>
+    </div>
+    <table class="items">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Item Description</th>
+          <th class="center">Cycle</th>
+          <th class="center">Seats</th>
+          <th>Amount (INR)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight: 700; color: #94a3b8;">1</td>
+          <td>
+            <div class="item-name">Lelam ${getPlanName(planId)} Subscription Plan</div>
+            <div class="item-desc">Full access to MSTC auctions, document vault, valuation engine & bidding tools</div>
+          </td>
+          <td class="center" style="text-transform: uppercase; font-weight: 500;">${billingCycle}</td>
+          <td class="center" style="font-weight: 700;">${seats}</td>
+          <td>${fmt(baseSubtotal)}</td>
+        </tr>
+        ${extraSeats > 0 ? `
+        <tr>
+          <td style="font-weight: 700; color: #94a3b8;">2</td>
+          <td>
+            <div class="item-name">Additional Team Member Seats (${extraSeats})</div>
+            <div class="item-desc">${extraSeats} extra seats \u00D7 ${fmt(seatUnitPrice)}/${billingCycle === 'annual' ? 'yr' : 'mo'}</div>
+          </td>
+          <td class="center" style="text-transform: uppercase; font-weight: 500;">${billingCycle}</td>
+          <td class="center" style="font-weight: 700;">${extraSeats}</td>
+          <td>${fmt(extraSeatsCost)}</td>
+        </tr>` : ''}
+      </tbody>
+    </table>
+    <div class="totals-wrap">
+      <div class="totals-box">
+        <div class="totals-row">
+          <span>Subtotal</span>
+          <span class="val">${fmt(subtotalBeforeDiscount)}</span>
+        </div>
+        ${discountAmount > 0 ? `
+        <div class="totals-row discount">
+          <span>Discount (${appliedDiscount * 100}% Off)</span>
+          <span class="val">- ${fmt(discountAmount)}</span>
+        </div>` : ''}
+        <div class="totals-row">
+          <span>CGST (9%)</span>
+          <span class="val">${fmt(cgstAmount)}</span>
+        </div>
+        <div class="totals-row">
+          <span>SGST (9%)</span>
+          <span class="val">${fmt(sgstAmount)}</span>
+        </div>
+        <div class="totals-row grand">
+          <span>Total Amount Paid</span>
+          <span class="val">${fmt(total)}</span>
+        </div>
+      </div>
+    </div>
+    <div class="footer-section">
+      <div class="terms">
+        <h4>Terms & Conditions Apply:</h4>
+        <p>1. All subscription payments are final and subject to Lelam platform policies.</p>
+        <p>2. For complete Terms & Conditions: <a href="https://lelam.co/terms">https://lelam.co/terms</a></p>
+        <p>3. For billing inquiries: <a href="mailto:support@lelam.co">support@lelam.co</a></p>
+      </div>
+      <div class="auth">
+        <p class="company-name">Lelam Company</p>
+        <p class="note">Authorized computer-generated receipt.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+  };
+
+  const handleDownloadInvoice = () => {
+    const html = generateInvoiceHTML();
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Lelam-Invoice-${transactionId || 'receipt'}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const isStateValid = INDIAN_STATES.some(
@@ -1416,17 +1601,26 @@ export function CheckoutPage() {
                     </Link>.
                   </p>
 
-                  <div className="pt-2 max-w-md mx-auto flex flex-col sm:flex-row gap-3">
-                    <button
-                      type="button"
-                      onClick={() => window.print()}
-                      className="flex-1 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs min-h-[44px]"
-                    >
-                      <Printer className="w-4 h-4 text-slate-600" /> Print Official Bill
-                    </button>
+                  <div className="pt-2 max-w-md mx-auto space-y-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button
+                        type="button"
+                        onClick={handleDownloadInvoice}
+                        className="flex-1 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs min-h-[44px]"
+                      >
+                        <Download className="w-4 h-4 text-slate-600" /> Download Invoice
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        className="flex-1 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs min-h-[44px]"
+                      >
+                        <Printer className="w-4 h-4 text-slate-600" /> Print Invoice
+                      </button>
+                    </div>
                     <Link
                       to="/dashboard"
-                      className="flex-1 bg-primary text-white py-3 px-4 rounded-xl font-bold text-sm hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-primary/20 min-h-[44px]"
+                      className="w-full bg-primary text-white py-3 px-4 rounded-xl font-bold text-sm hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-primary/20 min-h-[44px]"
                     >
                       Go to Dashboard <ArrowRight className="w-4 h-4" />
                     </Link>
