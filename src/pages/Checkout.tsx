@@ -669,7 +669,7 @@ export function CheckoutPage() {
       <tr>
         <td style="width: 60%; vertical-align: top; padding-bottom: 20px;">
           <div class="company">
-            <h1>LELAM COMPANY</h1>
+            <img src="/LOGOWITHTEXT.png" alt="Lelam Company" style="height: 38px; display: block; margin-bottom: 8px;" />
             <div class="tagline">India's Premier B2B Auction & Asset Platform</div>
             <div class="address">No: 2, 20th Cross Lakshmipuram, Halasuru, Bangalore 560008<br>Support: support@lelam.co | +91 94477 53889</div>
           </div>
