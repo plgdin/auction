@@ -37,6 +37,21 @@ const loadRazorpayScript = (): Promise<boolean> => {
   });
 };
 
+const loadHtml2PdfScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if ((window as any).html2pdf) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
   'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
@@ -102,6 +117,7 @@ export function CheckoutPage() {
   const [gstin, setGstin] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [seats, setSeats] = useState<number>(1);
+  const [isPdfDownloading, setIsPdfDownloading] = useState(false);
 
   // Close state dropdown when clicking outside
   useEffect(() => {
@@ -749,17 +765,42 @@ export function CheckoutPage() {
 </html>`;
   };
 
-  const handleDownloadInvoice = () => {
-    const html = generateInvoiceHTML();
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Lelam-Invoice-${transactionId || 'receipt'}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleDownloadInvoice = async () => {
+    setIsPdfDownloading(true);
+    const scriptLoaded = await loadHtml2PdfScript();
+    if (!scriptLoaded) {
+      setIsPdfDownloading(false);
+      alert('Failed to load PDF generation engine. Please check your network connection.');
+      return;
+    }
+
+    try {
+      const htmlContent = generateInvoiceHTML();
+      
+      // Extract only style and page container for cleaner rendering without html/body tags wrapper
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.top = '-9999px';
+      tempContainer.innerHTML = htmlContent;
+      document.body.appendChild(tempContainer);
+
+      const opt = {
+        margin:       [12, 12, 12, 12],
+        filename:     `Lelam-Invoice-${transactionId || 'receipt'}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      await (window as any).html2pdf().set(opt).from(tempContainer).save();
+      document.body.removeChild(tempContainer);
+    } catch (err) {
+      console.error('Failed to generate PDF invoice:', err);
+      alert('An error occurred while generating your PDF invoice. Please try again.');
+    } finally {
+      setIsPdfDownloading(false);
+    }
   };
 
   const isStateValid = INDIAN_STATES.some(
@@ -1606,9 +1647,18 @@ export function CheckoutPage() {
                       <button
                         type="button"
                         onClick={handleDownloadInvoice}
-                        className="flex-1 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs min-h-[44px]"
+                        disabled={isPdfDownloading}
+                        className="flex-1 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs min-h-[44px] disabled:opacity-50"
                       >
-                        <Download className="w-4 h-4 text-slate-600" /> Download Invoice
+                        {isPdfDownloading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 text-slate-600 animate-spin" /> Generating PDF...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-4 h-4 text-slate-600" /> Download PDF Invoice
+                          </>
+                        )}
                       </button>
                       <button
                         type="button"
