@@ -608,168 +608,172 @@ export function CheckoutPage() {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: #1e293b;
     background: #ffffff;
-    padding: 32px 40px;
+    padding: 40px 50px;
     font-size: 13px;
     line-height: 1.5;
     width: 800px;
     box-sizing: border-box;
   }
   .invoice-download-root * { box-sizing: border-box; margin: 0; padding: 0; }
-  .invoice-download-root .company h1 { font-size: 22px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
-  .invoice-download-root .company .tagline { color: #64748b; font-size: 11px; font-weight: 500; margin-top: 2px; }
-  .invoice-download-root .company .address { margin-top: 8px; line-height: 1.7; color: #475569; font-size: 11px; }
-  .invoice-download-root .receipt-badge { display: inline-block; background: #0f172a; color: #fff; padding: 5px 14px; font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; border-radius: 4px; margin-bottom: 10px; }
-  .invoice-download-root .meta-right p { font-size: 12px; color: #475569; margin: 3px 0; }
+  
+  /* Company Header Styling */
+  .invoice-download-root .company h1 { font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; margin-bottom: 4px; }
+  .invoice-download-root .company .tagline { color: #475569; font-size: 11px; font-weight: 600; margin-bottom: 8px; }
+  .invoice-download-root .company .address { line-height: 1.6; color: #64748b; font-size: 11px; }
+  
+  /* Right Side Meta Info Styling */
+  .invoice-download-root .receipt-title { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .invoice-download-root .meta-right p { font-size: 12px; color: #334155; margin: 4px 0; }
   .invoice-download-root .mono { font-family: 'Courier New', monospace; font-weight: 700; color: #0f172a; }
-  .invoice-download-root .status { color: #059669; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-top: 6px; }
+  .invoice-download-root .status { color: #059669; font-weight: 800; font-size: 12px; text-transform: uppercase; }
   
-  .invoice-download-root .info-grid-table { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 28px; width: 100%; border-collapse: collapse; }
-  .invoice-download-root .info-grid-table td.info-col { width: 50%; padding: 24px; vertical-align: top; }
-  .invoice-download-root .info-grid-table td.info-col-border { border-right: 1px solid #e2e8f0; }
-  .invoice-download-root .info-grid-table h3 { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: 10px; }
-  .invoice-download-root .info-grid-table .name { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
-  .invoice-download-root .info-grid-table p { font-size: 12px; color: #475569; margin: 3px 0; }
+  /* Section Headers */
+  .invoice-download-root .section-header { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-top: 20px; margin-bottom: 8px; }
+  .invoice-download-root .billed-name { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+  .invoice-download-root .billed-details { font-size: 12px; color: #475569; line-height: 1.6; }
+  .invoice-download-root .payment-details p { font-size: 12px; color: #475569; margin: 3px 0; }
   
-  .invoice-download-root table.items { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
-  .invoice-download-root table.items thead tr { background: #0f172a; color: #fff; }
-  .invoice-download-root table.items thead th { padding: 11px 14px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; text-align: left; }
-  .invoice-download-root table.items thead th:last-child { text-align: right; }
-  .invoice-download-root table.items thead th.center { text-align: center; }
-  .invoice-download-root table.items thead th:first-child { border-radius: 8px 0 0 0; }
-  .invoice-download-root table.items thead th:last-child { border-radius: 0 8px 0 0; }
-  .invoice-download-root table.items tbody td { padding: 14px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: top; }
-  .invoice-download-root table.items tbody td:last-child { text-align: right; font-family: 'Courier New', monospace; font-weight: 700; }
-  .invoice-download-root table.items tbody td.center { text-align: center; }
-  .invoice-download-root .item-name { font-weight: 700; color: #0f172a; font-size: 13px; }
-  .invoice-download-root .item-desc { font-size: 10px; color: #64748b; margin-top: 3px; }
+  /* Items Table Styling */
+  .invoice-download-root table.items-table { width: 100%; border-collapse: collapse; margin-top: 24px; margin-bottom: 24px; }
+  .invoice-download-root table.items-table th { padding: 12px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #64748b; border-top: 1.5px solid #0f172a; border-bottom: 1.5px solid #0f172a; text-align: left; }
+  .invoice-download-root table.items-table th.center { text-align: center; }
+  .invoice-download-root table.items-table th.right { text-align: right; }
+  .invoice-download-root table.items-table td { padding: 16px 6px; font-size: 12px; border-bottom: 1.5px solid #e2e8f0; color: #334155; vertical-align: top; }
+  .invoice-download-root table.items-table td.center { text-align: center; }
+  .invoice-download-root table.items-table td.right { text-align: right; font-family: 'Courier New', monospace; font-weight: 700; }
+  .invoice-download-root .item-title { font-weight: 700; color: #0f172a; font-size: 13px; }
+  .invoice-download-root .item-subtitle { font-size: 10px; color: #64748b; margin-top: 4px; }
   
-  .invoice-download-root .totals-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 12px; color: #475569; }
-  .invoice-download-root .totals-row .val { font-family: 'Courier New', monospace; font-weight: 600; color: #334155; }
-  .invoice-download-root .totals-row.discount { color: #059669; font-weight: 600; }
-  .invoice-download-root .totals-row.discount .val { color: #059669; font-weight: 700; }
-  .invoice-download-root .totals-row.grand { border-top: 3px solid #0f172a; padding-top: 12px; margin-top: 6px; font-size: 15px; font-weight: 900; color: #0f172a; }
-  .invoice-download-root .totals-row.grand .val { color: #0f172a; font-size: 15px; }
+  /* Totals Section Styling */
+  .invoice-download-root .totals-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+  .invoice-download-root .totals-row { font-size: 12px; color: #475569; }
+  .invoice-download-root .totals-row td { padding: 5px 0; }
+  .invoice-download-root .totals-row td.val { font-family: 'Courier New', monospace; font-weight: 600; color: #334155; text-align: right; }
+  .invoice-download-root .totals-row.grand { font-size: 14px; font-weight: 800; color: #0f172a; border-top: 1.5px solid #0f172a; border-bottom: 1.5px solid #0f172a; }
+  .invoice-download-root .totals-row.grand td { padding: 10px 0; }
+  .invoice-download-root .totals-row.grand td.val { color: #0f172a; font-size: 14px; }
   
+  /* Footer Styling */
+  .invoice-download-root .footer-table { width: 100%; border-collapse: collapse; border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 20px; }
   .invoice-download-root .terms h4 { font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 6px; }
-  .invoice-download-root .terms p { font-size: 10px; color: #64748b; margin: 2px 0; line-height: 1.6; }
+  .invoice-download-root .terms p { font-size: 10px; color: #64748b; margin: 3px 0; line-height: 1.6; }
   .invoice-download-root .terms a { color: #0284c7; font-weight: 700; text-decoration: underline; }
-  .invoice-download-root .auth .company-name { font-weight: 900; font-size: 12px; text-transform: uppercase; color: #0f172a; }
+  .invoice-download-root .auth .company-name { font-weight: 900; font-size: 11px; text-transform: uppercase; color: #0f172a; }
   .invoice-download-root .auth .note { font-size: 9px; color: #94a3b8; font-style: italic; margin-top: 4px; }
 </style>
 
 <div class="invoice-download-root">
   <div class="page">
-    <!-- Header Layout -->
-    <table style="width: 100%; border-collapse: collapse; border-bottom: 3px solid #0f172a; margin-bottom: 24px;">
+    <!-- Header Table -->
+    <table style="width: 100%; border-collapse: collapse; border-bottom: 1.5px solid #0f172a; margin-bottom: 20px;">
       <tr>
-        <td style="width: 60%; vertical-align: top; padding-bottom: 24px;">
+        <td style="width: 60%; vertical-align: top; padding-bottom: 20px;">
           <div class="company">
             <h1>LELAM COMPANY</h1>
             <div class="tagline">India's Premier B2B Auction & Asset Platform</div>
             <div class="address">No: 2, 20th Cross Lakshmipuram, Halasuru, Bangalore 560008<br>Support: support@lelam.co | +91 94477 53889</div>
           </div>
         </td>
-        <td style="width: 40%; text-align: right; vertical-align: top; padding-bottom: 24px;">
-          <div class="receipt-badge">Payment Receipt</div>
-          <p style="font-size: 12px; color: #475569; margin: 3px 0;"><strong>Receipt No:</strong> <span class="mono">${receiptNo}</span></p>
-          <p style="font-size: 12px; color: #475569; margin: 3px 0;">Date: ${dateStr}</p>
-          <p class="status">\u2713 Status: PAID (SUCCESSFUL)</p>
+        <td style="width: 40%; text-align: right; vertical-align: top; padding-bottom: 20px;">
+          <div class="receipt-title">Payment Receipt</div>
+          <div class="meta-right">
+            <p><strong>Receipt No:</strong> <span class="mono">${receiptNo}</span></p>
+            <p>Date: ${dateStr}</p>
+            <p class="status">\u2713 STATUS: PAID (SUCCESSFUL)</p>
+          </div>
         </td>
       </tr>
     </table>
     
     <div class="body">
-      <!-- Billing Info Layout -->
-      <table class="info-grid-table">
-        <tr>
-          <td class="info-col info-col-border">
-            <h3>Billed To (Customer)</h3>
-            <p class="name">${fullName || profile?.first_name || 'Valued Customer'}</p>
-            ${businessName ? `<p style="font-weight: 600; color: #334155;">${businessName}</p>` : ''}
-            <p>${billingAddress || addressLine1 || 'Registered Platform User'}</p>
-            ${user?.email ? `<p>Email: ${user.email}</p>` : ''}
-            ${gstin ? `<p class="mono" style="margin-top: 6px; font-size: 12px;">Customer GSTIN: ${gstin.toUpperCase()}</p>` : ''}
-          </td>
-          <td class="info-col">
-            <h3>Payment Details</h3>
-            <p><strong>Payment ID:</strong> <span class="mono">${transactionId}</span></p>
-            <p><strong>Payment Gateway:</strong> Razorpay Secure Gateway</p>
-            <p><strong>Billing Cycle:</strong> ${billingCycle === 'annual' ? 'Annual (Yearly)' : 'Monthly'}</p>
-            <p><strong>Subscription Plan:</strong> ${getPlanName(planId)} Plan</p>
-          </td>
-        </tr>
-      </table>
+      <!-- Billed To Stacked Section -->
+      <div class="section-header">Billed To (Customer)</div>
+      <div class="billed-details" style="margin-bottom: 16px;">
+        <p class="billed-name">${fullName || profile?.first_name || 'Valued Customer'}</p>
+        <p>${billingAddress || addressLine1 || 'Registered Platform User'}</p>
+        ${user?.email ? `<p>Email: ${user.email}</p>` : ''}
+        ${gstin ? `<p class="mono" style="margin-top: 4px; font-size: 11px;">Customer GSTIN: ${gstin.toUpperCase()}</p>` : ''}
+      </div>
       
-      <!-- Items Purchase Details -->
-      <table class="items">
+      <!-- Payment Details Stacked Section -->
+      <div class="section-header">Payment Details</div>
+      <div class="payment-details" style="margin-bottom: 24px;">
+        <p><strong>Payment ID:</strong> <span class="mono">${transactionId}</span></p>
+        <p><strong>Payment Gateway:</strong> Razorpay Secure Gateway</p>
+        <p><strong>Billing Cycle:</strong> ${billingCycle === 'annual' ? 'Annual (Yearly)' : 'Monthly'}</p>
+        <p><strong>Subscription Plan:</strong> ${getPlanName(planId)} Plan</p>
+      </div>
+      
+      <!-- Items Table -->
+      <table class="items-table">
         <thead>
           <tr>
             <th style="width: 5%">#</th>
             <th style="width: 50%">Item Description</th>
             <th class="center" style="width: 15%">Cycle</th>
             <th class="center" style="width: 10%">Seats</th>
-            <th style="width: 20%; text-align: right;">Amount (INR)</th>
+            <th class="right" style="width: 20%">Amount (INR)</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td style="font-weight: 700; color: #94a3b8;">1</td>
             <td>
-              <div class="item-name">Lelam ${getPlanName(planId)} Subscription Plan</div>
-              <div class="item-desc">Full access to MSTC auctions, document vault, valuation engine & bidding tools</div>
+              <div class="item-title">Lelam ${getPlanName(planId)} Subscription Plan</div>
+              <div class="item-subtitle">Full access to MSTC auctions, document vault, valuation engine & bidding tools</div>
             </td>
             <td class="center" style="text-transform: uppercase; font-weight: 500;">${billingCycle}</td>
             <td class="center" style="font-weight: 700;">${seats}</td>
-            <td>${fmt(baseSubtotal)}</td>
+            <td class="right">${fmt(baseSubtotal)}</td>
           </tr>
           ${extraSeats > 0 ? `
           <tr>
             <td style="font-weight: 700; color: #94a3b8;">2</td>
             <td>
-              <div class="item-name">Additional Team Member Seats (${extraSeats})</div>
-              <div class="item-desc">${extraSeats} extra seats \u00D7 ${fmt(seatUnitPrice)}/${billingCycle === 'annual' ? 'yr' : 'mo'}</div>
+              <div class="item-title">Additional Team Member Seats (${extraSeats})</div>
+              <div class="item-subtitle">${extraSeats} extra seats \u00D7 ${fmt(seatUnitPrice)}/${billingCycle === 'annual' ? 'yr' : 'mo'}</div>
             </td>
             <td class="center" style="text-transform: uppercase; font-weight: 500;">${billingCycle}</td>
             <td class="center" style="font-weight: 700;">${extraSeats}</td>
-            <td>${fmt(extraSeatsCost)}</td>
+            <td class="right">${fmt(extraSeatsCost)}</td>
           </tr>` : ''}
         </tbody>
       </table>
       
-      <!-- Summary Totals Section -->
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 32px;">
+      <!-- Totals Section -->
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
         <tr>
           <td style="width: 60%;"></td>
-          <td style="width: 40%; vertical-align: top;">
-            <div class="totals-box">
-              <div class="totals-row">
-                <span>Subtotal</span>
-                <span class="val">${fmt(subtotalBeforeDiscount)}</span>
-              </div>
+          <td style="width: 40%;">
+            <table class="totals-table">
+              <tr class="totals-row">
+                <td>Subtotal</td>
+                <td class="val">${fmt(subtotalBeforeDiscount)}</td>
+              </tr>
               ${discountAmount > 0 ? `
-              <div class="totals-row discount">
-                <span>Discount (${appliedDiscount * 100}% Off)</span>
-                <span class="val">- ${fmt(discountAmount)}</span>
-              </div>` : ''}
-              <div class="totals-row">
-                <span>CGST (9%)</span>
-                <span class="val">${fmt(cgstAmount)}</span>
-              </div>
-              <div class="totals-row">
-                <span>SGST (9%)</span>
-                <span class="val">${fmt(sgstAmount)}</span>
-              </div>
-              <div class="totals-row grand">
-                <span>Total Amount Paid</span>
-                <span class="val">${fmt(total)}</span>
-              </div>
-            </div>
+              <tr class="totals-row" style="color: #059669; font-weight: 600;">
+                <td>Discount (${appliedDiscount * 100}% Off)</td>
+                <td class="val" style="color: #059669; font-weight: 700;">- ${fmt(discountAmount)}</td>
+              </tr>` : ''}
+              <tr class="totals-row">
+                <td>CGST (9%)</td>
+                <td class="val">${fmt(cgstAmount)}</td>
+              </tr>
+              <tr class="totals-row">
+                <td>SGST (9%)</td>
+                <td class="val">${fmt(sgstAmount)}</td>
+              </tr>
+              <tr class="totals-row grand">
+                <td>Total Amount Paid</td>
+                <td class="val">${fmt(total)}</td>
+              </tr>
+            </table>
           </td>
         </tr>
       </table>
       
-      <!-- Footer Policy & Authorization -->
-      <table style="width: 100%; border-collapse: collapse; border-top: 1px solid #e2e8f0; margin-top: 24px;">
+      <!-- Footer -->
+      <table class="footer-table">
         <tr>
           <td style="width: 60%; vertical-align: bottom; padding-top: 20px;">
             <div class="terms">
@@ -781,8 +785,8 @@ export function CheckoutPage() {
           </td>
           <td style="width: 40%; text-align: right; vertical-align: bottom; padding-top: 20px;">
             <div class="auth">
-              <p class="company-name" style="font-weight: 900; font-size: 12px; text-transform: uppercase; color: #0f172a;">LELAM COMPANY</p>
-              <p class="note" style="font-size: 9px; color: #94a3b8; font-style: italic; margin-top: 4px;">Authorized computer-generated receipt.</p>
+              <p class="company-name">LELAM COMPANY</p>
+              <p class="note">Authorized computer-generated receipt.</p>
             </div>
           </td>
         </tr>
