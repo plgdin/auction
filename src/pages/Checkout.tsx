@@ -827,7 +827,7 @@ export function CheckoutPage() {
       await new Promise((resolve) => setTimeout(resolve, 400));
 
       const opt = {
-        margin:       [10, 10, 10, 10],
+        margin:       0,
         filename:     `Lelam-Invoice-${transactionId || 'receipt'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2.5, useCORS: true, letterRendering: true },
