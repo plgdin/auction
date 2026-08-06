@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, FC } from "react";
+import { useEffect, useRef, type FC } from "react";
 import { Renderer, Program, Mesh, Triangle, Vec3 } from "ogl";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +28,6 @@ export const VoicePoweredOrb: FC<VoicePoweredOrbProps> = ({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
-  const animationFrameRef = useRef<number>();
   const mediaStreamRef = useRef<MediaStream | null>(null);
 
   const vert = /* glsl */ `
@@ -194,7 +193,7 @@ export const VoicePoweredOrb: FC<VoicePoweredOrbProps> = ({
   const analyzeAudio = () => {
     if (!analyserRef.current || !dataArrayRef.current) return 0;
 
-    analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+    analyserRef.current.getByteFrequencyData(dataArrayRef.current as any);
 
     // Calculate RMS (Root Mean Square) for better voice detection
     let sum = 0;
@@ -317,10 +316,10 @@ export const VoicePoweredOrb: FC<VoicePoweredOrbProps> = ({
       while (container.firstChild) {
         container.removeChild(container.firstChild);
       }
-      container.appendChild(glContext.canvas);
+      container.appendChild(glContext.canvas as HTMLCanvasElement);
 
-      const geometry = new Triangle(glContext);
-      program = new Program(glContext, {
+      const geometry = new Triangle(glContext as any);
+      program = new Program(glContext as any, {
         vertex: vert,
         fragment: frag,
         uniforms: {
@@ -339,7 +338,7 @@ export const VoicePoweredOrb: FC<VoicePoweredOrbProps> = ({
         },
       });
 
-      const mesh = new Mesh(glContext, { geometry, program });
+      const mesh = new Mesh(glContext as any, { geometry, program });
 
       const resize = () => {
         if (!container || !rendererInstance || !glContext) return;
@@ -350,14 +349,15 @@ export const VoicePoweredOrb: FC<VoicePoweredOrbProps> = ({
         if (width === 0 || height === 0) return;
 
         rendererInstance.setSize(width * dpr, height * dpr);
-        glContext.canvas.style.width = width + "px";
-        glContext.canvas.style.height = height + "px";
+        const canvas = glContext.canvas as HTMLCanvasElement;
+        canvas.style.width = width + "px";
+        canvas.style.height = height + "px";
 
         if (program) {
           program.uniforms.iResolution.value.set(
-            glContext.canvas.width,
-            glContext.canvas.height,
-            glContext.canvas.width / glContext.canvas.height
+            canvas.width,
+            canvas.height,
+            canvas.width / canvas.height
           );
         }
       };
@@ -437,8 +437,9 @@ export const VoicePoweredOrb: FC<VoicePoweredOrbProps> = ({
         // Clean up canvas safely
         if (container && glContext && glContext.canvas) {
           try {
-            if (container.contains(glContext.canvas)) {
-              container.removeChild(glContext.canvas);
+            const canvas = glContext.canvas as HTMLCanvasElement;
+            if (container.contains(canvas)) {
+              container.removeChild(canvas);
             }
           } catch (error) {
             console.warn("Canvas cleanup error:", error);
@@ -478,7 +479,7 @@ export const VoicePoweredOrb: FC<VoicePoweredOrbProps> = ({
 
     const handleMicrophoneState = async () => {
       if (enableVoiceControl) {
-        const success = await initMicrophone();
+        await initMicrophone();
         if (!isMounted) return;
         // Update the microphone state in the WebGL context if needed
       } else {
