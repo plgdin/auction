@@ -600,169 +600,190 @@ export function CheckoutPage() {
     const sgstAmount = Math.round(gst / 2);
     const fmt = (n: number) => `\u20B9${n.toLocaleString('en-IN')}`;
 
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Invoice ${receiptNo} — Lelam Company</title>
+    return `
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1e293b; background: #f8fafc; padding: 0; font-size: 13px; line-height: 1.5; }
-  .page { max-width: 800px; margin: 32px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; padding: 32px 40px; border-bottom: 3px solid #0f172a; }
-  .company h1 { font-size: 22px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
-  .company .tagline { color: #64748b; font-size: 11px; font-weight: 500; margin-top: 2px; }
-  .company .address { margin-top: 8px; line-height: 1.7; color: #475569; font-size: 11px; }
-  .receipt-badge { display: inline-block; background: #0f172a; color: #fff; padding: 5px 14px; font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; border-radius: 4px; margin-bottom: 10px; }
-  .meta-right { text-align: right; }
-  .meta-right p { font-size: 12px; color: #475569; margin: 3px 0; }
-  .mono { font-family: 'Courier New', monospace; font-weight: 700; color: #0f172a; }
-  .status { color: #059669; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-top: 6px; }
-  .body { padding: 32px 40px; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 12px; margin-bottom: 28px; }
-  .info-grid h3 { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: 10px; }
-  .info-grid .name { font-size: 16px; font-weight: 700; color: #0f172a; }
-  .info-grid p { font-size: 12px; color: #475569; margin: 3px 0; }
-  table.items { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
-  table.items thead tr { background: #0f172a; color: #fff; }
-  table.items thead th { padding: 11px 14px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; text-align: left; }
-  table.items thead th:last-child { text-align: right; }
-  table.items thead th.center { text-align: center; }
-  table.items thead th:first-child { border-radius: 8px 0 0 0; }
-  table.items thead th:last-child { border-radius: 0 8px 0 0; }
-  table.items tbody td { padding: 14px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: top; }
-  table.items tbody td:last-child { text-align: right; font-family: 'Courier New', monospace; font-weight: 700; }
-  table.items tbody td.center { text-align: center; }
-  .item-name { font-weight: 700; color: #0f172a; font-size: 13px; }
-  .item-desc { font-size: 10px; color: #64748b; margin-top: 3px; }
-  .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 32px; }
-  .totals-box { width: 280px; }
-  .totals-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 12px; color: #475569; }
-  .totals-row .val { font-family: 'Courier New', monospace; font-weight: 600; color: #334155; }
-  .totals-row.discount { color: #059669; font-weight: 600; }
-  .totals-row.discount .val { color: #059669; font-weight: 700; }
-  .totals-row.grand { border-top: 3px solid #0f172a; padding-top: 12px; margin-top: 6px; font-size: 15px; font-weight: 900; color: #0f172a; }
-  .totals-row.grand .val { color: #0f172a; font-size: 15px; }
-  .footer-section { border-top: 1px solid #e2e8f0; padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
-  .terms h4 { font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 6px; }
-  .terms p { font-size: 10px; color: #64748b; margin: 2px 0; line-height: 1.6; }
-  .terms a { color: #0284c7; font-weight: 700; text-decoration: underline; }
-  .auth { text-align: right; }
-  .auth .company-name { font-weight: 900; font-size: 12px; text-transform: uppercase; color: #0f172a; }
-  .auth .note { font-size: 9px; color: #94a3b8; font-style: italic; margin-top: 4px; }
-  @media print { body { background: #fff; padding: 0; } .page { margin: 0; border: none; border-radius: 0; box-shadow: none; } }
+  
+  .invoice-download-root {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #1e293b;
+    background: #ffffff;
+    padding: 32px 40px;
+    font-size: 13px;
+    line-height: 1.5;
+    width: 800px;
+    box-sizing: border-box;
+  }
+  .invoice-download-root * { box-sizing: border-box; margin: 0; padding: 0; }
+  .invoice-download-root .header { border-bottom: 3px solid #0f172a; padding-bottom: 24px; margin-bottom: 24px; }
+  .invoice-download-root .header-left { float: left; width: 60%; }
+  .invoice-download-root .header-right { float: right; width: 40%; text-align: right; }
+  .invoice-download-root .company h1 { font-size: 22px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
+  .invoice-download-root .company .tagline { color: #64748b; font-size: 11px; font-weight: 500; margin-top: 2px; }
+  .invoice-download-root .company .address { margin-top: 8px; line-height: 1.7; color: #475569; font-size: 11px; }
+  .invoice-download-root .receipt-badge { display: inline-block; background: #0f172a; color: #fff; padding: 5px 14px; font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; border-radius: 4px; margin-bottom: 10px; }
+  .invoice-download-root .meta-right p { font-size: 12px; color: #475569; margin: 3px 0; }
+  .invoice-download-root .mono { font-family: 'Courier New', monospace; font-weight: 700; color: #0f172a; }
+  .invoice-download-root .status { color: #059669; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-top: 6px; }
+  
+  .invoice-download-root .info-grid { background: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 12px; margin-bottom: 28px; }
+  .invoice-download-root .info-col-left { float: left; width: 48%; }
+  .invoice-download-root .info-col-right { float: right; width: 48%; }
+  .invoice-download-root .info-grid h3 { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: 10px; }
+  .invoice-download-root .info-grid .name { font-size: 16px; font-weight: 700; color: #0f172a; }
+  .invoice-download-root .info-grid p { font-size: 12px; color: #475569; margin: 3px 0; }
+  
+  .invoice-download-root table.items { width: 100%; border-collapse: collapse; margin-bottom: 28px; clear: both; }
+  .invoice-download-root table.items thead tr { background: #0f172a; color: #fff; }
+  .invoice-download-root table.items thead th { padding: 11px 14px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; text-align: left; }
+  .invoice-download-root table.items thead th:last-child { text-align: right; }
+  .invoice-download-root table.items thead th.center { text-align: center; }
+  .invoice-download-root table.items thead th:first-child { border-radius: 8px 0 0 0; }
+  .invoice-download-root table.items thead th:last-child { border-radius: 0 8px 0 0; }
+  .invoice-download-root table.items tbody td { padding: 14px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: top; }
+  .invoice-download-root table.items tbody td:last-child { text-align: right; font-family: 'Courier New', monospace; font-weight: 700; }
+  .invoice-download-root table.items tbody td.center { text-align: center; }
+  .invoice-download-root .item-name { font-weight: 700; color: #0f172a; font-size: 13px; }
+  .invoice-download-root .item-desc { font-size: 10px; color: #64748b; margin-top: 3px; }
+  
+  .invoice-download-root .totals-wrap { margin-bottom: 32px; clear: both; }
+  .invoice-download-root .totals-box { float: right; width: 280px; }
+  .invoice-download-root .totals-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 12px; color: #475569; }
+  .invoice-download-root .totals-row .val { font-family: 'Courier New', monospace; font-weight: 600; color: #334155; }
+  .invoice-download-root .totals-row.discount { color: #059669; font-weight: 600; }
+  .invoice-download-root .totals-row.discount .val { color: #059669; font-weight: 700; }
+  .invoice-download-root .totals-row.grand { border-top: 3px solid #0f172a; padding-top: 12px; margin-top: 6px; font-size: 15px; font-weight: 900; color: #0f172a; }
+  .invoice-download-root .totals-row.grand .val { color: #0f172a; font-size: 15px; }
+  
+  .invoice-download-root .footer-section { border-top: 1px solid #e2e8f0; padding-top: 20px; clear: both; margin-top: 24px; }
+  .invoice-download-root .footer-left { float: left; width: 60%; }
+  .invoice-download-root .footer-right { float: right; width: 35%; text-align: right; }
+  .invoice-download-root .terms h4 { font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 6px; }
+  .invoice-download-root .terms p { font-size: 10px; color: #64748b; margin: 2px 0; line-height: 1.6; }
+  .invoice-download-root .terms a { color: #0284c7; font-weight: 700; text-decoration: underline; }
+  .invoice-download-root .auth .company-name { font-weight: 900; font-size: 12px; text-transform: uppercase; color: #0f172a; }
+  .invoice-download-root .auth .note { font-size: 9px; color: #94a3b8; font-style: italic; margin-top: 4px; }
+  .invoice-download-root .clearfix::after { content: ""; clear: both; display: table; }
 </style>
-</head>
-<body>
-<div class="page">
-  <div class="header">
-    <div class="company">
-      <h1>LELAM COMPANY</h1>
-      <div class="tagline">India's Premier B2B Auction & Asset Platform</div>
-      <div class="address">No: 2, 20th Cross Lakshmipuram, Halasuru, Bangalore 560008<br>Support: support@lelam.co | +91 94477 53889</div>
-    </div>
-    <div class="meta-right">
-      <div class="receipt-badge">Payment Receipt</div>
-      <p><strong>Receipt No:</strong> <span class="mono">${receiptNo}</span></p>
-      <p>Date: ${dateStr}</p>
-      <p class="status">\u2713 Status: PAID (SUCCESSFUL)</p>
-    </div>
-  </div>
-  <div class="body">
-    <div class="info-grid">
-      <div>
-        <h3>Billed To (Customer)</h3>
-        <p class="name">${fullName || profile?.first_name || 'Valued Customer'}</p>
-        ${businessName ? `<p style="font-weight: 600; color: #334155;">${businessName}</p>` : ''}
-        <p>${billingAddress || addressLine1 || 'Registered Platform User'}</p>
-        ${user?.email ? `<p>Email: ${user.email}</p>` : ''}
-        ${gstin ? `<p class="mono" style="margin-top: 6px; font-size: 12px;">Customer GSTIN: ${gstin.toUpperCase()}</p>` : ''}
-      </div>
-      <div>
-        <h3>Payment Details</h3>
-        <p><strong>Payment ID:</strong> <span class="mono">${transactionId}</span></p>
-        <p><strong>Payment Gateway:</strong> Razorpay Secure Gateway</p>
-        <p><strong>Billing Cycle:</strong> ${billingCycle === 'annual' ? 'Annual (Yearly)' : 'Monthly'}</p>
-        <p><strong>Subscription Plan:</strong> ${getPlanName(planId)} Plan</p>
-      </div>
-    </div>
-    <table class="items">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Item Description</th>
-          <th class="center">Cycle</th>
-          <th class="center">Seats</th>
-          <th>Amount (INR)</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="font-weight: 700; color: #94a3b8;">1</td>
-          <td>
-            <div class="item-name">Lelam ${getPlanName(planId)} Subscription Plan</div>
-            <div class="item-desc">Full access to MSTC auctions, document vault, valuation engine & bidding tools</div>
-          </td>
-          <td class="center" style="text-transform: uppercase; font-weight: 500;">${billingCycle}</td>
-          <td class="center" style="font-weight: 700;">${seats}</td>
-          <td>${fmt(baseSubtotal)}</td>
-        </tr>
-        ${extraSeats > 0 ? `
-        <tr>
-          <td style="font-weight: 700; color: #94a3b8;">2</td>
-          <td>
-            <div class="item-name">Additional Team Member Seats (${extraSeats})</div>
-            <div class="item-desc">${extraSeats} extra seats \u00D7 ${fmt(seatUnitPrice)}/${billingCycle === 'annual' ? 'yr' : 'mo'}</div>
-          </td>
-          <td class="center" style="text-transform: uppercase; font-weight: 500;">${billingCycle}</td>
-          <td class="center" style="font-weight: 700;">${extraSeats}</td>
-          <td>${fmt(extraSeatsCost)}</td>
-        </tr>` : ''}
-      </tbody>
-    </table>
-    <div class="totals-wrap">
-      <div class="totals-box">
-        <div class="totals-row">
-          <span>Subtotal</span>
-          <span class="val">${fmt(subtotalBeforeDiscount)}</span>
-        </div>
-        ${discountAmount > 0 ? `
-        <div class="totals-row discount">
-          <span>Discount (${appliedDiscount * 100}% Off)</span>
-          <span class="val">- ${fmt(discountAmount)}</span>
-        </div>` : ''}
-        <div class="totals-row">
-          <span>CGST (9%)</span>
-          <span class="val">${fmt(cgstAmount)}</span>
-        </div>
-        <div class="totals-row">
-          <span>SGST (9%)</span>
-          <span class="val">${fmt(sgstAmount)}</span>
-        </div>
-        <div class="totals-row grand">
-          <span>Total Amount Paid</span>
-          <span class="val">${fmt(total)}</span>
+
+<div class="invoice-download-root">
+  <div class="page">
+    <div class="header clearfix">
+      <div class="header-left">
+        <div class="company">
+          <h1>LELAM COMPANY</h1>
+          <div class="tagline">India's Premier B2B Auction & Asset Platform</div>
+          <div class="address">No: 2, 20th Cross Lakshmipuram, Halasuru, Bangalore 560008<br>Support: support@lelam.co | +91 94477 53889</div>
         </div>
       </div>
-    </div>
-    <div class="footer-section">
-      <div class="terms">
-        <h4>Terms & Conditions Apply:</h4>
-        <p>1. All subscription payments are final and subject to Lelam platform policies.</p>
-        <p>2. For complete Terms & Conditions: <a href="https://lelam.co/terms">https://lelam.co/terms</a></p>
-        <p>3. For billing inquiries: <a href="mailto:support@lelam.co">support@lelam.co</a></p>
+      <div class="header-right">
+        <div class="receipt-badge">Payment Receipt</div>
+        <p><strong>Receipt No:</strong> <span class="mono">${receiptNo}</span></p>
+        <p>Date: ${dateStr}</p>
+        <p class="status">\u2713 Status: PAID (SUCCESSFUL)</p>
       </div>
-      <div class="auth">
-        <p class="company-name">Lelam Company</p>
-        <p class="note">Authorized computer-generated receipt.</p>
+    </div>
+    
+    <div class="body">
+      <div class="info-grid clearfix">
+        <div class="info-col-left">
+          <h3>Billed To (Customer)</h3>
+          <p class="name">${fullName || profile?.first_name || 'Valued Customer'}</p>
+          ${businessName ? `<p style="font-weight: 600; color: #334155;">${businessName}</p>` : ''}
+          <p>${billingAddress || addressLine1 || 'Registered Platform User'}</p>
+          ${user?.email ? `<p>Email: ${user.email}</p>` : ''}
+          ${gstin ? `<p class="mono" style="margin-top: 6px; font-size: 12px;">Customer GSTIN: ${gstin.toUpperCase()}</p>` : ''}
+        </div>
+        <div class="info-col-right">
+          <h3>Payment Details</h3>
+          <p><strong>Payment ID:</strong> <span class="mono">${transactionId}</span></p>
+          <p><strong>Payment Gateway:</strong> Razorpay Secure Gateway</p>
+          <p><strong>Billing Cycle:</strong> ${billingCycle === 'annual' ? 'Annual (Yearly)' : 'Monthly'}</p>
+          <p><strong>Subscription Plan:</strong> ${getPlanName(planId)} Plan</p>
+        </div>
+      </div>
+      
+      <table class="items">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Item Description</th>
+            <th class="center">Cycle</th>
+            <th class="center">Seats</th>
+            <th>Amount (INR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight: 700; color: #94a3b8;">1</td>
+            <td>
+              <div class="item-name">Lelam ${getPlanName(planId)} Subscription Plan</div>
+              <div class="item-desc">Full access to MSTC auctions, document vault, valuation engine & bidding tools</div>
+            </td>
+            <td class="center" style="text-transform: uppercase; font-weight: 500;">${billingCycle}</td>
+            <td class="center" style="font-weight: 700;">${seats}</td>
+            <td>${fmt(baseSubtotal)}</td>
+          </tr>
+          ${extraSeats > 0 ? `
+          <tr>
+            <td style="font-weight: 700; color: #94a3b8;">2</td>
+            <td>
+              <div class="item-name">Additional Team Member Seats (${extraSeats})</div>
+              <div class="item-desc">${extraSeats} extra seats \u00D7 ${fmt(seatUnitPrice)}/${billingCycle === 'annual' ? 'yr' : 'mo'}</div>
+            </td>
+            <td class="center" style="text-transform: uppercase; font-weight: 500;">${billingCycle}</td>
+            <td class="center" style="font-weight: 700;">${extraSeats}</td>
+            <td>${fmt(extraSeatsCost)}</td>
+          </tr>` : ''}
+        </tbody>
+      </table>
+      
+      <div class="totals-wrap clearfix">
+        <div class="totals-box">
+          <div class="totals-row">
+            <span>Subtotal</span>
+            <span class="val">${fmt(subtotalBeforeDiscount)}</span>
+          </div>
+          ${discountAmount > 0 ? `
+          <div class="totals-row discount">
+            <span>Discount (${appliedDiscount * 100}% Off)</span>
+            <span class="val">- ${fmt(discountAmount)}</span>
+          </div>` : ''}
+          <div class="totals-row">
+            <span>CGST (9%)</span>
+            <span class="val">${fmt(cgstAmount)}</span>
+          </div>
+          <div class="totals-row">
+            <span>SGST (9%)</span>
+            <span class="val">${fmt(sgstAmount)}</span>
+          </div>
+          <div class="totals-row grand">
+            <span>Total Amount Paid</span>
+            <span class="val">${fmt(total)}</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="footer-section clearfix">
+        <div class="footer-left">
+          <div class="terms">
+            <h4>Terms & Conditions Apply:</h4>
+            <p>1. All subscription payments are final and subject to Lelam platform policies.</p>
+            <p>2. For complete Terms & Conditions: <a href="https://lelam.co/terms">https://lelam.co/terms</a></p>
+            <p>3. For billing inquiries: <a href="mailto:support@lelam.co">support@lelam.co</a></p>
+          </div>
+        </div>
+        <div class="footer-right">
+          <div class="auth">
+            <p class="company-name">Lelam Company</p>
+            <p class="note">Authorized computer-generated receipt.</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
-</body>
-</html>`;
+`;
   };
 
   const handleDownloadInvoice = async () => {
@@ -777,30 +798,23 @@ export function CheckoutPage() {
     try {
       const htmlContent = generateInvoiceHTML();
       
-      // Render inside a sandboxed visually-hidden iframe to prevent DOM structure collapsing
-      // and ensure fonts, inline styles, and standard HTML nodes load completely.
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.left = '0';
-      iframe.style.top = '0';
-      iframe.style.width = '800px';
-      iframe.style.height = '1150px';
-      iframe.style.opacity = '0';
-      iframe.style.pointerEvents = 'none';
-      iframe.style.zIndex = '-9999';
-      document.body.appendChild(iframe);
+      // Inject directly into the main document body context.
+      // Opacity 0 and position fixed keeps it rendering correctly in flow without flash or overlap.
+      const tempContainer = document.createElement('div');
+      tempContainer.id = 'lelam-invoice-pdf-render-root';
+      tempContainer.style.position = 'fixed';
+      tempContainer.style.left = '0';
+      tempContainer.style.top = '0';
+      tempContainer.style.width = '800px';
+      tempContainer.style.opacity = '0';
+      tempContainer.style.zIndex = '-9999';
+      tempContainer.style.pointerEvents = 'none';
+      tempContainer.innerHTML = htmlContent;
+      
+      document.body.appendChild(tempContainer);
 
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!iframeDoc) {
-        throw new Error('Could not access iframe document context');
-      }
-
-      iframeDoc.open();
-      iframeDoc.write(htmlContent);
-      iframeDoc.close();
-
-      // Small delay for CSS layouts and images to paint inside the iframe container
-      await new Promise((resolve) => setTimeout(resolve, 350));
+      // Brief delay for the browser's DOM parser to compile style sheets inside parent document context
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       const opt = {
         margin:       [10, 10, 10, 10],
@@ -810,8 +824,8 @@ export function CheckoutPage() {
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
-      await (window as any).html2pdf().set(opt).from(iframeDoc.body).save();
-      document.body.removeChild(iframe);
+      await (window as any).html2pdf().set(opt).from(tempContainer).save();
+      document.body.removeChild(tempContainer);
     } catch (err) {
       console.error('Failed to generate PDF invoice:', err);
       alert('An error occurred while generating your PDF invoice. Please try again.');
