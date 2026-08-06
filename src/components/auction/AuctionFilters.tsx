@@ -1024,7 +1024,7 @@ export function AuctionFilters({
             <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Upgrade Plan Required</h3>
             
             <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              Re-Auction tracking & filters are exclusive to <span className="font-bold text-slate-900">Go</span> & <span className="font-bold text-slate-900">Pro</span> plan members.
+              Re-Auction tracking & filters are exclusive to the <span className="font-bold text-slate-900">Business</span> plan.
             </p>
 
             <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200/70 text-xs text-amber-900 text-left space-y-1.5">
