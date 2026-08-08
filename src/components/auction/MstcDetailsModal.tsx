@@ -2312,28 +2312,28 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     return (
                       <div className="space-y-3 text-[13.5px] text-slate-700">
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                          <span className="text-slate-500 font-semibold">Projected Turnover</span>
-                          <span className="font-bold text-slate-900">
+                          <span className="text-slate-500 font-semibold whitespace-nowrap">Projected Turnover</span>
+                          <span className="font-bold text-slate-900 whitespace-nowrap">
                             {formatPrice(finalTurnover, currency)}
                           </span>
                         </div>
                         
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                          <span className="text-slate-500 font-semibold">Predicted Closing Bid</span>
-                          <span className="font-bold text-indigo-600">
+                          <span className="text-slate-500 font-semibold whitespace-nowrap">Predicted Closing Bid</span>
+                          <span className="font-bold text-indigo-600 whitespace-nowrap">
                             {formatPrice(predictedClosingBid, currency)}
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                          <span className="text-slate-500 font-semibold">Projected Profit</span>
-                          <span className="font-bold text-emerald-600">
+                          <span className="text-slate-500 font-semibold whitespace-nowrap">Projected Profit</span>
+                          <span className="font-bold text-emerald-600 whitespace-nowrap">
                             {formatPrice(projectedProfit, currency)}
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center pb-1">
-                          <span className="text-slate-500 font-semibold">Projected ROI</span>
+                          <span className="text-slate-500 font-semibold whitespace-nowrap">Projected ROI</span>
                           <span className=" font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-xs">
                             +{roi.toFixed(1)}% ROI
                           </span>
