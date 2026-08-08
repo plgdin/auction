@@ -39,6 +39,15 @@ export function HeroSection() {
   }, []);
 
   useEffect(() => {
+    const isMobile = window.innerWidth < 768;
+
+    // Keep the mobile animation, but let the first paint finish before the
+    // decorative WebGL chunk is evaluated.
+    if (isMobile) {
+      const frame = requestAnimationFrame(() => setShowHills(true));
+      return () => cancelAnimationFrame(frame);
+    }
+
     // WebGL is decorative. Start it after the initial interaction/idle window,
     // so it cannot compete with first paint or input readiness.
     let started = false;
@@ -149,6 +158,7 @@ export function HeroSection() {
               alt="Lelam Logo"
               width={700}
               height={140}
+              fetchPriority="high"
               className="w-auto max-h-[80px] sm:max-h-[120px] lg:max-h-[140px] object-contain select-none mx-auto"
               style={{
                 filter: 'brightness(0) invert(1)',

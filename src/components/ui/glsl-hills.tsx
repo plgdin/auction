@@ -25,7 +25,9 @@ export function GLSLHills({
     if (!canvas || !container) return;
 
     const isMobile = window.innerWidth < 768;
-    const segments = isMobile ? 128 : planeSize;
+    // Keep the same animated hills while reducing vertex and pixel work on
+    // small screens. The shader remains active; only its workload changes.
+    const segments = isMobile ? 64 : Math.min(planeSize, 192);
 
     // Plane class
     class Plane {
@@ -188,7 +190,7 @@ export function GLSLHills({
       const h = container.clientHeight;
       if (!w || !h) return;
 
-      const dpr = Math.min(window.devicePixelRatio, 2);
+      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio, 1.5);
       const targetW = Math.floor(w * dpr);
       const targetH = Math.floor(h * dpr);
       const canvasEl = renderer.domElement;
@@ -231,7 +233,7 @@ export function GLSLHills({
 
     let animationId: number;
     let lastFrameTime = 0;
-    const frameInterval = 1000 / 30; // 30 FPS throttle
+    const frameInterval = isMobile ? 1000 / 24 : 1000 / 30;
     let inView = true;
 
     // Use IntersectionObserver to pause rendering when the background canvas is offscreen

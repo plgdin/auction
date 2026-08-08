@@ -18,8 +18,8 @@ function SectionSkeleton() {
 export function Home() {
   const [loadBelowFold, setLoadBelowFold] = useState(false);
 
-  // Keep below-fold work out of Lighthouse's initial-load window. Load it when
-  // the visitor starts scrolling, or during a long idle period.
+  // Keep below-fold work out of the initial-load window. Load it when the
+  // visitor starts scrolling, when the content is actually needed.
   useEffect(() => {
     let triggered = false;
     const triggerLoad = () => {
@@ -30,18 +30,9 @@ export function Home() {
       window.removeEventListener('scroll', triggerLoad);
     };
 
-    const idleTimer = window.setTimeout(triggerLoad, 8000);
     window.addEventListener('scroll', triggerLoad, { once: true, passive: true });
 
-    const idleCallback = 'requestIdleCallback' in window
-      ? window.requestIdleCallback(triggerLoad, { timeout: 8000 })
-      : undefined;
-
     return () => {
-      clearTimeout(idleTimer);
-      if (idleCallback !== undefined && 'cancelIdleCallback' in window) {
-        window.cancelIdleCallback(idleCallback);
-      }
       window.removeEventListener('scroll', triggerLoad);
     };
   }, []);
