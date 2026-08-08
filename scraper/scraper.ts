@@ -2,7 +2,6 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import readline from 'readline';
 import * as fs from 'fs';
 
 dotenv.config({ path: '.env.local' });
@@ -39,29 +38,17 @@ interface DiscoveredRow {
   parent_auction_id: string | null;
 }
 
-function waitForUserConfirmation(query: string): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-  return new Promise(resolve => rl.question(query, ans => {
-    rl.close();
-    resolve(ans);
-  }));
-}
 
 async function executeDiscoveryScraper() {
   console.log('[Cleanup] Checking for expired auctions...');
   try {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const oneWeekAgoIso = oneWeekAgo.toISOString();
+    const nowIso = new Date().toISOString();
     
-    // 1. Fetch expired auctions older than 1 week
+    // 1. Fetch expired auctions (closing date in the past)
     const { data: expiredAuctions, error: fetchError } = await supabase
       .from('mstc_auctions')
       .select('id, mstc_auction_number, closing_date, sanitized_document_path')
-      .lt('closing_date', oneWeekAgoIso);
+      .lt('closing_date', nowIso);
 
     if (fetchError) {
       console.error('[Cleanup] Error fetching expired auctions:', fetchError.message);
@@ -88,21 +75,35 @@ async function executeDiscoveryScraper() {
         console.error('[Cleanup] Error writing audit logs for expired auctions:', logError.message);
       }
 
-      // 3. Remove physical files from storage
+      // 3. Remove physical files from storage (catalogs, previews, and extracted images)
       for (const auc of expiredAuctions) {
-        if (auc.sanitized_document_path) {
-          const cloudStorageLocation = `mstc-catalogs/${auc.id}.pdf`;
-          const previewStorageLocation = `mstc-previews/${auc.id}.jpg`;
-          
-          const { error: storageDeleteError } = await supabase.storage
-            .from('auction_documents')
-            .remove([cloudStorageLocation, previewStorageLocation]);
+        const cloudStorageLocation = `mstc-catalogs/${auc.id}.pdf`;
+        const previewStorageLocation = `mstc-previews/${auc.id}.jpg`;
+        const filesToDelete = [cloudStorageLocation, previewStorageLocation];
 
-          if (storageDeleteError) {
-            console.warn(`[Cleanup] Failed to remove storage file ${cloudStorageLocation}:`, storageDeleteError.message);
-          } else {
-            console.log(`[Cleanup] Removed storage file: ${cloudStorageLocation}`);
+        try {
+          // Query the storage bucket for all extracted lot images/pages associated with this auction ID
+          const { data: extractedImages, error: listError } = await supabase.storage
+            .from('auction_documents')
+            .list('mstc-extracted-images', { search: auc.id });
+
+          if (!listError && extractedImages && extractedImages.length > 0) {
+            for (const img of extractedImages) {
+              filesToDelete.push(`mstc-extracted-images/${img.name}`);
+            }
           }
+        } catch (listErr: any) {
+          console.warn(`[Cleanup] Failed to query extracted images for auction ${auc.id}:`, listErr.message);
+        }
+
+        const { error: storageDeleteError } = await supabase.storage
+          .from('auction_documents')
+          .remove(filesToDelete);
+
+        if (storageDeleteError) {
+          console.warn(`[Cleanup] Failed to remove storage files for auction ${auc.id}:`, storageDeleteError.message);
+        } else {
+          console.log(`[Cleanup] Removed ${filesToDelete.length} storage files for auction: ${auc.mstc_auction_number}`);
         }
       }
 
@@ -247,7 +248,9 @@ async function executeDiscoveryScraper() {
             resultsLoaded = true;
             break;
           }
-        } catch (e) {}
+        } catch (e) {
+          // ignore frame evaluation error
+        }
       }
       if (resultsLoaded) {
         console.log('[Scraper] Search results detected successfully! Proceeding...');

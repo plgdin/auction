@@ -216,6 +216,145 @@ function isBlockLevelKeyword(
   return true;
 }
 
+// ─── OCR Garbage Detection ──────────────────────────────────────────────────
+
+/**
+ * Common short abbreviations that are legitimate in auction descriptions.
+ * These are excluded from "short word" garbage counting.
+ */
+const LEGITIMATE_SHORT_WORDS = new Set([
+  // Units / Piping / Fitting specs
+  "mt", "kg", "gm", "no", "pc", "rm", "ac", "bw", "cs", "as", "ss", "ms", "gi",
+  "ci", "fe", "cu", "al", "cr", "zn", "ni", "pb", "sn", "ea", "eq", "od", "id",
+  "nb", "dn", "wt", "rf", "ff", "sw", "wn", "so", "th", "bl",
+  // Common prepositions / articles / conjunctions / verbs
+  "of", "at", "in", "to", "on", "by", "or", "an", "is", "it", "as", "if",
+  "up", "so", "do", "go", "be", "we", "he", "me", "my", "us", "am", "re",
+  // Indian auction / agency / department terms
+  "rs", "hp", "kv", "mm", "cm", "hd", "hr", "lr", "mr", "wt", "lt", "ht", "ab", "eb", "dt",
+  // Compass / location
+  "nr", "rd",
+  // Numbers as words
+  "st", "nd", "th",
+]);
+
+/**
+ * Standard vowel-less abbreviations that are common in industrial specifications.
+ */
+const LEGITIMATE_NO_VOWELS = new Set([
+  "wpb", "ppf", "crp", "kpm", "slm", "qty", "lbs", "mnd", "pnd", "std", "ltd", "bld", "bldg", "bldgs", "mrs", "mr", "dr", "st", "rd", "try",
+  "rgn", "dept", "govt", "corp", "mkt", "mktg", "dist", "stn", "loc", "dt", "ref", "val", "bal", "amt"
+]);
+
+function isNoiseWord(word: string): boolean {
+  // If it's a standalone number (e.g. "3", "100,000", "01"), it is NOT noise
+  if (/^\d+([.,]\d+)*$/.test(word)) {
+    return false;
+  }
+  // If it is a standalone symbol (e.g. "-", "/", "&", "+", "#"), it is NOT noise
+  if (/^[^\w\s]+$/.test(word)) {
+    return false;
+  }
+  // If it contains both letters and digits (e.g. B7M, P2O5, H2A, WP11, A234), it is NOT noise
+  if (/[a-zA-Z]/.test(word) && /\d/.test(word)) {
+    return false;
+  }
+  const clean = word.replace(/[^a-zA-Z]/g, "").toLowerCase();
+  if (clean.length === 0) return true; // Symbols are noise (fallback, though handled above)
+  if (clean.length === 1) {
+    // Treat uppercase single letters (like H, D, P, E, M, S) as non-noise
+    if (word === word.toUpperCase()) {
+      return false;
+    }
+    return clean !== "a" && clean !== "i";
+  }
+  if (clean.length === 2) {
+    return !LEGITIMATE_SHORT_WORDS.has(clean);
+  }
+  if (!/[aeiouy]/i.test(clean)) {
+    return !LEGITIMATE_NO_VOWELS.has(clean); // No vowels/y - noise unless explicitly whitelisted
+  }
+  if (/([a-zA-Z])\1\1/.test(clean)) {
+    return true; // Repeating letters (like RRR, Eee)
+  }
+  return false;
+}
+
+export function isGarbageSegment(segment: string): boolean {
+  const words = segment.trim().split(/\s+/).filter(w => w.length > 0);
+  if (words.length < 3) return false;
+
+  let noiseCount = 0;
+  for (const w of words) {
+    if (isNoiseWord(w)) {
+      noiseCount++;
+    }
+  }
+
+  // A segment of 3+ words is garbage if at least 40% of the words are noise
+  return noiseCount / words.length >= 0.4;
+}
+
+/**
+ * Strip trailing OCR garbage from a description.
+ *
+ * Uses a sliding window scanning backwards from the end to find the
+ * boundary where coherent text transitions to garbage. Once the earliest
+ * garbage window is identified, truncates exactly at the first noise word
+ * within that window to ensure clean truncation without leaving garbage fragments.
+ */
+export function stripTrailingGarbage(text: string): string {
+  if (!text) return "";
+  const words = text.split(/\s+/);
+  if (words.length < 6) return text; // Too short to have trailing garbage
+
+  const WINDOW_SIZE = 6;
+  const MIN_COHERENT_PREFIX = 4; // Keep at least 4 words
+
+  let earliestGarbageWindowStart = -1;
+
+  // Scan backwards with a sliding window to find the earliest garbage window
+  for (let end = words.length; end > MIN_COHERENT_PREFIX + WINDOW_SIZE; end--) {
+    const windowStart = end - WINDOW_SIZE;
+    const windowText = words.slice(windowStart, end).join(" ");
+
+    if (isGarbageSegment(windowText)) {
+      earliestGarbageWindowStart = windowStart;
+      // Continue scanning backwards to find an even earlier garbage window
+      for (let probe = windowStart - 1; probe >= MIN_COHERENT_PREFIX; probe--) {
+        const probeEnd = Math.min(probe + WINDOW_SIZE, words.length);
+        const probeWindow = words.slice(probe, probeEnd).join(" ");
+        if (isGarbageSegment(probeWindow)) {
+          earliestGarbageWindowStart = probe;
+        }
+      }
+      break; // Found the earliest transition region
+    }
+  }
+
+  if (earliestGarbageWindowStart !== -1) {
+    // Within the earliest garbage window, find the index of the first noise word
+    const windowWords = words.slice(earliestGarbageWindowStart, earliestGarbageWindowStart + WINDOW_SIZE);
+    let firstNoiseWordOffset = 0;
+    for (let i = 0; i < windowWords.length; i++) {
+      if (isNoiseWord(windowWords[i])) {
+        firstNoiseWordOffset = i;
+        break;
+      }
+    }
+
+    const boundaryIdx = earliestGarbageWindowStart + firstNoiseWordOffset;
+    if (boundaryIdx >= MIN_COHERENT_PREFIX) {
+      const truncated = words.slice(0, boundaryIdx).join(" ");
+      return truncated
+        .replace(/\s*[,.:;?\-/!#]+\s*$/, "")
+        .trim();
+    }
+  }
+
+  return text;
+}
+
 /**
  * Cleans a lot's material description by stripping out metadata fields,
  * conditions, quantity phrases, and other noise.
@@ -361,6 +500,40 @@ export function cleanMaterialDescription(desc: string): string {
     cleaned = cleaned.substring(0, noteIdx);
   }
 
+  // 5b. Strip inline metadata that appears after a sentence boundary.
+  //     PDF text extraction often concatenates everything into one line,
+  //     so we can't rely on newline-based detection for these patterns.
+  //     Order matters: strip from earliest inline metadata marker found.
+  const inlineMetadataPatterns: Array<{ pattern: RegExp; label: string }> = [
+    // Officer designations (Deputy/Asst/Chief/Senior + Engineer/Manager/Officer)
+    { pattern: /\.?\s*(?:Deputy|Asst\.?|Assistant|Chief|Senior|Jr\.?|Junior|Executive)\s+(?:Executive\s+)?(?:Engineer|Manager|Officer|Director)\b/i, label: "officer" },
+    // Mobile/phone numbers: M :- 9909907418 or Phone: 98xxx or Mobile - 98xxx
+    { pattern: /\.?\s*(?:M|Ph|Phone|Mobile|Tel|Contact\s*No)\s*[:.\-]\s*[\d\s\-+()]{7,}/i, label: "phone" },
+    // Pre-Bid EMD
+    { pattern: /\.?\s*Pre-?\s*Bid\s+EMD\s*[:.\-]/i, label: "emd" },
+    // "Note:" or "Note-" inline (followed by digit or "1]" or "As is")
+    { pattern: /\.?\s*Note\s*[:.\-]\s*(?:\d|\(|as\s+is)/i, label: "note" },
+    // "Location :-" or "Location:" inline (followed by a place name, not a sentence)
+    { pattern: /\.?\s*Location\s*[:.\-]\s*(?![Oo]f\b)/i, label: "location" },
+  ];
+
+  for (const { pattern } of inlineMetadataPatterns) {
+    const match = cleaned.match(pattern);
+    if (match && match.index !== undefined) {
+      // If it matches at the very start (or only whitespace before it), strip just the matched pattern
+      if (match.index === 0 || cleaned.substring(0, match.index).trim().length === 0) {
+        cleaned = cleaned.substring(match.index + match[0].length).trim();
+      } else {
+        // Only truncate if there's meaningful content before the match
+        const before = cleaned.substring(0, match.index).trim();
+        if (before.length >= 20) {
+          cleaned = before;
+          break; // Stop at the earliest inline metadata found
+        }
+      }
+    }
+  }
+
   // 6. Remove "Location: ..." and everything after it
   //    Same block-level guard as Note to prevent cutting descriptions like
   //    "Location of plant is accessible by road".
@@ -483,6 +656,9 @@ export function cleanMaterialDescription(desc: string): string {
     .replace(/^\s*[,:-]\s*/, "")
     .replace(/\s*[.,:\-/]\s*$/, "")
     .trim();
+
+  // 14. Strip trailing OCR garbage (garbled characters from bad OCR or corrupt PDF fonts)
+  cleaned = stripTrailingGarbage(cleaned);
 
   return cleaned;
 }

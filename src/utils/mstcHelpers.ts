@@ -638,6 +638,120 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
  * Cleans a lot's material description by stripping out metadata fields,
  * conditions, quantity phrases, and other noise.
  */
+const LEGITIMATE_SHORT_WORDS = new Set([
+  // Units / Piping / Fitting specs
+  "mt", "kg", "gm", "no", "pc", "rm", "ac", "bw", "cs", "as", "ss", "ms", "gi",
+  "ci", "fe", "cu", "al", "cr", "zn", "ni", "pb", "sn", "ea", "eq", "od", "id",
+  "nb", "dn", "wt", "rf", "ff", "sw", "wn", "so", "th", "bl",
+  // Common prepositions / articles / conjunctions / verbs
+  "of", "at", "in", "to", "on", "by", "or", "an", "is", "it", "as", "if",
+  "up", "so", "do", "go", "be", "we", "he", "me", "my", "us", "am", "re",
+  // Indian auction / agency / department terms
+  "rs", "hp", "kv", "mm", "cm", "hd", "hr", "lr", "mr", "wt", "lt", "ht", "ab", "eb", "dt",
+  // Compass / location
+  "nr", "rd",
+  // Numbers as words
+  "st", "nd", "th",
+]);
+
+const LEGITIMATE_NO_VOWELS = new Set([
+  "wpb", "ppf", "crp", "kpm", "slm", "qty", "lbs", "mnd", "pnd", "std", "ltd", "bld", "bldg", "bldgs", "mrs", "mr", "dr", "st", "rd", "try",
+  "rgn", "dept", "govt", "corp", "mkt", "mktg", "dist", "stn", "loc", "dt", "ref", "val", "bal", "amt"
+]);
+
+function isNoiseWord(word: string): boolean {
+  if (/^\d+([.,]\d+)*$/.test(word)) {
+    return false;
+  }
+  if (/^[^\w\s]+$/.test(word)) {
+    return false;
+  }
+  if (/[a-zA-Z]/.test(word) && /\d/.test(word)) {
+    return false;
+  }
+  const clean = word.replace(/[^a-zA-Z]/g, "").toLowerCase();
+  if (clean.length === 0) return true;
+  if (clean.length === 1) {
+    if (word === word.toUpperCase()) {
+      return false;
+    }
+    return clean !== "a" && clean !== "i";
+  }
+  if (clean.length === 2) {
+    return !LEGITIMATE_SHORT_WORDS.has(clean);
+  }
+  if (!/[aeiouy]/i.test(clean)) {
+    return !LEGITIMATE_NO_VOWELS.has(clean);
+  }
+  if (/([a-zA-Z])\1\1/.test(clean)) {
+    return true;
+  }
+  return false;
+}
+
+export function isGarbageSegment(segment: string): boolean {
+  const words = segment.trim().split(/\s+/).filter(w => w.length > 0);
+  if (words.length < 3) return false;
+
+  let noiseCount = 0;
+  for (const w of words) {
+    if (isNoiseWord(w)) {
+      noiseCount++;
+    }
+  }
+
+  return noiseCount / words.length >= 0.4;
+}
+
+export function stripTrailingGarbage(text: string): string {
+  if (!text) return "";
+  const words = text.split(/\s+/);
+  if (words.length < 6) return text;
+
+  const WINDOW_SIZE = 6;
+  const MIN_COHERENT_PREFIX = 4;
+
+  let earliestGarbageWindowStart = -1;
+
+  for (let end = words.length; end > MIN_COHERENT_PREFIX + WINDOW_SIZE; end--) {
+    const windowStart = end - WINDOW_SIZE;
+    const windowText = words.slice(windowStart, end).join(" ");
+
+    if (isGarbageSegment(windowText)) {
+      earliestGarbageWindowStart = windowStart;
+      for (let probe = windowStart - 1; probe >= MIN_COHERENT_PREFIX; probe--) {
+        const probeEnd = Math.min(probe + WINDOW_SIZE, words.length);
+        const probeWindow = words.slice(probe, probeEnd).join(" ");
+        if (isGarbageSegment(probeWindow)) {
+          earliestGarbageWindowStart = probe;
+        }
+      }
+      break;
+    }
+  }
+
+  if (earliestGarbageWindowStart !== -1) {
+    const windowWords = words.slice(earliestGarbageWindowStart, earliestGarbageWindowStart + WINDOW_SIZE);
+    let firstNoiseWordOffset = 0;
+    for (let i = 0; i < windowWords.length; i++) {
+      if (isNoiseWord(windowWords[i])) {
+        firstNoiseWordOffset = i;
+        break;
+      }
+    }
+
+    const boundaryIdx = earliestGarbageWindowStart + firstNoiseWordOffset;
+    if (boundaryIdx >= MIN_COHERENT_PREFIX) {
+      const truncated = words.slice(0, boundaryIdx).join(" ");
+      return truncated
+        .replace(/\s*[,.:;?\-/!#]+\s*$/, "")
+        .trim();
+    }
+  }
+
+  return text;
+}
+
 export function cleanMaterialDescription(desc: string): string {
   if (!desc) return '';
   let cleaned = desc;
@@ -665,6 +779,40 @@ export function cleanMaterialDescription(desc: string): string {
   //    (preceded by newline or start-of-string AND followed by : or -).
   //    Prevents stripping mid-sentence usage like "Please note that items..."
   cleaned = cleaned.replace(/(?:^|\n)\s*Note\s*[:.-].*$/gim, '');
+
+  // 1b. Strip inline metadata that appears after a sentence boundary.
+  //     PDF text extraction often concatenates everything into one line,
+  //     so we can't rely on newline-based detection for these patterns.
+  //     Order matters: strip from earliest inline metadata marker found.
+  const inlineMetadataPatterns: Array<{ pattern: RegExp; label: string }> = [
+    // Officer designations (Deputy/Asst/Chief/Senior + Engineer/Manager/Officer)
+    { pattern: /\.?\s*(?:Deputy|Asst\.?|Assistant|Chief|Senior|Jr\.?|Junior|Executive)\s+(?:Executive\s+)?(?:Engineer|Manager|Officer|Director)\b/i, label: "officer" },
+    // Mobile/phone numbers: M :- 9909907418 or Phone: 98xxx or Mobile - 98xxx
+    { pattern: /\.?\s*(?:M|Ph|Phone|Mobile|Tel|Contact\s*No)\s*[:.\-]\s*[\d\s\-+()]{7,}/i, label: "phone" },
+    // Pre-Bid EMD
+    { pattern: /\.?\s*Pre-?\s*Bid\s+EMD\s*[:.\-]/i, label: "emd" },
+    // "Note:" or "Note-" inline (followed by digit or "1]" or "As is")
+    { pattern: /\.?\s*Note\s*[:.\-]\s*(?:\d|\(|as\s+is)/i, label: "note" },
+    // "Location :-" or "Location:" inline (followed by a place name, not a sentence)
+    { pattern: /\.?\s*Location\s*[:.\-]\s*(?![Oo]f\b)/i, label: "location" },
+  ];
+
+  for (const { pattern } of inlineMetadataPatterns) {
+    const match = cleaned.match(pattern);
+    if (match && match.index !== undefined) {
+      // If it matches at the very start (or only whitespace before it), strip just the matched pattern
+      if (match.index === 0 || cleaned.substring(0, match.index).trim().length === 0) {
+        cleaned = cleaned.substring(match.index + match[0].length).trim();
+      } else {
+        // Only truncate if there's meaningful content before the match
+        const before = cleaned.substring(0, match.index).trim();
+        if (before.length >= 20) {
+          cleaned = before;
+          break; // Stop at the earliest inline metadata found
+        }
+      }
+    }
+  }
 
   // 2. Remove "Location: ..." / "Lot Location: ..." ONLY as block-level headers
   //    Prevents stripping mid-sentence usage like "Location of plant is accessible..."
@@ -712,6 +860,8 @@ export function cleanMaterialDescription(desc: string): string {
     .replace(/\s*[.,:\-/]\s*$/, '')
     .trim();
 
+  // 9. Strip trailing OCR garbage
+  cleaned = stripTrailingGarbage(cleaned);
   return cleaned;
 }
 
@@ -823,6 +973,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
             if (lot.subItems && Array.isArray(lot.subItems) && lot.subItems.length > 0) {
               const validSubs = lot.subItems.filter((sub: any) => {
                 if (!sub.description) return false;
+                if (isGarbageSegment(sub.description)) return false;
                 const lower = sub.description.toLowerCase();
                 return !(
                   lower.includes('guide for making payment') ||
@@ -1175,6 +1326,26 @@ export function validateCatalogDescriptions(
     if (/\b(?:pcb group|product type|lot state)\b/i.test(desc)) {
       issues.push(`Lot ${item.sr} description contains metadata residue`);
       continue;
+    }
+
+    // OCR garbage detection: flag descriptions where most words are short nonsense
+    const descWords = desc.split(/\s+/).filter((w: string) => /[a-zA-Z]/.test(w));
+    if (descWords.length >= 5) {
+      const LEGIT_SHORT = new Set([
+        'mt', 'kg', 'gm', 'no', 'pc', 'rm', 'ac', 'ms', 'gi', 'ci', 'ss',
+        'fe', 'cu', 'al', 'cr', 'zn', 'ni', 'pb', 'sn', 'of', 'at', 'in',
+        'to', 'on', 'by', 'or', 'an', 'is', 'it', 'as', 'if', 'up', 'so',
+        'do', 'go', 'be', 'we', 'he', 'me', 'my', 'us', 'rs', 'hp', 'kv',
+        'mm', 'cm', 'hd', 'hr', 'lr', 'mr', 'wt', 'nr', 'rd', 'st', 'nd', 'th',
+      ]);
+      const shortNonLegit = descWords.filter((w: string) => {
+        const clean = w.replace(/[^a-zA-Z]/g, '').toLowerCase();
+        return clean.length > 0 && clean.length <= 2 && !LEGIT_SHORT.has(clean);
+      }).length;
+      if (shortNonLegit / descWords.length >= 0.4) {
+        issues.push(`Lot ${item.sr} description appears to be OCR garbage`);
+        continue;
+      }
     }
   }
 
