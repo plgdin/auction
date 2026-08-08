@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { HeroSection } from '../components/home/HeroSection';
-import { MstcSearchService } from '../services/publicService';
 
 // Below-fold sections: lazy-loaded to reduce Total Blocking Time (TBT)
 const ServiceCategoriesSection = lazy(() => import('../components/home/ServiceCategoriesSection').then(m => ({ default: m.ServiceCategoriesSection })));
@@ -44,8 +43,10 @@ export function Home() {
     const timer = setTimeout(() => {
       const schedule = typeof requestIdleCallback === 'function' ? requestIdleCallback : (cb: () => void) => setTimeout(cb, 200);
       schedule(() => {
-        MstcSearchService.searchMarketplaceCatalog('', { page: 1, limit: 12 }).catch(() => {});
-        MstcSearchService.getMstcFilterOptions().catch(() => {});
+        import('../services/publicService').then(({ MstcSearchService }) => {
+          MstcSearchService.searchMarketplaceCatalog('', { page: 1, limit: 12 }).catch(() => {});
+          MstcSearchService.getMstcFilterOptions().catch(() => {});
+        }).catch(() => {});
       });
     }, 3000);
 

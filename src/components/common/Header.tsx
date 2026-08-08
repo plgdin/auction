@@ -7,8 +7,6 @@ import {
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import clsx from 'clsx';
-import { adminService } from '../../services/adminService';
-import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import React from 'react';
 import type { Notification as DbNotification } from '../../types/database.types';
@@ -123,7 +121,10 @@ export function Header() {
 
   useEffect(() => {
     if (user) {
-      adminService.getNotifications(user.id).then((data) => setNotifications(data as DbNotification[]));
+      import('../../services/adminService')
+        .then(({ adminService }) => adminService.getNotifications(user.id))
+        .then((data) => setNotifications(data as DbNotification[]))
+        .catch(() => {});
     }
   }, [user]);
 
@@ -148,9 +149,12 @@ export function Header() {
       window.Notification.requestPermission();
     }
 
-    const channel = supabase
-      .channel(`header_notifications_${user.id}`)
-      .on(
+    let channel: { unsubscribe: () => unknown } | null = null;
+    let cancelled = false;
+
+    import('../../lib/supabase').then(({ supabase }) => {
+      if (cancelled) return;
+      channel = supabase.channel(`header_notifications_${user.id}`).on(
         'postgres_changes',
         {
           event: 'INSERT',
@@ -189,17 +193,19 @@ export function Header() {
             }
           }
         }
-      )
-      .subscribe();
+      ).subscribe();
+    }).catch(() => {});
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      channel?.unsubscribe();
     };
   }, [user]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   const handleMarkRead = async (id: string) => {
+    const { adminService } = await import('../../services/adminService');
     await adminService.markNotificationAsRead(id);
     setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: true } : n));
   };
