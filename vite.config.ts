@@ -273,10 +273,6 @@ export default defineConfig({
             if (normalizedId.includes('@xenova') || normalizedId.includes('onnxruntime')) {
               return 'transformers';
             }
-            // Form validation libraries
-            if (normalizedId.includes('zod') || normalizedId.includes('react-hook-form') || normalizedId.includes('@hookform/resolvers')) {
-              return 'form-vendor';
-            }
             // Confetti helper
             if (normalizedId.includes('canvas-confetti')) {
               return 'confetti-vendor';

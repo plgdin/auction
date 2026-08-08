@@ -24,7 +24,16 @@ function App() {
   const [showChatbot, setShowChatbot] = useState(false);
 
   useEffect(() => {
-    initializeAuth();
+    const startAuth = () => initializeAuth();
+
+    // Home does not need account state to paint. Let hero content win the
+    // first network and main-thread window, while app routes initialize now.
+    if (window.location.pathname === '/') {
+      const timer = window.setTimeout(startAuth, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    startAuth();
   }, [initializeAuth]);
 
   useEffect(() => {
@@ -95,15 +104,20 @@ function App() {
   }, []);
 
   useEffect(() => {
-    import('./utils/currency').then(({ fetchLatestRates }) => {
-      fetchLatestRates()
-        .then((rates) => {
-          if (rates) {
-            setCurrencyRates(rates);
-          }
-        })
-        .catch((err) => console.warn('Dynamic exchange rate fetch failed:', err));
-    });
+    const loadRates = () => {
+      import('./utils/currency').then(({ fetchLatestRates }) => {
+        fetchLatestRates()
+          .then((rates) => {
+            if (rates) {
+              setCurrencyRates(rates);
+            }
+          })
+          .catch((err) => console.warn('Dynamic exchange rate fetch failed:', err));
+      });
+    };
+
+    const timer = window.setTimeout(loadRates, 2500);
+    return () => clearTimeout(timer);
   }, [initializeAuth, setCurrencyRates]);
 
   return (
