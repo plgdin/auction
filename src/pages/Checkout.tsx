@@ -1943,7 +1943,7 @@ export function CheckoutPage() {
                     <div className="flex gap-2">
                       <Input
                         type="text"
-                        placeholder="e.g. STAY30"
+                        placeholder="Enter promo code"
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value)}
                         className="bg-white rounded-xl text-xs py-1.5 focus:ring-primary/20 h-9"
