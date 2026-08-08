@@ -228,6 +228,124 @@ export const FEATURE_CARDS: FeatureCardData[] = [
   },
 ];
 
+function FeatureCarouselCard({
+  item,
+  index,
+  faceAngle,
+  faceWidth,
+  radius,
+  rotation,
+  handleClick,
+}: {
+  item: FeatureCardData;
+  index: number;
+  faceAngle: number;
+  faceWidth: number;
+  radius: number;
+  rotation: any;
+  handleClick: (item: FeatureCardData, index: number) => void;
+}) {
+  const Icon = item.icon;
+  const cardOpacity = useTransform(rotation, (rot: number) => {
+    let diff = ((faceAngle + rot) % 360 + 360) % 360;
+    if (diff > 180) diff -= 360;
+    const absDiff = Math.abs(diff);
+    if (absDiff <= 70) return 1;
+    if (absDiff >= 100) return 0;
+    return 1 - (absDiff - 70) / 30;
+  });
+  const cardFocus = useTransform(rotation, (rot: number) => {
+    let diff = ((faceAngle + rot) % 360 + 360) % 360;
+    if (diff > 180) diff -= 360;
+    // Keep emphasis tight around the front-facing card. Nearby cards shrink.
+    return Math.max(0, 1 - Math.abs(diff) / 32);
+  });
+  // Keep emphasis on the motion-value pipeline. React state here caused a
+  // second render after every rotation, which made the active card feel late.
+  const cardBackground = useTransform(cardFocus, (focus) => focus > 0.8 ? "#2563eb" : "#ffffff");
+  const cardForeground = useTransform(cardFocus, (focus) => focus > 0.8 ? "#ffffff" : "#0f172a");
+  const iconBackground = useTransform(cardFocus, (focus) => focus > 0.8 ? "rgba(255,255,255,.2)" : "#eff6ff");
+  const iconBorder = useTransform(cardFocus, (focus) => focus > 0.8 ? "rgba(255,255,255,.38)" : "#bfdbfe");
+  const iconColor = useTransform(cardFocus, (focus) => focus > 0.8 ? "#ffffff" : "#2563eb");
+  const secondaryForeground = useTransform(cardFocus, (focus) => focus > 0.8 ? "rgba(255,255,255,.78)" : "#64748b");
+  const divider = useTransform(cardFocus, (focus) => focus > 0.8 ? "rgba(255,255,255,.2)" : "#e2e8f0");
+  const listForeground = useTransform(cardFocus, (focus) => focus > 0.8 ? "rgba(255,255,255,.9)" : "#475569");
+  const accentForeground = useTransform(cardFocus, (focus) => focus > 0.8 ? "#ffffff" : "#2563eb");
+  const cardBorder = useTransform(
+    cardFocus,
+    (focus) => focus > 0.8 ? "#2563eb" : "#dbeafe"
+  );
+
+
+  return (
+    <motion.div
+      className="absolute flex h-full origin-center items-center justify-center p-2"
+      style={{
+        width: `${faceWidth}px`,
+        transform: `rotateY(${faceAngle}deg) translateZ(${radius}px)`,
+        opacity: cardOpacity,
+        zIndex: cardFocus,
+      }}
+      onClick={() => handleClick(item, index)}
+    >
+      <motion.div
+        className="border border-slate-200/90 rounded-2xl p-4 sm:p-5 w-full max-w-[210px] h-[238px] flex flex-col justify-between group cursor-pointer text-left select-none"
+        style={{
+          backgroundColor: cardBackground,
+          color: cardForeground,
+          borderColor: cardBorder,
+
+        }}
+      >
+        <div>
+          <div className="mb-2">
+            <motion.div
+              className="w-9 h-9 rounded-xl border flex items-center justify-center"
+              style={{
+                backgroundColor: iconBackground,
+                borderColor: iconBorder,
+                color: iconColor,
+              }}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </motion.div>
+          </div>
+          <motion.h3 className="text-sm font-bold mb-1 leading-tight" style={{ color: cardForeground }}>
+            {item.name}
+          </motion.h3>
+          <motion.p
+            className="text-[10px] leading-relaxed mb-2 line-clamp-2"
+            style={{ color: secondaryForeground }}
+          >
+            {item.description}
+          </motion.p>
+          <motion.ul
+            className="space-y-0.5 pt-1.5 border-t"
+            style={{ borderColor: divider }}
+          >
+            {item.highlights.map((hText, idx) => (
+              <motion.li key={idx} className="flex items-center text-[9px] font-medium" style={{ color: listForeground }}>
+                <CheckCircle2 className="w-2.5 h-2.5 mr-1 shrink-0" />
+                <span>{hText}</span>
+              </motion.li>
+            ))}
+          </motion.ul>
+        </div>
+        <motion.div
+          className="pt-2 border-t flex items-center text-[10px] font-bold"
+          style={{
+            borderColor: divider,
+            color: accentForeground,
+          }}
+        >
+          <span>Explore Feature</span>
+          <ArrowRight className="w-2.5 h-2.5 ml-1" />
+        </motion.div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 const Carousel = memo(
   ({
     handleClick,
@@ -279,81 +397,24 @@ const Carousel = memo(
             const target = rotation.get() + clampedVelocity * 0.012;
             animate(rotation, target, {
               type: "tween",
-              duration: 0.6,
+              duration: 0.28,
               ease: [0.25, 0.1, 0.25, 1],
             });
           }}
           animate={controls}
         >
-          {cards.map((item, i) => {
-            const Icon = item.icon;
-            const faceAngle = i * (360 / faceCount);
-
-            // Compute opacity: hide cards facing away from viewer
-            const cardOpacity = useTransform(rotation, (rot: number) => {
-              // Normalize the angle difference to [-180, 180]
-              let diff = ((faceAngle + rot) % 360 + 360) % 360;
-              if (diff > 180) diff -= 360;
-              const absDiff = Math.abs(diff);
-              // Fully visible within ±70°, fade out 70-100°, hidden beyond 100°
-              if (absDiff <= 70) return 1;
-              if (absDiff >= 100) return 0;
-              return 1 - (absDiff - 70) / 30;
-            });
-
-            return (
-              <motion.div
-                key={`key-${item.id}-${i}`}
-                className="absolute flex h-full origin-center items-center justify-center p-2"
-                style={{
-                  width: `${faceWidth}px`,
-                  transform: `rotateY(${faceAngle}deg) translateZ(${radius}px)`,
-                  opacity: cardOpacity,
-                }}
-                onClick={() => handleClick(item, i)}
-              >
-                {/* Feature Card */}
-                <div 
-                  className="bg-white border border-slate-200/90 rounded-xl p-3 sm:p-4 w-full max-w-[200px] h-[230px] flex flex-col justify-between hover:border-primary/40 hover:ring-2 hover:ring-primary/15 transition-all duration-200 group cursor-pointer text-left select-none"
-                  style={{
-                    transform: "translateZ(0)",
-                    backfaceVisibility: "hidden",
-                    willChange: "transform",
-                  }}
-                >
-                  <div>
-                    <div className="mb-2">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white">
-                        <Icon className="w-3.5 h-3.5" />
-                      </div>
-                    </div>
-
-                    <h3 className="text-xs font-bold text-slate-900 mb-1 group-hover:text-primary transition-colors leading-tight">
-                      {item.name}
-                    </h3>
-
-                    <p className="text-[9px] text-slate-500 leading-relaxed mb-2 line-clamp-2">
-                      {item.description}
-                    </p>
-
-                    <ul className="space-y-0.5 pt-1.5 border-t border-slate-100">
-                      {item.highlights.map((hText, idx) => (
-                        <li key={idx} className="flex items-center text-[9px] font-medium text-slate-600">
-                          <CheckCircle2 className="w-2.5 h-2.5 text-primary mr-1 shrink-0" />
-                          <span>{hText}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center text-[9px] font-bold text-primary group-hover:translate-x-1">
-                    <span>Explore Feature</span>
-                    <ArrowRight className="w-2.5 h-2.5 ml-1" />
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+          {cards.map((item, i) => (
+            <FeatureCarouselCard
+              key={`key-${item.id}-${i}`}
+              item={item}
+              index={i}
+              faceAngle={i * (360 / faceCount)}
+              faceWidth={faceWidth}
+              radius={radius}
+              rotation={rotation}
+              handleClick={handleClick}
+            />
+          ))}
         </motion.div>
       </div>
     );
@@ -388,14 +449,14 @@ function ThreeDPhotoCarousel({
         '/dashboard/reminders',
         '/dashboard/calendar'
       ];
-      
+
       const isPremiumPath = premiumPaths.some(p => item.authPath.startsWith(p));
-      const isPaidSubscriberOrAdmin = profile?.subscription_plan === 'pro' || 
-                                     profile?.subscription_plan === 'go' || 
-                                     profile?.subscription_plan === 'go-subscription' || 
-                                     profile?.subscription_plan === 'enterprise' || 
-                                     profile?.role === 'admin' || 
-                                     profile?.role === 'superadmin';
+      const isPaidSubscriberOrAdmin = profile?.subscription_plan === 'pro' ||
+        profile?.subscription_plan === 'go' ||
+        profile?.subscription_plan === 'go-subscription' ||
+        profile?.subscription_plan === 'enterprise' ||
+        profile?.role === 'admin' ||
+        profile?.role === 'superadmin';
 
       if (isPremiumPath && !isPaidSubscriberOrAdmin) {
         alert("Upgrade required. Please upgrade to a Pro plan to unlock this feature.");
@@ -412,7 +473,7 @@ function ThreeDPhotoCarousel({
   const animateToAngle = useCallback((target: number) => {
     animate(rotation, target, {
       type: "tween",
-      duration: 0.5,
+      duration: 0.28,
       ease: [0.25, 0.1, 0.25, 1],
     });
   }, [rotation]);
