@@ -48,16 +48,16 @@ function renderCellValue(value: boolean | string) {
 // Pricing FAQ data
 const PRICING_FAQ = [
   {
-    q: 'Is there a free trial for Bidder Pro?',
-    a: 'Yes! Every new account starts with a 7-day free trial of Bidder Pro. No credit card required. You can downgrade to the Explorer plan at any time.',
+    q: 'Can I try Bidder Pro before paying?',
+    a: 'Yes! Every new account starts with a 30-day free trial of Bidder Pro. No credit card required. You can downgrade to the Explorer plan at any time.',
   },
   {
     q: 'Can I switch plans at any time?',
     a: 'Absolutely. You can upgrade or downgrade your plan at any time from your dashboard. When upgrading, you\'ll get immediate access to new features. When downgrading, your current plan stays active until the end of the billing period.',
   },
   {
-    q: 'Can I get a refund if I cancel my subscription?',
-    a: 'You can cancel your subscription at any time. Since we offer a 7-day free trial for Bidder Pro to evaluate all features, we generally do not issue refunds for active billing cycles. Your access will remain active until the end of your current cycle.',
+    q: 'What is your refund policy?',
+    a: 'You can cancel your subscription at any time. Since we offer a 30-day free trial for Bidder Pro to evaluate all features, we generally do not issue refunds for active billing cycles. Your access will remain active until the end of your current cycle.',
   },
   {
     q: 'What payment methods do you accept?',

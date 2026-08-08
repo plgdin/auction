@@ -365,14 +365,14 @@ export function CheckoutPage() {
     const rzpKey = (import.meta.env.VITE_RAZORPAY_KEY_ID || (import.meta.env as any).RAZORPAY_KEY_ID || 'rzp_test_mockkey12345').trim();
     const isMockMode = rzpKey === 'rzp_test_mockkey12345' || rzpKey.includes('mockkey');
 
-    // If it's a free Explorer/Individual setup, 7-day trial, or using a dummy key, mock activation directly
+    // If it's a free Explorer/Individual setup, 30-day trial, or using a dummy key, mock activation directly
     if (total === 0 || isFreeActivation || isMockMode) {
       setTimeout(() => {
         setIsProcessing(false);
         setStep('success');
         setTransactionId(
           isTrial 
-            ? `TRIAL-7D-${Date.now().toString().slice(-6)}`
+            ? `TRIAL-30D-${Date.now().toString().slice(-6)}`
             : `FREE-${Date.now().toString().slice(-6)}`
         );
         if (isTrial) {
@@ -1513,7 +1513,7 @@ export function CheckoutPage() {
                           </>
                         ) : isTrial ? (
                           <>
-                            <Sparkles className="w-4 h-4" /> Start 7-Day Free Trial
+                            <Sparkles className="w-4 h-4" /> Start 30-Day Free Trial
                           </>
                         ) : total === 0 ? (
                           'Activate Free Plan'
