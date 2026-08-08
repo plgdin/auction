@@ -66,9 +66,17 @@ function App() {
     checkSubscriptionRenewal();
   }, [user, profile]);
 
-  // Allow chatbot to load immediately instead of artificial delay
+  // Load chatbot when idle or after a 6-second delay to optimize initial page load metrics (TBT)
   useEffect(() => {
-    setShowChatbot(true);
+    const timer = setTimeout(() => {
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(() => setShowChatbot(true));
+      } else {
+        setShowChatbot(true);
+      }
+    }, 6000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
