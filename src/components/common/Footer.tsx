@@ -11,7 +11,7 @@ export function Footer() {
       </div>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
-          
+
           {/* Brand */}
           <div className="space-y-4">
             <Link to="/" className="flex items-center">
@@ -90,14 +90,14 @@ export function Footer() {
               </li>
             </ul>
           </div>
-          
+
         </div>
 
         <div className="border-t border-slate-800 pt-8 mt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex flex-col gap-1">
             <p className="text-sm text-slate-400 flex items-center">
               &copy; {new Date().getFullYear()} Lelam. All rights reserved.
-              <span className="ml-3 px-2 py-0.5 rounded-md bg-slate-800 text-xs text-slate-400 font-medium">lelam.co v1.1.541</span>
+              <span className="ml-3 px-2 py-0.5 rounded-md bg-slate-800 text-xs text-slate-400 font-medium">lelam.co v1.1.565</span>
             </p>
             <p className="text-[11px] text-slate-400 max-w-lg">
               Lelam Company is an independent assistive platform and is not affiliated with MSTC Limited.
@@ -106,7 +106,7 @@ export function Footer() {
           <div className="flex space-x-4 pr-20 md:pr-24">
             {/* Social Icons Placeholder */}
             <a href="https://www.linkedin.com/company/lelam-co/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="w-10 h-10 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">
-               <span className="text-sm font-bold text-white" aria-hidden="true">in</span>
+              <span className="text-sm font-bold text-white" aria-hidden="true">in</span>
             </a>
           </div>
         </div>
