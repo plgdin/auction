@@ -171,6 +171,7 @@ export function CheckoutPage() {
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(null);
 
   const handleApplyCoupon = async () => {
     setCouponError(null);
@@ -196,6 +197,7 @@ export function CheckoutPage() {
 
       const discountRate = (data.discount_percent || 0) / 100;
       setAppliedDiscount(discountRate);
+      setAppliedCouponCode(code);
       setCouponSuccess(`Coupon ${code} applied! ${data.discount_percent}% discount has been applied.`);
 
       // Trigger festive confetti pop animation on successful discount application
@@ -425,7 +427,8 @@ export function CheckoutPage() {
           receipt: `rcpt_${Date.now()}`,
           planId,
           billingCycle,
-          extraSeats
+          extraSeats,
+          couponCode: appliedDiscount > 0 ? appliedCouponCode : undefined
         })
       });
 
