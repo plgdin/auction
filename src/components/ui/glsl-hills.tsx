@@ -188,6 +188,16 @@ export function GLSLHills({
       const h = container.clientHeight;
       if (!w || !h) return;
 
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      const targetW = Math.floor(w * dpr);
+      const targetH = Math.floor(h * dpr);
+      const canvasEl = renderer.domElement;
+
+      // Prevent redundant ResizeObserver loops/forced reflows if dimensions match
+      if (canvasEl.width === targetW && canvasEl.height === targetH) {
+        return;
+      }
+
       const aspect = w / h;
       camera.aspect = aspect;
 
@@ -210,7 +220,7 @@ export function GLSLHills({
       }
 
       camera.updateProjectionMatrix();
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setPixelRatio(dpr);
       renderer.setSize(w, h, false);
     };
 
@@ -220,9 +230,27 @@ export function GLSLHills({
     };
 
     let animationId: number;
-    const renderLoop = () => {
-      render();
+    let lastFrameTime = 0;
+    const frameInterval = 1000 / 30; // 30 FPS throttle
+    let inView = true;
+
+    // Use IntersectionObserver to pause rendering when the background canvas is offscreen
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0]) {
+        inView = entries[0].isIntersecting;
+      }
+    }, { threshold: 0 });
+
+    const renderLoop = (timestamp: number) => {
       animationId = requestAnimationFrame(renderLoop);
+
+      if (!inView) return; // Skip calculation and WebGL render when out of view
+
+      const elapsed = timestamp - lastFrameTime;
+      if (elapsed >= frameInterval) {
+        lastFrameTime = timestamp - (elapsed % frameInterval);
+        render();
+      }
     };
 
     const ro = new ResizeObserver(() => resize());
@@ -231,14 +259,16 @@ export function GLSLHills({
       renderer.setClearColor(0x000000, 0);
       scene.add(plane.mesh);
       ro.observe(container);
+      io.observe(container);
       resize();
-      renderLoop();
+      animationId = requestAnimationFrame(renderLoop);
     };
 
     init();
 
     return () => {
       ro.disconnect();
+      io.disconnect();
       cancelAnimationFrame(animationId);
       renderer.dispose();
       plane.mesh.geometry.dispose();
