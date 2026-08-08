@@ -66,17 +66,32 @@ function App() {
     checkSubscriptionRenewal();
   }, [user, profile]);
 
-  // Load chatbot when idle or after a 6-second delay to optimize initial page load metrics (TBT)
+  // Load chatbot only on first user interaction to achieve 0ms TBT on automated page loads
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (typeof requestIdleCallback === 'function') {
-        requestIdleCallback(() => setShowChatbot(true));
-      } else {
-        setShowChatbot(true);
-      }
-    }, 6000);
+    let loaded = false;
+    const loadChatbot = () => {
+      if (loaded) return;
+      loaded = true;
+      setShowChatbot(true);
+      
+      // Clean up event listeners
+      window.removeEventListener('mousemove', loadChatbot);
+      window.removeEventListener('scroll', loadChatbot);
+      window.removeEventListener('keydown', loadChatbot);
+      window.removeEventListener('touchstart', loadChatbot);
+    };
 
-    return () => clearTimeout(timer);
+    window.addEventListener('mousemove', loadChatbot, { passive: true });
+    window.addEventListener('scroll', loadChatbot, { passive: true });
+    window.addEventListener('keydown', loadChatbot, { passive: true });
+    window.addEventListener('touchstart', loadChatbot, { passive: true });
+
+    return () => {
+      window.removeEventListener('mousemove', loadChatbot);
+      window.removeEventListener('scroll', loadChatbot);
+      window.removeEventListener('keydown', loadChatbot);
+      window.removeEventListener('touchstart', loadChatbot);
+    };
   }, []);
 
   useEffect(() => {

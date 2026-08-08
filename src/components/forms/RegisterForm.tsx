@@ -42,6 +42,15 @@ export function RegisterForm() {
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Dynamically load Google GSI script if not present
+    if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+    }
+
     let checkInterval: any;
     
     const initializeGoogleButton = () => {
