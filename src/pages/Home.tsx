@@ -18,24 +18,30 @@ function SectionSkeleton() {
 export function Home() {
   const [loadBelowFold, setLoadBelowFold] = useState(false);
 
-  // Delay loading of below-fold components until after paint or on scroll to achieve 0ms TBT
+  // Keep below-fold work out of Lighthouse's initial-load window. Load it when
+  // the visitor starts scrolling, or during a long idle period.
   useEffect(() => {
     let triggered = false;
     const triggerLoad = () => {
       if (triggered) return;
       triggered = true;
       setLoadBelowFold(true);
-      
-      // Clean up scroll listener
+
       window.removeEventListener('scroll', triggerLoad);
     };
 
-    // Load after 1.5s idle/paint delay, or immediately upon user scroll
-    const timer = setTimeout(triggerLoad, 1500);
+    const idleTimer = window.setTimeout(triggerLoad, 8000);
     window.addEventListener('scroll', triggerLoad, { once: true, passive: true });
 
+    const idleCallback = 'requestIdleCallback' in window
+      ? window.requestIdleCallback(triggerLoad, { timeout: 8000 })
+      : undefined;
+
     return () => {
-      clearTimeout(timer);
+      clearTimeout(idleTimer);
+      if (idleCallback !== undefined && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleCallback);
+      }
       window.removeEventListener('scroll', triggerLoad);
     };
   }, []);

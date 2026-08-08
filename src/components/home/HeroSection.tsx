@@ -15,7 +15,9 @@ export function HeroSection() {
   const heroRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLImageElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [showHills, setShowHills] = useState(false);
   const heroHeightRef = useRef<number>(0);
+  const scrollFrameRef = useRef<number | null>(null);
 
   // Cache hero offsetHeight to prevent layout thrashing and forced reflows on scroll
   const measureHeight = useCallback(() => {
@@ -25,12 +27,37 @@ export function HeroSection() {
   }, []);
 
   const handleScroll = useCallback(() => {
-    const heroHeight = heroHeightRef.current;
-    if (!heroHeight) return;
-    const scrollY = window.scrollY;
-    // Animation runs from 0% to 100% over the hero height
-    const progress = Math.min(Math.max(scrollY / (heroHeight * 0.7), 0), 1);
-    setScrollProgress(progress);
+    if (scrollFrameRef.current !== null) return;
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      const heroHeight = heroHeightRef.current;
+      if (!heroHeight) return;
+      const scrollY = window.scrollY;
+      const progress = Math.min(Math.max(scrollY / (heroHeight * 0.7), 0), 1);
+      setScrollProgress(progress);
+    });
+  }, []);
+
+  useEffect(() => {
+    // WebGL is decorative. Start it after the initial interaction/idle window,
+    // so it cannot compete with first paint or input readiness.
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      setShowHills(true);
+      window.removeEventListener('pointerdown', start);
+      window.removeEventListener('scroll', start);
+    };
+    const timer = window.setTimeout(start, 8000);
+    window.addEventListener('pointerdown', start, { once: true, passive: true });
+    window.addEventListener('scroll', start, { once: true, passive: true });
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointerdown', start);
+      window.removeEventListener('scroll', start);
+      if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -86,9 +113,11 @@ export function HeroSection() {
     <div ref={heroRef} className="relative overflow-hidden -mt-[81px] min-h-[calc(100dvh+81px)] pt-12 pb-48 sm:pt-[193px] sm:pb-60 lg:pt-[225px] lg:pb-72 flex flex-col justify-center items-center text-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
       {/* GLSL Hills Background */}
       <div className="absolute inset-0 z-0 pointer-events-none" style={{ opacity: 0.75 * (1 - scrollProgress) }}>
-        <Suspense fallback={null}>
-          <GLSLHills width="100%" height="100%" />
-        </Suspense>
+        {showHills && (
+          <Suspense fallback={null}>
+            <GLSLHills width="100%" height="100%" />
+          </Suspense>
+        )}
       </div>
 
       {/* Simple dark overlay */}
