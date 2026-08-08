@@ -170,40 +170,46 @@ export function CheckoutPage() {
   const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     setCouponError(null);
     setCouponSuccess(null);
     const code = couponCode.trim().toUpperCase();
     if (!code) return;
 
-    let discountRate = 0;
-    let successMsg = '';
+    setIsApplyingCoupon(true);
 
-    if (code === 'STAY30') {
-      discountRate = 0.3;
-      successMsg = 'Coupon STAY30 applied! 30% discount has been applied.';
-    } else if (code === 'STAY50') {
-      discountRate = 0.5;
-      successMsg = 'Coupon STAY50 applied! 50% discount has been applied.';
-    } else if (code === 'LELAM10') {
-      discountRate = 0.1;
-      successMsg = 'Coupon LELAM10 applied! 10% discount has been applied.';
-    } else {
-      setCouponError('Invalid coupon code. Try using STAY30 or LELAM10.');
+    try {
+      const { data, error } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('code', code)
+        .eq('is_active', true)
+        .single();
+
+      if (error || !data) {
+        setCouponError('Invalid coupon code.');
+        setAppliedDiscount(0);
+        return;
+      }
+
+      const discountRate = (data.discount_percent || 0) / 100;
+      setAppliedDiscount(discountRate);
+      setCouponSuccess(`Coupon ${code} applied! ${data.discount_percent}% discount has been applied.`);
+
+      // Trigger festive confetti pop animation on successful discount application
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    } catch (err) {
+      setCouponError('Invalid coupon code.');
       setAppliedDiscount(0);
-      return;
+    } finally {
+      setIsApplyingCoupon(false);
     }
-
-    setAppliedDiscount(discountRate);
-    setCouponSuccess(successMsg);
-
-    // Trigger festive confetti pop animation on successful discount application
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
   };
 
   // Simulate initial loading block to match template skeleton
@@ -1944,6 +1950,7 @@ export function CheckoutPage() {
                       />
                       <Button
                         type="button"
+                        disabled={isApplyingCoupon || !couponCode.trim()}
                         onClick={handleApplyCoupon}
                         className="bg-primary hover:bg-primary/95 text-white font-bold text-xs h-9 px-4 rounded-xl cursor-pointer shadow-xs active:scale-95 transition-transform"
                       >

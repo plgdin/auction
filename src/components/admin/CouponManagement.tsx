@@ -14,8 +14,7 @@ const couponSchema = z.object({
     .max(20, "Code must be at most 20 characters")
     .regex(/^[A-Z0-9_-]+$/, "Code must be uppercase alphanumeric (dashes/underscores allowed)"),
   discount_percent: z.number()
-    .int("Must be a whole number")
-    .min(1, "Discount must be at least 1%")
+    .min(0.01, "Discount must be at least 0.01%")
     .max(100, "Discount cannot exceed 100%"),
   is_active: z.boolean(),
   expires_at: z.string().nullable().optional().or(z.literal('')),
@@ -387,7 +386,8 @@ export function CouponManagement() {
                 <div className="relative">
                   <input
                     type="number"
-                    placeholder="e.g. 30"
+                    step="any"
+                    placeholder="e.g. 30.5"
                     {...register('discount_percent', { valueAsNumber: true })}
                     className={clsx(
                       "w-full bg-slate-50 pl-3.5 pr-8 py-2.5 text-sm rounded-xl border focus:outline-hidden focus:ring-2 focus:ring-primary/20 transition-all font-semibold",
