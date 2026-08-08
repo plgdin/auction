@@ -15,24 +15,18 @@ export function HeroSection() {
   const heroRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLImageElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
+  const heroHeightRef = useRef<number>(0);
 
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+  // Cache hero offsetHeight to prevent layout thrashing and forced reflows on scroll
+  const measureHeight = useCallback(() => {
+    if (heroRef.current) {
+      heroHeightRef.current = heroRef.current.offsetHeight;
+    }
   }, []);
 
   const handleScroll = useCallback(() => {
-    if (!heroRef.current) return;
-    const heroHeight = heroRef.current.offsetHeight;
-    if (!heroHeight) {
-      setScrollProgress(0);
-      return;
-    }
+    const heroHeight = heroHeightRef.current;
+    if (!heroHeight) return;
     const scrollY = window.scrollY;
     // Animation runs from 0% to 100% over the hero height
     const progress = Math.min(Math.max(scrollY / (heroHeight * 0.7), 0), 1);
@@ -40,18 +34,29 @@ export function HeroSection() {
   }, []);
 
   useEffect(() => {
+    // Initial measurement
+    measureHeight();
+
+    const handleResize = () => {
+      measureHeight();
+      handleScroll();
+    };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll);
-    // Use requestAnimationFrame to ensure DOM layout is complete before first calculation
+    window.addEventListener('resize', handleResize);
+
+    // Recalculate once DOM is fully painted
     const handle = requestAnimationFrame(() => {
+      measureHeight();
       handleScroll();
     });
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
+      window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(handle);
     };
-  }, [handleScroll]);
+  }, [handleScroll, measureHeight]);
 
   // Dispatch custom event so Header knows hero scroll state
   useEffect(() => {
@@ -80,13 +85,11 @@ export function HeroSection() {
   return (
     <div ref={heroRef} className="relative overflow-hidden -mt-[81px] min-h-[calc(100dvh+81px)] pt-12 pb-48 sm:pt-[193px] sm:pb-60 lg:pt-[225px] lg:pb-72 flex flex-col justify-center items-center text-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
       {/* GLSL Hills Background */}
-      {!isMobile && (
-        <div className="absolute inset-0 z-0 pointer-events-none" style={{ opacity: 0.75 * (1 - scrollProgress) }}>
-          <Suspense fallback={null}>
-            <GLSLHills width="100%" height="100%" />
-          </Suspense>
-        </div>
-      )}
+      <div className="absolute inset-0 z-0 pointer-events-none" style={{ opacity: 0.75 * (1 - scrollProgress) }}>
+        <Suspense fallback={null}>
+          <GLSLHills width="100%" height="100%" />
+        </Suspense>
+      </div>
 
       {/* Simple dark overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">

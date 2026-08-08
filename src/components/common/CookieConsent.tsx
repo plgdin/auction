@@ -43,40 +43,40 @@ export function CookieConsent() {
 
   return (
     <div 
-      className="fixed top-4 left-4 right-4 sm:right-auto sm:max-w-xs z-[1050] bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-xl shadow-2xl p-3 text-white animate-fade-in print:hidden ring-1 ring-white/10"
+      className="fixed bottom-4 left-4 right-4 sm:right-auto sm:max-w-xs z-[1050] bg-white/95 backdrop-blur-xl border border-slate-200 rounded-xl shadow-2xl p-2.5 text-slate-800 animate-fade-in print:hidden ring-1 ring-slate-950/5 max-w-[calc(100vw-2rem)] mx-auto sm:mx-0"
       role="region"
       aria-label="Cookie consent banner"
     >
-      <div className="flex items-start gap-2.5">
-        <div className="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg shrink-0 mt-0.5">
-          <Cookie className="w-3.5 h-3.5 text-blue-400" />
+      <div className="flex items-start gap-2">
+        <div className="p-1 bg-slate-100 text-slate-600 rounded-lg shrink-0 mt-0.5">
+          <Cookie className="w-3.5 h-3.5 text-slate-600" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-1">
-            <h4 className="text-xs font-bold text-white tracking-tight">
+            <h4 className="text-[11px] font-bold text-slate-900 tracking-tight">
               Cookie Preferences
             </h4>
             <button 
               onClick={handleDismiss}
-              className="text-slate-400 hover:text-white p-0.5 rounded transition-colors cursor-pointer"
+              className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors cursor-pointer"
               aria-label="Dismiss cookie banner"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
             </button>
           </div>
-          <p className="text-[11px] text-slate-300 mt-1 leading-tight">
+          <p className="text-[10px] text-slate-600 mt-0.5 leading-tight">
             We use essential cookies to maintain your session & bidding preferences.
           </p>
-          <div className="flex gap-2 mt-2.5">
+          <div className="flex gap-1.5 mt-2">
             <button
               onClick={handleDecline}
-              className="flex-1 inline-flex items-center justify-center px-2 py-1 border border-slate-700 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
+              className="flex-1 inline-flex items-center justify-center px-1.5 py-0.5 border border-slate-200 text-[10px] font-semibold rounded-md bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
             >
               Decline
             </button>
             <button
               onClick={handleAccept}
-              className="flex-1 inline-flex items-center justify-center px-2 py-1 text-[11px] font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-500 transition-colors cursor-pointer shadow-sm"
+              className="flex-1 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-semibold rounded-md text-white bg-slate-900 hover:bg-slate-800 transition-colors cursor-pointer shadow-sm"
             >
               Accept All
             </button>
