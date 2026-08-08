@@ -9,6 +9,7 @@ import { Briefcase, Check, Database } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuthStore } from "../../store/authStore";
 
 const plans = [
   {
@@ -186,6 +187,9 @@ export default function PricingSection3({
   const [internalIsYearly, setInternalIsYearly] = useState(false);
   const isYearly = externalIsYearly !== undefined ? externalIsYearly : internalIsYearly;
   const setIsYearly = onYearlyChange || setInternalIsYearly;
+  
+  const { profile } = useAuthStore();
+  const isExpired = profile?.subscription_expires_at && new Date(profile.subscription_expires_at) < new Date();
 
   const pricingRef = useRef<HTMLDivElement>(null);
 
@@ -263,7 +267,14 @@ export default function PricingSection3({
         customVariants={revealVariants}
         className="grid xl:grid-cols-4 lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-6 mx-auto bg-gradient-to-b from-neutral-100 to-neutral-200 sm:p-4 rounded-lg w-full"
       >
-        {plans.map((plan, index) => (
+        {plans.map((plan, index) => {
+          // Check if this plan matches the user's current active subscription
+          const isCurrentPlan = 
+            profile?.subscription_plan && 
+            !isExpired &&
+            plan.href.includes(`plan=${profile.subscription_plan}`);
+
+          return (
           <TimelineContent
             as="div"
             key={plan.name}
@@ -377,25 +388,40 @@ export default function PricingSection3({
                 </div>
               </CardContent>
               <CardFooter className="pt-4 pb-6">
-                <Link
-                  to={`${plan.href}${plan.id !== "enterprise" ? `&billing=${isYearly ? "annual" : "monthly"}` : ""}`}
-                  className="w-full"
-                >
+                {isCurrentPlan ? (
                   <button
+                    disabled
                     className={cn(
-                      "w-full mb-6 p-4 text-xl rounded-xl cursor-pointer font-bold transition-all duration-200 hover:opacity-95 shadow-md",
+                      "w-full mb-6 p-4 text-xl rounded-xl font-bold opacity-60 cursor-not-allowed shadow-md",
                       plan.popular
-                        ? "bg-gradient-to-t from-blue-50 via-blue-100 to-blue-200 shadow-lg shadow-blue-900/20 border border-blue-300 text-blue-950"
-                        : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 border border-blue-600 shadow-blue-600/30 text-white"
+                        ? "bg-slate-800 border border-slate-700 text-white"
+                        : "bg-slate-200 border border-slate-300 text-slate-500"
                     )}
                   >
-                    {plan.buttonText}
+                    Current Plan
                   </button>
-                </Link>
+                ) : (
+                  <Link
+                    to={`${plan.href}${plan.id !== "enterprise" ? `&billing=${isYearly ? "annual" : "monthly"}` : ""}`}
+                    className="w-full"
+                  >
+                    <button
+                      className={cn(
+                        "w-full mb-6 p-4 text-xl rounded-xl cursor-pointer font-bold transition-all duration-200 hover:opacity-95 shadow-md",
+                        plan.popular
+                          ? "bg-gradient-to-t from-blue-50 via-blue-100 to-blue-200 shadow-lg shadow-blue-900/20 border border-blue-300 text-blue-950"
+                          : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 border border-blue-600 shadow-blue-600/30 text-white"
+                      )}
+                    >
+                      {plan.buttonText}
+                    </button>
+                  </Link>
+                )}
               </CardFooter>
             </Card>
           </TimelineContent>
-        ))}
+          );
+        })}
       </TimelineContent>
     </div>
   );

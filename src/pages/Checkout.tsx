@@ -12,6 +12,7 @@ import {
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
 import { setTrialStartTimestamp } from '../utils/subscriptionUtils';
+import { toast } from 'react-hot-toast';
 
 // Primitives imports to match template specifications
 import { Button } from '../components/ui/button';
@@ -238,6 +239,17 @@ export function CheckoutPage() {
       setCurrentStep(2);
     }
   }, [profile]);
+
+  // Prevent duplicate subscriptions
+  useEffect(() => {
+    if (profile && profile.subscription_plan === planId) {
+      const isExpired = profile.subscription_expires_at && new Date(profile.subscription_expires_at) < new Date();
+      if (!isExpired) {
+        toast.error(`You already have an active ${planId.toUpperCase()} subscription!`);
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [profile, planId, navigate]);
 
   // Auto-fetch City and State from 6-digit Pincode
   const fetchPincodeDetails = async (pin: string) => {
