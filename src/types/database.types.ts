@@ -28,6 +28,7 @@ export interface Profile {
   two_factor_enabled?: boolean;
   subscription_plan?: 'explorer' | 'go' | 'go-subscription' | 'pro' | 'enterprise';
   subscription_expires_at?: string;
+  trial_claimed?: boolean;
   created_at: string;
   updated_at: string;
 }

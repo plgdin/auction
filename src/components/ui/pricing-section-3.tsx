@@ -402,7 +402,11 @@ export default function PricingSection3({
                   </button>
                 ) : (
                   <Link
-                    to={`${plan.href}${plan.id !== "enterprise" ? `&billing=${isYearly ? "annual" : "monthly"}` : ""}`}
+                    to={
+                      profile?.trial_claimed && plan.id === 'premium'
+                        ? "/checkout?plan=pro"
+                        : `${plan.href}${plan.id !== "enterprise" ? `&billing=${isYearly ? "annual" : "monthly"}` : ""}`
+                    }
                     className="w-full"
                   >
                     <button
@@ -413,7 +417,7 @@ export default function PricingSection3({
                           : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 border border-blue-600 shadow-blue-600/30 text-white"
                       )}
                     >
-                      {plan.buttonText}
+                      {profile?.trial_claimed && plan.id === 'premium' ? "Get Business" : plan.buttonText}
                     </button>
                   </Link>
                 )}

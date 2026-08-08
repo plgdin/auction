@@ -302,6 +302,14 @@ export function CheckoutPage() {
   const isTrial = (planId === 'pro' || planId === 'premium') && (searchParams.get('trial') !== 'false');
   const isFreeActivation = isExplorerFree || isTrial;
 
+  // Prevent duplicate trial claims
+  useEffect(() => {
+    if (profile && isTrial && profile.trial_claimed) {
+      toast.error('You have already claimed a free trial on this account.');
+      navigate('/pricing', { replace: true });
+    }
+  }, [profile, isTrial, navigate]);
+
   const baseSubtotal = isFreeActivation 
     ? 0 
     : (planId === 'go' || planId === 'go-subscription')
@@ -380,13 +388,19 @@ export function CheckoutPage() {
         }
         if (user?.id) {
           const planToSet = (planId === 'pro' || planId === 'premium') ? 'pro' : (planId === 'go' || planId === 'go-subscription') ? 'go' : 'explorer';
-          const durationDays = isTrial ? 7 : (billingCycle === 'annual' ? 365 : 30);
+          const durationDays = isTrial ? 30 : (billingCycle === 'annual' ? 365 : 30);
           const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
 
-          authService.updateProfile(user.id, { 
+          const updates: any = {
             subscription_plan: planToSet as any,
             subscription_expires_at: expiresAt
-          }).then((updated) => {
+          };
+          
+          if (isTrial) {
+            updates.trial_claimed = true;
+          }
+
+          authService.updateProfile(user.id, updates).then((updated) => {
             if (updated) setProfile(updated);
           });
         }
