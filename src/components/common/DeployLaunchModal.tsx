@@ -22,14 +22,16 @@ export function DeployLaunchModal() {
     };
   }, []);
 
-  // Only allow launch modal if URL has ?launch=1, on localhost, or on a Vercel deployment (prevents regular visitors from seeing it)
+  // Only allow launch modal if URL has ?launch=1, on localhost, on a Vercel deployment, or on lelam.co (prevents regular visitors from seeing it)
   const isLaunchTriggered = typeof window !== 'undefined' && (
     window.location.search.includes('launch=1') ||
     window.location.search.includes('deploy=1') ||
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
     window.location.hostname.endsWith('.vercel.app') ||
-    window.location.hostname.includes('vercel')
+    window.location.hostname.includes('vercel') ||
+    window.location.hostname === 'lelam.co' ||
+    window.location.hostname.endsWith('.lelam.co')
   );
 
   if (!isLaunchTriggered || deployDone) return null;
