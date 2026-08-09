@@ -383,7 +383,7 @@ CONTACT & ESCALATION:
       {/* Floating Widget Container */}
       <div
         ref={orbContainerRef}
-        className={`fixed z-[9999] flex flex-col items-end pointer-events-none select-none font-sans transition-all duration-500 ease-in-out ${isOnHero ? 'opacity-0 translate-y-6 pointer-events-none' : 'opacity-100 translate-y-0'} ${dragPos ? '' : `${!isHomePage || isScrolled ? 'bottom-20 sm:bottom-16' : 'bottom-6'} md:bottom-6 right-3 sm:right-6`}`}
+        className={`fixed z-[9999] flex flex-col items-end pointer-events-none select-none font-sans transition-all duration-500 ease-in-out max-w-full ${isOnHero ? 'opacity-0 translate-y-6 pointer-events-none' : 'opacity-100 translate-y-0'} ${dragPos ? '' : `${!isHomePage || isScrolled ? 'bottom-20 sm:bottom-16' : 'bottom-6'} md:bottom-6 right-3 sm:right-6`}`}
         style={dragPos ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto' } : undefined}
       >
         
@@ -391,7 +391,7 @@ CONTACT & ESCALATION:
         {!isOpen && showBubble && !isOnHero && (
           <div 
             ref={chatBubbleRef}
-            className="pointer-events-auto bg-slate-100/95 backdrop-blur-md text-slate-800 p-4 rounded-2xl border border-slate-300 shadow-[0_12px_35px_rgba(15,23,42,0.1)] max-w-xs mb-4 mr-1 transition-all duration-300 transform translate-y-0 opacity-100 flex items-start gap-2 relative animate-bounce"
+            className="pointer-events-auto bg-slate-100/95 backdrop-blur-md text-slate-800 p-3.5 sm:p-4 rounded-2xl border border-slate-300 shadow-[0_12px_35px_rgba(15,23,42,0.1)] w-auto max-w-[calc(100vw-2.5rem)] sm:max-w-xs mb-4 mr-0 sm:mr-1 transition-all duration-300 transform translate-y-0 opacity-100 flex items-start gap-2 relative animate-bounce box-border"
             style={{ animationDuration: '4s' }}
           >
             <Sparkles size={14} className="text-[#007ec7] animate-pulse mt-0.5 shrink-0" />
@@ -415,7 +415,7 @@ CONTACT & ESCALATION:
 
         {/* Opened Chat window */}
         {isOpen && (
-          <div className="pointer-events-auto w-[calc(100vw-1.5rem)] max-w-sm sm:w-96 h-[75vh] sm:h-[500px] max-h-[560px] bg-white/80 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-[0_20px_50px_rgba(15,23,42,0.15),_0_0_30px_rgba(0,126,199,0.2)] flex flex-col mb-3 sm:mb-4 mr-0 sm:mr-1 overflow-hidden transition-all duration-300" role="dialog" aria-label="Laila Assistant Chat">
+          <div className="pointer-events-auto w-[calc(100vw-2rem)] max-w-xs sm:max-w-sm sm:w-96 h-[75vh] sm:h-[500px] max-h-[560px] bg-white/80 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-[0_20px_50px_rgba(15,23,42,0.15),_0_0_30px_rgba(0,126,199,0.2)] flex flex-col mb-3 sm:mb-4 mr-0 sm:mr-1 overflow-hidden transition-all duration-300" role="dialog" aria-label="Laila Assistant Chat">
             
             {/* Chatbox Header */}
             <div className="p-4 bg-white/35 backdrop-blur-md border-b border-white/20 flex items-center justify-between">

@@ -287,7 +287,7 @@ export function Dashboard() {
               </div>
 
               {/* Commodity Rate Grid - Live from Supabase */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5 pt-1">
                 {/* Steel / Iron */}
                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Steel / Iron</span>

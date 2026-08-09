@@ -289,7 +289,7 @@ export function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-1 lg:space-x-4 items-center" aria-label="Main navigation">
+          <nav className="hidden xl:flex space-x-1 lg:space-x-3 items-center" aria-label="Main navigation">
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -473,8 +473,32 @@ export function Header() {
             </div>
           </nav>
 
-          {/* Mobile menu button */}
-          <div className="flex items-center md:hidden">
+          {/* Mobile & Tablet actions + menu button */}
+          <div className="flex items-center space-x-2 xl:hidden">
+            {isAuthenticated && isPaidSubscriberOrAdmin && (
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-md shadow-xs text-sm font-bold text-white bg-primary hover:bg-primary-700 transition-colors"
+              >
+                Dashboard
+              </Link>
+            )}
+            {isAuthenticated && !isPaidSubscriberOrAdmin && (
+              <Link
+                to="/pricing"
+                className="inline-flex items-center justify-center px-3 py-1.5 rounded-full border border-blue-300 bg-gradient-to-t from-blue-100 via-blue-200 to-blue-300 text-blue-950 font-bold text-xs shadow-2xs hover:from-blue-200 transition-all"
+              >
+                Upgrade
+              </Link>
+            )}
+            {!isAuthenticated && !isLoading && (
+              <Link
+                to="/auth/login"
+                className="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-bold text-white bg-primary hover:bg-primary/90 transition-colors"
+              >
+                Sign In
+              </Link>
+            )}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label={isMobileMenuOpen ? "Close main menu" : "Open main menu"}
@@ -496,10 +520,10 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile Navigation Drop-Down Panel (White background, Dark Blue selected state) */}
+      {/* Mobile & Tablet Navigation Drop-Down Panel */}
       <div 
         className={clsx(
-          "fixed inset-0 z-50 bg-white/98 backdrop-blur-2xl text-slate-900 md:hidden flex flex-col justify-between p-6 overflow-y-auto select-none transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-2xl",
+          "fixed inset-0 z-50 bg-white/98 backdrop-blur-2xl text-slate-900 xl:hidden flex flex-col justify-between p-6 overflow-y-auto select-none transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-2xl",
           isMobileMenuOpen 
             ? "translate-y-0 opacity-100 pointer-events-auto" 
             : "-translate-y-full opacity-0 pointer-events-none"

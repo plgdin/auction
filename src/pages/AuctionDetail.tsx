@@ -255,7 +255,7 @@ function AuctionDetailInner({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
           
           {/* Left: Gallery & Details */}
-          <div className="lg:col-span-6 xl:col-span-7">
+          <div className="lg:col-span-12 xl:col-span-7">
             <ImageGallery images={images} />
             
             {/* Tabs Section */}
@@ -333,12 +333,12 @@ function AuctionDetailInner({
           </div>
 
           {/* Middle: Market Intelligence Panel */}
-          <div className="lg:col-span-3 xl:col-span-3">
+          <div className="lg:col-span-6 xl:col-span-3">
             <MarketValuationPanel auction={auction} currentBid={currentMaxBid || auction.starting_price} />
           </div>
 
           {/* Right: Bidding Panel */}
-          <div className="lg:col-span-3 xl:col-span-2">
+          <div className="lg:col-span-6 xl:col-span-2">
             <BiddingPanel auction={auction} bids={bids} currentMaxBid={currentMaxBid} />
           </div>
 
