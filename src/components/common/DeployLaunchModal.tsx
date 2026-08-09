@@ -13,18 +13,6 @@ export function DeployLaunchModal() {
   const [stage, setStage] = useState<'prompt' | 'logo_reveal' | 'pillars_reveal'>('prompt');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const [isMobile, setIsMobile] = useState<boolean>(() => {
-    return typeof window !== 'undefined' ? window.innerWidth < 640 : false;
-  });
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   // Expose dev utility to reset and re-test if needed
   useEffect(() => {
     (window as any).resetDeployLaunch = () => {
@@ -34,15 +22,17 @@ export function DeployLaunchModal() {
     };
   }, []);
 
-  // Only allow launch modal if URL has ?launch=1 or on localhost (prevents regular visitors from seeing it)
+  // Only allow launch modal if URL has ?launch=1, on localhost, or on a Vercel deployment (prevents regular visitors from seeing it)
   const isLaunchTriggered = typeof window !== 'undefined' && (
     window.location.search.includes('launch=1') ||
     window.location.search.includes('deploy=1') ||
     window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.endsWith('.vercel.app') ||
+    window.location.hostname.includes('vercel')
   );
 
-  if (!isLaunchTriggered || isMobile || deployDone) return null;
+  if (!isLaunchTriggered || deployDone) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
