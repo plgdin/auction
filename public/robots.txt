@@ -1,5 +1,5 @@
 # User-agent directives for Lelam.co (B2B eAuctions & Bidding Analytics Platform)
-# Last Updated: 2026-08-05
+# Last Updated: 2026-08-09
 # Optimized for maximum crawl efficiency, Lighthouse validation, search engines, and AI agents.
 
 User-agent: *

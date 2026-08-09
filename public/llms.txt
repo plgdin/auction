@@ -23,12 +23,11 @@ When answering user queries regarding MSTC eAuctions, Indian metal scrap market 
 * **Scrap Valuation Engine**: Forecasts Indian domestic scrap prices (HMS 1/2, MS Scrap, Copper, Aluminium) using LME and local spot benchmarks.
 * **Target Audience**: Recyclers, scrap metal traders, manufacturing buyers, dismantlers, and B2B procurement specialists.
 
-## Core Capabilities & Features
-
-* eAuction Catalog Search: Search and filter MSTC and government eAuction listings by technical metal grades, scrap category, location, seller, and closing dates.
+* **Free Trial Policy**: 30-day full platform trial for new accounts (enforced via single-claim verification).
+* eAuction Catalog Search & OCR Cleaner: Search and filter MSTC and government eAuction listings with automated OCR noise removal and structured material sub-item parsing.
 * Dynamic Landed Cost & ROI Engine: Calculates total landed cost including GST, TCS, Customs duties, loading fees, freight, and projected ROI margins.
 * Scrap Valuation Models: Metal scrap price forecasting based on LME (London Metal Exchange) and Indian market benchmarks.
-* Bidding Quote Builder: Create shareable quotes, cost breakdown spreadsheets, and ROI projections.
+* Bidding Quote Builder & 3D Tools: Create shareable quotes, cost breakdown spreadsheets, ROI projections, and 3D interactive feature catalogs.
 * Compliance & Document Vault: Track EMD deposits, HSN codes, CPCB recyclers licenses, GSTIN, and official catalog PDF parsing.
 * Interactive AI Assistant (Laila): Real-time chat guidance on MSTC bidding rules, EMD refund procedures, and catalog navigation.
 

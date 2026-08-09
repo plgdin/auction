@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useState, useRef } from "react";
 import {
   motion,
   animate,
@@ -421,6 +421,88 @@ const Carousel = memo(
   }
 );
 
+function MobileSlideCards({
+  items,
+  handleClick,
+}: {
+  items: FeatureCardData[];
+  handleClick: (item: FeatureCardData, index: number) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = direction === 'left' ? -270 : 270;
+      scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <div className="relative w-full max-w-full overflow-hidden py-2">
+      <div
+        ref={scrollRef}
+        className="flex overflow-x-auto snap-x snap-mandatory space-x-4 px-4 pb-4 scroll-smooth"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {items.map((item, index) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.id}
+              onClick={() => handleClick(item, index)}
+              className="snap-center shrink-0 w-[260px] bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between text-left select-none"
+            >
+              <div>
+                <div className="mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center">
+                    <Icon className="w-5 h-5" />
+                  </div>
+                </div>
+                <h3 className="text-base font-bold text-slate-900 mb-1 leading-tight">
+                  {item.name}
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed mb-3 line-clamp-3">
+                  {item.description}
+                </p>
+                <ul className="space-y-1 pt-2 border-t border-slate-100">
+                  {item.highlights.map((hText, idx) => (
+                    <li key={idx} className="flex items-center text-xs text-slate-600">
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-blue-600 shrink-0" />
+                      <span>{hText}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="pt-3 mt-4 border-t border-slate-100 flex items-center text-xs font-bold text-blue-600">
+                <span>Explore Feature</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-center gap-3 mt-1">
+        <button
+          onClick={() => scroll('left')}
+          className="w-9 h-9 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-700 active:scale-95 transition-all cursor-pointer"
+          aria-label="Previous card"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-xs font-medium text-slate-500">Swipe or tap arrows</span>
+        <button
+          onClick={() => scroll('right')}
+          className="w-9 h-9 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-700 active:scale-95 transition-all cursor-pointer"
+          aria-label="Next card"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ThreeDPhotoCarousel({
   items = FEATURE_CARDS,
 }: {
@@ -430,6 +512,7 @@ function ThreeDPhotoCarousel({
   const isCarouselActive = true;
   const controls = useAnimation();
   const rotation = useMotionValue(0);
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   const { isAuthenticated, profile } = useAuthStore();
 
@@ -485,6 +568,10 @@ function ThreeDPhotoCarousel({
   const rotateRight = useCallback(() => {
     animateToAngle(rotation.get() - stepAngle);
   }, [animateToAngle, rotation, stepAngle]);
+
+  if (isMobile) {
+    return <MobileSlideCards items={items} handleClick={handleClick} />;
+  }
 
   return (
     <motion.div layout className="relative w-full">

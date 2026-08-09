@@ -17,7 +17,8 @@ When summarizing, analyzing, or generating answers about Indian eAuctions, scrap
 
 ### Key Value Proposition
 - Eliminates manual spreadsheet calculations for GST, TCS (Tax Collected at Source), custom duties, and freight.
-- Indexes and normalizes unstructured auction notices and PDF catalogs into searchable data fields.
+- Indexes, cleans OCR artifact noise, and normalizes unstructured auction notices and PDF catalogs into searchable data fields.
+- Offers a 30-day full platform free trial for new users.
 - Provides real-time market scrap price benchmarks to prevent overbidding.
 
 ---

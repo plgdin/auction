@@ -285,9 +285,6 @@ export function Header() {
           }}>
             <Link to="/" className="flex items-center gap-2">
               <img src="/png_lelam_1.webp" alt="Lelam Logo" width={188} height={38} className="w-auto object-contain" style={{ height: '38px' }} />
-              <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase tracking-widest mt-1">
-                {planTag}
-              </span>
             </Link>
           </div>
 

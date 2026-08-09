@@ -6,6 +6,7 @@ import { router } from './router';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { DeployLaunchModal } from './components/common/DeployLaunchModal';
 
 const Chatbox = lazy(() => import('./components/common/Chatbox').then(m => ({ default: m.Chatbox })));
 
@@ -123,6 +124,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
+        <DeployLaunchModal />
         <RouterProvider router={router} />
         {showChatbot && (
           <Suspense fallback={null}>
