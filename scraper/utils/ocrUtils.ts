@@ -14,6 +14,29 @@ import { supabase } from "./storage.js";
 
 const log = logger.child({ module: "ocrUtils" });
 
+// ─── Image Format Validation ─────────────────────────────────────────────────
+
+/** Known image magic byte signatures. */
+const IMAGE_MAGIC_BYTES = [
+  { name: "JPEG", bytes: [0xFF, 0xD8, 0xFF] },
+  { name: "PNG",  bytes: [0x89, 0x50, 0x4E, 0x47] },
+  { name: "BMP",  bytes: [0x42, 0x4D] },
+  { name: "TIFF-LE", bytes: [0x49, 0x49, 0x2A, 0x00] },
+  { name: "TIFF-BE", bytes: [0x4D, 0x4D, 0x00, 0x2A] },
+  { name: "WEBP", bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF header
+];
+
+/**
+ * Validate that a buffer starts with a known image magic byte sequence.
+ * Prevents Tesseract from crashing on corrupted/non-image data.
+ */
+function isValidImageBuffer(buffer: Buffer): boolean {
+  if (!buffer || buffer.length < 4) return false;
+  return IMAGE_MAGIC_BYTES.some(({ bytes }) =>
+    bytes.every((b, i) => buffer[i] === b)
+  );
+}
+
 // ─── Persistent Worker ───────────────────────────────────────────────────────
 
 let workerInstance: any = null;
@@ -66,6 +89,24 @@ process.on("beforeExit", () => {
 });
 process.on("SIGINT", () => {
   terminateOcrWorker().then(() => process.exit(0)).catch(() => process.exit(1));
+});
+
+// ─── Global Safety Net ───────────────────────────────────────────────────────
+// Tesseract.js throws certain image-format errors via process.nextTick(),
+// which bypasses all try/catch blocks. Catch and log them here instead
+// of letting the entire worker process crash.
+process.on("uncaughtException", (err: Error) => {
+  const msg = err?.message || "";
+  if (msg.includes("read image") || msg.includes("pixReadStream") || msg.includes("Unknown format")) {
+    log.warn({ errorMessage: msg }, "Caught Tesseract uncatchable image-format error (suppressed)");
+    // Reset the worker since it may be in a bad state
+    workerInstance = null;
+    workerInitializing = null;
+    return; // Suppress — do not crash
+  }
+  // Re-throw non-Tesseract errors so they still crash as expected
+  log.error({ errorMessage: msg, stack: err?.stack }, "Uncaught exception (re-throwing)");
+  throw err;
 });
 
 // ─── LRU Cache ───────────────────────────────────────────────────────────────
@@ -186,7 +227,16 @@ export async function performOcrWithDetails(imageBuffer: Buffer): Promise<OcrRes
     log.warn({ errorMessage: dbErr.message, cacheKey }, "Error reading database OCR cache");
   }
 
-  // 3. Run OCR on cache miss
+  // 3. Validate image format before attempting OCR
+  if (!isValidImageBuffer(imageBuffer)) {
+    log.warn(
+      { cacheKey, bufferSize: imageBuffer.length, firstBytes: imageBuffer.slice(0, 8).toString("hex") },
+      "Skipping OCR — buffer does not contain a valid image header",
+    );
+    return { text: "", confidence: 0 };
+  }
+
+  // 4. Run OCR on cache miss
   try {
     const worker = await getWorker();
     const {
