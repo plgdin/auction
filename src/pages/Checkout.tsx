@@ -1548,9 +1548,9 @@ export function CheckoutPage() {
                   {/* Invoice Header */}
                   <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-6">
                     <div>
-                      <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                      <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                         LELAM COMPANY
-                      </h1>
+                      </h2>
                       <p className="text-slate-600 text-xs font-medium mt-0.5">India's Premier B2B Auction & Asset Platform</p>
                       <p className="text-slate-500 text-[11px] mt-1 leading-normal">
                         No: 2, 20th Cross Lakshmipuram, Halasuru, Bangalore 560008<br />

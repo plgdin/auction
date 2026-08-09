@@ -261,6 +261,7 @@ export default defineConfig({
   },
   build: {
     target: 'es2020', // Modern browsers — avoid unnecessary polyfills
+    sourcemap: false, // Never expose source code in production
     chunkSizeWarningLimit: 1000,
     cssCodeSplit: true, // Split CSS per chunk for better caching
     rollupOptions: {

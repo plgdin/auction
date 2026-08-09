@@ -1657,9 +1657,9 @@ export function QuotePage() {
                     <p className="text-[11px] text-slate-500 whitespace-pre-line">{activeQuote.senderAddress}</p>
                   </div>
                   <div className="text-right">
-                    <h1 className="text-xl font-black uppercase tracking-wider" style={{ color: activeQuote.colorTheme }}>
+                    <h2 className="text-xl font-black uppercase tracking-wider" style={{ color: activeQuote.colorTheme }}>
                       Quotation
-                    </h1>
+                    </h2>
                     <p className="text-xs font-bold text-slate-700 mt-1"># {activeQuote.quoteNumber}</p>
                     <p className="text-[11px] text-slate-500">Date: {activeQuote.date}</p>
                   </div>
