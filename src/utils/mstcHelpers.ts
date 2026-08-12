@@ -357,21 +357,20 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // Timber / Forest Pass
+  const timberRegex = /\b(TIMBER|TEAK|ROSEWOOD|LOG|FOREST)\b/;
+  const woodRegex = /\bWOOD\b/;
+
   const containsTimberKeywords = 
     categoryUpper.includes('TIMBER') || 
     categoryUpper.includes('FOREST') || 
-    textUpper.includes('TIMBER') || 
-    textUpper.includes('TEAK') || 
-    textUpper.includes('ROSEWOOD') || 
-    textUpper.includes('LOG') || 
-    textUpper.includes('FOREST') ||
+    timberRegex.test(textUpper) ||
     (parsedEligibility && parsedEligibility.some(el => {
       const elUpper = el.toUpperCase();
       return elUpper.includes('TIMBER') || elUpper.includes('TRANSIT PASS') || elUpper.includes('FOREST');
     }));
 
   let hasRawWood = false;
-  if (categoryUpper.includes('WOOD') || textUpper.includes('WOOD')) {
+  if (categoryUpper.includes('WOOD') || woodRegex.test(textUpper)) {
     const isFurniture = 
       categoryUpper.includes('FURNITURE') || 
       textUpper.includes('TABLE') || 
@@ -387,7 +386,7 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
       textUpper.includes('WINDOW') || 
       textUpper.includes('PARTITION');
 
-    if (!isFurniture || textUpper.includes('LOG') || textUpper.includes('TIMBER') || categoryUpper.includes('TIMBER') || categoryUpper.includes('FOREST')) {
+    if (!isFurniture || timberRegex.test(textUpper) || categoryUpper.includes('TIMBER') || categoryUpper.includes('FOREST')) {
       hasRawWood = true;
     }
   }
