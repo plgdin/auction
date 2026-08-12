@@ -213,61 +213,39 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   if (hasItems) {
+    const hazardousRegex = /\b(hazardous|battery|used oil|waste oil)\b/;
+    const ewasteRegex = /\b(e-waste|ewaste|telecom|cable)\b/;
+    const rvsfRegex = /\b(rvsf|vehicle|car|bus|truck|sumo|gypsy)\b/;
+
     for (const lot of itemsList) {
       const descLower = (lot.description || '').toLowerCase();
       const pcbLower = (lot.pcbGroup || '').toLowerCase();
       
       if (
-        descLower.includes('hazardous') || 
-        descLower.includes('battery') || 
-        descLower.includes('used oil') || 
-        descLower.includes('waste oil') ||
+        hazardousRegex.test(descLower) || 
         pcbLower.includes('hazardous')
       ) {
         hasHazardous = true;
       }
       if (
-        descLower.includes('e-waste') || 
-        descLower.includes('ewaste') || 
-        descLower.includes('telecom') || 
-        descLower.includes('cable') ||
+        ewasteRegex.test(descLower) || 
         pcbLower.includes('e-waste') ||
         pcbLower.includes('ewaste')
       ) {
         hasEWaste = true;
       }
       if (
-        pcbLower.includes('rvsf') ||
-        descLower.includes('rvsf') ||
-        descLower.includes('vehicle') ||
-        descLower.includes('car ') ||
-        descLower.includes('bus ') ||
-        descLower.includes('truck') ||
-        descLower.includes('sumo') ||
-        descLower.includes('gypsy')
+        rvsfRegex.test(descLower) || 
+        rvsfRegex.test(pcbLower)
       ) {
         hasRVSF = true;
       }
     }
   }
 
+  const rcmSellerRegex = /\b(BSNL|BHARAT SANCHAR|RAILWAY|POLICE|COURT|MINISTRY|MUNICIPAL|FOREST|GOVERNMENT|PORT|DEFENSE|DEFENCE|ORDNANCE|COMMISSIONER|AUTHORITY|CORPORATION)\b/;
   const isRcm = !!(
-    sellerUpper.includes('BSNL') || 
-    sellerUpper.includes('BHARAT SANCHAR') ||
-    sellerUpper.includes('RAILWAY') || 
-    sellerUpper.includes('POLICE') || 
-    sellerUpper.includes('COURT') || 
-    sellerUpper.includes('MINISTRY') || 
-    sellerUpper.includes('MUNICIPAL') || 
-    sellerUpper.includes('FOREST') || 
-    sellerUpper.includes('GOVERNMENT') || 
-    sellerUpper.includes('PORT') || 
-    sellerUpper.includes('DEFENSE') || 
-    sellerUpper.includes('DEFENCE') || 
-    sellerUpper.includes('ORDNANCE') || 
-    sellerUpper.includes('COMMISSIONER') || 
-    sellerUpper.includes('AUTHORITY') || 
-    sellerUpper.includes('CORPORATION') || 
+    rcmSellerRegex.test(sellerUpper) || 
     textUpper.includes('GST REQUIREMENT UNDER RCM') ||
     textUpper.includes('UNDER REVERSE CHARGE') ||
     (parsedEligibility && parsedEligibility.some(el => {
@@ -285,17 +263,11 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // SPCB Consent to Operate
+  const spcbCategoryRegex = /\b(WASTE|BATTERY|OIL|HAZARDOUS|CHEMICAL|METAL|PLASTIC|RUBBER)\b/;
   const needsSpcb = hasItems 
     ? hasHazardous 
     : (
-        categoryUpper.includes('WASTE') || 
-        categoryUpper.includes('BATTERY') || 
-        categoryUpper.includes('OIL') || 
-        categoryUpper.includes('HAZARDOUS') || 
-        categoryUpper.includes('CHEMICAL') || 
-        categoryUpper.includes('METAL') || 
-        categoryUpper.includes('PLASTIC') || 
-        categoryUpper.includes('RUBBER') ||
+        spcbCategoryRegex.test(categoryUpper) || 
         (parsedEligibility && parsedEligibility.some(el => {
           const elUpper = el.toUpperCase();
           return elUpper.includes('SPCB') || elUpper.includes('PCB') || elUpper.includes('POLLUTION') || elUpper.includes('CONSENT TO OPERATE');
@@ -311,12 +283,11 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // CPCB Registration
+  const cpcbCategoryRegex = /\b(E-WASTE|ELECTRONIC|TELECOM)\b/;
   const needsCpcb = hasItems 
     ? hasEWaste 
     : (
-        categoryUpper.includes('E-WASTE') || 
-        categoryUpper.includes('ELECTRONIC') || 
-        categoryUpper.includes('TELECOM') || 
+        cpcbCategoryRegex.test(categoryUpper) || 
         (parsedEligibility && parsedEligibility.some(el => {
           const elUpper = el.toUpperCase();
           return elUpper.includes('CPCB') || elUpper.includes('E-WASTE') || elUpper.includes('EWASTE');
@@ -332,16 +303,11 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // ELV (End-Of-Life Vehicle)
+  const elvCategoryRegex = /\b(VEHICLE|CAR|BUS|TRUCK|DUMPER|AUTOMOBILE|RVSF)\b/;
   const needsElv = hasItems 
     ? hasRVSF 
     : (
-        categoryUpper.includes('VEHICLE') || 
-        categoryUpper.includes('CAR') || 
-        categoryUpper.includes('BUS') || 
-        categoryUpper.includes('TRUCK') || 
-        categoryUpper.includes('DUMPER') || 
-        categoryUpper.includes('AUTOMOBILE') || 
-        categoryUpper.includes('RVSF') ||
+        elvCategoryRegex.test(categoryUpper) || 
         (parsedEligibility && parsedEligibility.some(el => {
           const elUpper = el.toUpperCase();
           return elUpper.includes('ELV') || elUpper.includes('VEHICLE') || elUpper.includes('RTO') || elUpper.includes('DISMANTLING') || elUpper.includes('RVSF');
@@ -402,12 +368,9 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // Chartered Engineer Certificate
+  const charteredRegex = /\b(DISMANTLING|DEMOLITION|MACHINERY|STRUCTURAL|DECOMMISSIONED)\b/;
   const needsChartered = 
-    textUpper.includes('DISMANTLING') || 
-    textUpper.includes('DEMOLITION') || 
-    textUpper.includes('MACHINERY') || 
-    textUpper.includes('STRUCTURAL') || 
-    textUpper.includes('DECOMMISSIONED') ||
+    charteredRegex.test(textUpper) ||
     (parsedEligibility && parsedEligibility.some(el => {
       const elUpper = el.toUpperCase();
       return elUpper.includes('CHARTERED ENGINEER') || elUpper.includes('STABILITY CERTIFICATE') || elUpper.includes('DEMOLITION');
