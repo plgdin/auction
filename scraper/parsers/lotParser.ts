@@ -787,6 +787,10 @@ export function parseLotBlocks(
 
     if (validMatches.length > 0) {
       const groups: { [unit: string]: number } = {};
+      // Track seen values per unit to prevent double-counting when the same
+      // qty appears in both Lot Description and Lot Parameters columns.
+      const seenValues: { [unit: string]: Set<number> } = {};
+
       for (const match of validMatches) {
         const valStr = match[1].replace(/,/g, "").trim();
         const val = parseFloat(valStr);
@@ -807,6 +811,14 @@ export function parseLotBlocks(
           }
           
           const uKey = u.toUpperCase();
+          if (!seenValues[uKey]) {
+            seenValues[uKey] = new Set();
+          }
+          // Skip if this exact value has already been counted for this unit
+          if (seenValues[uKey].has(val)) {
+            continue;
+          }
+          seenValues[uKey].add(val);
           groups[uKey] = (groups[uKey] || 0) + val;
         }
       }

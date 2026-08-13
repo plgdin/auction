@@ -109,7 +109,7 @@ export const getEstimatedMarketPrice = (
   if (desc.includes('computer') || desc.includes('laptop') || desc.includes('it equipment') || cat.includes('computer') || cat.includes('laptop')) {
     return '₹14,500 / Unit';
   }
-  return '₹2,500 / Ton';
+  return 'N/A';
 };
 
 export const getNumericQty = (qtyStr: string, unitStr: string = ''): number => {
@@ -538,8 +538,17 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
         
         let subDesc = expandAbbreviations(sub.description || '');
         subDesc = cleanMaterialDescription(subDesc);
-        const subQty = sub.qty || '1';
-        const subUnit = sub.unit || 'Nos';
+        
+        let subQty = sub.qty || '1';
+        let subUnit = sub.unit || 'Nos';
+        
+        // Smart fallback regex extraction from description for quantity
+        const qtyMatch = subDesc.match(/(?:qty|quantity)\s*[-:]?\s*([\d.,]+)\s*([a-zA-Z]+)?/i);
+        if (qtyMatch && (!sub.qty || sub.qty === '1' || sub.qty === '2' || sub.unit === 'Items' || sub.unit === 'Nos')) {
+           subQty = qtyMatch[1];
+           if (qtyMatch[2]) subUnit = qtyMatch[2].toUpperCase();
+        }
+
         const subTax = tax || '18% GST';
         const subMPrice = getEstimatedMarketPrice(subDesc, categoryName);
 
@@ -584,9 +593,20 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
         mPrice = getEstimatedMarketPrice(desc, categoryName);
       }
 
+      let itemQty = item.qty || '1';
+      let itemUnit = item.unit || 'Nos';
+      
+      const qtyMatch = desc.match(/(?:qty|quantity)\s*[-:]?\s*([\d.,]+)\s*([a-zA-Z]+)?/i);
+      if (qtyMatch && (!item.qty || item.qty === '1' || item.qty === '2' || item.unit === 'Items' || item.unit === 'Nos')) {
+         itemQty = qtyMatch[1];
+         if (qtyMatch[2]) itemUnit = qtyMatch[2].toUpperCase();
+      }
+
       flattened.push({
         ...item,
         description: desc,
+        qty: itemQty,
+        unit: itemUnit,
         taxRate: tax,
         marketPrice: mPrice
       });
@@ -1012,13 +1032,19 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
               mPrice = getEstimatedMarketPrice(desc, item.category_name);
             }
 
-            let lotQty = lot.qty;
-            let lotUnit = lot.unit;
-            if (lot.subItems && lot.subItems.length > 0) {
-              // Always derive qty from sub-items when available — the sub-item
-              // count is the most reliable source of truth from the parsed PDF.
-              // The catalog qty is often garbage like "1 AC + 1,005 NOS" or
-              // generic "1.0 LOT".
+            // The scraper already correctly parses qty/unit from "Quantity - 14.4 MT"
+            // in the lot block. We must respect that value and NOT blindly overwrite
+            // it with a subItem count.
+            // Only fall back to counting subItems when the lot truly has no real measurement
+            // (i.e. the unit is a generic placeholder like "Lot", "Lots", or is empty).
+            const GENERIC_UNITS = new Set(['LOT', 'LOTS', 'LOT/S', '']);
+            const isGenericQty = GENERIC_UNITS.has((lot.unit || '').toUpperCase().trim());
+
+            let lotQty = lot.qty || '1';
+            let lotUnit = lot.unit || 'Nos';
+
+            if (isGenericQty && lot.subItems && lot.subItems.length > 0) {
+              // Only count sub-items as a fallback when we have no real measurement
               lotQty = String(lot.subItems.length);
               lotUnit = 'Items';
             }
