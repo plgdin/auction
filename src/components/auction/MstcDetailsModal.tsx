@@ -134,6 +134,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     profile?.subscription_plan === 'enterprise' || 
                     profile?.role === 'admin' || 
                     profile?.role === 'superadmin';
+  const isBusinessUser = (isAuthenticated && (profile?.subscription_plan === 'pro' || profile?.subscription_plan === 'enterprise')) || profile?.role === 'admin' || profile?.role === 'superadmin';
   const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
   const [viewing, setViewing] = useState(false);
@@ -1301,8 +1302,27 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <>
-                      {/* ═══════ SECTION 1: Hero Summary Card — CP / SP / Profit ═══════ */}
+                    <div className="relative">
+                      {!isBusinessUser && (
+                        <div className="absolute inset-0 z-10 bg-white/30 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center rounded-3xl border border-white/50 m-2">
+                          <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-5 shadow-inner">
+                            <Sparkles className="w-8 h-8 animate-pulse animate-duration-1000" />
+                          </div>
+                          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Unlock AI Valuation</h3>
+                          <p className="mt-3 text-sm text-slate-700 max-w-sm font-medium leading-relaxed">
+                            Upgrade to <span className="font-bold text-primary">Bidder Pro Business</span> to unlock AI Win-Probability, Profit Simulation, Risk Warnings, and Live Market insights.
+                          </p>
+                          <Link
+                            to="/pricing"
+                            className="mt-8 px-6 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/95 shadow-lg shadow-primary/25 hover:scale-[1.02] transition-all cursor-pointer inline-flex items-center gap-2"
+                          >
+                            <Zap className="w-4 h-4 fill-white text-white" />
+                            <span>Upgrade to Business</span>
+                          </Link>
+                        </div>
+                      )}
+                      <div className={clsx("space-y-6", !isBusinessUser && "opacity-40 pointer-events-none select-none blur-sm h-[600px] overflow-hidden")}>
+                        {/* ═══════ SECTION 1: Hero Summary Card — CP / SP / Profit ═══════ */}
                       {(() => {
                         const rec = finalValuationData.recommendation;
                         const status = rec?.status || 'Watch';
@@ -1841,7 +1861,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </div>
                         </div>
                       )}
-                    </>
+                      </div>
+                    </div>
                   )}
                   </div>
                 )

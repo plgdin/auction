@@ -179,7 +179,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
   };
 
   const { profile, isAuthenticated } = useAuthStore();
-  const isBusinessUser = (isAuthenticated && profile?.subscription_plan === 'pro') || profile?.role === 'admin' || profile?.role === 'superadmin';
+  const isBusinessUser = (isAuthenticated && (profile?.subscription_plan === 'pro' || profile?.subscription_plan === 'enterprise')) || profile?.role === 'admin' || profile?.role === 'superadmin';
 
   const renderCardHeader = () => {
     if (isGrid) {
