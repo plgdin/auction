@@ -300,7 +300,7 @@ export function CheckoutPage() {
 
   const isExplorerFree = planId === 'explorer' || planId === 'starter' || planId === 'free';
   const isTrial = (planId === 'pro' || planId === 'premium') && (searchParams.get('trial') !== 'false');
-  const isFreeActivation = isExplorerFree || isTrial;
+  const isFreeActivation = isExplorerFree; // Trials now require a 1 INR autopay setup, so they are not fully free activations at checkout
 
   // Prevent duplicate trial claims
   useEffect(() => {
@@ -322,8 +322,12 @@ export function CheckoutPage() {
   const subtotalBeforeDiscount = baseSubtotal + extraSeatsCost;
   const discountAmount = Math.round(subtotalBeforeDiscount * appliedDiscount);
   const subtotal = subtotalBeforeDiscount - discountAmount;
-  const gst = Math.round(subtotal * 0.18);
-  const total = subtotal + gst;
+  const normalGst = Math.round(subtotal * 0.18);
+  const normalTotal = subtotal + normalGst;
+  
+  // Trials require a ₹1 authentication charge for autopay setup
+  const total = isTrial ? 1 : normalTotal;
+  const gst = isTrial ? 0 : normalGst;
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -454,7 +458,8 @@ export function CheckoutPage() {
           planId,
           billingCycle,
           extraSeats,
-          couponCode: appliedDiscount > 0 ? appliedCouponCode : undefined
+          couponCode: appliedDiscount > 0 ? appliedCouponCode : undefined,
+          isTrial
         })
       });
 
@@ -1527,7 +1532,7 @@ export function CheckoutPage() {
                           </>
                         ) : isTrial ? (
                           <>
-                            <Sparkles className="w-4 h-4" /> Start 30-Day Free Trial
+                            <Lock className="w-4 h-4" /> Setup Autopay {formatPrice(total)}
                           </>
                         ) : total === 0 ? (
                           'Activate Free Plan'
@@ -1946,23 +1951,34 @@ export function CheckoutPage() {
 
                       <div className="flex justify-between items-center text-xs font-medium text-slate-500">
                         <span>GST (18%)</span>
-                        <span className="font-mono text-slate-800 font-semibold">{formatPrice(gst)}</span>
+                        <span className="font-mono text-slate-800 font-semibold">{formatPrice(normalGst)}</span>
                       </div>
-                      <hr className="border-slate-100" />
                     </>
                   )}
-
-                  <div className="flex justify-between items-center pt-1">
-                    <span className="text-sm font-bold text-slate-900">Total Due</span>
-                    <motion.span
-                      key={total}
-                      initial={{ scale: 1.3, color: '#16a34a' }}
-                      animate={{ scale: 1, color: '#059669' }}
-                      transition={{ type: 'spring', stiffness: 350, damping: 18 }}
-                      className="text-2xl font-black text-emerald-600 font-mono tracking-tight"
-                    >
-                      {formatPrice(total)}
-                    </motion.span>
+                  <div className="flex flex-col gap-1 border-t border-slate-100 pt-4 mt-2">
+                    {isTrial && (
+                      <div className="flex justify-between items-center text-sm font-bold text-slate-500 mb-2">
+                        <span>Autopay starting {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        <span className="font-mono text-slate-700">{formatPrice(normalTotal)}/{billingCycle === 'annual' ? 'yr' : 'mo'}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-lg sm:text-xl font-black text-slate-900">
+                      <span>{isTrial ? 'Due Today (Autopay Setup)' : 'Total Amount'}</span>
+                      <motion.span
+                        key={total}
+                        initial={{ scale: 1.3, color: '#16a34a' }}
+                        animate={{ scale: 1, color: '#059669' }}
+                        transition={{ type: 'spring', stiffness: 350, damping: 18 }}
+                        className="text-2xl font-black text-emerald-600 font-mono tracking-tight"
+                      >
+                        {formatPrice(total)}
+                      </motion.span>
+                    </div>
+                    {isTrial && (
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        * A refundable ₹1 charge is required to verify your payment method and setup the autopay mandate for your free trial.
+                      </p>
+                    )}
                   </div>
                 </div>
 

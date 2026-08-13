@@ -24,6 +24,7 @@ const createOrderSchema = z.object({
   billingCycle: z.enum(['monthly', 'annual']),
   extraSeats: z.coerce.number().int().nonnegative().optional().default(0),
   couponCode: z.string().optional().nullable(),
+  isTrial: z.boolean().optional().default(false),
 });
 
 export default async function handler(req: any, res: any) {
@@ -114,7 +115,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const { amount: clientAmount, currency, receipt, planId, billingCycle, extraSeats, couponCode } = validation.data;
+    const { amount: clientAmount, currency, receipt, planId, billingCycle, extraSeats, couponCode, isTrial } = validation.data;
 
     // Calculate subtotal & total dynamically on server to ensure pricing integrity
     const isExplorerFree = planId === 'explorer' || planId === 'starter' || planId === 'free';
@@ -155,7 +156,7 @@ export default async function handler(req: any, res: any) {
     const discountAmount = Math.round(subtotalBeforeDiscount * appliedDiscount);
     const subtotal = subtotalBeforeDiscount - discountAmount;
     const gst = Math.round(subtotal * 0.18);
-    const calculatedTotal = subtotal + gst;
+    const calculatedTotal = isTrial ? 1 : subtotal + gst;
     const amount = calculatedTotal * 100; // in paise
 
     // Verify client-sent amount aligns with calculated amount (within 200 paise / 2 INR margin for rounding)
