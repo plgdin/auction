@@ -60,6 +60,9 @@ function extractQuantitiesFromDescriptionBlock(
   const groups: { [unit: string]: number } = {};
 
   // Pattern 1: <qty> <unit> (e.g. 1797 NOS)
+  // Upper bound: 10,000,000 (1 crore) — phone numbers (10 digits) are ~1 billion
+  // which is way above this, so they will be filtered out.
+  const MAX_REASONABLE_QTY = 10_000_000;
   const pattern1 = new RegExp(
     `\\b(\\d+[\\d,.]*)\\s+(${DESC_UNITS})\\b`,
     "gi"
@@ -67,7 +70,14 @@ function extractQuantitiesFromDescriptionBlock(
   let m1;
   while ((m1 = pattern1.exec(descText)) !== null) {
     const val = parseFloat(m1[1].replace(/,/g, ""));
-    if (!isNaN(val) && val > 0) {
+    // Reject phone numbers and other unreasonably large numbers
+    if (!isNaN(val) && val > 0 && val < MAX_REASONABLE_QTY) {
+      // Also reject if preceded by a phone/contact context keyword
+      const prefixStart = Math.max(0, m1.index - 40);
+      const prefix = descText.substring(prefixStart, m1.index);
+      if (/(?:Mob|Mobile|Phone|Tel|Contact|Cont|Fax)\s*\.?\s*No\s*[-:]?\s*$/i.test(prefix)) {
+        continue;
+      }
       const u = m1[2].toUpperCase().trim();
       groups[u] = (groups[u] || 0) + val;
     }
@@ -124,7 +134,7 @@ function extractQuantitiesFromDescriptionBlock(
  * Keywords that, when appearing immediately before a number, indicate
  * the number is NOT a quantity (it's a GST rate, EMD, date, etc.).
  */
-const QTY_NEGATIVE_PREFIX = /(?:GST|TCS|EMD|Date|Pin|A\/C|Account|Ref|Reference|Invoice|Bill|Receipt|Phone|Mobile|Telephone|Fax)\s*[:.-]?\s*$/i;
+const QTY_NEGATIVE_PREFIX = /(?:GST|TCS|EMD|Date|Pin|A\/C|Account|Ref|Reference|Invoice|Bill|Receipt|Phone|Mobile|Mob|Mob\.\s*No|Tel|Telephone|Fax|Contact|Cont|S\.\s*No|Sr\.\s*No|Sl\.\s*No|SNO)\s*[:.-]?\s*$/i;
 
 /**
  * Check if a quantity match is a false positive by examining its context.
