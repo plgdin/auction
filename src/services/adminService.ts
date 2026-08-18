@@ -306,6 +306,27 @@ export const adminService = {
     return true;
   },
 
+  async updateUserAccess(
+    userId: string,
+    updates: {
+      role?: string;
+      subscription_plan?: string;
+      subscription_expires_at?: string | null;
+      is_active?: boolean;
+    }
+  ): Promise<boolean> {
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error updating user access:', error);
+      return false;
+    }
+    return true;
+  },
+
   // Global Analytics
   async getGlobalAnalytics() {
     const now = new Date().toISOString();
