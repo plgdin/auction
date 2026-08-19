@@ -239,28 +239,47 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
               <Download className="w-4 h-4 text-primary" /> Official Notice Documents & Lot Schedules
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Primary Notice PDF */}
+              {/* Primary Official Notice Page (Initializes session so documents can be downloaded without session expiration) */}
+              <a
+                href={item.source_url || `https://forwardauction.gem.gov.in/eprocure/view-auction-notice/${encodeURIComponent(item.gem_auction_id)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3.5 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition-all group cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
+                  <div className="truncate">
+                    <span className="text-xs font-bold text-primary group-hover:text-primary-hover transition-colors block truncate">
+                      e-Auction Notice & Documents
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono block">Official GeM Notice (Full Details)</span>
+                  </div>
+                </div>
+                <ExternalLink className="w-4 h-4 text-primary shrink-0 ml-2" />
+              </a>
+
+              {/* Direct PDF Notice Download */}
               <a
                 href={item.document_url || `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-primary/5 hover:border-primary/30 transition-all group cursor-pointer"
+                className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-all group cursor-pointer"
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
-                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
                   <div className="truncate">
-                    <span className="text-xs font-bold text-slate-800 group-hover:text-primary transition-colors block truncate">
-                      e-Auction Notice PDF
+                    <span className="text-xs font-bold text-slate-800 group-hover:text-slate-900 transition-colors block truncate">
+                      Direct Notice PDF Stream
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono block">Primary Document</span>
+                    <span className="text-[10px] text-slate-400 font-mono block">Raw PDF Download</span>
                   </div>
                 </div>
-                <Download className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors shrink-0 ml-2" />
+                <Download className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0 ml-2" />
               </a>
 
               {/* Secondary attached documents (Schedule of Lots, Terms, Corrigendum) */}
               {item.document_urls && item.document_urls
-                .filter((url) => url !== item.document_url)
+                .filter((url) => url !== item.document_url && url !== item.source_url)
                 .map((docUrl, idx) => (
                   <a
                     key={docUrl || idx}
@@ -270,7 +289,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                     className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-all group cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5 overflow-hidden">
-                      <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
                       <div className="truncate">
                         <span className="text-xs font-bold text-slate-800 group-hover:text-slate-900 transition-colors block truncate">
                           Attachment #{idx + 1}
@@ -301,26 +320,29 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
         {/* Footer Actions */}
         <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-3 items-center justify-between shrink-0">
           <span className="text-[10px] text-slate-400 font-mono font-bold">
-            Scraped At: {new Date(item.scraped_at).toLocaleString()}
+            Scraped At: {(() => {
+              const d = item.created_at || item.scraped_at || item.updated_at;
+              if (!d) return 'Recently Ingested';
+              const parsed = new Date(d);
+              return isNaN(parsed.getTime()) ? 'Recently Ingested' : parsed.toLocaleString();
+            })()}
           </span>
-          <div className="flex gap-2">
-            {item.document_url && (
-              <a
-                href={item.document_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold shadow-xs transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" /> Notice PDF Document
-              </a>
-            )}
+          <div className="flex flex-wrap gap-2">
             <a
-              href={item.source_url}
+              href={item.source_url || `https://forwardauction.gem.gov.in/eprocure/view-auction-notice/${encodeURIComponent(item.gem_auction_id)}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
             >
-              Go to GeM notice page <ExternalLink className="w-3.5 h-3.5 ml-0.5" />
+              Open GeM Notice Page <ExternalLink className="w-3.5 h-3.5 ml-0.5" />
+            </a>
+            <a
+              href={item.document_url || `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold shadow-xs transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" /> Notice PDF
             </a>
           </div>
         </div>

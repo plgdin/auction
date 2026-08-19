@@ -2917,7 +2917,9 @@ export interface GemAuction {
   source_url: string;
   document_url?: string;
   document_urls?: string[];
-  scraped_at: string;
+  scraped_at?: string;
+  created_at?: string;
+  updated_at?: string;
   raw_description?: string;
   auction_status?: string;
 }
