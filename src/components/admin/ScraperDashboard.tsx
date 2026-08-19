@@ -119,16 +119,16 @@ export function ScraperDashboard() {
         gemBidsStatsData, gemBidsData, gemBidsLogsData
       ] = await Promise.all([
         adminService.getScraperAnalytics(),
-        adminService.getScraperAuctions(3000),
+        adminService.getScraperAuctions(500),
         adminService.getScraperLogs(100),
         adminService.getBaanknetScraperAnalytics(),
-        adminService.getBaanknetScraperAuctions(3000),
+        adminService.getBaanknetScraperAuctions(500),
         adminService.getBaanknetScraperLogs(100),
         adminService.getGemScraperAnalytics(),
-        adminService.getGemScraperAuctions(3000),
+        adminService.getGemScraperAuctions(500),
         adminService.getGemScraperLogs(100),
         adminService.getGemBidsScraperAnalytics(),
-        adminService.getGemBidsScraperBids(3000),
+        adminService.getGemBidsScraperBids(500),
         adminService.getGemBidsScraperLogs(100)
       ]);
 
