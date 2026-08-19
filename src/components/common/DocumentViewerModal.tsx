@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Download, Maximize2, Minimize2, FileText, Loader2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Download, Maximize2, Minimize2, FileText, Loader2, AlertCircle, Printer } from 'lucide-react';
 
 interface DocumentViewerModalProps {
   isOpen: boolean;
@@ -19,10 +19,23 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Format in-app proxy URLs
   const proxyViewUrl = `/api/document-proxy?url=${encodeURIComponent(documentUrl)}&filename=${encodeURIComponent(filename)}&disposition=inline`;
   const proxyDownloadUrl = `/api/document-proxy?url=${encodeURIComponent(documentUrl)}&filename=${encodeURIComponent(filename)}&disposition=attachment`;
+
+  const handlePrint = () => {
+    try {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.print();
+      } else {
+        window.open(proxyViewUrl, '_blank')?.print();
+      }
+    } catch (e) {
+      window.open(proxyViewUrl, '_blank');
+    }
+  };
 
   // Lock body scroll when open
   useEffect(() => {
@@ -73,14 +86,24 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Download Button */}
+            {/* Print / Save PDF Button */}
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer border border-slate-700"
+              title="Print / Save as PDF"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Save as PDF</span>
+            </button>
+
+            {/* Direct Download Button */}
             <a
               href={proxyDownloadUrl}
               download={filename}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Download PDF</span>
+              <span className="hidden sm:inline">Download</span>
             </a>
 
             {/* Fullscreen Toggle */}
@@ -133,6 +156,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
             </div>
           ) : (
             <iframe
+              ref={iframeRef}
               src={proxyViewUrl}
               title={title}
               className="w-full h-full border-0 bg-white"
