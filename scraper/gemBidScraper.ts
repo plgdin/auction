@@ -248,8 +248,8 @@ async function runScraper() {
     const page = await browser.newPage();
     await page.setUserAgent(DEFAULT_USER_AGENT);
     
-    log.info("Navigating to GeM BidPlus listings...");
-    await page.goto("https://bidplus.gem.gov.in/bidlists", {
+    log.info("Navigating to GeM BidPlus all-bids listings...");
+    await page.goto("https://bidplus.gem.gov.in/all-bids", {
       waitUntil: "networkidle2",
       timeout: 60000,
     });
