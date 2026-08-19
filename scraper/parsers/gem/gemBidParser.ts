@@ -19,6 +19,8 @@ export interface GeMBid {
   status: string;
   document_url?: string | null;
   ra_document_url?: string | null;
+  document_urls?: string[] | null;
+  corrigendum_urls?: string[] | null;
   category_name: string;
   raw_description?: string | null;
 }

@@ -2916,6 +2916,7 @@ export interface GemAuction {
   auction_end_date: string;
   source_url: string;
   document_url?: string;
+  document_urls?: string[];
   scraped_at: string;
   raw_description?: string;
   auction_status?: string;
@@ -3063,6 +3064,8 @@ export interface GemBid {
   status: string;
   document_url?: string | null;
   ra_document_url?: string | null;
+  document_urls?: string[] | null;
+  corrigendum_urls?: string[] | null;
   category_name: string;
   raw_description?: string | null;
   created_at: string;

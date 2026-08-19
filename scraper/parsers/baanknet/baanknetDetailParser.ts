@@ -129,13 +129,32 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
   }
 
   const documentUrls: string[] = [];
-  const docLinks = document.querySelectorAll(
+  const docElements = document.querySelectorAll(
     'a[href*="file-download"], a[href*="download"], a[href*="notice"], ' +
-    'a[href*="document"], a[href*=".pdf"]'
+    'a[href*="document"], a[href*=".pdf"], a[href*="tender"], a[href*="annexure"], ' +
+    'a[href*="sale-notice"], a[href*="possession"], a[href*="process-memo"], a[href*="form-g"], ' +
+    'button[data-url], button[data-file], button[onclick*="download"], a[onclick*="download"], a[onclick*="window.open"]'
   );
-  docLinks.forEach((el) => {
-    const href = (el as HTMLAnchorElement).href || el.getAttribute("href") || "";
-    if (href && !documentUrls.includes(href)) documentUrls.push(href);
+  docElements.forEach((el) => {
+    let href = (el as HTMLAnchorElement).href || 
+               el.getAttribute("href") || 
+               el.getAttribute("data-url") || 
+               el.getAttribute("data-file") || 
+               "";
+    if (!href) {
+      const onclick = el.getAttribute("onclick") || "";
+      const match = onclick.match(/['"](https?:\/\/[^'"]+|\/[^'"]+)['"]/);
+      if (match) href = match[1];
+    }
+    if (href && !href.startsWith("javascript:")) {
+      // Normalize relative paths
+      const fullUrl = href.startsWith("http") 
+        ? href 
+        : `https://baanknet.com${href.startsWith("/") ? "" : "/"}${href}`;
+      if (!documentUrls.includes(fullUrl)) {
+        documentUrls.push(fullUrl);
+      }
+    }
   });
   const documentUrl = documentUrls[0] || "";
 

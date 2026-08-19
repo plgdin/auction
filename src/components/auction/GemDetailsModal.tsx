@@ -233,6 +233,57 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
             </div>
           </div>
 
+          {/* Official Documents & NIT Attachments */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+              <Download className="w-4 h-4 text-primary" /> Official Notice Documents & Lot Schedules
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Primary Notice PDF */}
+              <a
+                href={item.document_url || `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-primary/5 hover:border-primary/30 transition-all group cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                  <div className="truncate">
+                    <span className="text-xs font-bold text-slate-800 group-hover:text-primary transition-colors block truncate">
+                      e-Auction Notice PDF
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono block">Primary Document</span>
+                  </div>
+                </div>
+                <Download className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors shrink-0 ml-2" />
+              </a>
+
+              {/* Secondary attached documents (Schedule of Lots, Terms, Corrigendum) */}
+              {item.document_urls && item.document_urls
+                .filter((url) => url !== item.document_url)
+                .map((docUrl, idx) => (
+                  <a
+                    key={docUrl || idx}
+                    href={docUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5 overflow-hidden">
+                      <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
+                      <div className="truncate">
+                        <span className="text-xs font-bold text-slate-800 group-hover:text-slate-900 transition-colors block truncate">
+                          Attachment #{idx + 1}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono block">Lot Schedule / Terms PDF</span>
+                      </div>
+                    </div>
+                    <Download className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0 ml-2" />
+                  </a>
+                ))}
+            </div>
+          </div>
+
           {/* Raw Description / Ingestion Logs */}
           {item.raw_description && (
             <div className="space-y-3">

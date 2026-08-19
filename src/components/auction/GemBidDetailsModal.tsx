@@ -214,6 +214,101 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
             </div>
           </div>
 
+          {/* Official Documents & Corrigenda Section */}
+          <div className="p-4 rounded-xl border border-slate-150 space-y-3 bg-white shadow-xs">
+            <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Download className="w-3.5 h-3.5 text-primary" /> Official Documents & Corrigenda
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Primary Bid PDF */}
+              <a
+                href={item.document_url || `https://bidplus.gem.gov.in/showbidDocument/${encodeURIComponent(item.bid_number)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-primary/5 hover:border-primary/30 transition-all group cursor-pointer"
+              >
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                  <div className="truncate">
+                    <span className="text-xs font-bold text-slate-800 group-hover:text-primary transition-colors block truncate">
+                      Bid Document Notice
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono block">Primary PDF</span>
+                  </div>
+                </div>
+                <Download className="w-3.5 h-3.5 text-slate-400 group-hover:text-primary transition-colors shrink-0 ml-2" />
+              </a>
+
+              {/* RA Document if present */}
+              {item.ra_document_url && (
+                <a
+                  href={item.ra_document_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 rounded-lg border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 hover:border-emerald-300 transition-all group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <div className="truncate">
+                      <span className="text-xs font-bold text-emerald-800 group-hover:text-emerald-900 transition-colors block truncate">
+                        RA Document Notice
+                      </span>
+                      <span className="text-[10px] text-emerald-600/70 font-mono block">Reverse Auction PDF</span>
+                    </div>
+                  </div>
+                  <Download className="w-3.5 h-3.5 text-emerald-500 group-hover:text-emerald-700 transition-colors shrink-0 ml-2" />
+                </a>
+              )}
+
+              {/* Corrigendum PDFs */}
+              {item.corrigendum_urls && item.corrigendum_urls.map((cUrl, idx) => (
+                <a
+                  key={cUrl || idx}
+                  href={cUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-amber-50/50 hover:bg-amber-50 hover:border-amber-300 transition-all group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                    <div className="truncate">
+                      <span className="text-xs font-bold text-amber-900 group-hover:text-amber-950 transition-colors block truncate">
+                        Corrigendum #{idx + 1}
+                      </span>
+                      <span className="text-[10px] text-amber-700/80 font-mono block">Amendment PDF</span>
+                    </div>
+                  </div>
+                  <Download className="w-3.5 h-3.5 text-amber-500 group-hover:text-amber-700 transition-colors shrink-0 ml-2" />
+                </a>
+              ))}
+
+              {/* Additional attached documents (ATC / Specs) */}
+              {item.document_urls && item.document_urls
+                .filter((dUrl) => dUrl !== item.document_url && dUrl !== item.ra_document_url && !(item.corrigendum_urls || []).includes(dUrl))
+                .map((dUrl, idx) => (
+                  <a
+                    key={dUrl || idx}
+                    href={dUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
+                      <div className="truncate">
+                        <span className="text-xs font-bold text-slate-800 group-hover:text-slate-900 transition-colors block truncate">
+                          Attachment #{idx + 1}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono block">ATC / Technical Spec</span>
+                      </div>
+                    </div>
+                    <Download className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0 ml-2" />
+                  </a>
+                ))}
+            </div>
+          </div>
+
           {/* Raw payload description if present */}
           {item.raw_description && (
             <div className="space-y-2.5">
@@ -229,7 +324,7 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
         </div>
 
         {/* Footer Action buttons */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+        <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-wrap justify-end gap-3 shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-slate-200 text-slate-655 font-bold text-xs rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"

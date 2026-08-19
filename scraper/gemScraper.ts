@@ -212,10 +212,17 @@ function extractGeMListingsFromDOM(): any[] {
       }
     }
     
-    // Document Download Link
-    const docLink = container.querySelector("a[href*='eauction-download-document']");
-    const documentUrl = docLink ? docLink.getAttribute("href") || "" : "";
-    
+    // Document Download Links (NIT, Schedule of Lots, Auction Notice)
+    const allDocUrls: string[] = [];
+    const docLinks = container.querySelectorAll("a[href*='eauction-download-document'], a[href*='view-auction-notice'], a[href*='download'], a[href*='notice'], a[href*='document'], a[href*='.pdf']");
+    docLinks.forEach((dLink) => {
+      const href = (dLink as HTMLAnchorElement).getAttribute("href") || "";
+      if (href && !allDocUrls.includes(href)) {
+        allDocUrls.push(href);
+      }
+    });
+    const primaryDocUrl = allDocUrls[0] || `/eprocure/eauction-download-document/${auctionId}`;
+
     // Reserve Price / Starting price
     let reservePriceText = "";
     const priceMatch = containerText.match(/(?:Reserve|Starting)\s*Price\s*:\s*(?:Rs\.?)?\s*([0-9.,]+)/i) ||
@@ -234,8 +241,9 @@ function extractGeMListingsFromDOM(): any[] {
       locationText,
       startDateStr: startMatch ? startMatch[1].trim() : "",
       endDateStr: endMatch ? endMatch[1].trim() : "",
-      source_url: href,
-      document_url: documentUrl,
+      source_url: href || `/eprocure/view-auction-notice/${auctionId}`,
+      document_url: primaryDocUrl,
+      document_urls: allDocUrls,
       raw_description: containerText
     });
   });
@@ -326,11 +334,15 @@ async function runScraper() {
         // Format absolute URLs
         const absoluteSourceUrl = item.source_url.startsWith("http")
           ? item.source_url
-          : `https://forwardauction.gem.gov.in${item.source_url}`;
+          : `https://forwardauction.gem.gov.in${item.source_url.startsWith('/') ? '' : '/'}${item.source_url}`;
           
         const absoluteDocUrl = item.document_url 
-          ? (item.document_url.startsWith("http") ? item.document_url : `https://forwardauction.gem.gov.in${item.document_url}`)
-          : "";
+          ? (item.document_url.startsWith("http") ? item.document_url : `https://forwardauction.gem.gov.in${item.document_url.startsWith('/') ? '' : '/'}${item.document_url}`)
+          : `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`;
+
+        const absoluteDocUrls = Array.isArray(item.document_urls) && item.document_urls.length > 0
+          ? item.document_urls.map((u: string) => u.startsWith("http") ? u : `https://forwardauction.gem.gov.in${u.startsWith('/') ? '' : '/'}${u}`)
+          : [absoluteDocUrl];
           
         return {
           gem_auction_id: item.gem_auction_id,
@@ -349,6 +361,7 @@ async function runScraper() {
           auction_status: "live", // Assume live for scraped public page items
           source_url: absoluteSourceUrl,
           document_url: absoluteDocUrl || undefined,
+          document_urls: absoluteDocUrls.length > 0 ? absoluteDocUrls : undefined,
           category_name,
           raw_description: item.raw_description || undefined,
         };

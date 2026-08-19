@@ -26,6 +26,7 @@ export interface GeMListing {
   auction_status: string;
   source_url: string;
   document_url?: string;
+  document_urls?: string[];
   category_name: string;
   raw_description?: string;
 }

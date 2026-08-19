@@ -183,7 +183,30 @@ function extractGeMBidsFromDOM(): any[] {
     // Extract Dates
     const startMatch = cardText.match(/Start\s*Date\s*:\s*([\d\-/: ]+\s*(?:AM|PM))/i);
     const endMatch = cardText.match(/End\s*Date\s*:\s*([\d\-/: ]+\s*(?:AM|PM))/i);
-    
+
+    // Extract all Corrigendum document links
+    const corrigendumUrls: string[] = [];
+    const corrLinks = card.querySelectorAll("a[href*='showcorrigendumpdf'], a[href*='showcorrigendum'], a[href*='corrigendumpdf'], [class*='corrigendum'] a");
+    corrLinks.forEach((cLink) => {
+      const href = (cLink as HTMLAnchorElement).getAttribute("href") || "";
+      if (href && !corrigendumUrls.includes(href)) {
+        corrigendumUrls.push(href);
+      }
+    });
+
+    // Extract all attached document links (Bid Doc, RA Doc, Buyer ATC, Tech Specs)
+    const allDocUrls: string[] = [];
+    if (bidHref) allDocUrls.push(bidHref);
+    if (raHref && !allDocUrls.includes(raHref)) allDocUrls.push(raHref);
+
+    const docLinks = card.querySelectorAll("a[href*='showbidDocument'], a[href*='showradocument'], a[href*='showatcdocument'], a[href*='buyerATC'], a[href*='.pdf']");
+    docLinks.forEach((dLink) => {
+      const href = (dLink as HTMLAnchorElement).getAttribute("href") || "";
+      if (href && !allDocUrls.includes(href)) {
+        allDocUrls.push(href);
+      }
+    });
+
     items.push({
       bid_number: bidNumber,
       ra_number: raNumber || null,
@@ -192,8 +215,10 @@ function extractGeMBidsFromDOM(): any[] {
       department_name: department || null,
       startDateStr: startMatch ? startMatch[1].trim() : "",
       endDateStr: endMatch ? endMatch[1].trim() : "",
-      document_url: bidHref,
+      document_url: bidHref || `/showbidDocument/${encodeURIComponent(bidNumber)}`,
       ra_document_url: raHref || null,
+      document_urls: allDocUrls,
+      corrigendum_urls: corrigendumUrls,
       raw_description: cardText,
     });
   });
@@ -273,13 +298,21 @@ async function runScraper() {
         const category_name = classifyGeMBid(item.items);
         
         // Format absolute URLs
-        const absoluteSourceUrl = item.document_url.startsWith("http")
-          ? item.document_url
-          : `https://bidplus.gem.gov.in/${item.document_url}`;
+        const absoluteSourceUrl = item.document_url
+          ? (item.document_url.startsWith("http") ? item.document_url : `https://bidplus.gem.gov.in/${item.document_url.replace(/^\/+/, '')}`)
+          : `https://bidplus.gem.gov.in/showbidDocument/${encodeURIComponent(item.bid_number)}`;
           
         const absoluteRaUrl = item.ra_document_url
-          ? (item.ra_document_url.startsWith("http") ? item.ra_document_url : `https://bidplus.gem.gov.in/${item.ra_document_url}`)
+          ? (item.ra_document_url.startsWith("http") ? item.ra_document_url : `https://bidplus.gem.gov.in/${item.ra_document_url.replace(/^\/+/, '')}`)
           : null;
+
+        const absoluteCorrigendumUrls = Array.isArray(item.corrigendum_urls)
+          ? item.corrigendum_urls.map((u: string) => u.startsWith("http") ? u : `https://bidplus.gem.gov.in/${u.replace(/^\/+/, '')}`)
+          : [];
+
+        const absoluteDocUrls = Array.isArray(item.document_urls) && item.document_urls.length > 0
+          ? item.document_urls.map((u: string) => u.startsWith("http") ? u : `https://bidplus.gem.gov.in/${u.replace(/^\/+/, '')}`)
+          : [absoluteSourceUrl];
           
         return {
           bid_number: item.bid_number,
@@ -292,6 +325,8 @@ async function runScraper() {
           status: "live",
           document_url: absoluteSourceUrl || undefined,
           ra_document_url: absoluteRaUrl || undefined,
+          document_urls: absoluteDocUrls.length > 0 ? absoluteDocUrls : undefined,
+          corrigendum_urls: absoluteCorrigendumUrls.length > 0 ? absoluteCorrigendumUrls : undefined,
           category_name,
           raw_description: item.raw_description || undefined,
         };

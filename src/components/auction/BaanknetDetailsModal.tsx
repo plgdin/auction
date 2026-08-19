@@ -176,6 +176,18 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
     return docs;
   };
 
+  const getDocLabel = (url: string, index: number): string => {
+    const lower = url.toLowerCase();
+    if (lower.includes('tender')) return 'Tender Application Form';
+    if (lower.includes('annexure') || lower.includes('bid-form') || lower.includes('bidform')) return 'Annexure II / III Bid Form';
+    if (lower.includes('possession')) return 'Possession Notice PDF';
+    if (lower.includes('process-memo') || lower.includes('memo')) return 'Process Memorandum PDF';
+    if (lower.includes('form-g') || lower.includes('form_g')) return 'Form G Notice PDF';
+    if (lower.includes('sale-notice') || lower.includes('salenotice') || lower.includes('notice')) return 'Sale Notice PDF';
+    if (index === 0) return 'e-Auction Sale Notice';
+    return `Document Attachment #${index + 1}`;
+  };
+
   const availableDocs = getAvailableDocuments();
   const livePortalUrl = getLivePortalUrl();
 
@@ -482,7 +494,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
                 >
                   <FileDown className="w-4 h-4" />
-                  Download Notice PDF {availableDocs.length > 1 ? `#${idx + 1}` : ''}
+                  {getDocLabel(docUrl, idx)}
                 </a>
               ))
             ) : (
