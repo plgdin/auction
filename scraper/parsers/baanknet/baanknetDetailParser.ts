@@ -325,25 +325,34 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
   }
 
   const cards = document.querySelectorAll(
-    ".card, [class*='property-card'], [class*='listing-card'], " +
-    "[class*='property-list'], [class*='result-card']"
+    "app-property-card, mat-card, .card, [class*='property-card'], [class*='listing-card'], " +
+    "[class*='property-list'], [class*='result-card'], [class*='property-item'], [class*='col-'] > div"
   );
 
   const effectiveCards = cards.length > 0
     ? cards
-    : document.querySelectorAll("[class*='col-'] > div, .row > div > div");
+    : document.querySelectorAll(".row > div, div[class*='box']");
 
   effectiveCards.forEach((card) => {
     const text = (card as HTMLElement).innerText || "";
-    if (!text.includes("Property ID") && !text.includes("Auction")) return;
-    if (text.length < 50 || text.length > 5000) return;
+    if (text.length < 30 || text.length > 8000) return;
+    if (!text.includes("Property") && !text.includes("Auction") && !text.includes("₹") && !text.includes("Reserve")) return;
 
-    const titleEl = card.querySelector("h3, h4, h5, [class*='title']") as HTMLElement;
-    const title = titleEl?.innerText?.trim() || "";
-    if (!title) return;
+    const detailLink = card.querySelector(
+      'a[href*="view-property"], a[href*="property-detail"], a[href*="View Details"], ' +
+      'a[href*="property"], button[class*="detail"], a[class*="detail"], a'
+    ) as HTMLAnchorElement | null;
+    const detailUrl = detailLink?.href || detailLink?.getAttribute("href") || "";
 
-    const propIdMatch = text.match(/Property\s*ID\s*:?\s*(\S+)/i);
-    const bankPropertyId = propIdMatch ? propIdMatch[1] : "";
+    const propIdMatch = text.match(/(?:Property|Asset|Auction)\s*(?:ID|No\.?|Code)?\s*:?\s*([A-Za-z0-9_-]+)/i);
+    const urlIdMatch = detailUrl.match(/(?:property|id|asset)[/=]([A-Za-z0-9_-]+)/i);
+    const bankPropertyId = propIdMatch ? propIdMatch[1] : (urlIdMatch ? urlIdMatch[1] : "");
+
+    if (!bankPropertyId && !detailUrl.includes("property")) return;
+    const finalId = bankPropertyId || `PROP_${Math.abs(text.slice(0, 40).split("").reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0))}`;
+
+    const titleEl = card.querySelector("h3, h4, h5, [class*='title'], [class*='name'], strong, b") as HTMLElement;
+    const title = titleEl?.innerText?.trim() || text.split("\n").filter(l => l.trim().length > 3)[0] || "Bank Auction Property";
 
     const priceMatch = text.match(/₹\s*([\d,.]+\s*(?:Lakh?|Lac|Crore?|Cr)?)/i);
     const reservePrice = priceMatch ? `₹ ${priceMatch[1]}` : "";
@@ -372,9 +381,9 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
     const actionMatch = text.match(/(?:Type\s*of\s*Action|Under)\s*:?\s*((?:Under\s*)?SARFAESI|IBC|DRT)/i);
     const actionType = actionMatch ? actionMatch[1].replace(/^Under\s*/i, "").trim().toUpperCase() : "";
 
-    const stateMatch = text.match(/State\s*:?\s*([A-Za-z\s]+?)(?=\n|District|City)/i);
-    const districtMatch = text.match(/District\s*:?\s*([A-Za-z\s]+?)(?=\n|City|State)/i);
-    const cityMatch = text.match(/City\s*:?\s*([A-Za-z\s]+?)(?=\n|State|District|Inspection)/i);
+    const stateMatch = text.match(/State\s*:?\s*([A-Za-z\s]+?)(?=\n|District|City|$)/i);
+    const districtMatch = text.match(/District\s*:?\s*([A-Za-z\s]+?)(?=\n|City|State|$)/i);
+    const cityMatch = text.match(/City\s*:?\s*([A-Za-z\s]+?)(?=\n|State|District|Inspection|$)/i);
 
     const state = stateMatch ? stateMatch[1].trim() : "";
     const district = districtMatch ? districtMatch[1].trim() : "";
@@ -411,18 +420,12 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
       }
     });
 
-    const detailLink = card.querySelector(
-      'a[href*="view-property"], a[href*="property-detail"], a[href*="View Details"], ' +
-      'button[class*="detail"], a[class*="detail"]'
-    ) as HTMLAnchorElement | null;
-    const detailUrl = detailLink?.href || detailLink?.getAttribute("href") || "";
-
     const statusBadge = card.querySelector("[class*='badge'], [class*='status']") as HTMLElement;
     const status = statusBadge?.innerText?.trim().toUpperCase() || "UPCOMING";
 
     items.push({
-      auctionId: bankPropertyId,
-      bankPropertyId,
+      auctionId: finalId,
+      bankPropertyId: finalId,
       title,
       reservePrice,
       bankName,
@@ -476,25 +479,34 @@ export function extractIBCListingCards(knownLenders: string[] = []): {
   }
 
   const cards = document.querySelectorAll(
-    ".card, [class*='asset-card'], [class*='listing-card'], " +
-    "[class*='result'], [class*='item']"
+    "tbody tr, tr.table-row, .card, [class*='asset-card'], [class*='listing-card'], " +
+    "[class*='result'], [class*='item'], div[class*='col'] > div"
   );
 
   cards.forEach((card) => {
     const text = (card as HTMLElement).innerText || "";
-    if (text.length < 30 || text.length > 5000) return;
-    if (!text.match(/(?:Asset|Auction|Property|Sale)\s*(?:ID|No)/i) && !text.includes("Reserve")) return;
+    if (text.length < 20 || text.length > 5000) return;
+    if (!text.includes("₹") && !text.match(/(?:Asset|Auction|Property|Sale|IBC|ID)/i)) return;
 
-    const idMatch = text.match(/(?:Asset|Auction)\s*(?:ID|No\.?)\s*:?\s*(\S+)/i);
-    if (!idMatch) return;
+    const detailLink = card.querySelector(
+      'a[href*="view-asset"], a[href*="asset-detail"], a[href*="home-view-asset"], a'
+    ) as HTMLAnchorElement | null;
+    const detailUrl = detailLink?.href || detailLink?.getAttribute("href") || "";
 
-    const titleEl = card.querySelector("h3, h4, h5, [class*='title']") as HTMLElement;
-    const title = titleEl?.innerText?.trim() || text.split("\n")[0]?.trim() || "";
+    const idMatch = text.match(/(?:Asset|Auction|Sale|ID|No\.?)\s*(?:ID|No\.?|Code)?\s*:?\s*([A-Za-z0-9_-]+)/i);
+    const urlIdMatch = detailUrl.match(/(?:asset|id|view)[/=]([A-Za-z0-9_-]+)/i);
+    const auctionId = idMatch ? idMatch[1] : (urlIdMatch ? urlIdMatch[1] : "");
 
-    const priceMatch = text.match(/Reserve\s*(?:Price)?\s*:?\s*₹?\s*([\d,.]+\s*(?:Lakh?|Lac|Crore?|Cr)?)/i);
+    if (!auctionId && !detailUrl.includes("asset")) return;
+    const finalId = auctionId || `IBC_${Math.abs(text.slice(0, 30).split("").reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0))}`;
+
+    const titleEl = card.querySelector("h3, h4, h5, [class*='title'], strong, b, td:first-child") as HTMLElement;
+    const title = titleEl?.innerText?.trim() || text.split("\n").filter(l => l.trim().length > 3)[0] || "IBC Auction Asset";
+
+    const priceMatch = text.match(/₹?\s*([\d,.]+\s*(?:Lakh?|Lac|Crore?|Cr)?)/i);
     let bankName = matchLenderInline(text, knownLenders);
     if (!bankName) {
-      const bankMatch = text.match(/(?:Bank|Institution|Creditor)\s*:?\s*([A-Za-z\s]+?)(?=\n|$)/i);
+      const bankMatch = text.match(/(?:Bank|Institution|Creditor|Liquidator)\s*:?\s*([A-Za-z\s]+?)(?=\n|$)/i);
       bankName = bankMatch ? bankMatch[1].trim() : "";
     }
 
@@ -503,19 +515,15 @@ export function extractIBCListingCards(knownLenders: string[] = []): {
     const startMatch = text.match(/(?:Start|Auction\s*Start)\s*(?:Date)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
     const endMatch = text.match(/(?:End|Auction\s*End|Closing)\s*(?:Date)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
 
-    const detailLink = card.querySelector(
-      'a[href*="view-asset"], a[href*="asset-detail"], a[href*="home-view-asset"]'
-    ) as HTMLAnchorElement | null;
-
     items.push({
-      auctionId: idMatch[1],
+      auctionId: finalId,
       title: title || "IBC Auction Asset",
       reservePrice: priceMatch ? `₹ ${priceMatch[1]}` : "",
       bankName: bankName || "",
       location: locationMatch ? locationMatch[1].trim() : "",
       startDate: startMatch ? startMatch[1] : "",
       endDate: endMatch ? endMatch[1] : "",
-      detailUrl: detailLink?.href || detailLink?.getAttribute("href") || "",
+      detailUrl,
       status: "UPCOMING",
     });
   });
