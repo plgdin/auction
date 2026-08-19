@@ -161,7 +161,7 @@ async function scrapeDetailPages(
         });
 
         await detailPage.goto(absoluteUrl, {
-          waitUntil: "networkidle2",
+          waitUntil: "domcontentloaded",
           timeout: 30000,
         });
         await randomDelay(2000);
@@ -580,8 +580,8 @@ async function scrapePropertyListings(
   log.info({ url: targetUrl }, "Navigating to Property Listing page...");
 
   await page.goto(targetUrl, {
-    waitUntil: "networkidle2",
-    timeout: 60000,
+    waitUntil: "domcontentloaded",
+    timeout: 45000,
   });
 
   await randomDelay(5000);
@@ -722,8 +722,8 @@ async function scrapeIBCAuctions(
     log.info({ url: targetUrl }, "Navigating to IBC eAuction...");
 
     await ibcPage.goto(targetUrl, {
-      waitUntil: "networkidle2",
-      timeout: 60000,
+      waitUntil: "domcontentloaded",
+      timeout: 45000,
     });
 
     await randomDelay(5000);
@@ -1145,13 +1145,13 @@ async function executeBaankNetScraper(): Promise<void> {
         // Establish session
         const sessionUrl = `${BAANKNET_BASE_URL}/eauction-psb/`;
         log.info({ url: sessionUrl }, "Establishing session with eAuction portal...");
-        await page.goto(sessionUrl, { waitUntil: "networkidle2", timeout: 45000 });
+        await page.goto(sessionUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
         await randomDelay(3000);
 
         // Navigate to listings
         const targetUrl = `${BAANKNET_BASE_URL}${BAANKNET_EAUCTION_PATH}`;
         log.info({ url: targetUrl }, "Navigating to eAuction listings...");
-        await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 60000 });
+        await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
 
         // Wait for Angular bootstrap
         log.info("Waiting for Angular app to render...");
