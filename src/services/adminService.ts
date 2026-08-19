@@ -596,6 +596,7 @@ export const adminService = {
       console.error('Error fetching scraper audit logs:', error);
       return [];
     }
+    return (data as AuditLog[]) || [];
   },
 
   async getGemScraperAnalytics() {

@@ -804,8 +804,8 @@ export function AuctionFilters({
           </div>
         )}
 
-        {/* Regional Office */}
-        {activeTab === 'mstc' ? (
+        {/* Regional Office / Organisation / Department */}
+        {activeTab !== 'commercial' && (
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
               {activeTab === 'gem' ? 'Organisation' : activeTab === 'gem-bids' ? 'Department' : 'Regional Office'}
@@ -827,35 +827,11 @@ export function AuctionFilters({
                 className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
               >
                 <span className="truncate">
-                  {getTriggerLabel(selectedRegionalOffices, 'All Regional Offices', expandMstcOfficeMap)}
-                </span>
-                <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
-              </button>
-            </Dropdown>
-          </div>
-        ) : (
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
-              Regional Office
-            </h3>
-            <Dropdown
-              popupRender={() => renderMultiSelectMenu(
-                regionalOfficeOptions,
-                selectedRegionalOffices,
-                setSelectedRegionalOffices,
-                'All Regional Offices'
-              )}
-              trigger={['click']}
-              placement="bottomLeft"
-              align={{ overflow: { adjustX: false, adjustY: false } }}
-              getPopupContainer={() => containerRef.current || document.body}
-            >
-              <button
-                type="button"
-                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
-              >
-                <span className="truncate">
-                  {getTriggerLabel(selectedRegionalOffices, activeTab === 'gem' ? 'All Organisations' : activeTab === 'gem-bids' ? 'All Departments' : 'All Regional Offices')}
+                  {getTriggerLabel(
+                    selectedRegionalOffices,
+                    activeTab === 'gem' ? 'All Organisations' : activeTab === 'gem-bids' ? 'All Departments' : 'All Regional Offices',
+                    activeTab === 'mstc' ? expandMstcOfficeMap : undefined
+                  )}
                 </span>
                 <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
               </button>
