@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Gavel, Heart, Bell, 
   Settings, Building2, LogOut, FolderLock, Users, Calendar, ClipboardCheck,
-  ArrowLeft, FileText, Cpu, Megaphone, BarChart3, Mail, TrendingUp, HelpCircle, ShieldAlert, Truck
+  ArrowLeft, FileText, Cpu, Megaphone, BarChart3, Mail, TrendingUp, HelpCircle, ShieldAlert, Truck, Tag
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
@@ -12,13 +12,21 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, profile } = useAuthStore();
-  const { activeAdminTab, setActiveAdminTab } = useAppStore();
+  const { activeAdminTab, setActiveAdminTab, sidebarOpen, toggleSidebar } = useAppStore();
+  const isAdminSide = location.pathname.startsWith('/admin');
+  const isPremium = profile?.subscription_plan === 'pro' || 
+                    profile?.subscription_plan === 'go' || 
+                    profile?.subscription_plan === 'go-subscription' || 
+                    profile?.subscription_plan === 'enterprise' || 
+                    profile?.role === 'admin' || 
+                    profile?.role === 'superadmin';
 
   const handleAdminItemClick = (itemId: string) => {
     setActiveAdminTab(itemId);
     if (!location.pathname.startsWith('/admin')) {
       navigate('/admin');
     }
+    if (sidebarOpen) toggleSidebar();
   };
 
   const navItems = [
@@ -41,32 +49,34 @@ export function Sidebar() {
     { name: 'Market Price Manager', id: 'market-prices', icon: TrendingUp },
     { name: 'FAQ Manager', id: 'faq', icon: HelpCircle },
     { name: 'News & Media Manager', id: 'news', icon: FileText },
+    { name: 'Promo Codes', id: 'coupons', icon: Tag },
     { name: 'Advanced Reports', id: 'reports', icon: BarChart3 },
     { name: 'Blog Manager', id: 'blogs', icon: FileText },
     { name: 'User Management', id: 'users', icon: Users },
     { name: 'System Announcements', id: 'system', icon: Megaphone },
-    { name: 'Contact Messages', id: 'messages', icon: Mail },
+    { name: 'Customer Support', id: 'messages', icon: Mail },
   ];
 
   const handleLogout = async () => {
     await logout();
+    window.location.href = '/';
   };
 
-  const isAdminSide = location.pathname.startsWith('/admin');
-
-  return (
-    <aside className="w-64 bg-white border-r border-border min-h-screen text-foreground flex flex-col hidden lg:flex sticky top-0 h-screen">
-      <div className="h-16 flex items-center px-6 border-b border-border shrink-0">
-        <Link to="/" className="flex items-center gap-2.5">
+  const sidebarContent = (
+    <div className="flex-1 flex flex-col h-full bg-white">
+      <div className="h-16 flex items-center justify-between px-6 border-b border-border shrink-0">
+        <Link to="/" className="flex items-center gap-2.5" onClick={() => sidebarOpen && toggleSidebar()}>
           <img src="/png_lelam_1.webp" alt="Lelam Logo" width={158} height={32} className="h-8 w-auto object-contain" />
         </Link>
+        <button onClick={toggleSidebar} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer" aria-label="Close sidebar">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
       </div>
-
-
 
       <nav className="flex-1 py-6 px-4 space-y-1 overflow-y-auto hide-scrollbar">
         <Link
           to="/auctions"
+          onClick={() => sidebarOpen && toggleSidebar()}
           className="flex items-center px-3 py-2.5 mb-4 rounded text-sm font-semibold text-primary bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-all duration-200"
         >
           <ArrowLeft className="w-4 h-4 mr-2.5 shrink-0" />
@@ -90,9 +100,9 @@ export function Sidebar() {
               >
                 <Icon className={clsx(
                   "w-5 h-5 mr-3 shrink-0 transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                 )} />
-                {item.name}
+                <span className="truncate">{item.name}</span>
               </button>
             );
           })
@@ -100,32 +110,33 @@ export function Sidebar() {
           navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
-            
+
             return (
               <Link
-                key={item.name}
+                key={item.path}
                 to={item.path}
+                onClick={() => sidebarOpen && toggleSidebar()}
                 className={clsx(
-                  "flex items-center justify-between px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group",
+                  "flex items-center px-3 py-2.5 rounded text-sm font-medium transition-all duration-200 group",
                   isActive 
                     ? "bg-primary/10 text-primary font-semibold" 
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                <div className="flex items-center">
-                  <Icon className={clsx(
-                    "w-5 h-5 mr-3 shrink-0 transition-colors",
-                    isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-                  )} />
-                  <span>{item.name}</span>
-                </div>
+                <Icon className={clsx(
+                  "w-5 h-5 mr-3 shrink-0 transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                )} />
+                <span className="truncate flex-grow">{item.name}</span>
+                {(item.name === 'Document Vault' || item.name === 'Quote Builder' || item.name === 'Calendar & Alerts') && !isPremium && (
+                  <span className="ml-auto bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200 uppercase tracking-wider shrink-0 font-sans leading-none">
+                    Business
+                  </span>
+                )}
               </Link>
             );
           })
         )}
-
-
-
         {!isAdminSide && (profile?.role === 'seller' || profile?.role === 'admin' || profile?.role === 'superadmin') ? (
           <>
             <div className="pt-6 pb-2">
@@ -207,25 +218,34 @@ export function Sidebar() {
         ) : null}
       </nav>
 
-      <div className="p-4 border-t border-slate-150 shrink-0 bg-slate-50/50 space-y-2.5">
-        {/* Profile Info Card */}
-        <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white border border-slate-150 shadow-2xs">
-          <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-800 text-sm shadow-2xs">
-            {profile?.first_name?.charAt(0) || 'U'}
+      {/* User Footer Profile Card */}
+      <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3 shrink-0">
+        <div className="flex items-center gap-3 px-2 py-1">
+          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+            {profile?.first_name?.charAt(0).toUpperCase() || 'U'}
           </div>
-          <div className="overflow-hidden min-w-0 flex-1">
-            <p className="text-xs font-bold text-slate-800 truncate">
-              {profile?.first_name} {profile?.last_name}
-            </p>
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-extrabold truncate mt-0.5">
-              {profile?.role || 'Buyer'}
-            </p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold text-slate-800 truncate">{profile?.first_name} {profile?.last_name}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] font-medium text-slate-400 capitalize shrink-0">{profile?.role || 'Bidder'}</span>
+              <span className="text-[9px] text-slate-300 shrink-0">•</span>
+              <span className={clsx(
+                "text-[8px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wider shrink-0 leading-none",
+                profile?.subscription_plan === 'pro' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                profile?.subscription_plan === 'enterprise' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                (profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? "bg-blue-50 text-blue-700 border-blue-200" :
+                "bg-slate-100 text-slate-500 border-slate-200"
+              )}>
+                {(profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? 'individual' : (profile?.subscription_plan || 'explorer')}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Profile Settings Link */}
         <Link
           to="/dashboard/profile"
+          onClick={() => sidebarOpen && toggleSidebar()}
           className={clsx(
             "flex items-center px-3 py-2 rounded-lg text-xs font-bold transition-all duration-150 group",
             location.pathname === '/dashboard/profile'
@@ -235,7 +255,7 @@ export function Sidebar() {
         >
           <Settings className={clsx(
             "w-4 h-4 mr-2.5 shrink-0 transition-colors",
-            location.pathname === '/dashboard/profile' ? "text-white" : "text-slate-450 group-hover:text-slate-700"
+            location.pathname === '/dashboard/profile' ? "text-white" : "text-slate-400 group-hover:text-slate-700"
           )} />
           Settings
         </Link>
@@ -249,6 +269,29 @@ export function Sidebar() {
           Sign out
         </button>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sticky Inline Sidebar */}
+      <aside className="w-64 bg-white border-r border-border min-h-screen text-foreground flex flex-col hidden lg:flex sticky top-0 h-screen shrink-0">
+        {sidebarContent}
+      </aside>
+
+      {/* Slide-out Drawer (When menu toggled on mobile, tablet, laptop, PC) */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-[100] flex" role="dialog" aria-modal="true" aria-label="Navigation Menu Drawer">
+          <div 
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs animate-fade-in cursor-pointer" 
+            onClick={toggleSidebar} 
+            aria-hidden="true"
+          />
+          <aside className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-300">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

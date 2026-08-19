@@ -39,7 +39,13 @@ const STANDARD_DOC_TYPES = [
 ];
 
 export function DocumentVault() {
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
+  const isPremium = profile?.subscription_plan === 'pro' || 
+                    profile?.subscription_plan === 'go' || 
+                    profile?.subscription_plan === 'go-subscription' || 
+                    profile?.subscription_plan === 'enterprise' || 
+                    profile?.role === 'admin' || 
+                    profile?.role === 'superadmin';
   const [activeTab, setActiveTab] = useState<'vault' | 'eligibility'>('vault');
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -194,6 +200,15 @@ export function DocumentVault() {
           setCustomDocType('');
           setEntityType('User Vault');
           setCustomEntity('');
+
+          import('../../services/auditService').then(({ logUserActivity }) => {
+            logUserActivity('document_upload', 'document', dbDoc.id, {
+              documentName: selectedFile.name,
+              documentType: finalDocType,
+              associatedEntity: finalEntity
+            });
+          }).catch(() => {});
+
           loadDocuments();
         } else {
           toast.error('Failed to save document metadata in database', { id: 'vault_upload' });
@@ -219,6 +234,13 @@ export function DocumentVault() {
       if (success) {
         toast.success('Document deleted');
         setDocuments(prev => prev.filter(doc => doc.id !== docId));
+
+        import('../../services/auditService').then(({ logUserActivity }) => {
+          logUserActivity('document_delete', 'document', docId, {
+            documentName: name,
+            source
+          });
+        }).catch(() => {});
       } else {
         toast.error('Failed to delete document');
       }
@@ -299,7 +321,13 @@ export function DocumentVault() {
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
           />
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              if (!isPremium) {
+                toast.error('Document Upload is a Business feature. Please upgrade.');
+                return;
+              }
+              fileInputRef.current?.click();
+            }}
             disabled={isUploading}
             className="px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-700 transition-all flex items-center disabled:opacity-50 shadow-xs cursor-pointer"
           >
@@ -308,8 +336,31 @@ export function DocumentVault() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200">
+      {!isPremium ? (
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center max-w-2xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-sm p-8 mt-6">
+          <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-6 shadow-inner">
+            <FolderLock className="w-8 h-8 animate-pulse" />
+          </div>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+            Unlock Document Vault & Compliance Checks
+          </h3>
+          <p className="mt-2.5 text-sm text-slate-600 leading-relaxed">
+            Organize your MSTC registrations, licenses, and KYC paperwork in one secure place. Get instant automated eligibility checks on any auction listings.
+          </p>
+
+          <div className="mt-8 flex gap-3">
+            <Link
+              to="/pricing"
+              className="px-6 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/95 transition-all text-center shadow-md shadow-primary/20 hover:scale-[1.02] cursor-pointer"
+            >
+              Upgrade to Business
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Tabs */}
+          <div className="flex border-b border-slate-200">
         <button
           onClick={() => setActiveTab('vault')}
           className={`px-6 py-3 font-bold text-sm border-b-2 transition-all cursor-pointer ${activeTab === 'vault'
@@ -344,7 +395,7 @@ export function DocumentVault() {
               <p className="text-slate-500 mt-1 mb-6 max-w-md mx-auto text-sm">Upload KYC certificates or recycler licenses to start matching them against government catalog requirements.</p>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-5 py-2.5 bg-white border border-slate-250 text-slate-800 text-xs font-bold rounded-xl hover:bg-slate-55 transition-all cursor-pointer shadow-2xs"
+                className="px-5 py-2.5 bg-white border border-slate-200 text-slate-800 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all cursor-pointer shadow-2xs"
               >
                 Upload First File
               </button>
@@ -353,7 +404,7 @@ export function DocumentVault() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-150 text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-6 py-4 font-bold">Document Title & File</th>
                     <th className="px-6 py-4 font-bold">Document Type</th>
                     <th className="px-6 py-4 font-bold">Associated Entity / Target</th>
@@ -386,12 +437,12 @@ export function DocumentVault() {
                             {typeDisplay}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-650">
+                        <td className="px-6 py-4 text-sm text-slate-600">
                           <div className="truncate max-w-[180px] font-semibold text-slate-700" title={entityDisplay}>
                             {entityDisplay}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-550 whitespace-nowrap">
+                        <td className="px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
                           {new Date(doc.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </td>
                         <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
@@ -443,7 +494,7 @@ export function DocumentVault() {
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="bg-emerald-50 border border-emerald-250 p-5 rounded-2xl flex items-start gap-4">
+              <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl flex items-start gap-4">
                 <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-emerald-950 text-sm">Automated Compliance Auditor Active</h4>
@@ -485,13 +536,13 @@ export function DocumentVault() {
                   return (
                     <div key={item.id} className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
                       {/* Auction header status */}
-                      <div className="p-5 border-b border-slate-150 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-slate-500 font-mono uppercase bg-slate-200 px-2 py-0.5 rounded">
                               REF: {item.reference_number || 'N/A'}
                             </span>
-                            <span className="text-xs text-slate-450 font-semibold">
+                            <span className="text-xs text-slate-400 font-semibold">
                               {item.seller_name}
                             </span>
                           </div>
@@ -572,7 +623,7 @@ export function DocumentVault() {
       {isUploadModalOpen && selectedFile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/45 backdrop-blur-md">
           <div ref={uploadModalRef} className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-200 overflow-visible animate-in fade-in-50 zoom-in-95 duration-150 relative">
-            <div className="px-6 py-4 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
                 <UploadCloud className="w-5 h-5 text-slate-900" /> Index Uploaded File
               </h3>
@@ -597,7 +648,7 @@ export function DocumentVault() {
 
               {/* Document Type Dropdown */}
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-650 uppercase tracking-wider block">Document Category / Type *</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Document Category / Type *</label>
                 <Dropdown
                   open={docTypeDropdownOpen}
                   onOpenChange={setDocTypeDropdownOpen}
@@ -642,10 +693,10 @@ export function DocumentVault() {
                     type="button"
                     aria-haspopup="listbox"
                     aria-expanded={docTypeDropdownOpen}
-                    className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                    className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
                   >
                     <span className="truncate">{docType}</span>
-                    <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                    <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
                   </button>
                 </Dropdown>
               </div>
@@ -653,21 +704,21 @@ export function DocumentVault() {
               {/* Custom Document Type Input */}
               {docType === 'Other (Specify custom name)' && (
                 <div className="space-y-1 animate-in fade-in-50 duration-150">
-                  <label className="text-xs font-bold text-slate-650 uppercase tracking-wider block">Custom Document Name *</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Custom Document Name *</label>
                   <input
                     type="text"
                     required
                     value={customDocType}
                     onChange={(e) => setCustomDocType(e.target.value)}
                     placeholder="e.g. Hazardous Materials Transport License"
-                    className="w-full px-3.5 py-2.5 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
               )}
 
               {/* Associated Entity Dropdown */}
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-650 uppercase tracking-wider block">Associated Entity / Auction *</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Associated Entity / Auction *</label>
                 <Dropdown
                   open={entityDropdownOpen}
                   onOpenChange={setEntityDropdownOpen}
@@ -741,12 +792,12 @@ export function DocumentVault() {
                     type="button"
                     aria-haspopup="listbox"
                     aria-expanded={entityDropdownOpen}
-                    className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                    className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
                   >
                     <span className="truncate">
                       {entityType === 'User Vault' ? 'User Vault - General' : entityType === 'Custom Entity Name (Specify below)' ? 'Custom Entity Name...' : entityType}
                     </span>
-                    <DownOutlined className="w-3.5 h-3.5 text-slate-450 shrink-0 ml-2" />
+                    <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
                   </button>
                 </Dropdown>
               </div>
@@ -754,14 +805,14 @@ export function DocumentVault() {
               {/* Custom Associated Entity Input */}
               {entityType === 'Custom Entity Name (Specify below)' && (
                 <div className="space-y-1 animate-in fade-in-50 duration-150">
-                  <label className="text-xs font-bold text-slate-650 uppercase tracking-wider block">Custom Associated Name *</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Custom Associated Name *</label>
                   <input
                     type="text"
                     required
                     value={customEntity}
                     onChange={(e) => setCustomEntity(e.target.value)}
                     placeholder="e.g. BSNL Delhi division or Custom Project Name"
-                    className="w-full px-3.5 py-2.5 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
               )}
@@ -774,7 +825,7 @@ export function DocumentVault() {
                     setIsUploadModalOpen(false);
                     setSelectedFile(null);
                   }}
-                  className="px-4 py-2.5 border border-slate-250 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
+                  className="px-4 py-2.5 border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -795,9 +846,9 @@ export function DocumentVault() {
       {previewDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/45 backdrop-blur-md">
           <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-150 bg-slate-50/50">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center">
-                {isImage(previewDoc.name) ? <FileImage className="w-5 h-5 text-indigo-650 mr-2" /> : <FileText className="w-5 h-5 text-red-600 mr-2" />}
+                {isImage(previewDoc.name) ? <FileImage className="w-5 h-5 text-indigo-600 mr-2" /> : <FileText className="w-5 h-5 text-red-600 mr-2" />}
                 <h3 className="font-bold text-slate-900 truncate max-w-lg">{previewDoc.name}</h3>
               </div>
               <div className="flex items-center gap-2">
@@ -806,7 +857,7 @@ export function DocumentVault() {
                     const storagePath = storageService.extractStoragePath(previewDoc.url);
                     await storageService.downloadPrivateFile('auction_documents', storagePath, previewDoc.name);
                   }}
-                  className="p-2 text-slate-500 hover:text-slate-850 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                   title="Download File"
                 >
                   <Download className="w-5 h-5" />
@@ -826,7 +877,7 @@ export function DocumentVault() {
                   <p className="text-sm font-semibold">Loading secure preview...</p>
                 </div>
               ) : !previewUrl ? (
-                <div className="flex flex-col items-center text-red-550">
+                <div className="flex flex-col items-center text-red-500">
                   <X className="w-8 h-8 mb-4" />
                   <p className="text-sm font-bold">Failed to load secure preview</p>
                 </div>
@@ -847,7 +898,8 @@ export function DocumentVault() {
           </div>
         </div>
       )}
-
+        </>
+      )}
     </div>
   );
 }

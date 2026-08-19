@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Send, X, Minimize2, Sparkles } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Send, X, Minimize2, Sparkles } from 'lucide-react';
 import { publicService } from '../../services/publicService';
+import { VoicePoweredOrb } from '../ui/voice-powered-orb';
 
 interface Message {
   sender: 'user' | 'bot';
@@ -11,6 +12,93 @@ interface Message {
 export function Chatbox() {
   const [isOpen, setIsOpen] = useState(false);
   const [showBubble, setShowBubble] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isHomePage, setIsHomePage] = useState(window.location.pathname === '/');
+  const [isAuthPage, setIsAuthPage] = useState(
+    window.location.pathname.startsWith('/auth') ||
+    window.location.pathname.startsWith('/login') ||
+    window.location.pathname.startsWith('/register')
+  );
+  const [isQuotePage, setIsQuotePage] = useState(window.location.pathname.startsWith('/dashboard/quotes'));
+
+  // Draggable orb state (mobile only)
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number; dragging: boolean; lastTouchTime: number }>({ startX: 0, startY: 0, origX: 0, origY: 0, dragging: false, lastTouchTime: 0 });
+  const orbContainerRef = useRef<HTMLDivElement>(null);
+
+  // Click outside to close chatbot window
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (orbContainerRef.current && !orbContainerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const el = orbContainerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    dragRef.current = { startX: touch.clientX, startY: touch.clientY, origX: rect.left, origY: rect.top, dragging: false, lastTouchTime: Date.now() };
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragRef.current.startX;
+    const dy = touch.clientY - dragRef.current.startY;
+    if (Math.hypot(dx, dy) > 12) {
+      dragRef.current.dragging = true;
+    }
+    if (!dragRef.current.dragging) return;
+    e.preventDefault();
+    const newX = Math.max(0, Math.min(window.innerWidth - 60, dragRef.current.origX + dx));
+    const newY = Math.max(0, Math.min(window.innerHeight - 60, dragRef.current.origY + dy));
+    setDragPos({ x: newX, y: newY });
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const wasDragging = dragRef.current.dragging;
+    dragRef.current.lastTouchTime = Date.now();
+    setTimeout(() => { dragRef.current.dragging = false; }, 150);
+
+    if (!wasDragging) {
+      e.preventDefault();
+      setIsOpen(prev => !prev);
+      setShowBubble(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleLocationCheck = () => {
+      const path = window.location.pathname;
+      setIsScrolled(window.scrollY > 50);
+      setIsHomePage(path === '/');
+      setIsAuthPage(path.startsWith('/auth') || path.startsWith('/login') || path.startsWith('/register'));
+      setIsQuotePage(path.startsWith('/dashboard/quotes'));
+    };
+
+    window.addEventListener('scroll', handleLocationCheck, { passive: true });
+    window.addEventListener('popstate', handleLocationCheck);
+    
+    // Polling interval to instantly detect client-side SPA routing changes
+    const interval = setInterval(handleLocationCheck, 200);
+    
+    handleLocationCheck();
+    return () => {
+      window.removeEventListener('scroll', handleLocationCheck);
+      window.removeEventListener('popstate', handleLocationCheck);
+      clearInterval(interval);
+    };
+  }, []);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'bot',
@@ -24,6 +112,21 @@ export function Chatbox() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBubbleRef = useRef<HTMLDivElement>(null);
+  const bubbleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-dismiss welcome bubble 10s after chatbot becomes visible (not on hero)
+  useEffect(() => {
+    const onHero = isHomePage && !isScrolled;
+    if (onHero || !showBubble) return;
+
+    // If timer is already running, let it complete
+    if (bubbleTimerRef.current) return;
+
+    bubbleTimerRef.current = setTimeout(() => {
+      setShowBubble(false);
+      bubbleTimerRef.current = null;
+    }, 10000);
+  }, [isHomePage, isScrolled, showBubble]);
 
   // Fetch FAQ database on mount
   useEffect(() => {
@@ -223,6 +326,11 @@ CONTACT & ESCALATION:
     return 'orb-state-idle';
   };
 
+  if (isAuthPage || isQuotePage) return null;
+
+  // Hide on homepage hero (not scrolled yet)
+  const isOnHero = isHomePage && !isScrolled;
+
   return (
     <>
       <style>{`
@@ -252,37 +360,41 @@ CONTACT & ESCALATION:
         .orb-state-idle .wave-1 {
           animation: wave-move-1 5s linear infinite;
           height: 55%;
-          fill: rgba(0, 75, 128, 0.8);
+          fill: rgba(0, 126, 199, 0.8);
         }
         .orb-state-idle .wave-2 {
           animation: wave-move-2 3.2s linear infinite;
           height: 48%;
-          fill: rgba(0, 75, 128, 0.95);
+          fill: rgba(0, 126, 199, 0.95);
         }
 
         .orb-state-thinking .wave-1 {
           animation: wave-move-1 1.6s linear infinite;
           height: 68%;
-          fill: rgba(0, 75, 128, 0.85);
+          fill: rgba(0, 126, 199, 0.85);
         }
         .orb-state-thinking .wave-2 {
           animation: wave-move-2 1s linear infinite;
           height: 62%;
-          fill: rgba(0, 75, 128, 0.98);
+          fill: rgba(0, 126, 199, 0.98);
         }
       `}</style>
 
       {/* Floating Widget Container */}
-      <div className="fixed bottom-6 right-6 z-[999] flex flex-col items-end pointer-events-none select-none font-sans">
+      <div
+        ref={orbContainerRef}
+        className={`fixed z-[9999] flex flex-col items-end pointer-events-none select-none font-sans transition-all duration-500 ease-in-out max-w-full ${isOnHero ? 'opacity-0 translate-y-6 pointer-events-none' : 'opacity-100 translate-y-0'} ${dragPos ? '' : `${!isHomePage || isScrolled ? 'bottom-20 sm:bottom-16' : 'bottom-6'} md:bottom-6 right-3 sm:right-6`}`}
+        style={dragPos ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto' } : undefined}
+      >
         
         {/* Closed state bubble pop up */}
-        {!isOpen && showBubble && (
+        {!isOpen && showBubble && !isOnHero && (
           <div 
             ref={chatBubbleRef}
-            className="pointer-events-auto bg-slate-100/95 backdrop-blur-md text-slate-800 p-4 rounded-2xl border border-slate-300 shadow-[0_12px_35px_rgba(15,23,42,0.1)] max-w-xs mb-4 mr-1 transition-all duration-300 transform translate-y-0 opacity-100 flex items-start gap-2 relative animate-bounce"
+            className="pointer-events-auto bg-slate-100/95 backdrop-blur-md text-slate-800 p-3.5 sm:p-4 rounded-2xl border border-slate-300 shadow-[0_12px_35px_rgba(15,23,42,0.1)] w-auto max-w-[calc(100vw-2.5rem)] sm:max-w-xs mb-4 mr-0 sm:mr-1 transition-all duration-300 transform translate-y-0 opacity-100 flex items-start gap-2 relative animate-bounce box-border"
             style={{ animationDuration: '4s' }}
           >
-            <Sparkles size={14} className="text-slate-600 animate-pulse mt-0.5 shrink-0" />
+            <Sparkles size={14} className="text-[#007ec7] animate-pulse mt-0.5 shrink-0" />
             <div className="flex-1 text-xs font-semibold leading-relaxed pr-4 text-slate-700">
               I'll help you with any queries related to MSTC and Lelam
             </div>
@@ -291,9 +403,11 @@ CONTACT & ESCALATION:
                 e.stopPropagation();
                 setShowBubble(false);
               }}
+              aria-label="Dismiss welcome message"
               className="text-slate-500 hover:text-slate-800 p-0.5 rounded transition-colors absolute top-2 right-2 cursor-pointer"
             >
               <X size={14} />
+              <span className="sr-only">Dismiss welcome message</span>
             </button>
             <div className="absolute right-6 -bottom-2 w-4 h-4 bg-slate-100 border-r border-b border-slate-300 transform rotate-45"></div>
           </div>
@@ -301,23 +415,17 @@ CONTACT & ESCALATION:
 
         {/* Opened Chat window */}
         {isOpen && (
-          <div className="pointer-events-auto w-96 h-[500px] bg-white/75 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-[0_20px_50px_rgba(15,23,42,0.12),_0_0_30px_rgba(0,91,153,0.2)] flex flex-col mb-4 mr-1 overflow-hidden transition-all duration-300">
+          <div className="pointer-events-auto w-[calc(100vw-2rem)] max-w-xs sm:max-w-sm sm:w-96 h-[75vh] sm:h-[500px] max-h-[560px] bg-white/80 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-[0_20px_50px_rgba(15,23,42,0.15),_0_0_30px_rgba(0,126,199,0.2)] flex flex-col mb-3 sm:mb-4 mr-0 sm:mr-1 overflow-hidden transition-all duration-300" role="dialog" aria-label="Laila Assistant Chat">
             
             {/* Chatbox Header */}
             <div className="p-4 bg-white/35 backdrop-blur-md border-b border-white/20 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Header Animated Orb */}
-                <div className={`relative w-8 h-8 rounded-full overflow-hidden bg-slate-100 border border-[#005b99]/60 shadow-[0_0_10px_rgba(0,91,153,0.25)] ${getOrbStateClass()}`}>
-                  {/* Fluid Wave Layers inside Header Orb */}
-                  <div className="absolute bottom-0 left-0 right-0 h-full overflow-hidden rounded-full">
-                    <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-1 transition-all duration-300">
-                      <path d="M 0 50 C 25 35, 75 65, 100 50 C 125 35, 175 65, 200 50 L 200 100 L 0 100 Z"></path>
-                    </svg>
-                    <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-2 transition-all duration-300">
-                      <path d="M 0 50 C 25 65, 75 35, 100 50 C 125 65, 175 35, 200 50 L 200 100 L 0 100 Z"></path>
-                    </svg>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/45 rounded-full"></div>
+                <div className="relative w-8 h-8 rounded-full overflow-hidden shadow-[0_0_10px_rgba(0,126,199,0.25)]">
+                  <VoicePoweredOrb
+                    enableVoiceControl={false}
+                    className="w-full h-full"
+                  />
                 </div>
                 
                 <div>
@@ -325,7 +433,7 @@ CONTACT & ESCALATION:
                     Laila
                   </div>
                   {isThinking && (
-                    <div className="text-[10px] text-slate-550 font-medium font-mono tracking-wide">
+                    <div className="text-[10px] text-slate-500 font-medium font-mono tracking-wide">
                       Thinking...
                     </div>
                   )}
@@ -336,6 +444,7 @@ CONTACT & ESCALATION:
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setIsOpen(false)}
+                  aria-label="Minimize chat"
                   className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-white/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 >
                   <Minimize2 size={16} />
@@ -344,30 +453,25 @@ CONTACT & ESCALATION:
             </div>
 
             {/* Chatbox Messages List */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+            <div className="flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent" role="log" aria-live="polite" aria-label="Chat messages">
               {messages.map((msg, index) => (
                 <div
                   key={index}
                   className={`flex gap-2.5 items-start ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   {msg.sender === 'bot' && (
-                    <div className={`relative w-7 h-7 rounded-full overflow-hidden bg-slate-100 border border-[#005b99]/60 shadow-[0_0_8px_rgba(0,91,153,0.2)] shrink-0 mt-0.5 ${getOrbStateClass()}`}>
-                      <div className="absolute bottom-0 left-0 right-0 h-full overflow-hidden rounded-full">
-                        <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-1 transition-all duration-300">
-                          <path d="M 0 50 C 25 35, 75 65, 100 50 C 125 35, 175 65, 200 50 L 200 100 L 0 100 Z"></path>
-                        </svg>
-                        <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-2 transition-all duration-300">
-                          <path d="M 0 50 C 25 65, 75 35, 100 50 C 125 65, 175 35, 200 50 L 200 100 L 0 100 Z"></path>
-                        </svg>
-                      </div>
-                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/45 rounded-full"></div>
+                    <div className="relative w-7 h-7 rounded-full overflow-hidden shadow-[0_0_8px_rgba(0,126,199,0.2)] shrink-0 mt-0.5">
+                      <VoicePoweredOrb
+                        enableVoiceControl={false}
+                        className="w-full h-full"
+                      />
                     </div>
                   )}
 
                   <div
                     className={`max-w-[78%] rounded-2xl p-3.5 text-xs leading-relaxed font-medium transition-all ${
                       msg.sender === 'user'
-                        ? 'bg-[#005b99] text-white rounded-tr-none shadow-[0_4px_12px_rgba(0,91,153,0.2)] hover:bg-[#004a7c]'
+                        ? 'bg-[#007ec7] text-white rounded-tr-none shadow-[0_4px_12px_rgba(0,126,199,0.25)] hover:bg-[#006bb0]'
                         : 'bg-slate-50/90 border border-slate-200 text-slate-800 rounded-tl-none shadow-[0_4px_12px_rgba(15,23,42,0.05)] hover:border-slate-300'
                     }`}
                   >
@@ -387,7 +491,7 @@ CONTACT & ESCALATION:
                           <button
                             key={sug}
                             onClick={() => handleSendMessage(sug)}
-                            className="px-3 py-1 rounded-full bg-white hover:bg-slate-50 border border-slate-200 text-[10px] text-slate-700 font-semibold hover:text-slate-900 transition-all cursor-pointer hover:border-slate-300 hover:scale-102 shadow-sm"
+                            className="px-3 py-1 rounded-full bg-[#007ec7]/10 hover:bg-[#007ec7]/20 border border-[#007ec7]/30 text-[10px] text-[#007ec7] font-semibold transition-all cursor-pointer hover:scale-102 shadow-xs"
                           >
                             {sug}
                           </button>
@@ -400,24 +504,19 @@ CONTACT & ESCALATION:
               
               {isThinking && (
                 <div className="flex justify-start gap-2.5 items-start">
-                  <div className="relative w-7 h-7 rounded-full overflow-hidden bg-slate-100 border border-[#005b99]/60 shadow-[0_0_8px_rgba(0,91,153,0.2)] shrink-0 mt-0.5 orb-state-thinking">
-                    <div className="absolute bottom-0 left-0 right-0 h-full overflow-hidden rounded-full">
-                      <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-1 transition-all duration-300">
-                        <path d="M 0 50 C 25 35, 75 65, 100 50 C 125 35, 175 65, 200 50 L 200 100 L 0 100 Z"></path>
-                      </svg>
-                      <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-2 transition-all duration-300">
-                        <path d="M 0 50 C 25 65, 75 35, 100 50 C 125 65, 175 35, 200 50 L 200 100 L 0 100 Z"></path>
-                      </svg>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/45 rounded-full"></div>
+                  <div className="relative w-7 h-7 rounded-full overflow-hidden shadow-[0_0_8px_rgba(0,126,199,0.2)] shrink-0 mt-0.5">
+                    <VoicePoweredOrb
+                      enableVoiceControl={false}
+                      className="w-full h-full"
+                    />
                   </div>
 
                   <div className="bg-white/70 border border-white/50 rounded-2xl rounded-tl-none p-3.5 flex items-center justify-center gap-1 h-9 w-14 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
-                    <span className="w-0.75 h-3 bg-[#005b99]/85 rounded-full animate-wave-bar" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-0.75 h-3.5 bg-[#005b99]/85 rounded-full animate-wave-bar" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-0.75 h-4 bg-[#005b99]/85 rounded-full animate-wave-bar" style={{ animationDelay: '300ms' }}></span>
-                    <span className="w-0.75 h-3.5 bg-[#005b99]/85 rounded-full animate-wave-bar" style={{ animationDelay: '450ms' }}></span>
-                    <span className="w-0.75 h-3 bg-[#005b99]/85 rounded-full animate-wave-bar" style={{ animationDelay: '600ms' }}></span>
+                    <span className="w-0.75 h-3 bg-[#007ec7]/85 rounded-full animate-wave-bar" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-0.75 h-3.5 bg-[#007ec7]/85 rounded-full animate-wave-bar" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-0.75 h-4 bg-[#007ec7]/85 rounded-full animate-wave-bar" style={{ animationDelay: '300ms' }}></span>
+                    <span className="w-0.75 h-3.5 bg-[#007ec7]/85 rounded-full animate-wave-bar" style={{ animationDelay: '450ms' }}></span>
+                    <span className="w-0.75 h-3 bg-[#007ec7]/85 rounded-full animate-wave-bar" style={{ animationDelay: '600ms' }}></span>
                   </div>
                 </div>
               )}
@@ -434,15 +533,17 @@ CONTACT & ESCALATION:
                   if (e.key === 'Enter') handleSendMessage();
                 }}
                 placeholder="Ask about MSTC, Lelam or EMD..."
-                className="flex-1 bg-white/60 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#005b99]/60 focus:bg-white/80 caret-[#005b99]"
+                aria-label="Type your message to Laila"
+                className="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#007ec7] focus:ring-2 focus:ring-[#007ec7]/20 caret-[#007ec7] shadow-xs"
               />
 
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputText.trim()}
+                aria-label="Send message"
                 className={`p-2 rounded-xl transition-colors ${
                   inputText.trim()
-                    ? 'bg-[#005b99] text-white hover:bg-[#004a7c] shadow-[0_4px_12px_rgba(0,91,153,0.25)]'
+                    ? 'bg-[#007ec7] text-white hover:bg-[#006bb0] shadow-[0_4px_12px_rgba(0,126,199,0.25)]'
                     : 'bg-slate-200/50 text-slate-400 cursor-not-allowed'
                 }`}
               >
@@ -454,36 +555,32 @@ CONTACT & ESCALATION:
 
         {/* Outer Floating Orb trigger button */}
         <button
+          type="button"
+          aria-label={isOpen ? "Close Laila Assistant Chat" : "Open Laila Assistant Chat"}
           onClick={() => {
+            if (dragRef.current.dragging) return;
+            if (Date.now() - dragRef.current.lastTouchTime < 300) return;
             setIsOpen(prev => !prev);
             setShowBubble(false);
           }}
-          className={`pointer-events-auto relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 border-2 border-[#005b99] shadow-[0_8px_32px_rgba(0,0,0,0.1),_0_0_15px_rgba(0,91,153,0.25)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.15),_0_0_20px_rgba(0,91,153,0.45)] transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer ${getOrbStateClass()}`}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          className={`pointer-events-auto relative w-[4.5rem] h-[4.5rem] rounded-full overflow-hidden bg-transparent shadow-none transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer touch-none ${getOrbStateClass()}`}
         >
-          {/* Fluid Wave layers inside Orb */}
-          <div className="absolute bottom-0 left-0 right-0 h-full overflow-hidden rounded-full pointer-events-none">
-            <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-1 transition-all duration-500">
-              <path d="M 0 50 C 25 35, 75 65, 100 50 C 125 35, 175 65, 200 50 L 200 100 L 0 100 Z"></path>
-            </svg>
-            <svg viewBox="0 0 200 100" preserveAspectRatio="none" className="absolute bottom-0 w-[200%] wave-2 transition-all duration-500">
-              <path d="M 0 50 C 25 65, 75 35, 100 50 C 125 65, 175 35, 200 50 L 200 100 L 0 100 Z"></path>
-            </svg>
+          <span className="sr-only">{isOpen ? "Close Laila Assistant Chat" : "Open Laila Assistant Chat"}</span>
+          {/* GPU-rendered gradient orb background (optimized lag-free WebGL) */}
+          <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
+            <VoicePoweredOrb
+              enableVoiceControl={false}
+              className="w-full h-full"
+            />
           </div>
 
           {/* Sparkle highlight overlays when bot is thinking */}
           {isThinking && (
             <div className="absolute inset-0 flex items-center justify-center text-slate-500 animate-pulse">
               <Sparkles size={18} className="animate-spin" style={{ animationDuration: '4s' }} />
-            </div>
-          )}
-
-          {/* Glass glare highlight */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/45 rounded-full pointer-events-none"></div>
-
-          {/* Hover state icon indicator */}
-          {!isThinking && (
-            <div className="absolute inset-0 flex items-center justify-center text-slate-700 opacity-0 hover:opacity-100 transition-opacity bg-white/40">
-              <MessageSquare size={20} className="text-slate-800 shadow-sm" />
             </div>
           )}
         </button>

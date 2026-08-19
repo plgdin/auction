@@ -58,7 +58,7 @@ export function About() {
           {/* Left Column - Quote & Vision & Mission */}
           <div className="lg:col-span-1 space-y-6 text-left">
             <div className="space-y-4">
-              <h2 className="text-2xl sm:text-3xl font-light text-slate-700 leading-snug tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-light text-slate-700 leading-snug tracking-normal text-left pl-7" style={{ textIndent: '-0.45em' }}>
                 &ldquo;We didn&apos;t come from finance. We didn&apos;t come from government. We came from a small office in Trivandrum with one simple question&rdquo;
               </h2>
 
@@ -66,7 +66,7 @@ export function About() {
                 className="border-l-4 border-primary pl-6 py-2 my-4 text-left animate-slide-in-right"
                 style={{ animationDelay: '1400ms' }}
               >
-                <p className="text-xl sm:text-2xl font-medium text-slate-950 leading-relaxed">
+                <p className="text-xl sm:text-2xl font-medium text-slate-900 leading-relaxed tracking-normal">
                   Why do thousands of government auctions worth crores of rupees take place every year, yet most businesses and entrepreneurs never know they exist?
                 </p>
               </div>
@@ -81,7 +81,7 @@ export function About() {
                   <Eye className="w-5 h-5 text-slate-400" />
                   <h3 className="text-xl font-bold text-slate-900">Vision</h3>
                 </div>
-                <div className="space-y-3 text-slate-650 font-medium text-base sm:text-lg leading-relaxed">
+                <div className="space-y-3 text-slate-600 font-medium text-base sm:text-lg leading-relaxed text-justify tracking-normal">
                   <p>
                     To build a future where every MSTC eAuction, Customs auction, and government auction in India is as easy to discover, compare, and participate in as booking a flight. We envision a transparent marketplace where valuable public assets are accessible to every buyer.
                   </p>
@@ -97,7 +97,7 @@ export function About() {
                   <Target className="w-5 h-5 text-slate-400" />
                   <h3 className="text-xl font-bold text-slate-900">Mission</h3>
                 </div>
-                <div className="space-y-3 text-slate-650 font-medium text-base sm:text-lg leading-relaxed">
+                <div className="space-y-3 text-slate-600 font-medium text-base sm:text-lg leading-relaxed text-justify tracking-normal">
                   <p>
                     To build India's most comprehensive government auction discovery and auction intelligence platform, empowering buyers to search MSTC eAuctions, Customs auctions, and other public auctions with robust analytical tools.
                   </p>
@@ -111,22 +111,22 @@ export function About() {
           </div>
 
           {/* Right Column - Core Narrative with Long-Tail Keywords */}
-          <div className="lg:col-span-1 space-y-4 text-slate-850 font-medium text-lg leading-relaxed text-left lg:border-l lg:border-slate-200 lg:pl-10">
+          <div className="lg:col-span-1 space-y-4 text-slate-600 font-medium text-base sm:text-lg leading-relaxed text-justify tracking-normal lg:border-l lg:border-slate-200 lg:pl-10">
             <p>
               Across India, valuable commercial assets and industrial goods are sold daily through official channels like MSTC eAuctions, Indian Customs auctions, railway scrap sales, and public sector surplus auctions. These catalog listings include industrial scrap metal, heavy machinery, commercial vehicles, used electronics, and warehouse stock. Yet, this high-value inventory remains scattered across antiquated government websites and obscure PDF catalogs, making it hard for prospective bidders to track upcoming events.
             </p>
 
             <div className="my-2 p-6 bg-white rounded-2xl border border-slate-200/80 shadow-xs text-left">
-              <p className="text-xl font-bold text-slate-900">
+              <p className="text-xl font-bold text-slate-900 tracking-normal">
                 Experienced bidders know where to look. Most others don&apos;t.
               </p>
-              <p className="text-primary font-bold mt-1">
+              <p className="text-primary font-bold mt-1 tracking-normal">
                 That&apos;s why we built lelam.co
               </p>
             </div>
 
             <p>
-              <strong className="text-slate-950 font-bold">lelam.co</strong> serves as a independant government auction intelligence platform that simplifies MSTC scrap auction tracking and Customs lot discovery. Instead of manually logging into multiple portals, scrap buyers, recyclers, and enterprises can query aggregated auction listings from a centralized search engine, set real-time bidding alerts, and analyze historical tender data to predict winning margins.
+              <strong className="text-slate-900 font-bold">lelam.co</strong> serves as a independant government auction intelligence platform that simplifies MSTC scrap auction tracking and Customs lot discovery. Instead of manually logging into multiple portals, scrap buyers, recyclers, and enterprises can query aggregated auction listings from a centralized search engine, set real-time bidding alerts, and analyze historical tender data to predict winning margins.
             </p>
 
             <p>

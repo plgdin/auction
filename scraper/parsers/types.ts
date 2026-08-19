@@ -21,6 +21,7 @@ export interface CatalogItem {
   attachments?: string[];
   images?: string[];
   marketPrice?: string;
+  startPrice?: string;
   subItems?: SubItem[];
   pcbGroup?: string;
   productType?: string;
@@ -69,4 +70,8 @@ export interface CatalogSummary {
   reviewReason?: string;
   auctionStartTime?: string;
   auctionCloseTime?: string;
+  hasAssetDocuments?: boolean;
+  hasImages?: boolean;
+  documents?: string[];
+  photos?: string[];
 }

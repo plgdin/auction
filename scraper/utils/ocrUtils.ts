@@ -1,1 +1,286 @@
-export * from "./mstc/ocrUtils.js";
+/**
+ * OCR utilities with persistent worker pooling and smart skip logic.
+ *
+ * Fixes applied:
+ * - Persistent Tesseract worker: initialized once, reused across all calls.
+ * - Smart skip logic: avoids OCR when selectable PDF text is sufficient.
+ * - LRU cache: prevents re-OCR on retried documents (keyed by buffer hash).
+ */
+// @ts-ignore
+import Tesseract from "tesseract.js";
+import { createHash } from "crypto";
+import { logger } from "./logger.js";
+import { supabase } from "./storage.js";
+
+const log = logger.child({ module: "ocrUtils" });
+
+// ─── Image Format Validation ─────────────────────────────────────────────────
+
+/** Known image magic byte signatures. */
+const IMAGE_MAGIC_BYTES = [
+  { name: "JPEG", bytes: [0xFF, 0xD8, 0xFF] },
+  { name: "PNG",  bytes: [0x89, 0x50, 0x4E, 0x47] },
+  { name: "BMP",  bytes: [0x42, 0x4D] },
+  { name: "TIFF-LE", bytes: [0x49, 0x49, 0x2A, 0x00] },
+  { name: "TIFF-BE", bytes: [0x4D, 0x4D, 0x00, 0x2A] },
+  { name: "WEBP", bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF header
+];
+
+/**
+ * Validate that a buffer starts with a known image magic byte sequence.
+ * Prevents Tesseract from crashing on corrupted/non-image data.
+ */
+function isValidImageBuffer(buffer: Buffer): boolean {
+  if (!buffer || buffer.length < 4) return false;
+  return IMAGE_MAGIC_BYTES.some(({ bytes }) =>
+    bytes.every((b, i) => buffer[i] === b)
+  );
+}
+
+// ─── Persistent Worker ───────────────────────────────────────────────────────
+
+let workerInstance: any = null;
+let workerInitializing: Promise<any> | null = null;
+
+/**
+ * Get or initialize the persistent Tesseract worker.
+ * Thread-safe: concurrent calls will wait for the same initialization promise.
+ */
+async function getWorker(): Promise<any> {
+  if (workerInstance) return workerInstance;
+  if (workerInitializing) return workerInitializing;
+
+  workerInitializing = (async () => {
+    try {
+      log.info({}, "Initializing persistent Tesseract OCR worker");
+      const worker = await Tesseract.createWorker("eng");
+      workerInstance = worker;
+      log.info({}, "Tesseract worker initialized successfully");
+      return worker;
+    } catch (err: any) {
+      log.error({ errorMessage: err.message }, "Failed to initialize Tesseract worker");
+      workerInitializing = null;
+      throw err;
+    }
+  })();
+
+  return workerInitializing;
+}
+
+/**
+ * Terminate the persistent OCR worker (call on process exit).
+ */
+export async function terminateOcrWorker(): Promise<void> {
+  if (workerInstance) {
+    try {
+      await workerInstance.terminate();
+      log.info({}, "Tesseract worker terminated");
+    } catch (err: any) {
+      log.warn({ errorMessage: err.message }, "Error terminating Tesseract worker");
+    }
+    workerInstance = null;
+    workerInitializing = null;
+  }
+}
+
+// Register cleanup on process exit
+process.on("beforeExit", () => {
+  terminateOcrWorker().catch(() => {});
+});
+process.on("SIGINT", () => {
+  terminateOcrWorker().then(() => process.exit(0)).catch(() => process.exit(1));
+});
+
+// ─── Global Safety Net ───────────────────────────────────────────────────────
+// Tesseract.js throws certain image-format errors via process.nextTick(),
+// which bypasses all try/catch blocks. Catch and log them here instead
+// of letting the entire worker process crash.
+process.on("uncaughtException", (err: Error) => {
+  const msg = err?.message || "";
+  if (msg.includes("read image") || msg.includes("pixReadStream") || msg.includes("Unknown format")) {
+    log.warn({ errorMessage: msg }, "Caught Tesseract uncatchable image-format error (suppressed)");
+    // Reset the worker since it may be in a bad state
+    workerInstance = null;
+    workerInitializing = null;
+    return; // Suppress — do not crash
+  }
+  // Re-throw non-Tesseract errors so they still crash as expected
+  log.error({ errorMessage: msg, stack: err?.stack }, "Uncaught exception (re-throwing)");
+  throw err;
+});
+
+// ─── LRU Cache ───────────────────────────────────────────────────────────────
+
+const OCR_CACHE_MAX_SIZE = 100;
+const ocrCache = new Map<string, string>();
+
+/**
+ * Compute a fast hash key for a buffer (for cache lookups).
+ */
+function hashBuffer(buffer: Buffer): string {
+  return createHash("sha256").update(buffer).digest("hex").substring(0, 16);
+}
+
+/**
+ * Add an entry to the LRU cache, evicting oldest if at capacity.
+ */
+function cacheSet(key: string, value: string): void {
+  if (ocrCache.size >= OCR_CACHE_MAX_SIZE) {
+    // Evict the oldest entry (first inserted)
+    const firstKey = ocrCache.keys().next().value;
+    if (firstKey !== undefined) {
+      ocrCache.delete(firstKey);
+    }
+  }
+  ocrCache.set(key, value);
+}
+
+// ─── Smart Skip Logic ────────────────────────────────────────────────────────
+
+/**
+ * Structural keywords expected in lot-bearing MSTC catalog pages.
+ * If selectable text is moderately long but lacks these markers,
+ * the page likely has a selectable header with scanned tabular body.
+ */
+const LOT_STRUCTURAL_KEYWORDS = [
+  "lot no", "lot name", "product type", "gst", "quantity",
+  "start price", "bid increment", "category", "lot location",
+];
+
+/**
+ * Determine if OCR should be performed based on the quality of existing
+ * selectable text from PDF.js extraction.
+ *
+ * Hybrid page detection:
+ * - Requires ≥400 chars and ≥40 meaningful words to skip OCR.
+ * - Forces OCR when the page contains embedded images (scanned content).
+ * - Forces OCR when text is moderately long (>100 chars) but lacks
+ *   key lot structural keywords, indicating a selectable header
+ *   with scanned tabular body.
+ *
+ * @param selectableText - Text already extracted via PDF.js getTextContent().
+ * @param pageHasImages  - Whether the page contains embedded image XObjects.
+ * @returns `true` if OCR should be performed (text is insufficient).
+ */
+export function shouldPerformOcr(
+  selectableText: string,
+): boolean {
+  if (!selectableText) return true;
+
+  const trimmed = selectableText.trim();
+  if (trimmed.length < 400) return true;
+
+  // Count meaningful words (≥3 chars, alphabetic)
+  const words = trimmed.split(/\s+/).filter((w) => /^[a-zA-Z]{3,}/.test(w));
+  if (words.length < 40) return true;
+
+  // Hybrid page check: if the text is moderately long (>100 chars) but
+  // missing structural lot keywords, the selectable text is likely just
+  // headers/footers while the real content is scanned.
+  if (trimmed.length > 100) {
+    const lower = trimmed.toLowerCase();
+    const hasStructuralKeywords = LOT_STRUCTURAL_KEYWORDS.some(
+      (kw) => lower.includes(kw),
+    );
+    if (!hasStructuralKeywords) return true;
+  }
+
+  return false;
+}
+
+// ─── Public API ──────────────────────────────────────────────────────────────
+
+export interface OcrResult {
+  text: string;
+  confidence: number;
+}
+
+/**
+ * Perform Optical Character Recognition (OCR) on an image buffer, returning
+ * both extracted text and real Tesseract confidence score (0-100).
+ */
+export async function performOcrWithDetails(imageBuffer: Buffer): Promise<OcrResult> {
+  const cacheKey = hashBuffer(imageBuffer);
+
+  // 1. Check in-memory cache first (fast path)
+  const cached = ocrCache.get(cacheKey);
+  if (cached !== undefined) {
+    log.debug({ cacheKey }, "OCR in-memory cache hit — returning cached result");
+    return { text: cached, confidence: 85 }; // Default cached confidence
+  }
+
+  // 2. Check database persistent cache (slow path)
+  try {
+    const { data, error } = await supabase
+      .from("ocr_cache")
+      .select("ocr_text")
+      .eq("buffer_hash", cacheKey)
+      .maybeSingle();
+
+    if (!error && data && data.ocr_text) {
+      log.info({ cacheKey }, "OCR database cache hit — saving to memory and returning");
+      const dbResult = data.ocr_text;
+      cacheSet(cacheKey, dbResult);
+      return { text: dbResult, confidence: 85 };
+    }
+  } catch (dbErr: any) {
+    log.warn({ errorMessage: dbErr.message, cacheKey }, "Error reading database OCR cache");
+  }
+
+  // 3. Validate image format before attempting OCR
+  if (!isValidImageBuffer(imageBuffer)) {
+    log.warn(
+      { cacheKey, bufferSize: imageBuffer.length, firstBytes: imageBuffer.slice(0, 8).toString("hex") },
+      "Skipping OCR — buffer does not contain a valid image header",
+    );
+    return { text: "", confidence: 0 };
+  }
+
+  // 4. Run OCR on cache miss
+  try {
+    const worker = await getWorker();
+    const {
+      data: { text, confidence },
+    } = await worker.recognize(imageBuffer);
+    const resultText = text || "";
+    const resultConfidence = typeof confidence === 'number' ? Math.round(confidence) : 80;
+
+    // Cache the result in memory
+    cacheSet(cacheKey, resultText);
+
+    // Save to database cache asynchronously so it does not block processing
+    (async () => {
+      try {
+        const { error } = await supabase
+          .from("ocr_cache")
+          .insert({ buffer_hash: cacheKey, ocr_text: resultText });
+        if (error) {
+          log.warn({ errorMessage: error.message, cacheKey }, "Failed to persist OCR cache in DB");
+        } else {
+          log.info({ cacheKey }, "OCR result persisted in database cache");
+        }
+      } catch (err: any) {
+        log.warn({ errorMessage: err?.message, cacheKey }, "Failed to persist OCR cache in DB");
+      }
+    })();
+
+    return { text: resultText, confidence: resultConfidence };
+  } catch (err: any) {
+    log.error({ errorMessage: err.message }, "OCR recognition failed");
+
+    // If the worker crashed, reset it so next call reinitializes
+    workerInstance = null;
+    workerInitializing = null;
+
+    return { text: "", confidence: 0 };
+  }
+}
+
+/**
+ * Perform Optical Character Recognition (OCR) on an image buffer.
+ * Legacy string return signature for backwards compatibility.
+ */
+export async function performOcr(imageBuffer: Buffer): Promise<string> {
+  const result = await performOcrWithDetails(imageBuffer);
+  return result.text;
+}

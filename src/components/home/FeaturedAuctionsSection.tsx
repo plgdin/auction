@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Lock } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -18,12 +18,18 @@ export function FeaturedAuctionsSection() {
   const [isLoading, setIsLoading] = useState(true);
   const { isAuthenticated, user } = useAuthStore();
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<any | null>(null);
-  const { interestedMstcIds, toggleInterestedMstcId } = useAppStore();
+  const interestedMstcIds = useAppStore(state => state.interestedMstcIds);
+  const toggleInterestedMstcId = useAppStore(state => state.toggleInterestedMstcId);
 
-  const handleMstcInterestedToggle = async (itemId: string) => {
-    if (!user) return;
-    toggleInterestedMstcId(user.id, itemId);
-  };
+  const interestedSet = useMemo(() => new Set(interestedMstcIds), [interestedMstcIds]);
+
+  const handleMstcInterestedToggle = useCallback((itemId: string) => {
+    toggleInterestedMstcId(user?.id || '', itemId);
+  }, [user, toggleInterestedMstcId]);
+
+  const handlePreview = useCallback((item: any) => {
+    setSelectedPreviewItem(item);
+  }, []);
 
   useEffect(() => {
     async function loadAuctions() {
@@ -50,13 +56,36 @@ export function FeaturedAuctionsSection() {
     loadAuctions();
   }, [isAuthenticated, user]);
 
+  const normalizeAuctionToMstc = useCallback((auc: any): any => {
+    if (auc.is_mstc && auc.sanitized_document_path) return auc;
+
+    return {
+      ...auc,
+      id: auc.id,
+      mstc_auction_number: auc.reference_number || auc.mstc_auction_number || `MSTC/W-REG/26-27/${auc.id.substring(0, 5).toUpperCase()}`,
+      category_name: auc.category?.name ? `${auc.category.name} | ${auc.title}` : (auc.category_name || 'Scrap & Material | Industrial Assets'),
+      location: auc.location || 'Maharashtra',
+      seller_name: auc.seller?.name || auc.regional_office || 'Western Regional Office',
+      opening_date: auc.start_time || auc.opening_date || new Date().toISOString(),
+      closing_date: auc.end_time || auc.closing_date || new Date(Date.now() + 86400000 * 2).toISOString(),
+      raw_materials_text: auc.description || auc.title,
+      sanitized_document_path: auc.sanitized_document_path || 'processed',
+      lot_name: auc.title || auc.lot_name || 'Industrial Asset Lot',
+      starting_price: auc.starting_price || 350000,
+      emd_amount: auc.emd_amount || 35000,
+      state: auc.location || 'Maharashtra',
+      asset_status: 'completed',
+      is_mstc: true
+    };
+  }, []);
+
   return (
-    <section className="py-20 bg-white relative">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-16 sm:py-24 bg-white relative">
+      <div className="max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1536px] mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex justify-between items-end mb-12 border-b border-slate-200 pb-6">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Recommended Auctions</h2>
-            <p className="mt-4 text-lg text-slate-655">
+            <p className="mt-4 text-lg text-slate-700">
               Personalized asset recommendations tailored to your procurement preferences.
             </p>
           </div>
@@ -68,7 +97,7 @@ export function FeaturedAuctionsSection() {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col h-[420px] animate-pulse shadow-sm p-4">
                 <div className="h-40 bg-slate-100 rounded-xl mb-4 shrink-0" />
@@ -96,44 +125,60 @@ export function FeaturedAuctionsSection() {
           </div>
         ) : (
           <div className="relative">
-            {/* Grid of Auctions */}
-            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 transition-all duration-300 min-h-[400px] ${!isAuthenticated ? 'filter blur-sm select-none pointer-events-none' : ''}`}>
+            {/* Mobile Left-Right Slider & Desktop/Tablet Grid Container */}
+            <div className={`transition-all duration-300 ${!isAuthenticated ? 'filter blur-sm select-none pointer-events-none' : ''}`}>
               <Suspense fallback={null}>
-              {/* If empty or not authenticated, we can show mock cards to look premium */}
-              {(auctions.length > 0 ? auctions : [
-                { id: '11111111-1111-1111-1111-111111111111', title: 'Industrial Heavy Machinery Lot', description: 'Surplus plant manufacturing machinery including CNC routers, lathes, and high capacity air compressors.', starting_price: 4500000, end_time: new Date().toISOString() },
-                { id: '22222222-2222-2222-2222-222222222222', title: 'Corporate E-Waste Disposal', description: 'Over 500 decommissioned workstations, laptops, servers and networking switches from a Fortune 500 client.', starting_price: 250000, end_time: new Date().toISOString() },
-                { id: '33333333-3333-3333-3333-333333333333', title: 'Commercial Real Estate Complex', description: 'Prime multi-story warehouse space with modern loading docks and convenient highway access.', starting_price: 85000000, end_time: new Date().toISOString() },
-                { id: '44444444-4444-4444-4444-444444444444', title: 'Fleet Transport Logistics Package', description: 'Package of 12 commercial logistics vans, light duty trucks, and utility vehicles in excellent running condition.', starting_price: 1800000, end_time: new Date().toISOString() }
-              ]).map((auction) => {
-                if (auction.is_mstc) {
-                  return (
-                    <MstcCard
-                      key={auction.id}
-                      item={auction as any}
-                      isGrid={true}
-                      onPreview={(item) => setSelectedPreviewItem(item)}
-                      isInterested={interestedMstcIds.includes(auction.id)}
-                      onInterestedToggle={() => handleMstcInterestedToggle(auction.id)}
-                    />
-                  );
-                } else {
-                  return (
-                    <AuctionCard
-                      key={auction.id}
-                      auction={auction}
-                      isGrid={true}
-                    />
-                  );
-                }
-              })}
+                {/* Mobile Left-Right Horizontal Slider */}
+                <div className="flex sm:hidden overflow-x-auto snap-x snap-mandatory gap-4 -my-4 py-4 pb-6 -mx-6 px-6 hide-scrollbar">
+                  {(auctions.length > 0 ? auctions : [
+                    { id: '11111111-1111-1111-1111-111111111111', title: 'Industrial Heavy Machinery Lot', description: 'Surplus plant manufacturing machinery including CNC routers, lathes, and high capacity air compressors.', starting_price: 4500000, end_time: new Date().toISOString() },
+                    { id: '22222222-2222-2222-2222-222222222222', title: 'Corporate E-Waste Disposal', description: 'Over 500 decommissioned workstations, laptops, servers and networking switches from a Fortune 500 client.', starting_price: 250000, end_time: new Date().toISOString() },
+                    { id: '33333333-3333-3333-3333-333333333333', title: 'Commercial Real Estate Complex', description: 'Prime multi-story warehouse space with modern loading docks and convenient highway access.', starting_price: 85000000, end_time: new Date().toISOString() },
+                    { id: '44444444-4444-4444-4444-444444444444', title: 'Fleet Transport Logistics Package', description: 'Package of 12 commercial logistics vans, light duty trucks, and utility vehicles in excellent running condition.', starting_price: 1800000, end_time: new Date().toISOString() }
+                  ]).map((auction) => {
+                    const normalized = normalizeAuctionToMstc(auction);
+                    return (
+                      <div key={auction.id} className="w-[82vw] max-w-[320px] shrink-0 snap-center">
+                        <MstcCard
+                          item={normalized}
+                          isGrid={true}
+                          onPreview={handlePreview}
+                          isInterested={interestedSet.has(auction.id)}
+                          onInterestedToggle={handleMstcInterestedToggle}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Tablet & Desktop Grid */}
+                <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {(auctions.length > 0 ? auctions : [
+                    { id: '11111111-1111-1111-1111-111111111111', title: 'Industrial Heavy Machinery Lot', description: 'Surplus plant manufacturing machinery including CNC routers, lathes, and high capacity air compressors.', starting_price: 4500000, end_time: new Date().toISOString() },
+                    { id: '22222222-2222-2222-2222-222222222222', title: 'Corporate E-Waste Disposal', description: 'Over 500 decommissioned workstations, laptops, servers and networking switches from a Fortune 500 client.', starting_price: 250000, end_time: new Date().toISOString() },
+                    { id: '33333333-3333-3333-3333-333333333333', title: 'Commercial Real Estate Complex', description: 'Prime multi-story warehouse space with modern loading docks and convenient highway access.', starting_price: 85000000, end_time: new Date().toISOString() },
+                    { id: '44444444-4444-4444-4444-444444444444', title: 'Fleet Transport Logistics Package', description: 'Package of 12 commercial logistics vans, light duty trucks, and utility vehicles in excellent running condition.', starting_price: 1800000, end_time: new Date().toISOString() }
+                  ]).map((auction) => {
+                    const normalized = normalizeAuctionToMstc(auction);
+                    return (
+                      <MstcCard
+                        key={auction.id}
+                        item={normalized}
+                        isGrid={true}
+                        onPreview={handlePreview}
+                        isInterested={interestedSet.has(auction.id)}
+                        onInterestedToggle={handleMstcInterestedToggle}
+                      />
+                    );
+                  })}
+                </div>
               </Suspense>
             </div>
 
             {/* Auth Gate Overlay */}
             {!isAuthenticated && (
-              <div className="absolute inset-0 flex items-center justify-center z-10 px-4 bg-white/70 rounded-2xl">
-                <div className="max-w-md w-full bg-slate-900 text-white p-8 rounded-3xl shadow-2xl text-center border border-slate-800 relative overflow-hidden">
+              <div className="absolute inset-0 flex items-center justify-center z-10 px-4 pointer-events-auto">
+                <div className="max-w-md w-full bg-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-2xl text-center border border-slate-800 relative overflow-hidden">
                   {/* Decorative Glowing Circle - Replaced heavy blur-2xl with a fast radial-gradient */}
                   <div className="absolute -top-20 -right-20 w-48 h-48 bg-[radial-gradient(circle_at_center,_rgba(30,41,59,0.8)_0%,_rgba(15,23,42,0)_70%)] pointer-events-none" />
                   
@@ -148,15 +193,15 @@ export function FeaturedAuctionsSection() {
                   
                   <div className="flex flex-col gap-4">
                     <Link
-                      to="/auth/login"
+                      to="/auth/register"
                       className="w-full py-3 px-6 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl shadow-md transition-all duration-200 text-center"
                     >
-                      Sign In Now
+                      Sign Up Now
                     </Link>
                     <div className="text-sm text-slate-400">
-                      New to the platform?{' '}
-                      <Link to="/auth/register" className="text-slate-300 hover:text-white font-semibold underline">
-                        Create an account
+                      Already have an account?{' '}
+                      <Link to="/auth/login" className="text-slate-300 hover:text-white font-semibold underline">
+                        Sign in now
                       </Link>
                     </div>
                   </div>
@@ -169,7 +214,7 @@ export function FeaturedAuctionsSection() {
 
       {selectedPreviewItem && (
         <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
           </div>
         }>

@@ -1,15 +1,13 @@
 // @ts-nocheck
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, MapPin, Tag, CornerDownLeft, FileText } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, MapPin, Tag, CornerDownLeft, FileText, Phone, Mail, Sparkles, Gift, Zap, ShieldCheck } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
-import { BaanknetCard } from '../components/auction/BaanknetCard';
 import { GemCard } from '../components/auction/GemCard';
 import { GemBidCard } from '../components/auction/GemBidCard';
 const MstcDetailsModal = lazy(() => import('../components/auction/MstcDetailsModal').then(module => ({ default: module.MstcDetailsModal })));
-const BaanknetDetailsModal = lazy(() => import('../components/auction/BaanknetDetailsModal').then(module => ({ default: module.BaanknetDetailsModal })));
 const GemDetailsModal = lazy(() => import('../components/auction/GemDetailsModal').then(module => ({ default: module.GemDetailsModal })));
 const GemBidDetailsModal = lazy(() => import('../components/auction/GemBidDetailsModal').then(module => ({ default: module.GemBidDetailsModal })));
 import { AuctionFilters } from '../components/auction/AuctionFilters';
@@ -19,8 +17,8 @@ import { useAuthStore } from '../store/authStore';
 import { useAppStore } from '../store/appStore';
 import { dashboardService } from '../services/dashboardService';
 import type { Auction } from '../types/database.types';
-import { MstcSearchService, expandMstcOffice, BaanknetSearchService, GemSearchService, GemBidSearchService } from '../services/publicService';
-import type { MstcSanitizedAuction, SearchSuggestion, BaanknetAuction, GemAuction, GemBid } from '../services/publicService';
+import { MstcSearchService, expandMstcOffice, GemSearchService, GemBidSearchService, publicService } from '../services/publicService';
+import type { MstcSanitizedAuction, SearchSuggestion, GemAuction, GemBid } from '../services/publicService';
 import clsx from 'clsx';
 import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
 import { recommendationService } from '../services/recommendationService';
@@ -72,11 +70,11 @@ function AuctionCardSkeleton({ isGrid }: { isGrid: boolean }) {
   }
   return (
     <div className="flex flex-col sm:flex-row bg-white rounded-xl border border-slate-200 overflow-hidden animate-pulse p-5 gap-5 shadow-sm">
-      <div className="w-full sm:w-64 h-40 bg-slate-150 rounded-lg shrink-0" />
+      <div className="w-full sm:w-64 h-40 bg-slate-100 rounded-lg shrink-0" />
       <div className="flex-grow flex flex-col space-y-4 justify-between">
         <div className="space-y-2">
           <div className="h-3 bg-slate-200 rounded w-1/4" />
-          <div className="h-5 bg-slate-250 rounded w-1/2" />
+          <div className="h-5 bg-slate-200 rounded w-1/2" />
           <div className="h-4 bg-slate-200 rounded w-full" />
         </div>
         <div className="flex gap-4 pt-2">
@@ -139,30 +137,16 @@ function getPageNumbers(currentPage: number, totalPages: number): (number | stri
 
 export function Auctions() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, profile, isAuthenticated } = useAuthStore();
+  const isBusinessUser = (isAuthenticated && (profile?.subscription_plan === 'pro' || profile?.subscription_plan === 'enterprise')) || profile?.role === 'admin' || profile?.role === 'superadmin';
 
   const rawTab = searchParams.get('tab');
-  const activeTab = rawTab === 'commercial' ? 'commercial' : rawTab === 'baanknet' ? 'baanknet' : rawTab === 'gem' ? 'gem' : rawTab === 'gem-bids' ? 'gem-bids' : 'mstc';
+  const activeTab = rawTab === 'commercial' ? 'commercial' : rawTab === 'gem' ? 'gem' : rawTab === 'gem-bids' ? 'gem-bids' : 'mstc';
 
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [watchlistIds, setWatchlistIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // BaankNet eAuction specific states
-  const [baanknetAuctions, setBaanknetAuctions] = useState<BaanknetAuction[]>([]);
-  const [baanknetTotalCount, setBaanknetTotalCount] = useState(0);
-  const [isBaanknetLoading, setIsBaanknetLoading] = useState(false);
-  const [selectedPreviewBaanknetItem, setSelectedPreviewBaanknetItem] = useState<BaanknetAuction | null>(null);
-  const [baanknetOptions, setBaanknetOptions] = useState<{
-    categories: string[];
-    locations: string[];
-    regionalOffices: string[];
-  }>({
-    categories: [],
-    locations: [],
-    regionalOffices: []
-  });
 
   // GeM Portal specific states
   const [gemAuctions, setGemAuctions] = useState<GemAuction[]>([]);
@@ -191,7 +175,6 @@ export function Auctions() {
     categories: [],
     departments: []
   });
-
   const [mstcAuctions, setMstcAuctions] = useState<MstcSanitizedAuction[]>([]);
   const [mstcTotalCount, setMstcTotalCount] = useState(0);
   const [isMstcLoading, setIsMstcLoading] = useState(false);
@@ -218,9 +201,72 @@ export function Auctions() {
 
   const { interestedMstcIds, toggleInterestedMstcId } = useAppStore();
 
+  // Scroll trigger for Free MSTC Consultation Popup
+  const [showConsultationModal, setShowConsultationModal] = useState(false);
+  const [dontShowConsultationAgain, setDontShowConsultationAgain] = useState(false);
+  const hasTriggeredConsultation = useRef(false);
+
+  // Consultation Form State
+  const [consultName, setConsultName] = useState('');
+  const [consultPhone, setConsultPhone] = useState('');
+  const [consultEmail, setConsultEmail] = useState('');
+  const [isSubmittingConsultation, setIsSubmittingConsultation] = useState(false);
+  const [consultationSuccess, setConsultationSuccess] = useState(false);
+
+  useEffect(() => {
+    // Check if user already opted out of consultation modal
+    const isDismissed = localStorage.getItem('hide_mstc_consultation_popup') === 'true';
+    if (isDismissed) return;
+
+    const handleScroll = () => {
+      if (hasTriggeredConsultation.current) return;
+      // Allow user to explore initial auction listings before showing consultation prompt (750px)
+      if (window.scrollY > 750) {
+        hasTriggeredConsultation.current = true;
+        setShowConsultationModal(true);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleCloseConsultationModal = () => {
+    if (dontShowConsultationAgain) {
+      localStorage.setItem('hide_mstc_consultation_popup', 'true');
+    }
+    setShowConsultationModal(false);
+  };
+
+  const handleConsultationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!consultName.trim() || !consultPhone.trim() || !consultEmail.trim()) return;
+
+    setIsSubmittingConsultation(true);
+    try {
+      const ok = await publicService.submitContactMessage({
+        name: consultName,
+        email: consultEmail,
+        subject: '[Free MSTC Consultation Request]',
+        message: `Requested Free MSTC Consultation.\n\nFull Name: ${consultName}\nPhone: ${consultPhone}\nEmail: ${consultEmail}\nSource: Auctions Page Scroll Popup`,
+        status: 'pending'
+      });
+
+      if (ok) {
+        setConsultationSuccess(true);
+        if (dontShowConsultationAgain) {
+          localStorage.setItem('hide_mstc_consultation_popup', 'true');
+        }
+      }
+    } catch (err) {
+      console.error('Error submitting consultation request:', err);
+    } finally {
+      setIsSubmittingConsultation(false);
+    }
+  };
+
   const handleMstcInterestedToggle = (itemId: string) => {
-    if (!user) return;
-    toggleInterestedMstcId(user.id, itemId);
+    toggleInterestedMstcId(user?.id || '', itemId);
   };
 
 
@@ -236,6 +282,68 @@ export function Auctions() {
 
   const [isGridView, setIsGridView] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [columns, setColumns] = useState<2 | 3 | 4 | 5>(3);
+
+  const getGridColsClass = (cols: number) => {
+    switch (cols) {
+      case 2:
+        return "grid-cols-1 sm:grid-cols-2 md:grid-cols-2";
+      case 4:
+        return "grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+      case 5:
+        return "grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5";
+      case 3:
+      default:
+        return "grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3";
+    }
+  };
+
+  // Lock body scroll when mobile filters drawer is active
+  useEffect(() => {
+    if (isFiltersOpen && window.innerWidth < 1024) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFiltersOpen]);
+
+  // Show floating filter tag only after scrolling past the hero section
+  const [scrollPastHero, setScrollPastHero] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollPastHero(window.scrollY > 280);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  const filterDrawerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isFiltersOpen) return;
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Element;
+      if (!target) return;
+      if (
+        filterDrawerRef.current?.contains(target as Node) ||
+        target.closest('.ant-dropdown') ||
+        target.closest('[role="dialog"]') ||
+        target.closest('[data-radix-popper-content-wrapper]') ||
+        target.closest('.rdp')
+      ) {
+        return;
+      }
+      setIsFiltersOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isFiltersOpen]);
 
   // Sync searchQuery local input state with query params
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
@@ -284,6 +392,55 @@ export function Auctions() {
 
     return () => clearTimeout(timer);
   }, [searchQuery, activeTab]);
+
+  // Hybrid search examples cycling typing animation
+  const placeholderExamples = [
+    "Show me auctions in Delhi",
+    "Show me vehicle auctions",
+    "Show me property auctions",
+    "Copper scrap auctions in Mumbai",
+    "Iron and steel scrap near Kolkata",
+    "Auctions in Kolkata",
+    "Auctions in Tamil Nadu",
+    "Auctions in Chennai",
+    "Auctions in Bangalore"
+  ];
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
+  const [phExampleIdx, setPhExampleIdx] = useState(0);
+  const [phCharIdx, setPhCharIdx] = useState(0);
+  const [phPhase, setPhPhase] = useState<'typing' | 'pausing' | 'deleting'>('typing');
+
+  useEffect(() => {
+    const current = placeholderExamples[phExampleIdx];
+    let timer: ReturnType<typeof setTimeout>;
+
+    if (phPhase === 'typing') {
+      if (phCharIdx < current.length) {
+        timer = setTimeout(() => {
+          setAnimatedPlaceholder(current.substring(0, phCharIdx + 1));
+          setPhCharIdx(prev => prev + 1);
+        }, 70);
+      } else {
+        // Done typing, pause before deleting
+        timer = setTimeout(() => setPhPhase('pausing'), 2200);
+      }
+    } else if (phPhase === 'pausing') {
+      timer = setTimeout(() => setPhPhase('deleting'), 100);
+    } else if (phPhase === 'deleting') {
+      if (phCharIdx > 0) {
+        timer = setTimeout(() => {
+          setPhCharIdx(prev => prev - 1);
+          setAnimatedPlaceholder(current.substring(0, phCharIdx - 1));
+        }, 25);
+      } else {
+        // Done deleting, move to next example
+        setPhExampleIdx(prev => (prev + 1) % placeholderExamples.length);
+        setPhPhase('typing');
+      }
+    }
+
+    return () => clearTimeout(timer);
+  }, [phCharIdx, phPhase, phExampleIdx]);
 
   const selectSuggestion = (suggestion: SearchSuggestion) => {
     let queryText = suggestion.text;
@@ -347,7 +504,7 @@ export function Auctions() {
   const endDate = searchParams.get('endDate') || undefined;
   const sortBy = (searchParams.get('sortBy') as AuctionFilterParams['sortBy']) || 'newest';
   const page = parseInt(searchParams.get('page') || '1');
-  const limit = 12;
+  const limit = 60;
 
   const filters: AuctionFilterParams = {
     categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
@@ -361,15 +518,15 @@ export function Auctions() {
 
   const mstcActiveFilters = [
     ...(submittedSearchQuery ? [{ label: 'Search', value: submittedSearchQuery }] : []),
-    ...(selectedMstcCategories.length ? [{ label: activeTab === 'baanknet' ? 'Property Type' : 'Category', value: selectedMstcCategories.join(', ') }] : []),
-    ...(selectedMstcSubcategories.length && activeTab !== 'baanknet' ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
+    ...(selectedMstcCategories.length ? [{ label: 'Category', value: selectedMstcCategories.join(', ') }] : []),
+    ...(selectedMstcSubcategories.length ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
     ...(selectedMstcLocations.length ? [{ label: 'Location', value: selectedMstcLocations.join(', ') }] : []),
-    ...(selectedMstcRegionalOffices.length ? [{ label: activeTab === 'baanknet' ? 'Lending Bank' : 'Regional office', value: selectedMstcRegionalOffices.join(', ') }] : []),
+    ...(selectedMstcRegionalOffices.length ? [{ label: 'Regional office', value: selectedMstcRegionalOffices.join(', ') }] : []),
     ...(startDate ? [{ label: 'From', value: startDate }] : []),
     ...(endDate ? [{ label: 'To', value: endDate }] : []),
-    ...(mstcHasAssetDocuments && activeTab !== 'baanknet' ? [{ label: 'Documents', value: 'Available' }] : []),
-    ...(mstcHasImages && activeTab !== 'baanknet' ? [{ label: 'Images', value: 'Available' }] : []),
-    ...(mstcIsReauction && activeTab !== 'baanknet' ? [{ label: 'Auction status', value: 'Re-auction' }] : []),
+    ...(mstcHasAssetDocuments ? [{ label: 'Documents', value: 'Available' }] : []),
+    ...(mstcHasImages ? [{ label: 'Images', value: 'Available' }] : []),
+    ...(mstcIsReauction ? [{ label: 'Auction status', value: 'Re-auction' }] : []),
   ];
 
   const isAnyFilterActive = !!(
@@ -436,10 +593,44 @@ export function Auctions() {
   const selectedMstcLocationsJoined = selectedMstcLocations.join(',');
   const selectedMstcRegionalOfficesJoined = selectedMstcRegionalOffices.join(',');
 
+  const mstcInitialFilters = useMemo(() => ({
+    categoryIds: selectedMstcCategories,
+    subcategories: selectedMstcSubcategories,
+    locations: selectedMstcLocations,
+    regionalOffices: selectedMstcRegionalOffices,
+    startDate,
+    endDate,
+    hasAssetDocuments: mstcHasAssetDocuments,
+    hasImages: mstcHasImages,
+    isReauction: mstcIsReauction,
+    preBid: mstcPreBid
+  }), [
+    selectedMstcCategoriesJoined,
+    selectedMstcSubcategoriesJoined,
+    selectedMstcLocationsJoined,
+    selectedMstcRegionalOfficesJoined,
+    startDate,
+    endDate,
+    mstcHasAssetDocuments,
+    mstcHasImages,
+    mstcIsReauction,
+    mstcPreBid
+  ]);
+
   const loadMstcData = useCallback(async () => {
     setIsMstcLoading(true);
     try {
       const qParam = searchParams.get('q') || '';
+
+      const isReauctionSearch = qParam.toLowerCase().replace(/[^a-z0-9]/g, '').includes('reauction');
+      if (!isBusinessUser && (isReauctionSearch || mstcIsReauction)) {
+        setMstcAuctions([]);
+        setMstcTotalCount(0);
+        setIsShowingSimilarMstc(false);
+        setIsMstcLoading(false);
+        return;
+      }
+
       const searchFilters = {
         categories: selectedMstcCategories.length > 0 ? selectedMstcCategories : undefined,
         subcategories: selectedMstcSubcategories.length > 0 ? selectedMstcSubcategories : undefined,
@@ -455,8 +646,23 @@ export function Auctions() {
         limit
       };
 
-      let result = await MstcSearchService.searchMarketplaceCatalog(qParam, searchFilters);
+       let result = await MstcSearchService.searchMarketplaceCatalog(qParam, searchFilters);
       let showingSimilar = !!qParam.trim() && result.data.length > 0 && result.hasDirectMatches === false;
+
+      if (qParam.trim() !== '' || selectedMstcCategories.length > 0 || selectedMstcLocations.length > 0 || selectedMstcRegionalOffices.length > 0) {
+        import('../services/auditService').then(({ logUserActivity }) => {
+          logUserActivity('mstc_catalog_search', 'search', undefined, {
+            query: qParam || null,
+            filters: {
+              categories: selectedMstcCategories,
+              subcategories: selectedMstcSubcategories,
+              locations: selectedMstcLocations,
+              regionalOffices: selectedMstcRegionalOffices,
+              page
+            }
+          });
+        }).catch(() => {});
+      }
 
       // Don't dump ALL catalogs as a fallback — just show empty state
       // The spell correction in publicService already tried to fix typos
@@ -483,7 +689,8 @@ export function Auctions() {
     mstcIsReauction,
     mstcPreBid,
     page,
-    limit
+    limit,
+    isBusinessUser
   ]);
 
   const loadMstcOptions = useCallback(async () => {
@@ -492,45 +699,6 @@ export function Auctions() {
       setMstcOptions(options);
     } catch (error) {
       console.error('Error loading MSTC filter options:', error);
-    }
-  }, []);
-
-  const loadBaanknetData = useCallback(async () => {
-    setIsBaanknetLoading(true);
-    try {
-      const qParam = searchParams.get('q') || '';
-      const result = await BaanknetSearchService.searchBaanknetCatalog(qParam, {
-        category: selectedMstcCategories[0] || undefined,
-        location: selectedMstcLocations[0] || undefined,
-        regionalOffice: selectedMstcRegionalOffices[0] || undefined,
-        page,
-        limit,
-        sortBy
-      });
-
-      setBaanknetAuctions(result.data);
-      setBaanknetTotalCount(result.count);
-    } catch (error) {
-      console.error('Error loading BaankNet data:', error);
-    } finally {
-      setIsBaanknetLoading(false);
-    }
-  }, [
-    searchParams,
-    selectedMstcCategoriesJoined,
-    selectedMstcLocationsJoined,
-    selectedMstcRegionalOfficesJoined,
-    page,
-    limit,
-    sortBy
-  ]);
-
-  const loadBaanknetOptions = useCallback(async () => {
-    try {
-      const options = await BaanknetSearchService.getBaanknetFilterOptions();
-      setBaanknetOptions(options);
-    } catch (error) {
-      console.error('Error loading BaankNet filter options:', error);
     }
   }, []);
 
@@ -626,18 +794,6 @@ export function Auctions() {
   }, [activeTab, loadMstcData]);
 
   useEffect(() => {
-    if (activeTab === 'baanknet') {
-      loadBaanknetData();
-    }
-  }, [activeTab, loadBaanknetData]);
-
-  useEffect(() => {
-    if (activeTab === 'baanknet') {
-      loadBaanknetOptions();
-    }
-  }, [activeTab, loadBaanknetOptions]);
-
-  useEffect(() => {
     if (activeTab === 'gem') {
       loadGemData();
     }
@@ -660,7 +816,6 @@ export function Auctions() {
       loadGemBidsOptions();
     }
   }, [activeTab, loadGemBidsOptions]);
-
   // Prefetch adjacent pages into PageCache after current page loads
   useEffect(() => {
     if (isMstcLoading || mstcTotalCount === 0) return;
@@ -932,13 +1087,11 @@ export function Auctions() {
 
   const totalPages = activeTab === 'commercial'
     ? Math.ceil(totalCount / limit)
-    : activeTab === 'baanknet'
-      ? Math.ceil(baanknetTotalCount / limit)
-      : activeTab === 'gem'
-        ? Math.ceil(gemTotalCount / limit)
-        : activeTab === 'gem-bids'
-          ? Math.ceil(gemBidsTotalCount / limit)
-          : Math.ceil(mstcTotalCount / limit);
+    : activeTab === 'gem'
+      ? Math.ceil(gemTotalCount / limit)
+      : activeTab === 'gem-bids'
+        ? Math.ceil(gemBidsTotalCount / limit)
+        : Math.ceil(mstcTotalCount / limit);
 
   const startIndex = (page - 1) * limit;
   const paginatedMstcAuctions = mstcAuctions;
@@ -946,16 +1099,18 @@ export function Auctions() {
   return (
     <div className="bg-slate-50 min-h-screen">
       {/* Header Banner */}
-      <div className="relative bg-slate-900 py-12">
+      <div className="relative z-20 bg-slate-900 py-20 md:py-28">
         {/* Background decoration */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
           <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-800/20 to-transparent" />
         </div>
 
-        <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Auctions Marketplace</h1>
-          <p className="text-slate-400 mb-6">Browse official government catalogs, bank properties and MSTC eAuctions.</p>
+        <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-center">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-3 tracking-tight">Auctions Marketplace</h1>
+          <p className="text-slate-400 text-sm sm:text-base md:text-lg mb-8 max-w-2xl font-medium leading-relaxed">
+            Browse official government catalogs, GeM procurement bids, and eAuctions.
+          </p>
 
           {/* Glassmorphic Tab Switcher */}
           <div className="flex space-x-2 mb-6 bg-white/10 backdrop-blur-md p-1 rounded-xl w-fit border border-white/10 flex-wrap gap-y-2">
@@ -964,29 +1119,18 @@ export function Auctions() {
               className={clsx(
                 "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
                 activeTab === 'mstc'
-                  ? "bg-white text-slate-955 shadow-md"
+                  ? "bg-white text-slate-900 shadow-md font-bold"
                   : "text-white hover:bg-white/5"
               )}
             >
               MSTC Gov Catalogs
             </button>
             <button
-              onClick={() => setSearchParams({ tab: 'baanknet' })}
-              className={clsx(
-                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
-                activeTab === 'baanknet'
-                  ? "bg-white text-slate-955 shadow-md"
-                  : "text-white hover:bg-white/5"
-              )}
-            >
-              BaankNet Bank Auctions
-            </button>
-            <button
               onClick={() => setSearchParams({ tab: 'gem' })}
               className={clsx(
                 "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
                 activeTab === 'gem'
-                  ? "bg-white text-slate-955 shadow-md"
+                  ? "bg-white text-slate-900 shadow-md font-bold"
                   : "text-white hover:bg-white/5"
               )}
             >
@@ -997,7 +1141,7 @@ export function Auctions() {
               className={clsx(
                 "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
                 activeTab === 'gem-bids'
-                  ? "bg-white text-slate-955 shadow-md"
+                  ? "bg-white text-slate-900 shadow-md font-bold"
                   : "text-white hover:bg-white/5"
               )}
             >
@@ -1008,7 +1152,7 @@ export function Auctions() {
               className={clsx(
                 "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
                 activeTab === 'commercial'
-                  ? "bg-white text-slate-955 shadow-md"
+                  ? "bg-white text-slate-900 shadow-md font-bold"
                   : "text-white hover:bg-white/5"
               )}
             >
@@ -1016,36 +1160,45 @@ export function Auctions() {
             </button>
           </div>
 
-          <form onSubmit={handleSearch} className="max-w-3xl relative" onKeyDown={handleKeyDown}>
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400" />
+          <form onSubmit={handleSearch} className="max-w-3xl w-full mx-auto relative group" onKeyDown={handleKeyDown}>
+            {/* Elegant White Glow Backdrop */}
+            <div className="absolute -inset-1 bg-white/70 rounded-3xl blur-md opacity-40 group-hover:opacity-60 group-focus-within:opacity-75 group-focus-within:blur-lg transition-all duration-300 pointer-events-none" />
+
+            <div className="relative z-10 bg-white rounded-2xl shadow-2xl">
+              <input
+                ref={inputRef}
+                type="text"
+                className="block w-full pl-6 sm:pl-7 pr-16 sm:pr-28 py-5 border-0 rounded-2xl leading-6 bg-white focus:outline-none text-base sm:text-lg text-slate-900"
+                placeholder=""
+                value={searchQuery}
+                onChange={handleInputChange}
+                onFocus={() => setShowSuggestions(true)}
+                autoComplete="off"
+              />
+              {/* Custom animated placeholder with blinking cursor */}
+              {!searchQuery && (
+                <div className="absolute inset-y-0 left-6 sm:left-7 right-16 sm:right-28 flex items-center pointer-events-none select-none overflow-hidden z-10">
+                  <span className="text-base sm:text-lg text-slate-400 whitespace-nowrap">
+                    {activeTab === 'commercial'
+                      ? "Search by title, reference number, or keywords..."
+                      : activeTab === 'gem'
+                        ? "Search GeM ministries, organizations, categories, titles..."
+                        : activeTab === 'gem-bids'
+                          ? "Search GeM bid/RA numbers, departments, items..."
+                          : animatedPlaceholder}
+                  </span>
+                  <span className="inline-block w-0.5 h-6 bg-slate-400 ml-0.5 animate-[blink_1s_step-end_infinite]" />
+                </div>
+              )}
+              <button
+                type="submit"
+                aria-label="Search Auctions"
+                className="absolute right-2.5 top-2.5 bottom-2.5 px-4 sm:px-7 bg-primary hover:bg-primary-700 active:bg-primary-800 text-white font-semibold rounded-xl transition-all duration-300 shadow-md shadow-primary/25 cursor-pointer text-base z-10 flex items-center justify-center"
+              >
+                <Search className="w-5 h-5 sm:hidden" />
+                <span className="hidden sm:inline">Search</span>
+              </button>
             </div>
-            <input
-              ref={inputRef}
-              type="text"
-              className="block w-full pl-11 pr-24 py-4 border-0 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary sm:text-lg shadow-lg text-slate-900"
-              placeholder={
-                activeTab === 'commercial'
-                  ? "Search by title, reference number, or keywords..."
-                  : activeTab === 'baanknet'
-                    ? "Search bank names, property titles, address, locations..."
-                    : activeTab === 'gem'
-                      ? "Search GeM ministries, organizations, categories, titles..."
-                      : activeTab === 'gem-bids'
-                        ? "Search GeM bid/RA numbers, departments, items..."
-                        : "Search MSTC catalog numbers, categories, or sellers..."
-              }
-              value={searchQuery}
-              onChange={handleInputChange}
-              onFocus={() => setShowSuggestions(true)}
-              autoComplete="off"
-            />
-            <button
-              type="submit"
-              className="absolute right-2 top-2 bottom-2 px-6 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors cursor-pointer"
-            >
-              Search
-            </button>
 
             {/* Gemini-style real-time autocomplete suggestions dropdown */}
             {activeTab === 'mstc' && showSuggestions && suggestions.length > 0 && (
@@ -1105,67 +1258,85 @@ export function Auctions() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+      {/* Pullable Left Filter Drawer & Floating Side Tag anchored to far left screen border */}
+      <div className="fixed top-1/2 -translate-y-1/2 left-0 z-50 pointer-events-none">
+        {/* Backdrop Overlay */}
+        <div 
+          className={clsx(
+            "fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity duration-300 pointer-events-auto lg:hidden",
+            isFiltersOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
+          onClick={() => setIsFiltersOpen(false)}
+        />
 
-          {/* Mobile Filter Toggle */}
-          <div className="lg:hidden flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 w-full mb-4">
-            <button
-              onClick={() => setIsFiltersOpen(true)}
-              className="flex items-center text-slate-700 font-medium cursor-pointer"
-            >
-              <SlidersHorizontal className="w-5 h-5 mr-2" />
-              Filters
-            </button>
-            <div className="text-sm text-slate-500 font-medium">
-              {activeTab === 'commercial'
-                ? (!isAnyFilterActive ? '0 results' : `${totalCount} results`)
-                : activeTab === 'baanknet'
-                  ? `${baanknetTotalCount} results`
-                  : activeTab === 'gem'
-                    ? `${gemTotalCount} results`
-                    : activeTab === 'gem-bids'
-                      ? `${gemBidsTotalCount} results`
-                      : `${mstcAuctions.length} results`
-              }
-            </div>
-          </div>
-
-          {/* Sidebar Filters */}
-          <div className="lg:w-1/4 shrink-0 lg:sticky lg:top-[96px] lg:self-start lg:overflow-visible z-20">
+        {/* Sliding Flex Wrapper */}
+        <div 
+          ref={filterDrawerRef}
+          className={clsx(
+            "relative flex items-start pointer-events-auto transition-transform duration-300 ease-in-out transform",
+            isFiltersOpen ? "translate-x-0" : "-translate-x-[340px] sm:-translate-x-[380px]"
+          )}
+        >
+          {/* Filter Drawer Container */}
+          <div 
+            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+            className="w-[340px] sm:w-[380px] max-h-[85vh] bg-white rounded-r-3xl rounded-l-none border-r border-y border-l-0 border-slate-200 shadow-2xl flex flex-col overflow-hidden"
+          >
             <AuctionFilters
-              isOpen={isFiltersOpen}
               onClose={() => setIsFiltersOpen(false)}
               onFilterChange={activeTab === 'commercial' ? handleFilterChange : handleMstcFilterChange}
-              initialFilters={activeTab === 'commercial' ? filters : {
-                categoryIds: selectedMstcCategories,
-                subcategories: selectedMstcSubcategories,
-                locations: selectedMstcLocations,
-                regionalOffices: selectedMstcRegionalOffices,
-                startDate,
-                endDate,
-                hasAssetDocuments: mstcHasAssetDocuments,
-                hasImages: mstcHasImages,
-                isReauction: mstcIsReauction,
-                preBid: mstcPreBid
-              }}
+              initialFilters={activeTab === 'commercial' ? filters : mstcInitialFilters}
               activeTab={activeTab}
-              customCategories={activeTab === 'baanknet' ? baanknetOptions.categories : activeTab === 'gem' ? gemOptions.categories : activeTab === 'gem-bids' ? gemBidsOptions.categories : mstcOptions.categories}
-              customSubcategories={activeTab === 'baanknet' || activeTab === 'gem' || activeTab === 'gem-bids' ? {} : mstcOptions.subcategories}
-              customLocations={activeTab === 'baanknet' ? baanknetOptions.locations : activeTab === 'gem' ? gemOptions.locations : []}
-              customRegionalOffices={activeTab === 'baanknet' ? baanknetOptions.regionalOffices : activeTab === 'gem' ? gemOptions.regionalOffices : activeTab === 'gem-bids' ? gemBidsOptions.departments : mstcOptions.regionalOffices}
+              customCategories={activeTab === 'gem' ? gemOptions.categories : activeTab === 'gem-bids' ? gemBidsOptions.categories : mstcOptions.categories}
+              customSubcategories={activeTab === 'gem' || activeTab === 'gem-bids' ? {} : mstcOptions.subcategories}
+              customLocations={activeTab === 'gem' ? gemOptions.locations : []}
+              customRegionalOffices={activeTab === 'gem' ? gemOptions.regionalOffices : activeTab === 'gem-bids' ? gemBidsOptions.departments : mstcOptions.regionalOffices}
             />
-            {/* Overlay for mobile filters */}
-            {isFiltersOpen && (
-              <div
-                className="fixed inset-0 bg-white/45 backdrop-blur-md z-30 lg:hidden"
-                onClick={() => setIsFiltersOpen(false)}
-              />
-            )}
           </div>
 
+          {/* Attached Side Tag Button */}
+          <button
+            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+            className={clsx(
+              "mt-16 shrink-0 flex items-center justify-between bg-primary text-white font-bold text-xs rounded-r-2xl rounded-l-none border border-l-0 border-white/20 shadow-2xl hover:bg-primary/95 active:scale-95 transition-all duration-300 cursor-pointer select-none group translate-x-0 overflow-hidden",
+              (!isFiltersOpen && !scrollPastHero)
+                ? "px-2.5 py-3 hover:px-3.5"
+                : "px-3.5 py-3"
+            )}
+            title={isFiltersOpen ? "Close filters panel" : "Open filters panel"}
+            aria-label="Toggle filters side panel"
+          >
+            <div className={clsx(
+              "flex items-center gap-1.5 shrink-0 overflow-hidden transition-all duration-300 ease-in-out",
+              (!isFiltersOpen && !scrollPastHero)
+                ? "max-w-0 opacity-0 group-hover:max-w-[120px] group-hover:opacity-100 group-hover:mr-1"
+                : "max-w-[120px] opacity-100 mr-1"
+            )}>
+              <SlidersHorizontal className="w-4 h-4 text-white shrink-0" />
+              <span className="font-semibold tracking-wider uppercase text-[11px] whitespace-nowrap">
+                Filters
+              </span>
+            </div>
+            {mstcActiveFilters.length > 0 && (
+              <span className="bg-white text-primary text-[10px] font-black w-5 h-5 rounded-full inline-flex items-center justify-center leading-none text-center shrink-0 mr-1 select-none">
+                {mstcActiveFilters.length}
+              </span>
+            )}
+            {isFiltersOpen ? (
+              <X className="w-4 h-4 text-white/90 group-hover:scale-110 transition-transform shrink-0" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-white/90 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="container max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+
           {/* Main Content */}
-          <div className="flex-grow flex flex-col lg:w-3/4">
+          <div className="flex-grow flex flex-col w-full">
 
             {/* Toolbar */}
             {activeTab === 'commercial' ? (
@@ -1192,11 +1363,32 @@ export function Auctions() {
                     <option value="price_desc">Price: High to Low</option>
                   </select>
 
+                  {/* Column Switcher (Hidden on mobile) */}
+                  <div className="hidden md:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
+                    {[2, 3, 4, 5].map((cols) => (
+                      <button
+                        key={cols}
+                        onClick={() => {
+                          setIsGridView(true);
+                          setColumns(cols as any);
+                        }}
+                        className={clsx(
+                          "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
+                          isGridView && columns === cols
+                            ? "bg-white shadow-sm text-primary"
+                            : "text-slate-500 hover:text-slate-800"
+                        )}
+                      >
+                        {cols} Col
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
                     <button
                       onClick={() => setIsGridView(true)}
                       className={clsx(
-                        "p-1.5 rounded-md transition-colors",
+                        "p-1.5 rounded-md transition-colors cursor-pointer",
                         isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
@@ -1205,7 +1397,7 @@ export function Auctions() {
                     <button
                       onClick={() => setIsGridView(false)}
                       className={clsx(
-                        "p-1.5 rounded-md transition-colors",
+                        "p-1.5 rounded-md transition-colors cursor-pointer",
                         !isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
@@ -1215,50 +1407,93 @@ export function Auctions() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between sm:items-start gap-4">
-                <div className="min-w-0 space-y-2">
-                  <div className="text-sm text-slate-700 font-semibold">
-                    {activeTab === 'baanknet'
-                      ? `Showing ${baanknetTotalCount} Bank Auctions`
-                      : activeTab === 'gem'
-                        ? `Showing ${gemTotalCount} GeM Auctions`
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 overflow-hidden">
+                <div className="min-w-0 flex-1 space-y-2 max-w-full">
+                  <div className="text-sm text-slate-800 font-bold flex items-center">
+                    {activeTab === 'gem'
+                      ? `Showing ${gemTotalCount} GeM Auctions`
+                      : activeTab === 'gem-bids'
+                        ? `Showing ${gemBidsTotalCount} GeM Procurement Bids`
                         : `Showing ${mstcTotalCount} Government Catalogs`}
                   </div>
                   {mstcActiveFilters.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5" aria-label="Applied filters">
-                      <span className="text-xs font-medium text-slate-500 mr-0.5">Applied filters:</span>
+                    <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5 max-w-full" aria-label="Applied filters">
+                      <span className="text-xs font-semibold text-slate-500 shrink-0">Applied filters:</span>
                       {mstcActiveFilters.map(filter => (
                         <span
                           key={`${filter.label}-${filter.value}`}
-                          className="max-w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"
+                          className="inline-flex items-center gap-1 max-w-[260px] rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700 shrink-0"
                           title={`${filter.label}: ${filter.value}`}
                         >
-                          <span className="font-semibold text-slate-700">{filter.label}:</span>{' '}
-                          <span className="break-words">{filter.value}</span>
+                          <span className="font-bold text-slate-900 shrink-0">{filter.label}:</span>{' '}
+                          <span className="truncate">{filter.value}</span>
                         </span>
                       ))}
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-4 w-full sm:w-auto">
-                  <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0 self-start lg:self-center">
+                  {/* Desktop Filter Toggle Button */}
+                  <button
+                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                    className={clsx(
+                      "hidden lg:inline-flex items-center gap-2 px-3.5 h-10 text-sm font-semibold rounded-lg border transition-all cursor-pointer shrink-0 whitespace-nowrap",
+                      isFiltersOpen
+                        ? "bg-primary text-white border-primary shadow-sm"
+                        : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400"
+                    )}
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span>{isFiltersOpen ? "Hide Filters" : "Show Filters"}</span>
+                    {mstcActiveFilters.length > 0 && (
+                      <span className={clsx(
+                        "text-[10px] font-black w-5 h-5 rounded-full inline-flex items-center justify-center leading-none text-center -mr-1 shrink-0 select-none",
+                        isFiltersOpen ? "bg-white text-primary" : "bg-primary text-white"
+                      )}>
+                        {mstcActiveFilters.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Column Switcher (Hidden on mobile) */}
+                  <div className="hidden md:flex items-center h-10 bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
+                    {[2, 3, 4, 5].map((cols) => (
+                      <button
+                        key={cols}
+                        onClick={() => {
+                          setIsGridView(true);
+                          setColumns(cols as any);
+                        }}
+                        className={clsx(
+                          "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer h-full flex items-center justify-center",
+                          isGridView && columns === cols
+                            ? "bg-white shadow-sm text-primary"
+                            : "text-slate-500 hover:text-slate-800"
+                        )}
+                      >
+                        {cols} Col
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="hidden sm:flex items-center h-10 bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
                     <button
                       onClick={() => setIsGridView(true)}
                       className={clsx(
-                        "p-1.5 rounded-md transition-colors cursor-pointer",
+                        "p-1.5 rounded-md transition-colors cursor-pointer h-full flex items-center justify-center",
                         isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
-                      <LayoutGrid className="w-5 h-5" />
+                      <LayoutGrid className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setIsGridView(false)}
                       className={clsx(
-                        "p-1.5 rounded-md transition-colors cursor-pointer",
+                        "p-1.5 rounded-md transition-colors cursor-pointer h-full flex items-center justify-center",
                         !isGridView ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
                       )}
                     >
-                      <List className="w-5 h-5" />
+                      <List className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -1274,7 +1509,7 @@ export function Auctions() {
                     count={6}
                     classes={clsx(
                       "gap-6 flex-grow",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}
                   />
                 ) : auctions.length === 0 ? (
@@ -1294,7 +1529,7 @@ export function Auctions() {
                   <>
                     <div className={clsx(
                       "gap-6",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}>
                       {auctions.map(auction => (
                         <AuctionCard
@@ -1347,130 +1582,6 @@ export function Auctions() {
                                   return (
                                     <span
                                       key={`dots-comm-${i}`}
-                                      className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-300 focus:outline-none"
-                                    >
-                                      ...
-                                    </span>
-                                  );
-                                }
-                                return (
-                                  <button
-                                    key={p}
-                                    onClick={() => handlePageChange(p as number)}
-                                    className={clsx(
-                                      "relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0 ring-1 ring-inset cursor-pointer",
-                                      page === p
-                                        ? "z-10 bg-primary text-white ring-primary focus-visible:outline-primary"
-                                        : "text-slate-900 ring-slate-300 hover:bg-slate-50"
-                                    )}
-                                  >
-                                    {p}
-                                  </button>
-                                );
-                              })}
-
-                              <button
-                                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                                disabled={page === totalPages}
-                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
-                              >
-                                <span className="sr-only">Next</span>
-                                <ChevronRight className="h-5 w-5" aria-hidden="true" />
-                              </button>
-                            </nav>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-
-            {/* BaankNet Bank Auctions Tab */}
-            {activeTab === 'baanknet' && (
-              <>
-                {isBaanknetLoading ? (
-                  <SkeletonGrid
-                    isGrid={isGridView}
-                    count={6}
-                    classes={clsx(
-                      "gap-6 flex-grow",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
-                    )}
-                  />
-                ) : baanknetAuctions.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-350 flex-grow text-left">
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">No BaankNet auctions found</h3>
-                    <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
-                    <button
-                      onClick={() => {
-                        setSearchParams({ tab: 'baanknet' });
-                      }}
-                      className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
-                    >
-                      Clear search & filters
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className={clsx(
-                      "gap-6",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
-                    )}>
-                      {baanknetAuctions.map(item => (
-                        <BaanknetCard
-                          key={item.id}
-                          item={item}
-                          isGrid={isGridView}
-                          onPreview={setSelectedPreviewBaanknetItem}
-                          isInterested={watchlistIds.includes(item.id)}
-                          onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="mt-10 flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 rounded-xl shadow-sm">
-                        <div className="flex flex-1 justify-between sm:hidden">
-                          <button
-                            onClick={() => handlePageChange(Math.max(1, page - 1))}
-                            disabled={page === 1}
-                            className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                          >
-                            Previous
-                          </button>
-                          <button
-                            onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                            disabled={page === totalPages}
-                            className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                          >
-                            Next
-                          </button>
-                        </div>
-                        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                          <div>
-                            <p className="text-sm text-slate-700">
-                              Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to <span className="font-medium">{Math.min(page * limit, baanknetTotalCount)}</span> of <span className="font-medium">{baanknetTotalCount}</span> results
-                            </p>
-                          </div>
-                          <div>
-                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                              <button
-                                onClick={() => handlePageChange(Math.max(1, page - 1))}
-                                disabled={page === 1}
-                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-50 focus:z-20 focus:outline-offset-0"
-                              >
-                                <span className="sr-only">Previous</span>
-                                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-                              </button>
-
-                              {getPageNumbers(page, totalPages).map((p, i) => {
-                                if (p === '...') {
-                                  return (
-                                    <span
-                                      key={`dots-baanknet-${i}`}
                                       className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-300 focus:outline-none"
                                     >
                                       ...
@@ -1593,7 +1704,7 @@ export function Auctions() {
                                   return (
                                     <span
                                       key={`dots-gem-${i}`}
-                                      className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-505 ring-1 ring-inset ring-slate-300 focus:outline-none"
+                                      className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-500 ring-1 ring-inset ring-slate-300 focus:outline-none"
                                     >
                                       ...
                                     </span>
@@ -1754,17 +1865,16 @@ export function Auctions() {
                 )}
               </>
             )}
-
             {/* MSTC Gov Catalogs Tab */}
             {activeTab === 'mstc' && (
               <>
                 {isMstcLoading ? (
                   <SkeletonGrid
                     isGrid={isGridView}
-                    count={4}
+                    count={6}
                     classes={clsx(
                       "gap-6 flex-grow",
-                      isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}
                   />
                 ) : mstcAuctions.length === 0 ? (
@@ -1794,7 +1904,7 @@ export function Auctions() {
                     )}
                     <div className={clsx(
                       "gap-6",
-                      isGridView ? "grid grid-cols-1 xl:grid-cols-2" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}>
                       {paginatedMstcAuctions.map(item => (
                         <MstcCard
@@ -1896,7 +2006,7 @@ export function Auctions() {
       {/* Catalog Details Modal */}
       {selectedPreviewItem && (
         <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
           </div>
         }>
@@ -1909,20 +2019,161 @@ export function Auctions() {
         </Suspense>
       )}
 
-      {/* BaankNet Details Modal */}
-      {selectedPreviewBaanknetItem && (
-        <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-xs">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+      {/* Free MSTC Consultation Popup (Offer / Ad Style in Brand Palette) */}
+      {showConsultationModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-xs animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="consultation-modal-title">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200 border border-slate-100">
+            
+            {/* Top Ribbon Offer Banner */}
+            <div className="bg-primary-600 text-white text-[11px] font-bold tracking-wider uppercase py-2 px-4 text-center flex items-center justify-center gap-1.5 shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 fill-white stroke-none" />
+              <span>SPECIAL OFFER • 100% FREE CONSULTATION</span>
+              <Gift className="w-3.5 h-3.5" />
+            </div>
+
+            {/* Header Content */}
+            <div className="p-6 pb-2 relative bg-slate-50/70 border-b border-slate-100">
+              <button 
+                onClick={handleCloseConsultationModal}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 p-1.5 rounded-full transition-colors cursor-pointer border border-slate-200/80 shadow-xs"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              
+              <h3 id="consultation-modal-title" className="text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                Get Free MSTC Expert Guidance
+              </h3>
+              
+              <p className="text-slate-600 text-xs mt-1.5 leading-relaxed">
+                Connect directly with certified MSTC experts. Get 1-on-1 strategy for lot valuations, EMD refunds, and winning bids — <span className="text-primary-700 font-bold">100% Free!</span>
+              </p>
+
+              {/* Offer Highlights Grid */}
+              <div className="mt-3.5 grid grid-cols-2 gap-2 bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-xs">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                  <div className="w-5 h-5 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
+                    <Zap className="w-3 h-3 fill-primary-600" />
+                  </div>
+                  <span>Instant Guidance</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                  <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>₹0 Consultation Fee</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Form Body */}
+            <div className="p-6 pt-4 space-y-4">
+              {consultationSuccess ? (
+                <div className="text-center py-6 space-y-3 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                  <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
+                    <Check className="w-8 h-8 stroke-[3]" />
+                  </div>
+                  <h4 className="text-xl font-bold text-slate-900">Free Offer Claimed!</h4>
+                  <p className="text-xs text-slate-600 max-w-xs mx-auto">
+                    Our MSTC specialist will reach out to you at <span className="font-bold text-slate-900">{consultPhone}</span> shortly.
+                  </p>
+                  <button
+                    onClick={handleCloseConsultationModal}
+                    className="mt-2 py-2.5 px-6 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md shadow-primary-600/20"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleConsultationSubmit} className="space-y-3">
+                  <div>
+                    <label htmlFor="consult_name" className="block text-[11px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
+                      Full Name *
+                    </label>
+                    <input
+                      id="consult_name"
+                      type="text"
+                      required
+                      placeholder="e.g. Rahul Sharma"
+                      value={consultName}
+                      onChange={(e) => setConsultName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 text-slate-900 placeholder-slate-400 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary focus:bg-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="consult_phone" className="block text-[11px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
+                      Phone Number *
+                    </label>
+                    <input
+                      id="consult_phone"
+                      type="tel"
+                      required
+                      placeholder="e.g. +91 98765 43210"
+                      value={consultPhone}
+                      onChange={(e) => setConsultPhone(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 text-slate-900 placeholder-slate-400 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary focus:bg-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="consult_email" className="block text-[11px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
+                      Email Address *
+                    </label>
+                    <input
+                      id="consult_email"
+                      type="email"
+                      required
+                      placeholder="e.g. rahul@company.com"
+                      value={consultEmail}
+                      onChange={(e) => setConsultEmail(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-sm bg-slate-50/50 text-slate-900 placeholder-slate-400 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary focus:bg-white focus:outline-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingConsultation}
+                    className="w-full py-3.5 px-4 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-extrabold text-sm rounded-xl shadow-md shadow-primary-600/20 hover:shadow-primary-600/35 transition-all text-center cursor-pointer uppercase tracking-wide flex items-center justify-center gap-2 mt-2"
+                  >
+                    <span>{isSubmittingConsultation ? 'Submitting...' : 'Claim Free Consultation Now'}</span>
+                    <Sparkles className="w-4 h-4 fill-white stroke-none" />
+                  </button>
+                </form>
+              )}
+
+              {/* Opt-out Custom Checkbox & Close */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={dontShowConsultationAgain}
+                  aria-label="Don't show this consultation popup again"
+                  onClick={() => setDontShowConsultationAgain(prev => !prev)}
+                  className="flex items-center gap-2 text-xs text-slate-600 font-medium cursor-pointer select-none group focus:outline-none"
+                >
+                  <div className={clsx(
+                    "w-4 h-4 rounded border transition-colors flex items-center justify-center shrink-0 cursor-pointer",
+                    dontShowConsultationAgain 
+                      ? "bg-primary-600 border-primary-600 text-white" 
+                      : "border-slate-300 bg-white group-hover:border-slate-400"
+                  )}>
+                    {dontShowConsultationAgain && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <span className="group-hover:text-slate-900 cursor-pointer">Don't show this again</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCloseConsultationModal}
+                  className="text-xs text-slate-400 hover:text-slate-700 font-semibold cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
           </div>
-        }>
-          <BaanknetDetailsModal
-            item={selectedPreviewBaanknetItem}
-            onClose={() => setSelectedPreviewBaanknetItem(null)}
-            isInterested={watchlistIds.includes(selectedPreviewBaanknetItem.id)}
-            onInterestedToggle={() => handleMstcInterestedToggle(selectedPreviewBaanknetItem.id)}
-          />
-        </Suspense>
+        </div>
       )}
 
       {/* GeM Notice Details Modal */}

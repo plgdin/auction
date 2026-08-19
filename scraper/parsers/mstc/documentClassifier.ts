@@ -1,89 +1,225 @@
 /**
  * Document text classifier.
+ *
+ * Classifies raw text blocks as inventory data, terms & conditions,
+ * payment instructions, or contact information BEFORE they enter the
+ * parsing pipeline. This prevents payment guidelines and legal text
+ * from being incorrectly parsed as sub-items.
+ *
+ * Also centralizes the "is this a terms page?" check that was previously
+ * duplicated 3× across assetWorker.ts.
  */
 
+// ─── Terms / Instruction Keywords ────────────────────────────────────────────
+
+/**
+ * Phrases that indicate a text block is terms & conditions, payment
+ * instructions, or other boilerplate rather than inventory data.
+ */
 const TERMS_KEYWORDS: readonly string[] = [
   "special terms",
   "general terms",
+  "instructions to bidders",
+  "instructions to the bidder",
+  "payment guidelines",
+  "how to participate",
   "terms and conditions",
   "terms & conditions",
-  "payment terms",
-  "payment schedule",
-  "bank details for emd",
-  "instruction to bidders",
-  "instructions to bidders",
-  "procedure for participation",
-  "e-auction process",
-  "important note for bidders",
-  "disclaimer:",
-  "mode of payment",
-  "submission of emd",
-  "earnest money deposit rules",
-];
+  "guide for making payment",
+  "payment procedure",
+  "e-payment",
+  "pre-bid emd",
+  "important instructions",
+  "seller specific terms",
+  "bidder registration",
+  "dispute resolution",
+  "force majeure",
+  "arbitration clause",
+  "indemnity clause",
+  "jurisdiction of courts",
+  "limitation of liability",
+] as const;
 
+/**
+ * Phrases that strongly indicate a contact / officer information block.
+ */
+const CONTACT_BLOCK_KEYWORDS: readonly string[] = [
+  "officer onename",
+  "officer twoname",
+  "contact person",
+  "helpdesk",
+  "customer care",
+  "grievance officer",
+  "toll free",
+  "email id",
+] as const;
+
+/**
+ * Phrases that indicate actual inventory / material listing content.
+ */
 const INVENTORY_KEYWORDS: readonly string[] = [
   "lot no",
-  "item no",
-  "lot number",
-  "description of lot",
-  "qty",
+  "lot name",
+  "lot parameters",
+  "product type",
+  "start price",
+  "bid increment",
   "quantity",
-  "location:",
-  "custodian",
-  "scrap",
-  "sub-item",
-  "sub item",
-];
+  "sl no",
+  "serial no",
+  "nomenclature",
+  "description of material",
+  "approximate qty",
+] as const;
 
+// ─── Public API ──────────────────────────────────────────────────────────────
+
+export type TextBlockType = "inventory" | "terms" | "instructions" | "contact_info";
+
+/**
+ * Determine if a text block is a terms-and-conditions or instructional page.
+ * This replaces the 3× duplicated inline check in assetWorker.ts.
+ *
+ * @param text - The raw text (selectable PDF text + OCR output).
+ * @returns `true` if the text is boilerplate that should NOT be parsed for sub-items.
+ */
 export function isTermsOrInstructionPage(text: string): boolean {
-  if (!text || text.trim().length === 0) return false;
-
+  if (!text) return false;
   const lower = text.toLowerCase();
 
-  let termsMatches = 0;
+  // Count how many terms keywords match
+  let termsHits = 0;
   for (const kw of TERMS_KEYWORDS) {
     if (lower.includes(kw)) {
-      termsMatches++;
+      termsHits++;
     }
   }
 
-  let inventoryMatches = 0;
+  // Count inventory keywords
+  let inventoryHits = 0;
   for (const kw of INVENTORY_KEYWORDS) {
     if (lower.includes(kw)) {
-      inventoryMatches++;
+      inventoryHits++;
     }
   }
 
-  if (termsMatches >= 2 && inventoryMatches === 0) {
-    return true;
+  // If we have terms hits, check if terms density exceeds inventory density
+  if (termsHits >= 2) {
+    return termsHits > inventoryHits;
   }
 
-  if (termsMatches >= 3 && inventoryMatches <= 1) {
-    return true;
+  if (termsHits === 1) {
+    // A single terms keyword only skips the page if no inventory markers exist
+    return inventoryHits === 0;
   }
 
-  const lotMatches = (lower.match(/\blot\s+(?:no|number|\d+)\b/g) || []).length;
-  if (termsMatches >= 2 && lotMatches === 0) {
-    return true;
+  // Check for high density of legal/instruction phrases
+  const legalPhrases = [
+    "shall be", "will be", "should be", "must be",
+    "liable to", "subject to", "in accordance with",
+    "hereby", "herein", "thereof", "notwithstanding",
+  ];
+  let legalHits = 0;
+  for (const phrase of legalPhrases) {
+    if (lower.includes(phrase)) legalHits++;
+  }
+  // If text has many legal phrases but no inventory markers, it's boilerplate
+  if (legalHits >= 3) {
+    return inventoryHits === 0;
   }
 
   return false;
 }
 
+/**
+ * Classify a text block into one of four categories.
+ *
+ * @param text - The raw text block to classify.
+ * @returns The classification: `inventory`, `terms`, `instructions`, or `contact_info`.
+ */
+export function classifyTextBlock(text: string): TextBlockType {
+  if (!text || text.trim().length < 10) return "terms";
+
+  const lower = text.toLowerCase();
+
+  // Check contact blocks first (they are short and distinctive)
+  const contactHits = CONTACT_BLOCK_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+  if (contactHits >= 1) return "contact_info";
+
+  // Check for terms/instructions
+  if (isTermsOrInstructionPage(text)) return "terms";
+
+  // Check for inventory markers
+  const inventoryHits = INVENTORY_KEYWORDS.filter((kw) => lower.includes(kw)).length;
+  if (inventoryHits >= 1) return "inventory";
+
+  // Default: treat short/ambiguous text as potential inventory (safe default for OCR pages)
+  return "inventory";
+}
+
+/**
+ * Strip known boilerplate sections from raw catalog text BEFORE lot splitting.
+ *
+ * This prevents terms-and-conditions text that happens to contain "Lot No -"
+ * references from creating phantom lot blocks during the split.
+ *
+ * @param text - The full catalog text.
+ * @returns The text with boilerplate sections removed.
+ */
 export function stripBoilerplateSections(text: string): string {
-  if (!text) return "";
+  // Define section header patterns that mark the start of boilerplate
+  const boilerplateHeaders = [
+    /(?:^|\n)\s*(?:seller\s+specific\s+terms\s+(?:and|&)\s+conditions)/i,
+    /(?:^|\n)\s*(?:special\s+terms\s+(?:and|&)\s+conditions)/i,
+    /(?:^|\n)\s*(?:general\s+terms\s+(?:and|&)\s+conditions)/i,
+    /(?:^|\n)\s*(?:instructions\s+to\s+(?:the\s+)?bidder(?:s)?)/i,
+    /(?:^|\n)\s*(?:payment\s+procedure)/i,
+    /(?:^|\n)\s*(?:important\s+instructions)/i,
+    /(?:^|\n)\s*(?:guide\s+for\s+making\s+payment)/i,
+  ];
 
   let cleaned = text;
+  for (const pattern of boilerplateHeaders) {
+    const match = cleaned.match(pattern);
+    if (match && match.index !== undefined) {
+      // Check if there are any lot blocks AFTER this point
+      const afterBoilerplate = cleaned.substring(match.index);
+      // (a real lot block must have Lot No followed shortly by Lot Name)
+      const hasLotsAfter = /Lot No\s*-\s*\d+[\s\S]{1,500}?Lot Name\s*-\s*/i.test(afterBoilerplate);
+      if (!hasLotsAfter) {
+        cleaned = cleaned.substring(0, match.index);
+      }
+    }
+  }
 
-  cleaned = cleaned.replace(
-    /(?:SPECIAL\s*TERMS\s*AND\s*CONDITIONS|GENERAL\s*TERMS\s*AND\s*CONDITIONS|INSTRUCTIONS?\s*TO\s*BIDDERS?)[\s\S]*$/i,
-    ""
-  );
+  return cleaned;
+}
 
-  cleaned = cleaned.replace(
-    /NOTE\s*:\s*[\s\S]{100,500}?(?=\n\s*(?:LOT\s*NO|ITEM\s*NO|\d+\.))/gi,
-    ""
-  );
+export type AttachmentType = "document" | "photo";
 
-  return cleaned.trim();
+/**
+ * Classify a lot attachment filename as a PDF document (annexure/spec/terms)
+ * vs a photo/image attachment.
+ *
+ * @param fileName - The filename (e.g. `Annex_27_5217.pdf` or `Photo_101.pdf`).
+ * @returns `"document"` if it represents asset documentation, `"photo"` if photo attachment.
+ */
+export function classifyAttachmentType(fileName: string): AttachmentType {
+  if (!fileName || typeof fileName !== "string") return "document";
+  const lower = fileName.toLowerCase();
+
+  // Photo / Image prefixes and keywords
+  const isPhoto =
+    lower.startsWith("photo_") ||
+    lower.startsWith("image_") ||
+    lower.startsWith("img_") ||
+    lower.startsWith("pic_") ||
+    lower.includes("photo") ||
+    lower.includes("image") ||
+    lower.includes("picture") ||
+    lower.includes("catalog_page");
+
+  if (isPhoto) return "photo";
+
+  return "document";
 }

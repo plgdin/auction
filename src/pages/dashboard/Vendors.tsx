@@ -92,13 +92,13 @@ export function Vendors() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex items-center">
           <div className="relative flex-grow max-w-md">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-450" />
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Search vendors by name, email, or phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-slate-250 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
         </div>
@@ -142,7 +142,7 @@ export function Vendors() {
                 <div className="flex items-center gap-2 self-end sm:self-center">
                   <button
                     onClick={() => handleOpenEdit(vendor)}
-                    className="p-2 border border-slate-200 text-slate-650 hover:bg-slate-50 hover:border-slate-350 rounded-lg transition-colors cursor-pointer"
+                    className="p-2 border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-lg transition-colors cursor-pointer"
                     title="Edit Vendor"
                   >
                     <Edit2 className="w-4 h-4" />
@@ -165,7 +165,7 @@ export function Vendors() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/45 backdrop-blur-md">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-200 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-150 flex justify-between items-center bg-slate-55/30">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
               <h3 className="font-bold text-slate-900 text-lg">
                 {editingVendor ? 'Edit Vendor Details' : 'Add New Vendor'}
               </h3>
@@ -186,7 +186,7 @@ export function Vendors() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g. Metro Scrap Solutions"
-                  className="w-full px-3.5 py-2.5 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
 
@@ -197,7 +197,7 @@ export function Vendors() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="e.g. sales@metroscrap.in"
-                  className="w-full px-3.5 py-2.5 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
 
@@ -208,7 +208,7 @@ export function Vendors() {
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="e.g. +91 99999 88888"
-                  className="w-full px-3.5 py-2.5 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
 
@@ -216,7 +216,7 @@ export function Vendors() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 border border-slate-250 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
+                  className="px-4 py-2.5 border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>

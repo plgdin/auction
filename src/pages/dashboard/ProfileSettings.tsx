@@ -1,14 +1,16 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText, Lock, SlidersHorizontal, Eye, EyeOff } from 'lucide-react';
+import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText, Lock, SlidersHorizontal, Eye, EyeOff, CreditCard, Frown, X, Gift, AlertTriangle, Sparkles } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
 import { recommendationService } from '../../services/recommendationService';
+import { getTrialStatus } from '../../utils/subscriptionUtils';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -25,7 +27,7 @@ export function ProfileSettings() {
   const [isResettingRecommendations, setIsResettingRecommendations] = useState(false);
   const [recommendationResetError, setRecommendationResetError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'privacy' | 'security'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'privacy' | 'security' | 'billing'>('profile');
 
   // Change Password state
   const [newPassword, setNewPassword] = useState('');
@@ -60,6 +62,28 @@ export function ProfileSettings() {
     } catch (err: any) {
       console.error('Error changing password:', err);
       setPwError(err.message || 'Failed to update password. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleToggle2fa = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isChecked = e.target.checked;
+    if (!user) return;
+    setIsSubmitting(true);
+    try {
+      const updated = await authService.updateProfile(user.id, {
+        two_factor_enabled: isChecked,
+      });
+      if (updated) {
+        setProfile(updated);
+        toast.success(isChecked ? 'Email 2FA enabled successfully!' : 'Email 2FA disabled successfully.');
+      } else {
+        toast.error('Failed to update 2FA setting.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to update 2FA setting.');
     } finally {
       setIsSubmitting(false);
     }
@@ -103,7 +127,7 @@ export function ProfileSettings() {
   const handleTerminateAccount = async () => {
     if (!user) return;
     const confirmInput = window.prompt(
-      'WARNING: This action is permanent. Type "DELETE" to request account termination:'
+      'WARNING: This action is permanent. Type "DELETE" to request account deletion:'
     );
     if (confirmInput !== 'DELETE') {
       alert('Deactivation cancelled.');
@@ -117,11 +141,71 @@ export function ProfileSettings() {
       localStorage.removeItem(`usr_vendors_${user.id}`);
       
       await logout();
-      alert('Account deactivation and termination requested. You have been successfully signed out.');
+      alert('Account deletion requested. You have been successfully signed out.');
       window.location.href = '/';
     } catch (error) {
       console.error('Error requesting account deactivation:', error);
       alert('An error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  // Cancellation Retention Flow States
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelStep, setCancelStep] = useState(1);
+  const [cancelReason, setCancelReason] = useState('');
+  const [customFeedback, setCustomFeedback] = useState('');
+  const [preferredPricing, setPreferredPricing] = useState('');
+  const [couponApplied, setCouponApplied] = useState(false);
+
+  const handleCancelSubscription = () => {
+    setIsCancelModalOpen(true);
+    setCancelStep(1);
+    setCancelReason('');
+    setCustomFeedback('');
+    setPreferredPricing('');
+    setCouponApplied(false);
+  };
+
+  const applyRetentionCoupon = async () => {
+    setCouponApplied(true);
+    import('canvas-confetti').then((module) => {
+      const confetti = module.default;
+      confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
+    }).catch(err => console.log('Confetti import deferred'));
+
+    toast.success('Awesome! Coupon STAY30 has been successfully applied to your account for 30% off your next renewals.');
+    
+    try {
+      import('../../services/auditService').then(({ logUserActivity }) => {
+        logUserActivity('apply_retention_coupon', 'profile', user?.id || '', { couponCode: 'STAY30' });
+      });
+    } catch (_) {}
+
+    setTimeout(() => {
+      setIsCancelModalOpen(false);
+    }, 2000);
+  };
+
+  const confirmCancellation = async () => {
+    if (!user) return;
+    try {
+      setIsSubmitting(true);
+      setIsCancelModalOpen(false);
+      const updatedProfile = await authService.updateProfile(user.id, {
+        subscription_plan: 'explorer'
+      });
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+        toast.success('Your subscription has been cancelled. Downgraded to the Free plan.');
+      }
+    } catch (error) {
+      console.error('Error cancelling subscription:', error);
+      toast.error('Failed to cancel subscription. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -255,6 +339,15 @@ export function ProfileSettings() {
         >
           <Lock className="w-4 h-4 mr-2" />
           Security
+        </button>
+        <button
+          onClick={() => setActiveTab('billing')}
+          className={`flex items-center px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
+            activeTab === 'billing' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          <CreditCard className="w-4 h-4 mr-2" />
+          Billing & Subscription
         </button>
       </div>
 
@@ -475,7 +568,7 @@ export function ProfileSettings() {
             </div>
             <div className="p-6 space-y-6">
               <p className="text-slate-600 text-sm leading-relaxed">
-                You can manage the removal of your active data from the platform, delete your watchlist items, remove documents from your vault, or request account termination.
+                You can manage the removal of your active data from the platform, delete your watchlist items, remove documents from your vault, or request account deletion.
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
@@ -486,7 +579,7 @@ export function ProfileSettings() {
                   </div>
                   <button
                     onClick={handleClearWatchlist}
-                    className="w-full text-center py-2 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    className="w-full text-center py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
                   >
                     Clear Watchlist
                   </button>
@@ -499,7 +592,7 @@ export function ProfileSettings() {
                   </div>
                   <button
                     onClick={() => navigate('/dashboard/documents')}
-                    className="w-full text-center py-2 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    className="w-full text-center py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
                   >
                     Manage Vault
                   </button>
@@ -507,14 +600,14 @@ export function ProfileSettings() {
 
                 <div className="border border-red-100 rounded-xl p-4 flex flex-col justify-between hover:shadow-sm transition-shadow bg-red-50/10">
                   <div>
-                    <h3 className="font-bold text-red-600 text-sm mb-1">Terminate Account</h3>
+                    <h3 className="font-bold text-red-600 text-sm mb-1">Delete Account</h3>
                     <p className="text-xs text-slate-500 mb-4">Permanently delete your profile and deactivate your account credentials.</p>
                   </div>
                   <button
                     onClick={handleTerminateAccount}
                     className="w-full text-center py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors shadow-sm cursor-pointer"
                   >
-                    Request Termination
+                    Delete Account
                   </button>
                 </div>
               </div>
@@ -565,7 +658,7 @@ export function ProfileSettings() {
             )}
             
             {pwSuccess && (
-              <div className="bg-green-55 border border-green-200 text-green-705 px-4 py-3 rounded-lg text-sm font-medium">
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm font-medium">
                 {pwSuccess}
               </div>
             )}
@@ -623,6 +716,337 @@ export function ProfileSettings() {
               </button>
             </div>
           </form>
+
+          {/* Email 2FA Toggle Section */}
+          <div className="p-6 border-t border-slate-100 bg-slate-50/50">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center">
+              <Shield className="w-4 h-4 mr-2 text-primary" /> Two-Factor Authentication (2FA)
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Enhance your account's security. Require a 6-digit one-time verification code sent to your email whenever you sign in.
+            </p>
+            <label className="inline-flex items-center cursor-pointer group">
+              <input
+                type="checkbox"
+                className="form-checkbox h-5 w-5 text-primary border-slate-300 rounded focus:ring-primary transition-all duration-200 cursor-pointer"
+                checked={profile?.two_factor_enabled || false}
+                onChange={handleToggle2fa}
+                disabled={isSubmitting}
+              />
+              <span className="ml-3 text-sm font-bold text-slate-700 group-hover:text-slate-900 transition-colors">
+                Enable Email Two-Factor Authentication (2FA)
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'billing' && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-slate-50 border-b border-slate-200 p-6 flex items-center">
+            <CreditCard className="w-6 h-6 text-primary mr-3" />
+            <h2 className="text-lg font-bold text-slate-900">Manage Subscription</h2>
+          </div>
+
+          <div className="p-6 space-y-6">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Plan</p>
+                <h3 className="text-xl font-black text-slate-800 mt-1 flex items-center gap-2">
+                  {profile?.subscription_plan === 'pro' ? 'Business Plan' :
+                   (profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? 'Individual Plan' :
+                   profile?.subscription_plan === 'enterprise' ? 'Enterprise Plan' : 'Free Plan'}
+                </h3>
+                {getTrialStatus(user?.id).isExpired && (
+                  <p className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg mt-2 inline-block">
+                    Your 30-day free trial has ended. Your subscription is over.
+                  </p>
+                )}
+                {!getTrialStatus(user?.id).isExpired && profile?.subscription_plan === 'pro' && (
+                  <p className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg mt-2 inline-block">
+                    {getTrialStatus(user?.id).statusText}
+                  </p>
+                )}
+              </div>
+              <div>
+                {(!profile?.subscription_plan || profile.subscription_plan === 'explorer') ? (
+                  <Link
+                    to="/pricing"
+                    className="inline-flex items-center px-4 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-700 rounded-xl transition-all shadow-xs"
+                  >
+                    Upgrade Plan
+                  </Link>
+                ) : profile.subscription_plan === 'enterprise' ? (
+                  <Link
+                    to="/contact"
+                    className="inline-flex items-center px-4 py-2 text-xs font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-xl transition-all"
+                  >
+                    Contact Account Manager
+                  </Link>
+                ) : (
+                  <button
+                    onClick={handleCancelSubscription}
+                    disabled={isSubmitting}
+                    className="inline-flex items-center px-4 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel Subscription
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-6">
+              <h4 className="font-bold text-slate-800 mb-2">Subscription & Billing Guidelines</h4>
+              <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-500">
+                <li>Paid subscriptions (Individual & Business) are billed monthly or annually depending on your selection.</li>
+                <li>You can cancel your active paid plan at any time. When cancelled, your account will instantly downgrade to the Free plan.</li>
+                <li>For any invoice disputes, refunds, or custom Enterprise integrations, please contact our support team.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isCancelModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                  <Frown className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg font-black text-slate-900">We're Sad to See You Go</h3>
+                  <p className="text-xs text-slate-500 font-medium">Step {cancelStep} of 3</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsCancelModalOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors border-0 bg-transparent cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-6 overflow-y-auto flex-1 text-left space-y-4">
+              {cancelStep === 1 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-600 leading-relaxed font-semibold">
+                    Could you tell us why you are considering cancelling your subscription? Your feedback helps us improve.
+                  </p>
+                  
+                  <div className="space-y-2">
+                    {[
+                      { id: 'expensive', label: 'It is too expensive / out of budget' },
+                      { id: 'missing_features', label: 'Missing critical features I need' },
+                      { id: 'hard_use', label: 'Too difficult or complex to use' },
+                      { id: 'temporary', label: 'Temporary project completed, no longer needed' },
+                      { id: 'other', label: 'Other reason' }
+                    ].map((opt) => (
+                      <label 
+                        key={opt.id}
+                        className={`flex items-start p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                          cancelReason === opt.id 
+                            ? 'border-primary bg-primary/5 text-primary' 
+                            : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="cancelReason"
+                          value={opt.id}
+                          checked={cancelReason === opt.id}
+                          onChange={(e) => setCancelReason(e.target.value)}
+                          className="mt-1 mr-3 h-4 w-4 text-primary focus:ring-primary border-slate-300"
+                        />
+                        <span className="text-xs font-bold">{opt.label}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {cancelReason && (
+                    <div className="space-y-2 pt-2">
+                      <label className="text-xs font-bold text-slate-700">
+                        {cancelReason === 'missing_features' ? 'What features would have kept you?' : 'Tell us more (optional):'}
+                      </label>
+                      <textarea
+                        value={customFeedback}
+                        onChange={(e) => setCustomFeedback(e.target.value)}
+                        placeholder="Your thoughts..."
+                        className="w-full min-h-[80px] p-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-800"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {cancelStep === 2 && (
+                <div className="space-y-6">
+                  {cancelReason === 'expensive' ? (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3">
+                        <Gift className="w-8 h-8 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-sm font-black text-emerald-800">Special Retention Discount!</h4>
+                          <p className="text-xs text-emerald-700 mt-1 leading-relaxed font-medium">
+                            We value having you as a subscriber. We'd love to offer you 30% off your subscription for the next 3 months! Use this coupon code or click below to apply it immediately.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center space-y-2">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Your discount coupon code</span>
+                        <span className="font-mono text-2xl font-black text-slate-800 bg-white border px-4 py-1.5 rounded-lg shadow-xs inline-block tracking-wider">
+                          STAY30
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <label className="text-xs font-bold text-slate-700 block">
+                          What monthly price would you prefer or feel is fair? (INR / month)
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['₹299', '₹499', '₹999'].map((priceOpt) => (
+                            <button
+                              key={priceOpt}
+                              onClick={() => setPreferredPricing(priceOpt)}
+                              className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                                preferredPricing === priceOpt 
+                                  ? 'bg-primary border-primary text-white shadow-xs' 
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                              }`}
+                            >
+                              {priceOpt}/mo
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-start gap-3">
+                        <Sparkles className="w-8 h-8 text-primary shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-sm font-black text-blue-800">Exclusive Reward to Stay!</h4>
+                          <p className="text-xs text-blue-700 mt-1 leading-relaxed font-medium">
+                            We are committed to resolving your concerns. As a thank you for your feedback, we've prepared a 30% off coupon code for you. Apply it to get immediate savings on your next renewals!
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center space-y-2">
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Use coupon code</span>
+                        <span className="font-mono text-2xl font-black text-slate-800 bg-white border px-4 py-1.5 rounded-lg shadow-xs inline-block tracking-wider">
+                          STAY30
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {cancelStep === 3 && (
+                <div className="space-y-5">
+                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3">
+                    <AlertTriangle className="w-8 h-8 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-black text-rose-800">Confirm Deactivation</h4>
+                      <p className="text-xs text-rose-700 mt-1 leading-relaxed font-medium">
+                        If you proceed, your subscription will end immediately. You will immediately lose access to all premium tools:
+                      </p>
+                    </div>
+                  </div>
+
+                  <ul className="space-y-2.5 text-xs text-slate-600 font-medium pl-2">
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-500 font-bold">✕</span>
+                      <span>AI Win-Probability & Bid Optimization Engine</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-500 font-bold">✕</span>
+                      <span>Real-time Scrap vs. Resale Valuation Margins</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-500 font-bold">✕</span>
+                      <span>Automated closing alerts, reminders & visual calendar</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-500 font-bold">✕</span>
+                      <span>GST, taxes, transport estimator and catalog document vault</span>
+                    </li>
+                  </ul>
+
+                  <p className="text-xs font-bold text-slate-400 text-center uppercase tracking-wide pt-2">
+                    Are you absolutely sure you want to degrade?
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-6 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+              {cancelStep === 1 && (
+                <>
+                  <button
+                    onClick={() => setIsCancelModalOpen(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
+                  >
+                    Keep Premium
+                  </button>
+                  <button
+                    onClick={() => setCancelStep(2)}
+                    disabled={!cancelReason}
+                    className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-700 rounded-xl disabled:opacity-50 transition-all cursor-pointer shadow-md shadow-primary/10"
+                  >
+                    Continue
+                  </button>
+                </>
+              )}
+
+              {cancelStep === 2 && (
+                <>
+                  <button
+                    onClick={() => setCancelStep(3)}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 bg-transparent hover:text-slate-800 transition-all border-0 cursor-pointer"
+                  >
+                    No thanks, continue cancellation
+                  </button>
+                  
+                  {couponApplied ? (
+                    <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                      ✓ Coupon Applied!
+                    </span>
+                  ) : (
+                    <button
+                      onClick={applyRetentionCoupon}
+                      className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all cursor-pointer shadow-md shadow-emerald-600/10 flex items-center gap-1.5"
+                    >
+                      <Gift className="w-3.5 h-3.5" /> Apply Coupon & Save 30%
+                    </button>
+                  )}
+                </>
+              )}
+
+              {cancelStep === 3 && (
+                <>
+                  <button
+                    onClick={() => setIsCancelModalOpen(false)}
+                    className="px-5 py-2.5 text-xs font-bold text-white bg-primary hover:bg-primary-700 rounded-xl transition-all cursor-pointer shadow-md shadow-primary/20"
+                  >
+                    Keep My Subscription
+                  </button>
+                  <button
+                    onClick={confirmCancellation}
+                    className="px-4 py-2.5 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all cursor-pointer border-0 bg-transparent"
+                  >
+                    Cancel Subscription anyway
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

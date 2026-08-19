@@ -1,11 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel } from 'lucide-react';
+import { useState, useEffect, useMemo, memo } from 'react';
+import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Gavel, Info, Lock } from 'lucide-react';
+import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime, hasConfirmedAssetDocuments } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
 import { storageService } from '../../services/storageService';
 import { useAppStore } from '../../store/appStore';
+import { useAuthStore } from '../../store/authStore';
 import { formatPriceString } from '../../utils/currency';
 
 interface MstcCardProps {
@@ -13,10 +15,10 @@ interface MstcCardProps {
   isGrid?: boolean;
   onPreview: (item: MstcSanitizedAuction) => void;
   isInterested?: boolean;
-  onInterestedToggle?: () => void;
+  onInterestedToggle?: (id: string) => void;
 }
 
-export function MstcCard({ item, isGrid = true, onPreview, isInterested = false, onInterestedToggle }: MstcCardProps) {
+export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview, isInterested = false, onInterestedToggle }: MstcCardProps) {
   const { currency } = useAppStore();
   const shortId = (item?.mstc_auction_number || '').split('/').pop() || item?.id?.substring(0, 8) || 'N/A';
   // Calculate summary asynchronously to prevent main-thread blocking when rendering many cards
@@ -30,13 +32,13 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
         setSummary(generateCatalogSummary(item));
       }
     }, 10); // Small delay to let React commit the initial DOM
-    
+
     return () => {
       isMounted = false;
       clearTimeout(timer);
     };
   }, [item]);
-  
+
   // Distinguish actual item photos from document page preview images
   const actualPhotos = useMemo(() => {
     if (!summary) return [];
@@ -44,19 +46,19 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
       (url: string) => !url.toLowerCase().includes('_catalog_page_') && !url.toLowerCase().includes('_page_') && !url.toLowerCase().includes('mstc-previews/') && !url.toLowerCase().endsWith('.pdf')
     );
   }, [summary?.extracted_images]);
-  
+
   const hasOtherMedia = (summary?.extracted_images || []).length > 0;
   const fallbackPreview = item.sanitized_document_path ? `mstc-previews/${item.id}.jpg` : null;
   const rawDisplayImage = useMemo(() => {
     if (actualPhotos.length > 0) return actualPhotos[0];
     if (summary?.preview_image_url) return summary.preview_image_url;
-    
+
     // Look for any catalog pages inside extracted_images
     const catalogPages = (summary?.extracted_images || []).filter(
       (url: string) => (url.toLowerCase().includes('_catalog_page_') || url.toLowerCase().includes('_page_') || url.toLowerCase().includes('mstc-previews/')) && !url.toLowerCase().endsWith('.pdf')
     );
     if (catalogPages.length > 0) return catalogPages[0];
-    
+
     return fallbackPreview;
   }, [actualPhotos, summary, fallbackPreview]);
 
@@ -92,18 +94,18 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
   // Parse start and close dates
   const parsedStartDate = summary?.auctionStartTime ? parsePdfDateTime(summary.auctionStartTime) : null;
   const auctionDate = parsedStartDate || new Date(item.opening_date);
-  
+
   const parsedCloseDate = summary?.auctionCloseTime ? parsePdfDateTime(summary.auctionCloseTime) : null;
-  
+
   const biddingPeriodStr = (() => {
     const startDate = parsedStartDate || new Date(item.opening_date);
     const endDate = parsedCloseDate || new Date(item.closing_date);
-    
+
     const formatDateOrdinal = (d: Date) => {
       const day = d.getDate();
       const month = d.toLocaleDateString(undefined, { month: 'short' });
       const year = d.getFullYear();
-      
+
       let suffix = 'th';
       if (day < 11 || day > 13) {
         switch (day % 10) {
@@ -126,22 +128,22 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
 
     const startDayStr = formatDateOrdinal(startDate);
     const endDayStr = formatDateOrdinal(endDate);
-    
+
     const startTimeStr = formatTimeAmpm(startDate);
     const endTimeStr = formatTimeAmpm(endDate);
-    
+
     if (startDayStr === endDayStr) {
       return `${startDayStr} ${startTimeStr} - ${endTimeStr}`;
     } else {
       return `${startDayStr} ${startTimeStr} - ${endDayStr} ${endTimeStr}`;
     }
   })();
-  
+
   const now = new Date();
   const diffMs = auctionDate.getTime() - now.getTime();
   const isStarted = diffMs <= 0;
   const isClosed = parsedCloseDate ? (now.getTime() > parsedCloseDate.getTime()) : false;
-  
+
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const isUrgent = diffDays < 3;
@@ -159,8 +161,8 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     <span className={clsx(
       "font-bold text-xs px-2.5 py-1 rounded-md border flex items-center gap-1",
       isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
-      isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
-      "text-emerald-700 bg-emerald-50 border-emerald-200"
+        isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
+          "text-emerald-700 bg-emerald-50 border-emerald-200"
     )}>
       <Clock className="w-3.5 h-3.5" />
       Starts in {diffDays}d {diffHours}h
@@ -176,59 +178,122 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const cardHeader = (
-    <div className="flex justify-between items-start gap-4 mb-3">
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
-          <span className="text-xs font-semibold text-slate-500 font-mono">
-            Ref ID: {shortId}
-          </span>
-          <button
-            onClick={handleCopy}
-            className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
-            title="Copy full reference number to clipboard"
-            aria-label="Copy reference number"
-          >
-            {copied ? (
-              <Check className="w-3.5 h-3.5 text-emerald-605 animate-scaleIn" />
-            ) : (
-              <Copy className="w-3.5 h-3.5" />
+  const { profile, isAuthenticated } = useAuthStore();
+  const isBusinessUser = (isAuthenticated && (profile?.subscription_plan === 'pro' || profile?.subscription_plan === 'enterprise')) || profile?.role === 'admin' || profile?.role === 'superadmin';
+
+  const renderCardHeader = () => {
+    if (isGrid) {
+      return (
+        <div className="flex flex-col gap-2 mb-3">
+          <div className="flex items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+              <span className="text-xs font-semibold text-slate-500 font-mono">
+                Ref ID: {shortId}
+              </span>
+              <button
+                onClick={handleCopy}
+                className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+                title="Copy full reference number to clipboard"
+                aria-label="Copy reference number"
+              >
+                {copied ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
+
+            {isBusinessUser && item.is_reauction && (
+              <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                Re-auction
+              </span>
             )}
-          </button>
+          </div>
+          {(hasConfirmedAssetDocuments(item.raw_materials_text) || hasOtherMedia) && (
+            <div className="flex flex-wrap gap-1.5 justify-start">
+              {hasConfirmedAssetDocuments(item.raw_materials_text) && (
+                <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+                  Asset docs available
+                </span>
+              )}
+              {hasOtherMedia && (
+                <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+                  Images available
+                </span>
+              )}
+            </div>
+          )}
         </div>
+      );
+    }
+
+    return (
+      <div className="flex justify-between items-start gap-4 mb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+            <span className="text-xs font-semibold text-slate-500 font-mono">
+              Ref ID: {shortId}
+            </span>
+            <button
+              onClick={handleCopy}
+              className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+              title="Copy full reference number to clipboard"
+              aria-label="Copy reference number"
+            >
+              {copied ? (
+                <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+          {isBusinessUser && item.is_reauction && (
+            <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+              Re-auction
+            </span>
+          )}
+        </div>
+        {(hasConfirmedAssetDocuments(item.raw_materials_text) || hasOtherMedia) && (
+          <div className="flex flex-col items-end gap-1.5">
+            {hasConfirmedAssetDocuments(item.raw_materials_text) && (
+              <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+                Asset documents available
+              </span>
+            )}
+            {hasOtherMedia && (
+              <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+                Images available
+              </span>
+            )}
+          </div>
+        )}
       </div>
-      <div className="flex flex-col items-end gap-1.5">
-        {item.is_reauction && (
-          <span className="bg-amber-50 border border-amber-250 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-            Re-auction
-          </span>
-        )}
-        {hasConfirmedAssetDocuments(item.raw_materials_text) && (
-          <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
-            Asset documents available
-          </span>
-        )}
-        {hasOtherMedia && (
-          <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
-            Images available
-          </span>
-        )}
-      </div>
-    </div>
-  );
+    );
+  };
+
+  const isBlurOverlay = false;
 
   if (!isGrid) {
     // LIST VIEW
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/50 transition-all group p-5 flex flex-col sm:flex-row gap-5 justify-between">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/50 transition-all group relative">
+        <div className={clsx("p-5 flex flex-col sm:flex-row gap-5 justify-between", isBlurOverlay && "blur-[6px] select-none pointer-events-none")}>
         {imageLoading ? (
-          <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-100 animate-pulse hidden sm:block"></div>
+          <div className="w-[120px] h-[120px] rounded-xl border border-slate-100 overflow-hidden shrink-0 bg-slate-100 animate-pulse hidden sm:block"></div>
         ) : signedDisplayImage ? (
-          <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
-            <img 
-              src={signedDisplayImage} 
-              alt="Catalog Image" 
+          <div className="w-[120px] h-[120px] rounded-xl border border-slate-100 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
+            <img
+              src={signedDisplayImage}
+              alt="Catalog Image"
               loading="lazy"
               decoding="async"
               onLoad={() => setHighResLoaded(true)}
@@ -241,7 +306,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           </div>
         ) : (
           <div className="w-[120px] h-[120px] rounded-xl border border-slate-200 shrink-0 bg-slate-50 flex flex-col items-center justify-center text-slate-400 select-none hidden sm:flex gap-1.5">
-            <svg className="w-6 h-6 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
             </svg>
             <span className="text-[9px] font-medium tracking-wide text-slate-400 text-center px-1.5 leading-tight">No pictures available</span>
@@ -250,8 +315,8 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
 
         <div className="flex-1 flex flex-col justify-between">
           <div>
-            {cardHeader}
-            
+            {renderCardHeader()}
+
             {(() => {
               const parts = (item?.category_name || '').split(' | ');
               const mainCat = parts[0] || 'Unknown';
@@ -261,12 +326,12 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                   {subCat ? (
                     <>
                       <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCat}</div>
-                      <h3 className="text-lg font-bold text-slate-955 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                      <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
                         {subCat}
                       </h3>
                     </>
                   ) : (
-                    <h3 className="text-lg font-bold text-slate-955 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
+                    <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.category_name}>
                       {mainCat}
                     </h3>
                   )}
@@ -297,22 +362,40 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               </div>
 
               <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
-                <div className="flex items-center text-slate-655">
+                <div className="flex items-center text-slate-700">
                   <Landmark className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>EMD: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}</strong></span>
+                  <span className="flex items-center gap-1">
+                    <span>EMD: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}</strong></span>
+                    <div className="relative group/tooltip inline-block ml-0.5">
+                      <Info className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                      <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                        Earnest Money Deposit required to bid on this auction.
+                        <div className="absolute top-full left-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                      </div>
+                    </div>
+                  </span>
                 </div>
-                <div className="flex items-center text-slate-655">
+                <div className="flex items-center text-slate-700">
                   <ShieldCheck className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Pre-bid: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}</strong></span>
+                  <span className="flex items-center gap-1">
+                    <span>Pre-bid: <strong className="text-slate-700 font-semibold">{summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}</strong></span>
+                    <div className="relative group/tooltip inline-block ml-0.5">
+                      <Info className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                      <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                        Mandatory deposit required prior to auction start.
+                        <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                      </div>
+                    </div>
+                  </span>
                 </div>
               </div>
 
               <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
-                <div className="flex items-center text-slate-655">
+                <div className="flex items-center text-slate-700">
                   <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                   <span>Bidding Period: <strong className="text-slate-700 font-semibold">{biddingPeriodStr}</strong></span>
                 </div>
-                <div className="flex items-center text-slate-655">
+                <div className="flex items-center text-slate-700">
                   <Eye className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                   <span>Inspection Period: <strong className="text-slate-700 font-semibold">{summary?.inspectionSchedule || 'Loading...'}</strong></span>
                 </div>
@@ -329,7 +412,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               {item.sanitized_document_path ? (
                 <button
                   onClick={() => onPreview(item)}
-                  className="flex-grow sm:flex-none inline-flex justify-center items-center py-2 px-5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
                 >
                   <Eye className="w-4 h-4 mr-2" />
                   View Details
@@ -337,45 +420,48 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               ) : (
                 <button
                   disabled
-                  className="flex-grow sm:flex-none inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
                 >
-                  <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping mr-2"></span>
                   PDF Processing...
                 </button>
               )}
 
               {onInterestedToggle && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onInterestedToggle();
-                  }}
-                  className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
-                  title={isInterested ? "Remove from interested list" : "Add to interested list"}
-                  aria-label={isInterested ? "Remove from interested list" : "Add to interested list"}
-                >
-                  <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
-                </button>
+                <ButtonWithIconDemo
+                  isInterested={isInterested}
+                  onInterestedToggle={() => onInterestedToggle(item.id)}
+                />
               )}
             </div>
           </div>
         </div>
       </div>
-    );
-  }
+      {isBlurOverlay && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/20">
+          <div className="bg-slate-900/90 backdrop-blur-md text-white rounded-xl p-4 shadow-xl max-w-[220px] flex flex-col items-center gap-2 text-center border border-slate-700/50">
+            <Lock className="w-6 h-6 text-amber-400" />
+            <span className="font-bold text-sm">Premium Feature</span>
+            <span className="text-xs text-slate-300">Upgrade your account to view Re-auction details</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
   // GRID VIEW
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full p-5 justify-between">
-      <div>
-        <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full relative">
+      <div className={clsx("flex flex-col h-full p-5 justify-between", isBlurOverlay && "blur-[6px] select-none pointer-events-none")}>
+        <div>
+          <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
           {imageLoading ? (
             <div className="w-full h-full bg-slate-100 animate-pulse"></div>
           ) : signedDisplayImage ? (
-            <img 
-              src={signedDisplayImage} 
-              alt="Catalog Image" 
+            <img
+              src={signedDisplayImage}
+              alt="Catalog Image"
               loading="lazy"
               decoding="async"
               onLoad={() => setHighResLoaded(true)}
@@ -394,7 +480,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
             </div>
           )}
         </div>
-        {cardHeader}
+        {renderCardHeader()}
 
         {(() => {
           const parts = (item?.category_name || '').split(' | ');
@@ -418,34 +504,61 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           );
         })()}
 
-        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-4 gap-y-3.5 text-sm">
+        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-3 gap-y-3 text-xs sm:text-sm">
           <div className="flex flex-col min-w-0">
             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Office</span>
-            <span className="font-bold text-slate-700 truncate text-base" title={regionalOfficeName}>
+            <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={regionalOfficeName}>
               {regionalOfficeName}
             </span>
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Location</span>
-            <span className="font-bold text-slate-700 truncate text-base" title={locationName || 'N/A'}>
+            <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={locationName || 'N/A'}>
               {locationName || 'N/A'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
-            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">EMD Required</span>
-            <span className="font-bold text-slate-700 truncate" title={summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+              <span>EMD Required</span>
+              <div className="relative group/tooltip inline-block">
+                <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                  Earnest Money Deposit required to bid on this auction.
+                  <div className="absolute top-full left-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                </div>
+              </div>
+            </span>
+            <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}>
               {summary?.depositDetails?.emd ? formatPriceString(summary.depositDetails.emd, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
-            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
-            <span className="font-bold text-slate-700 truncate" title={summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+              <span>Pre-bid EMD</span>
+              <div className="relative group/tooltip inline-block">
+                <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                  Mandatory deposit required prior to auction start.
+                  <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                </div>
+              </div>
+            </span>
+            <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}>
               {summary?.depositDetails?.preBidDdg ? formatPriceString(summary.depositDetails.preBidDdg, currency) : 'Loading...'}
             </span>
           </div>
           <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5 col-span-2">
-            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Auction Type</span>
-            <span className="font-bold text-slate-700 truncate text-base" title={summary?.auctionType || 'O-General'}>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+              <span>Auction Type</span>
+              <div className="relative group/tooltip inline-block">
+                <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-52 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                  Category (e.g. C-Customs, O-General, P-Property) dictating bidding rules.
+                  <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                </div>
+              </div>
+            </span>
+            <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={summary?.auctionType || 'O-General'}>
               {summary?.auctionType || 'O-General'}
             </span>
           </div>
@@ -475,7 +588,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           {item.sanitized_document_path ? (
             <button
               onClick={() => onPreview(item)}
-              className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+              className="flex-grow inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
             >
               <Eye className="w-4 h-4 mr-2" />
               View Details
@@ -483,29 +596,41 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           ) : (
             <button
               disabled
-              className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
+              className="flex-grow inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
             >
-              <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping mr-2"></span>
               PDF Processing...
             </button>
           )}
 
           {onInterestedToggle && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onInterestedToggle();
-              }}
-              className="inline-flex justify-center items-center p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-colors cursor-pointer shrink-0"
-              title={isInterested ? "Remove from interested list" : "Add to interested list"}
-              aria-label={isInterested ? "Remove from interested list" : "Add to interested list"}
-            >
-              <Heart className={clsx("w-4 h-4", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
-            </button>
+            <ButtonWithIconDemo
+              isInterested={isInterested}
+              onInterestedToggle={() => onInterestedToggle(item.id)}
+            />
           )}
         </div>
       </div>
+      </div>
+      
+      {isBlurOverlay && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/20">
+          <div className="bg-slate-900/90 backdrop-blur-md text-white rounded-xl p-5 shadow-xl max-w-[220px] flex flex-col items-center gap-2 text-center border border-slate-700/50">
+            <Lock className="w-7 h-7 text-amber-400 mb-1" />
+            <span className="font-bold text-sm">Premium Feature</span>
+            <span className="text-xs text-slate-300">Upgrade your account to view Re-auction details</span>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.item?.id === nextProps.item?.id &&
+    prevProps.item?.mstc_auction_number === nextProps.item?.mstc_auction_number &&
+    prevProps.isGrid === nextProps.isGrid &&
+    prevProps.isInterested === nextProps.isInterested &&
+    prevProps.onPreview === nextProps.onPreview &&
+    prevProps.onInterestedToggle === nextProps.onInterestedToggle
+  );
+});

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel } from 'lucide-react';
+import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, Check, Heart, Gavel, Info } from 'lucide-react';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime, hasConfirmedAssetDocuments } from '../../utils/mstcHelpers';
@@ -191,9 +191,9 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
     return (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-slate-400 transition-all group p-5 flex flex-col sm:flex-row gap-5 justify-between">
         {imageLoading ? (
-          <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-100 animate-pulse hidden sm:block"></div>
+          <div className="w-[120px] h-[120px] rounded-xl border border-slate-100 overflow-hidden shrink-0 bg-slate-100 animate-pulse hidden sm:block"></div>
         ) : signedDisplayImage ? (
-          <div className="w-[120px] h-[120px] rounded-xl border border-slate-150 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
+          <div className="w-[120px] h-[120px] rounded-xl border border-slate-100 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
             <img 
               src={signedDisplayImage} 
               alt="Catalog Image" 
@@ -209,7 +209,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
           </div>
         ) : (
           <div className="w-[120px] h-[120px] rounded-xl border border-slate-200 shrink-0 bg-slate-50 flex flex-col items-center justify-center text-slate-400 select-none hidden sm:flex gap-1.5">
-            <svg className="w-6 h-6 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
             </svg>
             <span className="text-[9px] font-medium tracking-wide text-slate-400 text-center px-1.5 leading-tight">No pictures available</span>
@@ -229,12 +229,12 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                   {subCat ? (
                     <>
                       <div className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-0.5">{mainCat}</div>
-                      <h3 className="text-lg font-bold text-slate-955 group-hover:text-slate-700 transition-colors line-clamp-2" title={item.category_name}>
+                      <h3 className="text-lg font-bold text-slate-950 group-hover:text-slate-700 transition-colors line-clamp-2" title={item.category_name}>
                         {subCat}
                       </h3>
                     </>
                   ) : (
-                    <h3 className="text-lg font-bold text-slate-955 group-hover:text-slate-700 transition-colors line-clamp-2" title={item.category_name}>
+                    <h3 className="text-lg font-bold text-slate-950 group-hover:text-slate-700 transition-colors line-clamp-2" title={item.category_name}>
                       {mainCat}
                     </h3>
                   )}
@@ -265,22 +265,40 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               </div>
 
               <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
-                <div className="flex items-center text-slate-655">
+                <div className="flex items-center text-slate-700">
                   <Landmark className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>EMD: <strong className="text-slate-700 font-semibold">{summary.depositDetails.emd}</strong></span>
+                  <span className="flex items-center gap-1">
+                    <span>EMD: <strong className="text-slate-700 font-semibold">{summary.depositDetails.emd}</strong></span>
+                    <div className="relative group/tooltip inline-block ml-0.5">
+                      <Info className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                      <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                        Earnest Money Deposit required to bid on this auction.
+                        <div className="absolute top-full left-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                      </div>
+                    </div>
+                  </span>
                 </div>
-                <div className="flex items-center text-slate-655">
+                <div className="flex items-center text-slate-700">
                   <ShieldCheck className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                  <span>Pre-bid: <strong className="text-slate-700 font-semibold">{summary.depositDetails.preBidDdg}</strong></span>
+                  <span className="flex items-center gap-1">
+                    <span>Pre-bid: <strong className="text-slate-700 font-semibold">{summary.depositDetails.preBidDdg}</strong></span>
+                    <div className="relative group/tooltip inline-block ml-0.5">
+                      <Info className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                      <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                        Mandatory deposit required prior to auction start.
+                        <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                      </div>
+                    </div>
+                  </span>
                 </div>
               </div>
 
               <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
-                <div className="flex items-center text-slate-655">
+                <div className="flex items-center text-slate-700">
                   <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                   <span>Bidding Period: <strong className="text-slate-700 font-semibold">{biddingPeriodStr}</strong></span>
                 </div>
-                <div className="flex items-center text-slate-655">
+                <div className="flex items-center text-slate-700">
                   <Eye className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                   <span>Inspection Period: <strong className="text-slate-700 font-semibold">{summary.inspectionSchedule || 'N/A'}</strong></span>
                 </div>
@@ -307,7 +325,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
                   disabled
                   className="flex-grow sm:flex-none inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
                 >
-                  <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping mr-2"></span>
                   PDF Processing...
                 </button>
               )}
@@ -399,19 +417,46 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
              </span>
            </div>
            <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
-             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">EMD Required</span>
+             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+               <span>EMD Required</span>
+               <div className="relative group/tooltip inline-block">
+                 <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                 <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                   Earnest Money Deposit required to bid on this auction.
+                   <div className="absolute top-full left-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                 </div>
+               </div>
+             </span>
              <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.emd}>
                {summary.depositDetails.emd}
              </span>
            </div>
            <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
-             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Pre-bid EMD</span>
+             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+               <span>Pre-bid EMD</span>
+               <div className="relative group/tooltip inline-block">
+                 <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                 <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                   Mandatory deposit required prior to auction start.
+                   <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                 </div>
+               </div>
+             </span>
              <span className="font-bold text-slate-700 truncate" title={summary.depositDetails.preBidDdg}>
                {summary.depositDetails.preBidDdg}
              </span>
            </div>
            <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5 col-span-2">
-             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Auction Type</span>
+             <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+               <span>Auction Type</span>
+               <div className="relative group/tooltip inline-block">
+                 <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                 <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-52 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                   Category (e.g. C-Customs, O-General, P-Property) dictating bidding rules.
+                   <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                 </div>
+               </div>
+             </span>
              <span className="font-bold text-slate-700 truncate text-base" title={summary.auctionType || 'O-General'}>
                {summary.auctionType || 'O-General'}
              </span>
@@ -452,7 +497,7 @@ export function MstcCard({ item, isGrid = true, onPreview, isInterested = false,
               disabled
               className="flex-grow inline-flex justify-center items-center py-2.5 px-4 rounded-lg text-sm font-semibold text-slate-400 bg-slate-100 cursor-not-allowed"
             >
-              <span className="w-2 h-2 rounded-full bg-amber-450 animate-ping mr-2"></span>
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping mr-2"></span>
               PDF Processing...
             </button>
           )}

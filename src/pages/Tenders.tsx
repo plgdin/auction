@@ -16,7 +16,7 @@ function TenderCardSkeleton() {
           <div className="h-4 bg-slate-200 rounded w-16" />
         </div>
         <div className="space-y-2">
-          <div className="h-5 bg-slate-250 rounded w-3/4" />
+          <div className="h-5 bg-slate-200 rounded w-3/4" />
           <div className="h-5 bg-slate-200 rounded w-1/2" />
         </div>
         <div className="h-4 bg-slate-200 rounded w-full" />

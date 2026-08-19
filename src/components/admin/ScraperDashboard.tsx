@@ -18,7 +18,10 @@ import {
   Terminal,
   Cpu,
   CornerDownLeft,
-  Server
+  Server,
+  Edit,
+  Columns,
+  Table
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { embeddingService } from '../../services/embeddingService';
@@ -27,7 +30,6 @@ import type { AuditLog } from '../../types/database.types';
 import toast from 'react-hot-toast';
 import { storageService } from '../../services/storageService';
 import { MstcEditModal } from './MstcEditModal';
-import { Edit, Columns, Table } from 'lucide-react';
 import { InlineCatalogEditor } from './InlineCatalogEditor';
 import { Dropdown } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
@@ -41,17 +43,14 @@ interface ScraperStats {
 }
 
 export function ScraperDashboard() {
-  const [sourceTab, setSourceTab] = useState<'mstc' | 'baanknet' | 'gem' | 'gem-bids'>('mstc');
+  const [sourceTab, setSourceTab] = useState<'mstc' | 'gem' | 'gem-bids'>('mstc');
   const [stats, setStats] = useState<ScraperStats>({ total: 0, pending: 0, processing: 0, completed: 0, failed: 0 });
-  const [baanknetStats, setBaanknetStats] = useState({ total: 0, upcoming: 0, live: 0, closed: 0 });
   const [gemStats, setGemStats] = useState({ total: 0, live: 0, closed: 0 });
   const [gemBidsStats, setGemBidsStats] = useState({ total: 0, live: 0, closed: 0 });
   const [auctions, setAuctions] = useState<any[]>([]);
-  const [baanknetAuctions, setBaanknetAuctions] = useState<any[]>([]);
   const [gemAuctions, setGemAuctions] = useState<any[]>([]);
   const [gemBids, setGemBids] = useState<any[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [baanknetLogs, setBaanknetLogs] = useState<AuditLog[]>([]);
   const [gemLogs, setGemLogs] = useState<AuditLog[]>([]);
   const [gemBidsLogs, setGemBidsLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +71,7 @@ export function ScraperDashboard() {
       },
       {
         key: 'ref',
-        label: sourceTab === 'baanknet' ? 'Search ID Fields Only' : sourceTab === 'gem-bids' ? 'Search Bid/RA Number' : 'Search Reference No Only',
+        label: sourceTab === 'gem-bids' ? 'Search Bid/RA Number' : 'Search Reference No Only',
       }
     ],
     onClick: ({ key }: { key: string }) => {
@@ -85,14 +84,12 @@ export function ScraperDashboard() {
   const [workerRunning, setWorkerRunning] = useState(false);
   const [clearDbRunning, setClearDbRunning] = useState(false);
   const [backfillRunning, setBackfillRunning] = useState(false);
-  const [baanknetRunning, setBaanknetRunning] = useState(false);
   const [gemRunning, setGemRunning] = useState(false);
   const [gemBidsRunning, setGemBidsRunning] = useState(false);
   const [liveScraperLogs, setLiveScraperLogs] = useState<string[]>([]);
   const [liveWorkerLogs, setLiveWorkerLogs] = useState<string[]>([]);
   const [liveClearDbLogs, setLiveClearDbLogs] = useState<string[]>([]);
   const [liveBackfillLogs, setLiveBackfillLogs] = useState<string[]>([]);
-  const [liveBaanknetLogs, setLiveBaanknetLogs] = useState<string[]>([]);
   const [liveGemLogs, setLiveGemLogs] = useState<string[]>([]);
   const [liveGemBidsLogs, setLiveGemBidsLogs] = useState<string[]>([]);
   const [isLocalApiAvailable, setIsLocalApiAvailable] = useState(false);
@@ -103,7 +100,6 @@ export function ScraperDashboard() {
   const workerTerminalRef = useRef<HTMLDivElement>(null);
   const clearDbTerminalRef = useRef<HTMLDivElement>(null);
   const backfillTerminalRef = useRef<HTMLDivElement>(null);
-  const baanknetTerminalRef = useRef<HTMLDivElement>(null);
   const gemTerminalRef = useRef<HTMLDivElement>(null);
   const gemBidsTerminalRef = useRef<HTMLDivElement>(null);
 
@@ -114,16 +110,12 @@ export function ScraperDashboard() {
     try {
       const [
         statsData, auctionsData, logsData, 
-        bnStats, bnAuctions, bnLogs, 
         gemStatsData, gemAuctionsData, gemLogsData,
         gemBidsStatsData, gemBidsData, gemBidsLogsData
       ] = await Promise.all([
         adminService.getScraperAnalytics(),
         adminService.getScraperAuctions(3000),
         adminService.getScraperLogs(100),
-        adminService.getBaanknetScraperAnalytics(),
-        adminService.getBaanknetScraperAuctions(3000),
-        adminService.getBaanknetScraperLogs(100),
         adminService.getGemScraperAnalytics(),
         adminService.getGemScraperAuctions(3000),
         adminService.getGemScraperLogs(100),
@@ -135,9 +127,6 @@ export function ScraperDashboard() {
       setStats(statsData);
       setAuctions(auctionsData);
       setLogs(logsData);
-      setBaanknetStats(bnStats);
-      setBaanknetAuctions(bnAuctions);
-      setBaanknetLogs(bnLogs);
       setGemStats(gemStatsData);
       setGemAuctions(gemAuctionsData);
       setGemLogs(gemLogsData);
@@ -180,14 +169,12 @@ export function ScraperDashboard() {
         setWorkerRunning(data.workerRunning);
         setClearDbRunning(data.clearDbRunning);
         setBackfillRunning(data.backfillRunning);
-        setBaanknetRunning(data.baanknetRunning);
         setGemRunning(data.gemRunning || false);
         setGemBidsRunning(data.gemBidsRunning || false);
         setLiveScraperLogs(data.scraperLogs || []);
         setLiveWorkerLogs(data.workerLogs || []);
         setLiveClearDbLogs(data.clearDbLogs || []);
         setLiveBackfillLogs(data.backfillLogs || []);
-        setLiveBaanknetLogs(data.baanknetLogs || []);
         setLiveGemLogs(data.gemLogs || []);
         setLiveGemBidsLogs(data.gemBidsLogs || []);
         setIsLocalApiAvailable(true);
@@ -228,12 +215,6 @@ export function ScraperDashboard() {
       backfillTerminalRef.current.scrollTop = backfillTerminalRef.current.scrollHeight;
     }
   }, [liveBackfillLogs]);
-
-  useEffect(() => {
-    if (baanknetTerminalRef.current) {
-      baanknetTerminalRef.current.scrollTop = baanknetTerminalRef.current.scrollHeight;
-    }
-  }, [liveBaanknetLogs]);
 
   useEffect(() => {
     if (gemTerminalRef.current) {
@@ -284,43 +265,6 @@ export function ScraperDashboard() {
       });
       toast.success('Scraper stop signal sent.');
       setScraperRunning(false);
-    } catch (err) {
-      toast.error('Could not connect to local API plugin.');
-    }
-  };
-
-  const startBaanknetScraper = async () => {
-    try {
-      const token = await getAuthToken();
-      const res = await fetch('/api/scraper/baanknet/start', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success('BaankNet scraper process spawned!');
-        setBaanknetRunning(true);
-      } else {
-        toast.error(data.message || 'Failed to start BaankNet scraper.');
-      }
-    } catch (err) {
-      toast.error('Could not connect to local API plugin.');
-    }
-  };
-
-  const stopBaanknetScraper = async () => {
-    try {
-      const token = await getAuthToken();
-      await fetch('/api/scraper/baanknet/stop', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      toast.success('BaankNet scraper stop signal sent.');
-      setBaanknetRunning(false);
     } catch (err) {
       toast.error('Could not connect to local API plugin.');
     }
@@ -531,8 +475,6 @@ export function ScraperDashboard() {
     }
   };
 
-
-
   const handleResetAllFailed = async () => {
     if (!window.confirm("Are you sure you want to reset all failed auctions? They will be put back into 'pending' status for retry.")) {
       return;
@@ -604,11 +546,9 @@ export function ScraperDashboard() {
     const toastId = toast.loading('Initializing embedding model...');
     
     try {
-      // Warm up model
       await embeddingService.prewarmModel();
       
       while (true) {
-        // Fetch up to 50 items without embeddings
         toast.loading(`Processing batch... (${processedCount} total so far)`, { id: toastId });
         const { data, error } = await supabase
           .from('mstc_auctions')
@@ -619,12 +559,10 @@ export function ScraperDashboard() {
         if (error) throw error;
         if (!data || data.length === 0) break;
         
-        // Generate embeddings and update
         for (const item of data) {
           try {
-            // Concatenate category and raw text for the embedding
             const textToEmbed = `${item.category_name || ''} ${item.raw_materials_text || ''}`.trim();
-            if (textToEmbed.length < 5) continue; // Skip empty
+            if (textToEmbed.length < 5) continue;
             
             const vector = await embeddingService.generateEmbedding(textToEmbed);
             const embeddingStr = `[${vector.join(',')}]`;
@@ -685,23 +623,6 @@ export function ScraperDashboard() {
     return matchesSearch && matchesTab;
   });
 
-  const filteredBaanknetAuctions = baanknetAuctions.filter(auc => {
-    let matchesSearch = false;
-    if (searchType === 'ref') {
-      matchesSearch = (auc.baanknet_auction_id || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-                      (auc.bank_property_id || '').toLowerCase().includes(searchTerm.toLowerCase());
-    } else {
-      matchesSearch = 
-        (auc.baanknet_auction_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (auc.bank_property_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (auc.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (auc.bank_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (auc.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (auc.full_address || '').toLowerCase().includes(searchTerm.toLowerCase());
-    }
-    return matchesSearch;
-  });
-
   const filteredGemAuctions = gemAuctions.filter(auc => {
     let matchesSearch = false;
     if (searchType === 'ref') {
@@ -745,15 +666,6 @@ export function ScraperDashboard() {
         } else {
           setSelectedAuctionId(null);
         }
-      } else if (sourceTab === 'baanknet') {
-        if (filteredBaanknetAuctions.length > 0) {
-          const currentSelectedExists = filteredBaanknetAuctions.some(auc => auc.id === selectedAuctionId);
-          if (!selectedAuctionId || !currentSelectedExists) {
-            setSelectedAuctionId(filteredBaanknetAuctions[0].id);
-          }
-        } else {
-          setSelectedAuctionId(null);
-        }
       } else if (sourceTab === 'gem') {
         if (filteredGemAuctions.length > 0) {
           const currentSelectedExists = filteredGemAuctions.some(auc => auc.id === selectedAuctionId);
@@ -776,7 +688,7 @@ export function ScraperDashboard() {
     } else {
       setSelectedAuctionId(null);
     }
-  }, [filteredAuctions, filteredBaanknetAuctions, filteredGemAuctions, filteredGemBids, selectedAuctionId, activeSubTab, sourceTab]);
+  }, [filteredAuctions, filteredGemAuctions, filteredGemBids, selectedAuctionId, activeSubTab, sourceTab]);
 
   const getLogBadge = (action: string) => {
     switch (action) {
@@ -787,7 +699,6 @@ export function ScraperDashboard() {
           </span>
         );
       case 'mstc_auction_deleted':
-      case 'baanknet_auction_deleted':
       case 'gem_auction_deleted':
       case 'gem_bid_deleted':
         return (
@@ -801,7 +712,6 @@ export function ScraperDashboard() {
             <AlertCircle className="w-3 h-3 mr-1" /> Failed
           </span>
         );
-      case 'baanknet_auction_scraped':
       case 'gem_auction_scraped':
       case 'gem_bid_scraped':
         return (
@@ -853,87 +763,6 @@ export function ScraperDashboard() {
     }
   };
 
-  const renderBaanknetDetail = (item: any) => {
-    return (
-      <div className="flex-1 flex flex-col h-full bg-white divide-y divide-slate-100 overflow-hidden">
-        <div className="p-6 bg-slate-900 text-white shrink-0 text-left">
-          <span className="bg-primary/20 text-primary-200 border border-primary/30 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
-            {item.property_type || 'Bank Auction'}
-          </span>
-          <h2 className="text-lg font-bold mt-2 leading-snug">{item.title}</h2>
-          <p className="text-xs text-slate-400 mt-1 font-mono">Auction ID: {item.baanknet_auction_id}</p>
-        </div>
-
-        <div className="p-6 space-y-5 flex-1 overflow-y-auto text-left">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-150">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reserve Price</span>
-              <p className="text-xl font-extrabold text-slate-950 mt-1">
-                {item.reserve_price_text || 'N/A'}
-              </p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-150">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bank Name</span>
-              <p className="text-base font-bold text-slate-950 mt-1">{item.bank_name}</p>
-            </div>
-          </div>
-
-          <div className="space-y-3.5 text-sm">
-            <div>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">State & Location</span>
-              <p className="text-slate-800 font-semibold mt-0.5">{item.location || 'India'}</p>
-            </div>
-            {item.city && (
-              <div>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">City / District</span>
-                <p className="text-slate-800 font-semibold mt-0.5">{item.city} {item.pincode ? `(${item.pincode})` : ''}</p>
-              </div>
-            )}
-            {item.full_address && (
-              <div>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Address</span>
-                <p className="text-slate-700 font-medium bg-slate-50 p-3.5 rounded-xl border border-slate-150 mt-1 leading-relaxed whitespace-pre-wrap">
-                  {item.full_address}
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 text-xs pt-2">
-            <div>
-              <span className="text-slate-400 font-bold uppercase tracking-wider">Bidding Starts</span>
-              <p className="text-slate-850 font-bold mt-1">
-                {new Date(item.auction_start_date).toLocaleString()}
-              </p>
-            </div>
-            <div>
-              <span className="text-slate-400 font-bold uppercase tracking-wider">Bidding Ends</span>
-              <p className="text-slate-850 font-bold mt-1">
-                {new Date(item.auction_end_date).toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 bg-slate-50 flex items-center justify-between shrink-0">
-          <span className="text-xs text-slate-400 font-medium font-mono">
-            Property ID: {item.bank_property_id || 'N/A'}
-          </span>
-          {item.source_url && (
-            <a
-              href={item.source_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
-            >
-              Go to Original Portal <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   const renderGemDetail = (item: any) => {
     return (
       <div className="flex-1 flex flex-col h-full bg-white divide-y divide-slate-100 overflow-hidden">
@@ -949,7 +778,7 @@ export function ScraperDashboard() {
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-150">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reserve Price</span>
-              <p className="text-xl font-extrabold text-slate-955 mt-1">
+              <p className="text-xl font-extrabold text-slate-950 mt-1">
                 {item.reserve_price_text || 'N/A'}
               </p>
             </div>
@@ -989,13 +818,13 @@ export function ScraperDashboard() {
           <div className="grid grid-cols-2 gap-4 text-xs pt-2">
             <div>
               <span className="text-slate-400 font-bold uppercase tracking-wider">Starts</span>
-              <p className="text-slate-855 font-bold mt-1">
+              <p className="text-slate-800 font-bold mt-1">
                 {new Date(item.auction_start_date).toLocaleString()}
               </p>
             </div>
             <div>
               <span className="text-slate-400 font-bold uppercase tracking-wider">Ends</span>
-              <p className="text-slate-855 font-bold mt-1">
+              <p className="text-slate-800 font-bold mt-1">
                 {new Date(item.auction_end_date).toLocaleString()}
               </p>
             </div>
@@ -1045,7 +874,7 @@ export function ScraperDashboard() {
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-150">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quantity</span>
-              <p className="text-xl font-extrabold text-slate-955 mt-1">
+              <p className="text-xl font-extrabold text-slate-950 mt-1">
                 {item.quantity || 'N/A'}
               </p>
             </div>
@@ -1065,7 +894,7 @@ export function ScraperDashboard() {
             {item.raw_description && (
               <div>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Crawl Details</span>
-                <p className="text-slate-750 font-medium bg-slate-50 p-3.5 rounded-xl border border-slate-150 mt-1 leading-relaxed whitespace-pre-wrap text-xs max-h-48 overflow-y-auto">
+                <p className="text-slate-700 font-medium bg-slate-50 p-3.5 rounded-xl border border-slate-150 mt-1 leading-relaxed whitespace-pre-wrap text-xs max-h-48 overflow-y-auto">
                   {item.raw_description}
                 </p>
               </div>
@@ -1167,19 +996,6 @@ export function ScraperDashboard() {
         </button>
         <button
           onClick={() => {
-            setSourceTab('baanknet');
-            setSelectedAuctionId(null);
-          }}
-          className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-            sourceTab === 'baanknet'
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-900"
-          }`}
-        >
-          🏢 BaankNet Bank
-        </button>
-        <button
-          onClick={() => {
             setSourceTab('gem');
             setSelectedAuctionId(null);
           }}
@@ -1221,9 +1037,9 @@ export function ScraperDashboard() {
           >
             {sourceTab === 'mstc' 
               ? `Scraped Catalogs (${filteredAuctions.length})`
-              : sourceTab === 'baanknet'
-                ? `Scraped Properties (${filteredBaanknetAuctions.length})`
-                : `Scraped GeM Auctions (${filteredGemAuctions.length})`
+              : sourceTab === 'gem'
+                ? `Scraped GeM Auctions (${filteredGemAuctions.length})`
+                : `Scraped GeM Bids (${filteredGemBids.length})`
             }
           </button>
           <button
@@ -1236,9 +1052,9 @@ export function ScraperDashboard() {
           >
             {sourceTab === 'mstc'
               ? `Worker & Deletion Logs (${logs.length})`
-              : sourceTab === 'baanknet'
-                ? `Ingestion & Cleanup Logs (${baanknetLogs.length})`
-                : `GeM Scraper Logs (${gemLogs.length})`
+              : sourceTab === 'gem'
+                ? `GeM Scraper Logs (${gemLogs.length})`
+                : `GeM Bids Logs (${gemBidsLogs.length})`
             }
           </button>
           <button
@@ -1255,18 +1071,16 @@ export function ScraperDashboard() {
 
         {/* Right Action Side */}
         <div className="flex items-center gap-2 self-end md:self-auto">
-          {sourceTab === 'mstc' && (
-            <button
-              onClick={handleGenerateVectors}
-              disabled={generateVectorsRunning}
-              className="flex items-center px-4 py-2 text-xs font-bold bg-primary border border-primary text-white rounded-lg hover:bg-primary-700 hover:border-primary-700 transition-all shadow-xs animate-none"
-            >
-              <Cpu className={`w-3.5 h-3.5 mr-2 ${generateVectorsRunning ? 'animate-pulse text-slate-300' : 'text-white'}`} />
-              {generateVectorsRunning ? 'Generating...' : 'Generate Vectors'}
-            </button>
-          )}
+          <button
+            onClick={handleGenerateVectors}
+            disabled={generateVectorsRunning}
+            className="flex items-center px-4 py-2 text-xs font-bold bg-primary border border-primary text-white rounded-lg hover:bg-primary-700 hover:border-primary-700 transition-all shadow-xs"
+          >
+            <Cpu className={`w-3.5 h-3.5 mr-2 ${generateVectorsRunning ? 'animate-pulse text-slate-300' : 'text-white'}`} />
+            {generateVectorsRunning ? 'Generating...' : 'Generate Vectors'}
+          </button>
           <span className="text-xs text-slate-400 font-medium hidden sm:inline ml-2">
-            Status: {sourceTab === 'mstc' ? 'Worker Listening (15s Poll)' : 'Idle'}
+            Status: Worker Listening (15s Poll)
           </span>
           <button
             onClick={() => loadDashboardData(true)}
@@ -1310,6 +1124,7 @@ export function ScraperDashboard() {
       {activeSubTab === 'console' && (
         sourceTab === 'mstc' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            
             {/* Total Scraped */}
             <div className="bg-gradient-to-br from-white to-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
               <div className="flex justify-between items-center mb-3">
@@ -1399,64 +1214,7 @@ export function ScraperDashboard() {
                 )}
               </div>
             </div>
-          </div>
-        ) : sourceTab === 'baanknet' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Total Scraped */}
-            <div className="bg-gradient-to-br from-white to-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Scraped</span>
-                <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
-                  <Database className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-slate-800">{baanknetStats.total}</p>
-                <p className="text-xs text-slate-400 mt-1">Bank properties discovered</p>
-              </div>
-            </div>
 
-            {/* Upcoming */}
-            <div className="bg-gradient-to-br from-white to-blue-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Upcoming</span>
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                  <Clock className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-blue-700">{baanknetStats.upcoming}</p>
-                <p className="text-xs text-slate-400 mt-1">Scheduled auctions</p>
-              </div>
-            </div>
-
-            {/* Live */}
-            <div className="bg-gradient-to-br from-white to-emerald-50/20 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Live</span>
-                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                  <Activity className="w-4 h-4 animate-pulse" />
-                </div>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-emerald-700">{baanknetStats.live}</p>
-                <p className="text-xs text-slate-400 mt-1">Active bidding sessions</p>
-              </div>
-            </div>
-
-            {/* Closed */}
-            <div className="bg-gradient-to-br from-white to-gray-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Closed / Ended</span>
-                <div className="p-2 bg-gray-150 text-gray-650 rounded-lg">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-gray-700">{baanknetStats.closed}</p>
-                <p className="text-xs text-slate-400 mt-1">Ended properties</p>
-              </div>
-            </div>
           </div>
         ) : sourceTab === 'gem' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1492,7 +1250,7 @@ export function ScraperDashboard() {
             <div className="bg-gradient-to-br from-white to-gray-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Closed</span>
-                <div className="p-2 bg-gray-150 text-gray-650 rounded-lg">
+                <div className="p-2 bg-gray-100 text-gray-600 rounded-lg">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
               </div>
@@ -1536,7 +1294,7 @@ export function ScraperDashboard() {
             <div className="bg-gradient-to-br from-white to-gray-50 p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Closed</span>
-                <div className="p-2 bg-gray-150 text-gray-650 rounded-lg">
+                <div className="p-2 bg-gray-100 text-gray-600 rounded-lg">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
               </div>
@@ -1553,69 +1311,71 @@ export function ScraperDashboard() {
       {activeSubTab === 'auctions' && (
         <div className="space-y-6">
           
-          {/* Review Status Tabs */}
-          <div className="flex border-b border-slate-200 gap-6">
-            <button
-              onClick={() => {
-                setReviewTab('needs-review');
-                setSelectedAuctionId(null);
-              }}
-              className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-                reviewTab === 'needs-review'
-                  ? 'border-primary text-primary font-extrabold'
-                  : 'border-transparent text-slate-400 hover:text-slate-655'
-              }`}
-            >
-              Needs Review
-              <span className={`px-2 py-0.5 rounded-full text-xs ${
-                reviewTab === 'needs-review'
-                  ? 'bg-primary/10 text-primary font-bold'
-                  : 'bg-slate-100 text-slate-500'
-              }`}>
-                {reviewCount}
-              </span>
-            </button>
-            <button
-              onClick={() => {
-                setReviewTab('accepted');
-                setSelectedAuctionId(null);
-              }}
-              className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-                reviewTab === 'accepted'
-                  ? 'border-primary text-primary font-extrabold'
-                  : 'border-transparent text-slate-400 hover:text-slate-655'
-              }`}
-            >
-              Accepted / Resolved
-              <span className={`px-2 py-0.5 rounded-full text-xs ${
-                reviewTab === 'accepted'
-                  ? 'bg-primary/10 text-primary font-bold'
-                  : 'bg-slate-100 text-slate-500'
-              }`}>
-                {acceptedCount}
-              </span>
-            </button>
-            <button
-              onClick={() => {
-                setReviewTab('all-catalogs');
-                setSelectedAuctionId(null);
-              }}
-              className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-                reviewTab === 'all-catalogs'
-                  ? 'border-primary text-primary font-extrabold'
-                  : 'border-transparent text-slate-400 hover:text-slate-655'
-              }`}
-            >
-              All Catalogs
-              <span className={`px-2 py-0.5 rounded-full text-xs ${
-                reviewTab === 'all-catalogs'
-                  ? 'bg-primary/10 text-primary font-bold'
-                  : 'bg-slate-100 text-slate-500'
-              }`}>
-                {auctions.length}
-              </span>
-            </button>
-          </div>
+          {/* Review Status Tabs (Only for MSTC) */}
+          {sourceTab === 'mstc' && (
+            <div className="flex border-b border-slate-200 gap-6">
+              <button
+                onClick={() => {
+                  setReviewTab('needs-review');
+                  setSelectedAuctionId(null);
+                }}
+                className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+                  reviewTab === 'needs-review'
+                    ? 'border-primary text-primary font-extrabold'
+                    : 'border-transparent text-slate-400 hover:text-slate-700'
+                }`}
+              >
+                Needs Review
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  reviewTab === 'needs-review' 
+                    ? 'bg-amber-100 text-amber-800' 
+                    : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {reviewCount}
+                </span>
+              </button>
+              <button
+                onClick={() => {
+                  setReviewTab('accepted');
+                  setSelectedAuctionId(null);
+                }}
+                className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+                  reviewTab === 'accepted'
+                    ? 'border-primary text-primary font-extrabold'
+                    : 'border-transparent text-slate-400 hover:text-slate-700'
+                }`}
+              >
+                Auto-Accepted
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  reviewTab === 'accepted' 
+                    ? 'bg-emerald-100 text-emerald-800' 
+                    : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {acceptedCount}
+                </span>
+              </button>
+              <button
+                onClick={() => {
+                  setReviewTab('all-catalogs');
+                  setSelectedAuctionId(null);
+                }}
+                className={`pb-3 px-2 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+                  reviewTab === 'all-catalogs'
+                    ? 'border-primary text-primary font-extrabold'
+                    : 'border-transparent text-slate-400 hover:text-slate-700'
+                }`}
+              >
+                All Catalogs
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  reviewTab === 'all-catalogs' 
+                    ? 'bg-slate-800 text-white' 
+                    : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {auctions.length}
+                </span>
+              </button>
+            </div>
+          )}
 
           {/* Table Filters */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 bg-slate-50/50">
@@ -1626,9 +1386,11 @@ export function ScraperDashboard() {
               <input
                 type="text"
                 placeholder={
-                  sourceTab === 'baanknet'
-                    ? (searchType === 'ref' ? "Enter Auction ID or Bank Property ID..." : "Search by Bank, Title, State, Address, ID...")
-                    : (searchType === 'ref' ? "Enter Reference No (e.g. MSTC/PTN/...)" : "Search by Auction No, Seller Name, Category, Location...")
+                  sourceTab === 'gem-bids'
+                    ? (searchType === 'ref' ? "Enter Bid or RA Number..." : "Search by Bid Number, Department, Category, Items...")
+                    : sourceTab === 'gem'
+                      ? (searchType === 'ref' ? "Enter GeM Auction ID..." : "Search by Title, Organisation, Ministry, Location...")
+                      : (searchType === 'ref' ? "Enter Reference No (e.g. MSTC/PTN/...)" : "Search by Auction No, Seller Name, Category, Location...")
                 }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -1645,46 +1407,42 @@ export function ScraperDashboard() {
                 >
                   <span className="truncate">
                     {searchType === 'ref' 
-                      ? (sourceTab === 'baanknet' ? 'Search ID Fields Only' : 'Search Reference No Only') 
+                      ? (sourceTab === 'gem-bids' ? 'Search Bid/RA Number' : 'Search Reference No Only') 
                       : 'Search All Fields'}
                   </span>
                   <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
                 </button>
               </Dropdown>
+            </div>
           </div>
-        </div>
 
-        {(sourceTab === 'mstc' ? filteredAuctions : sourceTab === 'baanknet' ? filteredBaanknetAuctions : sourceTab === 'gem' ? filteredGemAuctions : filteredGemBids).length === 0 ? (
+          {(sourceTab === 'mstc' ? filteredAuctions : sourceTab === 'gem' ? filteredGemAuctions : filteredGemBids).length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center shadow-sm">
               <div className="max-w-md mx-auto space-y-3">
                 <p className="text-slate-800 font-bold text-lg">No Matching Records Found</p>
                 <p className="text-slate-400 text-sm">
-                  Try adjusting your search terms or filter constraints. If you haven't run the scraper, execute <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono font-bold text-indigo-900">npx tsx {sourceTab === 'gem' ? 'scraper/gemScraper.ts' : sourceTab === 'gem-bids' ? 'scraper/gemBidScraper.ts' : sourceTab === 'baanknet' ? 'scraper/baanknetScraper.ts' : 'scraper/scraper.ts'}</code> locally.
+                  Try adjusting your search terms or filter constraints. If you haven't run the scraper, execute <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono font-bold text-indigo-900">npx tsx {sourceTab === 'gem' ? 'scraper/gemScraper.ts' : sourceTab === 'gem-bids' ? 'scraper/gemBidScraper.ts' : 'scraper/scraper.ts'}</code> locally.
                 </p>
               </div>
             </div>
           ) : viewMode === 'split' ? (
             <div className="flex flex-col lg:flex-row gap-6">
               
-              {/* Left Column: List of items */}
+              {/* Left Column: List of Items */}
               <div className="w-full lg:w-96 shrink-0 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-[750px]">
-                <div className="p-4 border-b border-slate-150 bg-slate-50/50 flex items-center justify-between shrink-0">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
                   <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
                     {sourceTab === 'mstc' 
                       ? 'Catalogs' 
-                      : sourceTab === 'baanknet' 
-                        ? 'Bank Properties' 
-                        : sourceTab === 'gem'
-                          ? 'GeM Auctions'
-                          : 'GeM Bids'
+                      : sourceTab === 'gem'
+                        ? 'GeM Auctions'
+                        : 'GeM Bids'
                     } ({
                       sourceTab === 'mstc' 
                         ? filteredAuctions.length 
-                        : sourceTab === 'baanknet' 
-                          ? filteredBaanknetAuctions.length 
-                          : sourceTab === 'gem'
-                            ? filteredGemAuctions.length
-                            : filteredGemBids.length
+                        : sourceTab === 'gem'
+                          ? filteredGemAuctions.length
+                          : filteredGemBids.length
                     })
                   </span>
                 </div>
@@ -1731,38 +1489,6 @@ export function ScraperDashboard() {
                         </div>
                       );
                     })
-                  ) : sourceTab === 'baanknet' ? (
-                    filteredBaanknetAuctions.map((auc) => {
-                      const isSelected = selectedAuctionId === auc.id;
-                      return (
-                        <div
-                          key={auc.id}
-                          onClick={() => setSelectedAuctionId(auc.id)}
-                          className={`p-4 cursor-pointer transition-all border-l-4 text-left flex flex-col gap-1.5 ${
-                            isSelected 
-                              ? 'bg-primary/5 border-primary shadow-xs' 
-                              : 'border-transparent hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono font-bold text-xs text-slate-900">{auc.bank_name}</span>
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-200 capitalize">
-                              {auc.auction_status}
-                            </span>
-                          </div>
-                          <div className="text-[11px] font-bold text-slate-850 leading-snug line-clamp-2">
-                            {auc.title}
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-medium flex items-center justify-between mt-1">
-                            <span className="font-semibold text-slate-700">{auc.reserve_price_text}</span>
-                            <span>{new Date(auc.auction_end_date).toLocaleDateString()}</span>
-                          </div>
-                          <div className="text-[9px] text-slate-400 font-semibold text-right">
-                            {auc.location || 'India'}
-                          </div>
-                        </div>
-                      );
-                    })
                   ) : sourceTab === 'gem' ? (
                     filteredGemAuctions.map((auc) => {
                       const isSelected = selectedAuctionId === auc.id;
@@ -1782,7 +1508,7 @@ export function ScraperDashboard() {
                               {auc.auction_status}
                             </span>
                           </div>
-                          <div className="text-[11px] font-bold text-slate-855 leading-snug line-clamp-2">
+                          <div className="text-[11px] font-bold text-slate-800 leading-snug line-clamp-2">
                             {auc.title}
                           </div>
                           <div className="text-[10px] text-slate-400 font-medium flex items-center justify-between mt-1">
@@ -1814,7 +1540,7 @@ export function ScraperDashboard() {
                               {auc.status}
                             </span>
                           </div>
-                          <div className="text-[11px] font-bold text-slate-855 leading-snug line-clamp-2">
+                          <div className="text-[11px] font-bold text-slate-800 leading-snug line-clamp-2">
                             {auc.items}
                           </div>
                           <div className="text-[10px] text-slate-400 font-medium flex items-center justify-between mt-1">
@@ -1828,7 +1554,7 @@ export function ScraperDashboard() {
                 </div>
               </div>
 
-              {/* Right Column: Detailed Editor / Preview */}
+              {/* Right Column: Detailed Editor */}
               <div className="flex-1 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-[750px]">
                 {sourceTab === 'mstc' ? (
                   selectedAuctionId && auctions.find(a => a.id === selectedAuctionId) ? (
@@ -1843,16 +1569,6 @@ export function ScraperDashboard() {
                       <FileCheck className="w-12 h-12 text-slate-300 mb-3" />
                       <p className="font-bold text-slate-600 text-sm">Select a catalog to view and edit</p>
                       <p className="text-xs text-slate-400 mt-1">Click any item on the left list to review and correct lot details.</p>
-                    </div>
-                  )
-                ) : sourceTab === 'baanknet' ? (
-                  selectedAuctionId && baanknetAuctions.find(a => a.id === selectedAuctionId) ? (
-                    renderBaanknetDetail(baanknetAuctions.find(a => a.id === selectedAuctionId))
-                  ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-slate-50/20">
-                      <FileCheck className="w-12 h-12 text-slate-300 mb-3" />
-                      <p className="font-bold text-slate-600 text-sm">Select a property listing</p>
-                      <p className="text-xs text-slate-400 mt-1">Click any bank property on the left list to review complete parameters.</p>
                     </div>
                   )
                 ) : sourceTab === 'gem' ? (
@@ -1877,6 +1593,7 @@ export function ScraperDashboard() {
                   )
                 )}
               </div>
+
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
@@ -1915,7 +1632,7 @@ export function ScraperDashboard() {
                                 <span className="font-bold text-slate-900">{auc.mstc_auction_number}</span>
                                 <button 
                                   onClick={() => handleCopy(auc.mstc_auction_number)}
-                                  className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded transition-colors"
+                                  className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded transition-colors cursor-pointer"
                                   title="Copy Auction Number"
                                 >
                                   <Clipboard className="w-3.5 h-3.5" />
@@ -1964,7 +1681,7 @@ export function ScraperDashboard() {
                                     </p>
                                     <button
                                       onClick={() => handleResetSingleFailed(auc.id)}
-                                      className="px-1.5 py-0.5 text-[9px] font-bold bg-rose-100 hover:bg-rose-200 text-rose-855 rounded transition-all cursor-pointer"
+                                      className="px-1.5 py-0.5 text-[9px] font-bold bg-rose-100 hover:bg-rose-200 text-rose-800 rounded transition-all cursor-pointer"
                                     >
                                       Retry
                                     </button>
@@ -1981,7 +1698,6 @@ export function ScraperDashboard() {
                             {/* Public Assets & Edit Action */}
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="flex items-center justify-center gap-2">
-                                {/* source pdf (external link) */}
                                 <a 
                                   href={auc.source_pdf_url} 
                                   target="_blank" 
@@ -1992,7 +1708,6 @@ export function ScraperDashboard() {
                                   <ExternalLink className="w-3.5 h-3.5" />
                                 </a>
 
-                                {/* downloaded pdf (internal supabase storage link) */}
                                 {auc.sanitized_document_path ? (
                                   <button 
                                     onClick={(e) => handleViewPrivateAsset(e, auc.sanitized_document_path)}
@@ -2010,7 +1725,6 @@ export function ScraperDashboard() {
                                   </span>
                                 )}
 
-                                {/* Edit button */}
                                 {auc.asset_status === 'completed' && (
                                   <button
                                     onClick={() => setSelectedEditAuction(auc)}
@@ -2021,94 +1735,6 @@ export function ScraperDashboard() {
                                   </button>
                                 )}
                               </div>
-                            </td>
-
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                ) : sourceTab === 'baanknet' ? (
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider font-extrabold text-slate-500">
-                        <th className="px-6 py-4">Bank Name</th>
-                        <th className="px-6 py-4">Property Title</th>
-                        <th className="px-6 py-4">Reserve Price</th>
-                        <th className="px-6 py-4">Bidding Dates</th>
-                        <th className="px-6 py-4">Location</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-sm">
-                      {filteredBaanknetAuctions.map((auc) => {
-                        return (
-                          <tr key={auc.id} className="hover:bg-slate-50/50 transition-colors">
-                            
-                            {/* Bank Name */}
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-slate-900">{auc.bank_name}</span>
-                                <button 
-                                  onClick={() => handleCopy(auc.bank_name)}
-                                  className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded transition-colors"
-                                  title="Copy Bank Name"
-                                >
-                                  <Clipboard className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-
-                            {/* Property Title & Type */}
-                            <td className="px-6 py-4">
-                              <div className="max-w-xs md:max-w-sm">
-                                <p className="font-semibold text-slate-800 leading-tight line-clamp-2">{auc.title}</p>
-                                <p className="text-xs text-primary font-bold mt-1 capitalize">{auc.property_type}</p>
-                              </div>
-                            </td>
-
-                            {/* Reserve Price */}
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-slate-900 font-extrabold">{auc.reserve_price_text || 'N/A'}</span>
-                            </td>
-
-                            {/* Bidding Dates */}
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-slate-600 font-semibold text-xs">
-                                Start: {new Date(auc.auction_start_date).toLocaleDateString()}
-                              </div>
-                              <div className="text-slate-650 font-semibold text-xs mt-1">
-                                End: {new Date(auc.auction_end_date).toLocaleDateString()}
-                              </div>
-                            </td>
-
-                            {/* Location */}
-                            <td className="px-6 py-4">
-                              <span className="text-slate-600 font-medium text-xs block">{auc.location || 'India'}</span>
-                              <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">{auc.city}</span>
-                            </td>
-
-                            {/* Status */}
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 capitalize">
-                                {auc.auction_status}
-                              </span>
-                            </td>
-
-                            {/* Actions */}
-                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                              {auc.source_url && (
-                                <a 
-                                  href={auc.source_url} 
-                                  target="_blank" 
-                                  rel="noreferrer"
-                                  className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg transition-colors inline-block"
-                                  title="Open Original BaankNet URL"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                </a>
-                              )}
                             </td>
 
                           </tr>
@@ -2133,14 +1759,12 @@ export function ScraperDashboard() {
                       {filteredGemAuctions.map((auc) => {
                         return (
                           <tr key={auc.id} className="hover:bg-slate-50/50 transition-colors">
-                            
-                            {/* Organisation */}
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-bold text-slate-900 truncate max-w-[180px]" title={auc.organisation}>{auc.organisation || 'GeM Organisation'}</span>
                                 <button 
                                   onClick={() => handleCopy(auc.organisation || '')}
-                                  className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded transition-colors"
+                                  className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded transition-colors cursor-pointer"
                                   title="Copy Organisation"
                                 >
                                   <Clipboard className="w-3.5 h-3.5" />
@@ -2149,7 +1773,6 @@ export function ScraperDashboard() {
                               <p className="text-[10px] text-slate-400 font-medium truncate max-w-[180px] mt-0.5" title={auc.ministry}>{auc.ministry}</p>
                             </td>
 
-                            {/* Auction Title */}
                             <td className="px-6 py-4">
                               <div className="max-w-xs md:max-w-sm">
                                 <p className="font-semibold text-slate-800 leading-tight line-clamp-2">{auc.title}</p>
@@ -2157,35 +1780,30 @@ export function ScraperDashboard() {
                               </div>
                             </td>
 
-                            {/* Reserve Price */}
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className="text-slate-900 font-extrabold">{auc.reserve_price_text || 'No Reserve'}</span>
                             </td>
 
-                            {/* Bidding Dates */}
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-slate-600 font-semibold text-xs">
                                 Start: {new Date(auc.auction_start_date).toLocaleDateString()}
                               </div>
-                              <div className="text-slate-650 font-semibold text-xs mt-1">
+                              <div className="text-slate-600 font-semibold text-xs mt-1">
                                 End: {new Date(auc.auction_end_date).toLocaleDateString()}
                               </div>
                             </td>
 
-                            {/* Location */}
                             <td className="px-6 py-4">
                               <span className="text-slate-600 font-medium text-xs block">{auc.location || 'India'}</span>
                               <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">{auc.city}</span>
                             </td>
 
-                            {/* Status */}
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 capitalize">
                                 {auc.auction_status}
                               </span>
                             </td>
 
-                            {/* Actions */}
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <div className="flex items-center justify-center gap-1.5">
                                 {auc.source_url && (
@@ -2212,7 +1830,6 @@ export function ScraperDashboard() {
                                 )}
                               </div>
                             </td>
-
                           </tr>
                         );
                       })}
@@ -2237,7 +1854,7 @@ export function ScraperDashboard() {
                           <tr key={auc.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className="font-bold text-slate-900">{auc.bid_number}</span>
-                              {auc.ra_number && <p className="text-[10px] text-indigo-650 font-bold font-mono mt-0.5">RA: {auc.ra_number}</p>}
+                              {auc.ra_number && <p className="text-[10px] text-indigo-600 font-bold font-mono mt-0.5">RA: {auc.ra_number}</p>}
                             </td>
                             <td className="px-6 py-4">
                               <p className="font-semibold text-slate-800 line-clamp-1 max-w-[200px]" title={auc.department_name}>{auc.department_name || 'N/A'}</p>
@@ -2251,7 +1868,7 @@ export function ScraperDashboard() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-slate-500 text-xs">Start: {new Date(auc.start_date).toLocaleDateString()}</div>
-                              <div className="text-slate-655 text-xs font-semibold mt-0.5">End: {new Date(auc.end_date).toLocaleDateString()}</div>
+                              <div className="text-slate-600 text-xs font-semibold mt-0.5">End: {new Date(auc.end_date).toLocaleDateString()}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 capitalize">
@@ -2295,18 +1912,16 @@ export function ScraperDashboard() {
             <p className="text-xs text-slate-400 mt-0.5">
               {sourceTab === 'mstc' 
                 ? 'Tracks PDF downloads, network download failures, and automatic storage cleanup events when auctions close.'
-                : sourceTab === 'baanknet'
-                  ? 'Tracks bank property database updates, newly discovered listings, and automatic database purges of ended properties.'
-                  : sourceTab === 'gem'
-                    ? 'Tracks GeM Forward Auction scraper updates, database ingestion logs, and automatic purges of expired listings.'
-                    : 'Tracks GeM Procurement Bids scraper updates, database ingestion logs, and automatic purges of expired bids.'
+                : sourceTab === 'gem'
+                  ? 'Tracks GeM Forward Auction scraper updates, database ingestion logs, and automatic purges of expired listings.'
+                  : 'Tracks GeM Procurement Bids scraper updates, database ingestion logs, and automatic purges of expired bids.'
               }
             </p>
           </div>
 
-          {((sourceTab === 'mstc' ? logs : sourceTab === 'baanknet' ? baanknetLogs : sourceTab === 'gem' ? gemLogs : gemBidsLogs).length) === 0 ? (
+          {((sourceTab === 'mstc' ? logs : sourceTab === 'gem' ? gemLogs : gemBidsLogs).length) === 0 ? (
             <div className="p-16 text-center text-slate-500">
-              No recent activity or deletion events recorded. Start the scraper to see events populate.
+              No recent worker activity or deletion events recorded. Start the worker or scraper to see events populate.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -2319,9 +1934,9 @@ export function ScraperDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {(sourceTab === 'mstc' ? logs : sourceTab === 'baanknet' ? baanknetLogs : sourceTab === 'gem' ? gemLogs : gemBidsLogs).map((log) => {
+                  {(sourceTab === 'mstc' ? logs : sourceTab === 'gem' ? gemLogs : gemBidsLogs).map((log) => {
                     const detailsObj = log.details ? (typeof log.details === 'string' ? JSON.parse(log.details) : log.details) : {};
-                    const aucNum = detailsObj.mstc_auction_number || detailsObj.baanknet_auction_id || detailsObj.gem_auction_id || detailsObj.bid_number || 'Unknown Item';
+                    const aucNum = detailsObj.mstc_auction_number || detailsObj.gem_auction_id || detailsObj.bid_number || 'Unknown Item';
                     
                     let logMessage = '';
                     if (log.action === 'mstc_auction_downloaded') {
@@ -2330,10 +1945,6 @@ export function ScraperDashboard() {
                       logMessage = `Purged expired auction ${aucNum} (Closing date: ${new Date(detailsObj.closing_date).toLocaleDateString()}). Removed PDF from storage bucket.`;
                     } else if (log.action === 'mstc_auction_failed') {
                       logMessage = `Download job failed for ${aucNum} (Attempt ${detailsObj.retry_count}). Error: ${detailsObj.error || 'Unknown network error'}`;
-                    } else if (log.action === 'baanknet_auction_deleted') {
-                      logMessage = `Purged expired BaankNet auction ID ${aucNum} (End date: ${new Date(detailsObj.auction_end_date).toLocaleDateString()}).`;
-                    } else if (log.action === 'baanknet_auction_scraped') {
-                      logMessage = `Successfully scraped and imported ${detailsObj.total_scraped} bank property listings.`;
                     } else if (log.action === 'gem_auction_deleted') {
                       logMessage = `Purged expired GeM auction ID ${aucNum} (End date: ${new Date(detailsObj.auction_end_date).toLocaleDateString()}).`;
                     } else if (log.action === 'gem_auction_scraped') {
@@ -2491,11 +2102,11 @@ export function ScraperDashboard() {
                       </div>
                     </div>
 
-                    <div className="space-y-4 text-xs leading-relaxed text-slate-350">
+                    <div className="space-y-4 text-xs leading-relaxed text-slate-300">
                       <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
                         <h4 className="font-bold text-white mb-1.5">No-Auth Index Mining</h4>
                         <p>
-                          Unlike government buyer listings which require active session validations or CAPTCHA solving, GeM Forward Auctions directory pages are public-facing. HEADLESS browser automation handles navigation easily.
+                          Unlike government buyer listings which require active session validations or CAPTCHA solving, GeM Forward Auctions directory pages are public-facing. Headless browser automation handles navigation easily.
                         </p>
                       </div>
 
@@ -2509,7 +2120,7 @@ export function ScraperDashboard() {
                       <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
                         <h4 className="font-bold text-white mb-1.5">Automatic Database Pruning</h4>
                         <p>
-                          Like the BaankNet daemon, expired GeM auctions are automatically pruned if their closing date passes, keeping search lists fast and clean.
+                          Expired GeM auctions are automatically pruned if their closing date passes, keeping search lists fast and clean.
                         </p>
                       </div>
                     </div>
@@ -2597,11 +2208,11 @@ export function ScraperDashboard() {
                       </div>
                     </div>
 
-                    <div className="space-y-4 text-xs leading-relaxed text-slate-350">
+                    <div className="space-y-4 text-xs leading-relaxed text-slate-300">
                       <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
                         <h4 className="font-bold text-white mb-1.5">No-Auth Procurement Index Mining</h4>
                         <p>
-                          Like GeM forward auctions, procurement bids and reverse auctions directory pages are publicly readable. HEADLESS browser automation handles navigation, item extraction, and document link indexing easily.
+                          Like GeM forward auctions, procurement bids and reverse auctions directory pages are publicly readable. Headless browser automation handles navigation, item extraction, and document link indexing easily.
                         </p>
                       </div>
 
@@ -2616,112 +2227,6 @@ export function ScraperDashboard() {
                         <h4 className="font-bold text-white mb-1.5">Automatic Database Pruning</h4>
                         <p>
                           Ended/closed bids are automatically pruned if their closing date passes, keeping search lists fast and clean.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 border-t border-white/5 text-[11px] text-slate-500 font-medium flex items-center justify-between mt-6">
-                    <span>Database: Postgres (Supabase RLS Active)</span>
-                    <span>Version 1.0.0</span>
-                  </div>
-                </div>
-              </>
-            ) : sourceTab === 'baanknet' ? (
-              <>
-                {/* BaankNet Panel */}
-                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
-                  
-                  {/* Header */}
-                  <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-                    <div className="flex items-center gap-2">
-                      <Cpu className="w-5 h-5 text-slate-600" />
-                      <div>
-                        <h3 className="font-bold text-slate-900 leading-tight">BaankNet Portal Scraper</h3>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Automated Angular SPA property crawler daemon</p>
-                      </div>
-                    </div>
-                    
-                    {/* Status indicator */}
-                    {baanknetRunning ? (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-ping" /> Scraper Active
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
-                        <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Scraper Stopped
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Controls */}
-                  <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2">
-                    <button
-                      onClick={startBaanknetScraper}
-                      disabled={!isLocalApiAvailable || baanknetRunning}
-                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                      <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Scraper
-                    </button>
-                    <button
-                      onClick={stopBaanknetScraper}
-                      disabled={!isLocalApiAvailable || !baanknetRunning}
-                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                      <Square className="w-3.5 h-3.5 mr-1.5 fill-rose-600 text-rose-600" /> Stop Scraper
-                    </button>
-                  </div>
-
-                  {/* Console Viewer */}
-                  <div 
-                    ref={baanknetTerminalRef}
-                    className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-96 overflow-y-auto space-y-1 select-text scroll-smooth"
-                  >
-                    {liveBaanknetLogs.length === 0 ? (
-                      <p className="text-slate-500 italic">No output logs. Click "Start Scraper" to initiate the process.</p>
-                    ) : (
-                      liveBaanknetLogs.map((line, idx) => (
-                        <p key={idx} className="leading-relaxed whitespace-pre-wrap">
-                          <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
-                          {line}
-                        </p>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Info Panel */}
-                <div className="bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl border border-slate-800 p-6 text-white shadow-xl flex flex-col justify-between min-h-[480px]">
-                  <div>
-                    <div className="flex items-center gap-3.5 mb-6">
-                      <div className="p-2.5 bg-white/10 rounded-xl">
-                        <Terminal className="w-6 h-6 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-extrabold text-base leading-tight">Crawler Intelligence Dashboard</h3>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Stealth execution details & database ingestion pipeline</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 text-xs leading-relaxed text-slate-350">
-                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                        <h4 className="font-bold text-white mb-1.5">Anti-Bot Evasion Tactics</h4>
-                        <p>
-                          Uses Puppeteer Stealth plugin integration. Generates human-like viewport dimensions, overrides webgl configurations, randomized user agents, and injects passive screen scrolls. Bypasses typical Cloudflare & AWS WAF trigger checks on Bank eAuctions pages.
-                        </p>
-                      </div>
-
-                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                        <h4 className="font-bold text-white mb-1.5">Angular SPA Synchronization</h4>
-                        <p>
-                          BaankNet compiles listings as an Angular application client-side. The crawler intercepts active REST endpoints and handles browser scrolling delays to load listings before scraping card nodes.
-                        </p>
-                      </div>
-
-                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                        <h4 className="font-bold text-white mb-1.5">Automated Purge & Cleanups</h4>
-                        <p>
-                          The scraper queries active rows in the <code className="bg-slate-800 px-1 py-0.5 rounded text-[10px] font-mono">baanknet_auctions</code> table and deletes references whose <code className="bg-slate-800 px-1 py-0.5 rounded text-[10px] font-mono">auction_end_date</code> has already passed, keeping the search index clean.
                         </p>
                       </div>
                     </div>
@@ -2765,21 +2270,21 @@ export function ScraperDashboard() {
                     <button
                       onClick={startScraper}
                       disabled={!isLocalApiAvailable || scraperRunning}
-                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50"
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50 cursor-pointer"
                     >
                       <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Scraper
                     </button>
                     <button
                       onClick={stopScraper}
                       disabled={!isLocalApiAvailable || !scraperRunning}
-                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50"
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
                     >
                       <Square className="w-3.5 h-3.5 mr-1.5 fill-rose-600 text-rose-600" /> Stop Scraper
                     </button>
                     {scraperRunning && (
                       <button
                         onClick={sendEnterKey}
-                        className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all shadow-sm animate-pulse"
+                        className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all shadow-sm animate-pulse cursor-pointer"
                         title="Solve CAPTCHA, submit filters on the browser window, then click this button to continue."
                       >
                         <CornerDownLeft className="w-3.5 h-3.5 mr-1.5" /> Solve CAPTCHA & Continue
@@ -2803,6 +2308,7 @@ export function ScraperDashboard() {
                       ))
                     )}
                   </div>
+
                 </div>
 
                 {/* Asset Worker Panel */}
@@ -2835,14 +2341,14 @@ export function ScraperDashboard() {
                     <button
                       onClick={startWorker}
                       disabled={!isLocalApiAvailable || workerRunning}
-                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50"
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50 cursor-pointer"
                     >
                       <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Worker
                     </button>
                     <button
                       onClick={stopWorker}
                       disabled={!isLocalApiAvailable || !workerRunning}
-                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50"
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
                     >
                       <Square className="w-3.5 h-3.5 mr-1.5 fill-rose-600 text-rose-600" /> Stop Worker
                     </button>
@@ -2864,137 +2370,138 @@ export function ScraperDashboard() {
                       ))
                     )}
                   </div>
+
+                </div>
+
+                {/* Database Clear Panel */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
+                  
+                  {/* Header */}
+                  <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                      <Trash2 className="w-5 h-5 text-rose-500" />
+                      <div>
+                        <h3 className="font-bold text-slate-900 leading-tight">Database & Storage Cleaner</h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Wipes database tables & paginates storage deletions</p>
+                      </div>
+                    </div>
+                    
+                    {/* Status indicator */}
+                    {clearDbRunning ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-rose-500 mr-1.5 animate-ping" /> Cleaner Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                        <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Cleaner Stopped
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Controls */}
+                  <div className="p-4 border-b border-slate-100 flex gap-2">
+                    <button
+                      onClick={() => {
+                        if (window.confirm("WARNING: Are you sure you want to completely clear the database tables and wipe all files in the Supabase storage buckets? This cannot be undone!")) {
+                          startClearDb();
+                        }
+                      }}
+                      disabled={!isLocalApiAvailable || clearDbRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1.5 fill-white" /> Clear DB & Storage
+                    </button>
+                    <button
+                      onClick={stopClearDb}
+                      disabled={!isLocalApiAvailable || !clearDbRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-700 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Square className="w-3.5 h-3.5 mr-1.5 fill-slate-500 text-slate-500" /> Stop Cleaner
+                    </button>
+                  </div>
+
+                  {/* Console Viewer */}
+                  <div 
+                    ref={clearDbTerminalRef}
+                    className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-96 overflow-y-auto space-y-1 select-text scroll-smooth"
+                  >
+                    {liveClearDbLogs.length === 0 ? (
+                      <p className="text-slate-500 italic">No output logs. Click "Clear DB & Storage" to wipe resources.</p>
+                    ) : (
+                      liveClearDbLogs.map((line, idx) => (
+                        <p key={idx} className="leading-relaxed whitespace-pre-wrap">
+                          <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
+                          {line}
+                        </p>
+                      ))
+                    )}
+                  </div>
+
+                </div>
+
+                {/* Batch Backfill Panel */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
+                  
+                  {/* Header */}
+                  <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-5 h-5 text-indigo-500" />
+                      <div>
+                        <h3 className="font-bold text-slate-900 leading-tight">Batch PDF & Image Backfiller</h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Reprocesses PDFs, extracts metadata & preview page images</p>
+                      </div>
+                    </div>
+                    
+                    {/* Status indicator */}
+                    {backfillRunning ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 mr-1.5 animate-ping" /> Backfiller Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                        <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Backfiller Stopped
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Controls */}
+                  <div className="p-4 border-b border-slate-100 flex gap-2">
+                    <button
+                      onClick={startBackfill}
+                      disabled={!isLocalApiAvailable || backfillRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Backfiller
+                    </button>
+                    <button
+                      onClick={stopBackfill}
+                      disabled={!isLocalApiAvailable || !backfillRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Square className="w-3.5 h-3.5 mr-1.5 fill-rose-600 text-rose-600" /> Stop Backfiller
+                    </button>
+                  </div>
+
+                  {/* Console Viewer */}
+                  <div 
+                    ref={backfillTerminalRef}
+                    className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-96 overflow-y-auto space-y-1 select-text scroll-smooth"
+                  >
+                    {liveBackfillLogs.length === 0 ? (
+                      <p className="text-slate-500 italic">No output logs. Click "Start Backfiller" to process database records.</p>
+                    ) : (
+                      liveBackfillLogs.map((line, idx) => (
+                        <p key={idx} className="leading-relaxed whitespace-pre-wrap">
+                          <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
+                          {line}
+                        </p>
+                      ))
+                    )}
+                  </div>
+
                 </div>
               </>
             )}
-
-            {/* Database Clear Panel */}
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
-              
-              {/* Header */}
-              <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-                <div className="flex items-center gap-2">
-                  <Trash2 className="w-5 h-5 text-rose-500" />
-                  <div>
-                    <h3 className="font-bold text-slate-900 leading-tight">Database & Storage Cleaner</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Wipes database tables & paginates storage deletions</p>
-                  </div>
-                </div>
-                
-                {/* Status indicator */}
-                {clearDbRunning ? (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 mr-1.5 animate-ping" /> Cleaner Active
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
-                    <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Cleaner Stopped
-                  </span>
-                )}
-              </div>
-
-              {/* Controls */}
-              <div className="p-4 border-b border-slate-100 flex gap-2">
-                <button
-                  onClick={() => {
-                    if (window.confirm("WARNING: Are you sure you want to completely clear the database tables and wipe all files in the Supabase storage buckets? This cannot be undone!")) {
-                      startClearDb();
-                    }
-                  }}
-                  disabled={!isLocalApiAvailable || clearDbRunning}
-                  className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50"
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5 fill-white" /> Clear DB & Storage
-                </button>
-                <button
-                  onClick={stopClearDb}
-                  disabled={!isLocalApiAvailable || !clearDbRunning}
-                  className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-700 rounded-lg transition-all disabled:opacity-50"
-                >
-                  <Square className="w-3.5 h-3.5 mr-1.5 fill-slate-500 text-slate-500" /> Stop Cleaner
-                </button>
-              </div>
-
-              {/* Console Viewer */}
-              <div 
-                ref={clearDbTerminalRef}
-                className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-96 overflow-y-auto space-y-1 select-text scroll-smooth"
-              >
-                {liveClearDbLogs.length === 0 ? (
-                  <p className="text-slate-500 italic">No output logs. Click "Clear DB & Storage" to wipe resources.</p>
-                ) : (
-                  liveClearDbLogs.map((line, idx) => (
-                    <p key={idx} className="leading-relaxed whitespace-pre-wrap">
-                      <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
-                      {line}
-                    </p>
-                  ))
-                )}
-              </div>
-
-            </div>
-
-            {/* Batch Backfill Panel */}
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
-              
-              {/* Header */}
-              <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-                <div className="flex items-center gap-2">
-                  <Database className="w-5 h-5 text-indigo-500" />
-                  <div>
-                    <h3 className="font-bold text-slate-900 leading-tight">Batch PDF & Image Backfiller</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Reprocesses PDFs, extracts metadata & preview page images</p>
-                  </div>
-                </div>
-                
-                {/* Status indicator */}
-                {backfillRunning ? (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 mr-1.5 animate-ping" /> Backfiller Active
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
-                    <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Backfiller Stopped
-                  </span>
-                )}
-              </div>
-
-              {/* Controls */}
-              <div className="p-4 border-b border-slate-100 flex gap-2">
-                <button
-                  onClick={startBackfill}
-                  disabled={!isLocalApiAvailable || backfillRunning}
-                  className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50"
-                >
-                  <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Backfiller
-                </button>
-                <button
-                  onClick={stopBackfill}
-                  disabled={!isLocalApiAvailable || !backfillRunning}
-                  className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50"
-                >
-                  <Square className="w-3.5 h-3.5 mr-1.5 fill-rose-600 text-rose-600" /> Stop Backfiller
-                </button>
-              </div>
-
-              {/* Console Viewer */}
-              <div 
-                ref={backfillTerminalRef}
-                className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-96 overflow-y-auto space-y-1 select-text scroll-smooth"
-              >
-                {liveBackfillLogs.length === 0 ? (
-                  <p className="text-slate-500 italic">No output logs. Click "Start Backfiller" to process database records.</p>
-                ) : (
-                  liveBackfillLogs.map((line, idx) => (
-                    <p key={idx} className="leading-relaxed whitespace-pre-wrap">
-                      <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
-                      {line}
-                    </p>
-                  ))
-                )}
-              </div>
-
-            </div>
 
           </div>
 

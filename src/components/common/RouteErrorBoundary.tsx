@@ -146,7 +146,7 @@ export function RouteErrorBoundary() {
           <div className="border-t border-slate-100 pt-6 text-left">
             <button
               onClick={() => setShowDetails(!showDetails)}
-              className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-650 uppercase tracking-wider transition-colors cursor-pointer"
+              className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 uppercase tracking-wider transition-colors cursor-pointer"
             >
               {showDetails ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               {showDetails ? 'Hide Diagnostics' : 'Show Diagnostics'}

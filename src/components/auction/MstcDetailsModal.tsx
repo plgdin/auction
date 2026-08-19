@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DownOutlined } from '@ant-design/icons';
-import { X, Copy, Check, Download, Heart, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap } from 'lucide-react';
+import { Dropdown } from 'antd';
+import { X, Copy, Check, Download, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Zap, Info, Sparkles, CheckCircle2 } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
+import ButtonWithIconDemo from '../ui/button-witn-icon';
 import { expandMstcOffice } from '../../services/publicService';
 import { useAuthStore } from '../../store/authStore';
 import { storageService } from '../../services/storageService';
@@ -11,10 +13,11 @@ import { useQuoteStore } from '../../store/quoteStore';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice, CURRENCIES, formatPriceString } from '../../utils/currency';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { valuationService } from '../../services/valuationService';
 import type { ValuationCosts, ValuationOutput } from '../../services/valuation/roiEngine';
 import { marketPriceService } from '../../services/marketPriceService';
+import { simulationEngine } from '../../services/valuation/simulationEngine';
 import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, ReferenceLine } from 'recharts';
 import {
   computeCostBreakdown,
@@ -124,7 +127,14 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     setIsDragging(false);
   };
 
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, profile } = useAuthStore();
+  const isPremium = profile?.subscription_plan === 'pro' || 
+                    profile?.subscription_plan === 'go' || 
+                    profile?.subscription_plan === 'go-subscription' || 
+                    profile?.subscription_plan === 'enterprise' || 
+                    profile?.role === 'admin' || 
+                    profile?.role === 'superadmin';
+  const isBusinessUser = (isAuthenticated && (profile?.subscription_plan === 'pro' || profile?.subscription_plan === 'enterprise')) || profile?.role === 'admin' || profile?.role === 'superadmin';
   const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
   const [viewing, setViewing] = useState(false);
@@ -346,6 +356,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   const [showAdvancedCosts, setShowAdvancedCosts] = useState(false);
   const [valuationData, setValuationData] = useState<ValuationOutput | null>(null);
   const [customItemPrices, setCustomItemPrices] = useState<Record<number, number>>({});
+  const [userSellingPrice, setUserSellingPrice] = useState<number | ''>('');
 
   const handleCustomItemPriceChange = (idx: number, newVal: number) => {
     setCustomItemPrices(prev => {
@@ -366,8 +377,6 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     let totalConfidenceSum = 0;
 
     const updatedItems = valuationData.items.map((row, idx) => {
-      if (row.notAvailable) return row;
-
       const customPrice = customItemPrices[idx];
       if (customPrice !== undefined && customPrice > 0) {
         const totalValue = Math.round(customPrice * row.qty);
@@ -375,6 +384,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
         totalConfidenceSum += 95;
         return {
           ...row,
+          notAvailable: false,
           unitValue: customPrice,
           totalValue,
           confidence: 95,
@@ -386,8 +396,10 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           }
         };
       } else {
-        totalLotValue += row.totalValue;
-        totalConfidenceSum += row.confidence;
+        if (!row.notAvailable) {
+          totalLotValue += row.totalValue;
+          totalConfidenceSum += row.confidence;
+        }
         return row;
       }
     });
@@ -471,7 +483,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
       // Backend engine data surfaced for new dashboard sections
       risk: valuationData.risk ?? null,
       confidence: valuationData.confidence ?? null,
-      simulation: valuationData.simulation ?? null,
+      simulation: totalLotValue > 0 ? simulationEngine.runSimulation(totalLotValue, {
+        currentBid: Number(customCosts.currentBid) || 0,
+        transportation: Number(customCosts.transportation) || 0,
+        loadingUnloading: Number(customCosts.loadingUnloading) || 0,
+        refurbishment: Number(customCosts.refurbishment) || 0,
+        otherFees: Number(customCosts.otherFees) || 0,
+        extraCharge: Number(customCosts.extraCharge) || 0,
+        gstPercent,
+        tcsPercent,
+      }) : null,
       bidding: valuationData.bidding ?? null,
       commodities,
     };
@@ -505,12 +526,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
   }, [finalValuationData, customCosts, currency, currencySymbol, currencyRate]);
 
   const biddingRecommendations = React.useMemo(() => {
-    if (!finalValuationData || finalValuationData.totalLotValue <= 0) return null;
+    if (!finalValuationData) return null;
 
     const lotValue = finalValuationData.totalLotValue;
     const gstPercent = customCosts.gstPercent ?? 18;
     const tcsPercent = customCosts.tcsPercent ?? 1;
-    const taxFactor = (1 + gstPercent / 100) * (1 + tcsPercent / 100);
     
     const fixedCosts = (
       (customCosts.transportation || 0) +
@@ -520,12 +540,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
       (customCosts.extraCharge || 0)
     );
 
-    return computeBidCaps(lotValue, fixedCosts, taxFactor);
+    return computeBidCaps(lotValue, fixedCosts, gstPercent, tcsPercent, Number(customCosts.currentBid) || 0);
   }, [finalValuationData, customCosts]);
 
 
   const [isValuating, setIsValuating] = useState(false);
   const [extraChargeType, setExtraChargeType] = useState<string>('none');
+
+  const [extraChargeOpen, setExtraChargeOpen] = useState(false);
+  const [gstOpen, setGstOpen] = useState(false);
+  const [tcsOpen, setTcsOpen] = useState(false);
 
   const extraChargeLabels: Record<string, string> = {
     none: `None (${formatPrice(0, currency)})`,
@@ -537,6 +561,65 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
     brokerage_3: 'Brokerage & Clearance (3%)',
     warehousing_5k: `Warehousing Surcharge (fixed ${formatPrice(5000, currency)})`,
     inspection_2k: `Inspection / Quarantine (fixed ${formatPrice(2500, currency)})`,
+  };
+
+  const extraChargeOptions = Object.entries(extraChargeLabels).map(([key, label]) => ({
+    key,
+    label
+  }));
+
+  const gstOptions = [
+    { key: 0, label: '0% (Exempt)' },
+    { key: 5, label: '5% (Concessional)' },
+    { key: 12, label: '12% (Standard Low)' },
+    { key: 18, label: '18% (Standard Metal Scrap)' },
+    { key: 28, label: '28% (Luxury Goods)' },
+  ];
+
+  const tcsOptions = [
+    { key: 0, label: '0% (None)' },
+    { key: 1, label: '1% (Standard TCS)' },
+  ];
+
+  const renderSingleSelectMenu = <T extends string | number>(
+    options: { key: T; label: string }[],
+    selectedValue: T,
+    onChange: (value: T) => void
+  ) => {
+    return (
+      <div
+        className="bg-white rounded-xl shadow-lg border border-slate-200 p-2 min-w-[220px] max-h-[240px] overflow-y-auto custom-scrollbar flex flex-col gap-0.5 z-[1000]"
+        style={{ scrollbarWidth: 'thin' }}
+      >
+        {options.map(opt => {
+          const isSelected = opt.key === selectedValue;
+          return (
+            <div
+              key={opt.key}
+              onClick={() => onChange(opt.key)}
+              className={clsx(
+                "flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer text-sm font-medium transition-colors select-none",
+                isSelected
+                  ? "bg-primary-50/40 text-primary font-semibold"
+                  : "hover:bg-slate-50 text-slate-700 hover:text-slate-900"
+              )}
+            >
+              <span className={clsx(
+                "w-4 h-4 rounded-full border transition-colors flex items-center justify-center flex-shrink-0",
+                isSelected
+                  ? "border-primary bg-primary"
+                  : "border-slate-300 bg-white"
+              )}>
+                {isSelected && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                )}
+              </span>
+              <span className="truncate">{opt.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
 
@@ -562,6 +645,14 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
   useEffect(() => {
     if (item) {
+      // Log view activity to audit_logs
+      import('../../services/auditService').then(({ logUserActivity }) => {
+        logUserActivity('view_auction_details', 'auction', item.id, {
+          title: item.category_name || 'Auction Details',
+          reference_number: item.mstc_auction_number || 'N/A'
+        });
+      });
+
       const summary = generateCatalogSummary(item);
 
       let defaultBid = summary.totalMarketValue || 0;
@@ -711,11 +802,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 p-4 sm:p-6 md:p-8 animate-fade-in">
-        <div className="relative w-full max-w-7xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-205 animate-scale-up animate-duration-200">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 sm:p-6 md:p-8 animate-fade-in">
+        <div className="relative w-full max-w-7xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
           
           {/* Modal Header */}
-          <div className="px-6 py-4.5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
+          <div className="px-6 py-4.5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <div className="flex items-center gap-2.5">
               <span className="text-base font-bold text-slate-500 ">
                 Ref: {shortId}
@@ -730,24 +821,19 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 title="Copy Reference ID"
               >
                 {copiedRef ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-605" />
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
                 ) : (
                   <Copy className="w-3.5 h-3.5" />
                 )}
               </button>
 
               {onInterestedToggle && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onInterestedToggle();
-                  }}
-                  className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-400 hover:text-rose-500 cursor-pointer flex items-center justify-center ml-1"
-                  title={isInterested ? "Remove from interested list" : "Add to interested list"}
-                >
-                  <Heart className={clsx("w-3.5 h-3.5", isInterested ? "fill-rose-500 text-rose-500" : "")} />
-                </button>
+                <ButtonWithIconDemo
+                  isInterested={isInterested}
+                  onInterestedToggle={onInterestedToggle}
+                  label="I'm Interested"
+                  className="ml-2"
+                />
               )}
             </div>
             <button
@@ -782,29 +868,87 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               )}
             >
               <span>Bid Intelligence</span>
-              <span className="text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-250 px-1.5 py-0.5 rounded-md tracking-normal uppercase shrink-0">Beta</span>
+              <span className="text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded-md tracking-normal uppercase shrink-0">Beta</span>
             </button>
           </div>
 
           {/* Modal Body */}
-          <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
+          <div className="flex-grow flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
             {/* Left Side: Details Scrollable */}
-            <div ref={scrollContainerRef} className="flex-grow overflow-y-auto p-6 space-y-6 bg-slate-50/25">
+            <div ref={scrollContainerRef} className="flex-grow shrink-0 lg:shrink overflow-visible lg:overflow-y-auto p-6 space-y-6 bg-slate-50/25 min-w-0">
               {modalTab === 'valuation' ? (
-                <div className="space-y-6">
+                !isPremium ? (
+                  <div className="flex flex-col items-center justify-center py-12 px-4 text-center max-w-2xl mx-auto">
+                    <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-6 shadow-inner">
+                      <Sparkles className="w-8 h-8 animate-pulse animate-duration-1000" />
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                      Unlock Bid Intelligence & AI Valuation
+                    </h3>
+                    <p className="mt-2.5 text-sm text-slate-600 leading-relaxed">
+                      Bidder Pro analyzes auction lot items using live market scrap prices, ML price predictors, and shipping estimations to help you determine highly profitable bidding targets.
+                    </p>
+
+                    <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-left w-full">
+                      <div className="p-4 bg-white rounded-2xl border border-slate-150 shadow-2xs flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">AI Valuation Engine</h4>
+                          <p className="text-[11px] text-slate-500 mt-1">Automatic profit & loss margin calculations for any lot items.</p>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-white rounded-2xl border border-slate-150 shadow-2xs flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Smart Bid Recommendations</h4>
+                          <p className="text-[11px] text-slate-500 mt-1">Walk-away, conservative, and aggressive target bid caps.</p>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-white rounded-2xl border border-slate-150 shadow-2xs flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Market Price History</h4>
+                          <p className="text-[11px] text-slate-500 mt-1">Visual charts showing live scrap rates and monthly price indices.</p>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-white rounded-2xl border border-slate-150 shadow-2xs flex items-start gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Logistics & Quotes</h4>
+                          <p className="text-[11px] text-slate-500 mt-1">Instant shipping quotes from transport partners directly inside your catalog.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                      <Link
+                        to="/pricing"
+                        className="px-6 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/95 transition-all text-center shadow-md shadow-primary/20 hover:scale-[1.02] cursor-pointer"
+                      >
+                        Upgrade to Bidder Pro
+                      </Link>
+                      <button
+                        onClick={() => setModalTab('catalog')}
+                        className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-all text-center cursor-pointer"
+                      >
+                        Back to Catalog Details
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
                   {/* Cost Input Form Card */}
                   <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider  flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
-                        Interactive Bid & Cost Estimator
+                      <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                        Enter Your Costs
                       </h4>
-                      <span className="text-[10px] text-slate-400 ">Adjust costs to see impact on bid strategy</span>
+                      <span className="text-[10px] text-slate-400 ">Fill in your expenses to see your profit</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Current Bid Amount ({currency})</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider  mb-1.5">Your Bid Amount ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
@@ -816,13 +960,38 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               const v = e.target.value;
                               setCustomCosts(prev => ({ ...prev, currentBid: toInrVal(v) }));
                             }}
-                            className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                            className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Transportation Cost ({currency})</label>
+                        <label className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider  mb-1.5">Your Expected Selling Price ({currency})</label>
+                        <div className="relative rounded-xl shadow-2xs">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
+                          </div>
+                          <input
+                            type="number"
+                            value={userSellingPrice === '' ? '' : Math.round(Number(userSellingPrice) * currencyRate)}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === '') {
+                                setUserSellingPrice('');
+                              } else {
+                                const num = parseFloat(v);
+                                setUserSellingPrice(isNaN(num) ? '' : Math.round(num / currencyRate));
+                              }
+                            }}
+                            placeholder="What you think you can sell for"
+                            className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-emerald-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-emerald-50/30"
+                          />
+                        </div>
+                        <p className="text-[9px] text-slate-400 mt-1 font-medium">Optional — enter your own estimate to compare with ours</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider  mb-1.5">Transportation Cost ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
@@ -834,13 +1003,13 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               const v = e.target.value;
                               setCustomCosts(prev => ({ ...prev, transportation: toInrVal(v) }));
                             }}
-                            className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                            className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Loading & Unloading ({currency})</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider  mb-1.5">Loading & Unloading ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
@@ -852,13 +1021,13 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               const v = e.target.value;
                               setCustomCosts(prev => ({ ...prev, loadingUnloading: toInrVal(v) }));
                             }}
-                            className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                            className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Refurbishment Costs ({currency})</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider  mb-1.5">Repair / Cleaning Costs ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
@@ -870,13 +1039,13 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               const v = e.target.value;
                               setCustomCosts(prev => ({ ...prev, refurbishment: toInrVal(v) }));
                             }}
-                            className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                            className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Other Service Charges ({currency})</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider  mb-1.5">Other Charges ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
@@ -888,66 +1057,104 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                               const v = e.target.value;
                               setCustomCosts(prev => ({ ...prev, otherFees: toInrVal(v) }));
                             }}
-                            className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                            className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider  mb-1.5">Customs & Extra Charges ({currency})</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider  mb-1.5">Customs / Extra Charges ({currency})</label>
                         <div className="relative rounded-xl shadow-2xs">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                             <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
                           </div>
-                          <select
-                            value={extraChargeType}
-                            onChange={(e) => setExtraChargeType(e.target.value)}
-                            className="w-full pl-7 pr-8 py-2.5 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer h-[38px] appearance-none"
+                          <Dropdown
+                            open={extraChargeOpen}
+                            onOpenChange={setExtraChargeOpen}
+                            popupRender={() => renderSingleSelectMenu(
+                              extraChargeOptions,
+                              extraChargeType,
+                              (val) => {
+                                setExtraChargeType(val);
+                                setExtraChargeOpen(false);
+                              }
+                            )}
+                            trigger={['click']}
+                            placement="bottomLeft"
+                            align={{ overflow: { adjustX: false, adjustY: false } }}
                           >
-                            {Object.entries(extraChargeLabels).map(([key, label]) => (
-                              <option key={key} value={key}>{label}</option>
-                            ))}
-                          </select>
-                          <DownOutlined className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450 pointer-events-none" />
+                            <button
+                              type="button"
+                              className="w-full flex justify-between items-center pl-7 pr-3.5 py-2 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm font-bold text-slate-900 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer h-[38px]"
+                            >
+                              <span className="truncate">
+                                {extraChargeLabels[extraChargeType]}
+                              </span>
+                              <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+                            </button>
+                          </Dropdown>
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1.5 font-sans">GST Rate (%)</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 font-sans">GST Rate (%)</label>
                         <div className="relative rounded-xl shadow-2xs">
-                          <select
-                            value={customCosts.gstPercent ?? 18}
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value, 10);
-                              setCustomCosts(prev => ({ ...prev, gstPercent: v }));
-                            }}
-                            className="w-full px-3 py-2 border border-slate-250 rounded-xl bg-white text-sm font-bold text-slate-900 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer h-[38px] appearance-none"
+                          <Dropdown
+                            open={gstOpen}
+                            onOpenChange={setGstOpen}
+                            popupRender={() => renderSingleSelectMenu(
+                              gstOptions,
+                              customCosts.gstPercent ?? 18,
+                              (val) => {
+                                setCustomCosts(prev => ({ ...prev, gstPercent: val }));
+                                setGstOpen(false);
+                              }
+                            )}
+                            trigger={['click']}
+                            placement="bottomLeft"
+                            align={{ overflow: { adjustX: false, adjustY: false } }}
                           >
-                            <option value={0}>0% (Exempt)</option>
-                            <option value={5}>5% (Concessional)</option>
-                            <option value={12}>12% (Standard Low)</option>
-                            <option value={18}>18% (Standard Metal Scrap)</option>
-                            <option value={28}>28% (Luxury Goods)</option>
-                          </select>
-                          <DownOutlined className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450 pointer-events-none" />
+                            <button
+                              type="button"
+                              className="w-full flex justify-between items-center px-3 py-2 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm font-bold text-slate-900 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer h-[38px]"
+                            >
+                              <span className="truncate">
+                                {gstOptions.find(o => o.key === (customCosts.gstPercent ?? 18))?.label}
+                              </span>
+                              <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+                            </button>
+                          </Dropdown>
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1.5 font-sans">TCS Rate (%)</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 font-sans">TCS Rate (%)</label>
                         <div className="relative rounded-xl shadow-2xs">
-                          <select
-                            value={customCosts.tcsPercent ?? 1}
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value, 10);
-                              setCustomCosts(prev => ({ ...prev, tcsPercent: v }));
-                            }}
-                            className="w-full px-3 py-2 border border-slate-250 rounded-xl bg-white text-sm font-bold text-slate-900 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer h-[38px] appearance-none"
+                          <Dropdown
+                            open={tcsOpen}
+                            onOpenChange={setTcsOpen}
+                            popupRender={() => renderSingleSelectMenu(
+                              tcsOptions,
+                              customCosts.tcsPercent ?? 1,
+                              (val) => {
+                                setCustomCosts(prev => ({ ...prev, tcsPercent: val }));
+                                setTcsOpen(false);
+                              }
+                            )}
+                            trigger={['click']}
+                            placement="bottomLeft"
+                            align={{ overflow: { adjustX: false, adjustY: false } }}
                           >
-                            <option value={0}>0% (None)</option>
-                            <option value={1}>1% (Standard TCS)</option>
-                          </select>
-                          <DownOutlined className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-450 pointer-events-none" />
+                            <button
+                              type="button"
+                              className="w-full flex justify-between items-center px-3 py-2 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm font-bold text-slate-900 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer h-[38px]"
+                            >
+                              <span className="truncate">
+                                {tcsOptions.find(o => o.key === (customCosts.tcsPercent ?? 1))?.label}
+                              </span>
+                              <DownOutlined className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-2" />
+                            </button>
+                          </Dropdown>
                         </div>
                       </div>
                     </div>
@@ -958,34 +1165,34 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         onClick={() => setShowAdvancedCosts(!showAdvancedCosts)}
                         className="text-xs font-bold text-primary hover:underline flex items-center gap-1.5 cursor-pointer bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-2xs hover:bg-slate-100/80 transition-all"
                       >
-                        {showAdvancedCosts ? 'Hide Advanced Cost Options' : 'Show Advanced Cost Options'}
+                        {showAdvancedCosts ? 'Hide Extra Cost Fields' : 'Add More Costs'}
                       </button>
                     </div>
 
                     {showAdvancedCosts && (
-                      <div className="mt-4 pt-4 border-t border-dashed border-slate-250">
-                        <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3.5 font-sans">Advanced Bidding & Costs Config</h4>
+                      <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
+                        <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3.5 font-sans">Additional Expenses</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
                           {[
                             { key: 'auctionFee', label: 'Auction Portal Fee' },
-                            { key: 'emdCost', label: 'EMD Blocked Interest' },
+                            { key: 'emdCost', label: 'EMD / Deposit Cost' },
                             { key: 'unloading', label: 'Unloading Cost' },
                             { key: 'warehouse', label: 'Warehouse Rent' },
-                            { key: 'storage', label: 'Storage & Yard Fee' },
-                            { key: 'insurance', label: 'Transit Insurance' },
-                            { key: 'interest', label: 'Capital Interest Cost' },
-                            { key: 'opportunityCost', label: 'Opportunity Cost' },
-                            { key: 'repair', label: 'Repair & Sorting' },
-                            { key: 'fuel', label: 'Fuel Surcharge' },
+                            { key: 'storage', label: 'Storage / Yard Fee' },
+                            { key: 'insurance', label: 'Insurance' },
+                            { key: 'interest', label: 'Loan / Interest Cost' },
+                            { key: 'opportunityCost', label: 'Money Blocked Cost' },
+                            { key: 'repair', label: 'Repair / Sorting' },
+                            { key: 'fuel', label: 'Fuel Cost' },
                             { key: 'customDuty', label: 'Custom Duty' },
                             { key: 'labour', label: 'Labour Charges' },
-                            { key: 'shrinkage', label: 'Weight Shrinkage' },
-                            { key: 'processingLoss', label: 'Processing Loss' },
-                            { key: 'miscellaneous', label: 'Misc Costs' },
-                            { key: 'contingency', label: 'Contingency Margin' }
+                            { key: 'shrinkage', label: 'Weight Loss / Shortage' },
+                            { key: 'processingLoss', label: 'Wastage / Scrap Loss' },
+                            { key: 'miscellaneous', label: 'Other Costs' },
+                            { key: 'contingency', label: 'Safety Buffer' }
                           ].map((costItem) => (
                             <div key={costItem.key}>
-                              <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-1.5 font-sans">
+                              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 font-sans">
                                 {costItem.label} ({currency})
                               </label>
                               <div className="relative rounded-xl shadow-2xs">
@@ -999,7 +1206,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                     const v = e.target.value;
                                     setCustomCosts(prev => ({ ...prev, [costItem.key]: toInrVal(v) }));
                                   }}
-                                  className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-250 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                                  className="block w-full pl-7 pr-3 py-2 text-sm font-bold text-slate-900 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
                                 />
                               </div>
                             </div>
@@ -1008,6 +1215,83 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       </div>
                     )}
                   </div>
+
+                  {finalValuationData && (
+                    <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center justify-between">
+                        <span>What's In This Lot</span>
+                        <span className="text-[10px] text-slate-400 font-medium normal-case font-sans">
+                          You can edit prices if you know better
+                        </span>
+                      </h4>
+                      <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-slate-50 text-slate-600 border-b border-slate-200">
+                              <th className="py-2.5 px-3.5 font-bold">Item Description</th>
+                              <th className="py-2.5 px-3.5 font-bold text-right w-20">Quantity</th>
+                              <th className="py-2.5 px-3.5 font-bold text-right w-44">Price Per Unit</th>
+                              <th className="py-2.5 px-3.5 font-bold text-right w-36">Total Value</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-105 text-slate-700">
+                            {finalValuationData.items.map((row: any, idx: number) => (
+                              <tr key={idx} className="hover:bg-slate-50/50">
+                                <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                                  <div>{row.name}</div>
+                                  {!row.notAvailable && row.priceSource && (
+                                    <div className="text-[10px] font-semibold text-slate-400 mt-0.5">
+                                      Source: <span className="text-slate-500 font-bold">{row.priceSource}</span>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3.5 text-right text-slate-600">{row.qty}</td>
+                                <td className="py-2.5 px-3.5 text-right text-slate-950 font-bold w-44">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {customItemPrices[idx] !== undefined && (
+                                      <button
+                                        onClick={() => handleCustomItemPriceChange(idx, 0)}
+                                        className="p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
+                                        title="Reset to automated estimate"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                    <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
+                                    <input
+                                      type="number"
+                                      value={
+                                        customItemPrices[idx] !== undefined
+                                          ? Math.round(customItemPrices[idx] * currencyRate)
+                                          : row.notAvailable
+                                          ? ""
+                                          : Math.round(row.unitValue * currencyRate)
+                                      }
+                                      onChange={(e) => {
+                                        const enteredVal = parseFloat(e.target.value);
+                                        const valInInr = isNaN(enteredVal) ? 0 : enteredVal / currencyRate;
+                                        handleCustomItemPriceChange(idx, valInInr);
+                                      }}
+                                      className={clsx(
+                                        "w-24 text-right p-1 px-1.5 border rounded-lg focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary font-bold text-xs transition-all",
+                                        customItemPrices[idx] !== undefined
+                                          ? "border-amber-300 bg-amber-50/30 text-amber-900"
+                                          : "border-slate-200 bg-slate-50 hover:bg-white focus:bg-white text-slate-900"
+                                      )}
+                                      placeholder={row.notAvailable ? "Enter price" : "Price"}
+                                    />
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3.5 text-right text-slate-950 font-bold">
+                                  {row.notAvailable && customItemPrices[idx] === undefined ? '—' : formatPrice(row.totalValue, currency)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
 
                   {isValuating || !finalValuationData ? (
                     <div className="bg-white rounded-3xl p-12 border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
@@ -1018,8 +1302,27 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <>
-                      {/* â•â•â•â•â•â•â• SECTION 1: Hero Summary Card â•â•â•â•â•â•â• */}
+                    <div className="relative">
+                      {!isBusinessUser && (
+                        <div className="absolute inset-0 z-10 bg-white/30 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center rounded-3xl border border-white/50 m-2">
+                          <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-5 shadow-inner">
+                            <Sparkles className="w-8 h-8 animate-pulse animate-duration-1000" />
+                          </div>
+                          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Unlock AI Valuation</h3>
+                          <p className="mt-3 text-sm text-slate-700 max-w-sm font-medium leading-relaxed">
+                            Upgrade to <span className="font-bold text-primary">Bidder Pro Business</span> to unlock AI Win-Probability, Profit Simulation, Risk Warnings, and Live Market insights.
+                          </p>
+                          <Link
+                            to="/pricing"
+                            className="mt-8 px-6 py-3 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/95 shadow-lg shadow-primary/25 hover:scale-[1.02] transition-all cursor-pointer inline-flex items-center gap-2"
+                          >
+                            <Zap className="w-4 h-4 fill-white text-white" />
+                            <span>Upgrade to Business</span>
+                          </Link>
+                        </div>
+                      )}
+                      <div className={clsx("space-y-6", !isBusinessUser && "opacity-40 pointer-events-none select-none blur-sm h-[600px] overflow-hidden")}>
+                        {/* ═══════ SECTION 1: Hero Summary Card — CP / SP / Profit ═══════ */}
                       {(() => {
                         const rec = finalValuationData.recommendation;
                         const status = rec?.status || 'Watch';
@@ -1030,9 +1333,14 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         const bgGradient = isBuy
                           ? 'from-emerald-600 via-emerald-500 to-teal-500'
                           : isAvoid
-                          ? 'from-rose-600 via-rose-500 to-red-500'
+                          ? 'from-red-800 via-red-700 to-rose-900'
                           : 'from-amber-500 via-amber-400 to-yellow-400';
                         const displayStatus = isBuy ? status.toUpperCase() : isAvoid ? 'AVOID' : 'WATCH';
+                        
+                        const costPrice = finalValuationData.totalCost;
+                        const sellingPrice = finalValuationData.totalLotValue;
+                        const profit = sellingPrice > 0 ? sellingPrice - costPrice : 0;
+                        
                         return (
                           <div className={clsx('rounded-3xl p-6 bg-gradient-to-r text-white shadow-lg', bgGradient)}>
                             <div className="flex items-center justify-between mb-4">
@@ -1040,139 +1348,264 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                 <div className="text-2xl font-black tracking-tight">{displayStatus}</div>
                                 <div className="text-lg mt-0.5 tracking-wide" style={{ letterSpacing: '0.15em' }}>{stars}</div>
                               </div>
-                              <div className="text-right text-[10px] font-bold uppercase tracking-widest opacity-80">
-                                Bid Intelligence
+                              <div className="text-right">
+                                <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">
+                                  Bid Intelligence
+                                </div>
+                                <div className="text-[9px] opacity-60 mt-0.5 font-medium">
+                                  {finalValuationData.riskAnalysis?.overallConfidence ?? '—'}% accuracy
+                                </div>
                               </div>
                             </div>
                             <div className="grid grid-cols-3 gap-4 mt-2">
                               <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3.5 text-center">
-                                <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">Expected ROI</div>
-                                <div className="text-xl font-black mt-1">{finalValuationData.roiPercent}%</div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">You'll Spend</div>
+                                <div className="text-lg font-black mt-1">
+                                  {costPrice > 0 ? formatPrice(costPrice, currency) : '—'}
+                                </div>
+                                <div className="text-[9px] opacity-70 mt-0.5">Bid + tax + all costs</div>
                               </div>
                               <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3.5 text-center">
-                                <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">Confidence</div>
-                                <div className="text-xl font-black mt-1">{finalValuationData.riskAnalysis?.overallConfidence ?? 'â€”'}%</div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">You Can Sell For</div>
+                                <div className="text-lg font-black mt-1">
+                                  {sellingPrice > 0 ? formatPrice(sellingPrice, currency) : '—'}
+                                </div>
+                                <div className="text-[9px] opacity-70 mt-0.5">Market price</div>
                               </div>
                               <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3.5 text-center">
-                                <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">Risk</div>
-                                <div className="text-xl font-black mt-1">{(finalValuationData.riskAnalysis?.riskLevel || 'Medium').replace(' Risk', '')}</div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">Your Profit</div>
+                                <div className="text-lg font-black mt-1">
+                                  {sellingPrice > 0
+                                    ? `${profit >= 0 ? '+' : ''}${formatPrice(profit, currency)}`
+                                    : '—'}
+                                </div>
+                                <div className="text-[9px] opacity-70 mt-0.5">
+                                  {sellingPrice > 0 && costPrice > 0 ? `${finalValuationData.roiPercent}% return` : 'Sell − Spend'}
+                                </div>
                               </div>
                             </div>
                           </div>
                         );
                       })()}
 
-                      {/* â•â•â•â•â•â•â• SECTION 2: Financial Summary â•â•â•â•â•â•â• */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                        <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
-                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Lot Value</h5>
-                          <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
-                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalLotValue, currency) : 'N/A'}
+                      {/* ═══════ SECTION 2: Financial Summary — Simplified 4-Card Layout ═══════ */}
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        {/* Selling Price (SP) */}
+                        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs space-y-1">
+                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                            <span>You Can Sell For</span>
+                            <div className="relative group inline-block">
+                              <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                How much you can sell all items in this lot for, based on current market prices.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+                          </h5>
+                          <div className="text-sm sm:text-base font-black text-slate-900 truncate">
+                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalLotValue, currency) : '—'}
                           </div>
-                          <p className="text-[9px] text-slate-400 font-medium">Market value</p>
+                          <p className="text-[9px] text-slate-400 font-medium">Market selling price</p>
                         </div>
 
-                        <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
-                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Current Bid</h5>
-                          <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
-                            {Number(customCosts.currentBid) > 0 ? formatPrice(Number(customCosts.currentBid), currency) : 'N/A'}
+                        {/* Cost Price (CP) */}
+                        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs space-y-1">
+                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                            <span>Total You'll Spend</span>
+                            <div className="relative group inline-block">
+                              <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                Everything you'll spend — your bid, taxes, transport, loading, and all other costs added up.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+                          </h5>
+                          <div className="text-sm sm:text-base font-black text-slate-900 truncate">
+                            {finalValuationData.totalCost > 0 ? formatPrice(finalValuationData.totalCost, currency) : '—'}
                           </div>
-                          <p className="text-[9px] text-slate-400 font-medium">Your bid amount</p>
+                          <p className="text-[9px] text-slate-500 font-bold">Bid + tax + all costs</p>
                         </div>
 
-                        <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
-                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total Cost</h5>
-                          <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
-                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.totalCost, currency) : 'N/A'}
-                          </div>
-                          <p className="text-[9px] text-slate-500 font-bold">Bid + Tax + Costs</p>
-                        </div>
-
+                        {/* Profit (SP − CP) */}
                         <div className={clsx(
-                          "rounded-2xl p-3 border shadow-2xs space-y-1",
+                          "rounded-2xl p-3.5 border shadow-2xs space-y-1",
                           finalValuationData.totalLotValue <= 0
                             ? "bg-slate-50 border-slate-200 text-slate-500"
                             : finalValuationData.estimatedProfit >= 0
-                            ? "bg-emerald-50/50 border-emerald-150 text-emerald-950"
-                            : "bg-rose-50/50 border-rose-150 text-rose-950"
+                            ? "bg-emerald-50/50 border-emerald-100 text-emerald-950"
+                            : "bg-rose-50/50 border-rose-100 text-rose-950"
                         )}>
-                          <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest">Profit</h5>
-                          <div className="text-xs sm:text-sm lg:text-base font-black truncate">
+                          <h5 className="text-[9px] font-bold uppercase tracking-widest flex items-center gap-1">
+                            <span className="opacity-60">Your Profit</span>
+                            <div className="relative group inline-block">
+                              <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                How much money you keep after selling. Green = you make money, Red = you lose money.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+                          </h5>
+                          <div className="text-sm sm:text-base font-black truncate">
                             {finalValuationData.totalLotValue > 0
                               ? `${finalValuationData.estimatedProfit >= 0 ? '+' : ''}${formatPrice(finalValuationData.estimatedProfit, currency)}`
-                              : 'N/A'
+                              : '—'
                             }
                           </div>
-                          <p className="text-[9px] opacity-70 font-medium">Net profit</p>
+                          <p className="text-[9px] opacity-70 font-medium">Money you keep</p>
                         </div>
 
+                        {/* ROI % */}
                         <div className={clsx(
-                          "rounded-2xl p-3 border shadow-2xs space-y-1",
+                          "rounded-2xl p-3.5 border shadow-2xs space-y-1",
                           finalValuationData.roiPercent >= 20
-                            ? "bg-emerald-50/50 border-emerald-150 text-emerald-950"
+                            ? "bg-emerald-50/50 border-emerald-100 text-emerald-950"
                             : finalValuationData.roiPercent >= 0
-                            ? "bg-amber-50/50 border-amber-150 text-amber-950"
-                            : "bg-rose-50/50 border-rose-150 text-rose-950"
+                            ? "bg-amber-50/50 border-amber-100 text-amber-950"
+                            : "bg-rose-50/50 border-rose-100 text-rose-950"
                         )}>
-                          <h5 className="text-[9px] font-bold opacity-60 uppercase tracking-widest">ROI</h5>
-                          <div className="text-xs sm:text-sm lg:text-base font-black truncate">{finalValuationData.roiPercent}%</div>
-                          <p className="text-[9px] opacity-70 font-medium">Return on investment</p>
-                        </div>
-
-                        <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-1">
-                          <h5 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Break-Even</h5>
-                          <div className="text-xs sm:text-sm lg:text-base font-black text-slate-900 truncate">
-                            {finalValuationData.totalLotValue > 0 ? formatPrice(finalValuationData.breakEven, currency) : 'N/A'}
-                          </div>
-                          <p className="text-[9px] text-slate-400 font-medium">Max safe bid</p>
+                          <h5 className="text-[9px] font-bold uppercase tracking-widest flex items-center gap-1">
+                            <span className="opacity-60">% Return</span>
+                            <div className="relative group inline-block">
+                              <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                For every ₹100 you spend, how much profit you make. Higher is better.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                              </div>
+                            </div>
+                          </h5>
+                          <div className="text-sm sm:text-base font-black truncate">{finalValuationData.roiPercent}%</div>
+                          <p className="text-[9px] opacity-70 font-medium">Profit per ₹100 spent</p>
                         </div>
                       </div>
 
-                      {/* â•â•â•â•â•â•â• SECTION 3: Bid Strategy â•â•â•â•â•â•â• */}
+                      {/* ═══════ SECTION 2B: Dual ROI Comparison (Our Estimate vs Your Estimate) ═══════ */}
+                      {typeof userSellingPrice === 'number' && userSellingPrice > 0 && finalValuationData.totalCost > 0 && (
+                        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3">
+                            Your Estimate vs Our Estimate
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Our Estimate */}
+                            <div className="rounded-2xl p-5 bg-blue-50/50 border border-blue-100 space-y-3">
+                              <div className="text-[10px] font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                Our Market Estimate
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase">Selling Price</span>
+                                  <span className="text-sm font-black text-slate-900">{formatPrice(finalValuationData.totalLotValue, currency)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase">Cost Price</span>
+                                  <span className="text-sm font-black text-slate-900">{formatPrice(finalValuationData.totalCost, currency)}</span>
+                                </div>
+                                <div className="border-t border-blue-200 pt-2 flex justify-between items-center">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase">Profit</span>
+                                  <span className={clsx("text-sm font-black", finalValuationData.estimatedProfit >= 0 ? "text-emerald-700" : "text-rose-700")}>
+                                    {finalValuationData.estimatedProfit >= 0 ? '+' : ''}{formatPrice(finalValuationData.estimatedProfit, currency)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase">ROI</span>
+                                  <span className={clsx("text-sm font-black", finalValuationData.roiPercent >= 0 ? "text-emerald-700" : "text-rose-700")}>
+                                    {finalValuationData.roiPercent}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            {/* User's Estimate */}
+                            {(() => {
+                              const userSP = Number(userSellingPrice);
+                              const userProfit = userSP - finalValuationData.totalCost;
+                              const userRoi = finalValuationData.totalCost > 0
+                                ? Math.round((userProfit / finalValuationData.totalCost) * 100 * 10) / 10
+                                : 0;
+                              return (
+                                <div className="rounded-2xl p-5 bg-emerald-50/50 border border-emerald-100 space-y-3">
+                                  <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    Your Estimate
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-[10px] font-bold text-slate-500 uppercase">Selling Price</span>
+                                      <span className="text-sm font-black text-slate-900">{formatPrice(userSP, currency)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-[10px] font-bold text-slate-500 uppercase">Cost Price</span>
+                                      <span className="text-sm font-black text-slate-900">{formatPrice(finalValuationData.totalCost, currency)}</span>
+                                    </div>
+                                    <div className="border-t border-emerald-200 pt-2 flex justify-between items-center">
+                                      <span className="text-[10px] font-bold text-slate-500 uppercase">Profit</span>
+                                      <span className={clsx("text-sm font-black", userProfit >= 0 ? "text-emerald-700" : "text-rose-700")}>
+                                        {userProfit >= 0 ? '+' : ''}{formatPrice(userProfit, currency)}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-[10px] font-bold text-slate-500 uppercase">ROI</span>
+                                      <span className={clsx("text-sm font-black", userRoi >= 0 ? "text-emerald-700" : "text-rose-700")}>
+                                        {userRoi}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ═══════ SECTION 3: Bid Strategy ═══════ */}
                       {biddingRecommendations && (
                         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                               <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-                              Bid Strategy
+                              How Much Should You Bid?
                             </h4>
-                            {Number(customCosts.currentBid) > 0 && biddingRecommendations.walkAwayPrice > 0 && (
+                            {Number(customCosts.currentBid) > 0 && biddingRecommendations && (
                               <span className={clsx(
                                 "text-[10px] font-bold px-3 py-1 rounded-full",
-                                Number(customCosts.currentBid) <= biddingRecommendations.maxBid
+                                finalValuationData.estimatedProfit < 0
+                                  ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                  : Number(customCosts.currentBid) <= biddingRecommendations.maxBid
                                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                  : Number(customCosts.currentBid) <= biddingRecommendations.walkAwayPrice
-                                  ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                  : "bg-rose-50 text-rose-700 border border-rose-200"
+                                  : "bg-amber-50 text-amber-700 border border-amber-200"
                               )}>
-                                {formatPrice(Math.abs(biddingRecommendations.walkAwayPrice - Number(customCosts.currentBid)), currency)} {Number(customCosts.currentBid) <= biddingRecommendations.walkAwayPrice ? 'below walk-away' : 'above walk-away'}
+                                {finalValuationData.estimatedProfit < 0 
+                                  ? `Loss of ${formatPrice(Math.abs(finalValuationData.estimatedProfit), currency)} Expected ⚠️`
+                                  : Number(customCosts.currentBid) <= biddingRecommendations.maxBid
+                                  ? 'Safe Bid (Good Profit)'
+                                  : 'Low Profit Warning'
+                                }
                               </span>
                             )}
                           </div>
 
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <div className="p-3.5 bg-emerald-50/50 border border-emerald-150 rounded-2xl">
-                              <div className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider">Recommended Bid</div>
+                            <div className="p-3.5 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
+                              <div className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider">Best Bid</div>
                               <div className="text-sm font-black text-emerald-950 mt-1">{formatPrice(biddingRecommendations.idealBid, currency)}</div>
-                              <div className="text-[9px] text-emerald-600 font-medium mt-0.5">Target: 25% ROI</div>
+                              <div className="text-[9px] text-emerald-600 font-medium mt-0.5">Good profit margin</div>
                             </div>
 
-                            <div className="p-3.5 bg-amber-50/50 border border-amber-150 rounded-2xl">
-                              <div className="text-[9px] font-bold text-amber-800 uppercase tracking-wider">Maximum Bid</div>
+                            <div className="p-3.5 bg-amber-50/50 border border-amber-100 rounded-2xl">
+                              <div className="text-[9px] font-bold text-amber-800 uppercase tracking-wider">Max You Should Bid</div>
                               <div className="text-sm font-black text-amber-950 mt-1">{formatPrice(biddingRecommendations.maxBid, currency)}</div>
-                              <div className="text-[9px] text-amber-600 font-medium mt-0.5">Target: 10% ROI</div>
+                              <div className="text-[9px] text-amber-600 font-medium mt-0.5">Still some profit left</div>
                             </div>
 
-                            <div className="p-3.5 bg-rose-50/50 border border-rose-150 rounded-2xl">
-                              <div className="text-[9px] font-bold text-rose-800 uppercase tracking-wider">Walk Away</div>
+                            <div className="p-3.5 bg-rose-50/50 border border-rose-100 rounded-2xl">
+                              <div className="text-[9px] font-bold text-rose-800 uppercase tracking-wider">Don't Go Above This</div>
                               <div className="text-sm font-black text-rose-950 mt-1">{formatPrice(biddingRecommendations.walkAwayPrice, currency)}</div>
-                              <div className="text-[9px] text-rose-600 font-medium mt-0.5">Break-even (0% ROI)</div>
+                              <div className="text-[9px] text-rose-600 font-medium mt-0.5">Zero profit after this</div>
                             </div>
 
-                            <div className="p-3.5 bg-blue-50/50 border border-blue-150 rounded-2xl">
-                              <div className="text-[9px] font-bold text-blue-800 uppercase tracking-wider">Aggressive Bid</div>
+                            <div className="p-3.5 bg-blue-50/50 border border-blue-100 rounded-2xl">
+                              <div className="text-[9px] font-bold text-blue-800 uppercase tracking-wider">Risky Bid</div>
                               <div className="text-sm font-black text-blue-950 mt-1">{formatPrice(biddingRecommendations.aggressiveBid, currency)}</div>
-                              <div className="text-[9px] text-blue-600 font-medium mt-0.5">Target: 15% ROI</div>
+                              <div className="text-[9px] text-blue-600 font-medium mt-0.5">Thin profit, higher risk</div>
                             </div>
                           </div>
                         </div>
@@ -1182,10 +1615,10 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                           <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                            Profit Sensitivity Curve
+                            Profit vs Bid Chart
                           </h4>
                           <span className="text-[10px] text-slate-400 font-medium font-sans">
-                            How profit changes as bid increases
+                            See how your profit changes at different bid amounts
                           </span>
                         </div>
 
@@ -1207,11 +1640,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                   return `${currencySymbol}${v >= 100000 && currency === 'INR' ? (v / 100000).toFixed(1) + 'L' : Math.round(v).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')}`;
                                 }}
                                 tick={{ fill: '#475569', fontSize: 9, fontWeight: 650 }}
-                                label={{ value: 'Projected Profit', angle: -90, position: 'insideLeft', fill: '#475569', fontSize: 9, fontWeight: 'bold', offset: 0 }}
+                                label={{ value: 'Your Profit', angle: -90, position: 'insideLeft', fill: '#475569', fontSize: 9, fontWeight: 'bold', offset: 0 }}
                               />
                               <Tooltip
                                 formatter={(value: any, name: any) => {
-                                  if (name === 'Projected Profit') {
+                                  if (name === 'Your Profit') {
                                     return [`${currencySymbol}${Math.round(value).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')}`, name];
                                   }
                                   return [`${value}%`, name];
@@ -1226,7 +1659,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                   boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)'
                                 }}
                               />
-                              <Area yAxisId="left" type="monotone" dataKey="profit" name="Projected Profit" stroke="#3b82f6" strokeWidth={2} fillOpacity={0.08} fill="#3b82f6" />
+                              <Area yAxisId="left" type="monotone" dataKey="profit" name="Your Profit" stroke="#3b82f6" strokeWidth={2} fillOpacity={0.08} fill="#3b82f6" />
                               {/* Current Bid marker */}
                               <ReferenceLine
                                 yAxisId="left"
@@ -1234,7 +1667,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                 stroke="#e11d48"
                                 strokeWidth={1.5}
                                 strokeDasharray="4 4"
-                                label={{ value: 'Current Bid', position: 'top', fill: '#e11d48', fontSize: 8, fontWeight: 'bold' }}
+                                label={{ value: 'Your Bid', position: 'top', fill: '#e11d48', fontSize: 8, fontWeight: 'bold' }}
                               />
                               {/* Ideal Bid marker */}
                               {biddingRecommendations && (
@@ -1264,7 +1697,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                                   x={sensitivityData.find((d: any) => d.bidPrice >= biddingRecommendations.walkAwayPrice)?.displayBidPrice}
                                   stroke="#dc2626"
                                   strokeWidth={2}
-                                  label={{ value: 'Walk Away', position: 'top', fill: '#dc2626', fontSize: 8, fontWeight: 'bold' }}
+                                  label={{ value: 'Stop Here', position: 'top', fill: '#dc2626', fontSize: 8, fontWeight: 'bold' }}
                                 />
                               )}
                             </ComposedChart>
@@ -1272,102 +1705,10 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
                       </div>
 
-                      {/* â•â•â•â•â•â•â• SECTION 5: Risk Analysis â•â•â•â•â•â•â• */}
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Risk Analysis</h4>
-                          <div className="flex items-center gap-2">
-                            <span className={clsx(
-                              "text-[10px] font-bold px-2.5 py-1 rounded-full",
-                              (finalValuationData.risk?.score ?? 50) < 35 ? "bg-emerald-50 text-emerald-700" :
-                              (finalValuationData.risk?.score ?? 50) > 60 ? "bg-rose-50 text-rose-700" :
-                              "bg-amber-50 text-amber-700"
-                            )}>
-                              {finalValuationData.risk?.score ?? 'â€”'} / 100
-                            </span>
-                            <span className={clsx(
-                              "text-[10px] font-bold",
-                              finalValuationData.riskAnalysis?.riskLevel === 'Low Risk' ? "text-emerald-600" :
-                              finalValuationData.riskAnalysis?.riskLevel === 'High Risk' ? "text-rose-600" :
-                              "text-amber-600"
-                            )}>
-                              {finalValuationData.riskAnalysis?.riskLevel || 'Medium Risk'}
-                            </span>
-                          </div>
-                        </div>
-                        {finalValuationData.risk?.breakdown && (
-                          <div className="space-y-2.5">
-                            {[
-                              { label: 'Price Volatility', value: finalValuationData.risk.breakdown.priceVolatility },
-                              { label: 'Market Trend', value: finalValuationData.risk.breakdown.marketTrend },
-                              { label: 'Seller Reliability', value: finalValuationData.risk.breakdown.sellerReliability },
-                              { label: 'OCR Confidence', value: finalValuationData.risk.breakdown.ocrConfidence },
-                              { label: 'Photo Quality', value: finalValuationData.risk.breakdown.photoQuality },
-                              { label: 'Transport Risk', value: finalValuationData.risk.breakdown.transportRisk },
-                              { label: 'Category Risk', value: finalValuationData.risk.breakdown.categoryRisk },
-                              { label: 'Environmental', value: finalValuationData.risk.breakdown.environmentalRisk },
-                            ].map((factor) => (
-                              <div key={factor.label} className="flex items-center gap-3">
-                                <span className="text-[10px] font-bold text-slate-500 w-28 shrink-0">{factor.label}</span>
-                                <div className="flex-grow bg-slate-100 rounded-full h-2 overflow-hidden">
-                                  <div
-                                    className={clsx(
-                                      "h-full rounded-full transition-all",
-                                      factor.value < 30 ? "bg-emerald-400" : factor.value < 60 ? "bg-amber-400" : "bg-rose-400"
-                                    )}
-                                    style={{ width: `${Math.min(100, factor.value)}%` }}
-                                  />
-                                </div>
-                                <span className={clsx(
-                                  "text-[10px] font-bold w-8 text-right",
-                                  factor.value < 30 ? "text-emerald-600" : factor.value < 60 ? "text-amber-600" : "text-rose-600"
-                                )}>
-                                  {factor.value}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* â•â•â•â•â•â•â• SECTION 6: Confidence Breakdown â•â•â•â•â•â•â• */}
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Confidence Breakdown</h4>
-                          <span className="text-sm font-black text-slate-900">
-                            {finalValuationData.confidence?.overallScore ?? finalValuationData.riskAnalysis?.overallConfidence ?? 'â€”'}%
-                          </span>
-                        </div>
-                        {finalValuationData.confidence?.breakdown && (
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {[
-                              { label: 'OCR', value: finalValuationData.confidence.breakdown.ocr },
-                              { label: 'Market Price', value: finalValuationData.confidence.breakdown.market },
-                              { label: 'Weight', value: finalValuationData.confidence.breakdown.weight },
-                              { label: 'Material', value: finalValuationData.confidence.breakdown.material },
-                              { label: 'Image', value: finalValuationData.confidence.breakdown.image },
-                              { label: 'Seller', value: finalValuationData.confidence.breakdown.seller },
-                              { label: 'Historical', value: finalValuationData.confidence.breakdown.history },
-                              { label: 'Description', value: finalValuationData.confidence.breakdown.description },
-                            ].map((cf) => (
-                              <div key={cf.label} className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-center">
-                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{cf.label}</div>
-                                <div className={clsx(
-                                  "text-lg font-black mt-1",
-                                  cf.value >= 85 ? "text-emerald-600" : cf.value >= 70 ? "text-amber-600" : "text-rose-600"
-                                )}>
-                                  {cf.value}%
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
                       {/* â•â•â•â•â•â•â• SECTION 7: Why This Recommendation â•â•â•â•â•â•â• */}
                       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
                         <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3">
-                          Why This Recommendation
+                          Why We Suggest This
                         </h4>
                         <div className="space-y-2">
                           {(() => {
@@ -1388,16 +1729,20 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                             if (finalValuationData.simulation) {
                               const chance = finalValuationData.simulation.chanceOfProfit;
                               reasons.push({
-                                text: `Monte Carlo simulation: ${chance}% chance of profit across ${(5000).toLocaleString()} iterations`,
+                                text: `We ran 5,000 test scenarios: ${chance}% of them were profitable`,
                                 positive: chance >= 60
                               });
                             }
                             return reasons.map((r, i) => (
                               <div key={i} className="flex items-start gap-2.5">
-                                <span className={clsx("text-sm font-bold mt-0.5 shrink-0", r.positive ? "text-emerald-500" : "text-rose-500")}>
-                                  {r.positive ? 'âœ“' : 'âœ—'}
+                                <span className="shrink-0 mt-0.5">
+                                  {r.positive ? (
+                                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                  ) : (
+                                    <X className="w-3.5 h-3.5 text-rose-500" />
+                                  )}
                                 </span>
-                                <span className="text-xs font-medium text-slate-600 leading-relaxed">{r.text}</span>
+                                <span className="text-xs font-medium text-slate-600 leading-normal">{r.text}</span>
                               </div>
                             ));
                           })()}
@@ -1408,34 +1753,93 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {finalValuationData.simulation && (
                         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Simulation Analysis</h4>
-                            <span className="text-[10px] text-slate-400 font-medium">5,000 Monte Carlo iterations</span>
+                            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">What Could Happen?</h4>
+                            <span className="text-[10px] text-slate-400 font-medium">Based on 5,000 market scenarios</span>
                           </div>
-                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                            <div className={clsx(
-                              "rounded-2xl p-4 text-center border",
-                              finalValuationData.simulation.chanceOfProfit >= 70
-                                ? "bg-emerald-50/50 border-emerald-150"
-                                : "bg-amber-50/50 border-amber-150"
-                            )}>
-                              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Chance of Profit</div>
-                              <div className="text-xl font-black text-emerald-700 mt-1">{finalValuationData.simulation.chanceOfProfit}%</div>
-                            </div>
-                            <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
-                              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Expected ROI</div>
-                              <div className="text-xl font-black text-slate-900 mt-1">{finalValuationData.simulation.expectedRoi}%</div>
-                            </div>
-                            <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
-                              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Best Case</div>
-                              <div className="text-xl font-black text-emerald-600 mt-1">{finalValuationData.simulation.bestRoi}%</div>
-                            </div>
-                            <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
-                              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Worst Case</div>
-                              <div className={clsx("text-xl font-black mt-1", finalValuationData.simulation.worstRoi >= 0 ? "text-amber-600" : "text-rose-600")}>
-                                {finalValuationData.simulation.worstRoi}%
+                          {(() => {
+                            const hasBid = (Number(customCosts.currentBid) || 0) > 0;
+                            const hasLotValue = finalValuationData.totalLotValue > 0;
+                            const isActive = hasBid && hasLotValue;
+                            const sim = finalValuationData.simulation;
+
+                            return (
+                              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div className={clsx(
+                                  "rounded-2xl p-4 text-center border transition-all",
+                                  !isActive 
+                                    ? "bg-slate-50 border-slate-100" 
+                                    : sim.chanceOfProfit >= 70
+                                    ? "bg-emerald-50/50 border-emerald-100"
+                                    : "bg-amber-50/50 border-amber-100"
+                                )}>
+                                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
+                                    <span>Will I Make Money?</span>
+                                    <div className="relative group inline-block">
+                                      <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                        Out of 5,000 scenarios, how often you end up making money (prices and weights can vary).
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className={clsx("text-xl font-black mt-1", isActive ? "text-emerald-700" : "text-slate-400")}>
+                                    {isActive ? `${sim.chanceOfProfit}%` : '—'}
+                                  </div>
+                                </div>
+
+                                <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+                                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
+                                    <span>Avg. Return</span>
+                                    <div className="relative group inline-block">
+                                      <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                        On average, how much profit you'd make for every ₹100 spent across all scenarios.
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className={clsx("text-xl font-black mt-1", isActive ? "text-slate-900" : "text-slate-400")}>
+                                    {isActive ? `${sim.expectedRoi}%` : '—'}
+                                  </div>
+                                </div>
+
+                                <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+                                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
+                                    <span>Best Scenario</span>
+                                    <div className="relative group inline-block">
+                                      <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                        If everything goes really well — prices are high and you get full weight.
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className={clsx("text-xl font-black mt-1", isActive ? "text-emerald-600" : "text-slate-400")}>
+                                    {isActive ? `${sim.bestRoi}%` : '—'}
+                                  </div>
+                                </div>
+
+                                <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+                                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1">
+                                    <span>Worst Scenario</span>
+                                    <div className="relative group inline-block">
+                                      <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0 ml-0.5" />
+                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-48 p-2 bg-slate-900 text-white text-[9.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                                        If things go badly — prices drop and you get less weight than expected.
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className={clsx(
+                                    "text-xl font-black mt-1",
+                                    !isActive ? "text-slate-400" : sim.worstRoi >= 0 ? "text-amber-600" : "text-rose-600"
+                                  )}>
+                                    {isActive ? `${sim.worstRoi}%` : '—'}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
+                            );
+                          })()}
                         </div>
                       )}
 
@@ -1443,12 +1847,12 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {finalValuationData.commodities && finalValuationData.commodities.length > 0 && (
                         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Market Indicators</h4>
-                            <span className="text-[10px] text-slate-400 font-medium">Commodity trend direction</span>
+                            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Materials In This Lot</h4>
+                            <span className="text-[10px] text-slate-400 font-medium">Current market trend</span>
                           </div>
                           <div className="flex flex-wrap gap-3">
                             {(finalValuationData.commodities as string[]).map((commodity: string) => (
-                              <div key={commodity} className="flex items-center gap-2 bg-slate-50 border border-slate-150 rounded-xl px-4 py-2.5">
+                              <div key={commodity} className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5">
                                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
                                 <span className="text-xs font-bold text-slate-800">{commodity}</span>
                                 <span className="text-[10px] font-medium text-slate-400">Stable</span>
@@ -1457,87 +1861,11 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </div>
                         </div>
                       )}
-
-                      {/* â•â•â•â•â•â•â• SECTION 10: Item Breakdown Table â•â•â•â•â•â•â• */}
-                      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center justify-between">
-                          <span>Item Breakdown</span>
-                          <span className="text-[10px] text-slate-400 font-medium normal-case font-sans">
-                            Edit unit values to manually override
-                          </span>
-                        </h4>
-                        <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
-                          <table className="w-full text-left border-collapse text-xs">
-                            <thead>
-                              <tr className="bg-slate-50 text-slate-650 border-b border-slate-250">
-                                <th className="py-2.5 px-3.5 font-bold">Item Description</th>
-                                <th className="py-2.5 px-3.5 font-bold text-right w-20">Quantity</th>
-                                <th className="py-2.5 px-3.5 font-bold text-right w-44">Unit Est. Value</th>
-                                <th className="py-2.5 px-3.5 font-bold text-right w-36">Total Est. Value</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-105 text-slate-700">
-                              {finalValuationData.items.map((row: any, idx: number) => (
-                                <tr key={idx} className="hover:bg-slate-50/50">
-                                  <td className="py-2.5 px-3.5 font-bold text-slate-900">
-                                    <div>{row.name}</div>
-                                    {!row.notAvailable && row.priceSource && (
-                                      <div className="text-[10px] font-semibold text-slate-400 mt-0.5">
-                                        Source: <span className="text-slate-500 font-bold">{row.priceSource}</span>
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="py-2.5 px-3.5 text-right text-slate-650">{row.qty}</td>
-                                  <td className="py-2.5 px-3.5 text-right text-slate-950 font-bold w-44">
-                                    {row.notAvailable ? (
-                                      'N/A'
-                                    ) : (
-                                      <div className="flex items-center justify-end gap-1.5">
-                                        {customItemPrices[idx] !== undefined && (
-                                          <button
-                                            onClick={() => handleCustomItemPriceChange(idx, 0)}
-                                            className="p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-slate-100 transition-colors"
-                                            title="Reset to automated estimate"
-                                          >
-                                            <RotateCcw className="w-3.5 h-3.5" />
-                                          </button>
-                                        )}
-                                        <span className="text-slate-400 text-xs font-semibold">{currencySymbol}</span>
-                                        <input
-                                          type="number"
-                                          value={
-                                            customItemPrices[idx] !== undefined
-                                              ? Math.round(customItemPrices[idx] * currencyRate)
-                                              : Math.round(row.unitValue * currencyRate)
-                                          }
-                                          onChange={(e) => {
-                                            const enteredVal = parseFloat(e.target.value);
-                                            const valInInr = isNaN(enteredVal) ? 0 : enteredVal / currencyRate;
-                                            handleCustomItemPriceChange(idx, valInInr);
-                                          }}
-                                          className={clsx(
-                                            "w-24 text-right p-1 px-1.5 border rounded-lg focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary font-bold text-xs transition-all",
-                                            customItemPrices[idx] !== undefined
-                                              ? "border-amber-300 bg-amber-50/30 text-amber-900"
-                                              : "border-slate-250 bg-slate-50 hover:bg-white focus:bg-white text-slate-900"
-                                          )}
-                                          placeholder="Price"
-                                        />
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="py-2.5 px-3.5 text-right text-slate-950 font-bold">
-                                    {row.notAvailable ? 'N/A' : formatPrice(row.totalValue, currency)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
                       </div>
-                    </>
+                    </div>
                   )}
-                </div>
+                  </div>
+                )
               ) : (
                 <>
                   {/* Category & Auction Ref Title */}
@@ -1555,7 +1883,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <h3 className="text-3xl font-black text-slate-950 leading-tight">{subCat}</h3>
                         </>
                       ) : (
-                        <h3 className="text-3xl font-black text-slate-955 leading-tight">{mainCat}</h3>
+                        <h3 className="text-3xl font-black text-slate-950 leading-tight">{mainCat}</h3>
                       )}
                     </div>
                   );
@@ -1577,8 +1905,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   className={clsx(
                     "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border font-bold text-xs transition-all shrink-0 cursor-pointer shadow-3xs",
                     copied
-                      ? "bg-emerald-50 border-emerald-250 text-emerald-700"
-                      : "bg-white border-slate-200 text-slate-707 hover:bg-slate-50 hover:text-primary hover:border-primary/30"
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary hover:border-primary/30"
                   )}
                 >
                   {copied ? (
@@ -1600,25 +1928,61 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 {/* Seller & Location Details */}
                 <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
                   <div className="flex flex-col">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Seller Name</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Seller Name</span>
+                      <div className="relative group inline-block">
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          The official organization or seller hosting this auction lot.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 leading-snug mt-0.5">
                       {formatSellerName(item.seller_name)}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Regional Office</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Regional Office</span>
+                      <div className="relative group inline-block">
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          MSTC regional branch office managing and facilitating this transaction.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 leading-snug mt-0.5">
                       {regionalOfficeName}
                     </span>
                   </div>
                   {item.location && (
                     <div className="flex flex-col border-t border-slate-100 pt-2">
-                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Location / State</span>
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <span>Location / State</span>
+                        <div className="relative group inline-block">
+                          <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                            Physical location or state where auction material is stored.
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                          </div>
+                        </div>
+                      </span>
                       <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">{locationName}</span>
                     </div>
                   )}
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Auction Type</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Auction Type</span>
+                      <div className="relative group inline-block">
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          Identifies the category of the auction (e.g. C-Customs, O-General, P-Property) which dictates specific compliance rules and bidding procedures.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {summary.auctionType || 'O-General'}
                     </span>
@@ -1628,19 +1992,46 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 {/* Dates & Countdown */}
                 <div className="md:col-span-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
                   <div className="flex flex-col">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Bid Opening Time</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Bid Opening Time</span>
+                      <div className="relative group inline-block">
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          Exact date and time when online bidding opens.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {parsedStartDate ? auctionDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : auctionDate.toLocaleDateString(undefined, { dateStyle: 'medium' })}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Bid Closing Time</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Bid Closing Time</span>
+                      <div className="relative group inline-block">
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          Deadline after which no further bids will be accepted.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {parsedCloseDate ? parsedCloseDate.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : new Date(item?.closing_date || Date.now()).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                     </span>
                   </div>
                   <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest ">Inspection Date Range</span>
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span>Inspection Date Range</span>
+                      <div className="relative group inline-block">
+                        <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                          The designated timeline for bidders to physically visit the warehouse or site to inspect material condition, quality, and quantity.
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
                     <span className="text-[13.5px] font-bold text-slate-800 mt-0.5">
                       {summary.inspectionSchedule || 'N/A'}
                     </span>
@@ -1691,10 +2082,10 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   )}
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-150 bg-white">
+                <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
                   <table className="w-full text-left border-collapse text-[13.5px]">
                     <thead>
-                      <tr className="bg-slate-50 text-slate-650 border-b border-slate-250 ">
+                      <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 ">
                         <th className="py-3 px-3.5 font-bold w-12 text-center">Lot</th>
                         <th className="py-3 px-3.5 font-bold">Material Description</th>
                         <th className="py-3 px-3.5 font-bold text-right">Quantity</th>
@@ -1803,15 +2194,8 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                     {summary.complianceInfo?.requiredDocuments && summary.complianceInfo.requiredDocuments.length > 0 ? (
                       summary.complianceInfo.requiredDocuments.map((doc, idx) => (
                         <div key={idx} className="flex gap-2 items-start p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                          <span className="mt-0.5 shrink-0">
-                            {doc.type === 'mandatory' ? (
-                              <span className="text-emerald-600 text-sm font-bold">âœ“</span>
-                            ) : (
-                              <span className="text-amber-500 text-sm font-bold">âš </span>
-                            )}
-                          </span>
                           <div>
-                            <p className="text-xs font-bold text-slate-850 flex items-center gap-1.5 flex-wrap">
+                            <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
                               <span>{doc.name}</span>
                               {doc.type === 'conditional' && (
                                 <span className="bg-amber-100 text-amber-800 text-[9px] px-1 py-0.2 rounded font-semibold uppercase tracking-wider">
@@ -1824,7 +2208,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
                       ))
                     ) : (
-                      <ul className="list-disc pl-5 space-y-2 text-[13.5px] text-slate-705">
+                      <ul className="list-disc pl-5 space-y-2 text-[13.5px] text-slate-700">
                         {summary.eligibility.map((el, i) => (
                           <li key={i} className="leading-relaxed">{el}</li>
                         ))}
@@ -1840,22 +2224,49 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                   </h4>
                   <div className="space-y-3">
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase tracking-wider">EMD Details</span>
-                      <span className="font-bold text-slate-850 text-[13.5px]">
+                      <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <span>EMD Details</span>
+                        <div className="relative group inline-block">
+                          <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                            Earnest Money Deposit (EMD) is a security deposit to guarantee bid commitment. Refunded to unsuccessful bidders.
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                          </div>
+                        </div>
+                      </span>
+                      <span className="font-bold text-slate-800 text-[13.5px]">
                         {formatPriceString(summary.depositDetails.emd, currency)}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <span className="text-slate-500 text-[11px] uppercase tracking-wider">Pre-bid EMD</span>
-                      <span className="font-bold text-slate-850 text-[13.5px]">
+                      <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <span>Pre-bid EMD</span>
+                        <div className="relative group inline-block">
+                          <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-52 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                            Pre-bid EMD is a mandatory deposit paid before the auction starts to qualify and receive bidding credentials.
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                          </div>
+                        </div>
+                      </span>
+                      <span className="font-bold text-slate-800 text-[13.5px]">
                         {formatPriceString(summary.depositDetails.preBidDdg, currency)}
                       </span>
                     </div>
                     {summary.complianceInfo?.gstStatus && (
                       <div className="flex flex-col gap-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <span className="text-slate-500 text-[11px] uppercase tracking-wider">GST Tax Scheme</span>
+                        <span className="text-slate-500 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>GST Tax Scheme</span>
+                          <div className="relative group inline-block">
+                            <Info className="w-3.5 h-3.5 text-blue-500 hover:text-blue-600 transition-colors inline-block cursor-help shrink-0" />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-56 p-2 bg-slate-900 text-white text-[10.5px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none">
+                              Reverse Charge Mechanism (RCM) requires the buyer to pay the GST directly to the government instead of paying it to the seller.
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                            </div>
+                          </div>
+                        </span>
                         <div className="mt-1 flex flex-col gap-1">
-                          <span className="font-bold text-slate-850 text-[13.5px] flex items-center gap-1.5">
+                          <span className="font-bold text-slate-800 text-[13.5px] flex items-center gap-1.5">
                             {summary.complianceInfo.gstStatus.type}
                             {summary.complianceInfo.gstStatus.isRcm && (
                               <span className="bg-red-100 text-red-800 text-[9px] px-1 py-0.2 rounded font-semibold uppercase tracking-wider">
@@ -1913,37 +2324,37 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
                     if (finalTurnover <= 0) {
                       return (
-                        <div className="py-4 text-center text-slate-500 font-bold bg-slate-50 border border-dashed border-slate-205 rounded-xl  text-xs">
+                        <div className="py-4 text-center text-slate-500 font-bold bg-slate-50 border border-dashed border-slate-200 rounded-xl  text-xs">
                           Pricing Not Available
                         </div>
                       );
                     }
 
                     return (
-                      <div className="space-y-3 text-[13.5px] text-slate-705">
+                      <div className="space-y-3 text-[13.5px] text-slate-700">
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                          <span className="text-slate-500 font-semibold">Projected Turnover</span>
-                          <span className="font-bold text-slate-900">
+                          <span className="text-slate-500 font-semibold whitespace-nowrap">Projected Turnover</span>
+                          <span className="font-bold text-slate-900 whitespace-nowrap">
                             {formatPrice(finalTurnover, currency)}
                           </span>
                         </div>
                         
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                          <span className="text-slate-500 font-semibold">Predicted Closing Bid</span>
-                          <span className="font-bold text-indigo-650">
+                          <span className="text-slate-500 font-semibold whitespace-nowrap">Predicted Closing Bid</span>
+                          <span className="font-bold text-indigo-600 whitespace-nowrap">
                             {formatPrice(predictedClosingBid, currency)}
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                          <span className="text-slate-500 font-semibold">Projected Profit</span>
-                          <span className="font-bold text-emerald-605">
+                          <span className="text-slate-500 font-semibold whitespace-nowrap">Projected Profit</span>
+                          <span className="font-bold text-emerald-600 whitespace-nowrap">
                             {formatPrice(projectedProfit, currency)}
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center pb-1">
-                          <span className="text-slate-500 font-semibold">Projected ROI</span>
+                          <span className="text-slate-500 font-semibold whitespace-nowrap">Projected ROI</span>
                           <span className=" font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-xs">
                             +{roi.toFixed(1)}% ROI
                           </span>
@@ -1981,16 +2392,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {mstcContacts.map((contact, i) => (
-                              <div key={`mstc-${i}`} className="bg-blue-50/30 border border-blue-150/50 p-3.5 rounded-xl space-y-2">
+                              <div key={`mstc-${i}`} className="bg-blue-50/30 border border-blue-100/50 p-3.5 rounded-xl space-y-2">
                                 <span className="text-[10px]  text-blue-600 font-bold uppercase tracking-wider">{contact.role}</span>
                                 <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
                                 <div className="space-y-1">
-                                  <p className="text-xs text-slate-605  break-all flex items-center gap-1.5">
+                                  <p className="text-xs text-slate-600  break-all flex items-center gap-1.5">
                                     <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                                     <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">{contact.email}</a>
                                   </p>
                                   {contact.phone && contact.phone !== 'no contact info available' && (
-                                    <p className="text-xs text-slate-605  flex items-center gap-1.5">
+                                    <p className="text-xs text-slate-600  flex items-center gap-1.5">
                                       <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                                       <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="hover:text-primary transition-colors">{contact.phone}</a>
                                     </p>
@@ -2012,16 +2423,16 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {sellerContacts.map((contact, i) => (
-                              <div key={`seller-${i}`} className="bg-emerald-50/30 border border-emerald-150/50 p-3.5 rounded-xl space-y-2">
+                              <div key={`seller-${i}`} className="bg-emerald-50/30 border border-emerald-100/50 p-3.5 rounded-xl space-y-2">
                                 <span className="text-[10px]  text-emerald-600 font-bold uppercase tracking-wider">{contact.role}</span>
                                 <h4 className="text-[13.5px] font-black text-slate-900">{contact.name}</h4>
                                 <div className="space-y-1">
-                                  <p className="text-xs text-slate-605  break-all flex items-center gap-1.5">
+                                  <p className="text-xs text-slate-600  break-all flex items-center gap-1.5">
                                     <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                                     <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">{contact.email}</a>
                                   </p>
                                   {contact.phone && contact.phone !== 'no contact info available' && (
-                                    <p className="text-xs text-slate-605  flex items-center gap-1.5">
+                                    <p className="text-xs text-slate-600  flex items-center gap-1.5">
                                       <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                                       <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="hover:text-primary transition-colors">{contact.phone}</a>
                                     </p>
@@ -2047,7 +2458,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               const displayImage = signedImages.displayImage;
 
               return (
-                <div className="w-full md:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-slate-200 bg-slate-50 p-5 overflow-y-auto flex flex-col space-y-5">
+                <div className="w-full lg:w-[420px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50 p-5 overflow-visible lg:overflow-y-auto flex flex-col space-y-5">
                   {imagesLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-2">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
@@ -2060,7 +2471,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         if (imageUrls.length === 0) return null;
                         return (
                           <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2 flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2 flex items-center justify-between">
                               <span>Auction Images</span>
                               <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded ">{imageUrls.length} Photos</span>
                             </h4>
@@ -2092,9 +2503,9 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                       {/* Catalog Preview: Scrollable list of catalog pages */}
                       {catalogPages.length > 0 ? (
                         <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2 flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2 flex items-center justify-between">
                             <span>Catalog Document Preview</span>
-                            <span className="text-[9.5px] bg-slate-150 text-slate-700 border border-slate-255 font-bold px-2 py-0.5 rounded ">{catalogPages.length} Pages</span>
+                            <span className="text-[9.5px] bg-slate-100 text-slate-700 border border-slate-300 font-bold px-2 py-0.5 rounded ">{catalogPages.length} Pages</span>
                           </h4>
                           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
                             {catalogPages.map((url: string, idx: number) => (
@@ -2125,7 +2536,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
                       ) : displayImage && !imageUrls.includes(displayImage) ? (
                         <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-150 pb-2">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider  border-b border-slate-100 pb-2">
                             <span>Catalog Document Preview</span>
                           </h4>
                           <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
@@ -2149,7 +2560,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                         </div>
                       ) : (
                         <div className="w-full py-12 flex flex-col items-center justify-center text-slate-400 gap-2 select-none bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                          <svg className="w-10 h-10 text-slate-355" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <span className="text-xs font-semibold tracking-wide">No preview available</span>
@@ -2163,47 +2574,51 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
           </div>
 
           {/* Modal Footer */}
-          <div className="px-6 py-4 border-t border-slate-150 bg-slate-50/50 flex flex-col sm:flex-row gap-3 sm:justify-end items-center">
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-3">
             <button
               onClick={onClose}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl text-[15px] font-bold text-slate-650 hover:text-slate-850 hover:bg-slate-200 transition-all cursor-pointer text-center"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-all cursor-pointer text-center"
             >
               Close Details
             </button>
-            <button
-              onClick={handleViewPdf}
-              disabled={viewing}
-              className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {viewing ? (
-                <>
-                  <div className="w-4 h-4 mr-2 border-2 border-slate-850 border-t-transparent rounded-full animate-spin"></div>
-                  Opening...
-                </>
-              ) : (
-                <>
-                  <Eye className="w-4 h-4 mr-2" />
-                  View Catalog
-                </>
-              )}
-            </button>
-            <button
-              onClick={handleDownloadPdf}
-              disabled={downloading}
-              className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-7 rounded-xl text-[15px] font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {downloading ? (
-                <>
-                  <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Downloading...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download PDF Catalog
-                </>
-              )}
-            </button>
+
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              <button
+                onClick={handleViewPdf}
+                disabled={viewing}
+                className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {viewing ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-slate-800 border-t-transparent rounded-full animate-spin"></div>
+                    Opening...
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Catalog
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleDownloadPdf}
+                disabled={downloading}
+                className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {downloading ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PDF Catalog
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
         </div>

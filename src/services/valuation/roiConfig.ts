@@ -5,14 +5,15 @@ export const TAX_CONFIG = {
   defaultTcsPercent: 1,
 };
 
-export const CONFIDENCE_WEIGHTS = {
+export const CONFIDENCE_WEIGHTS: Record<string, number> = {
   ocr: 0.15,
-  image: 0.15,
-  weight: 0.15,
-  material: 0.20,
+  image: 0.12,
+  weight: 0.12,
+  material: 0.18,
   market: 0.15,
-  seller: 0.10,
+  seller: 0.08,
   history: 0.10,
+  description: 0.10,
 };
 
 export const RISK_WEIGHTS = {
@@ -32,13 +33,19 @@ export const ROI_RECOMMENDATION_THRESHOLDS = {
   strongBuyRoiPercent: 40,
   buyRoiPercent: 20,
   avoidHighRiskThreshold: 70, // Risk score > 70 is High Risk
-  avoidLowConfidenceThreshold: 50, // Confidence score < 50 is Low Confidence
+  avoidLowConfidenceThreshold: 40, // Confidence score < 40 is Low Confidence
   tightMarginThresholdPercent: 15,
+};
+
+export const CONFIDENCE_GATES = {
+  strongBuyMinConfidence: 70,
+  strongBuyMinSources: 2,
+  buyMinConfidence: 55,
 };
 
 export const BID_MARGINS = {
   idealRoiPercent: 25,
-  maxRoiPercent: 10, // Margin of profit
+  minAcceptableRoiPercent: 10, // Lowest target ROI margin (10%)
   conservativeRoiPercent: 40,
   aggressiveRoiPercent: 15,
 };

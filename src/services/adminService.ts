@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { AuditLog, Notification, Announcement, FaqItem, NewsUpdate, ContactMessage } from '../types/database.types';
+import type { AuditLog, Notification, Announcement, FaqItem, NewsUpdate, ContactMessage, PromoCode } from '../types/database.types';
 
 export const adminService = {
   async getAuditLogs(limit: number = 50): Promise<AuditLog[]> {
@@ -11,6 +11,21 @@ export const adminService = {
 
     if (error) {
       console.error('Error fetching audit logs:', error);
+      return [];
+    }
+    return data;
+  },
+
+  async getUserAuditLogs(userId: string, limit: number = 50): Promise<AuditLog[]> {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching user audit logs:', error);
       return [];
     }
     return data;
@@ -270,11 +285,8 @@ export const adminService = {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch users: ${response.statusText}`);
-      }
-
-      return await response.json();
+      const data = await response.json();
+      return data && data.success && Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching users via API:', error);
       return [];
@@ -296,66 +308,35 @@ export const adminService = {
 
   // Global Analytics
   async getGlobalAnalytics() {
-    const { count: userCount } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: auctionCount } = await supabase
-      .from('auctions')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active');
-
-    const { count: tenderCount } = await supabase
-      .from('tenders')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'open');
-      
-    // Stats to match the website's real database numbers
-    const { count: activeListings } = await supabase
-      .from('mstc_auctions')
-      .select('*', { count: 'exact', head: true })
-      .eq('asset_status', 'completed');
-
-    const { count: activeBaanknetListings } = await supabase
-      .from('baanknet_auctions')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: activeGemListings } = await supabase
-      .from('gem_auctions')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: activeGemBids } = await supabase
-      .from('gem_bids')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'live');
-
     const now = new Date().toISOString();
-    const { count: upcomingAuctions } = await supabase
-      .from('mstc_auctions')
-      .select('*', { count: 'exact', head: true })
-      .gt('opening_date', now);
-
-    const { count: upcomingBaanknetAuctions } = await supabase
-      .from('baanknet_auctions')
-      .select('*', { count: 'exact', head: true })
-      .gt('auction_start_date', now);
-
-    const { count: upcomingGemAuctions } = await supabase
-      .from('gem_auctions')
-      .select('*', { count: 'exact', head: true })
-      .gt('auction_start_date', now);
-
-    const { count: upcomingGemBids } = await supabase
-      .from('gem_bids')
-      .select('*', { count: 'exact', head: true })
-      .gt('start_date', now);
+    const [
+      userRes,
+      auctionRes,
+      tenderRes,
+      activeListingsRes,
+      upcomingRes,
+      activeGemListingsRes,
+      activeGemBidsRes,
+      upcomingGemAuctionsRes,
+      upcomingGemBidsRes
+    ] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('auctions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('tenders').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+      supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).eq('asset_status', 'completed'),
+      supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).gt('opening_date', now),
+      supabase.from('gem_auctions').select('*', { count: 'exact', head: true }),
+      supabase.from('gem_bids').select('*', { count: 'exact', head: true }).eq('status', 'live'),
+      supabase.from('gem_auctions').select('*', { count: 'exact', head: true }).gt('auction_start_date', now),
+      supabase.from('gem_bids').select('*', { count: 'exact', head: true }).gt('start_date', now)
+    ]);
 
     return {
-      totalUsers: userCount || 0,
-      activeAuctions: auctionCount || 0,
-      activeTenders: tenderCount || 0,
-      activeListings: (activeListings || 0) + (activeBaanknetListings || 0) + (activeGemListings || 0) + (activeGemBids || 0),
-      upcomingAuctions: (upcomingAuctions || 0) + (upcomingBaanknetAuctions || 0) + (upcomingGemAuctions || 0) + (upcomingGemBids || 0)
+      totalUsers: userRes.count || 0,
+      activeAuctions: auctionRes.count || 0,
+      activeTenders: tenderRes.count || 0,
+      activeListings: (activeListingsRes.count || 0) + (activeGemListingsRes.count || 0) + (activeGemBidsRes.count || 0),
+      upcomingAuctions: (upcomingRes.count || 0) + (upcomingGemAuctionsRes.count || 0) + (upcomingGemBidsRes.count || 0)
     };
   },
 
@@ -418,10 +399,9 @@ export const adminService = {
   // Location & Region Analytics
   async getLocationAnalytics() {
     try {
-      // 1. Query mstc_auctions directly for real-time location breakdown
+      // 1. Query mstc_auctions directly via RPC for real-time location breakdown
       const { data: rawAuctions, error: auctionsError } = await supabase
-        .from('mstc_auctions')
-        .select('location, category_name');
+        .rpc('get_location_analytics');
 
       if (auctionsError) {
         console.error('Error fetching location analytics from mstc_auctions:', auctionsError);
@@ -472,13 +452,14 @@ export const adminService = {
       (rawAuctions || []).forEach((item: any) => {
         const loc = item.location?.trim() || 'India (General)';
         const cat = item.category_name?.split('|')[0]?.trim() || item.category_name || 'Uncategorized';
+        const count = Number(item.total_auctions) || 0;
         
         if (!locationMap[loc]) {
           locationMap[loc] = { count: 0, categories: {} };
         }
-        locationMap[loc].count += 1;
-        locationMap[loc].categories[cat] = (locationMap[loc].categories[cat] || 0) + 1;
-        totalAuctions += 1;
+        locationMap[loc].count += count;
+        locationMap[loc].categories[cat] = (locationMap[loc].categories[cat] || 0) + count;
+        totalAuctions += count;
       });
 
       const locations = Object.entries(locationMap)
@@ -500,19 +481,52 @@ export const adminService = {
         })
         .sort((a, b) => b.count - a.count);
 
-      // 2. Query location_daily_stats for historical trends if available
       const { data: historicalLocData } = await supabase
         .from('location_daily_stats')
-        .select('date, location, items_added');
+        .select('date, location, category_name, items_added')
+        .limit(10000);
 
+      const historicalTotalsMap: Record<string, { count: number, categories: Record<string, number> }> = {};
       const dailyMap: Record<string, Record<string, number>> = {};
+      
       (historicalLocData || []).forEach((stat: any) => {
         const loc = stat.location || 'India (General)';
         const count = stat.items_added || 0;
+        const cat = stat.category_name || 'Uncategorized';
         const date = stat.date;
+
+        if (!historicalTotalsMap[loc]) {
+          historicalTotalsMap[loc] = { count: 0, categories: {} };
+        }
+        historicalTotalsMap[loc].count += count;
+        historicalTotalsMap[loc].categories[cat] = (historicalTotalsMap[loc].categories[cat] || 0) + count;
 
         if (!dailyMap[date]) dailyMap[date] = {};
         dailyMap[date][loc] = (dailyMap[date][loc] || 0) + count;
+      });
+
+      const historicalTotals = Object.entries(historicalTotalsMap)
+        .map(([rawLoc, val]) => {
+          const info = REGION_DISTRICT_MAP[rawLoc] || { state: rawLoc, district: rawLoc };
+          const topCats = Object.entries(val.categories)
+            .map(([catName, cnt]) => ({ name: catName, count: cnt }))
+            .sort((a, b) => b.count - a.count);
+          
+          return {
+             location: rawLoc,
+             state: info.state,
+             district: info.district,
+             count: val.count,
+             percentage: 0,
+             topCategory: topCats[0]?.name || 'N/A',
+             categories: topCats
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+        
+      const historicalTotalCount = historicalTotals.reduce((sum, item) => sum + item.count, 0);
+      historicalTotals.forEach(item => {
+        item.percentage = historicalTotalCount > 0 ? parseFloat(((item.count / historicalTotalCount) * 100).toFixed(1)) : 0;
       });
 
       const dailyTrends = Object.entries(dailyMap)
@@ -521,6 +535,7 @@ export const adminService = {
 
       return {
         locations,
+        historicalTotals,
         totalAuctions,
         topRegion: locations[0]?.state ? `${locations[0].state} (${locations[0].district})` : locations[0]?.location || 'N/A',
         dailyTrends
@@ -569,41 +584,6 @@ export const adminService = {
     return data;
   },
 
-  async getBaanknetScraperAnalytics() {
-    try {
-      const [totalRes, upcomingRes, liveRes, closedRes] = await Promise.all([
-        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }),
-        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'upcoming'),
-        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'live'),
-        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).in('auction_status', ['closed', 'cancelled', 'ended']),
-      ]);
-
-      return {
-        total: totalRes.count || 0,
-        upcoming: upcomingRes.count || 0,
-        live: liveRes.count || 0,
-        closed: closedRes.count || 0,
-      };
-    } catch (error) {
-      console.error('Error fetching BaankNet scraper analytics:', error);
-      return { total: 0, upcoming: 0, live: 0, closed: 0 };
-    }
-  },
-
-  async getBaanknetScraperAuctions(limit: number = 100): Promise<any[]> {
-    const { data, error } = await supabase
-      .from('baanknet_auctions')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error('Error fetching BaankNet scraper auctions:', error);
-      return [];
-    }
-    return data;
-  },
-
   async getScraperLogs(limit: number = 100): Promise<AuditLog[]> {
     const { data, error } = await supabase
       .from('audit_logs')
@@ -616,22 +596,6 @@ export const adminService = {
       console.error('Error fetching scraper audit logs:', error);
       return [];
     }
-    return data;
-  },
-
-  async getBaanknetScraperLogs(limit: number = 100): Promise<AuditLog[]> {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .in('action', ['baanknet_auction_deleted', 'baanknet_auction_scraped'])
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error('Error fetching BaankNet scraper audit logs:', error);
-      return [];
-    }
-    return data || [];
   },
 
   async getGemScraperAnalytics() {
@@ -909,66 +873,69 @@ export const adminService = {
 
   async getFinancialAnalytics() {
     try {
-      // 1. Fetch EMD Transactions
-      const { data: emdTx, error: emdError } = await supabase
-        .from('emd_transactions')
-        .select(`
-          amount,
-          status,
-          created_at,
-          user_id,
-          transaction_reference,
-          payment_method,
-          auction_id,
-          profiles (
-            first_name,
-            last_name
-          )
-        `)
-        .order('created_at', { ascending: false });
+      const [
+        { data: emdTx, error: emdError },
+        { data: walletTx, error: walletError },
+        { data: bids, error: bidsError },
+        { data: mstcAuctions, error: mstcError }
+      ] = await Promise.all([
+        supabase
+          .from('emd_transactions')
+          .select(`
+            amount,
+            status,
+            created_at,
+            user_id,
+            transaction_reference,
+            payment_method,
+            auction_id,
+            profiles (
+              first_name,
+              last_name
+            )
+          `)
+          .order('created_at', { ascending: false }),
 
-      // 2. Fetch Wallet Transactions
-      const { data: walletTx, error: walletError } = await supabase
-        .from('wallet_transactions')
-        .select(`
-          id,
-          amount,
-          transaction_type,
-          status,
-          created_at,
-          user_id,
-          reference_id,
-          description,
-          profiles (
-            first_name,
-            last_name
-          )
-        `)
-        .order('created_at', { ascending: false });
+        supabase
+          .from('wallet_transactions')
+          .select(`
+            id,
+            amount,
+            transaction_type,
+            status,
+            created_at,
+            user_id,
+            reference_id,
+            description,
+            profiles (
+              first_name,
+              last_name
+            )
+          `)
+          .order('created_at', { ascending: false }),
 
-      // 3. Fetch Bids
-      const { data: bids, error: bidsError } = await supabase
-        .from('bids')
-        .select(`
-          id,
-          amount,
-          status,
-          created_at,
-          bidder_id,
-          profiles (
-            first_name,
-            last_name
-          ),
-          auctions (
-            title
-          )
-        `)
-        .order('created_at', { ascending: false });
+        supabase
+          .from('bids')
+          .select(`
+            id,
+            amount,
+            status,
+            created_at,
+            bidder_id,
+            profiles (
+              first_name,
+              last_name
+            ),
+            auctions (
+              title
+            )
+          `)
+          .order('created_at', { ascending: false }),
 
-      // 4. Fetch MSTC Auctions for real Pre-Bid EMD calculations
-      const { data: mstcAuctions, error: mstcError } = await supabase
-        .from('mstc_auctions')
-        .select('id, mstc_auction_number, raw_materials_text, opening_date, closing_date, asset_status, category_name');
+        supabase
+          .from('mstc_auctions')
+          .select('id, mstc_auction_number, opening_date, closing_date, asset_status, category_name')
+      ]);
 
       if (emdError || walletError || bidsError || mstcError) {
         console.error('Error fetching financial/bid/mstc analytics:', emdError || walletError || bidsError || mstcError);
@@ -1098,5 +1065,56 @@ export const adminService = {
       console.error('Error fetching security logs:', e);
       return [];
     }
+  },
+
+  async getPromoCodesAdmin(): Promise<PromoCode[]> {
+    const { data, error } = await supabase
+      .from('promo_codes')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching promo codes:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async createPromoCode(promoData: Partial<PromoCode>): Promise<boolean> {
+    const { error } = await supabase
+      .from('promo_codes')
+      .insert([promoData]);
+
+    if (error) {
+      console.error('Error creating promo code:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async updatePromoCode(id: string, promoData: Partial<PromoCode>): Promise<boolean> {
+    const { error } = await supabase
+      .from('promo_codes')
+      .update(promoData)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating promo code:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async deletePromoCode(id: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('promo_codes')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting promo code:', error);
+      return false;
+    }
+    return true;
   }
 };

@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
-import { Users, CheckCircle2, ShieldAlert, Shield, Globe, Clock } from 'lucide-react';
+import { Users, CheckCircle2, ShieldAlert, Shield, Globe, Clock, X, Activity, ExternalLink } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import clsx from 'clsx';
 
@@ -8,6 +8,17 @@ export function UserManagement() {
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [userLogs, setUserLogs] = useState<any[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+  const handleViewActivity = async (user: any) => {
+    setSelectedUser(user);
+    setIsLoadingLogs(true);
+    const logs = await adminService.getUserAuditLogs(user.id);
+    setUserLogs(logs);
+    setIsLoadingLogs(false);
+  };
 
   const loadUsers = async () => {
     setIsLoading(true);
@@ -55,6 +66,7 @@ export function UserManagement() {
               <th className="px-6 py-4 font-semibold">Contact</th>
               <th className="px-6 py-4 font-semibold">Last Session / IP</th>
               <th className="px-6 py-4 font-semibold">Role</th>
+              <th className="px-6 py-4 font-semibold">Plan / Views</th>
               <th className="px-6 py-4 font-semibold">Organization / KYC</th>
               <th className="px-6 py-4 font-semibold text-right">Actions</th>
             </tr>
@@ -97,6 +109,28 @@ export function UserManagement() {
                   </span>
                 </td>
                 <td className="px-6 py-4">
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => handleViewActivity(user)}
+                      className={clsx(
+                        "px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wide border transition-all cursor-pointer inline-flex items-center gap-1.5 hover:scale-[1.02] w-fit",
+                        user.subscription_plan === 'pro' ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" :
+                        user.subscription_plan === 'enterprise' ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" :
+                        (user.subscription_plan === 'go' || user.subscription_plan === 'go-subscription') ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" :
+                        "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                      )}
+                    >
+                      <span>{(user.subscription_plan === 'go' || user.subscription_plan === 'go-subscription') ? 'individual' : (user.subscription_plan || 'explorer')}</span>
+                      <Activity className="w-3 h-3" />
+                    </button>
+                    {user.subscription_expires_at && (
+                      <span className="text-[10px] font-bold text-slate-400 font-mono">
+                        Expires: {new Date(user.subscription_expires_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
                   {user.organization_id ? (
                     <div className="flex items-center text-sm font-bold text-slate-900">
                       <CheckCircle2 className="w-4 h-4 text-green-500 mr-1.5" /> Org Attached
@@ -132,7 +166,105 @@ export function UserManagement() {
             ))}
           </tbody>
         </table>
-      </div>
+    </div>
+
+      {/* User Activity History Drawer/Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-slate-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-sm uppercase tracking-wider">User Activity History</h3>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                    {selectedUser.first_name} {selectedUser.last_name} ({selectedUser.email})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedUser(null);
+                  setUserLogs([]);
+                }}
+                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {isLoadingLogs ? (
+                <div className="flex flex-col items-center py-16 text-slate-500">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
+                  <p className="text-xs font-bold uppercase tracking-wider">Loading activity log...</p>
+                </div>
+              ) : userLogs.length === 0 ? (
+                <div className="text-center py-16 text-slate-400 space-y-2">
+                  <Activity className="w-8 h-8 mx-auto opacity-40" />
+                  <p className="text-sm font-semibold">No recent activity logged for this user.</p>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  {userLogs.map((log) => {
+                    const isViewAuction = log.action === 'view_auction_details';
+                    const isLogin = log.action === 'user_login';
+                    const isRegister = log.action === 'user_register';
+                    const isLogout = log.action === 'user_logout';
+                    
+                    return (
+                      <div key={log.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-3">
+                        <div className={clsx(
+                          "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                          isViewAuction ? "bg-blue-50 text-blue-600" :
+                          isLogin || isRegister ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-600"
+                        )}>
+                          {isViewAuction ? <Activity className="w-4 h-4" /> :
+                           isLogin ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                        </div>
+                        <div className="flex-grow">
+                          <div className="flex justify-between items-start">
+                            <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                              {isViewAuction ? 'Viewed Auction Lot' :
+                               isLogin ? 'Signed In' :
+                               isRegister ? 'Account Registered' :
+                               isLogout ? 'Signed Out' : log.action}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {new Date(log.created_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                            </span>
+                          </div>
+                          
+                          {/* Log Specific Details */}
+                          {isViewAuction && log.details?.title && (
+                            <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-600">
+                              <span className="font-semibold text-primary">{log.details.reference_number || 'N/A'}</span>
+                              <span className="text-slate-300">|</span>
+                              <span className="truncate font-medium">{log.details.title}</span>
+                            </div>
+                          )}
+
+                          {log.ip_address && (
+                            <div className="mt-2 text-[10px] text-slate-400 font-mono flex items-center gap-1.5">
+                              <span>IP: {log.ip_address}</span>
+                              <span>•</span>
+                              <span className="truncate max-w-[250px]">{log.details?.userAgent || 'Unknown Agent'}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

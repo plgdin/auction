@@ -1,16 +1,18 @@
-# User-agent directives for Lelam.co (B2B MSTC eAuctions & bidding platform)
-# Last Updated: 2026-07-01
-# Optimized for maximum crawl efficiency, Lighthouse validation, and search engine visibility.
+# User-agent directives for Lelam.co (B2B eAuctions & Bidding Analytics Platform)
+# Last Updated: 2026-08-09
+# Optimized for maximum crawl efficiency, Lighthouse validation, search engines, and AI agents.
 
-# Define rules for all crawlers
 User-agent: *
 
-# Allow crawling of public content and resources
+# Allow crawling of all public routes and static resources
 Allow: /
 Allow: /auctions
+Allow: /auctions/*
+Allow: /quotes
 Allow: /about
 Allow: /contact
 Allow: /faq
+Allow: /pricing
 Allow: /notices
 Allow: /news
 Allow: /blog
@@ -18,24 +20,58 @@ Allow: /blog/*
 Allow: /privacy
 Allow: /terms
 Allow: /cookies
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /sitemap.xml
 Allow: /assets/
 
-# Block crawlers from indexing authentication, administration, and user-specific workspace areas
+# Block crawlers from indexing private, admin, user workspace, and authentication routes
 Disallow: /auth/
-Disallow: /auth/login
-Disallow: /auth/register
+Disallow: /auth/*
 Disallow: /admin/
+Disallow: /admin/*
+Disallow: /adminlogin
+Disallow: /checkout
+Disallow: /checkout/*
 Disallow: /dashboard/
+Disallow: /dashboard/*
+Disallow: /seller/
+Disallow: /seller/*
+Disallow: /logistics/
+Disallow: /logistics/*
 Disallow: /api/
 Disallow: /*?*mockAdmin=
 Disallow: /*?*token=
 Disallow: /mock/
 
-# Crawl rate limit recommendation for polite crawl behavior (10 seconds delay)
+# Specific AI & LLM Crawlers
+User-agent: GPTBot
+Allow: /
+Disallow: /auth/
+Disallow: /admin/
+Disallow: /dashboard/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /auth/
+Disallow: /admin/
+Disallow: /dashboard/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /auth/
+Disallow: /admin/
+Disallow: /dashboard/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /auth/
+Disallow: /admin/
+Disallow: /dashboard/
+
+# Crawl rate limit recommendation
 Crawl-delay: 10
 
-# Target Host URL
+# Target Host & XML Sitemap
 Host: https://www.lelam.co
-
-# Reference to the XML sitemap
 Sitemap: https://www.lelam.co/sitemap.xml

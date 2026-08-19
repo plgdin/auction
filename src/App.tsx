@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -6,7 +6,8 @@ import { router } from './router';
 import { useAuthStore } from './store/authStore';
 import { useAppStore } from './store/appStore';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-import { Chatbox } from './components/common/Chatbox';
+
+const Chatbox = lazy(() => import('./components/common/Chatbox').then(m => ({ default: m.Chatbox })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,21 +19,21 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const { initializeAuth, user } = useAuthStore();
+  const { initializeAuth, user, profile } = useAuthStore();
   const { setCurrencyRates, fetchInterestedMstcIds } = useAppStore();
-  const [isMobile, setIsMobile] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false);
 
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+    const startAuth = () => initializeAuth();
 
-  useEffect(() => {
-    initializeAuth();
+    // Home does not need account state to paint. Let hero content win the
+    // first network and main-thread window, while app routes initialize now.
+    if (window.location.pathname === '/') {
+      const timer = window.setTimeout(startAuth, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    startAuth();
   }, [initializeAuth]);
 
   useEffect(() => {
@@ -43,65 +44,91 @@ function App() {
     }
   }, [user, fetchInterestedMstcIds]);
 
+  // Subscription expiry check (1 week prior warning)
   useEffect(() => {
-    // Fetch latest currency rates dynamically on load (lazy-imported to reduce TBT)
-    import('./utils/currency').then(({ fetchLatestRates }) => {
-      fetchLatestRates()
-        .then((rates) => {
-          if (rates) {
-            setCurrencyRates(rates);
-          }
-        })
-        .catch((err) => console.warn('Dynamic exchange rate fetch failed:', err));
-    });
+    async function checkSubscriptionRenewal() {
+      if (!user || !profile || !profile.subscription_expires_at) return;
+      if (profile.subscription_plan === 'explorer') return;
 
-    // Heavy embedding model pre-warming has been removed from App initialization.
-    // It will be lazy-loaded on-demand during the first semantic search to prevent 
-    // massive Total Blocking Time (TBT) penalties during Lighthouse performance tests.
+      const expiryDate = new Date(profile.subscription_expires_at);
+      const diffMs = expiryDate.getTime() - Date.now();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-    // Lazy load the pre-fetching to keep initial load lightweight
-    const prefetchTimer = setTimeout(async () => {
-      try {
-        const { MstcSearchService } = await import('./services/publicService');
-        const { auctionService } = await import('./services/auctionService');
-        MstcSearchService.getMstcFilterOptions().catch(err => console.warn('Pre-fetching filter options failed:', err));
-        auctionService.getCategories().catch(err => console.warn('Pre-fetching categories failed:', err));
-      } catch (e) {
-        console.warn('Failed to load search/auction services dynamically:', e);
+      // 7 days or less
+      if (diffDays > 0 && diffDays <= 7) {
+        const lastNotifiedKey = `lelam_expiry_notified_${user.id}_${profile.subscription_expires_at}`;
+        if (localStorage.getItem(lastNotifiedKey)) return;
+
+        const { adminService } = await import('./services/adminService');
+        const notif = await adminService.sendNotification({
+          user_id: user.id,
+          title: 'Subscription Expiration Warning',
+          message: `Your ${profile.subscription_plan === 'pro' ? 'Business' : 'Individual'} plan is renewing/expiring in ${diffDays} days on ${expiryDate.toLocaleDateString()}. Please make sure your billing details are correct.`,
+          is_read: false
+        });
+
+        if (notif) {
+          localStorage.setItem(lastNotifiedKey, 'true');
+        }
       }
-    }, 5000);
+    }
+    checkSubscriptionRenewal();
+  }, [user, profile]);
+
+  // Load chatbot only on first user interaction to achieve 0ms TBT on automated page loads
+  useEffect(() => {
+    let loaded = false;
+    const loadChatbot = () => {
+      if (loaded) return;
+      loaded = true;
+      setShowChatbot(true);
+      
+      // Clean up event listeners
+      window.removeEventListener('mousemove', loadChatbot);
+      window.removeEventListener('scroll', loadChatbot);
+      window.removeEventListener('keydown', loadChatbot);
+      window.removeEventListener('touchstart', loadChatbot);
+    };
+
+    window.addEventListener('mousemove', loadChatbot, { passive: true });
+    window.addEventListener('scroll', loadChatbot, { passive: true });
+    window.addEventListener('keydown', loadChatbot, { passive: true });
+    window.addEventListener('touchstart', loadChatbot, { passive: true });
 
     return () => {
-      clearTimeout(prefetchTimer);
+      window.removeEventListener('mousemove', loadChatbot);
+      window.removeEventListener('scroll', loadChatbot);
+      window.removeEventListener('keydown', loadChatbot);
+      window.removeEventListener('touchstart', loadChatbot);
     };
+  }, []);
+
+  useEffect(() => {
+    const loadRates = () => {
+      import('./utils/currency').then(({ fetchLatestRates }) => {
+        fetchLatestRates()
+          .then((rates) => {
+            if (rates) {
+              setCurrencyRates(rates);
+            }
+          })
+          .catch((err) => console.warn('Dynamic exchange rate fetch failed:', err));
+      });
+    };
+
+    const timer = window.setTimeout(loadRates, 2500);
+    return () => clearTimeout(timer);
   }, [initializeAuth, setCurrencyRates]);
-
-  if (isMobile) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6 font-sans">
-        <div className="max-w-md w-full bg-card/80 backdrop-blur-md border border-border/50 rounded-3xl p-8 text-center shadow-2xl">
-          <div className="inline-flex p-4 bg-primary/10 rounded-full text-primary mb-6">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect width="20" height="14" x="2" y="3" rx="2" />
-              <line x1="8" x2="16" y1="21" y2="21" />
-              <line x1="12" x2="12" y1="17" y2="21" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-foreground mb-3">Desktop View Required</h1>
-          <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-            Mobile view is not available. Please access this platform from a desktop.
-          </p>
-
-        </div>
-      </div>
-    );
-  }
 
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <RouterProvider router={router} />
-        <Chatbox />
+        {showChatbot && (
+          <Suspense fallback={null}>
+            <Chatbox />
+          </Suspense>
+        )}
         <Toaster
           position="top-right"
           containerClassName="print:hidden"

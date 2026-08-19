@@ -125,7 +125,7 @@ export const MstcEditModal: React.FC<MstcEditModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-xl transition-all"
+            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
           >
             <X className="w-5 h-5" />
           </button>
@@ -191,7 +191,7 @@ export const MstcEditModal: React.FC<MstcEditModalProps> = ({
             </h4>
 
             {lots.length === 0 ? (
-              <div className="p-8 text-center bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-150 dark:border-slate-850">
+              <div className="p-8 text-center bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
                 <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">No parsed lot items found</p>
                 <p className="text-xs text-slate-400 mt-1">This catalog is either empty or failed to parse.</p>
@@ -201,7 +201,7 @@ export const MstcEditModal: React.FC<MstcEditModalProps> = ({
                 {lots.map((lot, idx) => (
                   <div 
                     key={lot.sr || idx} 
-                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 grid grid-cols-1 md:grid-cols-12 gap-4 items-start hover:border-slate-350 transition-colors"
+                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 grid grid-cols-1 md:grid-cols-12 gap-4 items-start hover:border-slate-300 transition-colors"
                   >
                     
                     {/* Lot Sr */}
@@ -266,7 +266,7 @@ export const MstcEditModal: React.FC<MstcEditModalProps> = ({
             <button
               onClick={onClose}
               disabled={isSaving}
-              className="px-4 py-2 text-sm font-bold text-slate-650 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-all rounded-lg"
+              className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-all rounded-lg"
             >
               Cancel
             </button>

@@ -159,6 +159,15 @@ export function Inventory() {
     setInventory(updated);
     setReportingItem(null);
     toast.error(`Issue reported for ${reportingItem.description}`);
+
+    import('../../services/auditService').then(({ logUserActivity }) => {
+      logUserActivity('inventory_issue_report', 'inventory', selectedAuction.id, {
+        itemName: reportingItem.description,
+        issueType,
+        severity,
+        description
+      });
+    }).catch(() => {});
   };
 
   const handleResolveIssue = (itemId: string) => {
@@ -168,6 +177,12 @@ export function Inventory() {
     setInventory(updated);
     setActiveMenuId(null);
     toast.success('Issue resolved');
+
+    import('../../services/auditService').then(({ logUserActivity }) => {
+      logUserActivity('inventory_issue_resolve', 'inventory', selectedAuction.id, {
+        itemId
+      });
+    }).catch(() => {});
   };
 
   const handleLockVerification = () => {
@@ -179,6 +194,10 @@ export function Inventory() {
     if (updated) {
       setInventory(updated);
       toast.success('Inventory verification locked and saved successfully.');
+
+      import('../../services/auditService').then(({ logUserActivity }) => {
+        logUserActivity('inventory_lock', 'inventory', selectedAuction.id);
+      }).catch(() => {});
     }
   };
 
@@ -233,14 +252,14 @@ export function Inventory() {
                       <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded uppercase tracking-wide">
                         Won
                       </span>
-                      <span className="text-[10px] text-slate-550 font-bold">
+                      <span className="text-[10px] text-slate-500 font-bold">
                         REF: {a.reference_number}
                       </span>
                     </div>
                     <h4 className="text-sm font-bold text-slate-900 line-clamp-2 leading-tight">
                       {a.title}
                     </h4>
-                    <p className="text-xs text-slate-450 mt-2">
+                    <p className="text-xs text-slate-400 mt-2">
                       Closed: {new Date(a.end_time).toLocaleDateString()}
                     </p>
                   </button>
@@ -261,23 +280,23 @@ export function Inventory() {
 
                   {/* Progress Stats */}
                   <div className="grid grid-cols-3 gap-4 mt-6">
-                    <div className="bg-white p-3 rounded-lg border border-slate-150">
-                      <p className="text-[10px] font-bold text-slate-450 uppercase tracking-wider">Total Items</p>
+                    <div className="bg-white p-3 rounded-lg border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Items</p>
                       <p className="text-xl font-black text-slate-800 mt-0.5">{totalItems}</p>
                     </div>
-                    <div className="bg-white p-3 rounded-lg border border-slate-150">
-                      <p className="text-[10px] font-bold text-slate-450 uppercase tracking-wider">Verified</p>
+                    <div className="bg-white p-3 rounded-lg border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Verified</p>
                       <p className="text-xl font-black text-emerald-600 mt-0.5">{verifiedCount}</p>
                     </div>
-                    <div className="bg-white p-3 rounded-lg border border-slate-150">
-                      <p className="text-[10px] font-bold text-slate-450 uppercase tracking-wider">Reported Issues</p>
+                    <div className="bg-white p-3 rounded-lg border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reported Issues</p>
                       <p className="text-xl font-black text-red-600 mt-0.5">{reportedCount}</p>
                     </div>
                   </div>
 
                   {/* Progress Bar */}
                   <div className="mt-4">
-                    <div className="flex justify-between items-center text-xs font-bold text-slate-650 mb-1.5">
+                    <div className="flex justify-between items-center text-xs font-bold text-slate-600 mb-1.5">
                       <span>Verification Progress</span>
                       <span>{progressPercent}%</span>
                     </div>
@@ -348,7 +367,7 @@ export function Inventory() {
                               e.stopPropagation();
                               setActiveMenuId(activeMenuId === item.id ? null : item.id);
                             }}
-                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-450 hover:text-slate-700 transition-colors cursor-pointer"
+                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                           >
                             <MoreVertical className="w-4.5 h-4.5" />
                           </button>
@@ -385,7 +404,7 @@ export function Inventory() {
                 {inventory.isLocked ? (
                   <div className="p-6 border-t border-slate-200 bg-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-start gap-3">
-                      <div className="p-2 bg-slate-800 rounded-lg text-emerald-450 shrink-0">
+                      <div className="p-2 bg-slate-800 rounded-lg text-emerald-400 shrink-0">
                         <Lock className="w-5 h-5" />
                       </div>
                       <div>
@@ -426,7 +445,7 @@ export function Inventory() {
       {reportingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/45 backdrop-blur-md">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-200 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-150 flex justify-between items-center bg-slate-55/30">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
               <div className="flex items-center gap-2 text-red-600">
                 <AlertTriangle className="w-5 h-5" />
                 <h3 className="font-bold text-slate-900 text-lg">Report Lot Issue</h3>
@@ -443,15 +462,15 @@ export function Inventory() {
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Target Item</p>
                 <p className="text-sm font-bold text-slate-800 mt-0.5">{reportingItem.description}</p>
-                <p className="text-xs font-semibold text-slate-550 mt-1">Qty: {reportingItem.qty} {reportingItem.unit}</p>
+                <p className="text-xs font-semibold text-slate-500 mt-1">Qty: {reportingItem.qty} {reportingItem.unit}</p>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-650 uppercase tracking-wider">Issue Category *</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Issue Category *</label>
                 <select
                   value={issueType}
                   onChange={(e) => setIssueType(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 >
                   <option value="Damaged">Damaged Items</option>
                   <option value="Missing">Missing / Shortage</option>
@@ -461,7 +480,7 @@ export function Inventory() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-650 uppercase tracking-wider">Priority / Severity</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Priority / Severity</label>
                 <div className="grid grid-cols-3 gap-2 mt-1">
                   {(['low', 'medium', 'high'] as const).map((level) => (
                     <button
@@ -485,14 +504,14 @@ export function Inventory() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-650 uppercase tracking-wider">Detailed Description *</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Detailed Description *</label>
                 <textarea
                   required
                   rows={4}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe the discrepancy in detail (e.g. 2 of the heavy melting bars are rusted beyond grading or 5 units missing from pallet #4)..."
-                  className="w-full px-3.5 py-2.5 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                 />
               </div>
 
@@ -500,13 +519,13 @@ export function Inventory() {
                 <button
                   type="button"
                   onClick={() => setReportingItem(null)}
-                  className="px-4 py-2.5 border border-slate-250 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
+                  className="px-4 py-2.5 border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2.5 bg-red-600 hover:bg-red-750 text-white text-sm font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
+                  className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
                 >
                   Submit Issue Report
                 </button>

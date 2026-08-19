@@ -42,8 +42,45 @@ export const storageService = {
    */
   async uploadFile(file: File, bucketName: string): Promise<string | null> {
     try {
+      // 0. File validation: Size and Extension checks
+      const allowedImageExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+      const allowedDocExts = ['pdf', 'docx', 'doc', 'xls', 'xlsx', 'png', 'jpg', 'jpeg'];
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+
+      if (bucketName === 'auction_images' || bucketName === 'blog_images') {
+        if (!allowedImageExts.includes(fileExt)) {
+          console.error(`File upload blocked: File extension .${fileExt} is not allowed for images.`);
+          try {
+            import('react-hot-toast').then(({ toast }) => toast.error('Only image files (jpg, png, webp, gif) are allowed.'));
+          } catch {}
+          return null;
+        }
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+          console.error(`File upload blocked: File size ${(file.size / (1024 * 1024)).toFixed(2)}MB exceeds 5MB limit.`);
+          try {
+            import('react-hot-toast').then(({ toast }) => toast.error('Image size must be less than 5MB.'));
+          } catch {}
+          return null;
+        }
+      } else {
+        // Document bucket
+        if (!allowedDocExts.includes(fileExt)) {
+          console.error(`File upload blocked: File extension .${fileExt} is not allowed for documents.`);
+          try {
+            import('react-hot-toast').then(({ toast }) => toast.error('File type not allowed. Allowed: pdf, doc, docx, xls, xlsx, images.'));
+          } catch {}
+          return null;
+        }
+        if (file.size > 15 * 1024 * 1024) { // 15MB limit
+          console.error(`File upload blocked: File size ${(file.size / (1024 * 1024)).toFixed(2)}MB exceeds 15MB limit.`);
+          try {
+            import('react-hot-toast').then(({ toast }) => toast.error('File size must be less than 15MB.'));
+          } catch {}
+          return null;
+        }
+      }
+
       // 1. Create a unique file name
-      const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
 
       // 2. Upload to Supabase Storage
@@ -131,6 +168,16 @@ export const storageService = {
     transform?: any
   ): Promise<string | null> {
     try {
+      if (!urlOrPath) return null;
+
+      // Handle external URLs immediately (e.g. Unsplash, external icons) without calling Supabase Storage
+      if (urlOrPath.startsWith('http')) {
+        const supabaseDomain = (supabase as any).supabaseUrl || '';
+        if (supabaseDomain && !urlOrPath.includes(supabaseDomain)) {
+          return urlOrPath;
+        }
+      }
+
       const finalPath = extractStoragePath(urlOrPath, bucketName);
       const cacheKey = `${bucketName}:${finalPath}:${transform ? JSON.stringify(transform) : 'none'}`;
       
@@ -151,7 +198,7 @@ export const storageService = {
         .createSignedUrl(finalPath, 3600, options);
 
       if (error) {
-        console.error('Error creating signed URL:', error);
+        console.warn('Storage signed URL warning:', error.message || error);
         return null;
       }
 
@@ -164,7 +211,7 @@ export const storageService = {
       }
       return null;
     } catch (err) {
-      console.error('Unexpected error creating signed URL:', err);
+      console.warn('Storage signed URL exception warning:', err);
       return null;
     }
   },
@@ -390,13 +437,13 @@ export const storageService = {
         .createSignedUrl(storagePath, expiresIn);
 
       if (error) {
-        console.error('Error creating signed URL:', error);
+        console.warn('Error creating bucket signed URL:', error.message || error);
         return null;
       }
 
       return data.signedUrl;
     } catch (err) {
-      console.error('Unexpected error getting signed URL:', err);
+      console.warn('Unexpected error getting bucket signed URL:', err);
       return null;
     }
   },

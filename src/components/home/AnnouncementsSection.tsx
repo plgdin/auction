@@ -70,7 +70,7 @@ export function AnnouncementsSection() {
               <Bell className="w-8 h-8 text-slate-900 mr-3" />
               Latest Announcements
             </h2>
-            <p className="mt-4 text-lg text-slate-650">
+            <p className="mt-4 text-lg text-slate-600">
               Stay informed with official notices, updates, and platform changes.
             </p>
           </div>
@@ -108,7 +108,7 @@ export function AnnouncementsSection() {
                     <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-slate-700 transition-colors">
                       {item.title}
                     </h3>
-                    <p className="text-slate-650 text-sm line-clamp-3 mb-4 flex-grow">
+                    <p className="text-slate-600 text-sm line-clamp-3 mb-4 flex-grow">
                       {item.content}
                     </p>
                     <Link to="/notices" className="text-slate-900 font-semibold text-sm hover:underline mt-auto inline-flex items-center hover:text-black">
@@ -147,7 +147,7 @@ export function AnnouncementsSection() {
                     )}>
                       {item.title}
                     </h3>
-                    <p className="text-slate-650 text-sm line-clamp-3 mb-4 flex-grow">
+                    <p className="text-slate-600 text-sm line-clamp-3 mb-4 flex-grow">
                       {item.content}
                     </p>
                     {!item.is_disabled ? (

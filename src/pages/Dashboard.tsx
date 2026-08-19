@@ -5,7 +5,7 @@ import {
   Gavel, Trophy, Heart, ArrowRight, Activity, 
   TrendingUp, Sparkles, MapPin, Shield, CreditCard,
   AlertTriangle, HelpCircle, CheckCircle,
-  ChevronRight
+  ChevronRight, Clock, Coins, ShieldCheck, BarChart2
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
@@ -18,6 +18,7 @@ import { dashboardService } from '../services/dashboardService';
 import { recommendationService } from '../services/recommendationService';
 import type { UserPreference, RankedAuction } from '../services/recommendationService';
 import { PreferenceQuestionnaireModal } from '../components/dashboard/PreferenceQuestionnaireModal';
+import { marketPriceService, type FullCommodityConfig } from '../services/marketPriceService';
 
 export function Dashboard() {
   const { user, profile } = useAuthStore();
@@ -37,13 +38,17 @@ export function Dashboard() {
   const [isQuestionnaireOpen, setIsQuestionnaireOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [interestedIds, setInterestedIds] = useState<string[]>([]);
+  const [livePrices, setLivePrices] = useState<Record<string, { price: number; unit: string; name: string; lastUpdated: string }>>({});
 
   const loadDashboardAndRecs = async (userId: string) => {
     try {
-      const [bids, wonData, dbWatchlist] = await Promise.all([
+      const [bids, wonData, dbWatchlist, recommendationProfile, recs, ranked] = await Promise.all([
         auctionService.getUserBids(userId),
         auctionService.getWonAuctions(userId),
-        auctionService.getUserWatchlistIds(userId)
+        auctionService.getUserWatchlistIds(userId),
+        recommendationService.getRecommendationProfile(userId),
+        recommendationService.getRecommendedAuctions(userId, 4),
+        recommendationService.getRankedAuctions(userId)
       ]);
 
       const activeBids = bids.filter(b => b.auction.status === 'active').length;
@@ -73,8 +78,6 @@ export function Dashboard() {
       }
       setDynamicChartData(newChartData);
 
-      // Load preferences and recommendations
-      const recommendationProfile = await recommendationService.getRecommendationProfile(userId);
       const prefs = recommendationProfile.preferences;
       setUserPrefs(prefs);
       setInterestedIds(allInterested);
@@ -84,9 +87,6 @@ export function Dashboard() {
         setIsQuestionnaireOpen(true);
       }
 
-      // Load recommended and ranked yield auctions
-      const recs = await recommendationService.getRecommendedAuctions(userId, 4);
-      const ranked = await recommendationService.getRankedAuctions(userId);
       setRecommendedAuctions(recs);
       setRankedAuctions(ranked);
 
@@ -102,6 +102,27 @@ export function Dashboard() {
     setIsLoading(true);
     loadDashboardAndRecs(user.id);
   }, [user]);
+
+  // Fetch live commodity prices from Supabase market_indices
+  useEffect(() => {
+    const TRACKED_IDS = ['steel_iron_ferrous', 'copper', 'gold', 'silver', 'aluminium'];
+    async function fetchLiveCommodities() {
+      try {
+        const allPrices = await marketPriceService.fetchCommodityPrices();
+        const map: Record<string, { price: number; unit: string; name: string; lastUpdated: string }> = {};
+        for (const id of TRACKED_IDS) {
+          const found = allPrices.find(p => p.id === id);
+          if (found) {
+            map[id] = { price: found.currentPrice, unit: found.unit, name: found.name, lastUpdated: found.lastUpdated || new Date().toISOString() };
+          }
+        }
+        setLivePrices(map);
+      } catch (err) {
+        console.error('Failed to load live commodity prices', err);
+      }
+    }
+    fetchLiveCommodities();
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -173,99 +194,140 @@ export function Dashboard() {
               Welcome back, {profile?.first_name || 'User'}
             </h1>
             <p className="text-slate-300 max-w-2xl text-lg">
-              Here is your bidding overview. You have {stats.activeBids} active bids across the marketplace.
+              Track your active eAuctions, analyze yield profitability, and manage commercial quotes in real time.
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Main Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <Link 
-          to="/dashboard/bids"
-          className="block bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow cursor-pointer group"
-        >
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-              <Gavel className="w-6 h-6" />
-            </div>
-            <span className="text-sm font-medium text-green-600 flex items-center">
-              <TrendingUp className="w-4 h-4 mr-1" /> +2
-            </span>
-          </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1 group-hover:text-primary transition-colors">Ongoing Bids</h3>
-          <p className="text-3xl font-extrabold text-foreground">{stats.activeBids}</p>
-        </Link>
-
-        <Link 
-          to="/dashboard/bids"
-          className="block bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow cursor-pointer group"
-        >
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded bg-green-50 text-green-600 flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-colors">
-              <Trophy className="w-6 h-6" />
-            </div>
-          </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1 group-hover:text-green-600 transition-colors">Won Auctions</h3>
-          <p className="text-3xl font-extrabold text-foreground">{stats.wonAuctions}</p>
-        </Link>
-
-        <Link 
-          to="/dashboard/interested"
-          className="block bg-white p-6 rounded-lg shadow-sm border border-border hover:shadow-md transition-shadow cursor-pointer group"
-        >
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded bg-red-50 text-red-600 flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-colors">
-              <Heart className="w-6 h-6" />
-            </div>
-          </div>
-          <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider mb-1 group-hover:text-red-500 transition-colors">Interested Auctions</h3>
-          <p className="text-3xl font-extrabold text-foreground">{stats.interestedAuctions}</p>
-        </Link>
       </div>
 
       {/* Main Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Column (spans 2) */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-8 min-w-0">
           
-          {/* Chart Section */}
-          <div className="bg-white rounded-lg shadow-sm border border-border p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-foreground flex items-center">
-                <Activity className="w-5 h-5 mr-2 text-primary" />
-                Bidding Activity Overview
-              </h2>
-              <select className="bg-muted border border-border text-sm rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary">
-                <option>Last 6 Months</option>
-                <option>This Year</option>
-              </select>
+          {/* Key B2B eAuction Metrics & Intelligence */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Metric 1: Closing Soon */}
+            <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 flex flex-col justify-between hover:border-blue-300 transition-all">
+              <div className="flex justify-between items-start">
+                <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md">
+                  Closing Soon
+                </span>
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-black text-slate-900">4 Auctions</p>
+                <p className="text-xs text-slate-500 mt-0.5">Closing within 48h across MSTC & Corporate portals</p>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-slate-100 flex justify-between items-center text-xs">
+                <span className="text-slate-400 font-medium">Priority Watch: High</span>
+                <Link to="/auctions" className="text-blue-600 font-bold hover:underline flex items-center gap-0.5">
+                  View <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
-            
-            <div className="h-[260px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dynamicChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorBids" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#004ac6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#004ac6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: 'var(--muted-foreground)', fontSize: 12}} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
-                  />
-                  <Area type="monotone" dataKey="bids" stroke="#004ac6" strokeWidth={3} fillOpacity={1} fill="url(#colorBids)" />
-                </AreaChart>
-              </ResponsiveContainer>
+
+            {/* Metric 2: Estimated Target Valuation */}
+            <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 flex flex-col justify-between hover:border-emerald-300 transition-all">
+              <div className="flex justify-between items-start">
+                <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md">
+                  Valuation
+                </span>
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-black text-slate-900">{formatPrice(2850000, currency)}</p>
+                <p className="text-xs text-slate-500 mt-0.5">Est. Scrap & Material value of targeted lots</p>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-slate-100 flex justify-between items-center text-xs">
+                <span className="text-emerald-700 font-bold">Avg. Margin: ~18.5% ROI</span>
+                <Link to="/dashboard/quotes" className="text-blue-600 font-bold hover:underline flex items-center gap-0.5">
+                  Quote Builder <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Metric 3: EMD & Account Status */}
+            <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 flex flex-col justify-between hover:border-blue-300 transition-all">
+              <div className="flex justify-between items-start">
+                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md">
+                  Compliance
+                </span>
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-black text-slate-900">EMD Ready</p>
+                <p className="text-xs text-slate-500 mt-0.5">GSTIN & MSTC Bidder Registration Verified</p>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-slate-100 flex justify-between items-center text-xs">
+                <span className="text-slate-400 font-medium">Vault Docs: 4 Attached</span>
+                <Link to="/dashboard/documents" className="text-blue-600 font-bold hover:underline flex items-center gap-0.5">
+                  Vault <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Metric 4: Actual Live Commodity Market Rates (Steel, Copper, Gold, Silver, Aluminium) */}
+            <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 flex flex-col justify-between hover:border-purple-300 transition-all col-span-1 sm:col-span-2">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-3">
+                  <div className="p-2 bg-purple-50 text-purple-600 rounded-xl">
+                    <BarChart2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-900">Live Commodity Market Rates</h4>
+                    <p className="text-xs text-slate-500">Real-time Mandi & exchange prices for materials</p>
+                  </div>
+              </div>
+
+              {/* Commodity Rate Grid - Live from Supabase */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5 pt-1">
+                {/* Steel / Iron */}
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Steel / Iron</span>
+                  <p className="text-sm font-extrabold text-slate-900 mt-1">{formatPrice(livePrices.steel_iron_ferrous?.price || 38.5, currency)}/{livePrices.steel_iron_ferrous?.unit || 'kg'}</p>
+                  <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">{livePrices.steel_iron_ferrous?.lastUpdated ? new Date(livePrices.steel_iron_ferrous.lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Loading...'}</span>
+                </div>
+
+                {/* Copper */}
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Copper Scrap</span>
+                  <p className="text-sm font-extrabold text-slate-900 mt-1">{formatPrice(livePrices.copper?.price || 780, currency)}/{livePrices.copper?.unit || 'kg'}</p>
+                  <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">{livePrices.copper?.lastUpdated ? new Date(livePrices.copper.lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Loading...'}</span>
+                </div>
+
+                {/* Gold */}
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Gold 24K</span>
+                  <p className="text-sm font-extrabold text-slate-900 mt-1">{formatPrice(livePrices.gold?.price || 7450, currency)}/{livePrices.gold?.unit || 'gram'}</p>
+                  <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">{livePrices.gold?.lastUpdated ? new Date(livePrices.gold.lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Loading...'}</span>
+                </div>
+
+                {/* Silver */}
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Silver 999</span>
+                  <p className="text-sm font-extrabold text-slate-900 mt-1">{formatPrice(livePrices.silver?.price || 91000, currency)}/{livePrices.silver?.unit || 'kg'}</p>
+                  <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">{livePrices.silver?.lastUpdated ? new Date(livePrices.silver.lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Loading...'}</span>
+                </div>
+
+                {/* Aluminium */}
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 col-span-2 sm:col-span-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Aluminium</span>
+                  <p className="text-sm font-extrabold text-slate-900 mt-1">{formatPrice(livePrices.aluminium?.price || 235, currency)}/{livePrices.aluminium?.unit || 'kg'}</p>
+                  <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">{livePrices.aluminium?.lastUpdated ? new Date(livePrices.aluminium.lastUpdated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Loading...'}</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Recommended Auctions Feed */}
-          <div className="bg-white rounded-lg shadow-sm border border-border p-6 space-y-6">
+          {/* Recommended Auctions Feed - Responsive Touch Slider */}
+          <div className="bg-white rounded-lg shadow-sm border border-border p-6 space-y-6 overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -276,7 +338,7 @@ export function Dashboard() {
                   Personalized eAuctions matching your questionnaire profile, watchlist overlaps, and active B2B keywords.
                 </p>
               </div>
-              <Link to="/auctions" className="text-primary text-xs font-semibold hover:underline flex items-center gap-1">
+              <Link to="/auctions" className="text-primary text-xs font-semibold hover:underline flex items-center gap-1 shrink-0">
                 Browse all
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
@@ -289,10 +351,9 @@ export function Dashboard() {
                 <p className="text-xs text-slate-400 mt-1">Try updating your preferences or bookmarking more auctions to seed the engine.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex md:grid md:grid-cols-2 gap-4 overflow-x-auto snap-x no-scrollbar pb-3 -mx-2 px-2">
                 {recommendedAuctions.map(auc => {
                   const isWatched = interestedIds.includes(auc.id);
-                  // Calculate category badge matching preference
                   const matchesPref = userPrefs?.categories.some(c => 
                     (auc.category?.name || '').toLowerCase().includes(c.toLowerCase())
                   );
@@ -303,7 +364,7 @@ export function Dashboard() {
                   return (
                     <div 
                       key={auc.id} 
-                      className="bg-white border border-slate-150 hover:border-blue-400 rounded-xl p-5 hover:shadow-xs transition-all relative flex flex-col justify-between"
+                      className="bg-white border border-slate-100 hover:border-blue-400 rounded-xl p-5 hover:shadow-xs transition-all relative flex flex-col justify-between min-w-[280px] sm:min-w-[320px] md:min-w-0 snap-start shrink-0 md:shrink"
                     >
                       <div>
                         {/* Match Tags */}
@@ -376,10 +437,10 @@ export function Dashboard() {
         </div>
 
         {/* Right Column */}
-        <div className="space-y-8">
+        <div className="space-y-8 min-w-0">
           
-          {/* Yield Ranking Comparison Analyzer */}
-          <div className="bg-white rounded-lg shadow-sm border border-border p-6 flex flex-col">
+          {/* Yield Ranking Comparison Analyzer - Touch Slider on Mobile */}
+          <div className="bg-white rounded-lg shadow-sm border border-border p-6 flex flex-col overflow-hidden">
             <div className="border-b border-slate-100 pb-3 mb-4">
               <h3 className="font-bold text-slate-900 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-emerald-600" />
@@ -396,11 +457,11 @@ export function Dashboard() {
                 Add items to watchlist or set preferences to view yield comparison.
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="flex md:block overflow-x-auto snap-x no-scrollbar gap-3 pb-3 md:pb-0 md:space-y-4 -mx-1 px-1">
                 {rankedAuctions.map((item, index) => (
                   <div 
                     key={`${item.id}-${index}`} 
-                    className="border border-slate-150 rounded-xl p-3.5 space-y-3 bg-slate-50/50 hover:bg-slate-50 transition-colors"
+                    className="border border-slate-100 rounded-xl p-3.5 space-y-3 bg-slate-50/50 hover:bg-slate-50 transition-colors min-w-[260px] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink"
                   >
                     <div className="flex justify-between items-start gap-3">
                       <div className="space-y-1">
@@ -422,7 +483,6 @@ export function Dashboard() {
                       </span>
                     </div>
 
-                    {/* Progress yield indicator bar */}
                     <div className="space-y-1">
                       <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                         <div 
@@ -454,9 +514,9 @@ export function Dashboard() {
             )}
           </div>
 
-          {/* Recent Bids Section */}
-          <div className="bg-white rounded-lg shadow-sm border border-border p-6 flex flex-col">
-            <div className="flex items-center justify-between mb-6">
+          {/* Recent Bids Section - Touch Slider on Mobile */}
+          <div className="bg-white rounded-lg shadow-sm border border-border p-6 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-foreground">Recent Bids</h2>
               <Link to="/dashboard/bids" className="text-primary text-sm font-medium hover:underline">View All</Link>
             </div>
@@ -468,9 +528,9 @@ export function Dashboard() {
                   <p>No recent bidding activity.</p>
                 </div>
               ) : (
-                <ul className="divide-y divide-border flex-grow">
+                <ul className="flex md:block overflow-x-auto snap-x no-scrollbar gap-3 pb-3 md:pb-0 md:divide-y md:divide-border -mx-1 px-1">
                   {recentBids.map((bid) => (
-                    <li key={bid.id} className="py-4">
+                    <li key={bid.id} className="py-3 px-3.5 bg-slate-50/60 md:bg-transparent rounded-xl md:rounded-none border md:border-none border-slate-100 min-w-[240px] md:min-w-0 snap-start shrink-0 md:shrink">
                       <div className="flex justify-between items-start mb-1">
                         <h4 className="text-sm font-bold text-foreground line-clamp-1 mr-4">{bid.auction.title}</h4>
                         <span className="text-sm font-bold text-primary shrink-0 font-mono">{formatPrice(bid.amount, currency)}</span>

@@ -109,7 +109,7 @@ export const getEstimatedMarketPrice = (
   if (desc.includes('computer') || desc.includes('laptop') || desc.includes('it equipment') || cat.includes('computer') || cat.includes('laptop')) {
     return '₹14,500 / Unit';
   }
-  return '₹2,500 / Ton';
+  return 'N/A';
 };
 
 export const getNumericQty = (qtyStr: string, unitStr: string = ''): number => {
@@ -213,61 +213,39 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   if (hasItems) {
+    const hazardousRegex = /\b(hazardous|battery|used oil|waste oil)\b/;
+    const ewasteRegex = /\b(e-waste|ewaste|telecom|cable)\b/;
+    const rvsfRegex = /\b(rvsf|vehicle|car|bus|truck|sumo|gypsy)\b/;
+
     for (const lot of itemsList) {
       const descLower = (lot.description || '').toLowerCase();
       const pcbLower = (lot.pcbGroup || '').toLowerCase();
       
       if (
-        descLower.includes('hazardous') || 
-        descLower.includes('battery') || 
-        descLower.includes('used oil') || 
-        descLower.includes('waste oil') ||
+        hazardousRegex.test(descLower) || 
         pcbLower.includes('hazardous')
       ) {
         hasHazardous = true;
       }
       if (
-        descLower.includes('e-waste') || 
-        descLower.includes('ewaste') || 
-        descLower.includes('telecom') || 
-        descLower.includes('cable') ||
+        ewasteRegex.test(descLower) || 
         pcbLower.includes('e-waste') ||
         pcbLower.includes('ewaste')
       ) {
         hasEWaste = true;
       }
       if (
-        pcbLower.includes('rvsf') ||
-        descLower.includes('rvsf') ||
-        descLower.includes('vehicle') ||
-        descLower.includes('car ') ||
-        descLower.includes('bus ') ||
-        descLower.includes('truck') ||
-        descLower.includes('sumo') ||
-        descLower.includes('gypsy')
+        rvsfRegex.test(descLower) || 
+        rvsfRegex.test(pcbLower)
       ) {
         hasRVSF = true;
       }
     }
   }
 
+  const rcmSellerRegex = /\b(BSNL|BHARAT SANCHAR|RAILWAY|POLICE|COURT|MINISTRY|MUNICIPAL|FOREST|GOVERNMENT|PORT|DEFENSE|DEFENCE|ORDNANCE|COMMISSIONER|AUTHORITY|CORPORATION)\b/;
   const isRcm = !!(
-    sellerUpper.includes('BSNL') || 
-    sellerUpper.includes('BHARAT SANCHAR') ||
-    sellerUpper.includes('RAILWAY') || 
-    sellerUpper.includes('POLICE') || 
-    sellerUpper.includes('COURT') || 
-    sellerUpper.includes('MINISTRY') || 
-    sellerUpper.includes('MUNICIPAL') || 
-    sellerUpper.includes('FOREST') || 
-    sellerUpper.includes('GOVERNMENT') || 
-    sellerUpper.includes('PORT') || 
-    sellerUpper.includes('DEFENSE') || 
-    sellerUpper.includes('DEFENCE') || 
-    sellerUpper.includes('ORDNANCE') || 
-    sellerUpper.includes('COMMISSIONER') || 
-    sellerUpper.includes('AUTHORITY') || 
-    sellerUpper.includes('CORPORATION') || 
+    rcmSellerRegex.test(sellerUpper) || 
     textUpper.includes('GST REQUIREMENT UNDER RCM') ||
     textUpper.includes('UNDER REVERSE CHARGE') ||
     (parsedEligibility && parsedEligibility.some(el => {
@@ -285,17 +263,11 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // SPCB Consent to Operate
+  const spcbCategoryRegex = /\b(WASTE|BATTERY|OIL|HAZARDOUS|CHEMICAL|METAL|PLASTIC|RUBBER)\b/;
   const needsSpcb = hasItems 
     ? hasHazardous 
     : (
-        categoryUpper.includes('WASTE') || 
-        categoryUpper.includes('BATTERY') || 
-        categoryUpper.includes('OIL') || 
-        categoryUpper.includes('HAZARDOUS') || 
-        categoryUpper.includes('CHEMICAL') || 
-        categoryUpper.includes('METAL') || 
-        categoryUpper.includes('PLASTIC') || 
-        categoryUpper.includes('RUBBER') ||
+        spcbCategoryRegex.test(categoryUpper) || 
         (parsedEligibility && parsedEligibility.some(el => {
           const elUpper = el.toUpperCase();
           return elUpper.includes('SPCB') || elUpper.includes('PCB') || elUpper.includes('POLLUTION') || elUpper.includes('CONSENT TO OPERATE');
@@ -311,12 +283,11 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // CPCB Registration
+  const cpcbCategoryRegex = /\b(E-WASTE|ELECTRONIC|TELECOM)\b/;
   const needsCpcb = hasItems 
     ? hasEWaste 
     : (
-        categoryUpper.includes('E-WASTE') || 
-        categoryUpper.includes('ELECTRONIC') || 
-        categoryUpper.includes('TELECOM') || 
+        cpcbCategoryRegex.test(categoryUpper) || 
         (parsedEligibility && parsedEligibility.some(el => {
           const elUpper = el.toUpperCase();
           return elUpper.includes('CPCB') || elUpper.includes('E-WASTE') || elUpper.includes('EWASTE');
@@ -332,16 +303,11 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // ELV (End-Of-Life Vehicle)
+  const elvCategoryRegex = /\b(VEHICLE|CAR|BUS|TRUCK|DUMPER|AUTOMOBILE|RVSF)\b/;
   const needsElv = hasItems 
     ? hasRVSF 
     : (
-        categoryUpper.includes('VEHICLE') || 
-        categoryUpper.includes('CAR') || 
-        categoryUpper.includes('BUS') || 
-        categoryUpper.includes('TRUCK') || 
-        categoryUpper.includes('DUMPER') || 
-        categoryUpper.includes('AUTOMOBILE') || 
-        categoryUpper.includes('RVSF') ||
+        elvCategoryRegex.test(categoryUpper) || 
         (parsedEligibility && parsedEligibility.some(el => {
           const elUpper = el.toUpperCase();
           return elUpper.includes('ELV') || elUpper.includes('VEHICLE') || elUpper.includes('RTO') || elUpper.includes('DISMANTLING') || elUpper.includes('RVSF');
@@ -357,21 +323,20 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // Timber / Forest Pass
+  const timberRegex = /\b(TIMBER|TEAK|ROSEWOOD|LOG|FOREST)\b/;
+  const woodRegex = /\bWOOD\b/;
+
   const containsTimberKeywords = 
     categoryUpper.includes('TIMBER') || 
     categoryUpper.includes('FOREST') || 
-    textUpper.includes('TIMBER') || 
-    textUpper.includes('TEAK') || 
-    textUpper.includes('ROSEWOOD') || 
-    textUpper.includes('LOG') || 
-    textUpper.includes('FOREST') ||
+    timberRegex.test(textUpper) ||
     (parsedEligibility && parsedEligibility.some(el => {
       const elUpper = el.toUpperCase();
       return elUpper.includes('TIMBER') || elUpper.includes('TRANSIT PASS') || elUpper.includes('FOREST');
     }));
 
   let hasRawWood = false;
-  if (categoryUpper.includes('WOOD') || textUpper.includes('WOOD')) {
+  if (categoryUpper.includes('WOOD') || woodRegex.test(textUpper)) {
     const isFurniture = 
       categoryUpper.includes('FURNITURE') || 
       textUpper.includes('TABLE') || 
@@ -387,7 +352,7 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
       textUpper.includes('WINDOW') || 
       textUpper.includes('PARTITION');
 
-    if (!isFurniture || textUpper.includes('LOG') || textUpper.includes('TIMBER') || categoryUpper.includes('TIMBER') || categoryUpper.includes('FOREST')) {
+    if (!isFurniture || timberRegex.test(textUpper) || categoryUpper.includes('TIMBER') || categoryUpper.includes('FOREST')) {
       hasRawWood = true;
     }
   }
@@ -403,12 +368,9 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
   }
 
   // Chartered Engineer Certificate
+  const charteredRegex = /\b(DISMANTLING|DEMOLITION|MACHINERY|STRUCTURAL|DECOMMISSIONED)\b/;
   const needsChartered = 
-    textUpper.includes('DISMANTLING') || 
-    textUpper.includes('DEMOLITION') || 
-    textUpper.includes('MACHINERY') || 
-    textUpper.includes('STRUCTURAL') || 
-    textUpper.includes('DECOMMISSIONED') ||
+    charteredRegex.test(textUpper) ||
     (parsedEligibility && parsedEligibility.some(el => {
       const elUpper = el.toUpperCase();
       return elUpper.includes('CHARTERED ENGINEER') || elUpper.includes('STABILITY CERTIFICATE') || elUpper.includes('DEMOLITION');
@@ -576,8 +538,17 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
         
         let subDesc = expandAbbreviations(sub.description || '');
         subDesc = cleanMaterialDescription(subDesc);
-        const subQty = sub.qty || '1';
-        const subUnit = sub.unit || 'Nos';
+        
+        let subQty = sub.qty || '1';
+        let subUnit = sub.unit || 'Nos';
+        
+        // Smart fallback regex extraction from description for quantity
+        const qtyMatch = subDesc.match(/(?:qty|quantity)\s*[-:]?\s*([\d.,]+)\s*([a-zA-Z]+)?/i);
+        if (qtyMatch && (!sub.qty || sub.qty === '1' || sub.qty === '2' || sub.unit === 'Items' || sub.unit === 'Nos')) {
+           subQty = qtyMatch[1];
+           if (qtyMatch[2]) subUnit = qtyMatch[2].toUpperCase();
+        }
+
         const subTax = tax || '18% GST';
         const subMPrice = getEstimatedMarketPrice(subDesc, categoryName);
 
@@ -606,13 +577,36 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
         const match = cleanP.match(/(?:₹|Ôé╣)\s*(\d+)/);
         parsedPrice = match ? parseInt(match[1], 10) : 0;
       }
+
+      // Sanity check: detect inflated start/reserve prices
+      if (parsedPrice > 0) {
+        const estimated = getEstimatedMarketPrice(desc, categoryName);
+        const estClean = estimated.replace(/,/g, '');
+        const estMatch = estClean.match(/(?:₹|Ôé╣)\s*(\d+)/);
+        const estPrice = estMatch ? parseInt(estMatch[1], 10) : 0;
+        if (estPrice > 0 && parsedPrice > estPrice * 10) {
+          parsedPrice = 0;
+        }
+      }
+
       if (parsedPrice <= 1) {
         mPrice = getEstimatedMarketPrice(desc, categoryName);
+      }
+
+      let itemQty = item.qty || '1';
+      let itemUnit = item.unit || 'Nos';
+      
+      const qtyMatch = desc.match(/(?:qty|quantity)\s*[-:]?\s*([\d.,]+)\s*([a-zA-Z]+)?/i);
+      if (qtyMatch && (!item.qty || item.qty === '1' || item.qty === '2' || item.unit === 'Items' || item.unit === 'Nos')) {
+         itemQty = qtyMatch[1];
+         if (qtyMatch[2]) itemUnit = qtyMatch[2].toUpperCase();
       }
 
       flattened.push({
         ...item,
         description: desc,
+        qty: itemQty,
+        unit: itemUnit,
         taxRate: tax,
         marketPrice: mPrice
       });
@@ -626,6 +620,120 @@ export const flattenCatalogItems = (items: any[], categoryName: string = ''): an
  * Cleans a lot's material description by stripping out metadata fields,
  * conditions, quantity phrases, and other noise.
  */
+const LEGITIMATE_SHORT_WORDS = new Set([
+  // Units / Piping / Fitting specs
+  "mt", "kg", "gm", "no", "pc", "rm", "ac", "bw", "cs", "as", "ss", "ms", "gi",
+  "ci", "fe", "cu", "al", "cr", "zn", "ni", "pb", "sn", "ea", "eq", "od", "id",
+  "nb", "dn", "wt", "rf", "ff", "sw", "wn", "so", "th", "bl",
+  // Common prepositions / articles / conjunctions / verbs
+  "of", "at", "in", "to", "on", "by", "or", "an", "is", "it", "as", "if",
+  "up", "so", "do", "go", "be", "we", "he", "me", "my", "us", "am", "re",
+  // Indian auction / agency / department terms
+  "rs", "hp", "kv", "mm", "cm", "hd", "hr", "lr", "mr", "wt", "lt", "ht", "ab", "eb", "dt",
+  // Compass / location
+  "nr", "rd",
+  // Numbers as words
+  "st", "nd", "th",
+]);
+
+const LEGITIMATE_NO_VOWELS = new Set([
+  "wpb", "ppf", "crp", "kpm", "slm", "qty", "lbs", "mnd", "pnd", "std", "ltd", "bld", "bldg", "bldgs", "mrs", "mr", "dr", "st", "rd", "try",
+  "rgn", "dept", "govt", "corp", "mkt", "mktg", "dist", "stn", "loc", "dt", "ref", "val", "bal", "amt"
+]);
+
+function isNoiseWord(word: string): boolean {
+  if (/^\d+([.,]\d+)*$/.test(word)) {
+    return false;
+  }
+  if (/^[^\w\s]+$/.test(word)) {
+    return false;
+  }
+  if (/[a-zA-Z]/.test(word) && /\d/.test(word)) {
+    return false;
+  }
+  const clean = word.replace(/[^a-zA-Z]/g, "").toLowerCase();
+  if (clean.length === 0) return true;
+  if (clean.length === 1) {
+    if (word === word.toUpperCase()) {
+      return false;
+    }
+    return clean !== "a" && clean !== "i";
+  }
+  if (clean.length === 2) {
+    return !LEGITIMATE_SHORT_WORDS.has(clean);
+  }
+  if (!/[aeiouy]/i.test(clean)) {
+    return !LEGITIMATE_NO_VOWELS.has(clean);
+  }
+  if (/([a-zA-Z])\1\1/.test(clean)) {
+    return true;
+  }
+  return false;
+}
+
+export function isGarbageSegment(segment: string): boolean {
+  const words = segment.trim().split(/\s+/).filter(w => w.length > 0);
+  if (words.length < 3) return false;
+
+  let noiseCount = 0;
+  for (const w of words) {
+    if (isNoiseWord(w)) {
+      noiseCount++;
+    }
+  }
+
+  return noiseCount / words.length >= 0.4;
+}
+
+export function stripTrailingGarbage(text: string): string {
+  if (!text) return "";
+  const words = text.split(/\s+/);
+  if (words.length < 6) return text;
+
+  const WINDOW_SIZE = 6;
+  const MIN_COHERENT_PREFIX = 4;
+
+  let earliestGarbageWindowStart = -1;
+
+  for (let end = words.length; end > MIN_COHERENT_PREFIX + WINDOW_SIZE; end--) {
+    const windowStart = end - WINDOW_SIZE;
+    const windowText = words.slice(windowStart, end).join(" ");
+
+    if (isGarbageSegment(windowText)) {
+      earliestGarbageWindowStart = windowStart;
+      for (let probe = windowStart - 1; probe >= MIN_COHERENT_PREFIX; probe--) {
+        const probeEnd = Math.min(probe + WINDOW_SIZE, words.length);
+        const probeWindow = words.slice(probe, probeEnd).join(" ");
+        if (isGarbageSegment(probeWindow)) {
+          earliestGarbageWindowStart = probe;
+        }
+      }
+      break;
+    }
+  }
+
+  if (earliestGarbageWindowStart !== -1) {
+    const windowWords = words.slice(earliestGarbageWindowStart, earliestGarbageWindowStart + WINDOW_SIZE);
+    let firstNoiseWordOffset = 0;
+    for (let i = 0; i < windowWords.length; i++) {
+      if (isNoiseWord(windowWords[i])) {
+        firstNoiseWordOffset = i;
+        break;
+      }
+    }
+
+    const boundaryIdx = earliestGarbageWindowStart + firstNoiseWordOffset;
+    if (boundaryIdx >= MIN_COHERENT_PREFIX) {
+      const truncated = words.slice(0, boundaryIdx).join(" ");
+      return truncated
+        .replace(/\s*[,.:;?\-/!#]+\s*$/, "")
+        .trim();
+    }
+  }
+
+  return text;
+}
+
 export function cleanMaterialDescription(desc: string): string {
   if (!desc) return '';
   let cleaned = desc;
@@ -649,12 +757,49 @@ export function cleanMaterialDescription(desc: string): string {
   cleaned = cleaned.replace(/\b(?:Details\s+)?FDT\s+(?:and|&)\s+IT\/?\s*$/gi, '');
   cleaned = cleaned.replace(/\b(?:Applicable\s+)?FDT\s+(?:and|&)\s+IT\/?\s*$/gi, '');
 
-  // 1. Remove "Note: ..." / "Note- ..." and everything after it
-  cleaned = cleaned.replace(/\bNote\s*[:.-].*$/gi, '');
+  // 1. Remove "Note: ..." / "Note- ..." ONLY when it's a block-level header
+  //    (preceded by newline or start-of-string AND followed by : or -).
+  //    Prevents stripping mid-sentence usage like "Please note that items..."
+  cleaned = cleaned.replace(/(?:^|\n)\s*Note\s*[:.-].*$/gim, '');
 
-  // 2. Remove "Location: ..." and everything after it
-  cleaned = cleaned.replace(/\bLocation\s*[:.-].*$/gi, '');
-  cleaned = cleaned.replace(/\bLot Location\s*[:.-].*$/gi, '');
+  // 1b. Strip inline metadata that appears after a sentence boundary.
+  //     PDF text extraction often concatenates everything into one line,
+  //     so we can't rely on newline-based detection for these patterns.
+  //     Order matters: strip from earliest inline metadata marker found.
+  const inlineMetadataPatterns: Array<{ pattern: RegExp; label: string }> = [
+    // Officer designations (Deputy/Asst/Chief/Senior + Engineer/Manager/Officer)
+    { pattern: /\.?\s*(?:Deputy|Asst\.?|Assistant|Chief|Senior|Jr\.?|Junior|Executive)\s+(?:Executive\s+)?(?:Engineer|Manager|Officer|Director)\b/i, label: "officer" },
+    // Mobile/phone numbers: M :- 9909907418 or Phone: 98xxx or Mobile - 98xxx
+    { pattern: /\.?\s*(?:M|Ph|Phone|Mobile|Tel|Contact\s*No)\s*[:.\-]\s*[\d\s\-+()]{7,}/i, label: "phone" },
+    // Pre-Bid EMD
+    { pattern: /\.?\s*Pre-?\s*Bid\s+EMD\s*[:.\-]/i, label: "emd" },
+    // "Note:" or "Note-" inline (followed by digit or "1]" or "As is")
+    { pattern: /\.?\s*Note\s*[:.\-]\s*(?:\d|\(|as\s+is)/i, label: "note" },
+    // "Location :-" or "Location:" inline (followed by a place name, not a sentence)
+    { pattern: /\.?\s*Location\s*[:.\-]\s*(?![Oo]f\b)/i, label: "location" },
+  ];
+
+  for (const { pattern } of inlineMetadataPatterns) {
+    const match = cleaned.match(pattern);
+    if (match && match.index !== undefined) {
+      // If it matches at the very start (or only whitespace before it), strip just the matched pattern
+      if (match.index === 0 || cleaned.substring(0, match.index).trim().length === 0) {
+        cleaned = cleaned.substring(match.index + match[0].length).trim();
+      } else {
+        // Only truncate if there's meaningful content before the match
+        const before = cleaned.substring(0, match.index).trim();
+        if (before.length >= 20) {
+          cleaned = before;
+          break; // Stop at the earliest inline metadata found
+        }
+      }
+    }
+  }
+
+  // 2. Remove "Location: ..." / "Lot Location: ..." ONLY as block-level headers
+  //    Prevents stripping mid-sentence usage like "Location of plant is accessible..."
+  cleaned = cleaned.replace(/(?:^|\n)\s*Lot Location\s*[:.-].*$/gim, '');
+  cleaned = cleaned.replace(/(?:^|\n)\s*Location\s*[:.-].*$/gim, '');
 
   // 3. Remove "Total Qty: ... No" / "Qty- 250 Nos" / "Quantity ..."
   cleaned = cleaned.replace(/\b(?:Approx\s*)?(?:Qty|Quantity|QTY|Total\s*Qty)\s*[:.-]?\s*\d+[\d,.]*\s*(?:Nos?|No|Items?|Lots?|Units?|Kgs?|MT|Tons?|Pcs?|[a-zA-Z]+)?/gi, '');
@@ -697,6 +842,8 @@ export function cleanMaterialDescription(desc: string): string {
     .replace(/\s*[.,:\-/]\s*$/, '')
     .trim();
 
+  // 9. Strip trailing OCR garbage
+  cleaned = stripTrailingGarbage(cleaned);
   return cleaned;
 }
 
@@ -808,6 +955,7 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
             if (lot.subItems && Array.isArray(lot.subItems) && lot.subItems.length > 0) {
               const validSubs = lot.subItems.filter((sub: any) => {
                 if (!sub.description) return false;
+                if (isGarbageSegment(sub.description)) return false;
                 const lower = sub.description.toLowerCase();
                 return !(
                   lower.includes('guide for making payment') ||
@@ -864,17 +1012,39 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
               const match = cleanP.match(/(?:₹|Ôé╣)\s*(\d+)/);
               parsedPrice = match ? parseInt(match[1], 10) : 0;
             }
+
+            // Sanity check: if the per-unit price is unreasonably high, it's likely
+            // a start/reserve price rather than a real per-unit market rate.
+            // Fall back to the estimated market price in that case.
+            if (parsedPrice > 0) {
+              const estimated = getEstimatedMarketPrice(desc, item.category_name);
+              const estClean = estimated.replace(/,/g, '');
+              const estMatch = estClean.match(/(?:₹|Ôé╣)\s*(\d+)/);
+              const estPrice = estMatch ? parseInt(estMatch[1], 10) : 0;
+              // If the parsed price is more than 10x the estimated per-unit price,
+              // it's almost certainly a total lot start price, not a per-unit rate
+              if (estPrice > 0 && parsedPrice > estPrice * 10) {
+                parsedPrice = 0; // Force fallback
+              }
+            }
+
             if (parsedPrice <= 1) {
               mPrice = getEstimatedMarketPrice(desc, item.category_name);
             }
 
-            let lotQty = lot.qty;
-            let lotUnit = lot.unit;
-            if (lot.subItems && lot.subItems.length > 0) {
-              // Always derive qty from sub-items when available — the sub-item
-              // count is the most reliable source of truth from the parsed PDF.
-              // The catalog qty is often garbage like "1 AC + 1,005 NOS" or
-              // generic "1.0 LOT".
+            // The scraper already correctly parses qty/unit from "Quantity - 14.4 MT"
+            // in the lot block. We must respect that value and NOT blindly overwrite
+            // it with a subItem count.
+            // Only fall back to counting subItems when the lot truly has no real measurement
+            // (i.e. the unit is a generic placeholder like "Lot", "Lots", or is empty).
+            const GENERIC_UNITS = new Set(['LOT', 'LOTS', 'LOT/S', '']);
+            const isGenericQty = GENERIC_UNITS.has((lot.unit || '').toUpperCase().trim());
+
+            let lotQty = lot.qty || '1';
+            let lotUnit = lot.unit || 'Nos';
+
+            if (isGenericQty && lot.subItems && lot.subItems.length > 0) {
+              // Only count sub-items as a fallback when we have no real measurement
               lotQty = String(lot.subItems.length);
               lotUnit = 'Items';
             }
@@ -1145,6 +1315,26 @@ export function validateCatalogDescriptions(
       issues.push(`Lot ${item.sr} description contains metadata residue`);
       continue;
     }
+
+    // OCR garbage detection: flag descriptions where most words are short nonsense
+    const descWords = desc.split(/\s+/).filter((w: string) => /[a-zA-Z]/.test(w));
+    if (descWords.length >= 5) {
+      const LEGIT_SHORT = new Set([
+        'mt', 'kg', 'gm', 'no', 'pc', 'rm', 'ac', 'ms', 'gi', 'ci', 'ss',
+        'fe', 'cu', 'al', 'cr', 'zn', 'ni', 'pb', 'sn', 'of', 'at', 'in',
+        'to', 'on', 'by', 'or', 'an', 'is', 'it', 'as', 'if', 'up', 'so',
+        'do', 'go', 'be', 'we', 'he', 'me', 'my', 'us', 'rs', 'hp', 'kv',
+        'mm', 'cm', 'hd', 'hr', 'lr', 'mr', 'wt', 'nr', 'rd', 'st', 'nd', 'th',
+      ]);
+      const shortNonLegit = descWords.filter((w: string) => {
+        const clean = w.replace(/[^a-zA-Z]/g, '').toLowerCase();
+        return clean.length > 0 && clean.length <= 2 && !LEGIT_SHORT.has(clean);
+      }).length;
+      if (shortNonLegit / descWords.length >= 0.4) {
+        issues.push(`Lot ${item.sr} description appears to be OCR garbage`);
+        continue;
+      }
+    }
   }
 
   if (issues.length > 0) {
@@ -1161,27 +1351,37 @@ export const hasConfirmedAssetDocuments = (rawMaterialsText: string | null): boo
   if (!rawMaterialsText) return false;
   try {
     const parsed = JSON.parse(rawMaterialsText);
-    if (!parsed || !Array.isArray(parsed.items)) return false;
-    
+    if (!parsed) return false;
+
+    // Direct structured parser flags
+    if (typeof parsed.hasAssetDocuments === 'boolean') {
+      return parsed.hasAssetDocuments;
+    }
+    if (Array.isArray(parsed.documents) && parsed.documents.length > 0) {
+      return true;
+    }
+
+    if (!Array.isArray(parsed.items)) return false;
+
     return parsed.items.some((lot: any) => {
       if (!lot.attachments || !Array.isArray(lot.attachments)) return false;
       return lot.attachments.some((fileName: any) => {
         if (typeof fileName !== 'string') return false;
         const lower = fileName.toLowerCase();
         
-        // Must end with or contain .pdf
-        const isPdf = lower.includes('.pdf');
-        
-        // Must NOT contain words like photo, image, pic, picture, catalog, preview
+        if (!lower.includes('.pdf')) return false;
+
         const isPhotoOrCatalog = 
-          lower.includes('photo') || 
-          lower.includes('image') || 
-          lower.includes('pic') || 
-          lower.includes('picture') || 
-          lower.includes('catalog') || 
-          lower.includes('preview');
+          lower.startsWith('photo_') ||
+          lower.startsWith('image_') ||
+          lower.startsWith('img_') ||
+          lower.startsWith('pic_') ||
+          lower.includes('photo') ||
+          lower.includes('image') ||
+          lower.includes('picture') ||
+          lower.includes('catalog_page');
           
-        return isPdf && !isPhotoOrCatalog;
+        return !isPhotoOrCatalog;
       });
     });
   } catch {

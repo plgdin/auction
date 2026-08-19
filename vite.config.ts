@@ -8,7 +8,6 @@ let scraperProcess: any = null;
 let workerProcess: any = null;
 let clearDbProcess: any = null;
 let backfillProcess: any = null;
-let baanknetProcess: any = null;
 let gemProcess: any = null;
 let gemBidsProcess: any = null;
 
@@ -16,7 +15,6 @@ let scraperLogs: string[] = [];
 let workerLogs: string[] = [];
 let clearDbLogs: string[] = [];
 let backfillLogs: string[] = [];
-let baanknetLogs: string[] = [];
 let gemLogs: string[] = [];
 let gemBidsLogs: string[] = [];
 
@@ -27,7 +25,6 @@ const appendLog = (type: string, data: any) => {
   else if (type === 'worker') target = workerLogs;
   else if (type === 'clear-db') target = clearDbLogs;
   else if (type === 'backfill') target = backfillLogs;
-  else if (type === 'baanknet') target = baanknetLogs;
   else if (type === 'gem') target = gemLogs;
   else if (type === 'gem-bids') target = gemBidsLogs;
   else return;
@@ -53,7 +50,12 @@ const localApiPlugin = () => ({
           pathname === '/api/users' || 
           pathname === '/api/scraper/reset-failed' || 
           pathname === '/api/scraper/reset-single' ||
-          pathname === '/api/scraper/unlock-processing'
+          pathname === '/api/scraper/unlock-processing' ||
+          pathname === '/api/create-order' ||
+          pathname === '/api/verify-payment' ||
+          pathname === '/api/validate-coupon' ||
+          pathname === '/api/send-signup-email' ||
+          pathname === '/api/send-transactional-email'
         ) {
           // Add Vercel response helper methods
           res.status = (code: number) => {
@@ -72,6 +74,21 @@ const localApiPlugin = () => ({
 
           if (pathname === '/api/users') {
             import('./api/users.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/create-order') {
+            import('./api/create-order.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/verify-payment') {
+            import('./api/verify-payment.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/validate-coupon') {
+            import('./api/validate-coupon.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/send-signup-email') {
+            import('./api/send-signup-email.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/send-transactional-email') {
+            import('./api/send-transactional-email.ts').then((m) => m.default(req, res)).catch(next);
             return;
           } else if (
             pathname === '/api/scraper/reset-failed' || 
@@ -93,14 +110,12 @@ const localApiPlugin = () => ({
             workerRunning: workerProcess !== null,
             clearDbRunning: clearDbProcess !== null,
             backfillRunning: backfillProcess !== null,
-            baanknetRunning: baanknetProcess !== null,
             gemRunning: gemProcess !== null,
             gemBidsRunning: gemBidsProcess !== null,
             scraperLogs,
             workerLogs,
             clearDbLogs,
             backfillLogs,
-            baanknetLogs,
             gemLogs,
             gemBidsLogs
           }));
@@ -133,36 +148,6 @@ const localApiPlugin = () => ({
               scraperProcess.kill('SIGINT');
               scraperProcess = null;
               appendLog('scraper', 'Scraper process stopped by user request.');
-            }
-            res.end(JSON.stringify({ success: true }));
-            return;
-          }
-
-          if (req.url === '/api/scraper/baanknet/start') {
-            if (baanknetProcess) {
-              res.end(JSON.stringify({ success: false, message: 'BaankNet Scraper already running' }));
-              return;
-            }
-            baanknetLogs = [];
-            appendLog('baanknet', 'Starting BaankNet Scraper (npx tsx scraper/baanknetScraper.ts)...');
-            baanknetProcess = spawn('npx', ['tsx', 'scraper/baanknetScraper.ts'], { shell: true });
-            
-            baanknetProcess.stdout.on('data', (data: any) => appendLog('baanknet', data));
-            baanknetProcess.stderr.on('data', (data: any) => appendLog('baanknet', data));
-            baanknetProcess.on('close', (code: any) => {
-              appendLog('baanknet', `BaankNet Scraper process terminated with exit code ${code}`);
-              baanknetProcess = null;
-            });
-            
-            res.end(JSON.stringify({ success: true }));
-            return;
-          }
-
-          if (req.url === '/api/scraper/baanknet/stop') {
-            if (baanknetProcess) {
-              baanknetProcess.kill('SIGINT');
-              baanknetProcess = null;
-              appendLog('baanknet', 'BaankNet Scraper process stopped by user request.');
             }
             res.end(JSON.stringify({ success: true }));
             return;
@@ -343,11 +328,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  esbuild: {
-    drop: ['console', 'debugger'],
-  },
   build: {
     target: 'es2020', // Modern browsers — avoid unnecessary polyfills
+    sourcemap: false, // Never expose source code in production
     chunkSizeWarningLimit: 1000,
     cssCodeSplit: true, // Split CSS per chunk for better caching
     rollupOptions: {
@@ -360,21 +343,25 @@ export default defineConfig({
             if (normalizedId.includes('@xenova') || normalizedId.includes('onnxruntime')) {
               return 'transformers';
             }
-            // UI framework — only used in admin/dashboard pages
-            if (normalizedId.includes('antd') || normalizedId.includes('@ant-design')) {
-              return 'antd-vendor';
-            }
-            // Charting — only used in dashboard/analytics
-            if (normalizedId.includes('recharts') || normalizedId.includes('d3')) {
-              return 'recharts-vendor';
-            }
-            // Animation library — lazy-loaded with components that use it
-            if (normalizedId.includes('framer-motion')) {
-              return 'framer-vendor';
+            // Confetti helper
+            if (normalizedId.includes('canvas-confetti')) {
+              return 'confetti-vendor';
             }
             // Icon library — only icons actually imported are tree-shaken
             if (normalizedId.includes('lucide-react')) {
               return 'lucide-vendor';
+            }
+            // Supabase — heavy SDK, split from main bundle
+            if (normalizedId.includes('@supabase')) {
+              return 'supabase';
+            }
+            // React-query — used widely but deferrable
+            if (normalizedId.includes('@tanstack/react-query')) {
+              return 'react-query-vendor';
+            }
+            // React-router — used on every page but can be a separate chunk
+            if (normalizedId.includes('react-router') || normalizedId.includes('@remix-run')) {
+              return 'router-vendor';
             }
           }
         }

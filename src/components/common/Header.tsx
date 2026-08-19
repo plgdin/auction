@@ -1,18 +1,18 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ChevronDown, Check } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { 
+  Menu, X, Gavel, 
+  HelpCircle, Newspaper, BookOpen, Info, Mail, Home as HomeIcon, Sparkles,
+  Bell, CheckCircle2, AlertCircle, LogOut, ChevronDown
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { useAppStore } from '../../store/appStore';
 import clsx from 'clsx';
+import { toast } from 'react-hot-toast';
+import React from 'react';
+import type { Notification as DbNotification } from '../../types/database.types';
 
-const CURRENCIES = [
-  { code: 'INR', label: 'INR (₹)' },
-  { code: 'USD', label: 'USD ($)' },
-  { code: 'EUR', label: 'EUR (€)' },
-  { code: 'GBP', label: 'GBP (£)' },
-];
-
-function CurrencyDropdown() {
+/*
+function CurrencyDropdown({ isTransparent }: { isTransparent?: boolean }) {
   const { currency, setCurrency } = useAppStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -34,12 +34,17 @@ function CurrencyDropdown() {
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-3.5 py-2 border border-slate-250 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-mono font-bold"
+        className={clsx(
+          "flex items-center gap-2 px-3.5 py-2 border rounded-xl shadow-2xs text-sm transition-all cursor-pointer font-mono font-bold focus:outline-none focus:ring-2 focus:ring-primary/20",
+          isTransparent
+            ? "bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30"
+            : "bg-white text-slate-700 border-slate-200 hover:border-primary hover:bg-slate-50/55"
+        )}
         aria-expanded={open}
         aria-haspopup="listbox"
       >
         <span>{selected.label}</span>
-        <ChevronDown className={clsx('w-3 h-3 text-slate-450 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={clsx('w-3 h-3 transition-transform', open && 'rotate-180', isTransparent ? 'text-white/60' : 'text-slate-400')} />
       </button>
 
       {open && (
@@ -74,11 +79,175 @@ function CurrencyDropdown() {
     </div>
   );
 }
+*/
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated } = useAuthStore();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { isAuthenticated, user, profile, logout, isLoading } = useAuthStore();
   const location = useLocation();
+
+  // Click outside to close profile dropdown
+  useEffect(() => {
+    if (!isProfileOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.header-profile-container')) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [isProfileOpen]);
+
+  const planTag = isAuthenticated
+    ? (profile?.role === 'admin' || profile?.role === 'superadmin' ? 'Admin' :
+       profile?.subscription_plan === 'pro' ? 'Pro' :
+       profile?.subscription_plan === 'enterprise' ? 'Enterprise' :
+       (profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? 'Individual' : 'Free')
+    : 'App';
+
+  const isPaidSubscriberOrAdmin = isAuthenticated && (
+    profile?.subscription_plan === 'pro' || 
+    profile?.subscription_plan === 'go' || 
+    profile?.subscription_plan === 'go-subscription' || 
+    profile?.subscription_plan === 'enterprise' || 
+    profile?.role === 'admin' || 
+    profile?.role === 'superadmin'
+  );
+
+  const [notifications, setNotifications] = useState<DbNotification[]>([]);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      import('../../services/adminService')
+        .then(({ adminService }) => adminService.getNotifications(user.id))
+        .then((data) => setNotifications(data as DbNotification[]))
+        .catch(() => {});
+    }
+  }, [user]);
+
+  // Click outside to close notifications dropdown
+  useEffect(() => {
+    if (!isNotifOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.header-notification-container')) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [isNotifOpen]);
+
+  // Real-time notifications listener
+  useEffect(() => {
+    if (!user?.id) return;
+
+    if ('Notification' in window && window.Notification.permission === 'default') {
+      window.Notification.requestPermission();
+    }
+
+    let channel: { unsubscribe: () => unknown } | null = null;
+    let cancelled = false;
+
+    import('../../lib/supabase').then(({ supabase }) => {
+      if (cancelled) return;
+      channel = supabase.channel(`header_notifications_${user.id}`).on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newNotif = payload.new as DbNotification;
+          setNotifications(prev => [newNotif, ...prev]);
+
+          toast.success(
+            React.createElement('div', { className: 'space-y-0.5 text-left' },
+              React.createElement('p', { className: 'font-bold text-xs' }, newNotif.title),
+              React.createElement('p', { className: 'text-[10px] opacity-90 leading-normal line-clamp-2' }, newNotif.message)
+            ),
+            {
+              duration: 6000,
+              icon: '🔔',
+              style: {
+                borderRadius: '12px',
+                background: '#0f172a',
+                color: '#fff',
+              }
+            }
+          );
+
+          if ('Notification' in window && window.Notification.permission === 'granted') {
+            try {
+              new window.Notification(newNotif.title, {
+                body: newNotif.message,
+                icon: '/png_lelam_1.webp'
+              });
+            } catch (err) {
+              console.warn('Browser system notification failed:', err);
+            }
+          }
+        }
+      ).subscribe();
+    }).catch(() => {});
+
+    return () => {
+      cancelled = true;
+      channel?.unsubscribe();
+    };
+  }, [user]);
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const handleMarkRead = async (id: string) => {
+    const { adminService } = await import('../../services/adminService');
+    await adminService.markNotificationAsRead(id);
+    setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: true } : n));
+  };
+  const [heroMounted, setHeroMounted] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Monitor window scroll for transition threshold - trigger as soon as scrolling starts
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 2);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Listen for hero scroll events from HeroSection
+  useEffect(() => {
+    const handleHeroMount = (e: Event) => {
+      setHeroMounted((e as CustomEvent).detail);
+    };
+    window.addEventListener('hero-mount', handleHeroMount);
+    return () => {
+      window.removeEventListener('hero-mount', handleHeroMount);
+    };
+  }, []);
+
+  // Reset hero state when navigating away from home
+  useEffect(() => {
+    if (location.pathname !== '/') {
+      setHeroMounted(false);
+    }
+  }, [location.pathname]);
+
+  const isHomePage = location.pathname === '/';
+  
+  // Decide transparency state
+  const isHeaderTransparent = isHomePage && heroMounted && !isScrolled;
+
+  // Logo visibility: hidden when hero logo is visible, appears as hero logo fades
+  const navLogoOpacity = isHeaderTransparent ? 0 : 1;
+  const navLogoSlideY = isHeaderTransparent ? -8 : 0; // slide down 8px
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -86,6 +255,7 @@ export function Header() {
     { name: 'News', href: '/news' },
     { name: 'Blog', href: '/blog' },
     { name: 'FAQ', href: '/faq' },
+    { name: 'Pricing', href: '/pricing' },
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];
@@ -93,18 +263,33 @@ export function Header() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
+    <header className="sticky top-0 z-40 transition-all duration-300" role="banner" style={{
+      borderBottom: isHeaderTransparent ? '1px solid rgba(0, 0, 0, 0)' : '1px solid rgba(0, 0, 0, 0.06)',
+      boxShadow: isHeaderTransparent ? 'none' : '0 1px 4px 0 rgba(0, 0, 0, 0.04)',
+    }}>
+      {/* Sliding white background panel */}
+      <div className="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
+        <div 
+          className={clsx(
+            "absolute inset-0 bg-white/95 backdrop-blur-md transition-transform duration-500 ease-out",
+            isHeaderTransparent ? "-translate-y-full" : "translate-y-0"
+          )} 
+        />
+      </div>
       <div className="w-full px-4 sm:px-8 lg:px-12">
         <div className="flex justify-between items-center h-20">
-          <div className="flex-shrink-0 flex items-center -ml-4">
+          <div className="flex-shrink-0 flex items-center" style={{
+            opacity: navLogoOpacity,
+            transform: `translateY(${navLogoSlideY}px)`,
+            transition: 'opacity 0.25s ease, transform 0.25s ease',
+          }}>
             <Link to="/" className="flex items-center gap-2">
               <img src="/png_lelam_1.webp" alt="Lelam Logo" width={188} height={38} className="w-auto object-contain" style={{ height: '38px' }} />
-              <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase tracking-widest mt-1">Beta</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-1 lg:space-x-4 items-center">
+          <nav className="hidden xl:flex space-x-1 lg:space-x-3 items-center" aria-label="Main navigation">
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -112,41 +297,217 @@ export function Header() {
                 className={clsx(
                   'px-4 py-2.5 rounded-md text-base font-medium transition-all duration-300',
                   isActive(item.href)
-                    ? 'text-primary-700 bg-primary-100 shadow-sm'
-                    : 'text-slate-800 hover:text-primary-700 hover:bg-primary-100/70 hover:shadow-sm hover:-translate-y-0.5'
+                    ? (isHeaderTransparent
+                        ? 'text-white bg-white/20 shadow-sm'
+                        : 'text-primary-700 bg-primary-100 shadow-sm')
+                    : (isHeaderTransparent
+                        ? 'text-slate-100 hover:text-white hover:bg-white/15 hover:shadow-sm hover:-translate-y-0.5'
+                        : 'text-slate-800 hover:text-primary-700 hover:bg-primary-100/70 hover:shadow-sm hover:-translate-y-0.5')
                 )}
               >
                 {item.name}
               </Link>
             ))}
 
-            <div className="pl-4 ml-4 border-l border-slate-200 flex items-center space-x-4">
-              <CurrencyDropdown />
+            <div className="flex items-center space-x-4 ml-4">
+              {/* CurrencyDropdown is temporarily hidden */}
 
-              {isAuthenticated ? (
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
-                >
-                  Dashboard
-                </Link>
-              ) : (
-                <Link
-                  to="/auth/login"
-                  className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary/90 transition-colors"
-                >
-                  Sign In
-                </Link>
+              {isAuthenticated && (
+                <div className="relative header-notification-container">
+                  <button 
+                    onClick={() => setIsNotifOpen(!isNotifOpen)}
+                    className={clsx(
+                      "p-2.5 rounded-full hover:bg-slate-100/10 transition-colors relative cursor-pointer",
+                      isHeaderTransparent ? "text-white/80 hover:text-white" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                    )}
+                    aria-label="Toggle notifications dropdown"
+                  >
+                    <Bell size={20} />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                    )}
+                  </button>
+
+                  {isNotifOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden text-slate-900">
+                      <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <h3 className="font-bold text-slate-900 text-sm">Notifications</h3>
+                        {unreadCount > 0 && (
+                          <span className="text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded-full">{unreadCount} New</span>
+                        )}
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="p-6 text-center text-slate-500 text-xs font-semibold">No new notifications.</div>
+                        ) : (
+                          <ul className="divide-y divide-slate-100">
+                            {notifications.slice(0, 5).map(notif => (
+                              <li 
+                                key={notif.id} 
+                                className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer text-left ${!notif.is_read ? 'bg-blue-50/40' : ''}`}
+                                onClick={() => { if (!notif.is_read) handleMarkRead(notif.id); }}
+                              >
+                                <div className="flex gap-2.5">
+                                  <div className={`mt-0.5 ${!notif.is_read ? 'text-primary' : 'text-slate-400'}`}>
+                                    {notif.title.toLowerCase().includes('success') || notif.title.toLowerCase().includes('won') ? <CheckCircle2 className="w-4 h-4" /> :
+                                     notif.title.toLowerCase().includes('alert') || notif.title.toLowerCase().includes('outbid') ? <AlertCircle className="w-4 h-4" /> :
+                                     <Info className="w-4 h-4" />}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className={`text-xs ${!notif.is_read ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'} truncate`}>{notif.title}</p>
+                                    <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{notif.message}</p>
+                                    <p className="text-[9px] text-slate-400 mt-1.5 uppercase font-bold">{new Date(notif.created_at).toLocaleDateString()}</p>
+                                  </div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                      <div className="p-2 border-t border-slate-100 bg-slate-50 text-center">
+                        <Link 
+                          to="/dashboard/notifications" 
+                          onClick={() => setIsNotifOpen(false)}
+                          className="block text-xs font-bold text-primary hover:text-primary-700 py-1"
+                        >
+                          View All Notifications
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
+                {isLoading ? (
+                  <div className="w-24 h-10 bg-slate-100/50 animate-pulse rounded-md" />
+                ) : isAuthenticated ? (
+                  <div className="flex items-center gap-3">
+                    {isPaidSubscriberOrAdmin ? (
+                      <Link
+                        to="/dashboard"
+                        className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700 transition-colors"
+                      >
+                        Dashboard
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/pricing"
+                        className="inline-flex items-center justify-center px-6 py-3 rounded-full border border-blue-300 bg-gradient-to-t from-blue-100 via-blue-200 to-blue-300 text-blue-950 font-black text-base shadow-xs shadow-blue-300/60 hover:from-blue-200 hover:via-blue-300 hover:to-blue-400 transition-all duration-300 scale-100 hover:scale-105"
+                      >
+                        Upgrade Plan
+                      </Link>
+                    )}
+                    
+                    <div className="relative header-profile-container">
+                      <button
+                        onClick={() => setIsProfileOpen(!isProfileOpen)}
+                        className={clsx(
+                          "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-bold transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20",
+                          isHeaderTransparent
+                            ? "bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-primary hover:bg-slate-50/55"
+                        )}
+                        aria-expanded={isProfileOpen}
+                        aria-haspopup="true"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs uppercase border border-primary/20">
+                          {profile?.first_name ? profile.first_name[0] : (user?.email ? user.email[0] : 'U')}
+                        </div>
+                        <span className="hidden lg:inline max-w-[85px] truncate">
+                          {profile?.first_name || 'Account'}
+                        </span>
+                        <ChevronDown size={14} className={clsx("transition-transform duration-300", isProfileOpen && "rotate-180")} />
+                      </button>
+
+                      {isProfileOpen && (
+                        <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden text-slate-900">
+                          <div className="p-4 border-b border-slate-100 bg-slate-50 text-left">
+                            <p className="font-bold text-slate-900 text-sm truncate">
+                              {profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}` : 'User Account'}
+                            </p>
+                            <p className="text-xs text-slate-500 truncate mt-0.5">{user?.email}</p>
+                            <div className="mt-2 inline-block text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded shadow-2xs uppercase tracking-wider">
+                              Plan: {(profile?.subscription_plan === 'go' || profile?.subscription_plan === 'go-subscription') ? 'Individual' : (profile?.subscription_plan || 'free')}
+                            </div>
+                          </div>
+                          <div className="p-1 flex flex-col gap-0.5">
+                            <Link
+                              to="/dashboard"
+                              onClick={() => setIsProfileOpen(false)}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 hover:text-slate-950 hover:bg-slate-50 font-semibold text-xs transition-colors"
+                            >
+                              <Gavel size={14} className="text-slate-400" />
+                              Dashboard
+                            </Link>
+                            <Link
+                              to="/pricing"
+                              onClick={() => setIsProfileOpen(false)}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 hover:text-slate-955 hover:bg-slate-50 font-semibold text-xs transition-colors"
+                            >
+                              <Sparkles size={14} className="text-slate-400" />
+                              Upgrade / Pricing
+                            </Link>
+                            <button
+                              onClick={async () => {
+                                setIsProfileOpen(false);
+                                await logout();
+                                window.location.href = '/';
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 font-bold text-xs transition-colors border-0 bg-transparent text-left cursor-pointer"
+                            >
+                              <LogOut size={14} className="text-red-400" />
+                              Sign Out
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <Link
+                    to="/auth/login"
+                    className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary/90 transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                )}
             </div>
           </nav>
 
-          {/* Mobile menu button */}
-          <div className="flex items-center md:hidden">
+          {/* Mobile & Tablet actions + menu button */}
+          <div className="flex items-center space-x-2 xl:hidden">
+            {isAuthenticated && isPaidSubscriberOrAdmin && (
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-md shadow-xs text-sm font-bold text-white bg-primary hover:bg-primary-700 transition-colors"
+              >
+                Dashboard
+              </Link>
+            )}
+            {isAuthenticated && !isPaidSubscriberOrAdmin && (
+              <Link
+                to="/pricing"
+                className="inline-flex items-center justify-center px-3 py-1.5 rounded-full border border-blue-300 bg-gradient-to-t from-blue-100 via-blue-200 to-blue-300 text-blue-950 font-bold text-xs shadow-2xs hover:from-blue-200 transition-all"
+              >
+                Upgrade
+              </Link>
+            )}
+            {!isAuthenticated && !isLoading && (
+              <Link
+                to="/auth/login"
+                className="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-bold text-white bg-primary hover:bg-primary/90 transition-colors"
+              >
+                Sign In
+              </Link>
+            )}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label={isMobileMenuOpen ? "Close main menu" : "Open main menu"}
-              className="inline-flex items-center justify-center p-2 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
+              className={clsx(
+                "inline-flex items-center justify-center p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary",
+                isHeaderTransparent
+                  ? "text-white hover:text-white/85 hover:bg-white/10"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              )}
             >
               <span className="sr-only">Open main menu</span>
               {isMobileMenuOpen ? (
@@ -159,50 +520,146 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile Navigation */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-white">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={clsx(
-                  'block px-3 py-2 rounded-md text-base font-medium transition-all duration-200',
-                  isActive(item.href)
-                    ? 'text-primary-700 bg-primary-100'
-                    : 'text-slate-800 hover:text-primary-700 hover:bg-primary-100/70'
-                )}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {item.name}
-              </Link>
-            ))}
+      {/* Mobile & Tablet Navigation Drop-Down Panel */}
+      <div 
+        className={clsx(
+          "fixed inset-0 z-50 bg-white/98 backdrop-blur-2xl text-slate-900 xl:hidden flex flex-col justify-between p-6 overflow-y-auto select-none transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-2xl",
+          isMobileMenuOpen 
+            ? "translate-y-0 opacity-100 pointer-events-auto" 
+            : "-translate-y-full opacity-0 pointer-events-none"
+        )}
+      >
+        {/* Top Header Row with Logo & Close Button */}
+        <div className="flex items-center justify-between shrink-0 pb-4 border-b border-slate-100">
+          <Link 
+            to="/" 
+            className="flex items-center gap-2"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <img 
+              src="/png_lelam_1.webp" 
+              alt="Lelam Logo" 
+              width={140} 
+              height={32} 
+              className="h-8 w-auto object-contain" 
+            />
+            <span className="bg-primary/10 text-primary border border-primary/20 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest">
+              {planTag}
+            </span>
+          </Link>
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Close menu"
+            className="p-2 rounded-2xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer border border-slate-200 shadow-2xs"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
 
-            <div className="pt-4 mt-4 border-t border-slate-200">
-              {isAuthenticated ? (
+        {/* Perfectly Aligned Main Navigation Links */}
+        <div className="flex-1 flex flex-col items-center justify-center py-6 space-y-2.5 my-auto w-full">
+          <div className={clsx(
+            "w-full max-w-[220px] flex flex-col space-y-2.5 transition-all duration-500 delay-75",
+            isMobileMenuOpen ? "translate-y-0 opacity-100" : "-translate-y-6 opacity-0"
+          )}>
+            {navigation.map((item) => {
+              const getIcon = (name: string) => {
+                switch(name) {
+                  case 'Home': return HomeIcon;
+                  case 'Auctions': return Gavel;
+                  case 'News': return Newspaper;
+                  case 'Blog': return BookOpen;
+                  case 'FAQ': return HelpCircle;
+                  case 'About': return Info;
+                  case 'Contact': return Mail;
+                  default: return Sparkles;
+                }
+              };
+              const IconComp = getIcon(item.name);
+              const active = isActive(item.href);
+
+              return (
                 <Link
-                  to="/dashboard"
-                  className="block w-full text-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary-700"
+                  key={item.name}
+                  to={item.href}
+                  className={clsx(
+                    'w-full py-3.5 px-5 rounded-2xl text-base font-bold transition-all duration-200 flex items-center justify-start gap-4 cursor-pointer',
+                    active
+                      ? 'text-white bg-primary shadow-lg shadow-primary/30 border border-primary scale-105'
+                      : 'text-slate-700 hover:text-primary hover:bg-slate-100 border border-transparent'
+                  )}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Dashboard
+                  <IconComp className={clsx("w-5 h-5 shrink-0", active ? "text-white" : "text-slate-400")} />
+                  <span className="truncate">{item.name}</span>
                 </Link>
-              ) : (
-                <div className="space-y-3">
-                  <Link
-                    to="/auth/login"
-                    className="block w-full text-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-primary/90"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Sign In
-                  </Link>
-                </div>
-              )}
-            </div>
+              );
+            })}
           </div>
         </div>
-      )}
+
+        {/* Bottom Actions Area */}
+        <div className={clsx(
+          "shrink-0 pt-6 border-t border-slate-100 flex flex-col items-center space-y-4 text-center w-full max-w-xs mx-auto transition-all duration-500 delay-150",
+          isMobileMenuOpen ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+        )}>
+          {isLoading ? (
+            <div className="w-full h-14 bg-slate-100/50 animate-pulse rounded-2xl" />
+          ) : isAuthenticated ? (
+            <div className="w-full flex flex-col gap-3">
+              <div className="w-full flex items-center gap-3">
+                <Link
+                  to="/dashboard/notifications"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl flex items-center justify-center relative cursor-pointer"
+                  title="Notifications"
+                >
+                  <Bell size={22} />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-3 right-3.5 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
+                  )}
+                </Link>
+                {isPaidSubscriberOrAdmin ? (
+                  <Link
+                    to="/dashboard"
+                    className="flex-1 text-center py-3.5 px-6 rounded-2xl text-base font-bold text-white bg-primary hover:bg-primary/95 shadow-lg shadow-primary/30 transition-all cursor-pointer"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Go to Dashboard
+                  </Link>
+                ) : (
+                  <Link
+                    to="/pricing"
+                    className="flex-1 text-center py-4 px-6 rounded-2xl border border-blue-300 bg-gradient-to-t from-blue-100 via-blue-200 to-blue-300 text-blue-950 font-black text-lg shadow-xs shadow-blue-300/60 hover:from-blue-200 hover:via-blue-300 hover:to-blue-400 transition-all duration-300"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Upgrade Plan
+                  </Link>
+                )}
+              </div>
+              <button
+                onClick={async () => {
+                  setIsMobileMenuOpen(false);
+                  await logout();
+                  window.location.href = '/';
+                }}
+                className="w-full py-3.5 px-6 rounded-2xl text-base font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-all cursor-pointer border border-red-200"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/auth/login"
+              className="w-full text-center py-3.5 px-6 rounded-2xl text-base font-bold text-white bg-primary hover:bg-primary/95 shadow-lg shadow-primary/30 transition-all cursor-pointer"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Sign In
+            </Link>
+          )}
+          {/* CurrencyDropdown is temporarily hidden */}
+        </div>
+      </div>
     </header>
   );
 }

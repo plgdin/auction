@@ -15,7 +15,10 @@ import {
   filterCompoundComponents,
   matchWholeWord,
   getLevenshteinDistance,
-  cleanQueryPriceTypos
+  cleanQueryPriceTypos,
+  parseDateConstraint,
+  cleanQueryFromDateConstraint,
+  removeStopWords
 } from './nlpSearchUtils';
 
 // ─── India Location Lookup ────────────────────────────────────────────────────
@@ -530,6 +533,10 @@ export const publicService = {
       return false;
     }
     return true;
+  },
+
+  async submitContactForm(messageData: Partial<ContactMessage>): Promise<boolean> {
+    return this.submitContactMessage(messageData);
   },
 
   getActiveFaqs: PageCache.memoize(async function getActiveFaqs(): Promise<FaqItem[]> {
@@ -1748,6 +1755,26 @@ export const MstcSearchService = {
         }
       }
 
+      // If the query was entirely composed of stop words (e.g. "show me"), return all (filtered by price)
+      if (substantiveTokens.length === 0 && optionalTokens.length === 0) {
+        if (priceConstraint) {
+          mapped = mapped.filter(item => {
+            const { preBid, totalValue, isEstimated } = estimateAuctionValues(item);
+            if (isEstimated) return false;
+            const matchValue = (val: number) => {
+              if (val <= 0) return false;
+              if (priceConstraint.operator === 'less') return val <= priceConstraint.value;
+              if (priceConstraint.operator === 'greater') return val >= priceConstraint.value;
+              return val === priceConstraint.value;
+            };
+            if (priceConstraint.field === 'pre_bid') return matchValue(preBid);
+            if (priceConstraint.field === 'total_value') return matchValue(totalValue);
+            return matchValue(preBid) || matchValue(totalValue);
+          });
+        }
+        return mapped.sort((a, b) => new Date(b.opening_date).getTime() - new Date(a.opening_date).getTime());
+      }
+
       // Determine scoped categories based on query tokens (intent classification)
       const targetCategories = new Set<string>();
       const categoryScores = new Map<string, number>();
@@ -1945,7 +1972,7 @@ export const MstcSearchService = {
   /**
    * High-speed catalog search engine filtering through clean, deduplicated snapshots with Layman's search
    */
-  searchMarketplaceCatalog: PageCache.memoize(async function searchMarketplaceCatalog(
+  async searchMarketplaceCatalog(
     query: string,
     filters?: { 
       category?: string; 
@@ -1971,7 +1998,26 @@ export const MstcSearchService = {
     try {
       const cleanedQuery = cleanQueryPriceTypos(query);
       const pConstraint = parsePriceConstraint(cleanedQuery);
-      const workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
+      const dConstraint = parseDateConstraint(cleanedQuery);
+      let workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
+      workingQuery = cleanQueryFromDateConstraint(workingQuery);
+
+      let isReauctionSearch = filters?.isReauction;
+      const reauctionRegex = /(?:(?:don'?t\s+(?:show\s+(?:me\s+)?)?|not\s+|no\s+|without\s+|exclude\s+)\s*)?\bre[- ]?auctions?\b/ig;
+      const reauctionMatch = workingQuery.match(reauctionRegex);
+      if (reauctionMatch && reauctionMatch.length > 0) {
+        if (/(don'?t|not|no|without|exclude)/i.test(reauctionMatch[0])) {
+          isReauctionSearch = false;
+        } else {
+          isReauctionSearch = true;
+        }
+        workingQuery = workingQuery.replace(reauctionRegex, '').trim();
+      }
+
+      const { canonical: locationCanonical, remainingQuery } = extractLocationFromQuery(workingQuery);
+      workingQuery = remainingQuery;
+      
+      const precisionSubcategory = detectPrecisionSubcategory(workingQuery);
 
       // ── AUCTION NUMBER DIRECT LOOKUP ─────────────────────────────────────────
       // If the query looks like an auction number (e.g. "MSTC/ZG/POSTMASTER/1/...")
@@ -2034,8 +2080,10 @@ export const MstcSearchService = {
         p_max_pre_bid = 0;
       }
       
+      const rpcQuery = removeStopWords(workingQuery);
+
       let embeddingStr: string | null = null;
-      if (workingQuery && workingQuery.length > 2) {
+      if (rpcQuery && rpcQuery.length > 0) {
         try {
           const { embeddingService } = await import('./embeddingService');
           const vectorPromise = embeddingService.generateEmbedding(workingQuery);
@@ -2050,30 +2098,60 @@ export const MstcSearchService = {
         }
       }
 
-      const rpcPage = filters?.page || 1;
-      const rpcLimit = filters?.limit || 12;
+      const isDateSortHack = !!dConstraint && !rpcQuery;
+      const rpcPage = isDateSortHack ? 1 : (filters?.page || 1);
+      const actualPage = filters?.page || 1;
+      const actualLimit = filters?.limit || 12;
+      const rpcLimit = isDateSortHack ? 1000 : actualLimit;
+      
+      let finalStartDate = filters?.startDate || dConstraint?.startDate || null;
+      let finalEndDate = filters?.endDate || dConstraint?.endDate || null;
 
       let searchData: any[] | null = null;
       let totalCount = 0;
       let returnedCorrectedQuery: string | undefined = undefined;
       let error: any = null;
 
+      let finalLocations = filters?.locations?.length ? filters.locations : (filters?.location ? [filters.location] : null);
+      if (locationCanonical) {
+        // DB uses Title Case for states (e.g. "Kerala")
+        const titleCased = locationCanonical.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        finalLocations = finalLocations ? [...finalLocations, titleCased] : [titleCased];
+      }
+
+      let finalSubcategories = filters?.subcategories?.length ? filters.subcategories : (filters?.subcategory ? [filters.subcategory] : null);
+      if (precisionSubcategory) {
+        finalSubcategories = finalSubcategories ? [...finalSubcategories, precisionSubcategory] : [precisionSubcategory];
+      }
+
+      let finalCategories = filters?.categories?.length ? filters.categories : (filters?.category ? [filters.category] : null);
+
+      // If the query is just a price constraint (like "above 50k"), the RPC will do a full table scan 
+      // on JSONB fields which causes a statement timeout on production databases.
+      // We skip the RPC and immediately fallback to the client-side fetcher which parses in memory.
+      const isPurePriceQuery = !rpcQuery && (p_min_pre_bid !== undefined || p_max_pre_bid !== undefined) && 
+        !finalCategories?.length && !finalSubcategories?.length;
+      
+      if (isPurePriceQuery) {
+        throw new Error('Bypassing RPC for pure price query to avoid statement timeout.');
+      }
+
       // Run Hybrid RPC for EVERYTHING (empty query acts as pure filter)
       const rpcResult = await supabase.rpc('hybrid_search_mstc_catalog', {
-        p_search_query: workingQuery || null,
+        p_search_query: rpcQuery || null,
         p_embedding: embeddingStr as any,
-        p_categories: filters?.categories?.length ? filters.categories : (filters?.category ? [filters.category] : null),
-        p_subcategories: filters?.subcategories?.length ? filters.subcategories : (filters?.subcategory ? [filters.subcategory] : null),
-        p_locations: filters?.locations?.length ? filters.locations : (filters?.location ? [filters.location] : null),
+        p_categories: finalCategories,
+        p_subcategories: finalSubcategories,
+        p_locations: finalLocations,
         p_sellers: filters?.sellers?.length ? filters.sellers : (filters?.seller ? [filters.seller] : null),
         p_regional_offices: filters?.regionalOffices?.length ? filters.regionalOffices : (filters?.regionalOffice ? [filters.regionalOffice] : null),
-        p_start_date: filters?.startDate || null,
-        p_end_date: filters?.endDate || null,
+        p_start_date: finalStartDate,
+        p_end_date: finalEndDate,
         p_has_images: filters?.hasImages || null,
         p_has_docs: filters?.hasAssetDocuments || null,
         p_min_pre_bid: p_min_pre_bid ?? null,
         p_max_pre_bid: p_max_pre_bid ?? null,
-        p_is_reauction: filters?.isReauction ?? null,
+        p_is_reauction: isReauctionSearch ?? null,
         p_page: rpcPage,
         p_limit: rpcLimit
       });
@@ -2081,30 +2159,30 @@ export const MstcSearchService = {
       searchData = rpcResult.data;
       error = rpcResult.error;
 
-      // If the DB text/vector search returned 0 results but there was a meaningful
-      // query, ask the backend for a spell-check auto-correction!
-      if ((!searchData || searchData.length === 0) && workingQuery && workingQuery.trim() !== '') {
+      if ((!searchData || searchData.length === 0) && rpcQuery && rpcQuery.trim() !== '') {
         const { data: correctedQuery, error: correctionError } = await supabase.rpc('suggest_search_correction', {
-          p_query: workingQuery
+          p_query: rpcQuery
         });
 
-        if (!correctionError && correctedQuery && correctedQuery !== workingQuery) {
-          console.log(`Auto-correcting search from "${workingQuery}" to "${correctedQuery}"`);
+        if (!correctionError && correctedQuery && correctedQuery !== rpcQuery) {
+          if ((import.meta as any).env?.DEV) {
+            console.log(`Auto-correcting search from "${rpcQuery}" to "${correctedQuery}"`);
+          }
           const retryResult = await supabase.rpc('hybrid_search_mstc_catalog', {
             p_search_query: correctedQuery,
             p_embedding: embeddingStr as any,
             p_categories: filters?.categories?.length ? filters.categories : (filters?.category ? [filters.category] : null),
-            p_subcategories: filters?.subcategories?.length ? filters.subcategories : (filters?.subcategory ? [filters.subcategory] : null),
-            p_locations: filters?.locations?.length ? filters.locations : (filters?.location ? [filters.location] : null),
+            p_subcategories: finalSubcategories,
+            p_locations: finalLocations,
             p_sellers: filters?.sellers?.length ? filters.sellers : (filters?.seller ? [filters.seller] : null),
             p_regional_offices: filters?.regionalOffices?.length ? filters.regionalOffices : (filters?.regionalOffice ? [filters.regionalOffice] : null),
-            p_start_date: filters?.startDate || null,
-            p_end_date: filters?.endDate || null,
+            p_start_date: finalStartDate,
+            p_end_date: finalEndDate,
             p_has_images: filters?.hasImages || null,
             p_has_docs: filters?.hasAssetDocuments || null,
             p_min_pre_bid: p_min_pre_bid ?? null,
             p_max_pre_bid: p_max_pre_bid ?? null,
-            p_is_reauction: filters?.isReauction ?? null,
+            p_is_reauction: isReauctionSearch ?? null,
             p_page: rpcPage,
             p_limit: rpcLimit
           });
@@ -2125,31 +2203,33 @@ export const MstcSearchService = {
       
       if (searchData && searchData.length > 0) {
         totalCount = Number(searchData[0].total_count) || 0;
+        if (isDateSortHack) {
+          searchData.sort((a, b) => new Date(a.opening_date).getTime() - new Date(b.opening_date).getTime());
+          searchData = searchData.slice((actualPage - 1) * actualLimit, actualPage * actualLimit);
+        }
       }
 
       if (error) {
         throw error;
       }
 
-      const hasDirectMatches = !!(searchData && searchData.length > 0 && searchData.some((r: any) => r.search_rank > 0));
+      const isPureFilterQuery = !rpcQuery || rpcQuery.trim() === '';
+      const hasDirectMatches = isPureFilterQuery 
+        ? true 
+        : !!(searchData && searchData.length > 0 && searchData.some((r: any) => r.search_rank > 0));
 
       // Map Categories (is_reauction is returned natively by RPC)
       let mapped = (searchData as any[]).map(item => {
         const { category, subcategory } = mapRawCategory(item.category_name);
-        return {
-          ...item,
-          is_reauction: !!item.is_reauction,
-          category_name: `${category} | ${subcategory}`
-        } as MstcSanitizedAuction;
+        return { ...item, is_reauction: !!item.is_reauction, category_name: `${category} | ${subcategory}` } as MstcSanitizedAuction;
       });
 
       return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery, hasDirectMatches };
-
     } catch (error) {
       console.error('Hybrid search failed:', error);
       throw error;
     }
-  }, 'marketplaceSearch'),
+  },
 
   /**
    * Fetches a single MSTC auction by its UUID/ID, mapping raw categories appropriately.
@@ -2651,173 +2731,6 @@ export const MstcSearchService = {
   }, 'verifiedConsultantFeed')
 };
 
-export interface BaanknetAuction {
-  id: string;
-  baanknet_auction_id: string;
-  bank_property_id: string;
-  title: string;
-  reserve_price_value?: number | null;
-  reserve_price_text: string;
-  bank_name: string;
-  location: string;
-  city: string;
-  pincode: string;
-  full_address: string;
-  property_type: string;
-  auction_start_date: string;
-  auction_end_date: string;
-  source_url: string;
-  scraped_at: string;
-  document_url?: string;
-  document_urls?: string[];
-
-  // Multi-module detail fields
-  auction_module?: string;
-  carpet_area?: string;
-  carpet_area_sqft?: number | null;
-  furnishing?: string;
-  possession_status?: string;
-  action_type?: string;
-  district?: string;
-  inspection_start_date?: string;
-  inspection_end_date?: string;
-  emd_end_date?: string;
-  borrower_name?: string;
-  property_description?: string;
-  photo_count?: number;
-  thumbnail_url?: string;
-}
-
-export const BaanknetSearchService = {
-  /**
-   * High-speed catalog search for BaankNet bank properties
-   */
-  async searchBaanknetCatalog(
-    query: string,
-    filters?: {
-      category?: string;
-      location?: string;
-      regionalOffice?: string;
-      page?: number;
-      limit?: number;
-      sortBy?: string;
-    }
-  ): Promise<{ data: BaanknetAuction[]; count: number }> {
-    try {
-      const page = filters?.page || 1;
-      const limit = filters?.limit || 12;
-      const offset = (page - 1) * limit;
-
-      let q = supabase
-        .from('baanknet_auctions')
-        .select('*', { count: 'exact' });
-
-      // Apply category (property type) filter
-      if (filters?.category && filters.category !== 'All Categories') {
-        q = q.eq('property_type', filters.category);
-      }
-
-      // Apply location (state) filter
-      if (filters?.location && filters.location !== 'All Locations') {
-        q = q.eq('location', filters.location);
-      }
-
-      // Apply regionalOffice (bank name) filter
-      if (filters?.regionalOffice && filters.regionalOffice !== 'All Regional Offices') {
-        q = q.eq('bank_name', filters.regionalOffice);
-      }
-
-      // Text search
-      if (query.trim()) {
-        const cleanQuery = query.trim();
-        q = q.or(`title.ilike.%${cleanQuery}%,bank_name.ilike.%${cleanQuery}%,location.ilike.%${cleanQuery}%,city.ilike.%${cleanQuery}%,full_address.ilike.%${cleanQuery}%,baanknet_auction_id.ilike.%${cleanQuery}%`);
-      }
-
-      // Sorting
-      const sortBy = filters?.sortBy || 'newest';
-      if (sortBy === 'price_asc') {
-        q = q.order('reserve_price_value', { ascending: true, nullsFirst: false });
-      } else if (sortBy === 'price_desc') {
-        q = q.order('reserve_price_value', { ascending: false, nullsFirst: false });
-      } else if (sortBy === 'date_asc') {
-        q = q.order('auction_start_date', { ascending: true });
-      } else {
-        q = q.order('auction_start_date', { ascending: false });
-      }
-
-      // Pagination
-      q = q.range(offset, offset + limit - 1);
-
-      const { data, error, count } = await q;
-
-      if (error) throw error;
-
-      return {
-        data: (data as BaanknetAuction[]) || [],
-        count: count || 0,
-      };
-    } catch (e) {
-      console.error('Failed to search BaankNet catalog:', e);
-      return { data: [], count: 0 };
-    }
-  },
-
-  /**
-   * Fetches single BaankNet property by its database ID
-   */
-  async getBaanknetAuctionById(id: string): Promise<BaanknetAuction | null> {
-    try {
-      const { data, error } = await supabase
-        .from('baanknet_auctions')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      return data as BaanknetAuction;
-    } catch (e) {
-      console.error(`Failed to load BaankNet property ${id}:`, e);
-      return null;
-    }
-  },
-
-  /**
-   * Fetches distinct categories, states, and bank names to populate search filters
-   */
-  async getBaanknetFilterOptions(): Promise<{
-    categories: string[];
-    locations: string[];
-    regionalOffices: string[];
-  }> {
-    try {
-      const { data, error } = await supabase
-        .from('baanknet_auctions')
-        .select('property_type, location, bank_name');
-
-      if (error) throw error;
-
-      const categoriesSet = new Set<string>();
-      const locationsSet = new Set<string>();
-      const regionalOfficesSet = new Set<string>();
-
-      (data || []).forEach((item) => {
-        if (item.property_type) categoriesSet.add(item.property_type);
-        if (item.location) locationsSet.add(item.location);
-        if (item.bank_name) regionalOfficesSet.add(item.bank_name);
-      });
-
-      return {
-        categories: Array.from(categoriesSet).sort(),
-        locations: Array.from(locationsSet).sort(),
-        regionalOffices: Array.from(regionalOfficesSet).sort(),
-      };
-    } catch (e) {
-      console.error('Failed to load BaankNet filter options:', e);
-      return { categories: [], locations: [], regionalOffices: [] };
-    }
-  }
-};
-
 export interface GemAuction {
   id: string;
   gem_auction_id: string;
@@ -3104,4 +3017,3 @@ export const GemBidSearchService = {
     }
   }
 };
-

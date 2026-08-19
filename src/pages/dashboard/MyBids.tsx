@@ -19,7 +19,7 @@ function BidItemSkeleton() {
           <div className="h-4 bg-slate-200 rounded w-12" />
           <div className="h-3.5 bg-slate-200 rounded w-24" />
         </div>
-        <div className="h-5 bg-slate-250 rounded w-1/2" />
+        <div className="h-5 bg-slate-200 rounded w-1/2" />
         <div className="h-3.5 bg-slate-200 rounded w-32" />
       </div>
       <div className="w-full sm:w-auto flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3">
@@ -152,7 +152,7 @@ export function MyBids() {
                           <div className="flex items-center gap-2 mb-1">
                             <span className={clsx(
                               "px-2 py-0.5 text-xs font-bold rounded uppercase tracking-wide",
-                              isWon ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-650"
+                              isWon ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"
                             )}>
                               {isWon ? 'Won' : 'Ended'}
                             </span>

@@ -5,18 +5,24 @@ import { AnnouncementBanner } from '../components/common/AnnouncementBanner';
 import { PageTracker } from '../components/common/PageTracker';
 import { CookieConsent } from '../components/common/CookieConsent';
 import { MaintenanceGuard } from '../components/common/MaintenanceGuard';
+import { MobileBottomNav } from '../components/common/MobileBottomNav';
 
 export function MainLayout() {
   return (
     <MaintenanceGuard>
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-clip">
+        {/* Skip-to-content link for keyboard/screen-reader accessibility */}
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:top-2 focus:left-2 focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded-md focus:text-sm focus:font-semibold">
+          Skip to main content
+        </a>
         <PageTracker />
         <AnnouncementBanner />
         <Header />
-        <main className="flex-grow">
+        <main id="main-content" className="flex-grow pb-16 md:pb-0" role="main">
           <Outlet />
         </main>
         <Footer />
+        <MobileBottomNav />
         <CookieConsent />
       </div>
     </MaintenanceGuard>

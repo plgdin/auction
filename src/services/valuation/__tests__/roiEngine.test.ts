@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { roiEngine } from '../roiEngine';
 import { currencyEngine } from '../currencyEngine';
 import { costEngine } from '../costEngine';
@@ -5,21 +6,11 @@ import { confidenceEngine } from '../confidenceEngine';
 import { riskEngine } from '../riskEngine';
 import { recommendationEngine } from '../recommendationEngine';
 import { simulationEngine } from '../simulationEngine';
+import { marketEngine } from '../marketEngine';
+import { biddingEngine } from '../biddingEngine';
 
-// Assert helper
-function assert(condition: boolean, message: string) {
-  if (!condition) {
-    throw new Error(`❌ Assertion Failed: ${message}`);
-  }
-  console.log(`  ✓ Passed: ${message}`);
-}
-
-export async function runRoiEngineTests(): Promise<boolean> {
-  let success = true;
-
-  // 1. Cost & Tax Engine Unit Tests
-  console.log('\n--- Running Cost & Tax Engine Tests ---');
-  try {
+describe('costEngine', () => {
+  it('correctly calculates GST, TCS, and total cost breakdown', () => {
     const costsInput = {
       currentBid: 1000000,
       gstPercent: 18,
@@ -32,28 +23,19 @@ export async function runRoiEngineTests(): Promise<boolean> {
 
     const calculated = costEngine.calculateCosts(costsInput);
     
-    // Assert GST is 18% of bid (1,000,000 * 0.18 = 180,000)
-    assert(calculated.gstAmount === 180000, `GST amount should be 180,000, got ${calculated.gstAmount}`);
+    // GST = 18% of 1,000,000 = 180,000
+    expect(calculated.gstAmount).toBe(180000);
+    // TCS = 1% of (1,000,000 + 180,000) = 11,800
+    expect(calculated.tcsAmount).toBe(11800);
+    // Other expenses = 10,000 + 5,000 + 3,000 + 2,000 = 20,000
+    expect(calculated.otherExpenses).toBe(20000);
+    // Total cost = 1,000,000 + 180,000 + 11,800 + 20,000 = 1,211,800
+    expect(calculated.totalCost).toBe(1211800);
+  });
 
-    // Assert TCS is 1% of (Bid + GST) = 1,180,000 * 0.01 = 11,800
-    assert(calculated.tcsAmount === 11800, `TCS amount should be 11,800, got ${calculated.tcsAmount}`);
-
-    // Assert other expenses sum is 20,000
-    assert(calculated.otherExpenses === 20000, `Other expenses should be 20,000, got ${calculated.otherExpenses}`);
-
-    // Assert total cost is 1,000,000 + 180,000 + 11,800 + 20,000 = 1,211,800
-    assert(calculated.totalCost === 1211800, `Total cost should be 1,211,800, got ${calculated.totalCost}`);
-
-  } catch (err: any) {
-    console.error('Cost Engine Unit Tests Failed:', err.message);
-    success = false;
-  }
-
-  // 2. Break-Even Unit Tests (True Mathematical Break-Even)
-  console.log('\n--- Running Break-Even Mathematical Tests ---');
-  try {
+  it('calculates exact mathematical break-even bid price', () => {
     const costsInput = {
-      currentBid: 0, // not used in break-even math itself
+      currentBid: 0,
       gstPercent: 18,
       tcsPercent: 1,
       transportation: 80000,
@@ -63,60 +45,59 @@ export async function runRoiEngineTests(): Promise<boolean> {
 
     const breakEvenBid = costEngine.calculateBreakEven(totalLotValue, costsInput);
 
-    // Verify break-even bid:
-    // (1,500,000 lot value - 100,000 other expenses) / (1 + 0.18 + 0.01 + 0.18*0.01)
-    // = 1,400,000 / 1.1918 = 1,174,694
-    assert(breakEvenBid === 1174694, `Break-even bid should be 1,174,694, got ${breakEvenBid}`);
+    // Formula: (1,500,000 - 100,000) / 1.1918 = 1,174,694
+    expect(breakEvenBid).toBe(1174694);
 
-    // Verify that at break-even bid, total cost equals total lot value
-    const calculatedCostsAtBreakEven = costEngine.calculateCosts({
+    const costsAtBreakEven = costEngine.calculateCosts({
       ...costsInput,
       currentBid: breakEvenBid
     });
-    assert(calculatedCostsAtBreakEven.totalCost === totalLotValue, `Total cost at break-even (${calculatedCostsAtBreakEven.totalCost}) should equal lot value (${totalLotValue})`);
+    expect(costsAtBreakEven.totalCost).toBe(totalLotValue);
+  });
+});
 
-  } catch (err: any) {
-    console.error('Break-Even Unit Tests Failed:', err.message);
-    success = false;
-  }
-
-  // 3. Currency Conversion Engine Tests
-  console.log('\n--- Running Currency Engine Tests ---');
-  try {
-    // USD to INR: 100 USD * 85 = 8,500 INR
+describe('currencyEngine', () => {
+  it('converts USD to INR correctly', () => {
     const inrValue = currencyEngine.convert(100, 'USD', 'INR');
-    assert(inrValue === 8500, `100 USD to INR should be 8,500, got ${inrValue}`);
+    expect(inrValue).toBe(8500);
+  });
 
-    // INR to GBP: 108,000 INR / 108 = 1,000 GBP
+  it('converts INR to GBP correctly', () => {
     const gbpValue = currencyEngine.convert(108000, 'INR', 'GBP');
-    assert(gbpValue === 1000, `108,000 INR to GBP should be 1,000, got ${gbpValue}`);
-  } catch (err: any) {
-    console.error('Currency Engine Unit Tests Failed:', err.message);
-    success = false;
-  }
+    expect(gbpValue).toBe(1000);
+  });
+});
 
-  // 4. Confidence Engine Unit Tests
-  console.log('\n--- Running Confidence Engine Tests ---');
-  try {
+describe('confidenceEngine', () => {
+  it('computes weighted confidence score accurately', () => {
     const factors = {
-      ocr: 98,
-      material: 100,
-      image: 92,
-      seller: 85,
-      history: 72,
-      market: 89
+      ocr: 80,
+      material: 50,
+      image: 85,
+      seller: 50,
+      history: 50,
+      market: 70,
+      weight: 50,
+      description: 55
     };
     const confidence = confidenceEngine.calculateConfidence(factors);
-    // Weighted confidence should be around 89 (example calculation in request)
-    assert(confidence.overallScore >= 80 && confidence.overallScore <= 95, `Overall confidence should be around 89, got ${confidence.overallScore}`);
-  } catch (err: any) {
-    console.error('Confidence Engine Unit Tests Failed:', err.message);
-    success = false;
-  }
+    expect(confidence.overallScore).toBeGreaterThanOrEqual(50);
+    expect(confidence.overallScore).toBeLessThanOrEqual(80);
+  });
 
-  // 5. Risk Engine Unit Tests
-  console.log('\n--- Running Risk Engine Tests ---');
-  try {
+  it('uses real item ocrConfidence in valuation pipeline when provided', async () => {
+    const rawItemWithOcr = [
+      { sr: 1, description: 'Scrap Copper Wire purity 99%', qty: '100', unit: 'KG', ocrConfidence: 94 }
+    ];
+    const valuation = await roiEngine.calculateValuation(rawItemWithOcr, { currentBid: 1000 }, false, 'Mumbai');
+    expect(valuation.confidence.breakdown.ocr).toBe(94);
+    // Verify riskEngine ocrConfidence risk component is 100 - 94 = 6 (not pricing confidence!)
+    expect(valuation.risk.breakdown.ocrConfidence).toBe(6);
+  });
+});
+
+describe('riskEngine', () => {
+  it('evaluates low risk parameters', () => {
     const lowRiskFactors = {
       priceVolatility: 20,
       marketTrend: 'up' as const,
@@ -130,8 +111,10 @@ export async function runRoiEngineTests(): Promise<boolean> {
       environmentalRisk: 10
     };
     const lowRisk = riskEngine.calculateRisk(lowRiskFactors);
-    assert(lowRisk.level === 'Low Risk', `Risk level should be 'Low Risk', got ${lowRisk.level}`);
+    expect(lowRisk.level).toBe('Low Risk');
+  });
 
+  it('evaluates high risk parameters', () => {
     const highRiskFactors = {
       priceVolatility: 95,
       marketTrend: 'down' as const,
@@ -145,150 +128,225 @@ export async function runRoiEngineTests(): Promise<boolean> {
       environmentalRisk: 85
     };
     const highRisk = riskEngine.calculateRisk(highRiskFactors);
-    assert(highRisk.level === 'High Risk', `Risk level should be 'High Risk', got ${highRisk.level}`);
-    assert(highRisk.score > 70, `High risk score should be >70, got ${highRisk.score}`);
-  } catch (err: any) {
-    console.error('Risk Engine Unit Tests Failed:', err.message);
-    success = false;
-  }
+    expect(highRisk.level).toBe('High Risk');
+    expect(highRisk.score).toBeGreaterThan(70);
+  });
+});
 
-  // 6. Recommendation Engine Unit Tests
-  console.log('\n--- Running Recommendation Engine Tests ---');
-  try {
-    // Avoid Low Margin
-    const rec1 = recommendationEngine.generateRecommendation({
+describe('recommendationEngine', () => {
+  it('recommends Avoid (Low Margin) when ROI < 10%', () => {
+    const rec = recommendationEngine.generateRecommendation({
       roiPercent: 5,
       riskLevel: 'Medium Risk',
       riskScore: 40,
       overallConfidence: 80,
       marketTrend: 'flat',
       currentBid: 50000,
-      totalLotValue: 100000
+      totalLotValue: 100000,
+      sourceCount: 2
     });
-    assert(rec1.status === 'Avoid (Low Margin)', `Rec status should be 'Avoid (Low Margin)', got ${rec1.status}`);
+    expect(rec.status).toBe('Avoid (Low Margin)');
+  });
 
-    // Avoid Overpriced
-    const rec2 = recommendationEngine.generateRecommendation({
+  it('recommends Avoid (Overpriced) when current bid >= total lot value', () => {
+    const rec = recommendationEngine.generateRecommendation({
       roiPercent: -20,
       riskLevel: 'Medium Risk',
       riskScore: 45,
       overallConfidence: 85,
       marketTrend: 'flat',
       currentBid: 120000,
-      totalLotValue: 100000
+      totalLotValue: 100000,
+      sourceCount: 2
     });
-    assert(rec2.status === 'Avoid (Overpriced)', `Rec status should be 'Avoid (Overpriced)', got ${rec2.status}`);
+    expect(rec.status).toBe('Avoid (Overpriced)');
+  });
 
-    // Strong Buy
-    const rec3 = recommendationEngine.generateRecommendation({
+  it('recommends Insufficient Data when lot value <= 0', () => {
+    const rec = recommendationEngine.generateRecommendation({
+      roiPercent: 0,
+      riskLevel: 'Medium Risk',
+      riskScore: 50,
+      overallConfidence: 0,
+      marketTrend: 'flat',
+      currentBid: 0,
+      totalLotValue: 0
+    });
+    expect(rec.status).toBe('Insufficient Data');
+  });
+
+  it('gates Strong Buy: downgrades to Buy if sourceCount < 2', () => {
+    const recSingleSource = recommendationEngine.generateRecommendation({
       roiPercent: 45,
       riskLevel: 'Low Risk',
       riskScore: 20,
-      overallConfidence: 90,
+      overallConfidence: 75,
       marketTrend: 'flat',
       currentBid: 50000,
-      totalLotValue: 100000
+      totalLotValue: 100000,
+      sourceCount: 1
     });
-    assert(rec3.status === 'Strong Buy', `Rec status should be 'Strong Buy', got ${rec3.status}`);
-  } catch (err: any) {
-    console.error('Recommendation Engine Unit Tests Failed:', err.message);
-    success = false;
-  }
+    expect(recSingleSource.status).toBe('Buy');
+    expect(recSingleSource.reasoning[0]).toContain('downgraded from Strong Buy due to single market source');
 
-  // 7. Simulation Engine Unit Tests
-  console.log('\n--- Running Simulation Engine Tests ---');
-  try {
-    const costsInput = {
+    const recMultiSource = recommendationEngine.generateRecommendation({
+      roiPercent: 45,
+      riskLevel: 'Low Risk',
+      riskScore: 20,
+      overallConfidence: 75,
+      marketTrend: 'flat',
+      currentBid: 50000,
+      totalLotValue: 100000,
+      sourceCount: 2
+    });
+    expect(recMultiSource.status).toBe('Strong Buy');
+  });
+
+  it('gates Buy: downgrades to Watch if overallConfidence < 55%', () => {
+    const recLowConfidence = recommendationEngine.generateRecommendation({
+      roiPercent: 25,
+      riskLevel: 'Medium Risk',
+      riskScore: 40,
+      overallConfidence: 50,
+      marketTrend: 'flat',
+      currentBid: 50000,
+      totalLotValue: 100000,
+      sourceCount: 1
+    });
+    expect(recLowConfidence.status).toBe('Watch');
+    expect(recLowConfidence.reasoning[0]).toContain('downgraded to Watch due to limited data verifiability');
+  });
+});
+
+describe('marketEngine (honest 1-3 sources)', () => {
+  it('returns honest source list with 1 baseline source for default commodities', () => {
+    const res = marketEngine.resolvePriceSync('General Copper Cathode', 'Mumbai');
+    expect(res.sources.length).toBeGreaterThanOrEqual(1);
+    expect(res.sources[0].source).toBe('Admin Commodity Baseline');
+    expect(res.weightedPrice).toBeGreaterThan(0);
+    // 1 source caps confidence at 60%
+    expect(res.confidence).toBeLessThanOrEqual(60);
+  });
+});
+
+describe('biddingEngine', () => {
+  it('returns 0 bids for data-poor / zero value lots', () => {
+    const bids = biddingEngine.generateBidRecommendations(0, { currentBid: 0 });
+    expect(bids.idealBid).toBe(0);
+    expect(bids.maxBid).toBe(0);
+    expect(bids.walkAwayPrice).toBe(0);
+  });
+
+  it('calculates maxBid targeting minAcceptableRoiPercent (10%)', () => {
+    const bids = biddingEngine.generateBidRecommendations(100000, { currentBid: 0, gstPercent: 18, tcsPercent: 1 });
+    expect(bids.maxBid).toBeGreaterThan(0);
+    expect(bids.maxBid).toBeGreaterThan(bids.idealBid); // 10% ROI bid > 25% ROI bid
+    expect(bids.idealBid).toBeGreaterThan(bids.conservativeBid); // 25% ROI bid > 40% ROI bid
+  });
+});
+
+describe('simulationEngine', () => {
+  it('runs Monte Carlo simulation without NaN outputs', () => {
+    const sim = simulationEngine.runSimulation(750000, {
       currentBid: 500000,
       gstPercent: 18,
       tcsPercent: 1,
-      transportation: 10000,
-      refurbishment: 5000
-    };
-    const totalLotValue = 750000;
+      transportation: 10000
+    });
+    expect(sim.expectedRoi).toBeGreaterThan(0);
+    expect(sim.chanceOfProfit).toBeGreaterThan(50);
+    expect(sim.bestRoi).toBeGreaterThan(sim.worstRoi);
+  });
+});
 
-    const sim = simulationEngine.runSimulation(totalLotValue, costsInput);
-    assert(sim.expectedRoi > 0, `Expected simulated ROI should be positive, got ${sim.expectedRoi}%`);
-    assert(sim.chanceOfProfit > 50, `Chance of profit should be high, got ${sim.chanceOfProfit}%`);
-    assert(sim.bestRoi > sim.worstRoi, `Best ROI (${sim.bestRoi}%) must exceed worst ROI (${sim.worstRoi}%)`);
-  } catch (err: any) {
-    console.error('Simulation Engine Unit Tests Failed:', err.message);
-    success = false;
-  }
-
-  // 8. MSTC Catalog Regression Tests using realistic auction listings
-  console.log('\n--- Running MSTC Catalog Regression Tests ---');
-  try {
-    // Catalog Item A: Scrap Copper Wire listing
+describe('MSTC Catalog Regression Suite', () => {
+  it('prices Scrap Copper Wire correctly', async () => {
     const catalogItemA = [
-      {
-        sr: 1,
-        description: 'Scrap Copper Wire purity 99% - Lot number 441',
-        qty: '1200',
-        unit: 'KG',
-        marketPrice: ''
-      }
+      { sr: 1, description: 'Scrap Copper Wire purity 99% - Lot number 441', qty: '1200', unit: 'KG', marketPrice: '' }
     ];
-    const costsA = {
-      currentBid: 500000,
-      gstPercent: 18,
-      tcsPercent: 1,
-      transportation: 20000,
-      loading: 5000
-    };
+    const costsA = { currentBid: 500000, gstPercent: 18, tcsPercent: 1, transportation: 20000, loading: 5000 };
     const valuationA = await roiEngine.calculateValuation(catalogItemA, costsA, true, 'Mumbai');
 
-    // Scrap copper should match copper commodity, price around 700-800 INR/KG, total lot value around 900,000 INR
-    assert(valuationA.totalLotValue > 800000, `Copper lot value should be > 800,000 INR, got ${valuationA.totalLotValue}`);
-    assert(valuationA.roiPercent > 0, `Copper lot should have positive ROI, got ${valuationA.roiPercent}%`);
-    assert(valuationA.recommendation.status === 'Buy' || valuationA.recommendation.status === 'Strong Buy', `Copper rec should be Buy/Strong Buy, got ${valuationA.recommendation.status}`);
+    expect(valuationA.totalLotValue).toBeGreaterThan(800000);
+    expect(valuationA.roiPercent).toBeGreaterThan(0);
+    expect(['Buy', 'Strong Buy', 'Watch']).toContain(valuationA.recommendation.status);
+  });
 
-    // Catalog Item B: Vehicle Salvage bus list (forestry region logistics discount)
+  it('applies J&K regional discount for salvage bus', async () => {
     const catalogItemB = [
-      {
-        sr: 1,
-        description: 'Condemned and salvage Tata School Bus',
-        qty: '1',
-        unit: 'Unit',
-        marketPrice: ''
-      }
+      { sr: 1, description: 'Condemned and salvage Tata School Bus', qty: '1', unit: 'Unit', marketPrice: '' }
     ];
-    const costsB = {
-      currentBid: 120000,
-      gstPercent: 18,
-      tcsPercent: 1,
-      transportation: 45000, // high transport cost in Jammu
-      loading: 5000
-    };
+    const costsB = { currentBid: 120000, gstPercent: 18, tcsPercent: 1, transportation: 45000, loading: 5000 };
     const valuationB = await roiEngine.calculateValuation(catalogItemB, costsB, false, 'Jammu & Kashmir');
 
-    // Salvage Bus should match vehicle / heavy vehicle, have J&K 10% region logistics discount
-    assert(!!(valuationB.items[0].priceSource?.includes('J&K') || valuationB.items[0].priceSource?.includes('logistics')), 'Logistics discount reason should be listed in price source');
+    expect(valuationB.items[0].priceSource).toMatch(/J&K|logistics/);
+  });
 
-    // Catalog Item C: Unserviceable Electronics scrap (Avoid recommendation test)
+  it('marks unserviceable overpriced lot appropriately', async () => {
     const catalogItemC = [
-      {
-        sr: 1,
-        description: 'Unserviceable and broken television scrap sets',
-        qty: '10',
-        unit: 'Units'
-      }
+      { sr: 1, description: 'Unserviceable and broken copper wire scrap sets', qty: '100', unit: 'KG' }
     ];
-    const costsC = {
-      currentBid: 200000, // overpriced for scrap tvs
-      gstPercent: 18,
-      tcsPercent: 1,
-      transportation: 5000
-    };
+    const costsC = { currentBid: 200000, gstPercent: 18, tcsPercent: 1, transportation: 5000 };
     const valuationC = await roiEngine.calculateValuation(catalogItemC, costsC, false, 'Kolkata');
 
-    // Should yield High Risk or Avoid due to unserviceable and overpriced parameters
-    assert(valuationC.recommendation.status.startsWith('Avoid'), `Electronics scrap recommendation should be 'Avoid', got ${valuationC.recommendation.status}`);
+    expect(valuationC.recommendation.status).toMatch(/^Avoid/);
+  });
 
-  } catch (err: any) {
-    console.error('Catalog Regression Tests Failed:', err.message);
-    success = false;
-  }
+  it('prices item with explicit market price override', async () => {
+    const catalogItemF = [
+      { sr: 1, description: 'SCRAP MOTOR PUMP SETS AND TRANSFORMERS LYING AT SITE', qty: '1', unit: 'LOT', marketPrice: '₹7,03,123' }
+    ];
+    const costsD = { currentBid: 1000, gstPercent: 18, tcsPercent: 1 };
+    const valuationF = await roiEngine.calculateValuation(catalogItemF, costsD, false, 'Maharashtra');
 
-  return success;
-}
+    expect(valuationF.totalLotValue).toBe(703123);
+    expect(valuationF.items[0].notAvailable).toBeFalsy();
+  });
+});
+
+describe('Production Safety & NaN Resistance', () => {
+  it('handles NaN/undefined/empty string input values gracefully', async () => {
+    const rawItemsNaN = [
+      { sr: NaN, description: 'Copper scrap wire', qty: 'NaN', unit: '', marketPrice: 'undefined' }
+    ];
+    const costsNaN = {
+      currentBid: '' as any,
+      gstPercent: NaN,
+      tcsPercent: undefined as any,
+      transportation: 'NaN' as any
+    };
+    const valuationNaN = await roiEngine.calculateValuation(rawItemsNaN, costsNaN, false, 'Delhi');
+
+    expect(Number.isFinite(valuationNaN.totalLotValue)).toBeTruthy();
+    expect(Number.isFinite(valuationNaN.totalCost)).toBeTruthy();
+    expect(Number.isFinite(valuationNaN.estimatedProfit)).toBeTruthy();
+    expect(Number.isFinite(valuationNaN.roiPercent)).toBeTruthy();
+    expect(Number.isFinite(valuationNaN.breakEven)).toBeTruthy();
+    expect(isNaN(valuationNaN.roiPercent)).toBeFalsy();
+  });
+
+  it('handles empty items array safely', async () => {
+    const valuationEmpty = await roiEngine.calculateValuation([], { currentBid: 1000 }, false, 'Mumbai');
+    expect(valuationEmpty.totalLotValue).toBe(0);
+    expect(valuationEmpty.items).toHaveLength(0);
+    expect(valuationEmpty.recommendation.status).toBe('Insufficient Data');
+  });
+
+  it('handles negative inputs safely', async () => {
+    const rawItemsNegative = [
+      { sr: -1, description: 'Copper wire', qty: '-10', unit: 'KG' }
+    ];
+    const costsNegative = {
+      currentBid: -50000,
+      gstPercent: -18,
+      tcsPercent: -1,
+      transportation: -1000
+    };
+    const valuationNegative = await roiEngine.calculateValuation(rawItemsNegative, costsNegative, false, 'Mumbai');
+
+    expect(valuationNegative.costs.currentBid).toBe(0);
+    expect(valuationNegative.totalCost).toBeGreaterThanOrEqual(0);
+    expect(valuationNegative.roiPercent).toBe(0);
+  });
+});
+

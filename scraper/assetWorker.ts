@@ -42,8 +42,8 @@ import {
 } from "./utils/pdfUtils.js";
 import { parseMstcCatalogText, parseSubItemsFromText } from "./parsers/mstcParser.js";
 import type { CatalogSummary } from "./parsers/mstcParser.js";
-import { performOcr, shouldPerformOcr } from "./utils/ocrUtils.js";
-import { isTermsOrInstructionPage } from "./parsers/documentClassifier.js";
+import { performOcrWithDetails, shouldPerformOcr } from "./utils/ocrUtils.js";
+import { isTermsOrInstructionPage, classifyAttachmentType } from "./parsers/documentClassifier.js";
 
 function parsePdfDateTimeToISO(dateTimeStr: string | undefined): string | null {
   if (!dateTimeStr) return null;
@@ -78,11 +78,11 @@ export function cosineSimilarity(v1: number[], v2: number[]): number {
 }
 
 export function getLotEmbeddingText(item: any): string {
-  const desc = String(item?.description || "").trim();
-  const qty = String(item?.qty || "").trim();
-  const unit = String(item?.unit || "").trim();
-  const tax = String(item?.taxRate || "").trim();
-  const sr = String(item?.sr || "").trim();
+  const desc = (item.description || "").trim();
+  const qty = (item.qty || "").trim();
+  const unit = (item.unit || "").trim();
+  const tax = (item.taxRate || "").trim();
+  const sr = (item.sr || "").trim();
   return `Lot ${sr}: ${desc} (Qty: ${qty} ${unit}, Tax: ${tax})`;
 }
 
@@ -161,6 +161,7 @@ interface ExtractedPage {
   publicUrl: string;
   combinedText: string;
   ocrText: string;
+  ocrConfidence?: number;
   embedding?: number[];
 }
 
@@ -873,6 +874,8 @@ async function extractAndProcessLotDocuments(
   attachmentMap: Record<string, string[]>;
   lotSpecificImagesMap: Record<string, string[]>;
   eligibilityNotes: string[];
+  documents: string[];
+  photos: string[];
 }> {
   // Reconstruct filenames if there are newlines or spaces
   const cleanedText = catalogText
@@ -892,8 +895,19 @@ async function extractAndProcessLotDocuments(
   const lotSpecificImagesMap: Record<string, string[]> = {};
   const eligibilityNotes: string[] = [];
 
+  const documents: string[] = [];
+  const photos: string[] = [];
+  for (const fileName of uniqueAttachments) {
+    const type = classifyAttachmentType(fileName);
+    if (type === "document") {
+      documents.push(fileName);
+    } else {
+      photos.push(fileName);
+    }
+  }
+
   if (uniqueAttachments.length === 0) {
-    return { imageUrls, attachmentMap, lotSpecificImagesMap, eligibilityNotes };
+    return { imageUrls, attachmentMap, lotSpecificImagesMap, eligibilityNotes, documents, photos };
   }
 
   log.info(
@@ -982,8 +996,11 @@ async function extractAndProcessLotDocuments(
 
           // Smart OCR: only run OCR when selectable text is insufficient
           let ocrText = "";
+          let ocrConfidence = 100;
           if (shouldPerformOcr(pageSelectableText)) {
-            ocrText = await performOcr(page.imageBuffer);
+            const ocrRes = await performOcrWithDetails(page.imageBuffer);
+            ocrText = ocrRes.text;
+            ocrConfidence = ocrRes.confidence;
           }
           const combinedText = `${pageSelectableText || ""}\n${ocrText}`;
 
@@ -993,6 +1010,7 @@ async function extractAndProcessLotDocuments(
             publicUrl,
             combinedText,
             ocrText,
+            ocrConfidence,
           });
 
           // Memory management: null out buffer and text after processing
@@ -1020,6 +1038,7 @@ async function extractAndProcessLotDocuments(
           publicUrl: "", // No image preview available
           combinedText: nativePage.text,
           ocrText: "",
+          ocrConfidence: 100,
         });
       }
     } else {
@@ -1044,7 +1063,9 @@ async function extractAndProcessLotDocuments(
             );
 
             // Always run OCR on embedded image fallbacks (no selectable text exists)
-            const ocrText = await performOcr(imgBuffer);
+            const ocrRes = await performOcrWithDetails(imgBuffer);
+            const ocrText = ocrRes.text;
+            const ocrConfidence = ocrRes.confidence;
             const combinedText = ocrText;
 
             pagesForAttachment.push({
@@ -1053,6 +1074,7 @@ async function extractAndProcessLotDocuments(
               publicUrl,
               combinedText,
               ocrText,
+              ocrConfidence,
             });
           } catch (uploadErr: any) {
             log.warn(
@@ -1207,6 +1229,8 @@ async function extractAndProcessLotDocuments(
     attachmentMap,
     lotSpecificImagesMap,
     eligibilityNotes: Array.from(new Set(eligibilityNotes)),
+    documents,
+    photos,
   };
 }
 
@@ -1471,8 +1495,9 @@ export async function processRecord(record: QueueRecord): Promise<void> {
       // Process attachments (passing pre-computed lotEmbeddings)
       let attachmentImageUrls: string[] = [];
       let attachmentMap: Record<string, string[]> = {};
+      let result: any = null;
       try {
-        const result = await extractAndProcessLotDocuments(
+        result = await extractAndProcessLotDocuments(
           parsedPdf.text,
           sanitizedAuctionNum,
           headers,
@@ -1529,6 +1554,33 @@ export async function processRecord(record: QueueRecord): Promise<void> {
       // Inject preview and extracted images
       summaryObj.preview_image_url = previewImageUrl;
       summaryObj.extracted_images = extractedImageUrls;
+
+      // Classify attachments into structured documents vs photos
+      const docList: string[] = result?.documents ? [...result.documents] : [];
+      const photoList: string[] = result?.photos ? [...result.photos] : [];
+
+      if (summaryObj.items && Array.isArray(summaryObj.items)) {
+        for (const item of summaryObj.items) {
+          if (item.attachments && Array.isArray(item.attachments)) {
+            for (const att of item.attachments) {
+              const type = classifyAttachmentType(att);
+              if (type === "document" && !docList.includes(att)) {
+                docList.push(att);
+              } else if (type === "photo" && !photoList.includes(att)) {
+                photoList.push(att);
+              }
+            }
+          }
+        }
+      }
+
+      summaryObj.documents = docList;
+      summaryObj.photos = photoList;
+      summaryObj.hasAssetDocuments = docList.length > 0;
+      summaryObj.hasImages =
+        (summaryObj.extracted_images && summaryObj.extracted_images.length > 0) ||
+        photoList.length > 0 ||
+        (summaryObj.items && summaryObj.items.some((it) => it.images && it.images.length > 0));
 
       // Calculate total market price valuation
       try {
@@ -1769,174 +1821,13 @@ async function runAssetPipelineQueue(): Promise<void> {
 
 // ─── Worker Entry Point ──────────────────────────────────────────────────────
 
-async function cleanupExpiredAuctions(): Promise<void> {
-  log.info("Checking for expired auctions (older than 1 week) to purge...");
-  try {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const oneWeekAgoIso = oneWeekAgo.toISOString();
-
-    // 1. MSTC Auctions Cleanup (Loop until all backlog is cleared)
-    let totalMstcPurged = 0;
-    while (true) {
-      const { data: expiredMstc, error: fetchMstcError } = await supabase
-        .from("mstc_auctions")
-        .select("id, mstc_auction_number, closing_date, sanitized_document_path")
-        .lt("closing_date", oneWeekAgoIso)
-        .limit(1000);
-
-      if (fetchMstcError) {
-        log.error({ error: fetchMstcError.message }, "Failed to fetch expired MSTC auctions for cleanup");
-        break;
-      }
-      if (!expiredMstc || expiredMstc.length === 0) {
-        break;
-      }
-
-      log.info({ count: expiredMstc.length }, `Cleaning up batch of ${expiredMstc.length} expired MSTC auctions...`);
-      
-      const logEntries = expiredMstc.map(auc => ({
-        action: "mstc_auction_deleted",
-        entity_type: "mstc_auction",
-        details: {
-          mstc_auction_number: auc.mstc_auction_number,
-          reason: "expired",
-          closing_date: auc.closing_date,
-          sanitized_document_path: auc.sanitized_document_path
-        }
-      }));
-
-      const { error: logError } = await supabase.from("audit_logs").insert(logEntries);
-      if (logError) {
-        log.error({ error: logError.message }, "Failed to write MSTC audit logs during cleanup");
-      }
-
-      // Remove physical files from storage in bulk
-      const filesToDelete: string[] = [];
-      for (const auc of expiredMstc) {
-        if (auc.sanitized_document_path) {
-          filesToDelete.push(`mstc-catalogs/${auc.id}.pdf`);
-          filesToDelete.push(`mstc-previews/${auc.id}.jpg`);
-        }
-      }
-
-      if (filesToDelete.length > 0) {
-        const chunkSize = 100;
-        for (let i = 0; i < filesToDelete.length; i += chunkSize) {
-          const chunk = filesToDelete.slice(i, i + chunkSize);
-          const { error: storageDeleteError } = await supabase.storage
-            .from("auction_documents")
-            .remove(chunk);
-          if (storageDeleteError) {
-            log.warn({ error: storageDeleteError.message }, "Failed to remove storage files chunk");
-          }
-        }
-      }
-
-      // Delete database records in chunks of 100 to avoid URI query length limits (HTTP 400 Bad Request)
-      const idsToDelete = expiredMstc.map(auc => auc.id);
-      const chunkSize = 100;
-      let deleteFailed = false;
-      for (let i = 0; i < idsToDelete.length; i += chunkSize) {
-        const chunk = idsToDelete.slice(i, i + chunkSize);
-        const { error: deleteError } = await supabase
-          .from("mstc_auctions")
-          .delete()
-          .in("id", chunk);
-        if (deleteError) {
-          log.error({ error: deleteError.message, chunkStart: i }, "Failed to delete expired MSTC database records chunk");
-          deleteFailed = true;
-        }
-      }
-      if (!deleteFailed) {
-        totalMstcPurged += expiredMstc.length;
-      } else {
-        break; // Stop loop if database deletion failed to avoid infinite loop
-      }
-    }
-    if (totalMstcPurged > 0) {
-      log.info({ totalMstcPurged }, `Successfully purged all ${totalMstcPurged} expired MSTC auctions from backlog`);
-    }
-
-    // 2. BaankNet Auctions Cleanup (Loop until all backlog is cleared)
-    let totalBaanknetPurged = 0;
-    while (true) {
-      const { data: expiredBaanknet, error: fetchBnError } = await supabase
-        .from("baanknet_auctions")
-        .select("id, baanknet_auction_id, auction_end_date")
-        .lt("auction_end_date", oneWeekAgoIso)
-        .limit(1000);
-
-      if (fetchBnError) {
-        log.error({ error: fetchBnError.message }, "Failed to fetch expired BaankNet auctions for cleanup");
-        break;
-      }
-      if (!expiredBaanknet || expiredBaanknet.length === 0) {
-        break;
-      }
-
-      log.info({ count: expiredBaanknet.length }, `Cleaning up batch of ${expiredBaanknet.length} expired BaankNet auctions...`);
-
-      const logEntries = expiredBaanknet.map(auc => ({
-        action: "baanknet_auction_deleted",
-        entity_type: "baanknet_auction",
-        details: {
-          baanknet_auction_id: auc.baanknet_auction_id,
-          reason: "expired",
-          auction_end_date: auc.auction_end_date
-        }
-      }));
-
-      const { error: logError } = await supabase.from("audit_logs").insert(logEntries);
-      if (logError) {
-        log.error({ error: logError.message }, "Failed to write BaankNet audit logs during cleanup");
-      }
-
-      // Delete database records in chunks of 100
-      const idsToDelete = expiredBaanknet.map(auc => auc.id);
-      const chunkSize = 100;
-      let deleteFailed = false;
-      for (let i = 0; i < idsToDelete.length; i += chunkSize) {
-        const chunk = idsToDelete.slice(i, i + chunkSize);
-        const { error: deleteError } = await supabase
-          .from("baanknet_auctions")
-          .delete()
-          .in("id", chunk);
-        if (deleteError) {
-          log.error({ error: deleteError.message, chunkStart: i }, "Failed to delete expired BaankNet database records chunk");
-          deleteFailed = true;
-        }
-      }
-      if (!deleteFailed) {
-        totalBaanknetPurged += expiredBaanknet.length;
-      } else {
-        break;
-      }
-    }
-    if (totalBaanknetPurged > 0) {
-      log.info({ totalBaanknetPurged }, `Successfully purged all ${totalBaanknetPurged} expired BaankNet auctions from backlog`);
-    }
-  } catch (err: any) {
-    log.error({ error: err.message }, "Exception caught during background cleanup");
-  }
-}
-
 export async function startWorker(): Promise<void> {
   log.info(
     { pollIntervalMs: POLL_INTERVAL_MS },
     "Background Worker Service started",
   );
 
-  let lastCleanupTime = 0;
-  const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // Run once every hour
-
   while (true) {
-    const now = Date.now();
-    if (now - lastCleanupTime > CLEANUP_INTERVAL_MS) {
-      lastCleanupTime = now;
-      await cleanupExpiredAuctions();
-    }
-
     try {
       await runAssetPipelineQueue();
     } catch (err: any) {

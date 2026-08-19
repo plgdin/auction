@@ -401,7 +401,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
           </div>
         </div>
         
-        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 bg-slate-950 px-2.5 py-1 rounded border border-slate-850">
+        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
           PRO EDITION
         </span>
       </div>
@@ -414,7 +414,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
             className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'regression'
                 ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20 shadow-sm'
-                : 'text-slate-400 hover:text-slate-205 border border-transparent'
+                : 'text-slate-400 hover:text-slate-200 border border-transparent'
             }`}
           >
             <Cpu className="w-3.5 h-3.5" /> AI ML Forecast
@@ -424,7 +424,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
             className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'market'
                 ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20 shadow-sm'
-                : 'text-slate-400 hover:text-slate-205 border border-transparent'
+                : 'text-slate-400 hover:text-slate-200 border border-transparent'
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5" /> Standard index
@@ -435,7 +435,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
       <div className="p-6 flex-1 flex flex-col justify-between gap-6">
         {/* Tab 1: AI ML Prediction panel */}
         {isRegression ? (
-          <div className="bg-slate-955/40 p-4 rounded-xl border border-slate-850/50 space-y-4">
+          <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800/50 space-y-4">
             <div className="flex justify-between items-start">
               <div>
                 <span className="text-[10px] uppercase font-bold tracking-wider text-primary-400 flex items-center gap-1">
@@ -495,7 +495,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
               </div>
               <div>
                 <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Model Target Unit</label>
-                <div className="w-full bg-slate-950/40 border border-slate-850/50 text-slate-400 rounded-lg px-2.5 py-1.5 font-bold">
+                <div className="w-full bg-slate-950/40 border border-slate-800/50 text-slate-400 rounded-lg px-2.5 py-1.5 font-bold">
                   Per {selectedModel.targetUnit}
                 </div>
               </div>
@@ -508,13 +508,13 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
                 className="text-[11px] font-bold text-slate-400 hover:text-primary-400 flex items-center justify-between w-full transition-colors"
               >
                 <span className="flex items-center gap-1.5">
-                  <Calculator className="w-3.5 h-3.5 text-slate-550" /> MACROECONOMIC PRICE DRIVERS
+                  <Calculator className="w-3.5 h-3.5 text-slate-500" /> MACROECONOMIC PRICE DRIVERS
                 </span>
                 {showMacroSettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
 
               {showMacroSettings && (
-                <div className="mt-3 space-y-3 bg-slate-950/40 p-3 rounded-lg border border-slate-850/60 text-[11px] max-h-56 overflow-y-auto custom-scrollbar">
+                <div className="mt-3 space-y-3 bg-slate-950/40 p-3 rounded-lg border border-slate-800/60 text-[11px] max-h-56 overflow-y-auto custom-scrollbar">
                   {/* LME Steel Scrap USD */}
                   <div>
                     <div className="flex justify-between text-slate-400 mb-1">
@@ -610,7 +610,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
                         onChange={(e) => updateMacro('Monsoon_Season', e.target.checked ? 1 : 0)}
                         className="sr-only peer"
                       />
-                      <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-350 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary-500 peer-checked:after:bg-white"></div>
+                      <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary-500 peer-checked:after:bg-white"></div>
                     </label>
                   </div>
                 </div>
@@ -651,7 +651,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
           </div>
         ) : (
           /* Tab 2: Standard Index comparison column */
-          <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-850/50">
+          <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800/50">
             <div className="flex justify-between items-start mb-2">
               <div>
                 <span className="text-[10px] uppercase font-bold tracking-wider text-primary-400">Live Valuation Feed</span>
@@ -731,7 +731,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
           </div>
 
           {/* Interactive Simulation Sliders / Inputs */}
-          <div className="space-y-3 bg-slate-950/20 p-3.5 rounded-xl border border-slate-850/40">
+          <div className="space-y-3 bg-slate-950/20 p-3.5 rounded-xl border border-slate-800/40">
             <div>
               <div className="flex justify-between text-[11px] mb-1">
                 <span className="text-slate-400">Simulate Bid Amount ({currency})</span>
@@ -784,7 +784,7 @@ export function MarketValuationPanel({ auction, currentBid }: MarketValuationPan
         </div>
 
         {/* Profitability Outputs */}
-        <div className="bg-slate-950/60 p-4.5 rounded-xl border border-slate-850/80 space-y-4">
+        <div className="bg-slate-950/60 p-4.5 rounded-xl border border-slate-800/80 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <span className="text-[10px] text-slate-500 font-medium block">Total Cost</span>

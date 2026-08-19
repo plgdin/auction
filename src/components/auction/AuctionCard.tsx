@@ -91,7 +91,7 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
     statusBadgeColor = 'bg-amber-600 animate-pulse';
   } else if (createdAt >= sevenDaysAgo) {
     statusBadgeLabel = 'Recently Added';
-    statusBadgeColor = 'bg-green-650';
+    statusBadgeColor = 'bg-green-600';
   }
 
   if (!isGrid) {

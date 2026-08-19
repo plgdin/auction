@@ -36,6 +36,20 @@ export function formatPriceString(priceStr: string, currencyCode: string = 'INR'
 
 export async function fetchLatestRates(): Promise<Record<string, number> | null> {
   try {
+    // Check localStorage cache first to avoid redundant API requests
+    const cachedDataStr = localStorage.getItem('lelam_exchange_rates');
+    if (cachedDataStr) {
+      const cached = JSON.parse(cachedDataStr);
+      // Cache rates for 12 hours (12 * 60 * 60 * 1000)
+      if (cached && cached.rates && cached.timestamp && Date.now() - cached.timestamp < 12 * 60 * 60 * 1000) {
+        const rates = cached.rates;
+        if (rates.USD) CURRENCIES.USD.rate = rates.USD;
+        if (rates.EUR) CURRENCIES.EUR.rate = rates.EUR;
+        if (rates.GBP) CURRENCIES.GBP.rate = rates.GBP;
+        return rates;
+      }
+    }
+
     const response = await fetch('https://open.er-api.com/v6/latest/INR');
     if (!response.ok) throw new Error('Network response was not ok');
     const data = await response.json();
@@ -53,11 +67,17 @@ export async function fetchLatestRates(): Promise<Record<string, number> | null>
         CURRENCIES.GBP.rate = data.rates.GBP;
         rates.GBP = data.rates.GBP;
       }
-      console.log('Successfully fetched and updated daily exchange rates:', CURRENCIES);
+      
+      // Save to localStorage with timestamp
+      localStorage.setItem('lelam_exchange_rates', JSON.stringify({
+        rates,
+        timestamp: Date.now()
+      }));
+
       return rates;
     }
   } catch (error) {
-    console.error('Failed to fetch daily currency exchange rates:', error);
+    console.warn('Failed to fetch daily currency exchange rates:', error);
   }
   return null;
 }

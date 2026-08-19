@@ -3,7 +3,7 @@ import { Mail, Phone, MapPin, Gavel, ArrowRight } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="relative bg-slate-900 text-slate-300 pt-16 pb-8 overflow-hidden">
+    <footer className="relative bg-slate-900 text-slate-300 pt-16 pb-8 overflow-hidden" role="contentinfo">
       {/* Background decoration */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900 to-slate-900 mix-blend-multiply" />
@@ -11,7 +11,7 @@ export function Footer() {
       </div>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
-          
+
           {/* Brand */}
           <div className="space-y-4">
             <Link to="/" className="flex items-center">
@@ -73,44 +73,41 @@ export function Footer() {
             <ul className="space-y-4 text-sm">
               <li className="flex items-start gap-3">
                 <MapPin className="text-primary shrink-0" size={20} />
-                <span className="text-slate-305">
+                <span className="text-slate-300">
                   No: 2, 20th Cross Lakshimpuram,<br />
                   Halasuru, Bangalore 560008
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="text-primary shrink-0" size={20} />
-                <span className="text-slate-305">+91 94477 53889</span>
+                <span className="text-slate-300">+91 94477 53889</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="text-primary shrink-0" size={20} />
-                <a href="mailto:Support@lelam.co" className="text-slate-305 hover:text-white transition-colors">
-                  Support@lelam.co
+                <a href="mailto:support@lelam.co" className="text-slate-300 hover:text-white transition-colors">
+                  support@lelam.co
                 </a>
               </li>
             </ul>
           </div>
-          
+
         </div>
 
         <div className="border-t border-slate-800 pt-8 mt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex flex-col gap-1">
             <p className="text-sm text-slate-400 flex items-center">
               &copy; {new Date().getFullYear()} Lelam. All rights reserved.
-              <span className="ml-3 px-2 py-0.5 rounded-md bg-slate-800 text-xs text-slate-400 font-medium">lelam.co v1.1</span>
+              <span className="ml-3 px-2 py-0.5 rounded-md bg-slate-800 text-xs text-slate-400 font-medium">lelam.co v1.0.0</span>
             </p>
             <p className="text-[11px] text-slate-400 max-w-lg">
               Lelam Company is an independent assistive platform and is not affiliated with MSTC Limited.
             </p>
           </div>
-          <div className="flex space-x-4">
+          <div className="flex space-x-4 pr-20 md:pr-24">
             {/* Social Icons Placeholder */}
-            <div className="w-8 h-8 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">
-               <span className="text-xs font-bold text-white">in</span>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">
-               <span className="text-xs font-bold text-white">X</span>
-            </div>
+            <a href="https://www.linkedin.com/company/lelam-co/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="w-10 h-10 rounded-full bg-slate-800 hover:bg-primary transition-colors flex items-center justify-center cursor-pointer">
+              <span className="text-sm font-bold text-white" aria-hidden="true">in</span>
+            </a>
           </div>
         </div>
       </div>

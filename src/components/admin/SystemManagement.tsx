@@ -498,7 +498,7 @@ export function SystemManagement() {
             ) : (
               <table className="w-full table-fixed text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider border-b border-slate-150">
+                  <tr className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider border-b border-slate-100">
                     <th className="w-[15%] px-6 py-4">Time</th>
                     <th className="w-[16%] px-6 py-4">Email</th>
                     <th className="w-[13%] px-6 py-4">IP Address</th>
@@ -523,7 +523,7 @@ export function SystemManagement() {
                         <td className="px-6 py-4 font-semibold text-slate-800 break-words">
                           {log.email}
                         </td>
-                        <td className="px-6 py-4 font-mono text-xs text-slate-650 break-words">
+                        <td className="px-6 py-4 font-mono text-xs text-slate-600 break-words">
                           {log.ip_address}
                         </td>
                         <td className="px-6 py-4 text-slate-600 text-xs">

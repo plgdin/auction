@@ -121,7 +121,17 @@ function generateMockHistory(currentPrices: Record<string, number>): PriceHistor
 
 let cachedPrices: FullCommodityConfig[] = [];
 let cachedHistory: PriceHistoryLog[] = [];
+let cachedMetalMandiRates: MetalMandiRate[] = [];
 let isFetched = false;
+
+const COMMODITY_TO_METALMANDI_TYPE_MAP: Record<string, string> = {
+  steel_iron_ferrous: 'iron',
+  copper: 'copper',
+  brass: 'brass',
+  aluminium: 'aluminium',
+  lead: 'lead',
+  zinc: 'zinc'
+};
 
 export const marketPriceService = {
   // Sync wrapper (returns cached data for valuation matching)
@@ -245,12 +255,20 @@ export const marketPriceService = {
         .select('*');
         
       if (error) throw error;
-      return data || [];
+      cachedMetalMandiRates = data || [];
+      return cachedMetalMandiRates;
     } catch (err) {
       console.error('Failed to fetch MetalMandi rates from Supabase:', err);
       return [];
     }
   }, 'metalmandi_rates', { ttlMs: 600000 }),
+
+  getMetalMandiRateForCommodity(id: string): MetalMandiRate | null {
+    const metalType = COMMODITY_TO_METALMANDI_TYPE_MAP[id];
+    if (!metalType || cachedMetalMandiRates.length === 0) return null;
+    const match = cachedMetalMandiRates.find(r => r.metal_type === metalType && r.price_per_kg > 0);
+    return match || null;
+  },
 
   // Update price in Supabase
   async updateCommodityPrice(id: string, price: number, multiplier: number, updatedBy: string = 'Admin'): Promise<void> {

@@ -13,14 +13,14 @@ function TenderRowSkeleton() {
     <tr className="animate-pulse">
       <td className="px-6 py-4 space-y-2">
         <div className="h-3 bg-slate-200 rounded w-20" />
-        <div className="h-4 bg-slate-250 rounded w-40" />
+        <div className="h-4 bg-slate-200 rounded w-40" />
       </td>
       <td className="px-6 py-4">
         <div className="h-4 bg-slate-200 rounded w-24" />
       </td>
       <td className="px-6 py-4 space-y-1">
         <div className="h-4 bg-slate-200 rounded w-20" />
-        <div className="h-3 bg-slate-150 rounded w-12" />
+        <div className="h-3 bg-slate-100 rounded w-12" />
       </td>
       <td className="px-6 py-4">
         <div className="h-6 bg-slate-200 rounded w-24" />

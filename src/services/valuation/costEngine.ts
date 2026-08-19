@@ -1,9 +1,11 @@
 import type { ValuationCosts } from './types';
 import { TAX_CONFIG } from './roiConfig';
+import { safeNumber, safePositive, safeRound, safeDivide } from './inputValidator';
 
 export const costEngine = {
   /**
-   * Calculates individual tax amounts and the total cost structure
+   * Calculates individual tax amounts and the total cost structure.
+   * All inputs are sanitized — never produces NaN or Infinity.
    */
   calculateCosts(costs: ValuationCosts): {
     totalCost: number;
@@ -12,45 +14,47 @@ export const costEngine = {
     otherExpenses: number;
     breakdown: Record<string, number>;
   } {
-    const currentBid = costs.currentBid || 0;
-    const gstPercent = costs.gstPercent !== undefined ? costs.gstPercent : TAX_CONFIG.defaultGstPercent;
-    const tcsPercent = costs.tcsPercent !== undefined ? costs.tcsPercent : TAX_CONFIG.defaultTcsPercent;
+    const currentBid = safePositive(costs.currentBid);
+    const gstPercent = safeNumber(costs.gstPercent, TAX_CONFIG.defaultGstPercent);
+    const tcsPercent = safeNumber(costs.tcsPercent, TAX_CONFIG.defaultTcsPercent);
 
     // Calculate GST
-    const gstAmount = Math.round(currentBid * (gstPercent / 100));
+    const gstAmount = safeRound(currentBid * (gstPercent / 100));
 
     // TCS is collected on purchase value inclusive of GST in Indian auctions
-    const tcsAmount = Math.round((currentBid + gstAmount) * (tcsPercent / 100));
+    const tcsAmount = safeRound((currentBid + gstAmount) * (tcsPercent / 100));
 
-    // Sum other expenses
-    const transportation = costs.transportation || 0;
-    const loading = costs.loading || 0;
-    const unloading = costs.unloading || 0;
-    const warehouse = costs.warehouse || 0;
-    const storage = costs.storage || 0;
-    const insurance = costs.insurance || 0;
-    const interest = costs.interest || 0;
-    const opportunityCost = costs.opportunityCost || 0;
-    const repair = costs.repair || 0;
-    const fuel = costs.fuel || 0;
-    const customDuty = costs.customDuty || 0;
-    const labour = costs.labour || 0;
-    const shrinkage = costs.shrinkage || 0;
-    const processingLoss = costs.processingLoss || 0;
-    const miscellaneous = costs.miscellaneous || 0;
-    const contingency = costs.contingency || 0;
-    const auctionFee = costs.auctionFee || 0;
-    const emdCost = costs.emdCost || 0;
+    // Sum other expenses — each field is safely coerced
+    const transportation = safePositive(costs.transportation);
+    const loading = safePositive(costs.loading);
+    const unloading = safePositive(costs.unloading);
+    const warehouse = safePositive(costs.warehouse);
+    const storage = safePositive(costs.storage);
+    const insurance = safePositive(costs.insurance);
+    const interest = safePositive(costs.interest);
+    const opportunityCost = safePositive(costs.opportunityCost);
+    const repair = safePositive(costs.repair);
+    const fuel = safePositive(costs.fuel);
+    const customDuty = safePositive(costs.customDuty);
+    const labour = safePositive(costs.labour);
+    const shrinkage = safePositive(costs.shrinkage);
+    const processingLoss = safePositive(costs.processingLoss);
+    const miscellaneous = safePositive(costs.miscellaneous);
+    const contingency = safePositive(costs.contingency);
+    const auctionFee = safePositive(costs.auctionFee);
+    const emdCost = safePositive(costs.emdCost);
     
-    // Backwards compatibility with refurbishment / extraCharge / otherFees
-    const refurbishment = costs.refurbishment || 0;
-    const extraCharge = costs.extraCharge || 0;
-    const otherFees = costs.otherFees || 0;
+    // Backwards compatibility with refurbishment / extraCharge / otherFees / loadingUnloading
+    const refurbishment = safePositive(costs.refurbishment);
+    const extraCharge = safePositive(costs.extraCharge);
+    const otherFees = safePositive(costs.otherFees);
+    const loadingUnloading = safePositive(costs.loadingUnloading);
 
-    const otherExpenses = Math.round(
+    const otherExpenses = safeRound(
       transportation +
       loading +
       unloading +
+      loadingUnloading +
       warehouse +
       storage +
       insurance +
@@ -71,7 +75,7 @@ export const costEngine = {
       otherFees
     );
 
-    const totalCost = Math.round(currentBid + gstAmount + tcsAmount + otherExpenses);
+    const totalCost = safeRound(currentBid + gstAmount + tcsAmount + otherExpenses);
 
     const breakdown: Record<string, number> = {
       currentBid,
@@ -110,14 +114,13 @@ export const costEngine = {
   },
 
   /**
-   * Computes the true mathematical break-even bid price
-   * Bid_be + GST_be + TCS_be + Other Expenses = Total Lot Value
-   * Bid_be * (1 + gstRate + tcsRate + gstRate * tcsRate) + Other Expenses = Total Lot Value
-   * Bid_be = (Total Lot Value - Other Expenses) / (1 + gstRate + tcsRate + gstRate * tcsRate)
+   * Computes the true mathematical break-even bid price.
+   * Formula: Bid_be = (Total Lot Value - Other Expenses) / (1 + gstRate + tcsRate + gstRate * tcsRate)
+   * Returns 0 if lot value cannot cover expenses.
    */
   calculateBreakEven(totalLotValue: number, costs: ValuationCosts): number {
-    const gstPercent = costs.gstPercent !== undefined ? costs.gstPercent : TAX_CONFIG.defaultGstPercent;
-    const tcsPercent = costs.tcsPercent !== undefined ? costs.tcsPercent : TAX_CONFIG.defaultTcsPercent;
+    const gstPercent = safeNumber(costs.gstPercent, TAX_CONFIG.defaultGstPercent);
+    const tcsPercent = safeNumber(costs.tcsPercent, TAX_CONFIG.defaultTcsPercent);
 
     const gstRate = gstPercent / 100;
     const tcsRate = tcsPercent / 100;
@@ -130,7 +133,8 @@ export const costEngine = {
       return 0;
     }
 
-    const breakEvenBid = (totalLotValue - otherExpenses) / gstTcsMultiplier;
-    return Math.round(Math.max(0, breakEvenBid));
+    const breakEvenBid = safeDivide(totalLotValue - otherExpenses, gstTcsMultiplier, 0);
+    return safeRound(Math.max(0, breakEvenBid));
   }
 };
+
