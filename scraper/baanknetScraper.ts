@@ -225,7 +225,7 @@ async function cleanupExpiredAuctions(): Promise<void> {
 
   log.info({ count: expired.length }, "Found expired BaankNet auctions. Cleaning up...");
 
-  // Audit log
+  // Audit log in batches of 100
   const logEntries = expired.map((auc) => ({
     action: "baanknet_auction_deleted",
     entity_type: "baanknet_auction",
@@ -236,23 +236,33 @@ async function cleanupExpiredAuctions(): Promise<void> {
     } as Record<string, string>,
   }));
 
-  const { error: logError } = await supabase.from("audit_logs").insert(logEntries);
-  if (logError) {
-    log.error({ error: logError.message }, "Failed to write cleanup audit logs");
+  for (let i = 0; i < logEntries.length; i += 100) {
+    const chunk = logEntries.slice(i, i + 100);
+    const { error: logError } = await supabase.from("audit_logs").insert(chunk);
+    if (logError) {
+      log.error({ error: logError.message }, "Failed to write cleanup audit logs chunk");
+    }
   }
 
-  // Delete records (photos cascade via FK)
+  // Delete records in batches of 100 (photos cascade via FK)
   const idsToDelete = expired.map((auc) => auc.id);
-  const { error: deleteError } = await supabase
-    .from("baanknet_auctions")
-    .delete()
-    .in("id", idsToDelete);
+  let deleteSuccessCount = 0;
 
-  if (deleteError) {
-    log.error({ error: deleteError.message }, "Failed to delete expired BaankNet auctions");
-  } else {
-    log.info({ count: expired.length }, "Expired BaankNet auctions cleanup complete");
+  for (let i = 0; i < idsToDelete.length; i += 100) {
+    const chunk = idsToDelete.slice(i, i + 100);
+    const { error: deleteError } = await supabase
+      .from("baanknet_auctions")
+      .delete()
+      .in("id", chunk);
+
+    if (deleteError) {
+      log.error({ error: deleteError.message }, "Failed to delete expired BaankNet auctions chunk");
+    } else {
+      deleteSuccessCount += chunk.length;
+    }
   }
+
+  log.info({ deleted: deleteSuccessCount, total: expired.length }, "Expired BaankNet auctions cleanup complete");
 }
 
 // ─── DOM Extraction (eAuction PSB — runs inside Puppeteer page context) ──────

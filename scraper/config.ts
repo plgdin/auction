@@ -95,3 +95,52 @@ export const MIN_IMAGE_BYTE_SIZE = parseInt(
 
 export const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+
+// ─── BaankNet Configuration ──────────────────────────────────────────────────
+
+export const BAANKNET_BASE_URL =
+  process.env.BAANKNET_BASE_URL || "https://baanknet.com";
+
+export const BAANKNET_EAUCTION_PATH =
+  process.env.BAANKNET_EAUCTION_PATH || "/eauction-psb/eproc-listing";
+
+export const BAANKNET_PROPERTY_LISTING_PATH =
+  process.env.BAANKNET_PROPERTY_LISTING_PATH || "/property-listing";
+
+export const BAANKNET_IBC_BASE_URL =
+  process.env.BAANKNET_IBC_BASE_URL || "https://ibbi.baanknet.com";
+
+export const BAANKNET_IBC_LISTING_PATH =
+  process.env.BAANKNET_IBC_LISTING_PATH || "/";
+
+export const BAANKNET_SCRAPE_DELAY_MS = parseInt(
+  process.env.BAANKNET_SCRAPE_DELAY_MS || "3000",
+  10,
+);
+
+export const BAANKNET_MAX_PAGES = parseInt(
+  process.env.BAANKNET_MAX_PAGES || "50",
+  10,
+);
+
+export const BAANKNET_MAX_SCROLL_CYCLES = parseInt(
+  process.env.BAANKNET_MAX_SCROLL_CYCLES || "50",
+  10,
+);
+
+export const BAANKNET_STATUS_FILTERS: string[] = (
+  process.env.BAANKNET_STATUS_FILTERS || "UPCOMING,LIVE"
+).split(",");
+
+export const BAANKNET_SCRAPE_DETAILS =
+  process.env.BAANKNET_SCRAPE_DETAILS !== "false";
+
+export const BAANKNET_DETAIL_CONCURRENCY = parseInt(
+  process.env.BAANKNET_DETAIL_CONCURRENCY || "3",
+  10,
+);
+
+export const BAANKNET_MODULES: string[] = (
+  process.env.BAANKNET_MODULES || "eauction,property,ibc"
+).split(",");
+
