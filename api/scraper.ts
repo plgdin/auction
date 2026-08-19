@@ -283,6 +283,22 @@ export default async function handler(req: any, res: any) {
         return;
       }
 
+      // BaankNet Multi-Module Scraper
+      if (cleanUrl === '/api/scraper/baanknet/start') {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'BAD_REQUEST',
+            message: 'The BaankNet Multi-Module Scraper requires Chromium binaries for Angular bootstrap. Please run this scraper locally using "npm run dev".'
+          }
+        });
+        return;
+      }
+      if (cleanUrl === '/api/scraper/baanknet/stop') {
+        res.status(200).json({ success: true });
+        return;
+      }
+
       // GeM Portal Scraper
       if (cleanUrl === '/api/scraper/gem/start') {
         res.status(400).json({

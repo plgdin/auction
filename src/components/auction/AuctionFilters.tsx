@@ -47,7 +47,7 @@ interface AuctionFiltersProps {
     hasImages?: boolean;
     isReauction?: boolean;
   };
-  activeTab?: 'commercial' | 'mstc' | 'gem' | 'gem-bids';
+  activeTab?: 'commercial' | 'mstc' | 'baanknet' | 'gem' | 'gem-bids';
   customCategories?: string[];
   customSubcategories?: Record<string, string[]>;
   customLocations?: string[];
@@ -804,18 +804,18 @@ export function AuctionFilters({
           </div>
         )}
 
-        {/* Regional Office / Organisation / Department */}
+        {/* Regional Office / Organisation / Department / Bank */}
         {activeTab !== 'commercial' && (
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
-              {activeTab === 'gem' ? 'Organisation' : activeTab === 'gem-bids' ? 'Department' : 'Regional Office'}
+              {activeTab === 'gem' ? 'Organisation' : activeTab === 'gem-bids' ? 'Department' : activeTab === 'baanknet' ? 'Bank Name' : 'Regional Office'}
             </h3>
             <Dropdown
               popupRender={() => renderMultiSelectMenu(
                 regionalOfficeOptions,
                 selectedRegionalOffices,
                 setSelectedRegionalOffices,
-                activeTab === 'gem' ? 'All Organisations' : activeTab === 'gem-bids' ? 'All Departments' : 'All Regional Offices'
+                activeTab === 'gem' ? 'All Organisations' : activeTab === 'gem-bids' ? 'All Departments' : activeTab === 'baanknet' ? 'All Banks' : 'All Regional Offices'
               )}
               trigger={['click']}
               placement="bottomLeft"
@@ -829,7 +829,7 @@ export function AuctionFilters({
                 <span className="truncate">
                   {getTriggerLabel(
                     selectedRegionalOffices,
-                    activeTab === 'gem' ? 'All Organisations' : activeTab === 'gem-bids' ? 'All Departments' : 'All Regional Offices',
+                    activeTab === 'gem' ? 'All Organisations' : activeTab === 'gem-bids' ? 'All Departments' : activeTab === 'baanknet' ? 'All Banks' : 'All Regional Offices',
                     activeTab === 'mstc' ? expandMstcOfficeMap : undefined
                   )}
                 </span>
