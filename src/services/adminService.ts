@@ -319,6 +319,19 @@ export const adminService = {
     return true;
   },
 
+  async resetAllNonAdminsToMstcOnly(): Promise<boolean> {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ allowed_auction_types: ['mstc'] })
+      .not('role', 'in', '("admin","superadmin")');
+
+    if (error) {
+      console.error('Error resetting all users to MSTC only:', error);
+      return false;
+    }
+    return true;
+  },
+
   // Global Analytics
   async getGlobalAnalytics() {
     const now = new Date().toISOString();

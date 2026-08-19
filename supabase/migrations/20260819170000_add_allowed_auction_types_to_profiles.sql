@@ -4,5 +4,11 @@
 ALTER TABLE public.profiles
 ADD COLUMN IF NOT EXISTS allowed_auction_types text[] DEFAULT ARRAY['mstc'];
 
+-- Set all standard (non-admin) users to only have MSTC access by default
+UPDATE public.profiles
+SET allowed_auction_types = ARRAY['mstc']
+WHERE role NOT IN ('admin', 'superadmin')
+   OR allowed_auction_types IS NULL;
+
 -- Comment for documentation
 COMMENT ON COLUMN public.profiles.allowed_auction_types IS 'Array of auction source keys that the user is permitted to view and interact with: mstc, baanknet, gem_bids, gem_auctions, gem_pbp, custom';
