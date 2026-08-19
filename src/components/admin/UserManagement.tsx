@@ -1,7 +1,9 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react';
-import { Users, CheckCircle2, ShieldAlert, Shield, Globe, Clock, X, Activity, ExternalLink } from 'lucide-react';
+import { Users, CheckCircle2, ShieldAlert, Shield, Globe, Clock, X, Activity, ExternalLink, ShieldCheck, Lock } from 'lucide-react';
 import { adminService } from '../../services/adminService';
+import { ALL_AUCTION_TYPES } from '../../hooks/useAuctionAccess';
+import { AuctionPermissionsModal } from './AuctionPermissionsModal';
 import clsx from 'clsx';
 
 export function UserManagement() {
@@ -9,6 +11,7 @@ export function UserManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [permissionsUser, setPermissionsUser] = useState<any | null>(null);
   const [userLogs, setUserLogs] = useState<any[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
@@ -42,6 +45,10 @@ export function UserManagement() {
     setUpdatingId(null);
   };
 
+  const handlePermissionsUpdated = (userId: string, updatedAllowedTypes: string[]) => {
+    setUsers(users.map(u => u.id === userId ? { ...u, allowed_auction_types: updatedAllowedTypes } : u));
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-20">
@@ -54,7 +61,7 @@ export function UserManagement() {
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="p-6 border-b border-slate-100 flex items-center justify-between">
         <h2 className="text-lg font-bold text-slate-900 flex items-center">
-          <Users className="w-5 h-5 mr-2 text-primary" /> User Database
+          <Users className="w-5 h-5 mr-2 text-primary" /> User Database & Access Permissions
         </h2>
       </div>
       
@@ -64,109 +71,156 @@ export function UserManagement() {
             <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
               <th className="px-6 py-4 font-semibold">User Info</th>
               <th className="px-6 py-4 font-semibold">Contact</th>
-              <th className="px-6 py-4 font-semibold">Last Session / IP</th>
               <th className="px-6 py-4 font-semibold">Role</th>
+              <th className="px-6 py-4 font-semibold">Auction Access</th>
               <th className="px-6 py-4 font-semibold">Plan / Views</th>
               <th className="px-6 py-4 font-semibold">Organization / KYC</th>
               <th className="px-6 py-4 font-semibold text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-slate-50">
-                <td className="px-6 py-4">
-                  <p className="text-sm font-bold text-slate-900">{user.first_name} {user.last_name}</p>
-                  <p className="text-xs text-slate-500 font-mono mt-0.5" title={user.id}>{user.id.split('-')[0]}...</p>
-                </td>
-                <td className="px-6 py-4">
-                  <p className="text-sm text-slate-600">{user.email}</p>
-                  <p className="text-xs text-slate-500">{user.phone_number || 'N/A'}</p>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1.5 text-slate-700 font-mono text-xs font-semibold">
-                      <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>{user.last_ip || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-slate-400 text-xs mt-0.5">
-                      <Clock className="w-3 h-3 shrink-0" />
-                      <span>
-                        {user.last_active
-                          ? new Date(user.last_active).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-                          : 'Never active'}
-                      </span>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={clsx(
-                    "px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wide",
-                    user.role === 'admin' || user.role === 'superadmin' ? "bg-purple-100 text-purple-700" :
-                    user.role === 'seller' ? "bg-amber-100 text-amber-700" :
-                    user.role === 'logistics' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
-                  )}>
-                    {user.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-col gap-1">
-                    <button
-                      onClick={() => handleViewActivity(user)}
-                      className={clsx(
-                        "px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wide border transition-all cursor-pointer inline-flex items-center gap-1.5 hover:scale-[1.02] w-fit",
-                        user.subscription_plan === 'pro' ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" :
-                        user.subscription_plan === 'enterprise' ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" :
-                        (user.subscription_plan === 'go' || user.subscription_plan === 'go-subscription') ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" :
-                        "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+            {users.map((user) => {
+              const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+              const allowedList: string[] = Array.isArray(user.allowed_auction_types)
+                ? user.allowed_auction_types
+                : ALL_AUCTION_TYPES.map(t => t.key);
+
+              return (
+                <tr key={user.id} className="hover:bg-slate-50">
+                  <td className="px-6 py-4">
+                    <p className="text-sm font-bold text-slate-900">{user.first_name} {user.last_name}</p>
+                    <p className="text-xs text-slate-500 font-mono mt-0.5" title={user.id}>{user.id.split('-')[0]}...</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm text-slate-600">{user.email}</p>
+                    <p className="text-xs text-slate-500">{user.phone_number || 'N/A'}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={clsx(
+                      "px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wide",
+                      isAdmin ? "bg-purple-100 text-purple-700" :
+                      user.role === 'seller' ? "bg-amber-100 text-amber-700" :
+                      user.role === 'logistics' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
+                    )}>
+                      {user.role}
+                    </span>
+                  </td>
+
+                  {/* Granular Auction Type Access Badges & Modal trigger */}
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1.5 max-w-[280px]">
+                      {isAdmin ? (
+                        <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-black uppercase rounded-md w-fit">
+                          Full Access (Admin)
+                        </span>
+                      ) : (
+                        <>
+                          <div className="flex flex-wrap gap-1">
+                            {ALL_AUCTION_TYPES.map((type) => {
+                              const isGranted = allowedList.includes(type.key);
+                              if (!isGranted) return null;
+                              return (
+                                <span
+                                  key={type.key}
+                                  className={clsx(
+                                    "px-1.5 py-0.5 text-[9px] font-extrabold uppercase rounded border",
+                                    type.colorClass
+                                  )}
+                                  title={type.label}
+                                >
+                                  {type.shortLabel}
+                                </span>
+                              );
+                            })}
+                            {allowedList.length === 0 && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 rounded">
+                                No Access Granted
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPermissionsUser(user)}
+                            className="text-[11px] font-bold text-primary hover:text-primary/80 flex items-center gap-1 w-fit cursor-pointer mt-0.5"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>Edit Access ({allowedList.length}/{ALL_AUCTION_TYPES.length})</span>
+                          </button>
+                        </>
                       )}
-                    >
-                      <span>{(user.subscription_plan === 'go' || user.subscription_plan === 'go-subscription') ? 'individual' : (user.subscription_plan || 'explorer')}</span>
-                      <Activity className="w-3 h-3" />
-                    </button>
-                    {user.subscription_expires_at && (
-                      <span className="text-[10px] font-bold text-slate-400 font-mono">
-                        Expires: {new Date(user.subscription_expires_at).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  {user.organization_id ? (
-                    <div className="flex items-center text-sm font-bold text-slate-900">
-                      <CheckCircle2 className="w-4 h-4 text-green-500 mr-1.5" /> Org Attached
                     </div>
-                  ) : (
-                    <div className="flex items-center text-sm text-slate-500">
-                      <ShieldAlert className="w-4 h-4 mr-1.5" /> Pending KYC
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-right">
-                  {(user.role === 'buyer' || user.role === 'seller' || user.role === 'logistics') && (
-                    <div className="inline-flex relative">
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                        disabled={updatingId === user.id}
-                        className="appearance-none pr-8 pl-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-md outline-none cursor-pointer disabled:opacity-50 transition-colors"
+                  </td>
+
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
+                      <button
+                        onClick={() => handleViewActivity(user)}
+                        className={clsx(
+                          "px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wide border transition-all cursor-pointer inline-flex items-center gap-1.5 hover:scale-[1.02] w-fit",
+                          user.subscription_plan === 'pro' ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" :
+                          user.subscription_plan === 'enterprise' ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" :
+                          (user.subscription_plan === 'go' || user.subscription_plan === 'go-subscription') ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" :
+                          "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                        )}
                       >
-                        <option value="buyer">Buyer</option>
-                        <option value="seller">Seller</option>
-                        <option value="logistics">Logistics</option>
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
-                        <svg className="h-3 w-3 fill-current" viewBox="0 0 20 20">
-                          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                        </svg>
-                      </div>
+                        <span>{(user.subscription_plan === 'go' || user.subscription_plan === 'go-subscription') ? 'individual' : (user.subscription_plan || 'explorer')}</span>
+                        <Activity className="w-3 h-3" />
+                      </button>
+                      {user.subscription_expires_at && (
+                        <span className="text-[10px] font-bold text-slate-400 font-mono">
+                          Expires: {new Date(user.subscription_expires_at).toLocaleDateString()}
+                        </span>
+                      )}
                     </div>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4">
+                    {user.organization_id ? (
+                      <div className="flex items-center text-sm font-bold text-slate-900">
+                        <CheckCircle2 className="w-4 h-4 text-green-500 mr-1.5" /> Org Attached
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-sm text-slate-500">
+                        <ShieldAlert className="w-4 h-4 mr-1.5" /> Pending KYC
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    {(user.role === 'buyer' || user.role === 'seller' || user.role === 'logistics') && (
+                      <div className="inline-flex relative">
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                          disabled={updatingId === user.id}
+                          className="appearance-none pr-8 pl-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-md outline-none cursor-pointer disabled:opacity-50 transition-colors"
+                        >
+                          <option value="buyer">Buyer</option>
+                          <option value="seller">Seller</option>
+                          <option value="logistics">Logistics</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                          <svg className="h-3 w-3 fill-current" viewBox="0 0 20 20">
+                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-    </div>
+      </div>
+
+      {/* Permissions Edit Modal */}
+      {permissionsUser && (
+        <AuctionPermissionsModal
+          user={permissionsUser}
+          isOpen={!!permissionsUser}
+          onClose={() => setPermissionsUser(null)}
+          onUpdated={handlePermissionsUpdated}
+        />
+      )}
 
       {/* User Activity History Drawer/Modal */}
       {selectedUser && (

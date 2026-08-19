@@ -306,6 +306,19 @@ export const adminService = {
     return true;
   },
 
+  async updateUserAuctionPermissions(userId: string, allowedTypes: string[]): Promise<boolean> {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ allowed_auction_types: allowedTypes })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error updating user auction permissions:', error);
+      return false;
+    }
+    return true;
+  },
+
   // Global Analytics
   async getGlobalAnalytics() {
     const now = new Date().toISOString();

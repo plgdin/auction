@@ -24,6 +24,8 @@ import type { MstcSanitizedAuction, SearchSuggestion, BaanknetAuction, GemAuctio
 import clsx from 'clsx';
 import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
 import { recommendationService } from '../services/recommendationService';
+import { useAuctionAccess } from '../hooks/useAuctionAccess';
+import { AuctionAccessLockModal } from '../components/common/AuctionAccessLockModal';
 
 const renderSuggestionText = (text: string, query: string) => {
   if (!query) return <span>{text}</span>;
@@ -215,6 +217,67 @@ export function Auctions() {
   const [copiedRef, setCopiedRef] = useState(false);
   const [previewTab, setPreviewTab] = useState<'summary' | 'pdf'>('summary');
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+  const { hasAccess } = useAuctionAccess();
+  const [accessLockModal, setAccessLockModal] = useState<{
+    isOpen: boolean;
+    type: string;
+    title?: string;
+  }>({
+    isOpen: false,
+    type: '',
+    title: '',
+  });
+
+  const handleMstcPreview = (item: MstcSanitizedAuction) => {
+    if (!hasAccess('mstc')) {
+      setAccessLockModal({
+        isOpen: true,
+        type: 'mstc',
+        title: item.lot_title || item.reference_number,
+      });
+      return;
+    }
+    setSelectedPreviewItem(item);
+  };
+
+  const handleBaanknetPreview = (item: BaanknetAuction) => {
+    if (!hasAccess('baanknet')) {
+      setAccessLockModal({
+        isOpen: true,
+        type: 'baanknet',
+        title: item.title || item.property_type,
+      });
+      return;
+    }
+    setSelectedPreviewBaanknetItem(item);
+  };
+
+  const handleGemPreview = (item: GemAuction) => {
+    if (!hasAccess('gem_auctions')) {
+      setAccessLockModal({
+        isOpen: true,
+        type: 'gem_auctions',
+        title: item.title,
+      });
+      return;
+    }
+    setSelectedPreviewGemItem(item);
+  };
+
+  const handleGemBidPreview = (item: GemBid) => {
+    const isPbp = item.category_name?.includes('PBP');
+    const reqType = isPbp ? 'gem_pbp' : 'gem_bids';
+    if (!hasAccess(reqType)) {
+      setAccessLockModal({
+        isOpen: true,
+        type: reqType,
+        title: item.items,
+      });
+      return;
+    }
+    setSelectedPreviewGemBid(item);
+  };
 
   const { interestedMstcIds, toggleInterestedMstcId } = useAppStore();
 
@@ -1743,7 +1806,7 @@ export function Auctions() {
                           key={item.id}
                           item={item}
                           isGrid={isGridView}
-                          onPreview={setSelectedPreviewBaanknetItem}
+                          onPreview={handleBaanknetPreview}
                           isInterested={watchlistIds.includes(item.id)}
                           onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
                         />
@@ -1867,7 +1930,7 @@ export function Auctions() {
                           key={item.id}
                           item={item}
                           isGrid={isGridView}
-                          onPreview={setSelectedPreviewGemItem}
+                          onPreview={handleGemPreview}
                         />
                       ))}
                     </div>
@@ -1989,7 +2052,7 @@ export function Auctions() {
                           key={item.id}
                           item={item}
                           isGrid={isGridView}
-                          onPreview={setSelectedPreviewGemBid}
+                          onPreview={handleGemBidPreview}
                         />
                       ))}
                     </div>
@@ -2120,7 +2183,7 @@ export function Auctions() {
                           key={item.id}
                           item={item}
                           isGrid={isGridView}
-                          onPreview={setSelectedPreviewItem}
+                          onPreview={handleMstcPreview}
                           isInterested={interestedMstcIds.includes(item.id)}
                           onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
                         />
@@ -2426,6 +2489,14 @@ export function Auctions() {
           />
         </Suspense>
       )}
+
+      {/* Auction Access Permission Lock Modal */}
+      <AuctionAccessLockModal
+        isOpen={accessLockModal.isOpen}
+        onClose={() => setAccessLockModal({ isOpen: false, type: '' })}
+        auctionType={accessLockModal.type}
+        itemTitle={accessLockModal.title}
+      />
     </div>
   );
 }
