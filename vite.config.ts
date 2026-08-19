@@ -51,6 +51,7 @@ const localApiPlugin = () => ({
 
         if (
           pathname === '/api/users' || 
+          pathname === '/api/document-proxy' ||
           pathname === '/api/scraper/reset-failed' || 
           pathname === '/api/scraper/reset-single' ||
           pathname === '/api/scraper/unlock-processing' ||
@@ -75,7 +76,10 @@ const localApiPlugin = () => ({
             return res;
           };
 
-          if (pathname === '/api/users') {
+          if (pathname === '/api/document-proxy') {
+            import('./api/document-proxy.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/users') {
             import('./api/users.ts').then((m) => m.default(req, res)).catch(next);
             return;
           } else if (pathname === '/api/create-order') {

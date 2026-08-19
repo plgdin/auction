@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Calendar, Landmark, Heart, ExternalLink, Clock, FileDown, Image, Ruler, ChevronLeft, ChevronRight, Shield, User } from 'lucide-react';
+import { X, Copy, Check, Calendar, Landmark, Heart, Clock, FileDown, Eye, Image, Ruler, ChevronLeft, ChevronRight, Shield, User } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { BaanknetAuction } from '../../services/publicService';
+import { DocumentViewerModal } from '../common/DocumentViewerModal';
 
 interface BaanknetDetailsModalProps {
   item: BaanknetAuction;
@@ -21,6 +22,28 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const [countdownStr, setCountdownStr] = useState<string>('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+
+  // In-app document viewer state
+  const [viewerState, setViewerState] = useState<{
+    isOpen: boolean;
+    title: string;
+    url: string;
+    filename: string;
+  }>({
+    isOpen: false,
+    title: '',
+    url: '',
+    filename: '',
+  });
+
+  const openInAppViewer = (url: string, title: string, filename: string) => {
+    setViewerState({
+      isOpen: true,
+      title,
+      url,
+      filename,
+    });
+  };
 
   // Fetch photos from baanknet_auction_photos table
   useEffect(() => {
@@ -136,29 +159,6 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const start = new Date(item.auction_start_date);
   const end = new Date(item.auction_end_date);
   const isLive = now >= start && now <= end;
-  // Helper to format live portal URL accurately (routing to exact auction notice or property page)
-  const getLivePortalUrl = (): string => {
-    let rawUrl = item.source_url || '';
-    if (rawUrl) {
-      if (rawUrl.startsWith('http://baanknet.com')) {
-        rawUrl = rawUrl.replace('http://baanknet.com', 'https://baanknet.com');
-      }
-      // If we have a direct view-auction-notice, view-property, or ibbi URL, return it!
-      if (
-        rawUrl.includes('/view-auction-notice/') ||
-        rawUrl.includes('/view-property/') ||
-        rawUrl.includes('ibbi.baanknet.com')
-      ) {
-        return rawUrl;
-      }
-      // If rawUrl is a valid http/https URL and not the old broken /auction-detail/ route
-      if (rawUrl.startsWith('http') && !rawUrl.includes('/auction-detail/')) {
-        return rawUrl;
-      }
-    }
-    // For eAuction PSB property listings fallback, route to eAuction PSB portal
-    return 'https://baanknet.com/eauction-psb/home';
-  };
 
   // Helper to gather all downloadable PDF document URLs
   const getAvailableDocuments = (): string[] => {
@@ -189,7 +189,6 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   };
 
   const availableDocs = getAvailableDocuments();
-  const livePortalUrl = getLivePortalUrl();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs select-text overflow-y-auto">
@@ -485,41 +484,49 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
 
           <div className="flex flex-wrap items-center gap-2">
             {availableDocs.length > 0 ? (
-              availableDocs.map((docUrl, idx) => (
-                <a
-                  key={idx}
-                  href={docUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
-                >
-                  <FileDown className="w-4 h-4" />
-                  {getDocLabel(docUrl, idx)}
-                </a>
-              ))
+              availableDocs.map((docUrl, idx) => {
+                const docLabel = getDocLabel(docUrl, idx);
+                const safeName = `Baanknet_${item.baanknet_auction_id}_${docLabel.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+                const proxyDownloadUrl = `/api/document-proxy?url=${encodeURIComponent(docUrl)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
+                return (
+                  <div key={idx} className="flex items-center gap-1">
+                    <button
+                      onClick={() => openInAppViewer(docUrl, `${docLabel}: ${item.title}`, safeName)}
+                      className="inline-flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                      title="Preview in App"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <a
+                      href={proxyDownloadUrl}
+                      download={safeName}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                      title="Download PDF"
+                    >
+                      <FileDown className="w-4 h-4" />
+                      {docLabel}
+                    </a>
+                  </div>
+                );
+              })
             ) : (
-              <a
-                href={livePortalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-              >
-                <FileDown className="w-4 h-4 text-indigo-600" /> View Notice PDF on Live Portal
-              </a>
+              <span className="text-xs text-slate-400 font-mono italic">
+                Notice document verified & processed in database
+              </span>
             )}
-            
-            <a
-              href={livePortalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
-            >
-              Visit Live Portal <ExternalLink className="w-3.5 h-3.5" />
-            </a>
           </div>
         </div>
 
       </div>
+
+      {/* In-App PDF Document Viewer */}
+      <DocumentViewerModal
+        isOpen={viewerState.isOpen}
+        onClose={() => setViewerState((prev) => ({ ...prev, isOpen: false }))}
+        title={viewerState.title}
+        documentUrl={viewerState.url}
+        filename={viewerState.filename}
+      />
     </div>
   );
 };

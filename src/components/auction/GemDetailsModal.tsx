@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Clock } from 'lucide-react';
+import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Clock, Eye } from 'lucide-react';
 import type { GemAuction } from '../../services/publicService';
+import { DocumentViewerModal } from '../common/DocumentViewerModal';
 
 interface GemDetailsModalProps {
   item: GemAuction;
@@ -14,6 +15,19 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [countdownStr, setCountdownStr] = useState<string>('');
+  
+  // In-app document preview state
+  const [viewerState, setViewerState] = useState<{
+    isOpen: boolean;
+    title: string;
+    url: string;
+    filename: string;
+  }>({
+    isOpen: false,
+    title: '',
+    url: '',
+    filename: '',
+  });
 
   // Lock body scroll
   useEffect(() => {
@@ -26,7 +40,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
   // Escape key handler to close modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !viewerState.isOpen) {
         onClose();
       }
     };
@@ -34,7 +48,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onClose]);
+  }, [onClose, viewerState.isOpen]);
 
   // Live bidding countdown timer
   useEffect(() => {
@@ -91,269 +105,295 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
   const end = new Date(item.auction_end_date);
   const isLive = now >= start && now <= end;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-955/40 backdrop-blur-xs select-text overflow-y-auto">
-      
-      {/* Modal Backdrop click listener */}
-      <div className="absolute inset-0" onClick={onClose} />
+  const targetDocUrl =
+    item.document_url ||
+    `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`;
+  const defaultFilename = `GeM_Auction_${item.gem_auction_id.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+  const proxyDownloadUrl = `/api/document-proxy?url=${encodeURIComponent(targetDocUrl)}&filename=${encodeURIComponent(defaultFilename)}&disposition=attachment`;
 
-      {/* Modal Container */}
-      <div className="relative bg-white rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
-        
-        {/* Header */}
-        <div className="p-6 bg-slate-900 text-white flex justify-between items-start shrink-0 text-left">
-          <div className="space-y-2 max-w-[85%]">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="bg-primary/20 text-primary-200 border border-primary/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
-                {item.category_name || 'Government Disposal'}
-              </span>
-              {isLive && (
-                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider animate-pulse flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Live Notice
+  const openInAppViewer = (url: string, title: string, filename: string) => {
+    setViewerState({
+      isOpen: true,
+      title,
+      url,
+      filename,
+    });
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs select-text overflow-y-auto">
+        {/* Modal Backdrop click listener */}
+        <div className="absolute inset-0" onClick={onClose} />
+
+        {/* Modal Container */}
+        <div className="relative bg-white rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 text-left">
+          {/* Header */}
+          <div className="p-6 bg-slate-900 text-white flex justify-between items-start shrink-0">
+            <div className="space-y-2 max-w-[85%]">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="bg-primary/20 text-primary-200 border border-primary/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+                  {item.category_name || 'Forward Auction'}
                 </span>
-              )}
-            </div>
-            <h2 className="text-xl font-bold leading-snug">{item.title}</h2>
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 font-mono">
-              <span className="flex items-center gap-1">
-                Notice ID: {item.gem_auction_id}
+                {isLive && (
+                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider animate-pulse flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Live Auction
+                  </span>
+                )}
+              </div>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight line-clamp-2">
+                {item.title}
+              </h2>
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-mono">
+                <span>Auction ID: {item.gem_auction_id}</span>
                 <button
                   onClick={handleCopyId}
-                  className="p-1 hover:bg-white/10 text-slate-400 hover:text-white rounded transition-colors cursor-pointer"
-                  title="Copy Notice ID"
+                  className="hover:text-white transition-colors cursor-pointer"
+                  title="Copy Auction ID"
                 >
-                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
-              </span>
+              </div>
             </div>
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Content Area */}
-        <div className="p-6 md:p-8 space-y-6 overflow-y-auto flex-1 text-left">
-          
-          {/* Main Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Reserve Price</span>
-              <span className="text-2xl font-black text-slate-955 block mt-1">{formattedPrice}</span>
+          {/* Modal Body */}
+          <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+            {/* Highlights Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-150 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Reserve / Starting Price
+                </span>
+                <div className="text-2xl font-black text-slate-900 tracking-tight">
+                  {formattedPrice}
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-150 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Status
+                </span>
+                <div className="text-sm font-black text-slate-900 tracking-tight capitalize">
+                  {item.auction_status || 'Live'}
+                </div>
+              </div>
             </div>
-            
-            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-5 md:col-span-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Organisation</span>
-              <span className="text-sm font-bold text-slate-950 block mt-1 leading-snug">
-                {item.organisation || 'N/A'}
-              </span>
-            </div>
-          </div>
 
-          {/* Ministry / Department Details */}
-          {(item.ministry || item.department) && (
+            {/* Department & Organisation Overview */}
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-                <Landmark className="w-4 h-4 text-slate-400" /> Government Structure
+                <Landmark className="w-4 h-4 text-slate-400" /> Department & Authority
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                {item.organisation && (
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-150">
+                    <span className="text-slate-400 font-semibold block mb-0.5">Organisation</span>
+                    <span className="font-bold text-slate-800 line-clamp-2">{item.organisation}</span>
+                  </div>
+                )}
                 {item.ministry && (
-                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-3.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ministry</span>
-                    <span className="text-sm font-bold text-slate-805 mt-0.5 block">{item.ministry}</span>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-150">
+                    <span className="text-slate-400 font-semibold block mb-0.5">Ministry</span>
+                    <span className="font-bold text-slate-800 line-clamp-2">{item.ministry}</span>
                   </div>
                 )}
                 {item.department && (
-                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-3.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Department</span>
-                    <span className="text-sm font-bold text-slate-805 mt-0.5 block">{item.department}</span>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-150">
+                    <span className="text-slate-400 font-semibold block mb-0.5">Department</span>
+                    <span className="font-bold text-slate-800 line-clamp-2">{item.department}</span>
                   </div>
                 )}
               </div>
             </div>
-          )}
 
-          {/* Location & Address */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-slate-400" /> Disposal Location
-              </h3>
-              <button
-                onClick={handleCopyAddress}
-                className="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0"
-              >
-                {copiedAddress ? (
-                  <>Copied <Check className="w-3.5 h-3.5 text-emerald-500" /></>
-                ) : (
-                  <>Copy Location <Copy className="w-3.5 h-3.5" /></>
-                )}
-              </button>
-            </div>
-            <div className="bg-slate-55 border border-slate-150 rounded-xl p-4 space-y-2">
-              <p className="text-sm font-semibold text-slate-800">
-                {item.full_address || `${item.city ? `${item.city}, ` : ''}${item.location}`}
-              </p>
-              <div className="flex gap-4 text-xs text-slate-400">
-                {item.city && <span>City: {item.city}</span>}
-                {item.location && <span>State: {item.location}</span>}
-                {item.pincode && <span>Pincode: {item.pincode}</span>}
+            {/* Location & Address */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-slate-400" /> Location Details
+                </h3>
+                <button
+                  onClick={handleCopyAddress}
+                  className="text-xs font-semibold text-primary hover:text-primary-hover flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedAddress ? (
+                    <>Copied <Check className="w-3.5 h-3.5 text-emerald-500" /></>
+                  ) : (
+                    <>Copy Location <Copy className="w-3.5 h-3.5" /></>
+                  )}
+                </button>
+              </div>
+              <div className="bg-slate-55 border border-slate-150 rounded-xl p-4 space-y-2">
+                <p className="text-sm font-semibold text-slate-800">
+                  {item.full_address || `${item.city ? `${item.city}, ` : ''}${item.location}`}
+                </p>
+                <div className="flex gap-4 text-xs text-slate-400">
+                  {item.city && <span>City: {item.city}</span>}
+                  {item.location && <span>State: {item.location}</span>}
+                  {item.pincode && <span>Pincode: {item.pincode}</span>}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Bidding & Event Timeline */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-slate-400" /> Bidding Timeline
-            </h3>
-            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-5 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bidding Starts</span>
-                  <span className="font-bold text-slate-800 block mt-1">
-                    {new Date(item.auction_start_date).toLocaleString()}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bidding Ends</span>
-                  <span className="font-bold text-slate-800 block mt-1">
-                    {new Date(item.auction_end_date).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              <div className="border-t border-slate-150 pt-3 flex items-center gap-2 text-xs font-bold text-slate-600">
-                <Info className="w-4 h-4 text-primary shrink-0" />
-                <span>{countdownStr}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Official Documents & NIT Attachments */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-              <Download className="w-4 h-4 text-primary" /> Official Notice Documents & Lot Schedules
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Primary Official Notice Page (Initializes session so documents can be downloaded without session expiration) */}
-              <a
-                href={item.source_url || `https://forwardauction.gem.gov.in/eprocure/view-auction-notice/${encodeURIComponent(item.gem_auction_id)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-3.5 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition-all group cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
-                  <div className="truncate">
-                    <span className="text-xs font-bold text-primary group-hover:text-primary-hover transition-colors block truncate">
-                      e-Auction Notice & Documents
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-mono block">Official GeM Notice (Full Details)</span>
-                  </div>
-                </div>
-                <ExternalLink className="w-4 h-4 text-primary shrink-0 ml-2" />
-              </a>
-
-              {/* Direct PDF Notice Download */}
-              <a
-                href={item.document_url || `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-all group cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
-                  <div className="truncate">
-                    <span className="text-xs font-bold text-slate-800 group-hover:text-slate-900 transition-colors block truncate">
-                      Direct Notice PDF Stream
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono block">Raw PDF Download</span>
-                  </div>
-                </div>
-                <Download className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0 ml-2" />
-              </a>
-
-              {/* Secondary attached documents (Schedule of Lots, Terms, Corrigendum) */}
-              {item.document_urls && item.document_urls
-                .filter((url) => url !== item.document_url && url !== item.source_url)
-                .map((docUrl, idx) => (
-                  <a
-                    key={docUrl || idx}
-                    href={docUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-all group cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5 overflow-hidden">
-                      <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
-                      <div className="truncate">
-                        <span className="text-xs font-bold text-slate-800 group-hover:text-slate-900 transition-colors block truncate">
-                          Attachment #{idx + 1}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono block">Lot Schedule / Terms PDF</span>
-                      </div>
-                    </div>
-                    <Download className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0 ml-2" />
-                  </a>
-                ))}
-            </div>
-          </div>
-
-          {/* Raw Description / Ingestion Logs */}
-          {item.raw_description && (
+            {/* Bidding & Event Timeline */}
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-                <AlignLeft className="w-4 h-4 text-slate-400" /> Notice Description
+                <Clock className="w-4 h-4 text-slate-400" /> Bidding Timeline
               </h3>
-              <p className="text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-150 leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
-                {item.raw_description}
-              </p>
+              <div className="bg-slate-50 border border-slate-150 rounded-2xl p-5 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bidding Starts</span>
+                    <span className="font-bold text-slate-800 block mt-1">
+                      {new Date(item.auction_start_date).toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bidding Ends</span>
+                    <span className="font-bold text-slate-800 block mt-1">
+                      {new Date(item.auction_end_date).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+                <div className="border-t border-slate-150 pt-3 flex items-center gap-2 text-xs font-bold text-slate-600">
+                  <Info className="w-4 h-4 text-primary shrink-0" />
+                  <span>{countdownStr}</span>
+                </div>
+              </div>
             </div>
-          )}
 
-        </div>
+            {/* Official Documents & In-App Viewer Section */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <Download className="w-4 h-4 text-primary" /> Official Notice Documents & Lot Schedules
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Primary Notice PDF Card */}
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-primary/25 bg-primary/5 shadow-3xs">
+                  <div className="flex items-center gap-2.5 overflow-hidden">
+                    <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
+                    <div className="truncate">
+                      <span className="text-xs font-bold text-slate-900 block truncate">
+                        e-Auction Notice PDF
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono block">Primary Document</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    <button
+                      onClick={() => openInAppViewer(targetDocUrl, `e-Auction Notice: ${item.title}`, defaultFilename)}
+                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-primary hover:border-primary/40 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                      title="Preview in-app"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <a
+                      href={proxyDownloadUrl}
+                      download={defaultFilename}
+                      className="p-1.5 rounded-lg bg-primary text-white hover:bg-primary-hover text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                      title="Download PDF"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
 
-        {/* Footer Actions */}
-        <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-3 items-center justify-between shrink-0">
-          <span className="text-[10px] text-slate-400 font-mono font-bold">
-            Scraped At: {(() => {
-              const d = item.created_at || item.scraped_at || item.updated_at;
-              if (!d) return 'Recently Ingested';
-              const parsed = new Date(d);
-              return isNaN(parsed.getTime()) ? 'Recently Ingested' : parsed.toLocaleString();
-            })()}
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <a
-              href={item.source_url || `https://forwardauction.gem.gov.in/eprocure/view-auction-notice/${encodeURIComponent(item.gem_auction_id)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
-            >
-              Open GeM Notice Page <ExternalLink className="w-3.5 h-3.5 ml-0.5" />
-            </a>
-            <a
-              href={item.document_url || `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold shadow-xs transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" /> Notice PDF
-            </a>
+                {/* Secondary attached documents (Schedule of Lots, Terms) */}
+                {item.document_urls && item.document_urls
+                  .filter((url) => url !== item.document_url && url !== item.source_url)
+                  .map((docUrl, idx) => {
+                    const attachFilename = `GeM_${item.gem_auction_id}_Attachment_${idx + 1}.pdf`;
+                    const attachDownloadUrl = `/api/document-proxy?url=${encodeURIComponent(docUrl)}&filename=${encodeURIComponent(attachFilename)}&disposition=attachment`;
+                    return (
+                      <div key={docUrl || idx} className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 shadow-3xs">
+                        <div className="flex items-center gap-2.5 overflow-hidden">
+                          <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
+                          <div className="truncate">
+                            <span className="text-xs font-bold text-slate-800 block truncate">
+                              Attachment #{idx + 1}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono block">Lot Schedule / Terms</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          <button
+                            onClick={() => openInAppViewer(docUrl, `Attachment #${idx + 1} - ${item.title}`, attachFilename)}
+                            className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-primary text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                            title="Preview in-app"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <a
+                            href={attachDownloadUrl}
+                            download={attachFilename}
+                            className="p-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-900 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                            title="Download attachment"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Raw Description / Ingestion Logs */}
+            {item.raw_description && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <AlignLeft className="w-4 h-4 text-slate-400" /> Notice Description
+                </h3>
+                <p className="text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-150 leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
+                  {item.raw_description}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-3 items-center justify-between shrink-0">
+            <span className="text-[10px] text-slate-400 font-mono font-bold">
+              Scraped At: {(() => {
+                const d = item.created_at || item.scraped_at || item.updated_at;
+                if (!d) return 'Recently Ingested';
+                const parsed = new Date(d);
+                return isNaN(parsed.getTime()) ? 'Recently Ingested' : parsed.toLocaleString();
+              })()}
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => openInAppViewer(targetDocUrl, `e-Auction Notice: ${item.title}`, defaultFilename)}
+                className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                <Eye className="w-3.5 h-3.5" /> Preview Notice in App
+              </button>
+              <a
+                href={proxyDownloadUrl}
+                download={defaultFilename}
+                className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" /> Download Notice PDF
+              </a>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* In-App PDF Document Viewer */}
+      <DocumentViewerModal
+        isOpen={viewerState.isOpen}
+        onClose={() => setViewerState((prev) => ({ ...prev, isOpen: false }))}
+        title={viewerState.title}
+        documentUrl={viewerState.url}
+        filename={viewerState.filename}
+      />
+    </>
   );
 };
-
-// Mini stub component for ExternalLink
-const ExternalLink = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-  </svg>
-);
