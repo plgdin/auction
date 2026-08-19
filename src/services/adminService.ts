@@ -736,7 +736,7 @@ export const adminService = {
     const { data, error } = await supabase
       .from('audit_logs')
       .select('*')
-      .in('action', ['gem_bid_deleted', 'gem_bid_scraped', 'gem_pbp_scraped', 'gem_pbp_failed'])
+      .in('action', ['gem_bid_deleted', 'gem_bid_scraped', 'gem_pbp_scraped', 'gem_pbp_failed', 'gem_bidnext_scraped', 'gem_bidnext_failed'])
       .order('created_at', { ascending: false })
       .limit(limit);
 

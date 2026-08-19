@@ -6,6 +6,7 @@ import { URL } from 'url';
 const ALLOWED_HOSTNAMES = [
   'forwardauction.gem.gov.in',
   'bidplus.gem.gov.in',
+  'bidnext.gem.gov.in',
   'bestprice.gem.gov.in',
   'gem.gov.in',
   'baanknet.com',

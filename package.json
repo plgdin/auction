@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "scrape": "tsx scraper/scraper.ts",
     "scrape:gem:pbp": "tsx scraper/gemPbpScraper.ts",
+    "scrape:gem:bidnext": "tsx scraper/gemBidNextScraper.ts",
     "scrape:gem:bid": "tsx scraper/gemBidScraper.ts",
     "scrape:gem:auction": "tsx scraper/gemScraper.ts",
     "scrape:baanknet": "tsx scraper/baanknetScraper.ts",
