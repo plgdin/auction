@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Copy, Check, Landmark, Download, AlignLeft, Clock, Calendar, Eye } from 'lucide-react';
 import type { GemBid } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
+import { getGemItemImage } from '../../utils/gemImageResolver';
 
 interface GemBidDetailsModalProps {
   item: GemBid;
@@ -119,28 +120,44 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
 
         {/* Modal Container */}
         <div className="relative bg-white w-full max-w-3xl rounded-2xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          {/* Visual Hero Banner */}
+          <div className="relative h-44 w-full bg-slate-900 overflow-hidden shrink-0">
+            <img
+              src={getGemItemImage(item.items, item.category_name)}
+              alt={item.items}
+              className="w-full h-full object-cover opacity-85 hover:scale-105 transition-transform duration-700"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/30 to-transparent" />
+            <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-extrabold uppercase bg-primary text-white text-[10px] px-2.5 py-1 rounded-md font-mono tracking-wider shadow-xs">
+                {item.category_name || 'GeM Procurement Bid'}
+              </span>
+              {item.ra_number && (
+                <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-500 text-white shadow-xs">
+                  Reverse Auction (RA) Active
+                </span>
+              )}
+              {isLive ? (
+                <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-500 text-white flex items-center gap-1 shadow-xs animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white" /> Active Bid
+                </span>
+              ) : (
+                <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-700 text-slate-200">
+                  Closed
+                </span>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 p-2 text-white bg-slate-950/50 hover:bg-slate-950/80 rounded-full backdrop-blur-xs transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
           {/* Header Block */}
           <div className="p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
-            <div className="space-y-1.5 text-left">
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-extrabold uppercase text-primary font-mono tracking-wider">
-                  {item.category_name || 'GeM Procurement Bid'}
-                </span>
-                {item.ra_number && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                    Reverse Auction (RA) Active
-                  </span>
-                )}
-                {isLive ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> Active
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                    Closed
-                  </span>
-                )}
-              </div>
+            <div className="space-y-1.5 text-left w-full">
               <h2 className="text-xl font-bold text-slate-900 tracking-tight leading-snug">
                 {item.items || 'Tender Item Procurement'}
               </h2>

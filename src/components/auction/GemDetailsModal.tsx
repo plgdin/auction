@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Clock, Eye } from 'lucide-react';
 import type { GemAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
+import { getGemItemImage } from '../../utils/gemImageResolver';
 
 interface GemDetailsModalProps {
   item: GemAuction;
@@ -128,19 +129,35 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
 
         {/* Modal Container */}
         <div className="relative bg-white rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 text-left">
+          {/* Visual Hero Banner */}
+          <div className="relative h-44 w-full bg-slate-900 overflow-hidden shrink-0">
+            <img
+              src={getGemItemImage(item.title, item.category_name)}
+              alt={item.title}
+              className="w-full h-full object-cover opacity-85 hover:scale-105 transition-transform duration-700"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/30 to-transparent" />
+            <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2">
+              <span className="bg-primary text-white text-[10px] font-extrabold px-2.5 py-1 rounded-md uppercase tracking-wider shadow-xs">
+                {item.category_name || 'Forward Auction'}
+              </span>
+              {isLive && (
+                <span className="bg-emerald-500 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-md uppercase tracking-wider animate-pulse flex items-center gap-1 shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white" /> Live Auction
+                </span>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 p-2 text-white bg-slate-950/50 hover:bg-slate-950/80 rounded-full backdrop-blur-xs transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
           {/* Header */}
           <div className="p-6 bg-slate-900 text-white flex justify-between items-start shrink-0">
-            <div className="space-y-2 max-w-[85%]">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="bg-primary/20 text-primary-200 border border-primary/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
-                  {item.category_name || 'Forward Auction'}
-                </span>
-                {isLive && (
-                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider animate-pulse flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Live Auction
-                  </span>
-                )}
-              </div>
+            <div className="space-y-2 max-w-[95%]">
               <h2 className="text-xl md:text-2xl font-black tracking-tight line-clamp-2">
                 {item.title}
               </h2>
