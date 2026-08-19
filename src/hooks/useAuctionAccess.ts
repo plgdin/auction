@@ -100,8 +100,8 @@ export function useAuctionAccess() {
     if (profile && Array.isArray((profile as any).allowed_auction_types)) {
       return (profile as any).allowed_auction_types;
     }
-    // Default fallback: all enabled unless restricted
-    return ALL_AUCTION_TYPES.map((t) => t.key);
+    // Default fallback: Standard users only have access to MSTC by default
+    return ['mstc'];
   }, [isAdmin, profile]);
 
   const hasAccess = (typeKey: AuctionTypeKey | string): boolean => {

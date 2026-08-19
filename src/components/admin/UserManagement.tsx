@@ -83,7 +83,7 @@ export function UserManagement() {
               const isAdmin = user.role === 'admin' || user.role === 'superadmin';
               const allowedList: string[] = Array.isArray(user.allowed_auction_types)
                 ? user.allowed_auction_types
-                : ALL_AUCTION_TYPES.map(t => t.key);
+                : ['mstc'];
 
               return (
                 <tr key={user.id} className="hover:bg-slate-50">

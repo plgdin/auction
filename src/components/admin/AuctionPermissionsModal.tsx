@@ -19,10 +19,10 @@ export const AuctionPermissionsModal: React.FC<AuctionPermissionsModalProps> = (
 }) => {
   if (!isOpen || !user) return null;
 
-  // Initialize state with user's current permissions or all if undefined
+  // Initialize state with user's current permissions or MSTC only if undefined
   const initialAllowed: string[] = Array.isArray(user.allowed_auction_types)
     ? user.allowed_auction_types
-    : ALL_AUCTION_TYPES.map((t) => t.key);
+    : ['mstc'];
 
   const [selectedTypes, setSelectedTypes] = useState<string[]>(initialAllowed);
   const [isSaving, setIsSaving] = useState(false);
