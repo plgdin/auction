@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Eye, Building2, Calendar, Landmark, Download } from 'lucide-react';
 import type { GemBid } from '../../services/publicService';
+import { getGemItemImage } from '../../utils/gemImageResolver';
 
 interface GemBidCardProps {
   item: GemBid;
@@ -35,21 +36,7 @@ export function GemBidCard({
     }
   };
 
-  // Safe fallback placeholder images based on category name
-  const getPlaceholderImage = () => {
-    const cat = (item.category_name || '').toLowerCase();
-    if (cat.includes('vehicle') || cat.includes('autom') || cat.includes('car') || cat.includes('scrap')) {
-      return 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3';
-    } else if (cat.includes('comp') || cat.includes('elect') || cat.includes('e-waste') || cat.includes('cables')) {
-      return 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3';
-    } else if (cat.includes('machin') || cat.includes('equip') || cat.includes('metal')) {
-      return 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3';
-    }
-    // Default blue tech texture placeholder
-    return 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3';
-  };
-
-  const previewImage = getPlaceholderImage();
+  const previewImage = getGemItemImage(item.items, item.category_name);
 
   if (isGrid) {
     return (

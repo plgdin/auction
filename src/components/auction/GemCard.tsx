@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Eye, MapPin, Building2, Calendar, Landmark, Download } from 'lucide-react';
 import type { GemAuction } from '../../services/publicService';
+import { getGemItemImage } from '../../utils/gemImageResolver';
 
 interface GemCardProps {
   item: GemAuction;
@@ -44,21 +45,7 @@ export function GemCard({
     }
   };
 
-  // Safe fallback placeholder images based on category name
-  const getPlaceholderImage = () => {
-    const cat = (item.category_name || '').toLowerCase();
-    if (cat.includes('vehicle') || cat.includes('autom') || cat.includes('car') || cat.includes('scrap')) {
-      return 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3';
-    } else if (cat.includes('land') || cat.includes('build') || cat.includes('real') || cat.includes('plot')) {
-      return 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3';
-    } else if (cat.includes('machin') || cat.includes('equip') || cat.includes('metal')) {
-      return 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3';
-    }
-    // Default government portal texture/office placeholder
-    return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3';
-  };
-
-  const previewImage = getPlaceholderImage();
+  const previewImage = getGemItemImage(item.title, item.category_name);
 
   if (isGrid) {
     return (
