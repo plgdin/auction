@@ -3,9 +3,11 @@ import { useEffect, useState, useMemo } from 'react';
 import {
   Users, CheckCircle2, ShieldAlert, Shield, Globe, Clock, X,
   Activity, Search, Filter, ChevronDown, Save, Ban, UserCheck,
-  Crown, CreditCard, Calendar, AlertTriangle
+  Crown, CreditCard, Calendar, AlertTriangle, ExternalLink, ShieldCheck, Lock
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
+import { ALL_AUCTION_TYPES } from '../../hooks/useAuctionAccess';
+import { AuctionPermissionsModal } from './AuctionPermissionsModal';
 import clsx from 'clsx';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -71,6 +73,10 @@ export function UserManagement() {
   const [editPlan, setEditPlan] = useState('');
   const [editExpiry, setEditExpiry] = useState('');
   const [editActive, setEditActive] = useState(true);
+
+  // Auction Permissions Modal state
+  const [permissionsUser, setPermissionsUser] = useState<any | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Activity log state
   const [userLogs, setUserLogs] = useState<any[]>([]);
@@ -150,6 +156,20 @@ export function UserManagement() {
     const logs = await adminService.getUserAuditLogs(selectedUser.id);
     setUserLogs(logs);
     setIsLoadingLogs(false);
+  };
+
+  const handleResetAllToMstc = async () => {
+    if (!window.confirm('Reset all non-admin users to only have access to MSTC Auctions?')) return;
+    setIsResetting(true);
+    const success = await adminService.resetAllNonAdminsToMstcOnly();
+    if (success) {
+      setUsers(users.map(u => (u.role === 'admin' || u.role === 'superadmin') ? u : { ...u, allowed_auction_types: ['mstc'] }));
+    }
+    setIsResetting(false);
+  };
+
+  const handlePermissionsUpdated = (userId: string, updatedAllowedTypes: string[]) => {
+    setUsers(users.map(u => u.id === userId ? { ...u, allowed_auction_types: updatedAllowedTypes } : u));
   };
 
   // Load activity logs when switching to activity tab
@@ -257,7 +277,7 @@ export function UserManagement() {
           </div>
 
           {/* Quick stats */}
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-3 flex-wrap items-center">
             {[
               { label: 'Active', count: users.filter(u => u.is_active !== false).length, color: 'text-emerald-600 bg-emerald-50' },
               { label: 'Disabled', count: users.filter(u => u.is_active === false).length, color: 'text-red-600 bg-red-50' },
@@ -267,6 +287,15 @@ export function UserManagement() {
                 {stat.count} {stat.label}
               </div>
             ))}
+            <button
+              type="button"
+              onClick={handleResetAllToMstc}
+              disabled={isResetting}
+              className="text-xs font-bold text-slate-700 hover:text-primary px-3.5 py-1.5 rounded-lg border border-slate-200 hover:border-primary/40 bg-slate-50 hover:bg-slate-100 transition-all flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50 ml-2"
+            >
+              <ShieldCheck className="w-4 h-4 text-primary" />
+              <span>{isResetting ? 'Resetting...' : 'Set All Users to MSTC Only'}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -347,6 +376,7 @@ export function UserManagement() {
                 <th className="px-6 py-4 font-semibold">Contact</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
                 <th className="px-6 py-4 font-semibold">Role</th>
+                <th className="px-6 py-4 font-semibold">Auction Access</th>
                 <th className="px-6 py-4 font-semibold">Plan</th>
                 <th className="px-6 py-4 font-semibold">Last Active</th>
                 <th className="px-6 py-4 font-semibold">Organization</th>
@@ -407,6 +437,52 @@ export function UserManagement() {
                       )}>
                         {user.role}
                       </span>
+                    </td>
+
+                    {/* Auction Access */}
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex flex-col gap-1.5 max-w-[200px]">
+                        {(user.role === 'admin' || user.role === 'superadmin') ? (
+                          <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-black uppercase rounded-md w-fit">
+                            Full Access (Admin)
+                          </span>
+                        ) : (
+                          <>
+                            <div className="flex flex-wrap gap-1">
+                              {ALL_AUCTION_TYPES.map((type) => {
+                                const allowedList: string[] = Array.isArray(user.allowed_auction_types) ? user.allowed_auction_types : ['mstc'];
+                                const isGranted = allowedList.includes(type.key);
+                                if (!isGranted) return null;
+                                return (
+                                  <span
+                                    key={type.key}
+                                    className={clsx(
+                                      "px-1.5 py-0.5 text-[9px] font-extrabold uppercase rounded border",
+                                      type.colorClass
+                                    )}
+                                    title={type.label}
+                                  >
+                                    {type.shortLabel}
+                                  </span>
+                                );
+                              })}
+                              {(!user.allowed_auction_types || user.allowed_auction_types.length === 0) && (
+                                <span className="px-1.5 py-0.5 text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 rounded">
+                                  No Access Granted
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setPermissionsUser(user)}
+                              className="text-[11px] font-bold text-primary hover:text-primary/80 flex items-center gap-1 w-fit cursor-pointer mt-0.5"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              <span>Edit Access ({Array.isArray(user.allowed_auction_types) ? user.allowed_auction_types.length : 1}/{ALL_AUCTION_TYPES.length})</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
 
                     {/* Plan */}
@@ -587,6 +663,16 @@ export function UserManagement() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Permissions Edit Modal */}
+      {permissionsUser && (
+        <AuctionPermissionsModal
+          user={permissionsUser}
+          isOpen={!!permissionsUser}
+          onClose={() => setPermissionsUser(null)}
+          onUpdated={handlePermissionsUpdated}
+        />
       )}
     </div>
   );

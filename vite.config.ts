@@ -8,11 +8,17 @@ let scraperProcess: any = null;
 let workerProcess: any = null;
 let clearDbProcess: any = null;
 let backfillProcess: any = null;
+let baanknetProcess: any = null;
+let gemProcess: any = null;
+let gemBidsProcess: any = null;
 
 let scraperLogs: string[] = [];
 let workerLogs: string[] = [];
 let clearDbLogs: string[] = [];
 let backfillLogs: string[] = [];
+let baanknetLogs: string[] = [];
+let gemLogs: string[] = [];
+let gemBidsLogs: string[] = [];
 
 const appendLog = (type: string, data: any) => {
   const lines = data.toString().split('\n');
@@ -21,6 +27,9 @@ const appendLog = (type: string, data: any) => {
   else if (type === 'worker') target = workerLogs;
   else if (type === 'clear-db') target = clearDbLogs;
   else if (type === 'backfill') target = backfillLogs;
+  else if (type === 'baanknet') target = baanknetLogs;
+  else if (type === 'gem') target = gemLogs;
+  else if (type === 'gem-bids') target = gemBidsLogs;
   else return;
 
   lines.forEach((line: string) => {
@@ -42,6 +51,7 @@ const localApiPlugin = () => ({
 
         if (
           pathname === '/api/users' || 
+          pathname === '/api/document-proxy' ||
           pathname === '/api/scraper/reset-failed' || 
           pathname === '/api/scraper/reset-single' ||
           pathname === '/api/scraper/unlock-processing' ||
@@ -66,7 +76,10 @@ const localApiPlugin = () => ({
             return res;
           };
 
-          if (pathname === '/api/users') {
+          if (pathname === '/api/document-proxy') {
+            import('./api/document-proxy.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/users') {
             import('./api/users.ts').then((m) => m.default(req, res)).catch(next);
             return;
           } else if (pathname === '/api/create-order') {
@@ -104,10 +117,16 @@ const localApiPlugin = () => ({
             workerRunning: workerProcess !== null,
             clearDbRunning: clearDbProcess !== null,
             backfillRunning: backfillProcess !== null,
+            baanknetRunning: baanknetProcess !== null,
+            gemRunning: gemProcess !== null,
+            gemBidsRunning: gemBidsProcess !== null,
             scraperLogs,
             workerLogs,
             clearDbLogs,
-            backfillLogs
+            backfillLogs,
+            baanknetLogs,
+            gemLogs,
+            gemBidsLogs
           }));
           return;
         }
@@ -143,6 +162,95 @@ const localApiPlugin = () => ({
             return;
           }
 
+          if (req.url === '/api/scraper/baanknet/start') {
+            if (baanknetProcess) {
+              res.end(JSON.stringify({ success: false, message: 'BaankNet Scraper already running' }));
+              return;
+            }
+            baanknetLogs = [];
+            appendLog('baanknet', 'Starting BaankNet Scraper (npx tsx scraper/baanknetScraper.ts)...');
+            baanknetProcess = spawn('npx', ['tsx', 'scraper/baanknetScraper.ts'], { shell: true });
+            
+            baanknetProcess.stdout.on('data', (data: any) => appendLog('baanknet', data));
+            baanknetProcess.stderr.on('data', (data: any) => appendLog('baanknet', data));
+            baanknetProcess.on('close', (code: any) => {
+              appendLog('baanknet', `BaankNet Scraper process terminated with exit code ${code}`);
+              baanknetProcess = null;
+            });
+            
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/baanknet/stop') {
+            if (baanknetProcess) {
+              baanknetProcess.kill('SIGINT');
+              baanknetProcess = null;
+              appendLog('baanknet', 'BaankNet Scraper process stopped by user request.');
+            }
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/gem/start') {
+            if (gemProcess) {
+              res.end(JSON.stringify({ success: false, message: 'GeM Scraper already running' }));
+              return;
+            }
+            gemLogs = [];
+            appendLog('gem', 'Starting GeM Portal Scraper (npx tsx scraper/gemScraper.ts)...');
+            gemProcess = spawn('npx', ['tsx', 'scraper/gemScraper.ts'], { shell: true });
+            
+            gemProcess.stdout.on('data', (data: any) => appendLog('gem', data));
+            gemProcess.stderr.on('data', (data: any) => appendLog('gem', data));
+            gemProcess.on('close', (code: any) => {
+              appendLog('gem', `GeM Scraper process terminated with exit code ${code}`);
+              gemProcess = null;
+            });
+            
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/gem/stop') {
+            if (gemProcess) {
+              gemProcess.kill('SIGINT');
+              gemProcess = null;
+              appendLog('gem', 'GeM Scraper process stopped by user request.');
+            }
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/gem-bids/start') {
+            if (gemBidsProcess) {
+              res.end(JSON.stringify({ success: false, message: 'GeM Bids Scraper already running' }));
+              return;
+            }
+            gemBidsLogs = [];
+            appendLog('gem-bids', 'Starting GeM Bids Scraper (npx tsx scraper/gemBidScraper.ts)...');
+            gemBidsProcess = spawn('npx', ['tsx', 'scraper/gemBidScraper.ts'], { shell: true });
+            
+            gemBidsProcess.stdout.on('data', (data: any) => appendLog('gem-bids', data));
+            gemBidsProcess.stderr.on('data', (data: any) => appendLog('gem-bids', data));
+            gemBidsProcess.on('close', (code: any) => {
+              appendLog('gem-bids', `GeM Bids Scraper process terminated with exit code ${code}`);
+              gemBidsProcess = null;
+            });
+            
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/gem-bids/stop') {
+            if (gemBidsProcess) {
+              gemBidsProcess.kill('SIGINT');
+              gemBidsProcess = null;
+              appendLog('gem-bids', 'GeM Bids Scraper process stopped by user request.');
+            }
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
 
           if (req.url === '/api/scraper/input') {
             if (scraperProcess && scraperProcess.stdin) {

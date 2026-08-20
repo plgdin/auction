@@ -327,23 +327,63 @@ export const adminService = {
     return true;
   },
 
+  async updateUserAuctionPermissions(userId: string, allowedTypes: string[]): Promise<boolean> {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ allowed_auction_types: allowedTypes })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error updating user auction permissions:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async resetAllNonAdminsToMstcOnly(): Promise<boolean> {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ allowed_auction_types: ['mstc'] })
+      .not('role', 'in', '("admin","superadmin")');
+
+    if (error) {
+      console.error('Error resetting all users to MSTC only:', error);
+      return false;
+    }
+    return true;
+  },
+
   // Global Analytics
   async getGlobalAnalytics() {
     const now = new Date().toISOString();
-    const [userRes, auctionRes, tenderRes, activeListingsRes, upcomingRes] = await Promise.all([
+    const [
+      userRes,
+      auctionRes,
+      tenderRes,
+      activeListingsRes,
+      upcomingRes,
+      activeGemListingsRes,
+      activeGemBidsRes,
+      upcomingGemAuctionsRes,
+      upcomingGemBidsRes
+    ] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('auctions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       supabase.from('tenders').select('*', { count: 'exact', head: true }).eq('status', 'open'),
       supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).eq('asset_status', 'completed'),
-      supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).gt('opening_date', now)
+      supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).gt('opening_date', now),
+      supabase.from('gem_auctions').select('*', { count: 'exact', head: true }),
+      supabase.from('gem_bids').select('*', { count: 'exact', head: true }).eq('status', 'live'),
+      supabase.from('gem_auctions').select('*', { count: 'exact', head: true }).gt('auction_start_date', now),
+      supabase.from('gem_bids').select('*', { count: 'exact', head: true }).gt('start_date', now)
     ]);
 
     return {
       totalUsers: userRes.count || 0,
       activeAuctions: auctionRes.count || 0,
       activeTenders: tenderRes.count || 0,
-      activeListings: activeListingsRes.count || 0,
-      upcomingAuctions: upcomingRes.count || 0
+      activeListings: (activeListingsRes.count || 0) + (activeGemListingsRes.count || 0) + (activeGemBidsRes.count || 0),
+      upcomingAuctions: (upcomingRes.count || 0) + (upcomingGemAuctionsRes.count || 0) + (upcomingGemBidsRes.count || 0)
     };
   },
 
@@ -591,6 +631,41 @@ export const adminService = {
     return data;
   },
 
+  async getBaanknetScraperAnalytics() {
+    try {
+      const [totalRes, upcomingRes, liveRes, closedRes] = await Promise.all([
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }),
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'upcoming'),
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'live'),
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).in('auction_status', ['closed', 'cancelled', 'ended']),
+      ]);
+
+      return {
+        total: totalRes.count || 0,
+        upcoming: upcomingRes.count || 0,
+        live: liveRes.count || 0,
+        closed: closedRes.count || 0,
+      };
+    } catch (error) {
+      console.error('Error fetching BaankNet scraper analytics:', error);
+      return { total: 0, upcoming: 0, live: 0, closed: 0 };
+    }
+  },
+
+  async getBaanknetScraperAuctions(limit: number = 100): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('baanknet_auctions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching BaankNet scraper auctions:', error);
+      return [];
+    }
+    return data;
+  },
+
   async getScraperLogs(limit: number = 100): Promise<AuditLog[]> {
     const { data, error } = await supabase
       .from('audit_logs')
@@ -603,10 +678,121 @@ export const adminService = {
       console.error('Error fetching scraper audit logs:', error);
       return [];
     }
+    return (data as AuditLog[]) || [];
+  },
+
+  async getBaanknetScraperLogs(limit: number = 100): Promise<AuditLog[]> {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .in('action', ['baanknet_auction_deleted', 'baanknet_auction_scraped'])
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching BaankNet scraper audit logs:', error);
+      return [];
+    }
+    return (data as AuditLog[]) || [];
+  },
+
+  async getGemScraperAnalytics() {
+    try {
+      const [totalRes, liveRes, closedRes] = await Promise.all([
+        supabase.from('gem_auctions').select('*', { count: 'exact', head: true }),
+        supabase.from('gem_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'live'),
+        supabase.from('gem_auctions').select('*', { count: 'exact', head: true }).in('auction_status', ['closed', 'cancelled', 'ended']),
+      ]);
+
+      return {
+        total: totalRes.count || 0,
+        upcoming: 0,
+        live: liveRes.count || 0,
+        closed: closedRes.count || 0,
+      };
+    } catch (error) {
+      console.error('Error fetching GeM scraper analytics:', error);
+      return { total: 0, upcoming: 0, live: 0, closed: 0 };
+    }
+  },
+
+  async getGemScraperAuctions(limit: number = 100): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('gem_auctions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching GeM scraper auctions:', error);
+      return [];
+    }
+    return data;
+  },
+
+  async getGemScraperLogs(limit: number = 100): Promise<AuditLog[]> {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .in('action', ['gem_auction_deleted', 'gem_auction_scraped'])
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching GeM scraper audit logs:', error);
+      return [];
+    }
     return data || [];
   },
 
+  async getGemBidsScraperAnalytics() {
+    try {
+      const [totalRes, liveRes, closedRes] = await Promise.all([
+        supabase.from('gem_bids').select('*', { count: 'exact', head: true }),
+        supabase.from('gem_bids').select('*', { count: 'exact', head: true }).eq('status', 'live'),
+        supabase.from('gem_bids').select('*', { count: 'exact', head: true }).in('status', ['closed', 'cancelled', 'ended']),
+      ]);
 
+      return {
+        total: totalRes.count || 0,
+        upcoming: 0,
+        live: liveRes.count || 0,
+        closed: closedRes.count || 0,
+      };
+    } catch (error) {
+      console.error('Error fetching GeM bids scraper analytics:', error);
+      return { total: 0, upcoming: 0, live: 0, closed: 0 };
+    }
+  },
+
+  async getGemBidsScraperBids(limit: number = 100): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('gem_bids')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching GeM scraper bids:', error);
+      return [];
+    }
+    return data;
+  },
+
+  async getGemBidsScraperLogs(limit: number = 100): Promise<AuditLog[]> {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .in('action', ['gem_bid_deleted', 'gem_bid_scraped', 'gem_pbp_scraped', 'gem_pbp_failed', 'gem_bidnext_scraped', 'gem_bidnext_failed'])
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching GeM bids scraper audit logs:', error);
+      return [];
+    }
+    return data || [];
+  },
 
   // Contact Messages Management
   async getContactMessages(): Promise<ContactMessage[]> {
