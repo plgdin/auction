@@ -86,6 +86,7 @@ export function ScraperDashboard() {
   const [clearDbRunning, setClearDbRunning] = useState(false);
   const [backfillRunning, setBackfillRunning] = useState(false);
   const [baanknetRunning, setBaanknetRunning] = useState(false);
+  const [baanknetWorkerRunning, setBaanknetWorkerRunning] = useState(false);
   const [gemRunning, setGemRunning] = useState(false);
   const [gemBidsRunning, setGemBidsRunning] = useState(false);
   const [liveScraperLogs, setLiveScraperLogs] = useState<string[]>([]);
@@ -93,6 +94,7 @@ export function ScraperDashboard() {
   const [liveClearDbLogs, setLiveClearDbLogs] = useState<string[]>([]);
   const [liveBackfillLogs, setLiveBackfillLogs] = useState<string[]>([]);
   const [liveBaanknetLogs, setLiveBaanknetLogs] = useState<string[]>([]);
+  const [liveBaanknetWorkerLogs, setLiveBaanknetWorkerLogs] = useState<string[]>([]);
   const [liveGemLogs, setLiveGemLogs] = useState<string[]>([]);
   const [liveGemBidsLogs, setLiveGemBidsLogs] = useState<string[]>([]);
   const [isLocalApiAvailable, setIsLocalApiAvailable] = useState(false);
@@ -104,6 +106,7 @@ export function ScraperDashboard() {
   const clearDbTerminalRef = useRef<HTMLDivElement>(null);
   const backfillTerminalRef = useRef<HTMLDivElement>(null);
   const baanknetTerminalRef = useRef<HTMLDivElement>(null);
+  const baanknetWorkerTerminalRef = useRef<HTMLDivElement>(null);
   const gemTerminalRef = useRef<HTMLDivElement>(null);
   const gemBidsTerminalRef = useRef<HTMLDivElement>(null);
 
@@ -181,6 +184,7 @@ export function ScraperDashboard() {
         setClearDbRunning(data.clearDbRunning);
         setBackfillRunning(data.backfillRunning);
         setBaanknetRunning(data.baanknetRunning);
+        setBaanknetWorkerRunning(data.baanknetWorkerRunning || false);
         setGemRunning(data.gemRunning || false);
         setGemBidsRunning(data.gemBidsRunning || false);
         setLiveScraperLogs(data.scraperLogs || []);
@@ -188,6 +192,7 @@ export function ScraperDashboard() {
         setLiveClearDbLogs(data.clearDbLogs || []);
         setLiveBackfillLogs(data.backfillLogs || []);
         setLiveBaanknetLogs(data.baanknetLogs || []);
+        setLiveBaanknetWorkerLogs(data.baanknetWorkerLogs || []);
         setLiveGemLogs(data.gemLogs || []);
         setLiveGemBidsLogs(data.gemBidsLogs || []);
         setIsLocalApiAvailable(true);
@@ -234,6 +239,12 @@ export function ScraperDashboard() {
       baanknetTerminalRef.current.scrollTop = baanknetTerminalRef.current.scrollHeight;
     }
   }, [liveBaanknetLogs]);
+
+  useEffect(() => {
+    if (baanknetWorkerTerminalRef.current) {
+      baanknetWorkerTerminalRef.current.scrollTop = baanknetWorkerTerminalRef.current.scrollHeight;
+    }
+  }, [liveBaanknetWorkerLogs]);
 
   useEffect(() => {
     if (gemTerminalRef.current) {
@@ -321,6 +332,80 @@ export function ScraperDashboard() {
       });
       toast.success('BaankNet scraper stop signal sent.');
       setBaanknetRunning(false);
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const startBaanknetWorker = async () => {
+    try {
+      const token = await getAuthToken();
+      const res = await fetch('/api/scraper/baanknet/worker/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('BaankNet Document Asset Worker started!');
+        setBaanknetWorkerRunning(true);
+      } else {
+        toast.error(data.message || 'Failed to start BaankNet worker.');
+      }
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const stopBaanknetWorker = async () => {
+    try {
+      const token = await getAuthToken();
+      await fetch('/api/scraper/baanknet/worker/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      toast.success('BaankNet worker stop signal sent.');
+      setBaanknetWorkerRunning(false);
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const startBaanknetRefreshDocs = async () => {
+    try {
+      const token = await getAuthToken();
+      const res = await fetch('/api/scraper/baanknet/refresh-docs/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('BaankNet Full Document Refresh initiated!');
+        setBaanknetWorkerRunning(true);
+      } else {
+        toast.error(data.message || 'Failed to start BaankNet document refresh.');
+      }
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const stopBaanknetRefreshDocs = async () => {
+    try {
+      const token = await getAuthToken();
+      await fetch('/api/scraper/baanknet/refresh-docs/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      toast.success('BaankNet document refresh stop signal sent.');
+      setBaanknetWorkerRunning(false);
     } catch (err) {
       toast.error('Could not connect to local API plugin.');
     }
@@ -2690,46 +2775,72 @@ export function ScraperDashboard() {
                   </div>
                 </div>
 
-                {/* Info Panel */}
-                <div className="bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl border border-slate-800 p-6 text-white shadow-xl flex flex-col justify-between min-h-[480px]">
-                  <div>
-                    <div className="flex items-center gap-3.5 mb-6">
-                      <div className="p-2.5 bg-white/10 rounded-xl">
-                        <Terminal className="w-6 h-6 text-primary" />
-                      </div>
+                {/* BaankNet Asset Worker Panel */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
+                  
+                  {/* Header */}
+                  <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-slate-600" />
                       <div>
-                        <h3 className="font-extrabold text-base leading-tight">Crawler Intelligence Dashboard</h3>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Stealth execution details & database ingestion pipeline</p>
+                        <h3 className="font-bold text-slate-900 leading-tight">BaankNet Document Asset Worker</h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Downloads notice PDFs, validates %PDF magic bytes & mirrors to Supabase Storage</p>
                       </div>
                     </div>
-
-                    <div className="space-y-4 text-xs leading-relaxed text-slate-350">
-                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                        <h4 className="font-bold text-white mb-1.5">Anti-Bot Evasion Tactics</h4>
-                        <p>
-                          Uses Puppeteer Stealth plugin integration. Generates human-like viewport dimensions, overrides webgl configurations, randomized user agents, and injects passive screen scrolls. Bypasses typical Cloudflare & AWS WAF trigger checks on Bank eAuctions pages.
-                        </p>
-                      </div>
-
-                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                        <h4 className="font-bold text-white mb-1.5">Angular SPA Synchronization</h4>
-                        <p>
-                          BaankNet compiles listings as an Angular application client-side. The crawler intercepts active REST endpoints and handles browser scrolling delays to load listings before scraping card nodes.
-                        </p>
-                      </div>
-
-                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                        <h4 className="font-bold text-white mb-1.5">Automated Purge & Cleanups</h4>
-                        <p>
-                          The scraper queries active rows in the <code className="bg-slate-800 px-1 py-0.5 rounded text-[10px] font-mono">baanknet_auctions</code> table and deletes references whose <code className="bg-slate-800 px-1 py-0.5 rounded text-[10px] font-mono">auction_end_date</code> has already passed, keeping the search index clean.
-                        </p>
-                      </div>
-                    </div>
+                    
+                    {/* Status indicator */}
+                    {baanknetWorkerRunning ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-ping" /> Worker Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                        <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Worker Stopped
+                      </span>
+                    )}
                   </div>
 
-                  <div className="pt-6 border-t border-white/5 text-[11px] text-slate-500 font-medium flex items-center justify-between mt-6">
-                    <span>Database: Postgres (Supabase RLS Active)</span>
-                    <span>Version 1.0.0</span>
+                  {/* Controls */}
+                  <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2">
+                    <button
+                      onClick={startBaanknetWorker}
+                      disabled={!isLocalApiAvailable || baanknetWorkerRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Asset Worker
+                    </button>
+                    <button
+                      onClick={stopBaanknetWorker}
+                      disabled={!isLocalApiAvailable || !baanknetWorkerRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Square className="w-3.5 h-3.5 mr-1.5 fill-rose-600 text-rose-600" /> Stop Worker
+                    </button>
+                    <button
+                      onClick={startBaanknetRefreshDocs}
+                      disabled={!isLocalApiAvailable || baanknetWorkerRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                      title="Re-scrape and audit all detail pages for missing/new documents across all rows"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 mr-1.5 text-indigo-600" /> Refresh Documents Pass
+                    </button>
+                  </div>
+
+                  {/* Console Viewer */}
+                  <div 
+                    ref={baanknetWorkerTerminalRef}
+                    className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-96 overflow-y-auto space-y-1 select-text scroll-smooth"
+                  >
+                    {liveBaanknetWorkerLogs.length === 0 ? (
+                      <p className="text-slate-500 italic">No output logs. Click "Start Asset Worker" or "Refresh Documents Pass" to initiate.</p>
+                    ) : (
+                      liveBaanknetWorkerLogs.map((line, idx) => (
+                        <p key={idx} className="leading-relaxed whitespace-pre-wrap">
+                          <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
+                          {line}
+                        </p>
+                      ))
+                    )}
                   </div>
                 </div>
               </>

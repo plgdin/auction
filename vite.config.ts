@@ -9,6 +9,8 @@ let workerProcess: any = null;
 let clearDbProcess: any = null;
 let backfillProcess: any = null;
 let baanknetProcess: any = null;
+let baanknetWorkerProcess: any = null;
+let baanknetRefreshProcess: any = null;
 let gemProcess: any = null;
 let gemBidsProcess: any = null;
 
@@ -17,6 +19,7 @@ let workerLogs: string[] = [];
 let clearDbLogs: string[] = [];
 let backfillLogs: string[] = [];
 let baanknetLogs: string[] = [];
+let baanknetWorkerLogs: string[] = [];
 let gemLogs: string[] = [];
 let gemBidsLogs: string[] = [];
 
@@ -28,6 +31,7 @@ const appendLog = (type: string, data: any) => {
   else if (type === 'clear-db') target = clearDbLogs;
   else if (type === 'backfill') target = backfillLogs;
   else if (type === 'baanknet') target = baanknetLogs;
+  else if (type === 'baanknet-worker') target = baanknetWorkerLogs;
   else if (type === 'gem') target = gemLogs;
   else if (type === 'gem-bids') target = gemBidsLogs;
   else return;
@@ -118,6 +122,7 @@ const localApiPlugin = () => ({
             clearDbRunning: clearDbProcess !== null,
             backfillRunning: backfillProcess !== null,
             baanknetRunning: baanknetProcess !== null,
+            baanknetWorkerRunning: baanknetWorkerProcess !== null || baanknetRefreshProcess !== null,
             gemRunning: gemProcess !== null,
             gemBidsRunning: gemBidsProcess !== null,
             scraperLogs,
@@ -125,6 +130,7 @@ const localApiPlugin = () => ({
             clearDbLogs,
             backfillLogs,
             baanknetLogs,
+            baanknetWorkerLogs,
             gemLogs,
             gemBidsLogs
           }));
@@ -187,6 +193,66 @@ const localApiPlugin = () => ({
               baanknetProcess.kill('SIGINT');
               baanknetProcess = null;
               appendLog('baanknet', 'BaankNet Scraper process stopped by user request.');
+            }
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/baanknet/worker/start') {
+            if (baanknetWorkerProcess) {
+              res.end(JSON.stringify({ success: false, message: 'BaankNet Worker already running' }));
+              return;
+            }
+            baanknetWorkerLogs = [];
+            appendLog('baanknet-worker', 'Starting BaankNet Document Asset Worker (npx tsx scraper/baanknetAssetWorker.ts)...');
+            baanknetWorkerProcess = spawn('npx', ['tsx', 'scraper/baanknetAssetWorker.ts'], { shell: true });
+            
+            baanknetWorkerProcess.stdout.on('data', (data: any) => appendLog('baanknet-worker', data));
+            baanknetWorkerProcess.stderr.on('data', (data: any) => appendLog('baanknet-worker', data));
+            baanknetWorkerProcess.on('close', (code: any) => {
+              appendLog('baanknet-worker', `BaankNet Asset Worker terminated with exit code ${code}`);
+              baanknetWorkerProcess = null;
+            });
+            
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/baanknet/worker/stop') {
+            if (baanknetWorkerProcess) {
+              baanknetWorkerProcess.kill('SIGINT');
+              baanknetWorkerProcess = null;
+              appendLog('baanknet-worker', 'BaankNet Asset Worker stopped by user request.');
+            }
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/baanknet/refresh-docs/start') {
+            if (baanknetRefreshProcess) {
+              res.end(JSON.stringify({ success: false, message: 'BaankNet Document Refresh already running' }));
+              return;
+            }
+            baanknetWorkerLogs = [];
+            appendLog('baanknet-worker', 'Starting BaankNet Document Refresh Pass (npx tsx scraper/baanknetScraper.ts --refresh-documents)...');
+            baanknetRefreshProcess = spawn('npx', ['tsx', 'scraper/baanknetScraper.ts', '--refresh-documents'], { shell: true });
+            
+            baanknetRefreshProcess.stdout.on('data', (data: any) => appendLog('baanknet-worker', data));
+            baanknetRefreshProcess.stderr.on('data', (data: any) => appendLog('baanknet-worker', data));
+            baanknetRefreshProcess.on('close', (code: any) => {
+              appendLog('baanknet-worker', `BaankNet Document Refresh completed with exit code ${code}`);
+              baanknetRefreshProcess = null;
+            });
+            
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/baanknet/refresh-docs/stop') {
+            if (baanknetRefreshProcess) {
+              baanknetRefreshProcess.kill('SIGINT');
+              baanknetRefreshProcess = null;
+              appendLog('baanknet-worker', 'BaankNet Document Refresh stopped by user request.');
             }
             res.end(JSON.stringify({ success: true }));
             return;
