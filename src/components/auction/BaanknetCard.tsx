@@ -325,6 +325,7 @@ export const BaanknetCard = memo(function BaanknetCard({
                 {timeLeftBadge}
               </div>
 
+              <div className="flex gap-2 w-full sm:w-auto">
                 {downloadHref && (
                   <a
                     href={downloadHref}
