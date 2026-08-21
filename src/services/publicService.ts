@@ -2752,6 +2752,8 @@ export interface BaanknetAuction {
   scraped_at: string;
   document_url?: string;
   document_urls?: string[];
+  documents_archived?: boolean;
+  stored_document_urls?: string[];
 
   // Multi-module detail fields
   auction_module?: string;

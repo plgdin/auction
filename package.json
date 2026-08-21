@@ -14,8 +14,10 @@
     "scrape:gem:bid": "tsx scraper/gemBidScraper.ts",
     "scrape:gem:auction": "tsx scraper/gemScraper.ts",
     "scrape:baanknet": "tsx scraper/baanknetScraper.ts",
+    "scrape:baanknet:refresh-docs": "tsx scraper/baanknetScraper.ts --refresh-documents",
     "scrape:mstc": "tsx scraper/mstcScraper.ts",
     "worker": "tsx scraper/assetWorker.ts",
+    "worker:baanknet": "tsx scraper/baanknetAssetWorker.ts",
     "test": "vitest run"
   },
   "dependencies": {
@@ -69,6 +71,7 @@
     "@tailwindcss/vite": "^4.3.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/d3": "^7.4.3",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^24.13.1",
     "@types/nodemailer": "^8.0.1",
     "@types/pdf-parse": "^1.1.5",
@@ -81,6 +84,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "jsdom": "^29.1.1",
     "postcss": "^8.5.15",
     "postgres": "^3.4.9",
     "tailwindcss": "^4.3.0",

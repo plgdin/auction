@@ -143,6 +143,20 @@ export const BaanknetCard = memo(function BaanknetCard({
   const locationDisplay = [item.city, item.state || item.location].filter(Boolean).join(', ') || 'India';
   const mainCategory = item.property_type || 'Bank Property';
 
+  const isArchived = Boolean(
+    (item.stored_document_urls && item.stored_document_urls.length > 0) ||
+    item.documents_archived
+  );
+  const primaryDocUrl = (item.stored_document_urls && item.stored_document_urls.length > 0)
+    ? item.stored_document_urls[0]
+    : (item.document_url || (item.document_urls && item.document_urls[0]));
+
+  const downloadHref = primaryDocUrl
+    ? (isArchived
+        ? primaryDocUrl
+        : `/api/document-proxy?url=${encodeURIComponent(primaryDocUrl)}&filename=Baanknet_Notice_${encodeURIComponent(item.baanknet_auction_id)}.pdf&disposition=attachment`)
+    : undefined;
+
   const renderCardHeader = () => (
     <div className="flex flex-col gap-2 mb-3">
       <div className="flex items-center justify-between gap-2 w-full">
@@ -164,9 +178,14 @@ export const BaanknetCard = memo(function BaanknetCard({
               )}
             </button>
           </div>
-          <span className="bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider shrink-0">
+          <span className="text-[10px] font-black px-2 py-0.5 rounded-md border tracking-wider shrink-0 uppercase text-indigo-700 bg-indigo-50 border-indigo-200">
             BaankNet Bank Auction
           </span>
+          {item.bank_name && (
+            <span className="text-[11px] font-bold text-slate-700 truncate max-w-[200px]" title={item.bank_name}>
+              {item.bank_name}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
@@ -181,9 +200,13 @@ export const BaanknetCard = memo(function BaanknetCard({
       </div>
 
       <div className="flex flex-wrap gap-1.5 justify-start">
-        {item.document_url && (
-          <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
-            Notice PDF Available
+        {primaryDocUrl && (
+          <span className={`text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0 flex items-center gap-1 ${
+            isArchived
+              ? "bg-emerald-50 border border-emerald-300 text-emerald-800"
+              : "bg-slate-100 border border-slate-200 text-slate-700"
+          }`}>
+            {isArchived ? "Verified PDF" : "Notice PDF Available"}
           </span>
         )}
         {item.carpet_area && (
@@ -302,18 +325,26 @@ export const BaanknetCard = memo(function BaanknetCard({
                 {timeLeftBadge}
               </div>
 
-              <div className="flex gap-2 w-full sm:w-auto">
-                {item.document_url && (
+                {downloadHref && (
                   <a
-                    href={item.document_url}
+                    href={downloadHref}
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="inline-flex justify-center items-center h-10 px-4 rounded-full text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
-                    title="Download Auction Notice PDF"
+                    className={`inline-flex justify-center items-center h-10 px-4 rounded-full text-sm font-semibold transition-all cursor-pointer ${
+                      isArchived
+                        ? "text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-2xs"
+                        : "text-slate-700 bg-slate-100 hover:bg-slate-200"
+                    }`}
+                    title={isArchived ? "Download Verified PDF (High-Speed Storage Mirror)" : "Download Auction Notice PDF"}
                   >
                     <Download className="w-4 h-4 mr-1.5" />
                     Notice PDF
+                    {isArchived && (
+                      <span className="ml-1.5 text-[9px] font-black bg-emerald-200/70 text-emerald-800 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                        CACHED
+                      </span>
+                    )}
                   </a>
                 )}
 
@@ -465,16 +496,25 @@ export const BaanknetCard = memo(function BaanknetCard({
               View Details
             </button>
 
-            {item.document_url && (
+            {downloadHref && (
               <a
-                href={item.document_url}
+                href={downloadHref}
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex justify-center items-center h-10 px-3.5 rounded-full text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer shrink-0"
-                title="Download Notice PDF"
+                className={`inline-flex justify-center items-center h-10 px-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer shrink-0 ${
+                  isArchived
+                    ? "text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-2xs"
+                    : "text-slate-700 bg-slate-100 hover:bg-slate-200"
+                }`}
+                title={isArchived ? "Download Verified PDF (High-Speed Storage Mirror)" : "Download Notice PDF"}
               >
                 <Download className="w-4 h-4" />
+                {isArchived && (
+                  <span className="ml-1 text-[9px] font-black text-emerald-700 uppercase">
+                    PDF
+                  </span>
+                )}
               </a>
             )}
 

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BaankNet eAuction - Document Deduplication Test</title>
+</head>
+<body>
+  <h1>Residential Plot in Sector 62 Noida</h1>
+  <div>Borrower Name: Ramesh Kumar Sharma</div>
+  <div>Carpet Area: 3,200 sq ft</div>
+  <div>Possession: Symbolic</div>
+  <div>SARFAESI Action</div>
+
+  <div class="downloads-container">
+    <h3>Auction Documents</h3>
+    <ul>
+      <!-- Same file with different query parameter ordering -->
+      <li>
+        <a href="https://baanknet.com/download.php?id=5001&doc=sale_notice&nocache=123">Link A</a>
+      </li>
+      <li>
+        <a href="https://baanknet.com/download.php?doc=sale_notice&id=5001&timestamp=999999/">Link B (Dupe of A with reordered query & trailing slash)</a>
+      </li>
+
+      <!-- Relative path duplicate -->
+      <li>
+        <a href="/uploads/notices/possession_notice.pdf">Possession Notice</a>
+      </li>
+      <li>
+        <a href="https://baanknet.com/uploads/notices/possession_notice.pdf">Possession Notice Full URL (Dupe)</a>
+      </li>
+
+      <!-- Onclick handler document -->
+      <li>
+        <button onclick="window.open('/files/tender_terms.pdf')">Tender Terms Onclick</button>
+      </li>
+    </ul>
+  </div>
+</body>
+</html>

@@ -88,6 +88,7 @@ interface CliArgs {
   startPage: number;
   scrapeDetails: boolean;
   rescrape: boolean;
+  refreshDocuments: boolean;
 }
 
 function parseCliArgs(): CliArgs {
@@ -99,11 +100,13 @@ function parseCliArgs(): CliArgs {
   let startPage = 1;
   let scrapeDetails = BAANKNET_SCRAPE_DETAILS;
   let rescrape = false;
+  let refreshDocuments = false;
 
   for (const arg of args) {
     if (arg === "--headful") headful = true;
     if (arg === "--no-details") scrapeDetails = false;
     if (arg === "--rescrape" || arg === "--force-details") rescrape = true;
+    if (arg === "--refresh-documents" || arg === "--refresh-docs") refreshDocuments = true;
     if (arg.startsWith("--status=")) {
       statusFilters = arg.replace("--status=", "").split(",");
     }
@@ -118,7 +121,7 @@ function parseCliArgs(): CliArgs {
     }
   }
 
-  return { modules, statusFilters, headful, maxPages, startPage, scrapeDetails, rescrape };
+  return { modules, statusFilters, headful, maxPages, startPage, scrapeDetails, rescrape, refreshDocuments };
 }
 
 // ─── Utility Functions ───────────────────────────────────────────────────────
@@ -127,6 +130,83 @@ function randomDelay(baseMs: number): Promise<void> {
   const jitter = Math.floor(Math.random() * baseMs * 0.5);
   const delay = baseMs + jitter;
   return new Promise((resolve) => setTimeout(resolve, delay));
+}
+
+/**
+ * Unfolds interactive tabs, accordions, and paginated document sections
+ * so all lazily-rendered documents and photos are present in the DOM before parsing.
+ */
+async function expandDetailPageInteractiveContent(page: any): Promise<void> {
+  try {
+    await page.evaluate(() => {
+      // 1. Click all tabs, accordions, and expansion headers
+      const clickableSelectors = [
+        '[role="tab"]',
+        '.nav-tabs .nav-link',
+        '.nav-item a',
+        '[data-toggle="tab"]',
+        '[data-bs-toggle="tab"]',
+        '[data-toggle="collapse"]',
+        '[data-bs-toggle="collapse"]',
+        '.accordion-button.collapsed',
+        '.accordion-header:not(.active)',
+        'mat-tab-header .mat-tab-label',
+        '.ant-tabs-tab',
+        'details:not([open]) summary',
+        'button.tab-btn',
+        'button.tab',
+        'button.tab-link',
+      ];
+
+      const elements = Array.from(document.querySelectorAll(clickableSelectors.join(",")));
+      for (const el of elements) {
+        const text = el.textContent?.toLowerCase().trim() || "";
+        const isTarget =
+          /document|attachment|annexure|notice|tender|form|download|legal|photo|gallery|asset/i.test(text) ||
+          el.getAttribute("role") === "tab" ||
+          el.classList.contains("nav-link");
+
+        if (isTarget && typeof (el as HTMLElement).click === "function") {
+          try {
+            (el as HTMLElement).click();
+          } catch {}
+        }
+      }
+
+      // Also open all <details> elements
+      document.querySelectorAll("details:not([open])").forEach((d) => {
+        d.setAttribute("open", "true");
+      });
+    });
+
+    await randomDelay(800);
+
+    // 2. Exhaust "Load More" / "View All" / "Show More" buttons within document sections
+    for (let cycle = 0; cycle < 5; cycle++) {
+      const clicked = await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll("button, a, .btn, span.cursor-pointer"));
+        for (const btn of buttons) {
+          const text = btn.textContent?.toLowerCase().trim() || "";
+          if (
+            /load\s*more|view\s*all|show\s*all|more\s*documents|more\s*files|all\s*attachments/i.test(text) &&
+            !btn.hasAttribute("disabled") &&
+            !(btn as any).disabled
+          ) {
+            try {
+              (btn as HTMLElement).click();
+              return true;
+            } catch {}
+          }
+        }
+        return false;
+      });
+
+      if (!clicked) break;
+      await randomDelay(600);
+    }
+  } catch (err: any) {
+    // Non-critical: continue with existing DOM
+  }
 }
 
 /**
@@ -173,6 +253,9 @@ async function scrapeDetailPages(
           timeout: 30000,
         });
         await randomDelay(2000);
+
+        // Expand any tabs/accordions (e.g. "Documents" tab) and load-more document buttons
+        await expandDetailPageInteractiveContent(detailPage);
 
         const detail: DetailPageData = await detailPage.evaluate(extractEAuctionDetail, KNOWN_LENDERS);
 
@@ -1194,10 +1277,274 @@ async function setupPage(browser: any) {
   return page;
 }
 
+// ─── Document Refresh Pipeline ───────────────────────────────────────────────
+
+export interface DocumentDiffResult {
+  hasChanged: boolean;
+  newlyDiscoveredUrls: string[];
+  disappearedUrls: string[];
+  unchangedUrls: string[];
+}
+
+/**
+ * Compares previously-stored document URLs against newly-extracted document URLs.
+ * Identifies newly discovered documents vs disappeared documents.
+ */
+export function computeDocumentDiff(
+  storedUrls: string[] = [],
+  extractedUrls: string[] = []
+): DocumentDiffResult {
+  const cleanStored = Array.from(new Set((storedUrls || []).filter(Boolean)));
+  const cleanExtracted = Array.from(new Set((extractedUrls || []).filter(Boolean)));
+
+  const newlyDiscoveredUrls = cleanExtracted.filter((u) => !cleanStored.includes(u));
+  const disappearedUrls = cleanStored.filter((u) => !cleanExtracted.includes(u));
+  const unchangedUrls = cleanStored.filter((u) => cleanExtracted.includes(u));
+
+  const hasChanged =
+    newlyDiscoveredUrls.length > 0 ||
+    disappearedUrls.length > 0 ||
+    cleanExtracted.length !== cleanStored.length;
+
+  return {
+    hasChanged,
+    newlyDiscoveredUrls,
+    disappearedUrls,
+    unchangedUrls,
+  };
+}
+
+export interface RefreshDocumentsOptions {
+  headful?: boolean;
+  concurrency?: number;
+  limit?: number;
+}
+
+export interface RefreshDocumentsSummary {
+  totalInspected: number;
+  totalUpdated: number;
+  totalUnchanged: number;
+  totalNewDocsFound: number;
+  totalDocsDisappeared: number;
+  totalFailed: number;
+  failedAuctions: { id: string; auctionId: string; error: string }[];
+}
+
+/**
+ * Full re-scrape pass that re-runs detail-page document extraction for ALL rows
+ * regardless of current document_urls state. Compares newly extracted lists against
+ * stored state, audits changes (logging newly found vs disappeared docs), and updates database.
+ */
+export async function refreshAllBaanknetDocuments(
+  options: RefreshDocumentsOptions = {}
+): Promise<RefreshDocumentsSummary> {
+  const {
+    headful = false,
+    concurrency = BAANKNET_DETAIL_CONCURRENCY,
+    limit,
+  } = options;
+
+  log.info({ concurrency, headful, limit }, "Starting full BaankNet detail document refresh pass...");
+
+  let query = supabase
+    .from("baanknet_auctions")
+    .select(
+      "id, baanknet_auction_id, title, source_url, document_url, document_urls, documents_archived, stored_document_urls"
+    )
+    .not("source_url", "is", null);
+
+  if (limit) {
+    query = query.limit(limit);
+  }
+
+  const { data: rows, error } = await query;
+  if (error) {
+    log.error({ error: error.message }, "Failed to fetch BaankNet auctions for document refresh");
+    throw error;
+  }
+
+  const auctions = rows || [];
+  log.info({ totalRecords: auctions.length }, "Found BaankNet auctions to inspect for document refresh");
+
+  if (auctions.length === 0) {
+    return {
+      totalInspected: 0,
+      totalUpdated: 0,
+      totalUnchanged: 0,
+      totalNewDocsFound: 0,
+      totalDocsDisappeared: 0,
+      totalFailed: 0,
+      failedAuctions: [],
+    };
+  }
+
+  const browser = await launchBrowser(headful);
+
+  const summary: RefreshDocumentsSummary = {
+    totalInspected: 0,
+    totalUpdated: 0,
+    totalUnchanged: 0,
+    totalNewDocsFound: 0,
+    totalDocsDisappeared: 0,
+    totalFailed: 0,
+    failedAuctions: [],
+  };
+
+  try {
+    for (let i = 0; i < auctions.length; i += concurrency) {
+      const batch = auctions.slice(i, i + concurrency);
+      const promises = batch.map(async (row) => {
+        summary.totalInspected++;
+        let page: any = null;
+        try {
+          const detailUrl = row.source_url;
+          if (!detailUrl) return;
+
+          page = await browser.newPage();
+          await page.setUserAgent(DEFAULT_USER_AGENT);
+          await page.evaluateOnNewDocument(() => {
+            (window as any).__name = (window as any).__name || ((fn: any) => fn);
+          });
+
+          await page.goto(detailUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+          await randomDelay(1500);
+
+          // Expand tabs, accordions, and load more
+          await expandDetailPageInteractiveContent(page);
+
+          const detail: DetailPageData = await page.evaluate(extractEAuctionDetail, KNOWN_LENDERS);
+
+          const storedUrls: string[] = row.document_urls && row.document_urls.length > 0 
+            ? row.document_urls 
+            : (row.document_url ? [row.document_url] : []);
+          const diff = computeDocumentDiff(storedUrls, detail.documentUrls);
+
+          if (diff.hasChanged) {
+            summary.totalUpdated++;
+            summary.totalNewDocsFound += diff.newlyDiscoveredUrls.length;
+            summary.totalDocsDisappeared += diff.disappearedUrls.length;
+
+            log.info(
+              {
+                id: row.id,
+                auctionId: row.baanknet_auction_id,
+                storedCount: storedUrls.length,
+                newCount: detail.documentUrls.length,
+                newlyDiscoveredCount: diff.newlyDiscoveredUrls.length,
+                newlyDiscoveredUrls: diff.newlyDiscoveredUrls,
+                disappearedCount: diff.disappearedUrls.length,
+                disappearedUrls: diff.disappearedUrls,
+              },
+              "BaankNet auction documents updated during full re-scrape refresh"
+            );
+
+            if (diff.disappearedUrls.length > 0) {
+              log.warn(
+                {
+                  id: row.id,
+                  auctionId: row.baanknet_auction_id,
+                  disappearedUrls: diff.disappearedUrls,
+                },
+                "Previously recorded document(s) no longer present on source page"
+              );
+            }
+
+            // If newly found documents exist, reset documents_archived so baanknetAssetWorker mirrors them
+            const isArchived = detail.documentUrls.length === 0 
+              ? true 
+              : (diff.newlyDiscoveredUrls.length > 0 ? false : row.documents_archived);
+
+            const { error: updateErr } = await supabase
+              .from("baanknet_auctions")
+              .update({
+                document_url: detail.documentUrls[0] || null,
+                document_urls: detail.documentUrls,
+                documents_archived: isArchived,
+                ...(detail.borrowerName ? { borrower_name: detail.borrowerName } : {}),
+                ...(detail.carpetArea ? { carpet_area: detail.carpetArea } : {}),
+                ...(detail.possessionStatus ? { possession_status: detail.possessionStatus } : {}),
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", row.id);
+
+            if (updateErr) {
+              log.error({ id: row.id, error: updateErr.message }, "Failed to update refreshed documents in database");
+            }
+          } else {
+            summary.totalUnchanged++;
+            log.debug(
+              { auctionId: row.baanknet_auction_id, count: storedUrls.length },
+              "Documents verified intact; no changes detected"
+            );
+          }
+        } catch (err: any) {
+          summary.totalFailed++;
+          summary.failedAuctions.push({
+            id: row.id,
+            auctionId: row.baanknet_auction_id,
+            error: err.message,
+          });
+          log.warn({ id: row.id, auctionId: row.baanknet_auction_id, error: err.message }, "Failed to refresh documents for auction");
+        } finally {
+          if (page) await page.close().catch(() => {});
+        }
+      });
+
+      await Promise.all(promises);
+      if (i + concurrency < auctions.length) {
+        await randomDelay(1000);
+      }
+    }
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+
+  log.info(
+    {
+      totalInspected: summary.totalInspected,
+      totalUpdated: summary.totalUpdated,
+      totalUnchanged: summary.totalUnchanged,
+      totalNewDocsFound: summary.totalNewDocsFound,
+      totalDocsDisappeared: summary.totalDocsDisappeared,
+      totalFailed: summary.totalFailed,
+    },
+    "═══ BaankNet Full Document Re-Scrape Refresh Complete ═══"
+  );
+
+  // Write audit log entry
+  try {
+    await supabase.from("audit_logs").insert({
+      action: "baanknet_documents_refreshed",
+      entity_type: "baanknet_auction",
+      details: {
+        total_inspected: summary.totalInspected.toString(),
+        total_updated: summary.totalUpdated.toString(),
+        total_unchanged: summary.totalUnchanged.toString(),
+        new_docs_found: summary.totalNewDocsFound.toString(),
+        docs_disappeared: summary.totalDocsDisappeared.toString(),
+        failed: summary.totalFailed.toString(),
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (e: any) {
+    log.error({ error: e.message }, "Failed to write document refresh audit log");
+  }
+
+  return summary;
+}
+
 // ─── Main Scraper Entry Point ────────────────────────────────────────────────
 
 async function executeBaankNetScraper(): Promise<void> {
-  const { modules, statusFilters, headful, maxPages, startPage, scrapeDetails, rescrape } = parseCliArgs();
+  const { modules, statusFilters, headful, maxPages, startPage, scrapeDetails, rescrape, refreshDocuments } = parseCliArgs();
+
+  if (refreshDocuments) {
+    log.info("Mode: Full Document Refresh (--refresh-documents)");
+    await refreshAllBaanknetDocuments({ headful });
+    return;
+  }
 
   log.info(
     { modules, statusFilters, headful, maxPages, startPage, scrapeDetails, rescrape },
@@ -1331,4 +1678,11 @@ async function executeBaankNetScraper(): Promise<void> {
 
 // ─── Execute ─────────────────────────────────────────────────────────────────
 
-executeBaankNetScraper();
+const isMain =
+  process.argv[1] &&
+  (process.argv[1].endsWith("baanknetScraper.ts") ||
+    process.argv[1].endsWith("baanknetScraper.js"));
+
+if (isMain) {
+  executeBaankNetScraper();
+}

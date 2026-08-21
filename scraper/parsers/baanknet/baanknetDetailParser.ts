@@ -55,7 +55,7 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
   if (typeof (window as any).__name === "undefined") {
     (window as any).__name = (target: any) => target;
   }
-  const bodyText = document.body?.innerText || "";
+  const bodyText = document.body?.innerText || document.body?.textContent || "";
 
   function matchLenderInline(text: string, lenders: string[]): string {
     for (const lender of lenders) {
@@ -164,34 +164,169 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
     description = descMatch[1].trim();
   }
 
+  function normalizeDocUrlInline(rawUrl: string): string | null {
+    if (!rawUrl || typeof rawUrl !== "string") return null;
+    const trimmed = rawUrl.trim();
+    if (
+      !trimmed ||
+      trimmed.startsWith("javascript:") ||
+      trimmed.startsWith("#") ||
+      trimmed.startsWith("mailto:") ||
+      trimmed.startsWith("tel:")
+    ) {
+      return null;
+    }
+
+    // Ignore known image and static asset extensions
+    const lower = trimmed.toLowerCase();
+    if (
+      lower.endsWith(".png") ||
+      lower.endsWith(".jpg") ||
+      lower.endsWith(".jpeg") ||
+      lower.endsWith(".webp") ||
+      lower.endsWith(".svg") ||
+      lower.endsWith(".gif") ||
+      lower.endsWith(".ico") ||
+      lower.endsWith(".css") ||
+      lower.endsWith(".js")
+    ) {
+      return null;
+    }
+
+    try {
+      const defaultHost = (typeof window !== "undefined" && window.location?.origin) || "https://baanknet.com";
+      let resolved = trimmed;
+      if (resolved.startsWith("//")) {
+        resolved = `https:${resolved}`;
+      } else if (resolved.startsWith("/")) {
+        resolved = `${defaultHost}${resolved}`;
+      } else if (!resolved.startsWith("http://") && !resolved.startsWith("https://")) {
+        resolved = `${defaultHost}/${resolved}`;
+      }
+
+      const u = new URL(resolved);
+      if (u.hostname.includes("baanknet.com") || u.hostname.includes("ibbi.baanknet.com")) {
+        u.protocol = "https:";
+      }
+
+      // Ignore if resolved URL is just pointing to the current page without query or extension
+      if (typeof window !== "undefined" && window.location) {
+        if (u.origin === window.location.origin && u.pathname === window.location.pathname && !u.search && !u.pathname.endsWith(".pdf")) {
+          return null;
+        }
+      }
+
+      // Strip trailing slash on pathname
+      let pathname = u.pathname;
+      if (pathname.length > 1 && pathname.endsWith("/")) {
+        pathname = pathname.slice(0, -1);
+      }
+      u.pathname = pathname;
+
+      // Canonicalize and sort query params (strip tracking/cache-busters)
+      const params = new URLSearchParams(u.search);
+      const trackingKeys = ["_", "t", "ts", "timestamp", "sessionid", "token", "nocache", "rand"];
+      for (const key of Array.from(params.keys())) {
+        if (trackingKeys.includes(key.toLowerCase())) {
+          params.delete(key);
+        }
+      }
+      params.sort();
+      u.search = params.toString() ? `?${params.toString()}` : "";
+      u.hash = "";
+
+      return u.toString();
+    } catch {
+      return null;
+    }
+  }
+
   const documentUrls: string[] = [];
-  const docElements = document.querySelectorAll(
+  const addDocCandidate = (rawHref: string) => {
+    const canonical = normalizeDocUrlInline(rawHref);
+    if (canonical && !documentUrls.includes(canonical)) {
+      documentUrls.push(canonical);
+    }
+  };
+
+  // 1. Direct href keywords & attributes (PDFs, downloads, notices, tenders, annexures, getfile, form-g, etc.)
+  const directDocElements = document.querySelectorAll(
     'a[href*="file-download"], a[href*="download"], a[href*="notice"], ' +
     'a[href*="document"], a[href*=".pdf"], a[href*="tender"], a[href*="annexure"], ' +
     'a[href*="sale-notice"], a[href*="possession"], a[href*="process-memo"], a[href*="form-g"], ' +
-    'button[data-url], button[data-file], button[onclick*="download"], a[onclick*="download"], a[onclick*="window.open"]'
+    'a[href*="getfile"], a[href*="view-document"], a[href*="download-attachment"], a[href*="client-document"], ' +
+    'button[data-url], button[data-file], button[data-href], button[data-download], button[data-pdf], ' +
+    'button[onclick*="download"], a[onclick*="download"], a[onclick*="window.open"], [data-document-url]'
   );
-  docElements.forEach((el) => {
-    let href = (el as HTMLAnchorElement).href || 
-               el.getAttribute("href") || 
+  directDocElements.forEach((el) => {
+    const rawHrefAttr = el.getAttribute("href") || "";
+    if (rawHrefAttr.startsWith("#") || rawHrefAttr.startsWith("javascript:")) return;
+
+    let href = el.getAttribute("href") || 
+               (el as HTMLAnchorElement).href || 
                el.getAttribute("data-url") || 
                el.getAttribute("data-file") || 
+               el.getAttribute("data-href") || 
+               el.getAttribute("data-download") || 
+               el.getAttribute("data-pdf") || 
+               el.getAttribute("data-document-url") || 
                "";
     if (!href) {
       const onclick = el.getAttribute("onclick") || "";
       const match = onclick.match(/['"](https?:\/\/[^'"]+|\/[^'"]+)['"]/);
       if (match) href = match[1];
     }
-    if (href && !href.startsWith("javascript:")) {
-      // Normalize relative paths
-      const fullUrl = href.startsWith("http") 
-        ? href 
-        : `https://baanknet.com${href.startsWith("/") ? "" : "/"}${href}`;
-      if (!documentUrls.includes(fullUrl)) {
-        documentUrls.push(fullUrl);
+    if (href) addDocCandidate(href);
+  });
+
+  // 2. Container heading / section matching:
+  // Any <a> or <button> inside a container whose header/title matches document keywords
+  const candidateContainers = document.querySelectorAll(
+    'div, section, article, table, tr, li, .card, .panel, .tab-pane, .accordion-item, [class*="document"], [class*="attachment"], [class*="tab"], [class*="accordion"]'
+  );
+  candidateContainers.forEach((container) => {
+    const headingEl = container.querySelector(
+      'h1, h2, h3, h4, h5, h6, th, label, .card-header, .accordion-header, [class*="title"], [class*="header"]'
+    );
+    const headingText = headingEl ? (headingEl.textContent || "") : "";
+    if (
+      /document|attachment|annexure|notice|form|tender|download|legal|file\s*detail/i.test(headingText) ||
+      /document|attachment|annexure|notice|form|tender/i.test(container.className || "")
+    ) {
+      // Extract any <a> with href inside this container
+      const links = container.querySelectorAll("a[href], button[data-url], button[data-file], button[data-href], button[onclick]");
+      links.forEach((linkEl) => {
+        const rawHrefAttr = linkEl.getAttribute("href") || "";
+        if (rawHrefAttr.startsWith("#") || rawHrefAttr.startsWith("javascript:")) return;
+
+        let href = linkEl.getAttribute("href") || 
+                   (linkEl as HTMLAnchorElement).href || 
+                   linkEl.getAttribute("data-url") || 
+                   linkEl.getAttribute("data-file") || 
+                   linkEl.getAttribute("data-href") || "";
+        if (!href) {
+          const onclick = linkEl.getAttribute("onclick") || "";
+          const match = onclick.match(/['"](https?:\/\/[^'"]+|\/[^'"]+)['"]/);
+          if (match) href = match[1];
+        }
+        if (href) addDocCandidate(href);
+      });
+    }
+  });
+
+  // 3. Fallback: Table cells labeled "Download", "View Notice", "Tender Document", etc.
+  const tableCells = document.querySelectorAll("td, th");
+  tableCells.forEach((cell) => {
+    const text = cell.textContent?.trim() || "";
+    if (/download|view\s*notice|view\s*doc|view\s*pdf|notice\s*pdf/i.test(text)) {
+      const link = cell.querySelector("a[href], button");
+      if (link) {
+        const href = (link as HTMLAnchorElement).href || link.getAttribute("href") || link.getAttribute("data-url") || "";
+        if (href) addDocCandidate(href);
       }
     }
   });
+
   const documentUrl = documentUrls[0] || "";
 
   let carpetArea = "";
@@ -221,7 +356,7 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
   }
 
   let district = "";
-  const districtMatch = bodyText.match(/District\s*:?\s*([A-Za-z\s]{2,40})/i);
+  const districtMatch = bodyText.match(/District\s*:?\s*([A-Za-z\s]{2,30}?)(?=\r?\n|$|\t|\s{2,}|Inspection|EMD|Reserve|Bank|Type|Borrower|Area)/i);
   if (districtMatch) {
     district = districtMatch[1].trim();
   }
@@ -655,5 +790,77 @@ export function mergeDetailData(
     if (!item.thumbnailUrl) {
       item.thumbnailUrl = detail.thumbnailUrl;
     }
+  }
+}
+
+/**
+ * Pure helper to normalize and deduplicate document URLs outside the browser context.
+ */
+export function normalizeDocumentUrl(
+  rawUrl: string,
+  baseOrigin: string = "https://baanknet.com"
+): string | null {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+  const trimmed = rawUrl.trim();
+  if (
+    !trimmed ||
+    trimmed.startsWith("javascript:") ||
+    trimmed === "#" ||
+    trimmed.startsWith("mailto:") ||
+    trimmed.startsWith("tel:")
+  ) {
+    return null;
+  }
+
+  const lower = trimmed.toLowerCase();
+  if (
+    lower.endsWith(".png") ||
+    lower.endsWith(".jpg") ||
+    lower.endsWith(".jpeg") ||
+    lower.endsWith(".webp") ||
+    lower.endsWith(".svg") ||
+    lower.endsWith(".gif") ||
+    lower.endsWith(".ico") ||
+    lower.endsWith(".css") ||
+    lower.endsWith(".js")
+  ) {
+    return null;
+  }
+
+  try {
+    let resolved = trimmed;
+    if (resolved.startsWith("//")) {
+      resolved = `https:${resolved}`;
+    } else if (resolved.startsWith("/")) {
+      resolved = `${baseOrigin}${resolved}`;
+    } else if (!resolved.startsWith("http://") && !resolved.startsWith("https://")) {
+      resolved = `${baseOrigin}/${resolved}`;
+    }
+
+    const u = new URL(resolved);
+    if (u.hostname.includes("baanknet.com") || u.hostname.includes("ibbi.baanknet.com")) {
+      u.protocol = "https:";
+    }
+
+    let pathname = u.pathname;
+    if (pathname.length > 1 && pathname.endsWith("/")) {
+      pathname = pathname.slice(0, -1);
+    }
+    u.pathname = pathname;
+
+    const params = new URLSearchParams(u.search);
+    const trackingKeys = ["_", "t", "ts", "timestamp", "sessionid", "token", "nocache", "rand"];
+    for (const key of Array.from(params.keys())) {
+      if (trackingKeys.includes(key.toLowerCase())) {
+        params.delete(key);
+      }
+    }
+    params.sort();
+    u.search = params.toString() ? `?${params.toString()}` : "";
+    u.hash = "";
+
+    return u.toString();
+  } catch {
+    return null;
   }
 }
