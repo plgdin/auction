@@ -20,7 +20,7 @@ import {
   QUEUE_BATCH_SIZE,
   ATTACHMENT_DOWNLOAD_TIMEOUT_MS,
 } from "./config.js";
-import { supabase, uploadToStorage } from "./utils/common/storage.js";
+import { supabase, uploadToStorage, checkFileExistsInStorage, assertSupabaseCredentials } from "./utils/common/storage.js";
 import { logger } from "./utils/common/logger.js";
 
 dotenv.config({ path: ".env.local" });
@@ -176,25 +176,16 @@ export async function mirrorDocumentToStorage(
   const docLog = log.child({ auctionId, docUrl });
   const storagePath = getBaanknetStoragePath(auctionId, docUrl, docIndex);
 
-  // 1. Check storage cache first to save bandwidth and maintain idempotency
+  // 1. Check storage cache first using metadata listing (zero byte network download)
   try {
-    docLog.debug({ storagePath }, "Checking storage cache for existing mirrored document");
-    const { data: downloadData, error: downloadError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .download(storagePath);
-
-    if (!downloadError && downloadData) {
-      const { data } = supabase.storage
-        .from(STORAGE_BUCKET)
-        .getPublicUrl(storagePath);
-
-      if (data?.publicUrl) {
-        docLog.debug({ publicUrl: data.publicUrl }, "Document found in storage cache");
-        return { publicUrl: data.publicUrl, wasCached: true };
-      }
+    docLog.debug({ storagePath }, "Checking storage cache via metadata list");
+    const { exists, publicUrl } = await checkFileExistsInStorage(storagePath, STORAGE_BUCKET);
+    if (exists && publicUrl) {
+      docLog.debug({ publicUrl }, "Document already exists in storage cache");
+      return { publicUrl, wasCached: true };
     }
   } catch (err: any) {
-    docLog.debug({ error: err.message }, "Cache lookup skipped, proceeding with fetch");
+    docLog.debug({ error: err.message }, "Metadata cache lookup skipped, proceeding with fetch");
   }
 
   // 2. Fetch with exponential backoff retries
@@ -365,6 +356,7 @@ export async function processBaanknetRecord(
 export async function runBaanknetAssetPipeline(
   batchSize: number = QUEUE_BATCH_SIZE
 ): Promise<WorkerBatchSummary> {
+  assertSupabaseCredentials();
   log.info({ batchSize }, "Starting BaankNet document asset worker pipeline cycle");
 
   const summary: WorkerBatchSummary = {
