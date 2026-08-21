@@ -186,22 +186,27 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
       return (
         <div className="flex flex-col gap-2 mb-3">
           <div className="flex items-center justify-between gap-2 w-full">
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
-              <span className="text-xs font-semibold text-slate-500 font-mono">
-                Ref ID: {shortId}
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+                <span className="text-xs font-semibold text-slate-500 font-mono">
+                  Ref ID: {shortId}
+                </span>
+                <button
+                  onClick={handleCopy}
+                  className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+                  title="Copy full reference number to clipboard"
+                  aria-label="Copy reference number"
+                >
+                  {copied ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+              <span className="bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider shrink-0">
+                MSTC India
               </span>
-              <button
-                onClick={handleCopy}
-                className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
-                title="Copy full reference number to clipboard"
-                aria-label="Copy reference number"
-              >
-                {copied ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5" />
-                )}
-              </button>
             </div>
 
             {isBusinessUser && item.is_reauction && (
@@ -252,6 +257,9 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
               )}
             </button>
           </div>
+          <span className="bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider shrink-0">
+            MSTC India
+          </span>
           {isBusinessUser && item.is_reauction && (
             <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">

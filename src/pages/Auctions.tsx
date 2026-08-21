@@ -1,8 +1,7 @@
 // @ts-nocheck
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, MapPin, Tag, CornerDownLeft, FileText, Phone, Mail, Sparkles, Gift, Zap, ShieldCheck } from 'lucide-react';
-import { lazy, Suspense } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, MapPin, Tag, CornerDownLeft, FileText, Phone, Mail, Sparkles, Gift, Zap } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
 import { BaanknetCard } from '../components/auction/BaanknetCard';
@@ -25,7 +24,6 @@ import clsx from 'clsx';
 import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
 import { recommendationService } from '../services/recommendationService';
 import { useAuctionAccess } from '../hooks/useAuctionAccess';
-import { AuctionAccessLockModal } from '../components/common/AuctionAccessLockModal';
 
 const renderSuggestionText = (text: string, query: string) => {
   if (!query) return <span>{text}</span>;
@@ -219,63 +217,52 @@ export function Auctions() {
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const { hasAccess } = useAuctionAccess();
-  const [accessLockModal, setAccessLockModal] = useState<{
-    isOpen: boolean;
-    type: string;
-    title?: string;
-  }>({
-    isOpen: false,
-    type: '',
-    title: '',
-  });
+
+  const accessibleTabs = useMemo(() => {
+    const list: { id: string; label: string; beta?: boolean }[] = [];
+    if (hasAccess('mstc')) {
+      list.push({ id: 'mstc', label: 'MSTC Gov Catalogs' });
+    }
+    if (hasAccess('baanknet')) {
+      list.push({ id: 'baanknet', label: 'BaankNet Bank Auctions', beta: true });
+    }
+    if (hasAccess('gem_auctions')) {
+      list.push({ id: 'gem', label: 'GeM Notice Board', beta: true });
+    }
+    if (hasAccess('gem_bids') || hasAccess('gem_pbp')) {
+      list.push({ id: 'gem-bids', label: 'GeM Procurement Bids', beta: true });
+    }
+    if (hasAccess('custom')) {
+      list.push({ id: 'commercial', label: 'Commercial Auctions', beta: true });
+    }
+    return list;
+  }, [hasAccess]);
+
+  // Guard: if current activeTab is not permitted, silently redirect to 'mstc' (or first accessible tab)
+  useEffect(() => {
+    const isAllowed = accessibleTabs.some(t => t.id === activeTab);
+    if (!isAllowed && accessibleTabs.length > 0) {
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', accessibleTabs[0].id);
+        return next;
+      }, { replace: true });
+    }
+  }, [activeTab, accessibleTabs, setSearchParams]);
 
   const handleMstcPreview = (item: MstcSanitizedAuction) => {
-    if (!hasAccess('mstc')) {
-      setAccessLockModal({
-        isOpen: true,
-        type: 'mstc',
-        title: item.lot_title || item.reference_number,
-      });
-      return;
-    }
     setSelectedPreviewItem(item);
   };
 
   const handleBaanknetPreview = (item: BaanknetAuction) => {
-    if (!hasAccess('baanknet')) {
-      setAccessLockModal({
-        isOpen: true,
-        type: 'baanknet',
-        title: item.title || item.property_type,
-      });
-      return;
-    }
     setSelectedPreviewBaanknetItem(item);
   };
 
   const handleGemPreview = (item: GemAuction) => {
-    if (!hasAccess('gem_auctions')) {
-      setAccessLockModal({
-        isOpen: true,
-        type: 'gem_auctions',
-        title: item.title,
-      });
-      return;
-    }
     setSelectedPreviewGemItem(item);
   };
 
   const handleGemBidPreview = (item: GemBid) => {
-    const isPbp = item.category_name?.includes('PBP');
-    const reqType = isPbp ? 'gem_pbp' : 'gem_bids';
-    if (!hasAccess(reqType)) {
-      setAccessLockModal({
-        isOpen: true,
-        type: reqType,
-        title: item.items,
-      });
-      return;
-    }
     setSelectedPreviewGemBid(item);
   };
 
@@ -901,10 +888,10 @@ export function Auctions() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'commercial') {
+    if (activeTab === 'commercial' && hasAccess('custom')) {
       loadData();
     }
-  }, [activeTab, loadData]);
+  }, [activeTab, loadData, hasAccess]);
 
   useEffect(() => {
     if (activeTab === 'mstc') {
@@ -913,40 +900,40 @@ export function Auctions() {
   }, [activeTab, loadMstcData]);
 
   useEffect(() => {
-    if (activeTab === 'baanknet') {
+    if (activeTab === 'baanknet' && hasAccess('baanknet')) {
       loadBaanknetData();
     }
-  }, [activeTab, loadBaanknetData]);
+  }, [activeTab, loadBaanknetData, hasAccess]);
 
   useEffect(() => {
-    if (activeTab === 'baanknet') {
+    if (activeTab === 'baanknet' && hasAccess('baanknet')) {
       loadBaanknetOptions();
     }
-  }, [activeTab, loadBaanknetOptions]);
+  }, [activeTab, loadBaanknetOptions, hasAccess]);
 
   useEffect(() => {
-    if (activeTab === 'gem') {
+    if (activeTab === 'gem' && hasAccess('gem_auctions')) {
       loadGemData();
     }
-  }, [activeTab, loadGemData]);
+  }, [activeTab, loadGemData, hasAccess]);
 
   useEffect(() => {
-    if (activeTab === 'gem') {
+    if (activeTab === 'gem' && hasAccess('gem_auctions')) {
       loadGemOptions();
     }
-  }, [activeTab, loadGemOptions]);
+  }, [activeTab, loadGemOptions, hasAccess]);
 
   useEffect(() => {
-    if (activeTab === 'gem-bids') {
+    if (activeTab === 'gem-bids' && (hasAccess('gem_bids') || hasAccess('gem_pbp'))) {
       loadGemBidsData();
     }
-  }, [activeTab, loadGemBidsData]);
+  }, [activeTab, loadGemBidsData, hasAccess]);
 
   useEffect(() => {
-    if (activeTab === 'gem-bids') {
+    if (activeTab === 'gem-bids' && (hasAccess('gem_bids') || hasAccess('gem_pbp'))) {
       loadGemBidsOptions();
     }
-  }, [activeTab, loadGemBidsOptions]);
+  }, [activeTab, loadGemBidsOptions, hasAccess]);
   // Prefetch adjacent pages into PageCache after current page loads
   useEffect(() => {
     if (isMstcLoading || mstcTotalCount === 0) return;
@@ -1245,64 +1232,35 @@ export function Auctions() {
             Browse official government catalogs, bank properties and MSTC eAuctions.
           </p>
 
-          {/* Glassmorphic Tab Switcher */}
-          <div className="flex space-x-2 mb-6 bg-white/10 backdrop-blur-md p-1 rounded-xl w-fit border border-white/10 flex-wrap gap-y-2">
-            <button
-              onClick={() => setSearchParams({ tab: 'mstc' })}
-              className={clsx(
-                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
-                activeTab === 'mstc'
-                  ? "bg-white text-slate-900 shadow-md font-bold"
-                  : "text-white hover:bg-white/5"
-              )}
-            >
-              MSTC Gov Catalogs
-            </button>
-            <button
-              onClick={() => setSearchParams({ tab: 'baanknet' })}
-              className={clsx(
-                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
-                activeTab === 'baanknet'
-                  ? "bg-white text-slate-900 shadow-md font-bold"
-                  : "text-white hover:bg-white/5"
-              )}
-            >
-              BaankNet Bank Auctions
-            </button>
-            <button
-              onClick={() => setSearchParams({ tab: 'gem' })}
-              className={clsx(
-                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
-                activeTab === 'gem'
-                  ? "bg-white text-slate-900 shadow-md font-bold"
-                  : "text-white hover:bg-white/5"
-              )}
-            >
-              GeM Notice Board
-            </button>
-            <button
-              onClick={() => setSearchParams({ tab: 'gem-bids' })}
-              className={clsx(
-                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
-                activeTab === 'gem-bids'
-                  ? "bg-white text-slate-900 shadow-md font-bold"
-                  : "text-white hover:bg-white/5"
-              )}
-            >
-              GeM Procurement Bids
-            </button>
-            <button
-              onClick={() => setSearchParams({ tab: 'commercial' })}
-              className={clsx(
-                "px-5 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer",
-                activeTab === 'commercial'
-                  ? "bg-white text-slate-900 shadow-md font-bold"
-                  : "text-white hover:bg-white/5"
-              )}
-            >
-              Commercial Auctions
-            </button>
-          </div>
+          {/* Glassmorphic Tab Switcher - only renders permitted tabs */}
+          {accessibleTabs.length > 1 && (
+            <div className="flex space-x-2 mb-6 bg-white/10 backdrop-blur-md p-1.5 rounded-2xl w-fit border border-white/15 flex-wrap gap-y-2 justify-center shadow-lg">
+              {accessibleTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSearchParams({ tab: tab.id })}
+                  className={clsx(
+                    "px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer flex items-center gap-1.5",
+                    activeTab === tab.id
+                      ? "bg-white text-slate-900 shadow-md font-bold"
+                      : "text-white hover:bg-white/10"
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  {tab.beta && (
+                    <span className={clsx(
+                      "px-1.5 py-0.5 text-[9px] font-black uppercase rounded tracking-wider shadow-2xs",
+                      activeTab === tab.id
+                        ? "bg-amber-100 text-amber-900 border border-amber-300"
+                        : "bg-amber-400/20 text-amber-300 border border-amber-400/40"
+                    )}>
+                      BETA
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
 
           <form onSubmit={handleSearch} className="max-w-3xl w-full mx-auto relative group" onKeyDown={handleKeyDown}>
             {/* Elegant White Glow Backdrop */}
@@ -1483,8 +1441,7 @@ export function Auctions() {
 
           {/* Main Content */}
           <div className="flex-grow flex flex-col w-full">
-
-            {/* Toolbar */}
+                {/* Toolbar */}
             {activeTab === 'commercial' ? (
               <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="hidden lg:block text-sm text-slate-600 font-medium">
@@ -1779,7 +1736,7 @@ export function Auctions() {
                     count={6}
                     classes={clsx(
                       "gap-6 flex-grow",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}
                   />
                 ) : baanknetAuctions.length === 0 ? (
@@ -1799,7 +1756,7 @@ export function Auctions() {
                   <>
                     <div className={clsx(
                       "gap-6",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}>
                       {baanknetAuctions.map(item => (
                         <BaanknetCard
@@ -1903,7 +1860,7 @@ export function Auctions() {
                     count={6}
                     classes={clsx(
                       "gap-6 flex-grow",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}
                   />
                 ) : gemAuctions.length === 0 ? (
@@ -1923,7 +1880,7 @@ export function Auctions() {
                   <>
                     <div className={clsx(
                       "gap-6",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}>
                       {gemAuctions.map(item => (
                         <GemCard
@@ -2025,7 +1982,7 @@ export function Auctions() {
                     count={6}
                     classes={clsx(
                       "gap-6 flex-grow",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}
                   />
                 ) : gemBids.length === 0 ? (
@@ -2045,7 +2002,7 @@ export function Auctions() {
                   <>
                     <div className={clsx(
                       "gap-6",
-                      isGridView ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col space-y-4"
+                      isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}>
                       {gemBids.map(item => (
                         <GemBidCard
@@ -2490,13 +2447,7 @@ export function Auctions() {
         </Suspense>
       )}
 
-      {/* Auction Access Permission Lock Modal */}
-      <AuctionAccessLockModal
-        isOpen={accessLockModal.isOpen}
-        onClose={() => setAccessLockModal({ isOpen: false, type: '' })}
-        auctionType={accessLockModal.type}
-        itemTitle={accessLockModal.title}
-      />
+      {/* Catalog Modals */}
     </div>
   );
 }

@@ -71,7 +71,7 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
     const lower = src.toLowerCase();
     if (lower.includes(".svg") || lower.endsWith(".svg")) return false;
 
-    if (lower.includes("/property/images/") || lower.includes("_compressed")) {
+    if (lower.includes("/property/images/") || lower.includes("_compressed") || lower.includes("/uploads/") || lower.includes("/asset/") || lower.includes("/assets/")) {
       return true;
     }
 
@@ -79,7 +79,8 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
       "favicon", "logo", "icon", "banner", "footer", "header", "psb-",
       "ebkray", "faq", "hassle", "social", "facebook", "twitter", "linkedin",
       "instagram", "youtube", "play.google", "apple.com", "placeholder",
-      "avatar", "client-logo", "bank-logo", "app-store", "sprite", "list-icon", "amenities"
+      "avatar", "client-logo", "bank-logo", "app-store", "sprite", "list-icon", "amenities",
+      "whatsapp", "telegram", "email", "call", "phone", "rating", "star"
     ];
     for (const kw of junkKeywords) {
       if (lower.includes(kw)) return false;
@@ -87,16 +88,18 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
     if (img) {
       const w = img.naturalWidth || img.width || 0;
       const h = img.naturalHeight || img.height || 0;
-      if (w > 0 && h > 0 && (w < 30 || h < 30)) return false;
+      if (w > 0 && h > 0 && (w < 40 || h < 40)) return false;
     }
     return true;
   }
 
   const photoUrls: string[] = [];
+  
+  // 1. All images on detail page (including carousels, sliders, galleries, cards)
   const images = document.querySelectorAll(
-    ".carousel img, .gallery img, .photo-gallery img, " +
-    "[class*='gallery'] img, [class*='carousel'] img, [class*='photo'] img, " +
-    "img[src*='property'], img[src*='photo'], img[src*='upload'], img[src*='asset']"
+    "img, .carousel img, .gallery img, .photo-gallery img, " +
+    "[class*='gallery'] img, [class*='carousel'] img, [class*='photo'] img, [class*='slider'] img, " +
+    "img[src*='property'], img[src*='photo'], img[src*='upload'], img[src*='asset'], img[src*='image']"
   );
   images.forEach((img) => {
     const htmlImg = img as HTMLImageElement;
@@ -105,9 +108,42 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
                 htmlImg.getAttribute("data-lazy") || 
                 htmlImg.getAttribute("data-original") || 
                 htmlImg.getAttribute("lazy-src") || 
+                htmlImg.getAttribute("data-img") ||
+                htmlImg.getAttribute("data-image") ||
                 "";
-    if (src && isValidPhotoInline(src, htmlImg) && !photoUrls.includes(src)) {
-      photoUrls.push(src);
+    if (src && isValidPhotoInline(src, htmlImg)) {
+      const fullUrl = src.startsWith("http") ? src : (src.startsWith("/") ? `https://baanknet.com${src}` : `https://baanknet.com/${src}`);
+      if (!photoUrls.includes(fullUrl)) {
+        photoUrls.push(fullUrl);
+      }
+    }
+  });
+
+  // 2. Search background-image in inline styles
+  const bgElements = document.querySelectorAll("[style*='background-image'], [style*='background']");
+  bgElements.forEach((el) => {
+    const style = (el as HTMLElement).getAttribute("style") || "";
+    const bgMatch = style.match(/url\(['"]?([^'")]+)['"]?\)/i);
+    if (bgMatch && bgMatch[1]) {
+      const src = bgMatch[1];
+      if (isValidPhotoInline(src)) {
+        const fullUrl = src.startsWith("http") ? src : (src.startsWith("/") ? `https://baanknet.com${src}` : `https://baanknet.com/${src}`);
+        if (!photoUrls.includes(fullUrl)) {
+          photoUrls.push(fullUrl);
+        }
+      }
+    }
+  });
+
+  // 3. Search high-res image anchor tags (e.g. lightbox, popup links)
+  const imageLinks = document.querySelectorAll("a[href*='.jpg'], a[href*='.jpeg'], a[href*='.png'], a[href*='.webp']");
+  imageLinks.forEach((a) => {
+    const href = (a as HTMLAnchorElement).href || a.getAttribute("href") || "";
+    if (href && isValidPhotoInline(href)) {
+      const fullUrl = href.startsWith("http") ? href : (href.startsWith("/") ? `https://baanknet.com${href}` : `https://baanknet.com/${href}`);
+      if (!photoUrls.includes(fullUrl)) {
+        photoUrls.push(fullUrl);
+      }
     }
   });
 

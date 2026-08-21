@@ -119,12 +119,12 @@ export const BAANKNET_SCRAPE_DELAY_MS = parseInt(
 );
 
 export const BAANKNET_MAX_PAGES = parseInt(
-  process.env.BAANKNET_MAX_PAGES || "50",
+  process.env.BAANKNET_MAX_PAGES || "100",
   10,
 );
 
 export const BAANKNET_MAX_SCROLL_CYCLES = parseInt(
-  process.env.BAANKNET_MAX_SCROLL_CYCLES || "50",
+  process.env.BAANKNET_MAX_SCROLL_CYCLES || "100",
   10,
 );
 

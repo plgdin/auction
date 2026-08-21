@@ -58,43 +58,17 @@ export interface BaankNetListing {
 
 // ─── Price Parser ───────────────────────────────────────────────────────────
 
-/**
- * Parse Indian reserve price strings into numeric values.
- *
- * Supported formats:
- *   "₹ 20.3 Lac"    -> 2030000
- *   "₹ 1.25 Crore"  -> 12500000
- *   "Rs. 45,00,000"  -> 4500000
- *   "₹ 50,000"      -> 50000
- */
-export function parseIndianPrice(priceText: string): number | null {
-  if (!priceText) return null;
+import {
+  parseIndianPrice,
+  parseIndianPriceRange,
+  type ParsedPriceRange,
+} from "../../utils/common/priceParser.js";
 
-  const cleaned = priceText.replace(/,/g, "").trim();
-
-  // "20.3 Lac" or "20.3 Lakh"
-  const lacMatch = cleaned.match(/([\d.]+)\s*(?:Lac|Lakh|Lacs|Lakhs)/i);
-  if (lacMatch) {
-    const num = parseFloat(lacMatch[1]);
-    return isNaN(num) ? null : Math.round(num * 100000);
-  }
-
-  // "1.25 Crore" or "1.25 Cr"
-  const croreMatch = cleaned.match(/([\d.]+)\s*(?:Crore|Crores|Cr)/i);
-  if (croreMatch) {
-    const num = parseFloat(croreMatch[1]);
-    return isNaN(num) ? null : Math.round(num * 10000000);
-  }
-
-  // Plain number: "₹ 4500000" or "4500000"
-  const plainMatch = cleaned.match(/[\d.]+/);
-  if (plainMatch) {
-    const num = parseFloat(plainMatch[0]);
-    return isNaN(num) ? null : Math.round(num);
-  }
-
-  return null;
-}
+export {
+  parseIndianPrice,
+  parseIndianPriceRange,
+  type ParsedPriceRange,
+};
 
 // ─── Date Parser ────────────────────────────────────────────────────────────
 
@@ -389,7 +363,7 @@ export function parseListings(
       borrower_names: item.borrowerNames,
       property_description: item.description,
       photo_count: item.photoUrls?.length || 0,
-      thumbnail_url: item.thumbnailUrl,
+      thumbnail_url: item.thumbnailUrl || (item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls[0] : undefined),
       photo_urls: item.photoUrls,
       document_urls: item.documentUrls,
       emd_amount_text: item.emdAmountText,

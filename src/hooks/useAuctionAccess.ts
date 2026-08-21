@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useAuthStore } from '../store/authStore';
 
 export type AuctionTypeKey =
@@ -18,6 +18,7 @@ export interface AuctionTypeDefinition {
   badgeBg: string;
   badgeText: string;
   badgeBorder: string;
+  isBeta: boolean;
 }
 
 export const ALL_AUCTION_TYPES: AuctionTypeDefinition[] = [
@@ -30,6 +31,7 @@ export const ALL_AUCTION_TYPES: AuctionTypeDefinition[] = [
     badgeBg: 'bg-sky-50',
     badgeText: 'text-sky-700',
     badgeBorder: 'border-sky-200',
+    isBeta: false,
   },
   {
     key: 'baanknet',
@@ -40,6 +42,7 @@ export const ALL_AUCTION_TYPES: AuctionTypeDefinition[] = [
     badgeBg: 'bg-indigo-50',
     badgeText: 'text-indigo-700',
     badgeBorder: 'border-indigo-200',
+    isBeta: true,
   },
   {
     key: 'gem_bids',
@@ -50,6 +53,7 @@ export const ALL_AUCTION_TYPES: AuctionTypeDefinition[] = [
     badgeBg: 'bg-emerald-50',
     badgeText: 'text-emerald-700',
     badgeBorder: 'border-emerald-200',
+    isBeta: true,
   },
   {
     key: 'gem_auctions',
@@ -60,6 +64,7 @@ export const ALL_AUCTION_TYPES: AuctionTypeDefinition[] = [
     badgeBg: 'bg-purple-50',
     badgeText: 'text-purple-700',
     badgeBorder: 'border-purple-200',
+    isBeta: true,
   },
   {
     key: 'gem_pbp',
@@ -70,6 +75,7 @@ export const ALL_AUCTION_TYPES: AuctionTypeDefinition[] = [
     badgeBg: 'bg-amber-50',
     badgeText: 'text-amber-700',
     badgeBorder: 'border-amber-200',
+    isBeta: true,
   },
   {
     key: 'custom',
@@ -80,6 +86,7 @@ export const ALL_AUCTION_TYPES: AuctionTypeDefinition[] = [
     badgeBg: 'bg-slate-50',
     badgeText: 'text-slate-700',
     badgeBorder: 'border-slate-200',
+    isBeta: true,
   },
 ];
 
@@ -104,11 +111,14 @@ export function useAuctionAccess() {
     return ['mstc'];
   }, [isAdmin, profile]);
 
-  const hasAccess = (typeKey: AuctionTypeKey | string): boolean => {
+  const hasAccess = useCallback((typeKey: AuctionTypeKey | string): boolean => {
     if (isAdmin) return true;
+    // MSTC is public catalog accessible without login
+    if (typeKey === 'mstc') return true;
+    // All other portals require authentication and explicit assignment
     if (!isAuthenticated) return false;
     return allowedTypes.includes(typeKey);
-  };
+  }, [isAdmin, isAuthenticated, allowedTypes]);
 
   return {
     isAdmin,

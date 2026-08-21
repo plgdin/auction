@@ -118,12 +118,15 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
               <span className="text-[10px] font-medium tracking-wide">No pictures available</span>
             </div>
           )}
-          <div className="absolute top-3 left-3 flex gap-2">
+          <div className="absolute top-3 left-3 flex items-center gap-1.5">
             <span className={clsx(
               "px-2.5 py-1 text-xs font-bold rounded-md shadow-sm uppercase tracking-wider text-white",
               statusBadgeColor
             )}>
               {statusBadgeLabel}
+            </span>
+            <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-amber-500 text-white shadow-xs">
+              BETA
             </span>
           </div>
           <button
@@ -210,12 +213,15 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
             <span className="text-[10px] font-medium tracking-wide">No pictures available</span>
           </div>
         )}
-        <div className="absolute top-3 left-3 flex gap-2">
+        <div className="absolute top-3 left-3 flex items-center gap-1.5">
           <span className={clsx(
             "px-2.5 py-1 text-xs font-bold rounded-md shadow-sm uppercase tracking-wider text-white",
             statusBadgeColor
           )}>
             {statusBadgeLabel}
+          </span>
+          <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-amber-500 text-white shadow-xs">
+            BETA
           </span>
         </div>
         <button

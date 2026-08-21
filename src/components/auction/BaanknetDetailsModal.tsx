@@ -105,34 +105,56 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
     };
   }, [onClose]);
 
+  // Safe date parser — never returns Invalid Date
+  const safeParse = (d?: string | null): Date | null => {
+    if (!d) return null;
+    const parsed = new Date(d);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const safeDateStr = (d?: string | null): string => {
+    const parsed = safeParse(d);
+    return parsed ? parsed.toLocaleString() : 'Not available';
+  };
+
   // Live bidding countdown timer
   useEffect(() => {
-    const updateCountdown = () => {
-      const now = new Date().getTime();
-      const start = new Date(item.auction_start_date).getTime();
-      const end = new Date(item.auction_end_date).getTime();
+    const startD = safeParse(item.auction_start_date);
+    const endD = safeParse(item.auction_end_date);
 
-      if (now > end) {
+    if (!startD && !endD) {
+      setCountdownStr('Schedule Pending');
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = Date.now();
+      const startMs = startD ? startD.getTime() : 0;
+      const endMs = endD ? endD.getTime() : 0;
+
+      if (endD && now > endMs) {
         setCountdownStr('Auction Closed');
-      } else if (now >= start && now <= end) {
-        const diff = end - now;
+      } else if (startD && endD && now >= startMs && now <= endMs) {
+        const diff = endMs - now;
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const secs = Math.floor((diff % (1000 * 60)) / 1000);
         setCountdownStr(`Bidding Ends in: ${hours}h ${mins}m ${secs}s`);
-      } else {
-        const diff = start - now;
+      } else if (startD && now < startMs) {
+        const diff = startMs - now;
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         setCountdownStr(`Starts in: ${days}d ${hours}h ${mins}m`);
+      } else {
+        setCountdownStr('Schedule Pending');
       }
     };
 
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [item]);
+  }, [item.auction_start_date, item.auction_end_date]);
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(item.baanknet_auction_id);
@@ -156,9 +178,9 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
 
   // Determine property status
   const now = new Date();
-  const start = new Date(item.auction_start_date);
-  const end = new Date(item.auction_end_date);
-  const isLive = now >= start && now <= end;
+  const start = safeParse(item.auction_start_date);
+  const end = safeParse(item.auction_end_date);
+  const isLive = start && end ? (now >= start && now <= end) : false;
 
   // Helper to gather all downloadable PDF document URLs
   const getAvailableDocuments = (): string[] => {
@@ -203,6 +225,9 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
         <div className="p-6 bg-slate-900 text-white flex justify-between items-start shrink-0 text-left">
           <div className="space-y-2 max-w-[85%]">
             <div className="flex flex-wrap items-center gap-2">
+              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
+                BETA
+              </span>
               <span className="bg-primary/20 text-primary-200 border border-primary/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
                 {item.property_type || 'Bank Foreclosure'}
               </span>
@@ -402,7 +427,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                 <div className="text-xs">
                   <span className="block font-bold text-slate-400 uppercase tracking-wider">Bidding Opens</span>
                   <span className="font-bold text-slate-800 text-sm mt-0.5 block">
-                    {new Date(item.auction_start_date).toLocaleString()}
+                    {safeDateStr(item.auction_start_date)}
                   </span>
                 </div>
               </div>
@@ -412,7 +437,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                 <div className="text-xs">
                   <span className="block font-bold text-slate-400 uppercase tracking-wider">Bidding Closes</span>
                   <span className="font-bold text-slate-800 text-sm mt-0.5 block">
-                    {new Date(item.auction_end_date).toLocaleString()}
+                    {safeDateStr(item.auction_end_date)}
                   </span>
                 </div>
               </div>
@@ -425,7 +450,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   <div className="border border-emerald-150 rounded-xl p-3 bg-emerald-50/50">
                     <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Inspection Start</span>
                     <span className="font-bold text-emerald-900 text-xs mt-0.5 block">
-                      {new Date(item.inspection_start_date).toLocaleString()}
+                      {safeDateStr(item.inspection_start_date)}
                     </span>
                   </div>
                 )}
@@ -433,7 +458,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   <div className="border border-emerald-150 rounded-xl p-3 bg-emerald-50/50">
                     <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Inspection End</span>
                     <span className="font-bold text-emerald-900 text-xs mt-0.5 block">
-                      {new Date(item.inspection_end_date).toLocaleString()}
+                      {safeDateStr(item.inspection_end_date)}
                     </span>
                   </div>
                 )}
@@ -441,7 +466,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   <div className="border border-rose-150 rounded-xl p-3 bg-rose-50/50">
                     <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">EMD Deadline</span>
                     <span className="font-bold text-rose-900 text-xs mt-0.5 block">
-                      {new Date(item.emd_end_date).toLocaleString()}
+                      {safeDateStr(item.emd_end_date)}
                     </span>
                   </div>
                 )}

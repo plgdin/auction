@@ -158,6 +158,11 @@ export const AuctionPermissionsModal: React.FC<AuctionPermissionsModalProps> = (
                       >
                         {type.shortLabel}
                       </span>
+                      {type.isBeta && (
+                        <span className="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-amber-100 text-amber-800 border border-amber-300">
+                          Beta
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500 leading-relaxed">
                       {type.description}

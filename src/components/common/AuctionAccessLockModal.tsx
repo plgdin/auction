@@ -18,9 +18,15 @@ export const AuctionAccessLockModal: React.FC<AuctionAccessLockModalProps> = ({
   if (!isOpen) return null;
 
   const typeDef = ALL_AUCTION_TYPES.find((t) => t.key === auctionType) || {
+    key: auctionType as any,
     label: auctionType,
     description: 'This category of auctions and government tenders.',
     shortLabel: auctionType,
+    colorClass: '',
+    badgeBg: '',
+    badgeText: '',
+    badgeBorder: '',
+    isBeta: auctionType !== 'mstc',
   };
 
   return (
@@ -45,9 +51,16 @@ export const AuctionAccessLockModal: React.FC<AuctionAccessLockModalProps> = ({
               <Lock className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 font-mono">
-                Access Restricted
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 font-mono">
+                  Access Restricted
+                </span>
+                {typeDef.isBeta && (
+                  <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                    BETA
+                  </span>
+                )}
+              </div>
               <h3 className="text-xl font-bold tracking-tight text-white">
                 {typeDef.shortLabel} Permission Required
               </h3>

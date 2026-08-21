@@ -138,6 +138,9 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/30 to-transparent" />
             <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2">
+              <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider shadow-xs">
+                BETA
+              </span>
               <span className="bg-primary text-white text-[10px] font-extrabold px-2.5 py-1 rounded-md uppercase tracking-wider shadow-xs">
                 {item.category_name || 'Forward Auction'}
               </span>

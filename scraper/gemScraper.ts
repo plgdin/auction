@@ -24,9 +24,13 @@ import {
   parseLocation,
   parseGeMDate,
   parseReservePrice,
+  parseIndianPriceRange,
+  normalizeGeMAuctionStatus,
   classifyGeMListing,
   type GeMListing,
 } from "./parsers/gemParser.js";
+import { gemListingSchema } from "./schemas/gemListingSchema.js";
+import { computeListingsFingerprint, isPaginationStalled } from "./utils/common/fingerprint.js";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -231,10 +235,58 @@ function extractGeMListingsFromDOM(): any[] {
       reservePriceText = priceMatch[0].trim();
     }
 
+    // Extract Status from container elements, badges, text patterns, or active tab header
+    let rawStatus = "";
+
+    // 1. Direct status badge/tag inside container
+    const statusEl = container.querySelector(
+      ".status, .badge, [class*='status'], [class*='badge'], .tag, .label, .auction-status, [class*='auction-state']"
+    );
+    if (statusEl) {
+      rawStatus = (statusEl as HTMLElement).innerText?.trim() || "";
+    }
+
+    // 2. Pattern matching in container text
+    if (!rawStatus) {
+      const statusMatch =
+        containerText.match(/Status\s*:\s*([^\n|]+)/i) ||
+        containerText.match(/Auction\s*Status\s*:\s*([^\n|]+)/i) ||
+        containerText.match(/State\s*:\s*([^\n|]+)/i) ||
+        containerText.match(/\b(Live\s*Auction|Upcoming\s*Auction|Closed\s*Auction|Auction\s*Ended|Cancelled\s*Auction|Live|Upcoming|Closed|Cancelled|Ended)\b/i);
+      if (statusMatch) {
+        rawStatus = (statusMatch[1] || statusMatch[0]).trim();
+      }
+    }
+
+    // 3. Active Tab / Panel Context
+    if (!rawStatus) {
+      const parentTabPanel = container.closest(".TabbedPanelsContent, .tab-pane, .tab-content, [role='tabpanel']");
+      if (parentTabPanel) {
+        const panelId = parentTabPanel.id;
+        const tabBtn = document.querySelector(
+          `.TabbedPanelsTabSelected, .tab.active, [aria-selected='true']${panelId ? `, a[href='#${panelId}']` : ""}`
+        );
+        if (tabBtn) {
+          rawStatus = (tabBtn as HTMLElement).innerText?.trim() || "";
+        }
+      }
+    }
+
+    // 4. Global active tab on page
+    if (!rawStatus) {
+      const activeTab = document.querySelector(
+        ".TabbedPanelsTabSelected, .nav-tabs li.active, .tab.active, [role='tab'][aria-selected='true'], .tab-selected"
+      );
+      if (activeTab) {
+        rawStatus = (activeTab as HTMLElement).innerText?.trim() || "";
+      }
+    }
+
     items.push({
       gem_auction_id: auctionId,
       title,
       reserve_price_text: reservePriceText,
+      rawStatus,
       ministry,
       department,
       organisation,
@@ -294,6 +346,8 @@ async function runScraper() {
     
     let currentPage = 1;
     let scrapedCount = 0;
+    let invalidCount = 0;
+    let lastPageFingerprint = "";
     
     // If startPage > 1, navigate to it using page input
     if (startPage > 1) {
@@ -320,16 +374,45 @@ async function runScraper() {
         log.warn({ page: currentPage }, "No listings extracted. Ending crawl.");
         break;
       }
+
+      // Check for stalled pagination (identical content across consecutive pages)
+      const currentFingerprint = computeListingsFingerprint(
+        rawListings.map((r) => r.gem_auction_id)
+      );
+      if (currentPage > startPage && isPaginationStalled(lastPageFingerprint, currentFingerprint)) {
+        log.warn(
+          { page: currentPage, fingerprint: currentFingerprint.substring(0, 16) },
+          "Detected identical page content after pagination click. Pagination has stalled. Stopping crawl."
+        );
+        break;
+      }
+      lastPageFingerprint = currentFingerprint;
       
       // Parse, classify, and format listings for Supabase
       const finalListings: GeMListing[] = rawListings.map((item) => {
         const loc = parseLocation(item.locationText);
-        const startDate = parseGeMDate(item.startDateStr) || new Date().toISOString();
-        // Fallback closing date: 7 days out
-        const endDate = parseGeMDate(item.endDateStr) || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const parsedStartDate = parseGeMDate(item.startDateStr);
+        const parsedEndDate = parseGeMDate(item.endDateStr);
+        
+        const startDate = parsedStartDate;
+        const endDate = parsedEndDate;
+        const start_date_unparsed = !parsedStartDate;
+        const end_date_unparsed = !parsedEndDate;
+        const location_unparsed = loc.location_unparsed || !loc.location;
         
         const category_name = classifyGeMListing(item.title);
-        const reserve_price_value = parseReservePrice(item.reserve_price_text);
+        const priceRange = parseIndianPriceRange(item.reserve_price_text);
+        const reserve_price_value = priceRange.value;
+        const reserve_price_value_min = priceRange.min;
+        const reserve_price_value_max = priceRange.max;
+
+        const normalizedStatus = normalizeGeMAuctionStatus(item.rawStatus);
+        if (!normalizedStatus) {
+          log.warn(
+            { auctionId: item.gem_auction_id, rawStatus: item.rawStatus },
+            "No reliable auction status signal found in DOM. Leaving auction_status as null."
+          );
+        }
         
         // Format absolute URLs
         const absoluteSourceUrl = item.source_url.startsWith("http")
@@ -349,6 +432,8 @@ async function runScraper() {
           title: item.title,
           reserve_price_text: item.reserve_price_text || undefined,
           reserve_price_value,
+          reserve_price_value_min,
+          reserve_price_value_max,
           ministry: item.ministry || undefined,
           department: item.department || undefined,
           organisation: item.organisation || undefined,
@@ -356,9 +441,12 @@ async function runScraper() {
           city: loc.city || undefined,
           pincode: loc.pincode || undefined,
           location: loc.location,
+          location_unparsed,
           auction_start_date: startDate,
           auction_end_date: endDate,
-          auction_status: "live", // Assume live for scraped public page items
+          start_date_unparsed,
+          end_date_unparsed,
+          auction_status: normalizedStatus || null,
           source_url: absoluteSourceUrl,
           document_url: absoluteDocUrl || undefined,
           document_urls: absoluteDocUrls.length > 0 ? absoluteDocUrls : undefined,
@@ -366,10 +454,32 @@ async function runScraper() {
           raw_description: item.raw_description || undefined,
         };
       });
+
+      // Validate each listing using gemListingSchema before writing to database
+      const validatedListings: GeMListing[] = [];
+      for (const item of finalListings) {
+        const parseResult = gemListingSchema.safeParse(item);
+        if (!parseResult.success) {
+          invalidCount++;
+          const failedFields = parseResult.error.issues.map(
+            (issue) => `${issue.path.join(".")}: ${issue.message}`
+          );
+          log.warn(
+            {
+              gem_auction_id: item.gem_auction_id,
+              failedFields,
+              issues: parseResult.error.issues,
+            },
+            "GeM listing validation failed. Skipping record."
+          );
+        } else {
+          validatedListings.push(item);
+        }
+      }
       
       // Insert into Supabase
-      if (finalListings.length > 0) {
-        log.info({ count: finalListings.length }, "Upserting batch to Supabase...");
+      if (validatedListings.length > 0) {
+        log.info({ count: validatedListings.length }, "Upserting batch to Supabase...");
         
         // 1. Log category and location stats for analytics
         const today = new Date().toISOString().split("T")[0];
@@ -377,7 +487,7 @@ async function runScraper() {
         const catStats: Record<string, number> = {};
         const locStats: Record<string, number> = {};
         
-        finalListings.forEach((item) => {
+        validatedListings.forEach((item) => {
           catStats[item.category_name] = (catStats[item.category_name] || 0) + 1;
           const locKey = `${item.location}|||${item.category_name}`;
           locStats[locKey] = (locStats[locKey] || 0) + 1;
@@ -428,7 +538,7 @@ async function runScraper() {
         // 2. Perform the main table upsert
         const { error: upsertError } = await supabase
           .from("gem_auctions")
-          .upsert(finalListings, {
+          .upsert(validatedListings, {
             onConflict: "gem_auction_id",
             ignoreDuplicates: false, // Update fields if they change
           });
@@ -437,7 +547,7 @@ async function runScraper() {
           log.error({ error: upsertError.message }, "Database ingestion error");
         } else {
           // Write audit logs for successful scrape
-          const auditLogs = finalListings.map((item) => ({
+          const auditLogs = validatedListings.map((item) => ({
             action: "gem_auction_scraped",
             entity_type: "gem_auction",
             details: {
@@ -451,8 +561,8 @@ async function runScraper() {
             log.error({ error: auditError.message }, "Failed to write scrape audit logs");
           }
           
-          scrapedCount += finalListings.length;
-          log.info({ count: finalListings.length }, "Ingested batch successfully");
+          scrapedCount += validatedListings.length;
+          log.info({ count: validatedListings.length }, "Ingested batch successfully");
         }
       }
       
@@ -481,7 +591,10 @@ async function runScraper() {
       await delay(4000); // Friendly crawling delay
     }
     
-    log.info({ totalScraped: scrapedCount }, "GeM scraper task completed successfully");
+    log.info(
+      { totalScraped: scrapedCount, totalInvalid: invalidCount },
+      "GeM scraper task completed successfully"
+    );
     
   } catch (err: any) {
     log.error({ error: err.message }, "Scraper encountered a critical exception");

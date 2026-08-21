@@ -5,6 +5,11 @@
  */
 import { mapCategory } from "../../utils/common/categoryMapper.js";
 import { logger } from "../../utils/common/logger.js";
+import {
+  parseIndianPrice,
+  parseIndianPriceRange,
+  type ParsedPriceRange,
+} from "../../utils/common/priceParser.js";
 
 const log = logger.child({ module: "gemParser" });
 
@@ -13,6 +18,8 @@ export interface GeMListing {
   title: string;
   reserve_price_text?: string;
   reserve_price_value?: number | null;
+  reserve_price_value_min?: number | null;
+  reserve_price_value_max?: number | null;
   ministry?: string;
   department?: string;
   organisation?: string;
@@ -21,9 +28,12 @@ export interface GeMListing {
   pincode?: string;
   full_address?: string;
   location: string;
-  auction_start_date: string;
-  auction_end_date: string;
-  auction_status: string;
+  location_unparsed?: boolean;
+  auction_start_date?: string | null;
+  auction_end_date?: string | null;
+  start_date_unparsed?: boolean;
+  end_date_unparsed?: boolean;
+  auction_status?: string | null;
   source_url: string;
   document_url?: string;
   document_urls?: string[];
@@ -31,26 +41,84 @@ export interface GeMListing {
   raw_description?: string;
 }
 
-// ─── Price Parser ───────────────────────────────────────────────────────────
+export interface ParsedGeMLocation {
+  state: string;
+  city: string;
+  pincode: string;
+  location: string;
+  location_unparsed: boolean;
+}
+
+// ─── Status Normalizer ──────────────────────────────────────────────────────
 
 /**
- * Parse reserve price text into numeric values.
+ * Normalizes raw DOM status text into canonical auction_status:
+ * 'live' | 'upcoming' | 'closed' | 'cancelled' | null
+ *
+ * If no recognizable signal exists, returns null rather than guessing.
  */
-export function parseReservePrice(priceText: string): number | null {
-  if (!priceText) return null;
+export function normalizeGeMAuctionStatus(rawStatus: string | null | undefined): string | null {
+  if (!rawStatus || typeof rawStatus !== "string") return null;
 
-  const cleaned = priceText
-    .replace(/[^0-9.]/g, "")
-    .trim();
-
+  const cleaned = rawStatus.trim().toLowerCase();
   if (!cleaned) return null;
 
-  try {
-    const val = parseFloat(cleaned);
-    return isNaN(val) ? null : val;
-  } catch (e) {
-    return null;
+  if (
+    cleaned.includes("live") ||
+    cleaned.includes("active") ||
+    cleaned.includes("running") ||
+    cleaned.includes("in progress") ||
+    cleaned.includes("published")
+  ) {
+    return "live";
   }
+
+  if (
+    cleaned.includes("upcoming") ||
+    cleaned.includes("scheduled") ||
+    cleaned.includes("future") ||
+    cleaned.includes("draft")
+  ) {
+    return "upcoming";
+  }
+
+  if (
+    cleaned.includes("closed") ||
+    cleaned.includes("ended") ||
+    cleaned.includes("completed") ||
+    cleaned.includes("expired") ||
+    cleaned.includes("archived")
+  ) {
+    return "closed";
+  }
+
+  if (
+    cleaned.includes("cancel") ||
+    cleaned.includes("cancelled") ||
+    cleaned.includes("canceled") ||
+    cleaned.includes("revoked") ||
+    cleaned.includes("corrigendum")
+  ) {
+    return "cancelled";
+  }
+
+  return null;
+}
+
+// ─── Price Parser ───────────────────────────────────────────────────────────
+
+export {
+  parseIndianPrice,
+  parseIndianPriceRange,
+  type ParsedPriceRange,
+};
+
+/**
+ * Backward-compatible wrapper for GeM reserve price parsing.
+ * Uses the shared parseIndianPrice utility.
+ */
+export function parseReservePrice(priceText: string | null | undefined): number | null {
+  return parseIndianPrice(priceText);
 }
 
 // ─── Date Parser ────────────────────────────────────────────────────────────
@@ -63,10 +131,11 @@ export function parseReservePrice(priceText: string): number | null {
  *   "25/07/2026 14:00:00"
  *   "25-07-2026"
  */
-export function parseGeMDate(dateStr: string): string | null {
-  if (!dateStr) return null;
+export function parseGeMDate(dateStr: string | null | undefined): string | null {
+  if (!dateStr || typeof dateStr !== "string") return null;
 
   const cleaned = dateStr.trim();
+  if (!cleaned) return null;
 
   // DD-MM-YYYY HH:mm:ss or DD/MM/YYYY HH:mm:ss
   const fullMatch = cleaned.match(
@@ -111,48 +180,54 @@ export function parseGeMDate(dateStr: string): string | null {
 
 /**
  * Decompose a GeM Portal location string.
+ * When no segment can be parsed, returns location_unparsed: true and empty fields.
+ * Never defaults to "India".
  *
  * Example:
  *   "Kokrajhar - Kokrajhar - ASSAM - 783370"
  */
-export function parseGeMLocation(locStr: string): {
-  state: string;
-  city: string;
-  pincode: string;
-  location: string;
-} {
-  if (!locStr) {
-    return { state: "", city: "", pincode: "", location: "India" };
+export function parseGeMLocation(locStr: string | null | undefined): ParsedGeMLocation {
+  if (!locStr || typeof locStr !== "string") {
+    return { state: "", city: "", pincode: "", location: "", location_unparsed: true };
   }
 
   const parts = locStr.split("-").map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 0) {
+    return { state: "", city: "", pincode: "", location: "", location_unparsed: true };
+  }
 
   if (parts.length >= 4) {
+    const loc = parts[2] || parts[1] || parts[0] || "";
     return {
-      city: parts[0],
-      state: parts[2],
-      pincode: parts[3],
-      location: parts[2] || "India",
+      city: parts[0] || "",
+      state: parts[2] || "",
+      pincode: parts[3] || "",
+      location: loc,
+      location_unparsed: !loc,
     };
   }
 
   if (parts.length === 3) {
     // City - State - Pincode
+    const loc = parts[1] || parts[0] || "";
     return {
-      city: parts[0],
-      state: parts[1],
-      pincode: parts[2],
-      location: parts[1] || "India",
+      city: parts[0] || "",
+      state: parts[1] || "",
+      pincode: parts[2] || "",
+      location: loc,
+      location_unparsed: !loc,
     };
   }
 
   if (parts.length === 2) {
     // City - State
+    const loc = parts[1] || parts[0] || "";
     return {
-      city: parts[0],
-      state: parts[1],
+      city: parts[0] || "",
+      state: parts[1] || "",
       pincode: "",
-      location: parts[1] || "India",
+      location: loc,
+      location_unparsed: !loc,
     };
   }
 
@@ -164,7 +239,8 @@ export function parseGeMLocation(locStr: string): {
       city: "",
       state: "",
       pincode: single,
-      location: "India",
+      location: "",
+      location_unparsed: true,
     };
   }
 
@@ -172,7 +248,8 @@ export function parseGeMLocation(locStr: string): {
     city: single,
     state: "",
     pincode: "",
-    location: single || "India",
+    location: single,
+    location_unparsed: !single,
   };
 }
 
@@ -187,4 +264,3 @@ export function classifyGeMListing(title: string): string {
 }
 
 export { parseGeMLocation as parseLocation };
-

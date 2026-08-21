@@ -12,9 +12,19 @@ const ALLOWED_HOSTNAMES = [
   'baanknet.com',
   'ibbi.baanknet.com',
   'eauction.baanknet.com',
+  'cdn.baanknet.com',
+  'api.baanknet.com',
+  'files.baanknet.com',
+  'static.baanknet.com',
+  'psballianceeauction.com',
+  'ibapi.in',
+  'cersai.org.in',
   'mstcecommerce.com',
   'eprocure.gov.in',
-  'supabase.co'
+  'amazonaws.com',
+  's3.ap-south-1.amazonaws.com',
+  'supabase.co',
+  'postromania.com',
 ];
 
 const DEFAULT_USER_AGENT =

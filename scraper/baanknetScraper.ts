@@ -55,6 +55,8 @@ import {
   type DetailPageData,
 } from "./parsers/baanknetDetailParser.js";
 import { KNOWN_LENDERS } from "./data/knownLenders.js";
+import { baanknetListingSchema } from "./schemas/baanknetListingSchema.js";
+import { computeListingsFingerprint, isPaginationStalled } from "./utils/common/fingerprint.js";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -74,6 +76,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
+let totalInvalid = 0;
+
 // ─── CLI Argument Parsing ────────────────────────────────────────────────────
 
 interface CliArgs {
@@ -83,6 +87,7 @@ interface CliArgs {
   maxPages: number;
   startPage: number;
   scrapeDetails: boolean;
+  rescrape: boolean;
 }
 
 function parseCliArgs(): CliArgs {
@@ -93,10 +98,12 @@ function parseCliArgs(): CliArgs {
   let maxPages = BAANKNET_MAX_PAGES;
   let startPage = 1;
   let scrapeDetails = BAANKNET_SCRAPE_DETAILS;
+  let rescrape = false;
 
   for (const arg of args) {
     if (arg === "--headful") headful = true;
     if (arg === "--no-details") scrapeDetails = false;
+    if (arg === "--rescrape" || arg === "--force-details") rescrape = true;
     if (arg.startsWith("--status=")) {
       statusFilters = arg.replace("--status=", "").split(",");
     }
@@ -111,7 +118,7 @@ function parseCliArgs(): CliArgs {
     }
   }
 
-  return { modules, statusFilters, headful, maxPages, startPage, scrapeDetails };
+  return { modules, statusFilters, headful, maxPages, startPage, scrapeDetails, rescrape };
 }
 
 // ─── Utility Functions ───────────────────────────────────────────────────────
@@ -131,10 +138,11 @@ async function scrapeDetailPages(
   items: RawBaankNetItem[],
   baseUrl: string,
   concurrency: number,
+  forceRescrape: boolean = false,
 ): Promise<void> {
-  // Filter to items that actually have detail URLs and haven't been enriched yet
+  // Filter to items that actually have detail URLs and need enrichment
   const toScrape = items.filter(
-    (item) => item.detailUrl && (!item.borrowerName || !item.documentUrl || !item.description)
+    (item) => item.detailUrl && (forceRescrape || !item.borrowerName || !item.documentUrl || !item.description || !item.photoUrls || item.photoUrls.length === 0)
   );
 
   if (toScrape.length === 0) {
@@ -142,7 +150,7 @@ async function scrapeDetailPages(
     return;
   }
 
-  log.info({ count: toScrape.length, concurrency }, "Scraping detail pages...");
+  log.info({ count: toScrape.length, concurrency, forceRescrape }, "Scraping detail pages...");
 
   // Process in batches of concurrency
   for (let i = 0; i < toScrape.length; i += concurrency) {
@@ -369,6 +377,31 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
       detailUrl = `https://baanknet.com${detailUrl}`;
     }
 
+    // Extract thumbnail/photo if present on the listing card
+    let cardThumb = "";
+    const cardImgs = card.querySelectorAll("img, [style*='background-image'], [data-src], [data-lazy]");
+    const cardPhotos: string[] = [];
+    cardImgs.forEach((imgEl) => {
+      let src = "";
+      if (imgEl.tagName.toLowerCase() === "img") {
+        const htmlImg = imgEl as HTMLImageElement;
+        src = htmlImg.src || htmlImg.getAttribute("data-src") || htmlImg.getAttribute("data-lazy") || htmlImg.getAttribute("data-original") || "";
+      } else {
+        const style = (imgEl as HTMLElement).getAttribute("style") || "";
+        const bgMatch = style.match(/url\(['"]?([^'")]+)['"]?\)/i);
+        if (bgMatch) src = bgMatch[1];
+        else src = imgEl.getAttribute("data-src") || imgEl.getAttribute("data-img") || "";
+      }
+      if (src) {
+        const lower = src.toLowerCase();
+        if (!lower.includes(".svg") && !lower.includes("logo") && !lower.includes("icon") && !lower.includes("favicon") && !lower.includes("avatar") && !lower.includes("banner")) {
+          const fullSrc = src.startsWith("http") ? src : (src.startsWith("/") ? `https://baanknet.com${src}` : `https://baanknet.com/${src}`);
+          if (!cardPhotos.includes(fullSrc)) cardPhotos.push(fullSrc);
+          if (!cardThumb) cardThumb = fullSrc;
+        }
+      }
+    });
+
     if (auctionIdMatch) {
       items.push({
         auctionId: auctionIdMatch[1],
@@ -382,6 +415,8 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
         endDate: endMatch ? endMatch[1] : "",
         detailUrl: detailUrl,
         auctionModule: "eauction_psb",
+        thumbnailUrl: cardThumb || undefined,
+        photoUrls: cardPhotos.length > 0 ? cardPhotos : undefined,
       });
     }
   });
@@ -398,12 +433,14 @@ async function scrapeEAuctionPages(
   startPage: number,
   maxPages: number,
   scrapeDetails: boolean,
+  rescrape: boolean = false,
 ): Promise<RawBaankNetItem[]> {
-  log.info({ statusFilter, startPage, maxPages }, "Scraping eAuction PSB pages");
+  log.info({ statusFilter, startPage, maxPages, rescrape }, "Scraping eAuction PSB pages");
 
   const allItems: RawBaankNetItem[] = [];
   const seenAuctionIds = new Set<string>();
   let consecutiveStalePages = 0;
+  let lastPageFingerprint = "";
 
   // Jump to startPage if > 1
   if (startPage > 1) {
@@ -437,6 +474,19 @@ async function scrapeEAuctionPages(
       log.info({ page: pageNum }, "No items found on page. Reached end of catalog.");
       break;
     }
+
+    // Check for stalled pagination (identical content across consecutive pages)
+    const currentFingerprint = computeListingsFingerprint(
+      rawItems.map((item) => item.auctionId)
+    );
+    if (pageNum > startPage && isPaginationStalled(lastPageFingerprint, currentFingerprint)) {
+      log.warn(
+        { page: pageNum, fingerprint: currentFingerprint.substring(0, 16) },
+        "Detected identical eAuction page content after pagination click. Pagination has stalled. Stopping crawl."
+      );
+      break;
+    }
+    lastPageFingerprint = currentFingerprint;
 
     const pageNewItems: RawBaankNetItem[] = [];
     const pageItemIds = rawItems
@@ -480,10 +530,10 @@ async function scrapeEAuctionPages(
       consecutiveStalePages = 0;
       if (scrapeDetails) {
         const toScrape = pageNewItems.filter(
-          (item) => item.detailUrl && (!item.borrowerName || !item.documentUrl)
+          (item) => item.detailUrl && (rescrape || !item.borrowerName || !item.documentUrl || !item.photoUrls || item.photoUrls.length === 0)
         );
         if (toScrape.length > 0) {
-          await scrapeDetailPages(browser, toScrape, BAANKNET_BASE_URL, BAANKNET_DETAIL_CONCURRENCY);
+          await scrapeDetailPages(browser, toScrape, BAANKNET_BASE_URL, BAANKNET_DETAIL_CONCURRENCY, rescrape);
         }
       }
 
@@ -871,9 +921,36 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
     return;
   }
 
+  // Validate each listing using baanknetListingSchema before database operations
+  const validatedListings: ReturnType<typeof parseListings> = [];
+  for (const item of listings) {
+    const parseResult = baanknetListingSchema.safeParse(item);
+    if (!parseResult.success) {
+      totalInvalid++;
+      const failedFields = parseResult.error.issues.map(
+        (issue) => `${issue.path.join(".")}: ${issue.message}`
+      );
+      log.warn(
+        {
+          baanknet_auction_id: item.baanknet_auction_id,
+          failedFields,
+          issues: parseResult.error.issues,
+        },
+        "BaankNet listing validation failed. Skipping record."
+      );
+    } else {
+      validatedListings.push(item);
+    }
+  }
+
+  if (validatedListings.length === 0) {
+    log.info("No valid listings to upsert.");
+    return;
+  }
+
   // Deduplicate input by baanknet_auction_id
   const seenIds = new Set<string>();
-  const uniqueListings = listings.filter((l) => {
+  const uniqueListings = validatedListings.filter((l) => {
     if (seenIds.has(l.baanknet_auction_id)) return false;
     seenIds.add(l.baanknet_auction_id);
     return true;
@@ -1120,10 +1197,10 @@ async function setupPage(browser: any) {
 // ─── Main Scraper Entry Point ────────────────────────────────────────────────
 
 async function executeBaankNetScraper(): Promise<void> {
-  const { modules, statusFilters, headful, maxPages, startPage, scrapeDetails } = parseCliArgs();
+  const { modules, statusFilters, headful, maxPages, startPage, scrapeDetails, rescrape } = parseCliArgs();
 
   log.info(
-    { modules, statusFilters, headful, maxPages, startPage, scrapeDetails },
+    { modules, statusFilters, headful, maxPages, startPage, scrapeDetails, rescrape },
     "Starting BaankNet multi-module scraper"
   );
 
@@ -1174,7 +1251,7 @@ async function executeBaankNetScraper(): Promise<void> {
           await randomDelay(3000);
 
           const rawItems = await scrapeEAuctionPages(
-            browser, page, statusFilter, startPage, maxPages, scrapeDetails
+            browser, page, statusFilter, startPage, maxPages, scrapeDetails, rescrape
           );
 
           totalScraped += rawItems.length;
@@ -1231,7 +1308,7 @@ async function executeBaankNetScraper(): Promise<void> {
       await browser.close();
     }
     log.info(
-      { totalScraped },
+      { totalScraped, totalInvalid, modules: modules.join(",") },
       "BaankNet multi-module scraper execution complete. Browser closed."
     );
 

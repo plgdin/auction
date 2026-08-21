@@ -129,6 +129,9 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/30 to-transparent" />
             <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-black uppercase bg-amber-500 text-white text-[10px] px-2 py-1 rounded-md tracking-wider shadow-xs">
+                BETA
+              </span>
               <span className="font-extrabold uppercase bg-primary text-white text-[10px] px-2.5 py-1 rounded-md font-mono tracking-wider shadow-xs">
                 {item.category_name || 'GeM Procurement Bid'}
               </span>
