@@ -367,6 +367,12 @@ export function ScraperDashboard() {
           'Authorization': `Bearer ${token}`
         }
       });
+      await fetch('/api/scraper/baanknet/refresh-docs/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       toast.success('BaankNet worker stop signal sent.');
       setBaanknetWorkerRunning(false);
     } catch (err) {
@@ -390,22 +396,6 @@ export function ScraperDashboard() {
       } else {
         toast.error(data.message || 'Failed to start BaankNet document refresh.');
       }
-    } catch (err) {
-      toast.error('Could not connect to local API plugin.');
-    }
-  };
-
-  const stopBaanknetRefreshDocs = async () => {
-    try {
-      const token = await getAuthToken();
-      await fetch('/api/scraper/baanknet/refresh-docs/stop', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      toast.success('BaankNet document refresh stop signal sent.');
-      setBaanknetWorkerRunning(false);
     } catch (err) {
       toast.error('Could not connect to local API plugin.');
     }
