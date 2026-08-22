@@ -10,6 +10,7 @@
  */
 
 import path from "path";
+import { createRequire } from "module";
 import * as dotenv from "dotenv";
 import {
   SUPABASE_URL,
@@ -22,6 +23,9 @@ import {
 } from "./config.js";
 import { supabase, uploadToStorage, checkFileExistsInStorage, assertSupabaseCredentials } from "./utils/common/storage.js";
 import { logger } from "./utils/common/logger.js";
+
+const require = createRequire(import.meta.url);
+const pdfParse = require("pdf-parse");
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -167,12 +171,16 @@ export function extractUniqueDocUrls(record: BaanknetQueueRecord): string[] {
  * Downloads a single document URL, checks for existing cache, verifies PDF magic bytes,
  * and uploads to Supabase Storage.
  */
+/**
+ * Downloads a single document URL, checks for existing cache, verifies PDF magic bytes,
+ * extracts text via pdf-parse, and uploads to Supabase Storage.
+ */
 export async function mirrorDocumentToStorage(
   auctionId: string,
   docUrl: string,
   docIndex: number,
   timeoutMs: number = ATTACHMENT_DOWNLOAD_TIMEOUT_MS
-): Promise<{ publicUrl: string; wasCached: boolean }> {
+): Promise<{ publicUrl: string; wasCached: boolean; text?: string }> {
   const docLog = log.child({ auctionId, docUrl });
   const storagePath = getBaanknetStoragePath(auctionId, docUrl, docIndex);
 
@@ -240,16 +248,28 @@ export async function mirrorDocumentToStorage(
     throw new Error("Downloaded document failed %PDF magic byte validation");
   }
 
-  // 4. Upload to Supabase Storage
+  // 4. Extract text from PDF using pdf-parse
+  let extractedText = "";
+  try {
+    const parsedPdf = await pdfParse(fileBuffer);
+    if (parsedPdf && parsedPdf.text) {
+      extractedText = parsedPdf.text.trim();
+      docLog.debug({ textLength: extractedText.length }, "Extracted text from notice PDF");
+    }
+  } catch (err: any) {
+    docLog.warn({ error: err.message }, "Non-critical: pdf-parse failed to extract text from PDF");
+  }
+
+  // 5. Upload to Supabase Storage
   const publicUrl = await uploadToStorage(storagePath, fileBuffer, "application/pdf");
   docLog.info({ publicUrl, storagePath, sizeBytes: fileBuffer.length }, "Document successfully mirrored to storage");
 
-  return { publicUrl, wasCached: false };
+  return { publicUrl, wasCached: false, text: extractedText || undefined };
 }
 
 /**
  * Processes a single BaankNet auction row: downloads all attached documents,
- * updates stored_document_urls, and marks documents_archived upon total success.
+ * extracts searchable text & metadata, updates stored_document_urls, and marks documents_archived upon total success.
  */
 export async function processBaanknetRecord(
   record: BaanknetQueueRecord
@@ -287,6 +307,7 @@ export async function processBaanknetRecord(
 
   const mirroredUrls: string[] = [];
   const failures: FailedDocumentReport[] = [];
+  const extractedTexts: string[] = [];
   let docsUploaded = 0;
   let docsCached = 0;
 
@@ -299,6 +320,9 @@ export async function processBaanknetRecord(
         i
       );
       mirroredUrls.push(result.publicUrl);
+      if (result.text) {
+        extractedTexts.push(result.text);
+      }
       if (result.wasCached) {
         docsCached++;
       } else {
@@ -318,12 +342,17 @@ export async function processBaanknetRecord(
   }
 
   const allSucceeded = failures.length === 0 && mirroredUrls.length === docUrls.length;
+  const combinedText = extractedTexts.join("\n\n---\n\n").trim();
 
-  // Persist storage public URLs and archive state
+  // Persist storage public URLs, archive state, and extracted PDF text
   const updatePayload: Record<string, any> = {
     stored_document_urls: mirroredUrls,
     documents_archived: allSucceeded,
   };
+
+  if (combinedText) {
+    updatePayload.extracted_pdf_text = combinedText.substring(0, 100000); // 100KB cap for database row
+  }
 
   const { error: updateError } = await supabase
     .from("baanknet_auctions")
@@ -331,11 +360,11 @@ export async function processBaanknetRecord(
     .eq("baanknet_auction_id", record.baanknet_auction_id);
 
   if (updateError) {
-    auctionLog.error({ errorMessage: updateError.message }, "Failed to update auction row with stored document URLs");
+    auctionLog.error({ errorMessage: updateError.message }, "Failed to update auction row with stored document URLs and PDF text");
   } else {
     auctionLog.info(
-      { allSucceeded, storedCount: mirroredUrls.length, failures: failures.length },
-      "Updated auction document archive status"
+      { allSucceeded, storedCount: mirroredUrls.length, failures: failures.length, hasPdfText: !!combinedText },
+      "Updated auction document archive and PDF intelligence status"
     );
   }
 

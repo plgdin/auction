@@ -409,22 +409,57 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
       bankName = bankMatch ? bankMatch[1].trim() : "";
     }
 
+    // Helper to filter out header/search artifacts
+    function isGarbageTitle(str: string): boolean {
+      if (!str || str.length < 3) return true;
+      const lower = str.toLowerCase().trim();
+      return (
+        lower.startsWith("showing") ||
+        lower.includes("results") ||
+        lower.includes("properties found") ||
+        lower.includes("sort by") ||
+        lower.includes("filter") ||
+        lower.includes("10000+")
+      );
+    }
+
+    function isBankOrGarbage(str: string): boolean {
+      if (!str || str.length < 2) return true;
+      const lower = str.toLowerCase().trim();
+      return (
+        lower.includes("bank") ||
+        lower.includes("lender") ||
+        lower.includes("showing") ||
+        lower.includes("result")
+      );
+    }
+
     // Title extraction
     const lines = text.split("\n").map((l: string) => l.trim()).filter((l: string) => l.length > 0);
     let title = "";
     for (const line of lines) {
       const titleMatch = line.match(/^\d+\)\s*(.+)/);
-      if (titleMatch) {
+      if (titleMatch && !isGarbageTitle(titleMatch[1])) {
         title = titleMatch[1].trim();
         break;
       }
     }
-    if (!title && lines.length > 0) title = lines[0];
+    if (!title) {
+      for (const line of lines) {
+        if (!isGarbageTitle(line) && !line.includes(":") && !line.includes("₹") && line.length > 5) {
+          title = line;
+          break;
+        }
+      }
+    }
+    if (!title || isGarbageTitle(title)) {
+      title = "Bank Foreclosure Property";
+    }
 
     // Location
     let locationStr = "";
     for (const line of lines) {
-      if (/^\w+,\s*\w+.*\d{6}/.test(line) || /^\w+,\s*\w+,\s*\w+/.test(line)) {
+      if ((/^\w+,\s*\w+.*\d{6}/.test(line) || /^\w+,\s*\w+,\s*\w+/.test(line)) && !isBankOrGarbage(line)) {
         locationStr = line;
         break;
       }
@@ -435,7 +470,7 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
     for (const line of lines) {
       if (line.includes("ROAD") || line.includes("STREET") || line.includes("NAGAR") ||
           line.includes("COLONY") || line.includes("SECTOR") || /^\d+/.test(line)) {
-        if (!line.includes("Auction") && !line.includes("Date") && !line.includes("Price")) {
+        if (!line.includes("Auction") && !line.includes("Date") && !line.includes("Price") && !isBankOrGarbage(line)) {
           address = line;
           break;
         }
@@ -883,17 +918,29 @@ async function scrapeIBCAuctions(
 
         const itemObj: RawBaankNetItem = {
           auctionId: card.auctionId,
-          bankPropertyId: "",
+          bankPropertyId: card.bankPropertyId || card.auctionId,
           title: card.title,
           reservePrice: card.reservePrice,
+          emdAmountText: card.emdAmountText,
+          bidIncrementText: card.bidIncrementText,
           bankName: card.bankName,
           location: card.location,
-          address: "",
+          address: card.address || card.location || "",
+          district: card.district,
+          contactPerson: card.contactPerson,
+          officerDesignation: card.officerDesignation,
           startDate: card.startDate,
           endDate: card.endDate,
           detailUrl: card.detailUrl,
           actionType: "IBC",
           auctionModule: "ibc",
+          corporateDebtorName: card.corporateDebtorName,
+          corporateDebtorCin: card.corporateDebtorCin,
+          liquidatorRegNo: card.liquidatorRegNo,
+          liquidatorEmail: card.liquidatorEmail,
+          ncltBench: card.ncltBench,
+          ncltCaseNo: card.ncltCaseNo,
+          processMemoUrl: card.processMemoUrl,
         };
         pageNewItems.push(itemObj);
         allItems.push(itemObj);
@@ -1154,12 +1201,44 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
         ...(listing.action_type ? { action_type: listing.action_type } : {}),
         ...(listing.district ? { district: listing.district } : {}),
         ...(listing.borrower_name ? { borrower_name: listing.borrower_name } : {}),
+        ...(listing.borrower_names && listing.borrower_names.length > 0 ? { borrower_names: listing.borrower_names } : {}),
         ...(listing.property_description ? { property_description: listing.property_description } : {}),
         ...(listing.thumbnail_url ? { thumbnail_url: listing.thumbnail_url } : {}),
         ...(listing.photo_count ? { photo_count: listing.photo_count } : {}),
         ...(listing.inspection_start_date ? { inspection_start_date: listing.inspection_start_date } : {}),
         ...(listing.inspection_end_date ? { inspection_end_date: listing.inspection_end_date } : {}),
         ...(listing.emd_end_date ? { emd_end_date: listing.emd_end_date } : {}),
+        ...(listing.emd_amount_text ? { emd_amount_text: listing.emd_amount_text } : {}),
+        ...(listing.emd_amount_value !== undefined ? { emd_amount_value: listing.emd_amount_value } : {}),
+        ...(listing.bid_increment_text ? { bid_increment_text: listing.bid_increment_text } : {}),
+        ...(listing.bid_increment_amount !== undefined ? { bid_increment_amount: listing.bid_increment_amount } : {}),
+        ...(listing.emd_account_number ? { emd_account_number: listing.emd_account_number } : {}),
+        ...(listing.emd_account_ifsc ? { emd_account_ifsc: listing.emd_account_ifsc } : {}),
+        ...(listing.emd_bank_name ? { emd_bank_name: listing.emd_bank_name } : {}),
+        ...(listing.outstanding_dues_text ? { outstanding_dues_text: listing.outstanding_dues_text } : {}),
+        ...(listing.outstanding_dues_value !== undefined ? { outstanding_dues_value: listing.outstanding_dues_value } : {}),
+        ...(listing.tender_fee_text ? { tender_fee_text: listing.tender_fee_text } : {}),
+        ...(listing.tender_fee_value !== undefined ? { tender_fee_value: listing.tender_fee_value } : {}),
+        ...(listing.cersai_id ? { cersai_id: listing.cersai_id } : {}),
+        ...(listing.title_type ? { title_type: listing.title_type } : {}),
+        ...(listing.encumbrances_text ? { encumbrances_text: listing.encumbrances_text } : {}),
+        ...(listing.branch_name ? { branch_name: listing.branch_name } : {}),
+        ...(listing.officer_designation ? { officer_designation: listing.officer_designation } : {}),
+        ...(listing.officer_email ? { officer_email: listing.officer_email } : {}),
+        ...(listing.contact_person ? { contact_person: listing.contact_person } : {}),
+        ...(listing.contact_phone ? { contact_phone: listing.contact_phone } : {}),
+        ...(listing.latitude !== undefined && listing.latitude !== null ? { latitude: listing.latitude } : {}),
+        ...(listing.longitude !== undefined && listing.longitude !== null ? { longitude: listing.longitude } : {}),
+        ...(listing.map_url ? { map_url: listing.map_url } : {}),
+        ...(listing.boundaries ? { boundaries: listing.boundaries } : {}),
+        ...(listing.corporate_debtor_name ? { corporate_debtor_name: listing.corporate_debtor_name } : {}),
+        ...(listing.corporate_debtor_cin ? { corporate_debtor_cin: listing.corporate_debtor_cin } : {}),
+        ...(listing.liquidator_reg_no ? { liquidator_reg_no: listing.liquidator_reg_no } : {}),
+        ...(listing.liquidator_email ? { liquidator_email: listing.liquidator_email } : {}),
+        ...(listing.nclt_bench ? { nclt_bench: listing.nclt_bench } : {}),
+        ...(listing.nclt_case_no ? { nclt_case_no: listing.nclt_case_no } : {}),
+        ...(listing.process_memo_url ? { process_memo_url: listing.process_memo_url } : {}),
+        ...(listing.extracted_pdf_text ? { extracted_pdf_text: listing.extracted_pdf_text } : {}),
         ...(listing.document_url ? { document_url: listing.document_url } : {}),
         ...(listing.document_urls && listing.document_urls.length > 0 ? { document_urls: listing.document_urls } : {}),
         ...(listing.source_url ? { source_url: listing.source_url } : {}),

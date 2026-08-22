@@ -164,9 +164,37 @@ describe("BaankNet Detail Page Parser (baanknetDetailParser.ts)", () => {
         inspectionEndDate: "2026-08-26 16:00",
         emdEndDate: "2026-08-30 17:00",
         emdAmountText: "₹ 5,00,000",
+        bidIncrementText: "₹ 25,000",
+        emdAccountNumber: "123456789012",
+        emdAccountIfsc: "SBIN0001234",
+        emdBankName: "State Bank of India",
+        outstandingDuesText: "₹ 75,00,000",
+        tenderFeeText: "₹ 2,000",
+        cersaiId: "CERSAI_8839201",
+        titleType: "Freehold",
+        encumbrancesText: "Free from encumbrances",
+        branchName: "SAMB Pune",
+        officerDesignation: "Chief Manager",
+        officerEmail: "officer@sbi.co.in",
         contactPerson: "Branch Manager",
         contactPhone: "9876543210",
         lenderName: "State Bank of India",
+        latitude: 18.5204,
+        longitude: 73.8567,
+        mapUrl: "https://maps.google.com/?q=18.5204,73.8567",
+        boundaries: {
+          north: "Road",
+          south: "Plot 2",
+          east: "Garden",
+          west: "Plot 4",
+        },
+        corporateDebtorName: "Acme Steel Ltd",
+        corporateDebtorCin: "U12345MH2010PTC123456",
+        liquidatorRegNo: "IBBI/IPA-001/IP-P00000/2021-22/10000",
+        liquidatorEmail: "liquidator@acme.com",
+        ncltBench: "NCLT Mumbai Bench-I",
+        ncltCaseNo: "CP (IB) No. 123/MB/2022",
+        processMemoUrl: "https://ibbi.baanknet.com/process-memo.pdf",
       };
 
       mergeDetailData(rawItem, detailData);
@@ -178,6 +206,22 @@ describe("BaankNet Detail Page Parser (baanknetDetailParser.ts)", () => {
       expect(rawItem.carpetArea).toBe("1000 sqft");
       expect(rawItem.photoUrls).toEqual(["https://baanknet.com/photo1.jpg"]);
       expect(rawItem.bankName).toBe("Known Bank"); // Kept original
+      expect(rawItem.bidIncrementText).toBe("₹ 25,000");
+      expect(rawItem.emdAccountNumber).toBe("123456789012");
+      expect(rawItem.emdAccountIfsc).toBe("SBIN0001234");
+      expect(rawItem.cersaiId).toBe("CERSAI_8839201");
+      expect(rawItem.titleType).toBe("Freehold");
+      expect(rawItem.branchName).toBe("SAMB Pune");
+      expect(rawItem.officerEmail).toBe("officer@sbi.co.in");
+      expect(rawItem.latitude).toBe(18.5204);
+      expect(rawItem.boundaries).toEqual({
+        north: "Road",
+        south: "Plot 2",
+        east: "Garden",
+        west: "Plot 4",
+      });
+      expect(rawItem.corporateDebtorCin).toBe("U12345MH2010PTC123456");
+      expect(rawItem.liquidatorRegNo).toBe("IBBI/IPA-001/IP-P00000/2021-22/10000");
     });
   });
 });

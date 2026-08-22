@@ -51,8 +51,41 @@ export interface BaankNetListing {
   photo_urls?: string[];
   document_urls?: string[];
   emd_amount_text?: string;
+  emd_amount_value?: number | null;
+  bid_increment_text?: string;
+  bid_increment_amount?: number | null;
+  emd_account_number?: string;
+  emd_account_ifsc?: string;
+  emd_bank_name?: string;
+  outstanding_dues_text?: string;
+  outstanding_dues_value?: number | null;
+  tender_fee_text?: string;
+  tender_fee_value?: number | null;
+  cersai_id?: string;
+  title_type?: string;
+  encumbrances_text?: string;
+  branch_name?: string;
+  officer_designation?: string;
+  officer_email?: string;
   contact_person?: string;
   contact_phone?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  map_url?: string;
+  boundaries?: {
+    north?: string;
+    south?: string;
+    east?: string;
+    west?: string;
+  };
+  corporate_debtor_name?: string;
+  corporate_debtor_cin?: string;
+  liquidator_reg_no?: string;
+  liquidator_email?: string;
+  nclt_bench?: string;
+  nclt_case_no?: string;
+  process_memo_url?: string;
+  extracted_pdf_text?: string;
   dedup_fingerprint?: string;
 }
 
@@ -127,6 +160,25 @@ export function parseBaanknetDate(dateStr: string): string | null {
 
 // ─── Location Parser ─────────────────────────────────────────────────────────
 
+function isBankOrGarbageLocation(str: string): boolean {
+  if (!str || str.length < 2) return true;
+  const lower = str.toLowerCase().trim();
+  return (
+    lower.includes("bank") ||
+    lower.includes("lender") ||
+    lower.includes("finance") ||
+    lower.includes("financial") ||
+    lower.includes("arc") ||
+    lower.includes("nbfc") ||
+    lower.includes("corporation") ||
+    lower.includes("showing") ||
+    lower.includes("result") ||
+    lower.includes("details") ||
+    lower.includes("property id") ||
+    lower.includes("auction id")
+  );
+}
+
 /**
  * Decompose a location string into state, city, pincode, and location label.
  *
@@ -154,7 +206,10 @@ export function parseBaanknetLocation(locStr: string): {
     cleanLoc = cleanLoc.replace(/\b\d{6}\b/, "").replace(/-\s*$/, "").trim();
   }
 
-  const parts = cleanLoc.split(/[,–-]/).map((p) => p.trim()).filter(Boolean);
+  const parts = cleanLoc
+    .split(/[,–-]/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0 && !isBankOrGarbageLocation(p));
 
   if (parts.length >= 2) {
     return {
@@ -284,8 +339,41 @@ export interface RawBaankNetItem {
   documentUrl?: string;
   documentUrls?: string[];
   emdAmountText?: string;
+  emdAmountValue?: number | null;
+  bidIncrementText?: string;
+  bidIncrementAmount?: number | null;
+  emdAccountNumber?: string;
+  emdAccountIfsc?: string;
+  emdBankName?: string;
+  outstandingDuesText?: string;
+  outstandingDuesValue?: number | null;
+  tenderFeeText?: string;
+  tenderFeeValue?: number | null;
+  cersaiId?: string;
+  titleType?: string;
+  encumbrancesText?: string;
+  branchName?: string;
+  officerDesignation?: string;
+  officerEmail?: string;
   contactPerson?: string;
   contactPhone?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  mapUrl?: string;
+  boundaries?: {
+    north?: string;
+    south?: string;
+    east?: string;
+    west?: string;
+  };
+  corporateDebtorName?: string;
+  corporateDebtorCin?: string;
+  liquidatorRegNo?: string;
+  liquidatorEmail?: string;
+  ncltBench?: string;
+  ncltCaseNo?: string;
+  processMemoUrl?: string;
+  extractedPdfText?: string;
 }
 
 /**
@@ -301,20 +389,51 @@ export function parseListings(
     if (!item.auctionId && !item.bankPropertyId) continue;
 
     const priceValue = parseIndianPrice(item.reservePrice);
+    const emdValue = item.emdAmountValue !== undefined && item.emdAmountValue !== null
+      ? item.emdAmountValue
+      : (item.emdAmountText ? parseIndianPrice(item.emdAmountText) : null);
+    const bidIncValue = item.bidIncrementAmount !== undefined && item.bidIncrementAmount !== null
+      ? item.bidIncrementAmount
+      : (item.bidIncrementText ? parseIndianPrice(item.bidIncrementText) : null);
+    const duesValue = item.outstandingDuesValue !== undefined && item.outstandingDuesValue !== null
+      ? item.outstandingDuesValue
+      : (item.outstandingDuesText ? parseIndianPrice(item.outstandingDuesText) : null);
+    const tenderFeeValue = item.tenderFeeValue !== undefined && item.tenderFeeValue !== null
+      ? item.tenderFeeValue
+      : (item.tenderFeeText ? parseIndianPrice(item.tenderFeeText) : null);
+
     const startDate = parseBaanknetDate(item.startDate) || new Date().toISOString();
     const endDate = parseBaanknetDate(item.endDate) || new Date(Date.now() + 30 * 86400000).toISOString();
     const { state, city, pincode, location } = parseBaanknetLocation(item.location || item.address);
-    const { propertyType, category, subcategory } = parsePropertyType(item.title);
+    const { propertyType, category, subcategory } = parsePropertyType(item.title || item.description || "");
     const areaInfo = parseCarpetArea(item.carpetArea || item.description || "");
 
     const inspStart = item.inspectionStartDate ? parseBaanknetDate(item.inspectionStartDate) : null;
     const inspEnd = item.inspectionEndDate ? parseBaanknetDate(item.inspectionEndDate) : null;
     const emdEnd = item.emdEndDate ? parseBaanknetDate(item.emdEndDate) : null;
 
+    let cleanTitle = (item.title || "").trim();
+    if (
+      !cleanTitle ||
+      cleanTitle.toLowerCase().startsWith("showing") ||
+      cleanTitle.toLowerCase().includes("10000+") ||
+      cleanTitle.toLowerCase().includes("results found") ||
+      cleanTitle.toLowerCase().includes("properties found") ||
+      cleanTitle.toLowerCase().includes("search results") ||
+      cleanTitle === "Bank Auction Property"
+    ) {
+      const areaPrefix = areaInfo.raw ? `${areaInfo.raw} ` : (item.carpetArea ? `${item.carpetArea} ` : "");
+      const pType = propertyType && propertyType !== "Bank Foreclosure Property" ? propertyType : "Bank Foreclosure Property";
+      const locSuffix = city && !city.toLowerCase().includes("bank")
+        ? ` in ${city}`
+        : (state && !state.toLowerCase().includes("bank") ? ` in ${state}` : "");
+      cleanTitle = `${areaPrefix}${pType}${locSuffix}` || "Bank Foreclosure Property";
+    }
+
     results.push({
       baanknet_auction_id: item.auctionId || item.bankPropertyId,
       bank_property_id: item.bankPropertyId || item.auctionId,
-      title: item.title || "Bank Auction Property",
+      title: cleanTitle,
       property_type: propertyType,
       reserve_price_text: item.reservePrice || "",
       reserve_price_value: priceValue,
@@ -367,8 +486,36 @@ export function parseListings(
       photo_urls: item.photoUrls,
       document_urls: item.documentUrls,
       emd_amount_text: item.emdAmountText,
+      emd_amount_value: emdValue,
+      bid_increment_text: item.bidIncrementText,
+      bid_increment_amount: bidIncValue,
+      emd_account_number: item.emdAccountNumber,
+      emd_account_ifsc: item.emdAccountIfsc,
+      emd_bank_name: item.emdBankName,
+      outstanding_dues_text: item.outstandingDuesText,
+      outstanding_dues_value: duesValue,
+      tender_fee_text: item.tenderFeeText,
+      tender_fee_value: tenderFeeValue,
+      cersai_id: item.cersaiId,
+      title_type: item.titleType,
+      encumbrances_text: item.encumbrancesText,
+      branch_name: item.branchName,
+      officer_designation: item.officerDesignation,
+      officer_email: item.officerEmail,
       contact_person: item.contactPerson,
       contact_phone: item.contactPhone,
+      latitude: item.latitude ?? null,
+      longitude: item.longitude ?? null,
+      map_url: item.mapUrl,
+      boundaries: item.boundaries,
+      corporate_debtor_name: item.corporateDebtorName,
+      corporate_debtor_cin: item.corporateDebtorCin,
+      liquidator_reg_no: item.liquidatorRegNo,
+      liquidator_email: item.liquidatorEmail,
+      nclt_bench: item.ncltBench,
+      nclt_case_no: item.ncltCaseNo,
+      process_memo_url: item.processMemoUrl,
+      extracted_pdf_text: item.extractedPdfText,
       dedup_fingerprint: computeDedupFingerprint({
         bank_property_id: item.bankPropertyId || "",
         pincode,
