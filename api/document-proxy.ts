@@ -135,7 +135,7 @@ export default async function handler(req: any, res: any): Promise<void> {
         return;
       }
 
-      // If it's an HTML page (like GeM view-auction-notice), clean and transform into a premium official document
+      // If it's an HTML page (like GeM view-auction-notice), clean and transform into a clean document starting at GENERAL DETAIL
       if (contentType.includes('html') || contentType.includes('text')) {
         let rawHtml = '';
         proxyRes.setEncoding('utf-8');
@@ -218,42 +218,52 @@ function getGeMSessionCookies(): Promise<string> {
 }
 
 /**
- * Transforms raw GeM portal HTML into a clean, professional in-app document
+ * Transforms raw GeM portal HTML into a clean document starting directly at GENERAL DETAIL
  */
 function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
-  // Strip away broken headers, navbars, and phone number links
   let cleanContent = rawHtml;
 
-  // Find the start of the actual notice content
-  const startMarkers = [
-    '<div class="container"',
-    'Auction Notice',
-    'General Detail',
-    '<table',
-    '<form',
-  ];
-
-  let bestIndex = -1;
-  for (const marker of startMarkers) {
-    const idx = cleanContent.indexOf(marker);
-    if (idx !== -1 && (bestIndex === -1 || idx < bestIndex)) {
-      bestIndex = idx;
+  // Search specifically for GENERAL DETAIL / General Details header
+  const genDetailMatch = cleanContent.match(/(?:GENERAL|General)\s+DETAIL/i);
+  if (genDetailMatch && genDetailMatch.index !== undefined) {
+    const matchIdx = genDetailMatch.index;
+    
+    // Look backwards up to 300 characters to capture the opening heading/div tag of GENERAL DETAIL
+    const beforeChunk = cleanContent.substring(Math.max(0, matchIdx - 300), matchIdx);
+    const tagMatch = beforeChunk.match(/<(div|h[1-6]|section|article)[^>]*>[^<]*$/i);
+    
+    if (tagMatch && tagMatch.index !== undefined) {
+      cleanContent = cleanContent.substring(Math.max(0, matchIdx - 300) + tagMatch.index);
+    } else {
+      cleanContent = cleanContent.substring(matchIdx);
+    }
+  } else {
+    // Fallback: search for first table or main content div if GENERAL DETAIL marker is missing
+    const tableMatch = cleanContent.match(/<table/i);
+    if (tableMatch && tableMatch.index !== undefined) {
+      cleanContent = cleanContent.substring(tableMatch.index);
     }
   }
 
-  if (bestIndex !== -1) {
-    cleanContent = cleanContent.substring(bestIndex);
-  }
-
-  // Remove common navbar snippets that might still linger
+  // Strip all lingering website navigation junk, headers, buttons, and redundant labels
   cleanContent = cleanContent
+    .replace(/AUCTION NOTICE\s*SAVE AS PDF\s*\|\s*GO BACK/gi, '')
+    .replace(/SAVE AS PDF\s*\|\s*GO BACK/gi, '')
+    .replace(/SAVE AS PDF/gi, '')
+    .replace(/GO BACK/gi, '')
+    .replace(/Auction Notice/gi, '')
     .replace(/1800-419-3436[\s\S]*?Need Help\?[\s\S]*?<\/ul>/gi, '')
-    .replace(/<ul[\s\S]*?Forward Auction[\s\S]*?<\/ul>/gi, '')
-    .replace(/<ul[\s\S]*?Sign Up[\s\S]*?<\/ul>/gi, '')
-    .replace(/<ul[\s\S]*?Login[\s\S]*?<\/ul>/gi, '')
+    .replace(/<header[\s\S]*?<\/header>/gi, '')
+    .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+    .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+    .replace(/<ul[\s\S]*?<\/ul>/gi, (m) => (m.includes('Bids') || m.includes('Login') || m.includes('Help') ? '' : m))
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/href="\/[^"]*"/gi, 'href="javascript:void(0)"')
     .replace(/href="http[^"]*"/gi, 'href="javascript:void(0)" target="_self"');
+
+  // Format key label patterns into styled label tags
+  const keyLabelRegex = /(Office\/Zone|Seller\/Auctioneer Name|Auctioneer Name|Seller Name|Reference No\.|Category|Auction Brief|Auction Detail|Starting Price|Reserve Price|EMD Amount|Payment Terms|Inspection Date)\s*:/gi;
+  cleanContent = cleanContent.replace(keyLabelRegex, '<div class="field-label-pill">$1</div>');
 
   const titleMatch = rawHtml.match(/<title>([^<]+)<\/title>/i);
   const docTitle = titleMatch ? titleMatch[1].trim() : 'Official Government e-Auction Notice Document';
@@ -266,15 +276,17 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
   <title>${escapeHtml(docTitle)}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #2563eb;
       --primary-dark: #1d4ed8;
+      --slate-950: #020617;
       --slate-900: #0f172a;
       --slate-800: #1e293b;
       --slate-700: #334155;
       --slate-600: #475569;
+      --slate-500: #64748b;
       --slate-100: #f1f5f9;
       --slate-50: #f8fafc;
       --border: #e2e8f0;
@@ -287,129 +299,123 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #f8fafc;
-      color: #1e293b;
+      color: var(--slate-900);
       line-height: 1.6;
       padding: 24px;
-      font-size: 13px;
+      font-size: 13.5px;
+      -webkit-font-smoothing: antialiased;
     }
     .document-wrapper {
-      max-width: 900px;
+      max-width: 960px;
       margin: 0 auto;
       background: #ffffff;
       border: 1px solid #e2e8f0;
-      border-radius: 16px;
+      border-radius: 20px;
       box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
       overflow: hidden;
     }
-    .official-header {
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    .document-header-banner {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
       color: #ffffff;
-      padding: 24px 32px;
+      padding: 20px 28px;
       border-bottom: 3px solid #2563eb;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
     }
-    .official-header-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .emblem-badge {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: rgba(37, 99, 235, 0.2);
-      border: 1px solid rgba(37, 99, 235, 0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-    }
-    .header-text h1 {
-      font-size: 16px;
+    .document-header-banner h2 {
+      font-size: 15px;
       font-weight: 800;
-      letter-spacing: -0.02em;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
-    }
-    .header-text p {
-      font-size: 11px;
-      color: #94a3b8;
-      font-family: 'JetBrains Mono', monospace;
-      margin-top: 2px;
-    }
-    .print-btn {
-      background: #2563eb;
-      color: #ffffff;
+      color: #f8fafc;
       border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 0.2s;
+      margin: 0;
+      padding: 0;
     }
-    .print-btn:hover {
-      background: #1d4ed8;
+    .document-header-banner .badge {
+      background: rgba(37, 99, 235, 0.3);
+      border: 1px solid rgba(147, 197, 253, 0.4);
+      color: #bfdbfe;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
     .document-body {
-      padding: 32px;
+      padding: 28px;
+    }
+    .field-label-pill {
+      display: inline-block;
+      margin-top: 14px;
+      margin-bottom: 4px;
+      color: #2563eb;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: #eff6ff;
+      border: 1px solid #dbeafe;
+      padding: 2px 8px;
+      border-radius: 6px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 16px 0 24px 0;
-      font-size: 12px;
-      border-radius: 8px;
+      margin: 18px 0 24px 0;
+      font-size: 12.5px;
+      border-radius: 12px;
       overflow: hidden;
       border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
     }
     th, td {
-      padding: 10px 14px;
+      padding: 11px 16px;
       border: 1px solid #e2e8f0;
       text-align: left;
+      vertical-align: middle;
     }
     th {
       background: #f8fafc;
       font-weight: 700;
-      color: #0f172a;
+      color: #1e293b;
       text-transform: uppercase;
       font-size: 11px;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #cbd5e1;
     }
     tr:nth-child(even) td {
-      background: #fafafa;
+      background: #f8fafc/60;
     }
-    h2, h3, h4 {
+    tr:hover td {
+      background: #f1f5f9;
+    }
+    h1, h2, h3, h4, .general-detail-title {
       color: #0f172a;
       font-weight: 800;
-      margin: 20px 0 10px 0;
-      padding-bottom: 6px;
-      border-bottom: 2px solid #f1f5f9;
-      font-size: 14px;
+      margin: 20px 0 12px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2563eb;
+      font-size: 15px;
       text-transform: uppercase;
       letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    strong, b {
+      color: #0f172a;
+      font-weight: 700;
     }
     a {
       color: #2563eb;
       text-decoration: none;
       pointer-events: none;
     }
-    .notice-footer {
-      background: #f8fafc;
-      padding: 16px 32px;
-      border-top: 1px solid #e2e8f0;
-      font-size: 11px;
-      color: #64748b;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-family: 'JetBrains Mono', monospace;
+    header, footer, nav, .official-header, .notice-footer, .print-btn {
+      display: none !important;
     }
     @media print {
       body {
@@ -419,43 +425,27 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
       .document-wrapper {
         border: none;
         box-shadow: none;
-      }
-      .print-btn {
-        display: none;
+        border-radius: 0;
       }
     }
   </style>
 </head>
 <body>
   <div class="document-wrapper">
-    <div class="official-header">
-      <div class="official-header-left">
-        <div class="emblem-badge">🏛️</div>
-        <div class="header-text">
-          <h1>Official e-Auction Notice Document</h1>
-          <p>Government of India • Forward Auction Portal</p>
-        </div>
-      </div>
-      <button onclick="window.print()" class="print-btn">
-        🖨️ Print / Save as PDF
-      </button>
+    <div class="document-header-banner">
+      <h2>Official e-Auction Notice Document</h2>
+      <span class="badge">Verified Government Notice</span>
     </div>
-
     <div class="document-body">
       ${cleanContent}
-    </div>
-
-    <div class="notice-footer">
-      <span>Verified Official Tender Notice • In-App Document Stream</span>
-      <span>${escapeHtml(filename)}</span>
     </div>
   </div>
 </body>
 </html>`;
 }
 
-function escapeHtml(str: string): string {
-  return str
+function escapeHtml(unsafe: string): string {
+  return (unsafe || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

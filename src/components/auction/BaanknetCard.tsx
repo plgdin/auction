@@ -557,34 +557,10 @@ export const BaanknetCard = memo(function BaanknetCard({
               View Details
             </button>
 
-            {downloadHref && (
-              <a
-                href={downloadHref}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className={`inline-flex justify-center items-center h-10 px-3.5 rounded-full text-sm font-semibold transition-all cursor-pointer shrink-0 ${
-                  isArchived
-                    ? "text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-2xs"
-                    : "text-slate-700 bg-slate-100 hover:bg-slate-200"
-                }`}
-                title={isArchived ? "Download Verified PDF (High-Speed Storage Mirror)" : "Download Notice PDF"}
-              >
-                <Download className="w-4 h-4" />
-                {isArchived && (
-                  <span className="ml-1 text-[9px] font-black text-emerald-700 uppercase">
-                    PDF
-                  </span>
-                )}
-              </a>
-            )}
-
-            {onInterestedToggle && (
-              <ButtonWithIconDemo
-                isInterested={isInterested}
-                onInterestedToggle={onInterestedToggle}
-              />
-            )}
+            <ButtonWithIconDemo
+              isInterested={isInterested}
+              onInterestedToggle={onInterestedToggle}
+            />
           </div>
         </div>
       </div>

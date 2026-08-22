@@ -63,7 +63,7 @@ export function FeaturedAuctionsSection() {
       ...auc,
       id: auc.id,
       mstc_auction_number: auc.reference_number || auc.mstc_auction_number || `MSTC/W-REG/26-27/${auc.id.substring(0, 5).toUpperCase()}`,
-      category_name: auc.category?.name ? `${auc.category.name} | ${auc.title}` : (auc.category_name || 'Scrap & Material | Industrial Assets'),
+      category_name: auc.category?.name || auc.category_name || 'Scrap & Material',
       location: auc.location || 'Maharashtra',
       seller_name: auc.seller?.name || auc.regional_office || 'Western Regional Office',
       opening_date: auc.start_time || auc.opening_date || new Date().toISOString(),

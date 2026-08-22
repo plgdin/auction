@@ -1,11 +1,11 @@
 import { useState, useMemo, memo } from 'react';
 import { Eye, MapPin, Building2, Calendar, Clock, Landmark, Copy, Check, Gavel, Info, Download } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
-import type { GemAuction } from '../../services/publicService';
 import { getGemItemImage } from '../../utils/gemImageResolver';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice, formatPriceString } from '../../utils/currency';
+import { cleanCategoryName } from '../../utils/cleanCategory';
 
 interface GemCardProps {
   item: GemAuction;
@@ -148,7 +148,7 @@ export const GemCard = memo(function GemCard({
 
   const locationDisplay = [item.city, item.state || item.location].filter(Boolean).join(', ') || 'India';
   const orgName = item.organisation || item.department || 'Government of India';
-  const mainCategory = item.category_name || 'GeM Forward Auction';
+  const mainCategory = cleanCategoryName(item.category_name, item.title);
 
   const renderCardHeader = () => (
     <div className="flex flex-col gap-2 mb-3">
@@ -327,12 +327,10 @@ export const GemCard = memo(function GemCard({
                   View Details
                 </button>
 
-                {onInterestedToggle && (
-                  <ButtonWithIconDemo
-                    isInterested={isInterested}
-                    onInterestedToggle={onInterestedToggle}
-                  />
-                )}
+                <ButtonWithIconDemo
+                  isInterested={isInterested}
+                  onInterestedToggle={onInterestedToggle}
+                />
               </div>
             </div>
           </div>
@@ -448,7 +446,7 @@ export const GemCard = memo(function GemCard({
         {/* Card Footer */}
         <div className="pt-4 border-t border-slate-100 flex flex-col gap-3 mt-auto">
           <div className="flex justify-between items-center">
-            <span className="text-xs text-slate-400 font-medium">Bidding Window</span>
+            <span className="text-xs text-slate-400 font-medium">Auction Status</span>
             {timeLeftBadge}
           </div>
 
@@ -461,25 +459,10 @@ export const GemCard = memo(function GemCard({
               View Details
             </button>
 
-            {item.document_url && (
-              <a
-                href={item.document_url}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex justify-center items-center h-10 px-3.5 rounded-full text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer shrink-0"
-                title="Download GeM Notice PDF"
-              >
-                <Download className="w-4 h-4" />
-              </a>
-            )}
-
-            {onInterestedToggle && (
-              <ButtonWithIconDemo
-                isInterested={isInterested}
-                onInterestedToggle={onInterestedToggle}
-              />
-            )}
+            <ButtonWithIconDemo
+              isInterested={isInterested}
+              onInterestedToggle={onInterestedToggle}
+            />
           </div>
         </div>
       </div>

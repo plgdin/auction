@@ -17,13 +17,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 
 const createOrderSchema = z.object({
-  amount: z.number().positive(),
+  amount: z.number().nonnegative(),
   currency: z.string().optional().default('INR'),
   receipt: z.string().optional(),
   planId: z.string().min(1, "planId is required"),
   billingCycle: z.enum(['monthly', 'annual']),
-  extraSeats: z.coerce.number().int().nonnegative().optional().default(0),
   couponCode: z.string().optional().nullable(),
+  isTrial: z.boolean().optional().default(false),
 });
 
 export default async function handler(req: any, res: any) {
@@ -114,7 +114,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const { amount: clientAmount, currency, receipt, planId, billingCycle, extraSeats, couponCode } = validation.data;
+    const { amount: clientAmount, planId, billingCycle, couponCode, isTrial } = validation.data;
 
     // Calculate subtotal & total dynamically on server to ensure pricing integrity
     const isExplorerFree = planId === 'explorer' || planId === 'starter' || planId === 'free';
@@ -128,10 +128,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    const seatUnitPrice = billingCycle === 'annual' ? 4990 : 499;
-    const extraSeatsNum = Math.max(0, Number(extraSeats) || 0);
-    const extraSeatsCost = isExplorerFree ? 0 : extraSeatsNum * seatUnitPrice;
-    const subtotalBeforeDiscount = baseSubtotal + extraSeatsCost;
+    const subtotalBeforeDiscount = baseSubtotal;
 
     let appliedDiscount = 0;
     if (couponCode && couponCode.trim()) {
@@ -154,8 +151,7 @@ export default async function handler(req: any, res: any) {
 
     const discountAmount = Math.round(subtotalBeforeDiscount * appliedDiscount);
     const subtotal = subtotalBeforeDiscount - discountAmount;
-    const gst = Math.round(subtotal * 0.18);
-    const calculatedTotal = subtotal + gst;
+    const calculatedTotal = subtotal;
     const amount = calculatedTotal * 100; // in paise
 
     // Verify client-sent amount aligns with calculated amount (within 200 paise / 2 INR margin for rounding)
@@ -167,29 +163,58 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    if (amount < 100) {
+    if (amount < 100 && !isTrial && !isExplorerFree) {
       res.status(400).json({ success: false, error: 'Bad Request: Amount must be >= 100 paise' });
       return;
     }
 
-    // Call Razorpay API to create order
-    const order = await razorpay.orders.create({
-      amount,
-      currency: currency || 'INR',
-      receipt: receipt || `rcpt_${Date.now()}`,
+    // Map internal plans to Razorpay Plan IDs
+    const planMapping: Record<string, Record<string, string>> = {
+      'pro': {
+        'monthly': 'plan_TSlNkTzPUEMs8y',
+        'annual': 'plan_TSlWF58hGyT8OH'
+      },
+      'premium': {
+        'monthly': 'plan_TSlNkTzPUEMs8y',
+        'annual': 'plan_TSlWF58hGyT8OH'
+      },
+      'go': {
+        'monthly': 'plan_TSlDazI9xe35m5',
+        'annual': 'plan_TSlWowCfMg1nUc'
+      },
+      'go-subscription': {
+        'monthly': 'plan_TSlDazI9xe35m5',
+        'annual': 'plan_TSlWowCfMg1nUc'
+      }
+    };
+
+    const rzpPlanId = planMapping[planId]?.[billingCycle];
+
+    if (!rzpPlanId) {
+      res.status(400).json({ success: false, error: 'Invalid plan or billing cycle selection.' });
+      return;
+    }
+
+    // Call Razorpay API to create subscription
+    const startAt = isTrial ? Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) : undefined;
+    const subscription = await razorpay.subscriptions.create({
+      plan_id: rzpPlanId,
+      customer_notify: 1,
+      total_count: billingCycle === 'annual' ? 10 : 120, // 10 years or 10 years in months
+      start_at: startAt,
       notes: {
         planId: planId || '',
         billingCycle: billingCycle || '',
-        extraSeats: String(extraSeats || '0'),
         couponApplied: appliedDiscount > 0 ? String(couponCode).toUpperCase() : 'None',
+        isTrial: isTrial ? 'true' : 'false'
       }
     });
 
-    // 4. Save order to the database to associate it with the user and block payment replay
+    // 4. Save subscription to the database (in orders table for backward compatibility)
     const { error: dbError } = await supabase
       .from('orders')
       .insert({
-        id: order.id,
+        id: subscription.id,
         user_id: user.id,
         plan_id: planId,
         billing_cycle: billingCycle,
@@ -198,7 +223,7 @@ export default async function handler(req: any, res: any) {
       });
 
     if (dbError) {
-      console.error('[create-order] Failed to save order in database:', dbError);
+      console.error('[create-order] Failed to save subscription in database:', dbError);
       res.status(500).json({ success: false, error: 'Database error creating transaction.' });
       return;
     }
@@ -206,9 +231,9 @@ export default async function handler(req: any, res: any) {
     res.status(200).json({
       success: true,
       data: {
-        order_id: order.id,
-        amount: order.amount,
-        currency: order.currency,
+        order_id: subscription.id, // Keep key as order_id for frontend compatibility, but it holds sub_ id
+        amount: calculatedTotal * 100,
+        currency: 'INR',
       }
     });
   } catch (error: any) {
