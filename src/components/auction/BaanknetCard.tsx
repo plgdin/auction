@@ -174,17 +174,39 @@ export const BaanknetCard = memo(function BaanknetCard({
   }, [item.title, item.carpet_area, item.property_type, item.city, item.state, ibcClassification, ibcLocation]);
 
   const locationDisplay = useMemo(() => {
-    const isBank = (s?: string) => !s || s.toLowerCase().includes('bank') || s.toLowerCase().includes('showing') || s.toLowerCase().includes('lender');
-    const validCity = !isBank(item.city) ? item.city : '';
-    const validState = !isBank(item.state) ? item.state : (!isBank(item.location) ? item.location : '');
+    const isBankOrGeneric = (s?: string) => {
+      if (!s) return true;
+      const lower = s.toLowerCase().trim();
+      return lower === 'india' || lower.includes('bank') || lower.includes('showing') || lower.includes('lender') || lower.includes('result');
+    };
+
+    let titleCity = '';
+    let titleState = '';
+    if (item.title) {
+      const match = item.title.match(/(?:for\s*sale\s*in|in|at)\s+([A-Za-z\s.-]+?),\s*([A-Za-z\s.-]+?)(?:$|\s*\(|\s*-)/i);
+      if (match) {
+        titleCity = match[1].trim();
+        titleState = match[2].trim();
+      } else {
+        const single = item.title.match(/for\s*sale\s*in\s+([A-Za-z\s.-]+)$/i);
+        if (single) {
+          const parts = single[1].split(',').map(s => s.trim());
+          titleCity = parts[0] || '';
+          titleState = parts[1] || '';
+        }
+      }
+    }
+
+    const validCity = !isBankOrGeneric(item.city) ? item.city : titleCity;
+    const validState = !isBankOrGeneric(item.state) ? item.state : (titleState || (!isBankOrGeneric(item.location) ? item.location : ''));
     const parts = [validCity, validState].filter(Boolean);
     if (parts.length > 0) return parts.join(', ');
     if (ibcLocation) return ibcLocation;
-    if (item.full_address && !isBank(item.full_address) && !item.full_address.includes('Asset Classification')) {
+    if (item.full_address && !isBankOrGeneric(item.full_address) && !item.full_address.includes('Asset Classification')) {
       return item.full_address.length > 35 ? `${item.full_address.slice(0, 35)}...` : item.full_address;
     }
     return 'India';
-  }, [item.city, item.state, item.location, item.full_address, ibcLocation]);
+  }, [item.city, item.state, item.location, item.full_address, item.title, ibcLocation]);
 
   const mainCategory = item.property_type || 'Bank Property';
 

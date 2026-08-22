@@ -3,7 +3,7 @@ import {
   X, Copy, Check, Calendar, Landmark, Heart, Clock, Download, FileDown, Eye, Image, Ruler,
   ChevronLeft, ChevronRight, Shield, User, FileText, CreditCard, Scale, Building,
   Compass, MapPin, ExternalLink, Mail, Phone, Tag, DollarSign, AlertCircle, Award,
-  FileCode, Layers, Gavel, Radio, TrendingUp, Info, Building2, ShieldCheck
+  FileCode, Layers, Gavel, Radio, TrendingUp, Info, Building2, ShieldCheck, Car, Gauge, Fuel, Wrench
 } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
@@ -156,7 +156,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
         const diff = startMs - now;
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const mins = Math.floor((diff % (1000 * 60)) / 1000);
         setCountdownStr(`Starts in: ${days}d ${hours}h ${mins}m`);
       } else {
         setCountdownStr('Schedule Pending');
@@ -174,7 +174,18 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
     setTimeout(() => setCopiedRef(false), 2000);
   };
 
-  const isBank = (s?: string) => !s || s.toLowerCase().includes('bank') || s.toLowerCase().includes('showing') || s.toLowerCase().includes('lender');
+  const isBankOrGeneric = (s?: string) => {
+    if (!s) return true;
+    const lower = s.toLowerCase().trim();
+    return (
+      lower === 'india' ||
+      lower.includes('bank') ||
+      lower.includes('showing') ||
+      lower.includes('lender') ||
+      lower.includes('result') ||
+      lower.includes('filter')
+    );
+  };
   
   // Extract clean IBC and raw fields if data was concatenated
   const rawTextBlob = `${item.title || ''} ${item.property_description || ''} ${item.raw_description || ''}`;
@@ -185,9 +196,80 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const ibcLocation = ibcLocMatch ? ibcLocMatch[1].replace(/Contact\s*Us/i, '').trim() : '';
   const ibcIpName = ibcIpMatch ? ibcIpMatch[1].replace(/Contact\s*Us/i, '').trim() : '';
 
-  const cleanCity = !isBank(item.city) ? item.city : (ibcLocation.split(',')[1]?.trim() || '');
-  const cleanState = !isBank(item.state) ? item.state : (!isBank(item.location) ? item.location : (ibcLocation.split(',')[0]?.trim() || ''));
+  // Extract location from title (e.g. "... for sale in East Singhbhum, Jharkhand")
+  const titleLocation = useMemo(() => {
+    if (!item.title) return { city: '', state: '' };
+    const match = item.title.match(/(?:for\s*sale\s*in|in|at)\s+([A-Za-z\s.-]+?),\s*([A-Za-z\s.-]+?)(?:$|\s*\(|\s*-)/i);
+    if (match) {
+      return { city: match[1].trim(), state: match[2].trim() };
+    }
+    const singleMatch = item.title.match(/for\s*sale\s*in\s+([A-Za-z\s.-]+)$/i);
+    if (singleMatch) {
+      const parts = singleMatch[1].split(',').map(s => s.trim());
+      return { city: parts[0] || '', state: parts[1] || '' };
+    }
+    return { city: '', state: '' };
+  }, [item.title]);
+
+  const cleanCity = !isBankOrGeneric(item.city) 
+    ? item.city! 
+    : (titleLocation.city || (ibcLocation.split(',')[1]?.trim() || ''));
+
+  const cleanState = !isBankOrGeneric(item.state) 
+    ? item.state! 
+    : (titleLocation.state || (!isBankOrGeneric(item.location) ? item.location! : (ibcLocation.split(',')[0]?.trim() || '')));
+
   const cleanLocationStr = [cleanCity, cleanState].filter(Boolean).join(', ') || ibcLocation || 'India';
+
+  const isVehicle = useMemo(() => {
+    const pType = (item.property_type || '').toLowerCase();
+    const title = (item.title || '').toLowerCase();
+    return (
+      item.auction_module === 'vehicle' ||
+      pType.includes('vehicle') ||
+      pType.includes('car') ||
+      pType.includes('truck') ||
+      pType.includes('bus') ||
+      pType.includes('wheeler') ||
+      pType.includes('commercial') ||
+      title.includes('truck') ||
+      title.includes('car') ||
+      title.includes('bus') ||
+      title.includes('ashok leyland') ||
+      title.includes('tata') ||
+      title.includes('mahindra') ||
+      title.includes('maruti') ||
+      title.includes('hyundai')
+    );
+  }, [item.property_type, item.title, item.auction_module]);
+
+  // Extract vehicle attributes from title & description
+  const vehicleSpecs = useMemo(() => {
+    if (!isVehicle) return null;
+    const year = item.title?.match(/\b(20[0-2]\d|19\d\d)\b/)?.[0] || undefined;
+    const regNo = rawTextBlob.match(/\b([A-Z]{2}\s*\d{1,2}\s*[A-Z]{1,3}\s*\d{4})\b/i)?.[0] || undefined;
+    const fuel = rawTextBlob.match(/Fuel\s*Type\s*:?\s*(Diesel|Petrol|CNG|Electric|LPG|Hybrid)/i)?.[1] || undefined;
+    const odo = rawTextBlob.match(/Odometer\s*:?\s*([\d,.]+\s*(?:km|kms)?)/i)?.[1] || undefined;
+    const trans = rawTextBlob.match(/Transmission\s*:?\s*(Manual|Automatic)/i)?.[1] || undefined;
+    
+    let makeModel = '';
+    if (item.title) {
+      const cleaned = item.title
+        .replace(/^(?:19\d\d|20\d\d)\s*/i, '')
+        .replace(/\s*for\s*sale\s*in.*$/i, '')
+        .trim();
+      if (cleaned) makeModel = cleaned;
+    }
+
+    return {
+      year,
+      makeModel: makeModel || item.property_type,
+      regNo,
+      fuel,
+      odo,
+      trans,
+    };
+  }, [isVehicle, item.title, rawTextBlob, item.property_type]);
 
   const displayTitle = useMemo(() => {
     if (
@@ -227,11 +309,11 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   }, [item.bank_property_id, displayAuctionId]);
 
   const displayFullAddress = useMemo(() => {
-    if (item.full_address && item.full_address.trim().length > 3 && !item.full_address.includes('Asset Classification')) {
+    if (item.full_address && item.full_address.trim().length > 3 && !item.full_address.includes('Asset Classification') && item.full_address.trim().toLowerCase() !== 'india') {
       return item.full_address;
     }
     if (ibcLocation) return ibcLocation;
-    if (cleanLocationStr && cleanLocationStr !== 'India') return cleanLocationStr;
+    if (cleanLocationStr && cleanLocationStr.toLowerCase() !== 'india') return cleanLocationStr;
     return 'Address details not provided. Please refer to the official bank listing portal.';
   }, [item.full_address, ibcLocation, cleanLocationStr]);
 
@@ -559,14 +641,77 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                 </div>
               )}
 
-              {/* Property / Asset Specifications */}
+              {/* Asset Specifications: Vehicle vs Real Estate */}
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-slate-400" /> Asset & Property Specifications
+                  <Tag className="w-4 h-4 text-slate-400" /> {isVehicle ? 'Vehicle & Automobile Specifications' : 'Asset & Property Specifications'}
                 </h3>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {item.carpet_area && (
+                  {/* Vehicle Specific Cards */}
+                  {isVehicle && vehicleSpecs && (
+                    <>
+                      {vehicleSpecs.makeModel && (
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 col-span-2">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Make & Model</span>
+                          <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                            <Car className="w-3.5 h-3.5 text-indigo-600" />
+                            {vehicleSpecs.makeModel}
+                          </span>
+                        </div>
+                      )}
+
+                      {vehicleSpecs.year && (
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Model / Mfg Year</span>
+                          <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                            {vehicleSpecs.year}
+                          </span>
+                        </div>
+                      )}
+
+                      {vehicleSpecs.regNo && (
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Registration No.</span>
+                          <span className="text-xs font-mono font-bold text-indigo-700 mt-0.5">{vehicleSpecs.regNo}</span>
+                        </div>
+                      )}
+
+                      {vehicleSpecs.fuel && (
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Fuel Type</span>
+                          <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                            <Fuel className="w-3.5 h-3.5 text-slate-500" />
+                            {vehicleSpecs.fuel}
+                          </span>
+                        </div>
+                      )}
+
+                      {vehicleSpecs.odo && (
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Odometer</span>
+                          <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                            <Gauge className="w-3.5 h-3.5 text-slate-500" />
+                            {vehicleSpecs.odo}
+                          </span>
+                        </div>
+                      )}
+
+                      {vehicleSpecs.trans && (
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Transmission</span>
+                          <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                            <Wrench className="w-3.5 h-3.5 text-slate-500" />
+                            {vehicleSpecs.trans}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Real Estate Specific Cards */}
+                  {!isVehicle && item.carpet_area && (
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Carpet / Built-up Area</span>
                       <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
@@ -576,7 +721,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                     </div>
                   )}
 
-                  {item.possession_status && (
+                  {!isVehicle && item.possession_status && (
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Possession Status</span>
                       <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
@@ -586,7 +731,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                     </div>
                   )}
 
-                  {item.action_type && (
+                  {!isVehicle && item.action_type && (
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Legal Action Type</span>
                       <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
@@ -596,13 +741,14 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                     </div>
                   )}
 
-                  {item.furnishing && (
+                  {!isVehicle && item.furnishing && (
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Furnishing</span>
                       <span className="text-xs font-bold text-slate-900 mt-0.5">{item.furnishing}</span>
                     </div>
                   )}
 
+                  {/* Clean City & State Cards */}
                   {cleanCity && (
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">District / City</span>
@@ -820,7 +966,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
               </div>
 
               {/* Official Bank Document Card */}
-              {availableDocs.length > 0 && primaryDoc && (
+              {availableDocs.length > 0 && primaryDoc ? (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
                     <span>Official Bank Document</span>
@@ -873,6 +1019,27 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                       </a>
                     </div>
                   </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+                  <div className="flex items-center gap-2 text-slate-800 font-bold text-xs">
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                    <span>Bank Sale Notice & Tender</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Official tender documents, vehicle inspection notes, and EMD guidelines are available directly inside the bank's auction portal.
+                  </p>
+                  {item.source_url && (
+                    <a
+                      href={item.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-bold text-slate-900 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] transition-all cursor-pointer shadow-2xs border border-slate-200"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-amber-500" />
+                      <span>View Notice on Bank Portal ↗</span>
+                    </a>
+                  )}
                 </div>
               )}
 
