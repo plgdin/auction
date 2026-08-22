@@ -3,7 +3,7 @@ import {
   X, Copy, Check, Calendar, Landmark, Heart, Clock, FileDown, Eye, Image, Ruler,
   ChevronLeft, ChevronRight, Shield, User, FileText, CreditCard, Scale, Building,
   Compass, MapPin, ExternalLink, Mail, Phone, Tag, DollarSign, AlertCircle, Award,
-  FileCode, Layers
+  FileCode, Layers, Gavel, Radio, TrendingUp
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { BaanknetAuction } from '../../services/publicService';
@@ -969,11 +969,70 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
 
             {/* Countdown Banner */}
             <div className="bg-indigo-50 border border-indigo-150 rounded-xl p-4.5 flex items-center justify-between text-indigo-900 shadow-2xs">
-              <span className="text-xs font-bold uppercase tracking-wider">Bidding Timeline</span>
+              <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Radio className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
+                Bidding Timeline
+              </span>
               <span className="font-black text-sm md:text-base tracking-wide flex items-center gap-2">
                 <span className="w-2 h-2 bg-indigo-500 rounded-full animate-ping shrink-0" />
                 {countdownStr}
               </span>
+            </div>
+
+            {/* Live Bidding & Official Participation Protocol */}
+            <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 text-white rounded-2xl p-5 border border-indigo-900/50 shadow-md">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                    <Gavel className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
+                      Official Bank e-Auction Participation
+                    </h4>
+                    <span className="text-[11px] text-slate-300">
+                      {isLive ? '🟢 Live bidding room open on bank portal' : 'Scheduled e-Auction under Bank / SARFAESI rules'}
+                    </span>
+                  </div>
+                </div>
+
+                {item.source_url && (
+                  <a
+                    href={item.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-600 text-white rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer shrink-0"
+                  >
+                    Enter Bank Auction Room
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-3.5 text-xs">
+                <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Opening Reserve</span>
+                  <span className="font-extrabold text-amber-300 text-sm mt-0.5 block">{formattedPrice}</span>
+                </div>
+
+                <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Min. Increment Step</span>
+                  <span className="font-extrabold text-indigo-300 text-sm mt-0.5 block">
+                    {item.bid_increment_text || (item.bid_increment_amount ? `₹ ${item.bid_increment_amount.toLocaleString('en-IN')}` : 'As per Bank Terms')}
+                  </span>
+                </div>
+
+                <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">EMD Deposit Req.</span>
+                  <span className="font-extrabold text-emerald-300 text-sm mt-0.5 block">
+                    {item.emd_amount_text || (item.emd_amount_value ? `₹ ${item.emd_amount_value.toLocaleString('en-IN')}` : '10% of Reserve')}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-400 mt-3.5 leading-relaxed bg-white/5 p-3 rounded-xl border border-white/5">
+                🔒 <strong>Bidding Protocol:</strong> Live bids are placed securely inside the bank's designated e-Auction room. Ensure you have submitted your KYC, EMD deposit, and received approved bidder credentials before bidding closes.
+              </p>
             </div>
           </div>
 
@@ -1002,6 +1061,18 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {item.source_url && (
+              <a
+                href={item.source_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
+                Bank Portal ↗
+              </a>
+            )}
+
             {availableDocs.length > 0 ? (
               availableDocs.map((doc, idx) => (
                 <div key={idx} className="flex items-center gap-1">
