@@ -435,7 +435,7 @@ export const GemBidCard = memo(function GemBidCard({
         {/* Card Footer */}
         <div className="pt-4 border-t border-slate-100 flex flex-col gap-3 mt-auto">
           <div className="flex justify-between items-center">
-            <span className="text-xs text-slate-400 font-medium">Bidding Window</span>
+            <span className="text-xs text-slate-400 font-medium">Auction Status</span>
             {timeLeftBadge}
           </div>
 
