@@ -461,19 +461,6 @@ export const GemCard = memo(function GemCard({
               View Details
             </button>
 
-            {item.document_url && (
-              <a
-                href={item.document_url}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex justify-center items-center h-10 px-3.5 rounded-full text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer shrink-0"
-                title="Download GeM Notice PDF"
-              >
-                <Download className="w-4 h-4" />
-              </a>
-            )}
-
             {onInterestedToggle && (
               <ButtonWithIconDemo
                 isInterested={isInterested}
