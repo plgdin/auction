@@ -123,6 +123,45 @@ export function getBaanknetStoragePath(
   return `baanknet-documents/${cleanAuctionId}/${filename}`;
 }
 
+const MAX_DOCS_PER_AUCTION = 10;
+
+/**
+ * Validates that a URL is a genuine auction/notice document and not a site-wide navigation/circular link.
+ */
+export function isValidAuctionDocUrl(urlStr: string): boolean {
+  if (!urlStr || urlStr.length < 5) return false;
+  if (urlStr.startsWith("javascript:") || urlStr === "#") return false;
+  const lower = urlStr.toLowerCase();
+  
+  // Reject portal site-wide downloads, guidelines, circulars, general orders
+  if (
+    lower.includes("/home/downloads") ||
+    lower.includes("/downloads") ||
+    lower.includes("/circulars") ||
+    lower.includes("/guidelines") ||
+    lower.includes("/faq") ||
+    lower.includes("/act") ||
+    lower.includes("/rules") ||
+    lower.includes("ibbi.gov.in/uploads/order/") ||
+    lower.includes("ibbi.gov.in/uploads/circulars/")
+  ) {
+    return false;
+  }
+
+  // Must be PDF or genuine document endpoint
+  return (
+    lower.endsWith(".pdf") ||
+    lower.includes(".pdf?") ||
+    lower.includes("download") ||
+    lower.includes("document") ||
+    lower.includes("notice") ||
+    lower.includes("tender") ||
+    lower.includes("memo") ||
+    lower.includes("view-doc") ||
+    lower.includes("viewfile")
+  );
+}
+
 /**
  * Normalizes all document URLs from a record into a clean, deduplicated array.
  */
@@ -146,7 +185,7 @@ export function extractUniqueDocUrls(record: BaanknetQueueRecord): string[] {
 
   for (const urlStr of rawList) {
     if (!urlStr || urlStr.length < 5) continue;
-    if (urlStr.startsWith("javascript:") || urlStr === "#") continue;
+    if (!isValidAuctionDocUrl(urlStr)) continue;
     
     // Normalize relative paths if necessary
     let normalized = urlStr;
@@ -159,6 +198,7 @@ export function extractUniqueDocUrls(record: BaanknetQueueRecord): string[] {
     if (!seen.has(normalized)) {
       seen.add(normalized);
       cleanList.push(normalized);
+      if (cleanList.length >= MAX_DOCS_PER_AUCTION) break;
     }
   }
 

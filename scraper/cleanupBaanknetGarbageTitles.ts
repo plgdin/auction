@@ -71,6 +71,21 @@ async function runCleanup() {
   let fixedCount = 0;
 
   for (const record of records) {
+    // 0. Purge fake navigation items like "Guide" or "User Guide"
+    if (
+      record.baanknet_auction_id?.toLowerCase() === "guide" ||
+      record.baanknet_auction_id?.toLowerCase().includes("user guide") ||
+      record.title?.toLowerCase() === "user guide" ||
+      record.title?.toLowerCase() === "guide"
+    ) {
+      console.log(`  [Deleting Fake Navigation Record ID "${record.baanknet_auction_id}"]`);
+      if (!isDryRun) {
+        await supabase.from("baanknet_auctions").delete().eq("id", record.id);
+      }
+      fixedCount++;
+      continue;
+    }
+
     let changed = false;
     const updates: Record<string, any> = {};
 
