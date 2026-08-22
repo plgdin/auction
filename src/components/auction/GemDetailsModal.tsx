@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Clock, Eye, Heart, Calendar, Building2, FileText } from 'lucide-react';
+import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Clock, Eye, Heart, Calendar, Building2, FileText, Phone, UserCheck, ShieldCheck } from 'lucide-react';
 import clsx from 'clsx';
 import type { GemAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
@@ -20,6 +20,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
 }) => {
   const [copiedRef, setCopiedRef] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
   const [countdownStr, setCountdownStr] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'details'>('details');
 
@@ -102,7 +103,6 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     const state = item.state || (item.location !== 'India' ? item.location : '');
     const pin = item.pincode || '';
 
-    // If pincode is found in raw_description and not set
     let extractedPin = pin;
     if (!extractedPin && item.raw_description) {
       const pinMatch = item.raw_description.match(/\b\d{6}\b/);
@@ -118,6 +118,85 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
       state: state || item.location || 'India',
       pincode: extractedPin || null,
       fullAddress: item.full_address || null
+    };
+  }, [item]);
+
+  // Helper to extract Contact Officers & Phone Numbers from Title and Raw Description
+  const contactDetails = useMemo(() => {
+    const combinedText = `${item.title} ${item.raw_description || ''}`;
+    const contacts: { name: string; phone?: string }[] = [];
+
+    // Extract phone numbers (10-digit mobile or landline)
+    const phoneMatches = Array.from(
+      new Set(combinedText.match(/\b[6-9]\d{9}\b|\b\d{5}\s*\d{5}\b|\b\d{3,5}[-\s]\d{6,8}\b/g) || [])
+    );
+
+    // Extract named contacts like "mR. Dilip Gangad", "Prateek Raut", "Anagha Bilay"
+    const nameRegex = /(?:mr\.?|mrs\.?|ms\.?|contact|officer|person)\s*:?\s*([a-zA-Z\s.]{3,30})/gi;
+    let match;
+    const namesFound: string[] = [];
+
+    while ((match = nameRegex.exec(combinedText)) !== null) {
+      const cleaned = match[1].split(/[-,\d\n]/)[0].trim();
+      if (cleaned.length > 2 && !namesFound.includes(cleaned)) {
+        namesFound.push(cleaned);
+      }
+    }
+
+    if (namesFound.length > 0) {
+      namesFound.forEach((name, idx) => {
+        contacts.push({
+          name,
+          phone: phoneMatches[idx] || undefined,
+        });
+      });
+
+      // Include remaining phone numbers
+      if (phoneMatches.length > namesFound.length) {
+        phoneMatches.slice(namesFound.length).forEach((ph) => {
+          contacts.push({
+            name: 'Auction Officer / Helpline',
+            phone: ph,
+          });
+        });
+      }
+    } else if (phoneMatches.length > 0) {
+      phoneMatches.forEach((ph) => {
+        contacts.push({
+          name: 'Auction Officer / Helpline Contact',
+          phone: ph,
+        });
+      });
+    }
+
+    return contacts;
+  }, [item.title, item.raw_description]);
+
+  // Helper to parse Ministry / Department / Organisation if not set
+  const authorityDetails = useMemo(() => {
+    let ministry = item.ministry || null;
+    let department = item.department || null;
+    let organisation = item.organisation || null;
+
+    if (item.raw_description) {
+      const lines = item.raw_description.split('\n').map((l) => l.trim()).filter(Boolean);
+      lines.forEach((line) => {
+        if (!ministry && line.toLowerCase().includes('ministry of')) {
+          ministry = line;
+        } else if (!department && line.toLowerCase().includes('department')) {
+          department = line;
+        } else if (!organisation && (line.includes('Corporation') || line.includes('Institute') || line.includes('Board') || line.includes('Limited') || line.includes('Ltd'))) {
+          if (!line.includes('Ministry') && !line.includes('Department')) {
+            organisation = line;
+          }
+        }
+      });
+    }
+
+    return {
+      organisation: organisation || department || ministry || 'Government Authority',
+      ministry,
+      department,
     };
   }, [item]);
 
@@ -171,6 +250,12 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     navigator.clipboard.writeText(addr);
     setCopiedAddress(true);
     setTimeout(() => setCopiedAddress(false), 2000);
+  };
+
+  const handleCopyPhone = (ph: string) => {
+    navigator.clipboard.writeText(ph);
+    setCopiedPhone(ph);
+    setTimeout(() => setCopiedPhone(null), 2000);
   };
 
   const formattedPrice = item.reserve_price_value
@@ -228,7 +313,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
           const downloadUrl = `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
           entries.push({
             url,
-            label: `Attachment #${idx + 1}`,
+            label: `Notice Attachment #${idx + 1}`,
             safeName,
             downloadUrl,
           });
@@ -367,7 +452,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
               </button>
             </div>
 
-            {/* Price & Organisation Grid */}
+            {/* Price & Auctioneer Authority Grid */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               
               {/* Reserve Price Card */}
@@ -382,29 +467,29 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                 </div>
               </div>
 
-              {/* Department & Organisation Overview */}
+              {/* Auctioneer & Issuing Authority Overview */}
               <div className="md:col-span-7 bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs flex flex-col justify-between gap-3">
                 <div className="flex flex-col">
                   <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <span>Issuing Department / Organisation</span>
+                    <span>Auctioneer & Issuing Authority</span>
                     <Info className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                   </span>
                   <span className="text-base font-black text-indigo-950 mt-1 flex items-center gap-2">
                     <Landmark className="w-5 h-5 text-indigo-600 shrink-0" />
-                    {item.organisation || item.department || item.ministry || 'Government Authority'}
+                    {authorityDetails.organisation}
                   </span>
                 </div>
 
-                {(item.ministry || item.department) && (
+                {(authorityDetails.ministry || authorityDetails.department) && (
                   <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 flex flex-wrap gap-2">
-                    {item.ministry && (
-                      <span className="font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                        {item.ministry}
+                    {authorityDetails.ministry && (
+                      <span className="font-bold text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                        {authorityDetails.ministry}
                       </span>
                     )}
-                    {item.department && (
-                      <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                        {item.department}
+                    {authorityDetails.department && (
+                      <span className="font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                        {authorityDetails.department}
                       </span>
                     )}
                   </div>
@@ -412,6 +497,60 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
               </div>
 
             </div>
+
+            {/* Auctioneer Contact Officers & Helpline Info */}
+            {contactDetails.length > 0 && (
+              <div className="bg-gradient-to-r from-amber-50/80 via-amber-50/50 to-orange-50/60 rounded-2xl p-4.5 border border-amber-200/80 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
+                  <span className="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-amber-700 shrink-0" />
+                    Auctioneer Contact Officers & Helpline
+                  </span>
+                  <span className="text-[10px] bg-amber-200/80 text-amber-950 font-black px-2 py-0.5 rounded">
+                    DIRECT CONTACT
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {contactDetails.map((contact, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white rounded-xl p-3 border border-amber-200/70 flex items-center justify-between gap-3 shadow-3xs"
+                    >
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-slate-900 block truncate">
+                          {contact.name}
+                        </span>
+                        {contact.phone && (
+                          <span className="text-xs font-mono font-extrabold text-amber-900 block mt-0.5">
+                            {contact.phone}
+                          </span>
+                        )}
+                      </div>
+
+                      {contact.phone && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <a
+                            href={`tel:${contact.phone.replace(/[\s-]/g, '')}`}
+                            className="p-2 rounded-lg bg-amber-100 text-amber-900 hover:bg-amber-200 transition-colors font-bold text-xs cursor-pointer"
+                            title="Call Officer"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                          </a>
+                          <button
+                            onClick={() => handleCopyPhone(contact.phone!)}
+                            className="p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors text-xs font-bold cursor-pointer"
+                            title="Copy Phone Number"
+                          >
+                            {copiedPhone === contact.phone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Necessary Parameters Grid */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
@@ -508,7 +647,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
               </span>
             </div>
 
-            {/* Clean Notice Summary & Details (Only rendered when relevant extra info exists) */}
+            {/* Clean Notice Summary & Details */}
             {cleanDescription && (
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
                 <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2.5 flex items-center gap-2">
@@ -520,12 +659,12 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
               </div>
             )}
 
-            {/* Official Notice Documents List */}
+            {/* Official Notice Documents List (Simplified & Clear Action Buttons) */}
             {availableDocs.length > 0 && (
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-slate-400" />
+                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-600" />
                     <span>Official Notice Documents & Attachments ({availableDocs.length})</span>
                   </h4>
                 </div>
@@ -534,37 +673,41 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                   {availableDocs.map((doc, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-xl hover:bg-slate-100/70 transition-colors"
+                      className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow-3xs hover:border-indigo-300 transition-all"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                        <div className="p-2 rounded-lg bg-indigo-100 text-indigo-700 shrink-0">
-                          <FileText className="w-4 h-4" />
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="p-2.5 rounded-xl bg-indigo-100 text-indigo-700 shrink-0 mt-0.5">
+                          <FileText className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-xs font-bold text-slate-900 truncate block" title={doc.label}>
+                          <h5 className="text-xs font-bold text-slate-900 truncate" title={doc.label}>
                             {doc.label}
+                          </h5>
+                          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+                            GeM Official PDF Document
                           </span>
-                          <span className="text-[10px] text-slate-500 font-mono block">GeM Official PDF</span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Explicit & Simple Action Buttons */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
                         <button
                           onClick={() => openInAppViewer(doc.url, `${doc.label}: ${item.title}`, doc.safeName)}
-                          className="p-2 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-                          title="Preview in App"
+                          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 hover:text-slate-900 shadow-3xs transition-all cursor-pointer"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-3.5 h-3.5 text-slate-600" />
+                          <span>Preview</span>
                         </button>
+
                         <a
                           href={doc.downloadUrl}
                           download={doc.safeName}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-colors cursor-pointer"
-                          title="Download PDF"
+                          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-2xs transition-all cursor-pointer"
                         >
                           <Download className="w-3.5 h-3.5" />
+                          <span>Download PDF</span>
                         </a>
                       </div>
                     </div>
@@ -596,7 +739,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                 </div>
               )}
 
-              {/* Catalog Document Preview */}
+              {/* Catalog Document Preview Sidebar */}
               {availableDocs.length > 0 && primaryDoc && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
@@ -607,8 +750,20 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                   </h4>
 
                   <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-2xs space-y-3">
+                    
+                    {/* Clean PDF Header Bar */}
+                    <div className="flex items-center justify-between bg-slate-900 text-white px-3 py-2 rounded-t-xl text-xs font-bold">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
+                        <span className="truncate">{primaryDoc.label}</span>
+                      </div>
+                      <span className="text-[9px] bg-emerald-900 text-emerald-300 font-black px-1.5 py-0.5 rounded shrink-0">
+                        VERIFIED PDF
+                      </span>
+                    </div>
+
                     {/* Embedded Live PDF Viewer Frame */}
-                    <div className="relative w-full h-[380px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                    <div className="relative w-full h-[380px] rounded-b-xl overflow-hidden border border-slate-200 bg-slate-100">
                       <iframe
                         src={`/api/document-proxy?url=${encodeURIComponent(primaryDoc.url)}&filename=${encodeURIComponent(primaryDoc.safeName)}&disposition=inline`}
                         className="w-full h-full border-0"
@@ -616,30 +771,21 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                       />
                     </div>
 
-                    <div className="flex items-center gap-3 pt-1">
-                      <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h5 className="text-xs font-bold text-slate-900 truncate" title={primaryDoc.label}>
-                          {primaryDoc.label}
-                        </h5>
-                        <span className="text-[10px] text-slate-500 font-mono block">Official GeM PDF</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-1">
+                    {/* Clean & Explicit Action Buttons */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
                       <button
                         onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5 text-slate-600" />
-                        <span>View Full Screen</span>
+                        <span>Preview Fullscreen</span>
                       </button>
                       <a
                         href={primaryDoc.downloadUrl}
                         download={primaryDoc.safeName}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-primary transition-colors cursor-pointer"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-primary transition-colors cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download PDF</span>
@@ -671,16 +817,18 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                   className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 >
                   <Eye className="w-4 h-4 mr-2" />
-                  View Notice in App
+                  View Notice in Fullscreen
                 </button>
 
                 <a
                   href={primaryDoc.downloadUrl}
                   download={primaryDoc.safeName}
+                  target="_blank"
+                  rel="noreferrer"
                   className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Download Notice PDF
+                  Download Official PDF
                 </a>
               </>
             )}

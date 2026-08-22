@@ -603,8 +603,8 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
             {availableDocs.length > 0 && (
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-slate-400" />
+                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-600" />
                     <span>Official Auction Documents ({availableDocs.length})</span>
                   </h4>
                   {availableDocs.some((d) => d.isStored) && (
@@ -618,43 +618,45 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   {availableDocs.map((doc, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-xl hover:bg-slate-100/70 transition-colors"
+                      className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow-3xs hover:border-indigo-300 transition-all"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      <div className="flex items-start gap-3 min-w-0">
                         <div
-                          className={`p-2 rounded-lg ${
-                            doc.isStored ? "bg-emerald-100 text-emerald-700" : "bg-indigo-100 text-indigo-700"
-                          } shrink-0`}
+                          className={`p-2.5 rounded-xl ${
+                            doc.isStored ? "bg-emerald-100 text-emerald-800" : "bg-indigo-100 text-indigo-700"
+                          } shrink-0 mt-0.5`}
                         >
-                          <FileText className="w-4 h-4" />
+                          <FileText className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-xs font-bold text-slate-900 truncate block" title={doc.label}>
+                          <h5 className="text-xs font-bold text-slate-900 truncate" title={doc.label}>
                             {doc.label}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-mono block">
-                            {doc.isStored ? "Permanent Mirror" : "Gateway Proxy"}
+                          </h5>
+                          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+                            {doc.isStored ? "Permanent Mirror PDF" : "Bank Gateway PDF"}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Explicit & Simple Action Buttons */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
                         <button
                           onClick={() => openInAppViewer(doc.url, `${doc.label}: ${item.title}`, doc.safeName)}
-                          className="p-2 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-                          title="Preview in App"
+                          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 hover:text-slate-900 shadow-3xs transition-all cursor-pointer"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-3.5 h-3.5 text-slate-600" />
+                          <span>Preview</span>
                         </button>
+
                         <a
                           href={doc.downloadUrl}
                           download={doc.safeName}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-colors cursor-pointer"
-                          title="Download PDF"
+                          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-2xs transition-all cursor-pointer"
                         >
                           <Download className="w-3.5 h-3.5" />
+                          <span>Download PDF</span>
                         </a>
                       </div>
                     </div>
@@ -724,7 +726,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                 </div>
               )}
 
-              {/* Catalog Document Preview (Only rendered when document is present in database) */}
+              {/* Catalog Document Preview Sidebar */}
               {availableDocs.length > 0 && primaryDoc && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
@@ -735,8 +737,20 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   </h4>
 
                   <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-2xs space-y-3">
+                    
+                    {/* Clean PDF Header Bar */}
+                    <div className="flex items-center justify-between bg-slate-900 text-white px-3 py-2 rounded-t-xl text-xs font-bold">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
+                        <span className="truncate">{primaryDoc.label}</span>
+                      </div>
+                      <span className="text-[9px] bg-emerald-900 text-emerald-300 font-black px-1.5 py-0.5 rounded shrink-0">
+                        VERIFIED PDF
+                      </span>
+                    </div>
+
                     {/* Embedded Live PDF Viewer Frame */}
-                    <div className="relative w-full h-[380px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                    <div className="relative w-full h-[380px] rounded-b-xl overflow-hidden border border-slate-200 bg-slate-100">
                       <iframe
                         src={
                           primaryDoc.isStored
@@ -748,34 +762,21 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                       />
                     </div>
 
-                    <div className="flex items-center gap-3 pt-1">
-                      <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h5 className="text-xs font-bold text-slate-900 truncate" title={primaryDoc.label}>
-                          {primaryDoc.label}
-                        </h5>
-                        <span className="text-[10px] text-slate-500 font-mono block">
-                          {primaryDoc.isStored ? "Permanent Mirror" : "Live Proxy"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-1">
+                    {/* Clean & Explicit Action Buttons */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
                       <button
                         onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5 text-slate-600" />
-                        <span>View Full Screen</span>
+                        <span>Preview Fullscreen</span>
                       </button>
                       <a
                         href={primaryDoc.downloadUrl}
                         download={primaryDoc.safeName}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-primary transition-colors cursor-pointer"
+                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-primary transition-colors cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download PDF</span>
