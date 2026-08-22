@@ -244,6 +244,25 @@ export function parsePropertyType(title: string): {
 } {
   const lower = (title || "").toLowerCase();
 
+  if (lower.includes("car") || lower.includes("alto") || lower.includes("altroz") || lower.includes("sedan") || lower.includes("hatchback") || lower.includes("swift") || lower.includes("creta") || lower.includes("four wheeler")) {
+    return { propertyType: "Four Wheeler / Car", category: "Vehicles", subcategory: "Cars & Automobiles" };
+  }
+  if (lower.includes("bike") || lower.includes("motorcycle") || lower.includes("scooter") || lower.includes("two wheeler") || lower.includes("royal enfield")) {
+    return { propertyType: "Two Wheeler / Bike", category: "Vehicles", subcategory: "Motorcycles & Two Wheelers" };
+  }
+  if (lower.includes("truck") || lower.includes("blazo") || lower.includes("leyland") || lower.includes("avtr") || lower.includes("bharatbenz") || lower.includes("1212 lpt") || lower.includes("trailer") || lower.includes("tipper")) {
+    return { propertyType: "Commercial / Truck", category: "Vehicles", subcategory: "Commercial Vehicles & Trucks" };
+  }
+  if (lower.includes("bus") || lower.includes("coach")) {
+    return { propertyType: "Commercial / Bus", category: "Vehicles", subcategory: "Buses & Passenger Transport" };
+  }
+  if (lower.includes("tractor")) {
+    return { propertyType: "Tractor / Agricultural", category: "Vehicles", subcategory: "Tractors & Farm Equipment" };
+  }
+  if (lower.includes("vehicle") || lower.includes("automobile")) {
+    return { propertyType: "Vehicle", category: "Vehicles", subcategory: "Automobiles" };
+  }
+
   if (lower.includes("house") || lower.includes("bungalow") || lower.includes("villa") || lower.includes("residential house")) {
     return { propertyType: "House / Bungalow", category: "Real Estate", subcategory: "House / Bungalow" };
   }
@@ -255,9 +274,6 @@ export function parsePropertyType(title: string): {
   }
   if (lower.includes("plot") || lower.includes("land") || lower.includes("site") || lower.includes("open land")) {
     return { propertyType: "Land / Plot", category: "Real Estate", subcategory: "Land / Plot" };
-  }
-  if (lower.includes("vehicle") || lower.includes("car") || lower.includes("bus") || lower.includes("truck") || lower.includes("tractor")) {
-    return { propertyType: "Vehicle", category: "Vehicles", subcategory: "Automobiles" };
   }
   if (lower.includes("machinery") || lower.includes("plant") || lower.includes("equipment")) {
     return { propertyType: "Plant & Machinery", category: "Industrial", subcategory: "Plant & Machinery" };

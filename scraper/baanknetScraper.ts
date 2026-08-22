@@ -30,6 +30,7 @@ import {
   BAANKNET_BASE_URL,
   BAANKNET_EAUCTION_PATH,
   BAANKNET_PROPERTY_LISTING_PATH,
+  BAANKNET_VEHICLE_LISTING_PATH,
   BAANKNET_IBC_BASE_URL,
   BAANKNET_IBC_LISTING_PATH,
   BAANKNET_SCRAPE_DELAY_MS,
@@ -50,6 +51,7 @@ import {
 import {
   extractEAuctionDetail,
   extractPropertyListingCards,
+  extractVehicleListingCards,
   extractIBCListingCards,
   mergeDetailData,
   type DetailPageData,
@@ -842,6 +844,132 @@ async function scrapePropertyListings(
   }
 
   // Scrape detail pages for enrichment
+  if (scrapeDetails) {
+    const toEnrich = allItems.filter((item) => item.detailUrl);
+    if (toEnrich.length > 0) {
+      await scrapeDetailPages(browser, toEnrich, BAANKNET_BASE_URL, BAANKNET_DETAIL_CONCURRENCY);
+    }
+  }
+
+  if (allItems.length > 0) {
+    const parsed = parseListings(allItems, "upcoming");
+    await upsertListings(parsed);
+  }
+
+  return allItems;
+}
+
+// ─── Module: Vehicle Listings ───────────────────────────────────────────────
+
+async function scrapeVehicleListings(
+  browser: any,
+  page: any,
+  maxScrollCycles: number,
+  scrapeDetails: boolean,
+): Promise<RawBaankNetItem[]> {
+  log.info({ maxScrollCycles }, "Scraping Vehicle Listings (/vehicle-listing)");
+
+  const targetUrl = `${BAANKNET_BASE_URL}${BAANKNET_VEHICLE_LISTING_PATH}`;
+  log.info({ url: targetUrl }, "Navigating to Vehicle Listings...");
+
+  await page.goto(targetUrl, {
+    waitUntil: "domcontentloaded",
+    timeout: 45000,
+  });
+
+  await randomDelay(4000);
+
+  // Wait for vehicles to load
+  try {
+    await page.waitForFunction(
+      () => {
+        const bodyText = document.body?.innerText || "";
+        return (
+          bodyText.includes("Asset ID") ||
+          bodyText.includes("Reserve") ||
+          bodyText.includes("Vehicles for Sale") ||
+          bodyText.includes("Registration Year")
+        );
+      },
+      { timeout: 30000 }
+    );
+    log.info("Vehicle listings detected.");
+  } catch {
+    log.warn("Timeout waiting for vehicle listings.");
+  }
+
+  const allItems: RawBaankNetItem[] = [];
+  const seenIds = new Set<string>();
+  let lastHeight = 0;
+  let noNewContentCount = 0;
+
+  for (let scroll = 1; scroll <= maxScrollCycles; scroll++) {
+    const rawCards = await page.evaluate(extractVehicleListingCards, KNOWN_LENDERS);
+
+    let newCount = 0;
+    for (const card of rawCards) {
+      if (seenIds.has(card.auctionId)) continue;
+      seenIds.add(card.auctionId);
+
+      allItems.push({
+        auctionId: card.auctionId,
+        bankPropertyId: card.bankPropertyId || card.auctionId,
+        title: card.title,
+        propertyType: card.propertyType,
+        reservePrice: card.reservePrice,
+        bankName: card.bankName,
+        location: card.location,
+        address: card.address || card.location || "",
+        district: card.district,
+        startDate: card.startDate,
+        endDate: card.endDate,
+        detailUrl: card.detailUrl,
+        inspectionStartDate: card.inspectionStartDate,
+        inspectionEndDate: card.inspectionEndDate,
+        emdEndDate: card.emdEndDate,
+        thumbnailUrl: card.thumbnailUrl,
+        photoUrls: card.photoUrls,
+        auctionModule: "vehicle",
+      });
+      newCount++;
+    }
+
+    log.info(
+      {
+        scroll,
+        cardsOnPage: rawCards.length,
+        newItems: newCount,
+        total: allItems.length,
+      },
+      "Vehicle scroll cycle complete"
+    );
+
+    if (newCount === 0) {
+      noNewContentCount++;
+      if (noNewContentCount >= 3) {
+        log.info("No new vehicle content after 3 scroll cycles. Stopping.");
+        break;
+      }
+    } else {
+      noNewContentCount = 0;
+    }
+
+    // Scroll down
+    const currentHeight = await page.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight);
+      return document.body.scrollHeight;
+    });
+
+    if (currentHeight === lastHeight && newCount === 0) {
+      log.info("Vehicle page height unchanged. Reached bottom.");
+      break;
+    }
+    lastHeight = currentHeight;
+
+    await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
+  }
+
+  // Scrape detail pages for enrichment if requested
   if (scrapeDetails) {
     const toEnrich = allItems.filter((item) => item.detailUrl);
     if (toEnrich.length > 0) {
@@ -1712,7 +1840,26 @@ async function executeBaankNetScraper(): Promise<void> {
       }
     }
 
-    // ── Module 3: IBC eAuction ──────────────────────────────────────────
+    // ── Module 3: Vehicle Listings ───────────────────────────────────────
+    if (modules.includes("vehicle")) {
+      log.info("═══ Starting Module: Vehicle Listings ═══");
+      const page = await setupPage(browser);
+
+      try {
+        const rawItems = await scrapeVehicleListings(
+          browser, page, BAANKNET_MAX_SCROLL_CYCLES, scrapeDetails
+        );
+
+        totalScraped += rawItems.length;
+        log.info({ count: rawItems.length }, "Vehicle listings module complete");
+      } catch (err: any) {
+        log.error({ error: err.message }, "Vehicle Listing module error");
+      } finally {
+        await page.close().catch(() => {});
+      }
+    }
+
+    // ── Module 4: IBC eAuction ──────────────────────────────────────────
     if (modules.includes("ibc")) {
       log.info("═══ Starting Module: IBC eAuction ═══");
 

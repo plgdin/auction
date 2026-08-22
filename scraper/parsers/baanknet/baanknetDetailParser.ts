@@ -886,6 +886,209 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
   return items;
 }
 
+export function extractVehicleListingCards(knownLenders: string[] = []): {
+  auctionId: string;
+  bankPropertyId?: string;
+  title: string;
+  propertyType: string;
+  reservePrice: string;
+  bankName: string;
+  location: string;
+  address: string;
+  state: string;
+  city: string;
+  district?: string;
+  startDate: string;
+  endDate: string;
+  emdEndDate?: string;
+  inspectionStartDate?: string;
+  inspectionEndDate?: string;
+  detailUrl: string;
+  thumbnailUrl?: string;
+  photoUrls?: string[];
+  status: string;
+  regYear?: string;
+  fuelType?: string;
+  odometer?: string;
+  transmission?: string;
+  regNo?: string;
+  insurancePolicy?: string;
+}[] {
+  if (typeof (window as any).__name === "undefined") {
+    (window as any).__name = (target: any) => target;
+  }
+  const items: ReturnType<typeof extractVehicleListingCards> = [];
+
+  function matchLenderInline(text: string, lenders: string[]): string {
+    for (const lender of lenders) {
+      const escaped = lender.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`\\b${escaped}\\b`, "i");
+      if (re.test(text)) return lender;
+    }
+    return "";
+  }
+
+  function isBankOrGarbage(str: string): boolean {
+    if (!str || str.length < 2) return true;
+    const lower = str.toLowerCase().trim();
+    return (
+      lower.includes("bank") ||
+      lower.includes("lender") ||
+      lower.includes("finance") ||
+      lower.includes("showing") ||
+      lower.includes("result") ||
+      lower.includes("filter")
+    );
+  }
+
+  const cards = document.querySelectorAll(
+    ".infinite-scroll-component > div > div, .card, [class*='vehicle-card'], [class*='listing'], div[class*='rounded-lg bg-white']"
+  );
+
+  cards.forEach((card) => {
+    const text = (card as HTMLElement).innerText || "";
+    if (text.length < 20 || text.length > 8000) return;
+    if (!text.includes("₹") && !text.match(/(?:Reserve|Vehicle|Sale|Asset|Auction|Lac|Cr|Lakh)/i)) return;
+
+    const detailLink = card.querySelector(
+      'a[href*="vehicle-detail"], a[href*="view"], a[href*="detail"], button'
+    ) as HTMLAnchorElement | null;
+    let detailUrl = detailLink?.href || detailLink?.getAttribute("href") || "";
+
+    const idMatch = text.match(/Asset\s*ID\s*:?\s*([A-Za-z0-9_-]+)/i);
+    const urlIdMatch = detailUrl.match(/vehicle-detail\/([A-Za-z0-9_-]+)/i);
+    const auctionId = idMatch ? idMatch[1] : (urlIdMatch ? urlIdMatch[1] : "");
+
+    if (!auctionId && !detailUrl.includes("vehicle")) return;
+    const finalId = auctionId || `VEH_${Math.abs(text.slice(0, 30).split("").reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0))}`;
+
+    const titleEl = card.querySelector("h6, h5, h4, h3, [class*='title'], strong") as HTMLElement;
+    let title = titleEl?.innerText?.trim() || "";
+    if (!title || title.toLowerCase().startsWith("showing") || title.includes("Results")) {
+      const firstLine = text.split("\n").filter(l => l.trim().length > 5 && !l.includes("Results") && !l.includes("Asset ID"))[0];
+      title = firstLine || "Bank Auction Vehicle";
+    }
+
+    const priceMatch = text.match(/(?:Reserve\s*Price|Price)\s*:?\s*(?:₹|Rs\.?)?\s*([\d,.]+\s*(?:Lakh|Crore|Lac|Cr)?)/i) ||
+      text.match(/₹\s*([\d,.]+\s*(?:Lakh?|Lac|Crore?|Cr)?)/i) ||
+      text.match(/([\d,.]+\s*(?:Lac|Lakh|Cr|Crore))/i);
+    const reservePrice = priceMatch ? `₹ ${priceMatch[1]}` : "";
+
+    let bankName = matchLenderInline(text, knownLenders);
+    if (!bankName) {
+      const bankMatch = text.match(/(?:Bank\s*of\s*[A-Za-z]+|State\s*Bank\s*of\s*India|Punjab\s*National\s*Bank|Canara\s*Bank|Union\s*Bank|Indian\s*Bank|UCO\s*Bank|Central\s*Bank)/i);
+      bankName = bankMatch ? bankMatch[0].trim() : "";
+    }
+
+    // Vehicle Specifications
+    const regYearMatch = text.match(/Registration\s*Year\s*:?\s*(\d{4})/i);
+    const regYear = regYearMatch ? regYearMatch[1] : undefined;
+
+    const fuelMatch = text.match(/Fuel\s*Type\s*:?\s*(Diesel|Petrol|CNG|Electric|LPG|Hybrid)/i);
+    const fuelType = fuelMatch ? fuelMatch[1] : undefined;
+
+    const odoMatch = text.match(/Odometer\s*:?\s*([\d,.]+\s*(?:km|kms)?|NA)/i);
+    const odometer = odoMatch ? odoMatch[1] : undefined;
+
+    const transMatch = text.match(/Transmission\s*:?\s*(Manual|Automatic|Other)/i);
+    const transmission = transMatch ? transMatch[1] : undefined;
+
+    const regNoMatch = text.match(/Registration\s*No\.?\s*:?\s*([A-Za-z0-9*_-]+)/i);
+    const regNo = regNoMatch ? regNoMatch[1] : undefined;
+
+    const insMatch = text.match(/Insurance\s*(?:Policy)?\s*:?\s*(Yes|No|Expired|Valid)/i);
+    const insurancePolicy = insMatch ? insMatch[1] : undefined;
+
+    // Location extraction
+    const locMatch = text.match(/(?:Gorakhpur|Mumbai|Delhi|Bengaluru|Chennai|Kolkata|Hyderabad|Pune|Ahmedabad|Ernakulam|Raigarh|Bilaspur|Ratlam|Lucknow|Jaipur|Surat|Kanpur|Nagpur|Indore|Thane|Bhopal|Visakhapatnam|Pimpri|Patna|Vadodara|Ghaziabad|Ludhiana|Agra|Nashik|Faridabad|Meerut|Rajkot|Kalyan|Vasai|Varanasi|Srinagar|Aurangabad|Dhanbad|Amritsar|Navi Mumbai|Allahabad|Ranchi|Howrah|Coimbatore|Jabalpur|Gwalior|Vijayawada|Jodhpur|Madurai|Raipur|Kota|Guwahati|Chandigarh)[A-Za-z,\s]+?(?=\n|Contact|View|$)/i);
+    let location = locMatch ? locMatch[0].trim() : "";
+    let state = "";
+    let city = "";
+    let district = "";
+
+    if (location) {
+      const parts = location.split(/[,–-]/).map((p: string) => p.trim()).filter((p: string) => !isBankOrGarbage(p));
+      if (parts.length >= 3) {
+        city = parts[0];
+        district = parts[1];
+        state = parts[2];
+      } else if (parts.length === 2) {
+        city = parts[0];
+        state = parts[1];
+      } else if (parts.length === 1) {
+        city = parts[0];
+      }
+    }
+
+    // Schedule dates
+    const startMatch = text.match(/(?:Auction\s*Start|Start)\s*(?:Date\s*(?:&\s*Time)?)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
+    const endMatch = text.match(/(?:Auction\s*End|End)\s*(?:Date\s*(?:&?\s*[Tt]ime)?)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
+    const emdMatch = text.match(/EMD\s*End\s*(?:Date\s*(?:&?\s*[Tt]ime)?)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
+    const inspStartMatch = text.match(/Inspection\s*Start\s*(?:Date\s*(?:&\s*Time)?)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
+    const inspEndMatch = text.match(/Inspection\s*End\s*(?:Date\s*(?:&?\s*[Tt]ime)?)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
+
+    // Photos
+    const imgs = card.querySelectorAll("img");
+    const photoUrls: string[] = [];
+    imgs.forEach((img) => {
+      const htmlImg = img as HTMLImageElement;
+      const src = htmlImg.src || htmlImg.getAttribute("data-src") || htmlImg.getAttribute("data-lazy") || "";
+      if (src && !src.endsWith(".svg") && !src.includes("icon") && !src.includes("logo") && !photoUrls.includes(src)) {
+        photoUrls.push(src);
+      }
+    });
+
+    const statusBadge = card.querySelector("[class*='badge'], [class*='text-white'][class*='rounded'], [class*='Upcoming']") as HTMLElement;
+    const status = statusBadge?.innerText?.trim().toUpperCase() || "UPCOMING";
+
+    // Detect vehicle type
+    let propertyType = "Commercial Vehicle";
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes("car") || lowerTitle.includes("alto") || lowerTitle.includes("altroz") || lowerTitle.includes("sedan") || lowerTitle.includes("hatchback") || lowerTitle.includes("swift") || lowerTitle.includes("creta")) {
+      propertyType = "Four Wheeler / Car";
+    } else if (lowerTitle.includes("bike") || lowerTitle.includes("motorcycle") || lowerTitle.includes("scooter") || lowerTitle.includes("hero") || lowerTitle.includes("honda") || lowerTitle.includes("royal enfield")) {
+      propertyType = "Two Wheeler / Bike";
+    } else if (lowerTitle.includes("tractor") || lowerTitle.includes("mahindra") || lowerTitle.includes("sonalika") || lowerTitle.includes("swaraj")) {
+      propertyType = "Tractor / Agricultural";
+    } else if (lowerTitle.includes("truck") || lowerTitle.includes("blazo") || lowerTitle.includes("leyland") || lowerTitle.includes("bharatbenz") || lowerTitle.includes("tata 1212") || lowerTitle.includes("trailer")) {
+      propertyType = "Commercial / Truck";
+    } else if (lowerTitle.includes("bus")) {
+      propertyType = "Commercial / Bus";
+    }
+
+    items.push({
+      auctionId: finalId,
+      bankPropertyId: finalId,
+      title,
+      propertyType,
+      reservePrice,
+      bankName: bankName || "Public Sector Bank",
+      location: location || state || city || "India",
+      address: location,
+      state,
+      city,
+      district,
+      startDate: startMatch ? startMatch[1] : "",
+      endDate: endMatch ? endMatch[1] : "",
+      emdEndDate: emdMatch ? emdMatch[1] : undefined,
+      inspectionStartDate: inspStartMatch ? inspStartMatch[1] : undefined,
+      inspectionEndDate: inspEndMatch ? inspEndMatch[1] : undefined,
+      detailUrl,
+      thumbnailUrl: photoUrls[0] || "",
+      photoUrls,
+      status,
+      regYear,
+      fuelType,
+      odometer,
+      transmission,
+      regNo,
+      insurancePolicy,
+    });
+  });
+
+  return items;
+}
+
 export function extractIBCListingCards(knownLenders: string[] = []): {
   auctionId: string;
   bankPropertyId?: string;
