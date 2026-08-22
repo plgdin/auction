@@ -107,11 +107,11 @@ function parseCliArgs(): CliArgs {
     if (arg === "--no-details") scrapeDetails = false;
     if (arg === "--rescrape" || arg === "--force-details") rescrape = true;
     if (arg === "--refresh-documents" || arg === "--refresh-docs") refreshDocuments = true;
-    if (arg.startsWith("--status=")) {
-      statusFilters = arg.replace("--status=", "").split(",");
+    if (arg.startsWith("--status=") || arg.startsWith("--statuses=")) {
+      statusFilters = arg.replace(/^--status(es)?=/, "").split(",");
     }
-    if (arg.startsWith("--module=")) {
-      modules = arg.replace("--module=", "").split(",");
+    if (arg.startsWith("--module=") || arg.startsWith("--modules=")) {
+      modules = arg.replace(/^--modules?=/, "").split(",");
     }
     if (arg.startsWith("--max-pages=")) {
       maxPages = parseInt(arg.replace("--max-pages=", ""), 10);
@@ -138,42 +138,40 @@ function randomDelay(baseMs: number): Promise<void> {
  */
 async function expandDetailPageInteractiveContent(page: any): Promise<void> {
   try {
+    // Phase 1: Click all 4 named detail tabs sequentially with delays.
+    // BaankNet uses Angular mat-tabs that lazy-render content only on click:
+    // Tabs: General Detail, Property Detail, Inspection Detail, Business Rule
+    await page.evaluate(async () => {
+      const tabElements = Array.from(document.querySelectorAll("button, div, span, a, [role='tab'], .nav-link"));
+      for (const el of tabElements) {
+        const text = el.textContent?.trim() || "";
+        if (["General Detail", "Property Detail", "Inspection Detail", "Business Rule"].includes(text)) {
+          try {
+            (el as HTMLElement).click();
+            await new Promise((res) => setTimeout(res, 800));
+          } catch {}
+        }
+      }
+    });
+
+    await randomDelay(1000);
+
+    // Phase 2: Open all accordions and <details> elements
     await page.evaluate(() => {
-      // 1. Click all tabs, accordions, and expansion headers
-      const clickableSelectors = [
-        '[role="tab"]',
-        '.nav-tabs .nav-link',
-        '.nav-item a',
-        '[data-toggle="tab"]',
-        '[data-bs-toggle="tab"]',
+      const collapseSelectors = [
         '[data-toggle="collapse"]',
         '[data-bs-toggle="collapse"]',
         '.accordion-button.collapsed',
         '.accordion-header:not(.active)',
-        'mat-tab-header .mat-tab-label',
-        '.ant-tabs-tab',
         'details:not([open]) summary',
-        'button.tab-btn',
-        'button.tab',
-        'button.tab-link',
       ];
-
-      const elements = Array.from(document.querySelectorAll(clickableSelectors.join(",")));
+      const elements = Array.from(document.querySelectorAll(collapseSelectors.join(",")));
       for (const el of elements) {
-        const text = el.textContent?.toLowerCase().trim() || "";
-        const isTarget =
-          /document|attachment|annexure|notice|tender|form|download|legal|photo|gallery|asset/i.test(text) ||
-          el.getAttribute("role") === "tab" ||
-          el.classList.contains("nav-link");
-
-        if (isTarget && typeof (el as HTMLElement).click === "function") {
-          try {
-            (el as HTMLElement).click();
-          } catch {}
+        if (typeof (el as HTMLElement).click === "function") {
+          try { (el as HTMLElement).click(); } catch {}
         }
       }
-
-      // Also open all <details> elements
+      // Open all <details> elements
       document.querySelectorAll("details:not([open])").forEach((d) => {
         d.setAttribute("open", "true");
       });
@@ -181,7 +179,7 @@ async function expandDetailPageInteractiveContent(page: any): Promise<void> {
 
     await randomDelay(800);
 
-    // 2. Exhaust "Load More" / "View All" / "Show More" buttons within document sections
+    // Phase 3: Exhaust "Load More" / "View All" / "Show More" buttons
     for (let cycle = 0; cycle < 5; cycle++) {
       const clicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll("button, a, .btn, span.cursor-pointer"));
@@ -208,6 +206,7 @@ async function expandDetailPageInteractiveContent(page: any): Promise<void> {
     // Non-critical: continue with existing DOM
   }
 }
+
 
 /**
  * Process a batch of items concurrently for detail page scraping.
@@ -484,8 +483,8 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
     const endMatch = text.match(/End\s*Date\s*:\s*([\d\-/]+\s+[\d:]+)/i);
 
     // Detail and property links
-    const auctionDetailLink = card.querySelector('a[href*="view"], a[data-original-title*="View"], a[title*="View"], button[title*="View"]') as HTMLAnchorElement;
-    const propertyDetailLink = card.querySelector('a[href*="property"], a[data-original-title*="Property"], a[href*="property-detail"]') as HTMLAnchorElement;
+    const auctionDetailLink = card.querySelector('a[href*="auction-detail"], a[href*="view-auction"], a[href*="view"], a[href*="detail"], a[data-original-title*="View"], a[title*="View"], button[title*="View"]') as HTMLAnchorElement;
+    const propertyDetailLink = card.querySelector('a[href*="property-detail"], a[href*="property"], a[data-original-title*="Property"]') as HTMLAnchorElement;
     let detailUrl = auctionDetailLink?.getAttribute("href") || auctionDetailLink?.href ||
                     propertyDetailLink?.getAttribute("href") || propertyDetailLink?.href || "";
 

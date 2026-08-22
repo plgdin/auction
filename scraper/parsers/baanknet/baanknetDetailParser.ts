@@ -55,6 +55,7 @@ export interface DetailPageData {
   contactPerson: string;
   contactPhone: string;
   lenderName: string;
+  propertyAddress?: string;
   latitude?: number | null;
   longitude?: number | null;
   mapUrl?: string;
@@ -409,16 +410,36 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
   }
 
   let emdAmountText = "";
+  // Pattern 1: "EMD Amount : ₹11,88,000.00" or "EMD ⓘ ₹11,88,000.00" (sidebar + Business Rule tab)
   const emdAmountMatch = bodyText.match(
-    /EMD\s*(?:Amount)?\s*:?\s*(₹\s*[\d,.]+\s*(?:Lakh|Lac|Crore|Cr)?)/i
+    /EMD\s*(?:Amount)?\s*(?:ⓘ)?\s*:?\s*(?:₹|Rs\.?)\s*([\d,.]+\s*(?:Lakh|Lac|Crore|Cr)?)/i
   );
   if (emdAmountMatch) {
-    emdAmountText = emdAmountMatch[1].trim();
+    emdAmountText = `₹ ${emdAmountMatch[1].trim()}`;
+  }
+  // Fallback: "EMD Amount ₹11,88,000.00" without colon (sidebar sticky card)
+  if (!emdAmountText) {
+    const sidebarEmdMatch = bodyText.match(
+      /EMD\s*Amount\s*(?:₹|Rs\.?)\s*([\d,.]+)/i
+    );
+    if (sidebarEmdMatch) {
+      emdAmountText = `₹ ${sidebarEmdMatch[1].trim()}`;
+    }
   }
 
   let bidIncrementText = "";
-  const bidIncMatch = bodyText.match(/(?:Bid\s*Increment|Bid\s*Multiplier|Minimum\s*(?:Bid\s*)?Increment|Increment\s*Value)\s*:?\s*(?:₹|Rs\.?)?\s*([\d,.]+\s*(?:Lakh|Lac|Crore|Cr|K)?)/i);
+  // Matches: "Increment Price ⓘ ₹1,00,000.00", "Bid Increment : ₹50,000", "Minimum Increment : ₹1 Lakh"
+  const bidIncMatch = bodyText.match(
+    /(?:Bid\s*Increment|Bid\s*Multiplier|Minimum\s*(?:Bid\s*)?Increment|Increment\s*(?:Price|Value))\s*(?:ⓘ)?\s*:?\s*(?:₹|Rs\.?)\s*([\d,.]+\s*(?:Lakh|Lac|Crore|Cr|K)?)/i
+  );
   if (bidIncMatch) bidIncrementText = `₹ ${bidIncMatch[1].trim()}`;
+  // Fallback for "Increment Price During Extension" variant
+  if (!bidIncrementText) {
+    const extIncMatch = bodyText.match(
+      /Increment\s*Price\s*During\s*Extension\s*(?:ⓘ)?\s*:?\s*(?:₹|Rs\.?)\s*([\d,.]+)/i
+    );
+    if (extIncMatch) bidIncrementText = `₹ ${extIncMatch[1].trim()}`;
+  }
 
   let emdAccountNumber = "";
   const accMatch = bodyText.match(/(?:A\/[Cc]\s*(?:No\.?|Number)?|Account\s*(?:No\.?|Number)?)\s*:?\s*([0-9]{9,18})/i);
@@ -463,17 +484,32 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
   }
 
   let branchName = "";
-  const branchMatch = bodyText.match(/(?:Branch\s*(?:Name)?|SARB|SAMB|Asset\s*Recovery\s*Branch|Asset\s*Management\s*Branch)\s*:?\s*([A-Za-z0-9\s,-]+?)(?=\n|District|City|State|Pin|Tel|Phone|Email|$)/i);
+  // "Branch : ARMB RAIPUR 830300" or "Branch Address : RAIPUR"
+  const branchMatch = bodyText.match(/(?:Branch\s*(?:Name|Address)?|SARB|SAMB|Asset\s*Recovery\s*Branch|Asset\s*Management\s*Branch)\s*:?\s*([A-Za-z0-9\s,-]+?)(?=\n|District|City|State|Pin|Tel|Phone|Email|Officer|Dealing|Mobile|$)/i);
   if (branchMatch) branchName = branchMatch[1].trim();
 
   let contactPerson = "";
   let contactPhone = "";
+  // "Dealing Officer Name,Designation : pawan Kumar" from Inspection Detail tab
+  const dealingOfficerMatch = bodyText.match(
+    /Dealing\s*Officer\s*Name\s*,?\s*Designation\s*:?\s*([^\n]{3,80})/i
+  );
   const contactPersonMatch = bodyText.match(
     /(?:Contact\s*Person|Authorized\s*Officer|Nodal\s*Officer)\s*:?\s*([^\n]{3,60})/i
   );
-  if (contactPersonMatch) contactPerson = contactPersonMatch[1].trim();
-  const phoneMatch = bodyText.match(/(?:Contact\s*(?:No\.?|Number)?|Mobile|Phone)\s*:?\s*(\+?91[\s-]?\d{10}|\d{10})/i);
-  if (phoneMatch) contactPhone = phoneMatch[1].trim();
+  if (dealingOfficerMatch) {
+    contactPerson = dealingOfficerMatch[1].trim();
+  } else if (contactPersonMatch) {
+    contactPerson = contactPersonMatch[1].trim();
+  }
+  // "Mobile No. : 9770780508" from Inspection Detail tab
+  const mobileNoMatch = bodyText.match(/Mobile\s*No\.?\s*:?\s*(\d{10,12})/i);
+  const phoneMatch = bodyText.match(/(?:Contact\s*(?:No\.?|Number)?|Phone)\s*:?\s*(\+?91[\s-]?\d{10}|\d{10})/i);
+  if (mobileNoMatch) {
+    contactPhone = mobileNoMatch[1].trim();
+  } else if (phoneMatch) {
+    contactPhone = phoneMatch[1].trim();
+  }
 
   let officerDesignation = "";
   const desigMatch = bodyText.match(/(?:Designation|Officer\s*Designation)\s*:?\s*([^\n]{3,60})/i);
@@ -561,11 +597,31 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
 
   let lenderName = matchLenderInline(bodyText, knownLenders);
   if (!lenderName) {
+    // "Bank : Punjab National Bank" from General Detail tab
     const lenderFallbackMatch = bodyText.match(
       /(?:🏛|Bank\s*(?:Name)?|Lender)\s*:?\s*([A-Za-z\s&]+(?:Bank|of\s+\w+|Finance|Financial|Housing|ARC|Reconstruction))/i
     );
     if (lenderFallbackMatch) {
       lenderName = lenderFallbackMatch[1].trim();
+    }
+  }
+
+  // Property Address from "Property Detail" tab:
+  // "Property Address: Residential House bearing Plot No. A-3(3)...PIN 492001, Area: 4000 Sq.Ft."
+  let propertyAddress = "";
+  const propAddrMatch = bodyText.match(
+    /Property\s*Address\s*:?\s*([\s\S]{10,600}?)(?=\n\s*\n|Is\s*this\s*property|Loan\s*offer|Inspection\s*Detail|Business\s*Rule|$)/i
+  );
+  if (propAddrMatch) {
+    propertyAddress = propAddrMatch[1].replace(/\s+/g, " ").trim();
+  }
+  // Fallback: "Registered Address of Borrower" from General Detail tab
+  if (!propertyAddress) {
+    const regAddrMatch = bodyText.match(
+      /Registered\s*Address\s*(?:of\s*Borrower)?\s*:?\s*([^\n]{10,200})/i
+    );
+    if (regAddrMatch) {
+      propertyAddress = regAddrMatch[1].trim();
     }
   }
 
@@ -601,6 +657,7 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
     contactPerson,
     contactPhone,
     lenderName,
+    propertyAddress,
     latitude,
     longitude,
     mapUrl,
@@ -1303,6 +1360,7 @@ export function extractIBCListingCards(knownLenders: string[] = []): {
 
 export function mergeDetailData(
   item: {
+    address?: string;
     borrowerName?: string;
     borrowerNames?: string[];
     description?: string;
@@ -1348,6 +1406,9 @@ export function mergeDetailData(
   },
   detail: DetailPageData
 ): void {
+  if (detail.propertyAddress && (!item.address || item.address.length < 15)) {
+    item.address = detail.propertyAddress;
+  }
   if (!item.borrowerName && detail.borrowerName) {
     item.borrowerName = detail.borrowerName;
   }
