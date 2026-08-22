@@ -713,7 +713,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
 
           </div>
 
-          {/* Right Panel: Clean Document Page Card matching MSTC preview */}
+          {/* Right Panel: Clean Document Download Card (No Iframe Preview) */}
           {(itemImage || availableDocs.length > 0) && (
             <div className="w-full lg:w-[420px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50 p-5 overflow-visible lg:overflow-y-auto flex flex-col space-y-5">
               
@@ -734,63 +734,59 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                 </div>
               )}
 
-              {/* Document Page Card matching MSTC preview layout */}
+              {/* Sleek Document Action Card without embedded iframe */}
               {availableDocs.length > 0 && primaryDoc && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
-                    <span>Catalog Document Preview</span>
-                    <span className="text-[9.5px] bg-slate-100 text-slate-700 border border-slate-300 font-bold px-2 py-0.5 rounded">
-                      {availableDocs.length} PAGES
+                    <span>Official Notice Document</span>
+                    <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded">
+                      {availableDocs.length} Docs
                     </span>
                   </h4>
 
-                  <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1.5">
+                  <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 rounded-2xl p-5 text-white border border-slate-800 shadow-xl flex flex-col justify-between gap-5 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
                     
-                    {/* Document Page Container */}
-                    <div
-                      onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                      className="relative w-full aspect-[1/1.38] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 cursor-zoom-in group"
-                    >
-                      <iframe
-                        src={`/api/document-proxy?url=${encodeURIComponent(primaryDoc.url)}&filename=${encodeURIComponent(primaryDoc.safeName)}&disposition=inline`}
-                        className="w-full h-full border-0 pointer-events-none scale-100"
-                        title={primaryDoc.label}
-                      />
-                      
-                      {/* Transparent overlay for zoom / preview click */}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-slate-950/10 transition-colors flex items-center justify-center">
-                        <span className="opacity-0 group-hover:opacity-100 bg-slate-900/80 backdrop-blur-xs text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg transition-opacity flex items-center gap-1.5">
-                          <Eye className="w-4 h-4 text-indigo-400" />
-                          <span>Click to View Full Document</span>
-                        </span>
+                    <div className="flex items-start justify-between gap-3 relative z-10">
+                      <div className="p-3.5 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 shrink-0 shadow-inner">
+                        <FileText className="w-8 h-8" />
                       </div>
+                      <span className="text-[10px] font-black tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-full uppercase flex items-center gap-1 shrink-0">
+                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                        Verified PDF Notice
+                      </span>
                     </div>
 
-                    {/* Page 1 Badge matching MSTC styling */}
-                    <div className="absolute bottom-3.5 right-3.5 bg-slate-900/80 backdrop-blur-xs text-[10px] text-white font-bold px-2.5 py-1 rounded-md shadow-md select-none">
-                      Page 1
+                    <div className="space-y-1 relative z-10">
+                      <h5 className="text-sm sm:text-base font-extrabold text-slate-100 line-clamp-2 leading-snug">
+                        {primaryDoc.label}
+                      </h5>
+                      <span className="text-[11px] text-slate-400 font-mono block">
+                        Official Government e-Auction Notice Document
+                      </span>
                     </div>
-                  </div>
 
-                  {/* Action Buttons Below Page Card */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button
-                      onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                      className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer shadow-3xs"
-                    >
-                      <Eye className="w-3.5 h-3.5 text-slate-600" />
-                      <span>Preview Notice</span>
-                    </button>
-                    <a
-                      href={primaryDoc.downloadUrl}
-                      download={primaryDoc.safeName}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-white bg-slate-950 hover:bg-primary transition-colors cursor-pointer shadow-2xs"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download PDF</span>
-                    </a>
+                    {/* Prominent Action Buttons */}
+                    <div className="flex flex-col gap-2.5 pt-2 relative z-10">
+                      <button
+                        onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-slate-900 bg-white hover:bg-slate-100 active:scale-[0.98] transition-all cursor-pointer shadow-md"
+                      >
+                        <Eye className="w-4 h-4 text-indigo-600" />
+                        <span>Preview Document in Fullscreen</span>
+                      </button>
+
+                      <a
+                        href={primaryDoc.downloadUrl}
+                        download={primaryDoc.safeName}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] transition-all cursor-pointer shadow-md border border-indigo-400/30"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Download Official PDF Document</span>
+                      </a>
+                    </div>
                   </div>
                 </div>
               )}
