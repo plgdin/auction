@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Calendar, Landmark, Heart, Clock, Download, Eye, Image, Ruler, ChevronLeft, ChevronRight, Shield, User, FileText, Info, MapPin, Building2 } from 'lucide-react';
+import { X, Copy, Check, Calendar, Landmark, Heart, Clock, Download, Eye, ChevronLeft, ChevronRight, Shield, User, FileText, Info, MapPin, Building2, ShieldCheck } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
 import type { BaanknetAuction } from '../../services/publicService';
@@ -337,11 +337,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
           <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
             <div className="max-w-5xl mx-auto">
               <BidIntelligencePanel
-                itemTitle={item.title}
-                reservePrice={item.reserve_price_value || (item.reserve_price ? parseFloat(item.reserve_price.replace(/[^\d.]/g, '')) : 0)}
-                categoryName={item.property_type || item.property_sub_type}
-                location={item.city || item.state}
-                rawDescription={item.description}
+                reservePrice={item.reserve_price_value || (item.reserve_price_text ? parseFloat(item.reserve_price_text.replace(/[^\d.]/g, '')) : 0)}
               />
             </div>
           </div>

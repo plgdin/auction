@@ -143,7 +143,7 @@ export default async function handler(req: any, res: any): Promise<void> {
           rawHtml += chunk;
         });
         proxyRes.on('end', () => {
-          const styledHtml = renderStyledNoticeDocument(rawHtml, sanitizedFilename);
+          const styledHtml = renderStyledNoticeDocument(rawHtml);
           res.writeHead(200, {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'public, max-age=3600',
@@ -220,7 +220,7 @@ function getGeMSessionCookies(): Promise<string> {
 /**
  * Transforms raw GeM portal HTML into a clean document starting directly at GENERAL DETAIL
  */
-function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
+function renderStyledNoticeDocument(rawHtml: string): string {
   let cleanContent = rawHtml;
 
   // Search specifically for GENERAL DETAIL / General Details header

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Clock, Eye, Heart, Calendar, Building2, FileText, Phone, UserCheck, ShieldCheck } from 'lucide-react';
+import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck } from 'lucide-react';
 import clsx from 'clsx';
 import type { GemAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
@@ -403,11 +403,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
           <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
             <div className="max-w-5xl mx-auto">
               <BidIntelligencePanel
-                itemTitle={item.title}
                 reservePrice={0}
-                categoryName={item.category_name}
-                location={locationDetails.displayStr}
-                rawDescription={cleanDescription}
               />
             </div>
           </div>

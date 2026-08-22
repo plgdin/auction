@@ -1,29 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  Sparkles, TrendingUp, DollarSign, ShieldAlert, CheckCircle2, 
-  ChevronDown, ChevronUp, RotateCcw, AlertTriangle, ArrowRight,
-  Calculator, PieChart, ShieldCheck, Zap
+  ChevronDown, ChevronUp, RotateCcw, Calculator
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice } from '../../utils/currency';
 
 interface BidIntelligencePanelProps {
-  itemTitle: string;
   reservePrice?: number | null;
-  categoryName?: string | null;
-  location?: string | null;
-  quantity?: number | null;
-  rawDescription?: string | null;
 }
 
 export const BidIntelligencePanel: React.FC<BidIntelligencePanelProps> = ({
-  itemTitle,
   reservePrice = 0,
-  categoryName,
-  location,
-  quantity = 1,
-  rawDescription,
 }) => {
   const { currency } = useAppStore();
   const baseBid = reservePrice && reservePrice > 0 ? reservePrice : 100000;

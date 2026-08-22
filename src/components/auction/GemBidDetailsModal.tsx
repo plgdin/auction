@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Clock, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck } from 'lucide-react';
+import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck } from 'lucide-react';
 import clsx from 'clsx';
 import type { GemBid } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
@@ -74,7 +74,7 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
 
   // Helper to extract Contact Officers & Phone Numbers
   const contactDetails = useMemo(() => {
-    const combinedText = `${item.items || ''} ${item.department || ''} ${item.organisation || ''}`;
+    const combinedText = `${item.items || ''} ${item.department_name || ''}`;
     const contacts: { name: string; phone?: string }[] = [];
 
     const phoneMatches = Array.from(
@@ -91,7 +91,7 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
     }
 
     return contacts;
-  }, [item.items, item.department, item.organisation]);
+  }, [item.items, item.department_name]);
 
   // Live bidding countdown timer
   useEffect(() => {
@@ -192,7 +192,7 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
 
     if (Array.isArray(item.document_urls)) {
       item.document_urls.forEach((url, idx) => {
-        if (url && url !== targetBidDocUrl && url !== item.source_url) {
+        if (url && url !== targetBidDocUrl) {
           const safeName = `GeM_Bid_${item.bid_number}_Attachment_${idx + 1}.pdf`;
           const downloadUrl = `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
           entries.push({
@@ -291,11 +291,7 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
           <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
             <div className="max-w-5xl mx-auto">
               <BidIntelligencePanel
-                itemTitle={item.items || item.bid_number}
                 reservePrice={0}
-                categoryName={item.category_name}
-                location={item.state || 'India'}
-                rawDescription={item.department_name}
               />
             </div>
           </div>
@@ -314,12 +310,6 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
                 {item.category_name && (
                   <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
                     {cleanCategoryName(item.category_name, item.items)}
-                  </span>
-                )}
-                {item.state && (
-                  <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-red-500" />
-                    {item.state}
                   </span>
                 )}
               </div>
@@ -399,16 +389,9 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
                   </span>
                   <span className="text-base font-black text-indigo-950 mt-1 flex items-center gap-2">
                     <Landmark className="w-5 h-5 text-indigo-600 shrink-0" />
-                    {item.department || item.organisation || 'Government Authority'}
+                    {item.department_name || 'Government Authority'}
                   </span>
                 </div>
-
-                {item.organisation && item.organisation !== item.department && (
-                  <div className="border-t border-slate-100 pt-2 text-xs text-slate-600">
-                    <span className="font-semibold text-slate-400 uppercase text-[10px]">Organisation: </span>
-                    <span className="font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{item.organisation}</span>
-                  </div>
-                )}
               </div>
 
               {/* Quantity & Items Info */}
@@ -492,7 +475,7 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
                 <div className="flex flex-col">
                   <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">State / Territory</span>
                   <span className="text-[14px] font-extrabold text-slate-900 mt-0.5">
-                    {item.state || 'India'}
+                    India
                   </span>
                 </div>
 
