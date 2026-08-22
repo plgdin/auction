@@ -536,7 +536,7 @@ export function CheckoutPage() {
           });
 
           if (user?.id) {
-            const durationDays = billingCycle === 'annual' ? 365 : 30;
+            const durationDays = isTrial ? 30 : (billingCycle === 'annual' ? 365 : 30);
             const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
             authService.updateProfile(user.id, { 
               subscription_plan: planId as any,
@@ -1868,6 +1868,14 @@ export function CheckoutPage() {
                     </motion.span>
                   </div>
                 </div>
+
+                {isTrial && (
+                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-left mt-4 mb-2 shadow-sm">
+                    <p className="text-[12px] font-medium text-emerald-800 leading-relaxed">
+                      After your 30-day free trial ends on <span className="font-bold text-emerald-900 bg-emerald-200/60 px-1.5 py-0.5 rounded">{new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })}</span>, your account will be automatically charged <span className="font-mono font-bold text-emerald-900">{formatPrice(billingCycle === 'annual' ? 15830 : 1499)}</span> per {billingCycle === 'annual' ? 'year' : 'month'}. You can cancel anytime before this date to avoid being charged.
+                    </p>
+                  </div>
+                )}
 
                 {!isFreeActivation && (
                   <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl text-left space-y-2">
