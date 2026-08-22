@@ -1,15 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  Sparkles, TrendingUp, DollarSign, ShieldAlert, CheckCircle2, 
-  ChevronDown, ChevronUp, RotateCcw, AlertTriangle, ArrowRight,
-  Calculator, PieChart, ShieldCheck, Zap
+  ChevronDown, ChevronUp, RotateCcw,
+  Calculator
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice } from '../../utils/currency';
 
 interface BidIntelligencePanelProps {
-  itemTitle: string;
+  itemTitle?: string;
   reservePrice?: number | null;
   categoryName?: string | null;
   location?: string | null;
@@ -23,7 +22,7 @@ export const BidIntelligencePanel: React.FC<BidIntelligencePanelProps> = ({
   categoryName,
   location,
   quantity = 1,
-  rawDescription,
+  rawDescription: _rawDescription,
 }) => {
   const { currency } = useAppStore();
   const baseBid = reservePrice && reservePrice > 0 ? reservePrice : 100000;
@@ -131,6 +130,22 @@ export const BidIntelligencePanel: React.FC<BidIntelligencePanelProps> = ({
 
   return (
     <div className="space-y-6 text-left animate-in fade-in duration-200">
+      {itemTitle && (
+        <div className="bg-white border border-slate-200/80 rounded-2xl px-4 py-3 shadow-2xs flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-bold text-slate-800 text-sm truncate">{itemTitle}</span>
+            {categoryName && (
+              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider shrink-0">
+                {categoryName}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-xs text-slate-500 shrink-0">
+            {location && <span>📍 {location}</span>}
+            {quantity && quantity > 1 && <span className="text-indigo-600 font-bold">Qty: {quantity}</span>}
+          </div>
+        </div>
+      )}
       
       {/* Hero Recommendation Card */}
       <div

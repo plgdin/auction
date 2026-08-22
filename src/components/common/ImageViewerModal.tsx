@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  X, ZoomIn, ZoomOut, RotateCw, ChevronLeft, ChevronRight, Maximize2, Minimize2,
-  Image as ImageIcon, Download, RefreshCw
+  X, ZoomIn, ZoomOut, RotateCw, ChevronLeft, ChevronRight,
+  Image as ImageIcon, Download
 } from 'lucide-react';
 
 interface ImageViewerModalProps {

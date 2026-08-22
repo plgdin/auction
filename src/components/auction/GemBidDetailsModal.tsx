@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Clock, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck } from 'lucide-react';
+import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck } from 'lucide-react';
 import clsx from 'clsx';
 import type { GemBid } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';

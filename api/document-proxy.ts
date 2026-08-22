@@ -220,7 +220,7 @@ function getGeMSessionCookies(): Promise<string> {
 /**
  * Transforms raw GeM portal HTML into a clean document starting directly at GENERAL DETAIL
  */
-function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
+function renderStyledNoticeDocument(rawHtml: string, _filename?: string): string {
   let cleanContent = rawHtml;
 
   // Search specifically for GENERAL DETAIL / General Details header

@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  X, Copy, Check, Calendar, Landmark, Heart, Clock, Download, FileDown, Eye, Image, Ruler,
-  ChevronLeft, ChevronRight, Shield, User, FileText, CreditCard, Scale, Building,
-  Compass, MapPin, ExternalLink, Mail, Phone, Tag, DollarSign, AlertCircle, Award,
-  FileCode, Layers, Gavel, Radio, TrendingUp, Info, Building2, ShieldCheck, Car, Gauge, Fuel, Wrench,
-  Maximize2, ZoomIn
+  X, Copy, Check, Calendar, Landmark, Heart, Clock, Download, Eye, Image, Ruler,
+  ChevronLeft, ChevronRight, Shield, User, FileText, Scale, Building,
+  MapPin, Tag, Award,
+  Layers, Gavel, ShieldCheck, Car, Gauge, Fuel, Wrench, ZoomIn
 } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
@@ -12,6 +11,7 @@ import type { BaanknetAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
 import { ImageViewerModal } from '../common/ImageViewerModal';
 import { BidIntelligencePanel } from './BidIntelligencePanel';
+import { getAuctionDossierDataUrl } from '../../utils/auctionDossierGenerator';
 
 interface BaanknetDetailsModalProps {
   item: BaanknetAuction;
@@ -380,15 +380,14 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
           });
         }
       });
-      if (entries.length > 0) return entries;
     }
 
-    // Fallback to live URLs via proxy
+    // Direct / proxied URLs from listing
     const rawList: string[] = [];
-    if (item.document_url) rawList.push(item.document_url);
+    if (item.document_url && !entries.some(e => e.url === item.document_url)) rawList.push(item.document_url);
     if (Array.isArray(item.document_urls)) {
       for (const d of item.document_urls) {
-        if (d && !rawList.includes(d)) rawList.push(d);
+        if (d && !rawList.includes(d) && !entries.some(e => e.url === d)) rawList.push(d);
       }
     }
 
@@ -404,6 +403,28 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
         downloadUrl,
       });
     });
+
+    // Always include the Official Bank Auction Due Diligence Dossier
+    const dossierDataUrl = getAuctionDossierDataUrl(item);
+    const dossierSafeName = `Bank_Auction_Dossier_${item.baanknet_auction_id}.html`;
+
+    if (entries.length === 0) {
+      entries.push({
+        url: dossierDataUrl,
+        isStored: true,
+        label: 'Official Bank Auction Dossier & Notice',
+        safeName: dossierSafeName,
+        downloadUrl: dossierDataUrl,
+      });
+    } else {
+      entries.push({
+        url: dossierDataUrl,
+        isStored: true,
+        label: 'Bank Due Diligence & Asset Dossier',
+        safeName: dossierSafeName,
+        downloadUrl: dossierDataUrl,
+      });
+    }
 
     return entries;
   };
@@ -518,6 +539,11 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   {isLive && (
                     <span className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider animate-pulse flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Live Auction
+                    </span>
+                  )}
+                  {isClosed && (
+                    <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      Auction Closed
                     </span>
                   )}
                 </div>
@@ -810,21 +836,19 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                         Official Bank e-Auction Participation
                       </h4>
                       <span className="text-[10px] text-slate-300">
-                        {isLive ? '🟢 Live bidding room open on bank portal' : 'Scheduled e-Auction under Bank / SARFAESI rules'}
+                        {isLive ? '🟢 Live bidding in progress' : 'Scheduled Bank Foreclosure e-Auction under SARFAESI / IBC rules'}
                       </span>
                     </div>
                   </div>
 
-                  {item.source_url && (
-                    <a
-                      href={item.source_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-primary-600 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+                  {primaryDoc && (
+                    <button
+                      onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
                     >
-                      Enter Bank Auction Room
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View Notice & Terms</span>
+                    </button>
                   )}
                 </div>
 
@@ -976,13 +1000,13 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                 </div>
               </div>
 
-              {/* Official Bank Document Card */}
-              {availableDocs.length > 0 && primaryDoc ? (
-                <div className="space-y-2.5">
+              {/* Official Bank Document & Due Diligence Dossier Card */}
+              {availableDocs.length > 0 && primaryDoc && (
+                <div className="space-y-3">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-1.5 flex items-center justify-between">
-                    <span>Official Bank Document</span>
+                    <span>Official Notice & Dossier</span>
                     <span className="text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-1.5 py-0.5 rounded">
-                      {availableDocs.length} Docs
+                      {availableDocs.length} {availableDocs.length === 1 ? 'Doc' : 'Docs'}
                     </span>
                   </h4>
 
@@ -1015,7 +1039,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                         className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold text-slate-900 bg-white hover:bg-slate-100 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
                       >
                         <Eye className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Preview Document</span>
+                        <span>Preview Document in Fullscreen</span>
                       </button>
 
                       <a
@@ -1026,30 +1050,52 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                         className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] transition-all cursor-pointer shadow-xs border border-indigo-400/30"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        <span>Download PDF Document</span>
+                        <span>Download Official PDF</span>
                       </a>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs space-y-2.5">
-                  <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs">
-                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Bank Sale Notice & Tender</span>
-                  </div>
-                  <p className="text-[10.5px] text-slate-500 leading-relaxed">
-                    Official tender documents, vehicle inspection notes, and EMD guidelines are available directly inside the bank's auction portal.
-                  </p>
-                  {item.source_url && (
-                    <a
-                      href={item.source_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold text-slate-900 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] transition-all cursor-pointer shadow-2xs border border-slate-200"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-amber-500" />
-                      <span>View on Bank Portal ↗</span>
-                    </a>
+
+                  {/* Additional Attachment Documents if available */}
+                  {availableDocs.length > 1 && (
+                    <div className="space-y-2 pt-2">
+                      <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider block">
+                        Attached Documents & Annexures ({availableDocs.length - 1})
+                      </span>
+                      <div className="space-y-1.5">
+                        {availableDocs.slice(1).map((doc, idx) => (
+                          <div
+                            key={idx}
+                            className="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs hover:border-slate-300 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                              <span className="text-xs font-semibold text-slate-800 truncate" title={doc.label}>
+                                {doc.label}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() => openInAppViewer(doc.url, `${doc.label}: ${item.title}`, doc.safeName)}
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                                title="Preview Document"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <a
+                                href={doc.downloadUrl}
+                                download={doc.safeName}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer"
+                                title="Download PDF"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
@@ -1069,18 +1115,6 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
           </button>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            {item.source_url && (
-              <a
-                href={item.source_url}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full sm:w-auto inline-flex justify-center items-center py-2 px-4 rounded-xl text-xs sm:text-sm font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer"
-              >
-                <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
-                Bank Portal ↗
-              </a>
-            )}
-
             {primaryDoc && (
               <>
                 <button
@@ -1088,7 +1122,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   className="w-full sm:w-auto inline-flex justify-center items-center py-2 px-4 rounded-xl text-xs sm:text-sm font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 >
                   <Eye className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
-                  View Catalog
+                  View Notice in Fullscreen
                 </button>
 
                 <a
@@ -1099,7 +1133,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   className="w-full sm:w-auto inline-flex justify-center items-center py-2 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5 mr-1.5" />
-                  Download PDF
+                  Download Official PDF
                 </a>
               </>
             )}

@@ -21,18 +21,20 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   const [hasError, setHasError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Format in-app proxy URLs
-  const proxyViewUrl = `/api/document-proxy?url=${encodeURIComponent(documentUrl)}&filename=${encodeURIComponent(filename)}&disposition=inline`;
-  const proxyDownloadUrl = `/api/document-proxy?url=${encodeURIComponent(documentUrl)}&filename=${encodeURIComponent(filename)}&disposition=attachment`;
+  // Format in-app URLs (handling direct data URIs, storage links, and remote proxy)
+  const isDirectUrl = documentUrl.startsWith('data:') || documentUrl.startsWith('blob:') || documentUrl.startsWith('/api/') || documentUrl.includes('supabase.co');
+  const proxyViewUrl = isDirectUrl ? documentUrl : `/api/document-proxy?url=${encodeURIComponent(documentUrl)}&filename=${encodeURIComponent(filename)}&disposition=inline`;
+  const proxyDownloadUrl = isDirectUrl ? documentUrl : `/api/document-proxy?url=${encodeURIComponent(documentUrl)}&filename=${encodeURIComponent(filename)}&disposition=attachment`;
 
   const handlePrint = () => {
     try {
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.print();
       } else {
-        window.open(proxyViewUrl, '_blank')?.print();
+        const w = window.open(proxyViewUrl, '_blank');
+        w?.print();
       }
-    } catch (e) {
+    } catch {
       window.open(proxyViewUrl, '_blank');
     }
   };

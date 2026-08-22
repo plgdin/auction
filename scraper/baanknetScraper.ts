@@ -1037,12 +1037,16 @@ async function scrapeIBCAuctions(
       log.warn("Timeout waiting for IBC listings. Page may be empty or loading slowly.");
     }
 
-    for (let pageNum = startPage; pageNum <= maxPages; pageNum++) {
+    let noNewContentCount = 0;
+    let lastHeight = 0;
+    const maxScrolls = Math.max(maxPages * 5, BAANKNET_MAX_SCROLL_CYCLES);
+
+    for (let scroll = 1; scroll <= maxScrolls; scroll++) {
       const rawCards = await ibcPage.evaluate(extractIBCListingCards, KNOWN_LENDERS);
 
       const pageNewItems: RawBaankNetItem[] = [];
       for (const card of rawCards) {
-        if (seenIds.has(card.auctionId)) continue;
+        if (!card.auctionId || seenIds.has(card.auctionId)) continue;
         seenIds.add(card.auctionId);
 
         const itemObj: RawBaankNetItem = {
@@ -1061,6 +1065,8 @@ async function scrapeIBCAuctions(
           startDate: card.startDate,
           endDate: card.endDate,
           detailUrl: card.detailUrl,
+          thumbnailUrl: card.thumbnailUrl,
+          photoUrls: card.photoUrls,
           actionType: "IBC",
           auctionModule: "ibc",
           corporateDebtorName: card.corporateDebtorName,
@@ -1084,33 +1090,45 @@ async function scrapeIBCAuctions(
         }
         const parsed = parseListings(pageNewItems, "upcoming");
         await upsertListings(parsed);
-        log.info({ page: pageNum, saved: parsed.length, total: allItems.length }, "IBC page scraped and saved to DB");
+        log.info({ scroll, saved: parsed.length, total: allItems.length }, "IBC assets scraped and saved to DB");
+        noNewContentCount = 0;
+      } else {
+        noNewContentCount++;
       }
 
-      if (rawCards.length === 0) {
-        log.info({ page: pageNum }, "No IBC items found. Reached last page.");
+      // Check if end of infinite scroll reached
+      if (noNewContentCount >= 4) {
+        log.info("No new IBC assets found after 4 scroll attempts. Reached bottom.");
         break;
       }
 
-      // Navigate to next page
-      const navigated = await ibcPage.evaluate(() => {
-        const buttons = Array.from(document.querySelectorAll("button, a, .page-link"));
-        for (const btn of buttons) {
-          const text = btn.textContent?.toLowerCase().trim() || "";
-          if (text === "next" || text === ">" || text.includes("next")) {
-            if (!btn.hasAttribute("disabled") && !(btn as any).disabled) {
-              (btn as HTMLElement).click();
-              return true;
-            }
-          }
-        }
-        return false;
+      // Scroll to trigger lazy loading / infinite scroll
+      const currentHeight = await ibcPage.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+        return document.body.scrollHeight;
       });
 
-      if (!navigated) {
-        log.info("IBC pagination: reached last page.");
-        break;
+      if (currentHeight === lastHeight && noNewContentCount >= 2) {
+        // Try clicking next/more button if exists
+        const clicked = await ibcPage.evaluate(() => {
+          const buttons = Array.from(document.querySelectorAll("button, a, .page-link"));
+          for (const btn of buttons) {
+            const text = btn.textContent?.toLowerCase().trim() || "";
+            if (text === "next" || text === ">" || text.includes("load more") || text.includes("show more")) {
+              if (!btn.hasAttribute("disabled") && !(btn as any).disabled) {
+                (btn as HTMLElement).click();
+                return true;
+              }
+            }
+          }
+          return false;
+        });
+        if (!clicked && noNewContentCount >= 3) {
+          log.info("Page height unchanged and no pagination buttons. Reached last item.");
+          break;
+        }
       }
+      lastHeight = currentHeight;
 
       await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
     }

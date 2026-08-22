@@ -1166,6 +1166,8 @@ export function extractIBCListingCards(knownLenders: string[] = []): {
   endDate: string;
   detailUrl: string;
   status: string;
+  thumbnailUrl?: string;
+  photoUrls?: string[];
   corporateDebtorName?: string;
   corporateDebtorCin?: string;
   liquidatorRegNo?: string;
@@ -1269,18 +1271,26 @@ export function extractIBCListingCards(knownLenders: string[] = []): {
 
     // 5. Title
     let title = "";
-    if (classification) {
+    const rawTitleEl = card.querySelector(".text-formlabel span, span.line-clamp-2, h3, h4, h5, [class*='title']") as HTMLElement;
+    const extractedHeadline = rawTitleEl?.innerText?.trim() || "";
+    if (extractedHeadline && !extractedHeadline.includes("Asset ID") && !extractedHeadline.includes("Asset Classification") && extractedHeadline.length > 5) {
+      title = extractedHeadline;
+    } else if (classification) {
       const locSuffix = city ? ` in ${city}, ${state}` : (locationStr ? ` in ${locationStr}` : "");
       title = `${classification}${locSuffix}`;
     } else {
-      const titleEl = card.querySelector("h3, h4, h5, [class*='title'], strong, b, td:first-child") as HTMLElement;
-      const rawTitle = titleEl?.innerText?.trim() || "";
-      if (rawTitle && !rawTitle.includes("Asset ID") && !rawTitle.includes("Asset Classification")) {
-        title = rawTitle;
-      } else {
-        title = locationStr ? `Insolvency Asset in ${locationStr}` : "IBC Auction Asset";
-      }
+      title = locationStr ? `Insolvency Asset in ${locationStr}` : "IBC Auction Asset";
     }
+
+    // 5b. Photos & Images
+    const imgEls = card.querySelectorAll("img") as NodeListOf<HTMLImageElement>;
+    const photoUrls: string[] = [];
+    imgEls.forEach((img) => {
+      const src = img.src || img.getAttribute("src") || "";
+      if (src && !src.includes("logo") && !src.includes("icon") && !src.includes("avatar") && !src.startsWith("data:") && !photoUrls.includes(src)) {
+        photoUrls.push(src);
+      }
+    });
 
     // 6. Financial & Bidding Details
     const priceMatch = text.match(/(?:Reserve\s*Price|Price)\s*:?\s*(?:₹|Rs\.?)?\s*([\d,.]+\s*(?:Lakh|Crore|Lac|Cr)?)/i) ||
@@ -1325,6 +1335,8 @@ export function extractIBCListingCards(knownLenders: string[] = []): {
     const memoLink = card.querySelector('a[href*="process-memo"], a[href*="memo"], a[href*="form-g"]') as HTMLAnchorElement | null;
     if (memoLink && memoLink.href) processMemoUrl = memoLink.href;
 
+    const detailUrlFinal = detailUrl || `https://ibbi.baanknet.com/asset-detail/${finalId}`;
+
     items.push({
       auctionId: finalId,
       bankPropertyId: finalId,
@@ -1343,8 +1355,10 @@ export function extractIBCListingCards(knownLenders: string[] = []): {
       officerDesignation: ipName ? "Insolvency Professional / Liquidator" : undefined,
       startDate: startMatch ? startMatch[1] : "",
       endDate: endMatch ? endMatch[1] : "",
-      detailUrl,
+      detailUrl: detailUrlFinal,
       status: "UPCOMING",
+      photoUrls: photoUrls.length > 0 ? photoUrls : undefined,
+      thumbnailUrl: photoUrls.length > 0 ? photoUrls[0] : undefined,
       corporateDebtorName: corporateDebtorName || undefined,
       corporateDebtorCin: corporateDebtorCin || undefined,
       liquidatorRegNo: liquidatorRegNo || undefined,

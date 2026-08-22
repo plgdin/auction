@@ -338,6 +338,7 @@ export interface RawBaankNetItem {
   startDate: string;
   endDate: string;
   detailUrl?: string;
+  propertyType?: string;
   auctionModule?: string;
   carpetArea?: string;
   furnishing?: string;

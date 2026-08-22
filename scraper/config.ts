@@ -114,7 +114,7 @@ export const BAANKNET_IBC_BASE_URL =
   process.env.BAANKNET_IBC_BASE_URL || "https://ibbi.baanknet.com";
 
 export const BAANKNET_IBC_LISTING_PATH =
-  process.env.BAANKNET_IBC_LISTING_PATH || "/";
+  process.env.BAANKNET_IBC_LISTING_PATH || "/asset-listing";
 
 export const BAANKNET_SCRAPE_DELAY_MS = parseInt(
   process.env.BAANKNET_SCRAPE_DELAY_MS || "3000",
