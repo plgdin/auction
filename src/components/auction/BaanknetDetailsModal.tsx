@@ -23,6 +23,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const [photos, setPhotos] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [activeTab, setActiveTab] = useState<'details'>('details');
+  const [countdownStr, setCountdownStr] = useState<string>('');
 
   // In-app document viewer state
   const [viewerState, setViewerState] = useState<{
@@ -117,6 +118,45 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
     const parsed = safeParse(d);
     return parsed ? parsed.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not Available';
   };
+
+  // Live bidding countdown timer
+  useEffect(() => {
+    const startD = safeParse(item.auction_start_date);
+    const endD = safeParse(item.auction_end_date);
+
+    if (!startD && !endD) {
+      setCountdownStr('Schedule Pending');
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = Date.now();
+      const startMs = startD ? startD.getTime() : 0;
+      const endMs = endD ? endD.getTime() : 0;
+
+      if (endD && now > endMs) {
+        setCountdownStr('Auction Closed');
+      } else if (startD && endD && now >= startMs && now <= endMs) {
+        const diff = endMs - now;
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((diff % (1000 * 60)) / 1000);
+        setCountdownStr(`Bidding Ends in: ${hours}h ${mins}m ${secs}s`);
+      } else if (startD && now < startMs) {
+        const diff = startMs - now;
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        setCountdownStr(`Starts in: ${days}d ${hours}h ${mins}m`);
+      } else {
+        setCountdownStr('Schedule Pending');
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [item.auction_start_date, item.auction_end_date]);
 
   const handleCopyRef = () => {
     navigator.clipboard.writeText(item.baanknet_auction_id);
@@ -225,29 +265,29 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
       {/* Main Container */}
       <div className="relative bg-white rounded-3xl w-full max-w-6xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200 text-left">
         
-        {/* Top Header Bar */}
-        <div className="px-6 py-3.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
+        {/* Top Header Bar (White / Light Theme matching MSTC modal) */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-400 font-medium">Ref: {item.baanknet_auction_id}</span>
+            <span className="text-base font-bold text-slate-500">Ref: {item.baanknet_auction_id}</span>
             <button
               onClick={handleCopyRef}
-              className="text-slate-400 hover:text-white transition-colors p-1 rounded-md cursor-pointer"
+              className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-400 hover:text-slate-700 cursor-pointer flex items-center justify-center"
               title="Copy Reference Number"
             >
-              {copiedRef ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedRef ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
 
             {onInterestedToggle && (
               <button
                 onClick={onInterestedToggle}
                 className={clsx(
-                  "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border shadow-2xs",
                   isInterested 
-                    ? "bg-rose-500/20 text-rose-300 border-rose-500/30" 
-                    : "bg-white/10 text-slate-300 border-white/15 hover:bg-white/20"
+                    ? "bg-rose-50 border-rose-200 text-rose-700" 
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )}
               >
-                <Heart className={clsx("w-3.5 h-3.5", isInterested && "fill-rose-400 text-rose-400")} />
+                <Heart className={clsx("w-3.5 h-3.5", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
                 <span>{isInterested ? "Interested" : "I'm Interested"}</span>
               </button>
             )}
@@ -255,7 +295,8 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
+            title="Close"
           >
             <X className="w-5 h-5" />
           </button>
@@ -437,6 +478,17 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                 </div>
               </div>
 
+            </div>
+
+            {/* Bidding Timeline Countdown Banner */}
+            <div className="bg-indigo-50/70 border border-indigo-150 rounded-2xl p-4 flex items-center justify-between text-indigo-950 shadow-3xs">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-800">
+                Bidding Timeline
+              </span>
+              <span className="font-black text-sm sm:text-base tracking-wide flex items-center gap-2 text-indigo-900">
+                <span className="w-2 h-2 bg-indigo-500 rounded-full animate-ping shrink-0" />
+                {countdownStr}
+              </span>
             </div>
 
             {/* Borrower & Description Card */}
