@@ -17,7 +17,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 
 const createOrderSchema = z.object({
-  amount: z.number().positive(),
+  amount: z.number().nonnegative(),
   currency: z.string().optional().default('INR'),
   receipt: z.string().optional(),
   planId: z.string().min(1, "planId is required"),
@@ -163,7 +163,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    if (amount < 100) {
+    if (amount < 100 && !isTrial && !isExplorerFree) {
       res.status(400).json({ success: false, error: 'Bad Request: Amount must be >= 100 paise' });
       return;
     }
