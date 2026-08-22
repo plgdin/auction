@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import type { GemBid } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
 import { getGemItemImage } from '../../utils/gemImageResolver';
+import { cleanCategoryName } from '../../utils/cleanCategory';
 
 interface GemBidDetailsModalProps {
   item: GemBid;
@@ -286,7 +287,7 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
                 </span>
                 {item.category_name && (
                   <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
-                    {item.category_name}
+                    {cleanCategoryName(item.category_name, item.items)}
                   </span>
                 )}
                 {item.state && (

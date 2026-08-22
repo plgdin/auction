@@ -1,11 +1,11 @@
 import { useState, useMemo, memo } from 'react';
 import { Eye, MapPin, Building2, Calendar, Clock, Landmark, Copy, Check, Gavel, Info, Download } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
-import type { GemAuction } from '../../services/publicService';
 import { getGemItemImage } from '../../utils/gemImageResolver';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice, formatPriceString } from '../../utils/currency';
+import { cleanCategoryName } from '../../utils/cleanCategory';
 
 interface GemCardProps {
   item: GemAuction;
@@ -148,7 +148,7 @@ export const GemCard = memo(function GemCard({
 
   const locationDisplay = [item.city, item.state || item.location].filter(Boolean).join(', ') || 'India';
   const orgName = item.organisation || item.department || 'Government of India';
-  const mainCategory = item.category_name || 'GeM Forward Auction';
+  const mainCategory = cleanCategoryName(item.category_name, item.title);
 
   const renderCardHeader = () => (
     <div className="flex flex-col gap-2 mb-3">

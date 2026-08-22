@@ -4,6 +4,7 @@ import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import type { GemBid } from '../../services/publicService';
 import { getGemItemImage } from '../../utils/gemImageResolver';
 import clsx from 'clsx';
+import { cleanCategoryName } from '../../utils/cleanCategory';
 
 interface GemBidCardProps {
   item: GemBid;
@@ -133,7 +134,7 @@ export const GemBidCard = memo(function GemBidCard({
   }, [startDate, endDate]);
 
   const deptName = item.department_name || 'Government Department / PSU';
-  const mainCategory = item.category_name || 'GeM Procurement';
+  const mainCategory = cleanCategoryName(item.category_name, item.items);
 
   const renderCardHeader = () => (
     <div className="flex flex-col gap-2 mb-3">
