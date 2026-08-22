@@ -3,12 +3,14 @@ import {
   X, Copy, Check, Calendar, Landmark, Heart, Clock, Download, FileDown, Eye, Image, Ruler,
   ChevronLeft, ChevronRight, Shield, User, FileText, CreditCard, Scale, Building,
   Compass, MapPin, ExternalLink, Mail, Phone, Tag, DollarSign, AlertCircle, Award,
-  FileCode, Layers, Gavel, Radio, TrendingUp, Info, Building2, ShieldCheck, Car, Gauge, Fuel, Wrench
+  FileCode, Layers, Gavel, Radio, TrendingUp, Info, Building2, ShieldCheck, Car, Gauge, Fuel, Wrench,
+  Maximize2, ZoomIn
 } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
 import type { BaanknetAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
+import { ImageViewerModal } from '../common/ImageViewerModal';
 import { BidIntelligencePanel } from './BidIntelligencePanel';
 
 interface BaanknetDetailsModalProps {
@@ -30,6 +32,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const [countdownStr, setCountdownStr] = useState<string>('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'valuation'>('details');
 
   // In-app document viewer state
@@ -104,7 +107,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   // Escape key handler to close modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !viewerState.isOpen) {
+      if (e.key === 'Escape' && !viewerState.isOpen && !isPhotoViewerOpen) {
         onClose();
       }
     };
@@ -112,7 +115,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onClose, viewerState.isOpen]);
+  }, [onClose, viewerState.isOpen, isPhotoViewerOpen]);
 
   // Safe date parser
   const safeParse = (d?: string | null): Date | null => {
@@ -153,7 +156,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
         const diff = startMs - now;
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const mins = Math.floor((diff % (1000 * 60)) / 1000);
         setCountdownStr(`Starts in: ${days}d ${hours}h ${mins}m`);
       } else {
         setCountdownStr('Schedule Pending');
@@ -513,7 +516,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                     Verified Bank Auction
                   </span>
                   {isLive && (
-                    <span className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider animate-pulse flex items-center gap-1">
+                    <span className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider animate-pulse flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Live Auction
                     </span>
                   )}
@@ -580,15 +583,26 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                 )}
               </div>
 
-              {/* Photo Gallery Carousel */}
+              {/* Photo Gallery Carousel with Interactive Zoom Button */}
               {photos.length > 0 ? (
                 <div className="space-y-2.5">
-                  <div className="relative bg-slate-950 rounded-xl overflow-hidden h-52 sm:h-64 w-full flex items-center justify-center border border-slate-200 shadow-inner">
+                  <div className="relative bg-slate-950 rounded-xl overflow-hidden h-52 sm:h-64 w-full flex items-center justify-center border border-slate-200 shadow-inner group">
                     <img
                       src={photos[activePhotoIdx]}
                       alt={`${item.title} photo ${activePhotoIdx + 1}`}
-                      className="w-full h-full object-contain p-1"
+                      className="w-full h-full object-contain p-1 cursor-pointer transition-transform duration-200 group-hover:scale-[1.02]"
+                      onClick={() => setIsPhotoViewerOpen(true)}
                     />
+
+                    {/* Expand / Zoom Button Overlay */}
+                    <button
+                      onClick={() => setIsPhotoViewerOpen(true)}
+                      className="absolute top-2.5 right-2.5 p-2 bg-black/70 hover:bg-black/90 text-white rounded-xl backdrop-blur-xs transition-all cursor-pointer shadow-md flex items-center gap-1.5 text-xs font-bold border border-white/10"
+                      title="Open Fullscreen Zoom Viewer"
+                    >
+                      <ZoomIn className="w-3.5 h-3.5 text-indigo-300" />
+                      <span className="hidden sm:inline">Zoom Photo</span>
+                    </button>
                     
                     {photos.length > 1 && (
                       <>
@@ -1101,6 +1115,15 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
         title={viewerState.title}
         documentUrl={viewerState.url}
         filename={viewerState.filename}
+      />
+
+      {/* Interactive Fullscreen Image Zoom Lightbox */}
+      <ImageViewerModal
+        isOpen={isPhotoViewerOpen}
+        onClose={() => setIsPhotoViewerOpen(false)}
+        images={photos}
+        initialIndex={activePhotoIdx}
+        title={displayTitle}
       />
     </div>
   );
