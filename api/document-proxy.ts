@@ -245,9 +245,12 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
     cleanContent = cleanContent.substring(bestIndex);
   }
 
-  // Remove common navbar snippets that might still linger
+  // Remove common navbar and header/footer website junk that might linger
   cleanContent = cleanContent
     .replace(/1800-419-3436[\s\S]*?Need Help\?[\s\S]*?<\/ul>/gi, '')
+    .replace(/<header[\s\S]*?<\/header>/gi, '')
+    .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+    .replace(/<nav[\s\S]*?<\/nav>/gi, '')
     .replace(/<ul[\s\S]*?Forward Auction[\s\S]*?<\/ul>/gi, '')
     .replace(/<ul[\s\S]*?Sign Up[\s\S]*?<\/ul>/gi, '')
     .replace(/<ul[\s\S]*?Login[\s\S]*?<\/ul>/gi, '')
@@ -286,112 +289,52 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
     }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f8fafc;
-      color: #1e293b;
-      line-height: 1.6;
-      padding: 24px;
-      font-size: 13px;
+      background: #ffffff;
+      color: #0f172a;
+      line-height: 1.5;
+      padding: 16px;
+      font-size: 12px;
     }
     .document-wrapper {
-      max-width: 900px;
+      max-width: 100%;
       margin: 0 auto;
       background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-      overflow: hidden;
-    }
-    .official-header {
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      color: #ffffff;
-      padding: 24px 32px;
-      border-bottom: 3px solid #2563eb;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-    .official-header-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .emblem-badge {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: rgba(37, 99, 235, 0.2);
-      border: 1px solid rgba(37, 99, 235, 0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-    }
-    .header-text h1 {
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      text-transform: uppercase;
-    }
-    .header-text p {
-      font-size: 11px;
-      color: #94a3b8;
-      font-family: 'JetBrains Mono', monospace;
-      margin-top: 2px;
-    }
-    .print-btn {
-      background: #2563eb;
-      color: #ffffff;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 0.2s;
-    }
-    .print-btn:hover {
-      background: #1d4ed8;
     }
     .document-body {
-      padding: 32px;
+      padding: 8px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 16px 0 24px 0;
-      font-size: 12px;
-      border-radius: 8px;
+      margin: 12px 0 16px 0;
+      font-size: 11.5px;
+      border-radius: 6px;
       overflow: hidden;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #cbd5e1;
     }
     th, td {
-      padding: 10px 14px;
-      border: 1px solid #e2e8f0;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
       text-align: left;
     }
     th {
-      background: #f8fafc;
+      background: #f1f5f9;
       font-weight: 700;
       color: #0f172a;
       text-transform: uppercase;
-      font-size: 11px;
+      font-size: 10.5px;
       letter-spacing: 0.03em;
     }
     tr:nth-child(even) td {
-      background: #fafafa;
+      background: #f8fafc;
     }
     h2, h3, h4 {
       color: #0f172a;
       font-weight: 800;
-      margin: 20px 0 10px 0;
-      padding-bottom: 6px;
-      border-bottom: 2px solid #f1f5f9;
-      font-size: 14px;
+      margin: 16px 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 2px solid #e2e8f0;
+      font-size: 13px;
       text-transform: uppercase;
       letter-spacing: -0.01em;
     }
@@ -400,16 +343,8 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
       text-decoration: none;
       pointer-events: none;
     }
-    .notice-footer {
-      background: #f8fafc;
-      padding: 16px 32px;
-      border-top: 1px solid #e2e8f0;
-      font-size: 11px;
-      color: #64748b;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-family: 'JetBrains Mono', monospace;
+    header, footer, nav, .official-header, .notice-footer, .print-btn {
+      display: none !important;
     }
     @media print {
       body {
@@ -420,42 +355,21 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
         border: none;
         box-shadow: none;
       }
-      .print-btn {
-        display: none;
-      }
     }
   </style>
 </head>
 <body>
   <div class="document-wrapper">
-    <div class="official-header">
-      <div class="official-header-left">
-        <div class="emblem-badge">🏛️</div>
-        <div class="header-text">
-          <h1>Official e-Auction Notice Document</h1>
-          <p>Government of India • Forward Auction Portal</p>
-        </div>
-      </div>
-      <button onclick="window.print()" class="print-btn">
-        🖨️ Print / Save as PDF
-      </button>
-    </div>
-
     <div class="document-body">
       ${cleanContent}
-    </div>
-
-    <div class="notice-footer">
-      <span>Verified Official Tender Notice • In-App Document Stream</span>
-      <span>${escapeHtml(filename)}</span>
     </div>
   </div>
 </body>
 </html>`;
 }
 
-function escapeHtml(str: string): string {
-  return str
+function escapeHtml(unsafe: string): string {
+  return (unsafe || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
