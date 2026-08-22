@@ -5,6 +5,7 @@ import type { GemBid } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
 import { getGemItemImage } from '../../utils/gemImageResolver';
 import { cleanCategoryName } from '../../utils/cleanCategory';
+import { BidIntelligencePanel } from './BidIntelligencePanel';
 
 interface GemBidDetailsModalProps {
   item: GemBid;
@@ -23,7 +24,7 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
   const [copiedRa, setCopiedRa] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
   const [countdownStr, setCountdownStr] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'details'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'valuation'>('details');
 
   // In-app document viewer state
   const [viewerState, setViewerState] = useState<{
@@ -270,11 +271,36 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
             >
               Catalog Details
             </button>
+            <button
+              onClick={() => setActiveTab('valuation')}
+              className={clsx(
+                "py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer flex items-center gap-2",
+                activeTab === 'valuation'
+                  ? "border-primary text-primary"
+                  : "border-transparent text-slate-400 hover:text-slate-700"
+              )}
+            >
+              <span>Bid Intelligence</span>
+              <span className="text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded-md tracking-normal uppercase shrink-0">Beta</span>
+            </button>
           </div>
         </div>
 
-        {/* Main Content Body (Split Screen) */}
-        <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row">
+        {/* Main Content Body */}
+        {activeTab === 'valuation' ? (
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+            <div className="max-w-5xl mx-auto">
+              <BidIntelligencePanel
+                itemTitle={item.items || item.bid_number}
+                reservePrice={0}
+                categoryName={item.category_name}
+                location={item.state || 'India'}
+                rawDescription={item.department_name}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row">
           
           {/* Left Panel: Bid Information */}
           <div className="flex-1 p-6 space-y-6 overflow-y-auto">
@@ -681,6 +707,7 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
           )}
 
         </div>
+        )}
 
         {/* Footer Actions */}
         <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0">

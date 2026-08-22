@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
 import type { BaanknetAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
+import { BidIntelligencePanel } from './BidIntelligencePanel';
 
 interface BaanknetDetailsModalProps {
   item: BaanknetAuction;
@@ -22,7 +23,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
-  const [activeTab, setActiveTab] = useState<'details'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'valuation'>('details');
   const [countdownStr, setCountdownStr] = useState<string>('');
 
   // In-app document viewer state
@@ -316,11 +317,36 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
             >
               Catalog Details
             </button>
+            <button
+              onClick={() => setActiveTab('valuation')}
+              className={clsx(
+                "py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer flex items-center gap-2",
+                activeTab === 'valuation'
+                  ? "border-primary text-primary"
+                  : "border-transparent text-slate-400 hover:text-slate-700"
+              )}
+            >
+              <span>Bid Intelligence</span>
+              <span className="text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded-md tracking-normal uppercase shrink-0">Beta</span>
+            </button>
           </div>
         </div>
 
-        {/* Main Content Body (Split Screen) */}
-        <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row">
+        {/* Main Content Body */}
+        {activeTab === 'valuation' ? (
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+            <div className="max-w-5xl mx-auto">
+              <BidIntelligencePanel
+                itemTitle={item.title}
+                reservePrice={item.reserve_price_value || (item.reserve_price ? parseFloat(item.reserve_price.replace(/[^\d.]/g, '')) : 0)}
+                categoryName={item.property_type || item.property_sub_type}
+                location={item.city || item.state}
+                rawDescription={item.description}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row">
           
           {/* Left Panel: Auction Information */}
           <div className="flex-1 p-6 space-y-6 overflow-y-auto">
@@ -787,6 +813,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
           )}
 
         </div>
+        )}
 
         {/* Footer Actions */}
         <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0">
