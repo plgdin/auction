@@ -484,8 +484,8 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
     const endMatch = text.match(/End\s*Date\s*:\s*([\d\-/]+\s+[\d:]+)/i);
 
     // Detail and property links
-    const auctionDetailLink = card.querySelector('a[href*="view-auction"], a[data-original-title*="View Auction"], a[title="View"]') as HTMLAnchorElement;
-    const propertyDetailLink = card.querySelector('a[href*="view-property"], a[data-original-title*="View Property"], a[href*="property-detail"]') as HTMLAnchorElement;
+    const auctionDetailLink = card.querySelector('a[href*="view"], a[data-original-title*="View"], a[title*="View"], button[title*="View"]') as HTMLAnchorElement;
+    const propertyDetailLink = card.querySelector('a[href*="property"], a[data-original-title*="Property"], a[href*="property-detail"]') as HTMLAnchorElement;
     let detailUrl = auctionDetailLink?.getAttribute("href") || auctionDetailLink?.href ||
                     propertyDetailLink?.getAttribute("href") || propertyDetailLink?.href || "";
 
@@ -493,6 +493,8 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
       detailUrl = detailUrl.replace("http://baanknet.com", "https://baanknet.com");
     } else if (detailUrl.startsWith("/")) {
       detailUrl = `https://baanknet.com${detailUrl}`;
+    } else if (!detailUrl && auctionIdMatch && auctionIdMatch[1]) {
+      detailUrl = `https://baanknet.com/eauction-psb/view-detail/${auctionIdMatch[1]}`;
     }
 
     // Extract thumbnail/photo if present on the listing card

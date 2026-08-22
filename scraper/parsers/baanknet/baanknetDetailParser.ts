@@ -1158,8 +1158,18 @@ export function extractIBCListingCards(knownLenders: string[] = []): {
     const urlIdMatch = detailUrl.match(/(?:asset|id|view)[/=]([A-Za-z0-9_-]+)/i);
     const auctionId = rawId || (urlIdMatch ? urlIdMatch[1] : "");
 
-    if (!auctionId && !detailUrl.includes("asset")) return;
-    const finalId = auctionId || `IBC_${Math.abs(text.slice(0, 30).split("").reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0))}`;
+    const isFakeNav =
+      !auctionId ||
+      auctionId.toLowerCase() === "guide" ||
+      auctionId.toLowerCase() === "eauction" ||
+      auctionId.toLowerCase() === "home" ||
+      auctionId.toLowerCase() === "about" ||
+      auctionId.toLowerCase() === "contact" ||
+      detailUrl.toLowerCase().includes("downloads") ||
+      detailUrl.toLowerCase().includes("user-guide");
+
+    if (isFakeNav) return;
+    const finalId = auctionId;
 
     // 2. Asset Classification / Type
     let classification = "";
