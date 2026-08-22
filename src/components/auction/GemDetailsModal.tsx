@@ -126,12 +126,10 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     const combinedText = `${item.title} ${item.raw_description || ''}`;
     const contacts: { name: string; phone?: string }[] = [];
 
-    // Extract phone numbers (10-digit mobile or landline)
     const phoneMatches = Array.from(
       new Set(combinedText.match(/\b[6-9]\d{9}\b|\b\d{5}\s*\d{5}\b|\b\d{3,5}[-\s]\d{6,8}\b/g) || [])
     );
 
-    // Extract named contacts like "mR. Dilip Gangad", "Prateek Raut", "Anagha Bilay"
     const nameRegex = /(?:mr\.?|mrs\.?|ms\.?|contact|officer|person)\s*:?\s*([a-zA-Z\s.]{3,30})/gi;
     let match;
     const namesFound: string[] = [];
@@ -151,7 +149,6 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
         });
       });
 
-      // Include remaining phone numbers
       if (phoneMatches.length > namesFound.length) {
         phoneMatches.slice(namesFound.length).forEach((ph) => {
           contacts.push({
@@ -659,7 +656,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
               </div>
             )}
 
-            {/* Official Notice Documents List (Simplified & Clear Action Buttons) */}
+            {/* Official Notice Documents List */}
             {availableDocs.length > 0 && (
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
@@ -718,7 +715,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
 
           </div>
 
-          {/* Right Panel: Side Document / Gallery Preview Sidebar */}
+          {/* Right Panel: Premium Clean Document Preview Card */}
           {(itemImage || availableDocs.length > 0) && (
             <div className="w-full lg:w-[420px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50 p-5 overflow-visible lg:overflow-y-auto flex flex-col space-y-5">
               
@@ -739,56 +736,57 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                 </div>
               )}
 
-              {/* Catalog Document Preview Sidebar */}
+              {/* Premium Document Preview Card */}
               {availableDocs.length > 0 && primaryDoc && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
                     <span>Catalog Document Preview</span>
-                    <span className="text-[9.5px] bg-slate-100 text-slate-700 border border-slate-300 font-bold px-2 py-0.5 rounded">
-                      {availableDocs.length} Docs
+                    <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded">
+                      {availableDocs.length} Docs Available
                     </span>
                   </h4>
 
-                  <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-2xs space-y-3">
+                  <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 rounded-2xl p-5 text-white border border-slate-800 shadow-xl flex flex-col justify-between gap-5 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
                     
-                    {/* Clean PDF Header Bar */}
-                    <div className="flex items-center justify-between bg-slate-900 text-white px-3 py-2 rounded-t-xl text-xs font-bold">
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
-                        <span className="truncate">{primaryDoc.label}</span>
+                    <div className="flex items-start justify-between gap-3 relative z-10">
+                      <div className="p-3.5 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 shrink-0 shadow-inner">
+                        <FileText className="w-8 h-8" />
                       </div>
-                      <span className="text-[9px] bg-emerald-900 text-emerald-300 font-black px-1.5 py-0.5 rounded shrink-0">
-                        VERIFIED PDF
+                      <span className="text-[10px] font-black tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-full uppercase flex items-center gap-1 shrink-0">
+                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                        Verified PDF Notice
                       </span>
                     </div>
 
-                    {/* Embedded Live PDF Viewer Frame */}
-                    <div className="relative w-full h-[380px] rounded-b-xl overflow-hidden border border-slate-200 bg-slate-100">
-                      <iframe
-                        src={`/api/document-proxy?url=${encodeURIComponent(primaryDoc.url)}&filename=${encodeURIComponent(primaryDoc.safeName)}&disposition=inline`}
-                        className="w-full h-full border-0"
-                        title={primaryDoc.label}
-                      />
+                    <div className="space-y-1 relative z-10">
+                      <h5 className="text-sm sm:text-base font-extrabold text-slate-100 line-clamp-2 leading-snug">
+                        {primaryDoc.label}
+                      </h5>
+                      <span className="text-[11px] text-slate-400 font-mono block">
+                        Official Government e-Auction Notice Document
+                      </span>
                     </div>
 
-                    {/* Clean & Explicit Action Buttons */}
-                    <div className="grid grid-cols-2 gap-2 pt-1">
+                    {/* Prominent Action Buttons */}
+                    <div className="flex flex-col gap-2.5 pt-2 relative z-10">
                       <button
                         onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-slate-900 bg-white hover:bg-slate-100 active:scale-[0.98] transition-all cursor-pointer shadow-md"
                       >
-                        <Eye className="w-3.5 h-3.5 text-slate-600" />
-                        <span>Preview Fullscreen</span>
+                        <Eye className="w-4 h-4 text-indigo-600" />
+                        <span>Preview Notice Document in App</span>
                       </button>
+
                       <a
                         href={primaryDoc.downloadUrl}
                         download={primaryDoc.safeName}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-primary transition-colors cursor-pointer"
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] transition-all cursor-pointer shadow-md border border-indigo-400/30"
                       >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Download PDF</span>
+                        <Download className="w-4 h-4" />
+                        <span>Download Official PDF Document</span>
                       </a>
                     </div>
                   </div>
