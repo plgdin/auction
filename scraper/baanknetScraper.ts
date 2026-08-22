@@ -1190,7 +1190,7 @@ async function clickStatusTab(page: any, statusLabel: string): Promise<boolean> 
 
 // ─── Database Upsert ─────────────────────────────────────────────────────────
 
-async function upsertListings(listings: ReturnType<typeof parseListings>): Promise<void> {
+export async function upsertListings(listings: ReturnType<typeof parseListings>): Promise<void> {
   if (listings.length === 0) {
     log.info("No listings to upsert.");
     return;
@@ -1330,7 +1330,7 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
     }
   }
 
-  // Update existing records
+  // Update existing records (Symmetric with insert)
   for (const listing of updatedListings) {
     const { error } = await supabase
       .from("baanknet_auctions")
@@ -1340,7 +1340,23 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
         auction_end_date: listing.auction_end_date,
         reserve_price_text: listing.reserve_price_text,
         reserve_price_value: listing.reserve_price_value,
-        // Update detail fields if they were freshly scraped
+
+        // Core fields (Symmetric with insert to prevent stale data)
+        ...(listing.title ? { title: listing.title } : {}),
+        ...(listing.bank_property_id ? { bank_property_id: listing.bank_property_id } : {}),
+        ...(listing.bank_name ? { bank_name: listing.bank_name } : {}),
+        ...(listing.property_type ? { property_type: listing.property_type } : {}),
+        ...(listing.category_name ? { category_name: listing.category_name } : {}),
+        ...(listing.state ? { state: listing.state } : {}),
+        ...(listing.city ? { city: listing.city } : {}),
+        ...(listing.pincode ? { pincode: listing.pincode } : {}),
+        ...(listing.full_address ? { full_address: listing.full_address } : {}),
+        ...(listing.location ? { location: listing.location } : {}),
+        ...(listing.raw_description ? { raw_description: listing.raw_description } : {}),
+        ...(listing.dedup_fingerprint ? { dedup_fingerprint: listing.dedup_fingerprint } : {}),
+        ...(listing.auction_module ? { auction_module: listing.auction_module } : {}),
+
+        // Detail & intelligence fields
         ...(listing.carpet_area ? { carpet_area: listing.carpet_area } : {}),
         ...(listing.carpet_area_sqft ? { carpet_area_sqft: listing.carpet_area_sqft } : {}),
         ...(listing.furnishing ? { furnishing: listing.furnishing } : {}),

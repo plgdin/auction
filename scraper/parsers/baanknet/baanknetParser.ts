@@ -422,7 +422,7 @@ export function parseListings(
     const startDate = parseBaanknetDate(item.startDate) || new Date().toISOString();
     const endDate = parseBaanknetDate(item.endDate) || new Date(Date.now() + 30 * 86400000).toISOString();
     const { state, city, pincode, location } = parseBaanknetLocation(item.location || item.address);
-    const { propertyType, category, subcategory } = parsePropertyType(item.title || item.description || "");
+    const { propertyType, category, subcategory } = parsePropertyType(item.propertyType || item.title || item.description || "");
     const areaInfo = parseCarpetArea(item.carpetArea || item.description || "");
 
     const inspStart = item.inspectionStartDate ? parseBaanknetDate(item.inspectionStartDate) : null;

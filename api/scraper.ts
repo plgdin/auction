@@ -1,7 +1,5 @@
 import { runAssetPipelineQueue } from '../scraper/assetWorker.js';
-// Mocks for missing scratch modules
-const clearAll = async () => { console.log('clearAll placeholder'); };
-const executeBackfill = async (mode: string) => { console.log('executeBackfill placeholder', mode); };
+import { setCorsHeaders, handleCorsPreflightIfNeeded } from './utils/cors.js';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
@@ -16,6 +14,40 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
 });
+
+const executeBackfill = async (mode: string) => { console.log('executeBackfill placeholder', mode); };
+
+/**
+ * Real destructive purge operation for scraped auction catalogs.
+ * Wipes tables in proper foreign-key order.
+ */
+export async function clearAllScrapedData(): Promise<{ deleted: Record<string, number> }> {
+  const deletedCounts: Record<string, number> = {};
+
+  const tables = [
+    'baanknet_auction_photos',
+    'baanknet_auctions',
+    'gem_bids',
+    'gem_auctions',
+    'mstc_lots',
+    'mstc_auctions',
+  ];
+
+  for (const table of tables) {
+    const { count, error } = await supabase
+      .from(table)
+      .delete({ count: 'exact' })
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (error) {
+      console.error(`Failed to clear table ${table}:`, error.message);
+    } else {
+      deletedCounts[table] = count || 0;
+    }
+  }
+
+  return { deleted: deletedCounts };
+}
 
 async function verifyAdmin(req: any, res: any, ip: string, userAgent: string): Promise<any> {
   try {
@@ -107,18 +139,14 @@ let clearDbLogs: string[] = ['[System] Serverless mode active. Click "Clear DB &
 let backfillLogs: string[] = ['[System] Serverless mode active. Click "Start Backfiller" to process database text parse serverlessly.'];
 
 export default async function handler(req: any, res: any) {
-  // Set JSON headers
-  res.setHeader('Content-Type', 'application/json');
-
-  // Handle CORS if needed
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
+  // Handle CORS preflight
+  if (handleCorsPreflightIfNeeded(req, res)) {
     return;
   }
+
+  // Set standard response headers & validate origin
+  res.setHeader('Content-Type', 'application/json');
+  setCorsHeaders(req, res);
 
   // Parse path from req.url
   const url = req.url || '';
@@ -354,27 +382,47 @@ export default async function handler(req: any, res: any) {
         return;
       }
 
-      // Clear DB
+      // Clear DB (Destructive operation requiring explicit confirmation)
       if (cleanUrl === '/api/scraper/clear-db/start') {
-        clearDbLogs.push(`[${new Date().toLocaleTimeString()}] Wiping Supabase storage buckets & database rows...`);
-        clearAll()
-          .then(async () => {
-            clearDbLogs.push(`[${new Date().toLocaleTimeString()}] Database and storage wiped successfully!`);
-            await supabase.from('audit_logs').insert([{
-              user_id: user.id,
-              action: 'database_wipe',
-              entity_type: 'system',
-              details: { message: 'Admin requested database and storage buckets wipe.' }
-            }]);
-          })
-          .catch((err: any) => {
-            clearDbLogs.push(`[${new Date().toLocaleTimeString()}] Clear operation failed: ${err.message}`);
+        const confirmHeader = req.headers['x-destructive-confirm'] || req.headers['X-Destructive-Confirm'];
+        if (confirmHeader !== 'CONFIRM_PURGE_ALL_SCRAPED_DATA') {
+          res.status(400).json({
+            success: false,
+            error: {
+              code: 'CONFIRMATION_REQUIRED',
+              message: 'Destructive purge operation requires explicit confirmation header "x-destructive-confirm: CONFIRM_PURGE_ALL_SCRAPED_DATA".'
+            }
           });
+          return;
+        }
 
-        res.status(200).json({
-          success: true,
-          message: 'Database wipe operation triggered serverlessly.'
-        });
+        clearDbLogs.push(`[${new Date().toLocaleTimeString()}] Purging scraped database records and media associations...`);
+        try {
+          const result = await clearAllScrapedData();
+          clearDbLogs.push(`[${new Date().toLocaleTimeString()}] Scraped database wiped successfully: ${JSON.stringify(result.deleted)}`);
+
+          await supabase.from('audit_logs').insert([{
+            user_id: user.id,
+            action: 'database_wipe',
+            entity_type: 'system',
+            details: { message: 'Admin purged all scraped auction catalogs.', deleted: result.deleted }
+          }]);
+
+          res.status(200).json({
+            success: true,
+            message: 'All scraped catalogs successfully purged from database.',
+            deleted: result.deleted
+          });
+        } catch (err: any) {
+          clearDbLogs.push(`[${new Date().toLocaleTimeString()}] Clear operation failed: ${err.message}`);
+          res.status(500).json({
+            success: false,
+            error: {
+              code: 'PURGE_FAILED',
+              message: err.message
+            }
+          });
+        }
         return;
       }
       

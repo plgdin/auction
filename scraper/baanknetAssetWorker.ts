@@ -23,6 +23,7 @@ import {
 } from "./config.js";
 import { supabase, uploadToStorage, checkFileExistsInStorage, assertSupabaseCredentials } from "./utils/common/storage.js";
 import { logger } from "./utils/common/logger.js";
+import { sendPipelineFailureAlert } from "./utils/common/alertingService.js";
 
 const require = createRequire(import.meta.url);
 const pdfParse = require("pdf-parse");
@@ -501,6 +502,16 @@ export async function runBaanknetAssetPipeline(
     },
     "═══ BaankNet Document Asset Worker Cycle Complete ═══"
   );
+
+  // Dispatch alert if failures were encountered
+  if (summary.failedReports.length > 0) {
+    await sendPipelineFailureAlert({
+      serviceName: "BaankNet Document Asset Worker",
+      totalInspected: summary.totalInspected,
+      totalFailed: summary.failedReports.length,
+      failures: summary.failedReports,
+    });
+  }
 
   return summary;
 }
