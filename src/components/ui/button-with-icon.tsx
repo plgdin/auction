@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Heart } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -11,18 +11,29 @@ export interface ButtonWithIconProps {
 
 export const ButtonWithIconDemo: React.FC<ButtonWithIconProps> = ({
   label = "I'm Interested",
-  isInterested = false,
+  isInterested: externalIsInterested = false,
   onInterestedToggle,
   className,
 }) => {
+  const [internalInterested, setInternalInterested] = useState(externalIsInterested);
   const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    setInternalInterested(externalIsInterested);
+  }, [externalIsInterested]);
+
+  const isInterested = onInterestedToggle ? externalIsInterested : internalInterested;
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (isAnimating) return;
       setIsAnimating(true);
-      onInterestedToggle?.();
+      if (onInterestedToggle) {
+        onInterestedToggle();
+      } else {
+        setInternalInterested((prev) => !prev);
+      }
       setTimeout(() => setIsAnimating(false), 300);
     },
     [isAnimating, onInterestedToggle]

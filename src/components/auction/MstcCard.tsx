@@ -611,12 +611,10 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
             </button>
           )}
 
-          {onInterestedToggle && (
-            <ButtonWithIconDemo
-              isInterested={isInterested}
-              onInterestedToggle={() => onInterestedToggle(item.id)}
-            />
-          )}
+          <ButtonWithIconDemo
+            isInterested={isInterested}
+            onInterestedToggle={() => onInterestedToggle && onInterestedToggle(item.id)}
+          />
         </div>
       </div>
       </div>

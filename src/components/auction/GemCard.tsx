@@ -327,12 +327,10 @@ export const GemCard = memo(function GemCard({
                   View Details
                 </button>
 
-                {onInterestedToggle && (
-                  <ButtonWithIconDemo
-                    isInterested={isInterested}
-                    onInterestedToggle={onInterestedToggle}
-                  />
-                )}
+                <ButtonWithIconDemo
+                  isInterested={isInterested}
+                  onInterestedToggle={onInterestedToggle}
+                />
               </div>
             </div>
           </div>
@@ -461,12 +459,10 @@ export const GemCard = memo(function GemCard({
               View Details
             </button>
 
-            {onInterestedToggle && (
-              <ButtonWithIconDemo
-                isInterested={isInterested}
-                onInterestedToggle={onInterestedToggle}
-              />
-            )}
+            <ButtonWithIconDemo
+              isInterested={isInterested}
+              onInterestedToggle={onInterestedToggle}
+            />
           </div>
         </div>
       </div>

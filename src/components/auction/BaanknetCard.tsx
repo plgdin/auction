@@ -497,12 +497,10 @@ export const BaanknetCard = memo(function BaanknetCard({
               View Details
             </button>
 
-            {onInterestedToggle && (
-              <ButtonWithIconDemo
-                isInterested={isInterested}
-                onInterestedToggle={onInterestedToggle}
-              />
-            )}
+            <ButtonWithIconDemo
+              isInterested={isInterested}
+              onInterestedToggle={onInterestedToggle}
+            />
           </div>
         </div>
       </div>

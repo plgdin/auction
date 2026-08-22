@@ -448,12 +448,10 @@ export const GemBidCard = memo(function GemBidCard({
               View Details
             </button>
 
-            {onInterestedToggle && (
-              <ButtonWithIconDemo
-                isInterested={isInterested}
-                onInterestedToggle={onInterestedToggle}
-              />
-            )}
+            <ButtonWithIconDemo
+              isInterested={isInterested}
+              onInterestedToggle={onInterestedToggle}
+            />
           </div>
         </div>
       </div>
