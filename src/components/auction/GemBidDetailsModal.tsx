@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Landmark, Download, AlignLeft, Clock, Calendar, Eye } from 'lucide-react';
+import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Clock, Eye, Heart, Calendar, FileText } from 'lucide-react';
+import clsx from 'clsx';
 import type { GemBid } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
 import { getGemItemImage } from '../../utils/gemImageResolver';
@@ -7,15 +8,20 @@ import { getGemItemImage } from '../../utils/gemImageResolver';
 interface GemBidDetailsModalProps {
   item: GemBid;
   onClose: () => void;
+  isInterested?: boolean;
+  onInterestedToggle?: () => void;
 }
 
 export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
   item,
   onClose,
+  isInterested = false,
+  onInterestedToggle,
 }) => {
-  const [copied, setCopied] = useState(false);
+  const [copiedBid, setCopiedBid] = useState(false);
   const [copiedRa, setCopiedRa] = useState(false);
   const [countdownStr, setCountdownStr] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'details'>('details');
 
   // In-app document viewer state
   const [viewerState, setViewerState] = useState<{
@@ -51,39 +57,61 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
     };
   }, [onClose, viewerState.isOpen]);
 
+  // Safe date parser
+  const safeParse = (d?: string | null): Date | null => {
+    if (!d) return null;
+    const parsed = new Date(d);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const safeDateStr = (d?: string | null): string => {
+    const parsed = safeParse(d);
+    return parsed ? parsed.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not Available';
+  };
+
   // Live bidding countdown timer
   useEffect(() => {
-    const updateCountdown = () => {
-      const now = new Date().getTime();
-      const start = new Date(item.start_date).getTime();
-      const end = new Date(item.end_date).getTime();
+    const startD = safeParse(item.start_date);
+    const endD = safeParse(item.end_date);
 
-      if (now > end) {
+    if (!startD && !endD) {
+      setCountdownStr('Schedule Pending');
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = Date.now();
+      const startMs = startD ? startD.getTime() : 0;
+      const endMs = endD ? endD.getTime() : 0;
+
+      if (endD && now > endMs) {
         setCountdownStr('Bid Submission Closed');
-      } else if (now >= start && now <= end) {
-        const diff = end - now;
+      } else if (startD && endD && now >= startMs && now <= endMs) {
+        const diff = endMs - now;
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const secs = Math.floor((diff % (1000 * 60)) / 1000);
         setCountdownStr(`Bidding Ends in: ${hours}h ${mins}m ${secs}s`);
-      } else {
-        const diff = start - now;
+      } else if (startD && now < startMs) {
+        const diff = startMs - now;
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         setCountdownStr(`Starts in: ${days}d ${hours}h ${mins}m`);
+      } else {
+        setCountdownStr('Schedule Pending');
       }
     };
 
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [item]);
+  }, [item.start_date, item.end_date]);
 
-  const handleCopyId = () => {
+  const handleCopyBid = () => {
     navigator.clipboard.writeText(item.bid_number);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedBid(true);
+    setTimeout(() => setCopiedBid(false), 2000);
   };
 
   const handleCopyRa = () => {
@@ -95,9 +123,10 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
   };
 
   const now = new Date();
-  const start = new Date(item.start_date);
-  const end = new Date(item.end_date);
-  const isLive = now >= start && now <= end;
+  const startD = safeParse(item.start_date);
+  const endD = safeParse(item.end_date);
+  const isClosed = endD ? now > endD : false;
+  const isLive = startD && endD ? (now >= startD && now <= endD) : false;
 
   const targetBidDocUrl = item.document_url || `https://bidplus.gem.gov.in/showbidDocument/${encodeURIComponent(item.bid_number)}`;
   const defaultBidFilename = `GeM_Bid_${item.bid_number.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
@@ -112,330 +141,489 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
     });
   };
 
+  // Documents collection
+  interface DocumentEntry {
+    url: string;
+    label: string;
+    safeName: string;
+    downloadUrl: string;
+  }
+
+  const getAvailableDocuments = (): DocumentEntry[] => {
+    const entries: DocumentEntry[] = [];
+    if (targetBidDocUrl) {
+      entries.push({
+        url: targetBidDocUrl,
+        label: 'Official GeM Bid Document PDF',
+        safeName: defaultBidFilename,
+        downloadUrl: proxyBidDownloadUrl,
+      });
+    }
+
+    if (Array.isArray(item.document_urls)) {
+      item.document_urls.forEach((url, idx) => {
+        if (url && url !== targetBidDocUrl && url !== item.source_url) {
+          const safeName = `GeM_Bid_${item.bid_number}_Attachment_${idx + 1}.pdf`;
+          const downloadUrl = `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
+          entries.push({
+            url,
+            label: `Bid Attachment #${idx + 1}`,
+            safeName,
+            downloadUrl,
+          });
+        }
+      });
+    }
+    return entries;
+  };
+
+  const availableDocs = getAvailableDocuments();
+  const primaryDoc = availableDocs[0];
+  const itemImage = getGemItemImage(item.items || item.bid_number, item.category_name);
+
   return (
-    <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs select-text overflow-y-auto">
-        {/* Modal Backdrop click listener */}
-        <div className="absolute inset-0" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-xs select-text overflow-hidden">
+      
+      {/* Modal Backdrop */}
+      <div className="absolute inset-0" onClick={onClose} />
 
-        {/* Modal Container */}
-        <div className="relative bg-white w-full max-w-3xl rounded-2xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-          {/* Visual Hero Banner */}
-          <div className="relative h-44 w-full bg-slate-900 overflow-hidden shrink-0">
-            <img
-              src={getGemItemImage(item.items, item.category_name)}
-              alt={item.items}
-              className="w-full h-full object-cover opacity-85 hover:scale-105 transition-transform duration-700"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/30 to-transparent" />
-            <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2 text-xs">
-              <span className="font-black uppercase bg-amber-500 text-white text-[10px] px-2 py-1 rounded-md tracking-wider shadow-xs">
-                BETA
-              </span>
-              <span className="font-extrabold uppercase bg-primary text-white text-[10px] px-2.5 py-1 rounded-md font-mono tracking-wider shadow-xs">
-                {item.category_name || 'GeM Procurement Bid'}
-              </span>
-              {item.ra_number && (
-                <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-500 text-white shadow-xs">
-                  Reverse Auction (RA) Active
-                </span>
-              )}
-              {isLive ? (
-                <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-500 text-white flex items-center gap-1 shadow-xs animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" /> Active Bid
-                </span>
-              ) : (
-                <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-700 text-slate-200">
-                  Closed
-                </span>
-              )}
-            </div>
+      {/* Main Container */}
+      <div className="relative bg-white rounded-3xl w-full max-w-6xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200 text-left">
+        
+        {/* Top Header Bar (White / Light Theme matching MSTC modal) */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="text-base font-bold text-slate-500">Ref: {item.bid_number}</span>
             <button
-              onClick={onClose}
-              className="absolute top-4 right-4 p-2 text-white bg-slate-950/50 hover:bg-slate-950/80 rounded-full backdrop-blur-xs transition-colors cursor-pointer"
+              onClick={handleCopyBid}
+              className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-400 hover:text-slate-700 cursor-pointer flex items-center justify-center"
+              title="Copy Bid Number"
             >
-              <X className="w-5 h-5" />
+              {copiedBid ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
+
+            {onInterestedToggle && (
+              <button
+                onClick={onInterestedToggle}
+                className={clsx(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border shadow-2xs",
+                  isInterested 
+                    ? "bg-rose-50 border-rose-200 text-rose-700" 
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                )}
+              >
+                <Heart className={clsx("w-3.5 h-3.5", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
+                <span>{isInterested ? "Interested" : "I'm Interested"}</span>
+              </button>
+            )}
           </div>
 
-          {/* Header Block */}
-          <div className="p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
-            <div className="space-y-1.5 text-left w-full">
-              <h2 className="text-xl font-bold text-slate-900 tracking-tight leading-snug">
-                {item.items || 'Tender Item Procurement'}
-              </h2>
-              <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-slate-500 pt-1">
-                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-3xs">
-                  <span>Bid No: {item.bid_number}</span>
-                  <button
-                    onClick={handleCopyId}
-                    className="hover:text-primary transition-colors cursor-pointer"
-                    title="Copy Bid Number"
-                  >
-                    {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                  </button>
-                </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
+            title="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="px-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => setActiveTab('details')}
+              className={clsx(
+                "py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer",
+                activeTab === 'details'
+                  ? "border-primary text-primary"
+                  : "border-transparent text-slate-400 hover:text-slate-700"
+              )}
+            >
+              Catalog Details
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content Body (Split Screen) */}
+        <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row">
+          
+          {/* Left Panel: Bid Information */}
+          <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+            
+            {/* Category & Title Header */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+                  GeM PROCUREMENT BID
+                </span>
+                {item.category_name && (
+                  <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+                    {item.category_name}
+                  </span>
+                )}
+                {item.state && (
+                  <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-red-500" />
+                    {item.state}
+                  </span>
+                )}
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-950 leading-tight">
+                {item.items || `GeM Bid Notice #${item.bid_number}`}
+              </h3>
+            </div>
+
+            {/* Official Bid Reference Banner */}
+            <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-3xs">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Official GeM Bid Number
+                </span>
+                <span className="text-base font-bold text-slate-800 break-all select-all font-mono">
+                  {item.bid_number}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopyBid}
+                  className={clsx(
+                    "flex items-center justify-center gap-2 px-4 py-2 rounded-xl border font-bold text-xs transition-all shrink-0 cursor-pointer shadow-3xs",
+                    copiedBid
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary hover:border-primary/30"
+                  )}
+                >
+                  {copiedBid ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span>Bid Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copy Bid</span>
+                    </>
+                  )}
+                </button>
+
                 {item.ra_number && (
-                  <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 text-emerald-800 shadow-3xs">
-                    <span>RA No: {item.ra_number}</span>
-                    <button
-                      onClick={handleCopyRa}
-                      className="hover:text-emerald-950 transition-colors cursor-pointer"
-                      title="Copy RA Number"
-                    >
-                      {copiedRa ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleCopyRa}
+                    className={clsx(
+                      "flex items-center justify-center gap-2 px-4 py-2 rounded-xl border font-bold text-xs transition-all shrink-0 cursor-pointer shadow-3xs",
+                      copiedRa
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        : "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100"
+                    )}
+                  >
+                    {copiedRa ? (
+                      <>
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        <span>RA Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>Copy RA</span>
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
 
-          {/* Modal Content Scroll Area */}
-          <div className="p-6 space-y-6 overflow-y-auto flex-1 text-left">
-            {/* Procurement Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 space-y-1">
-                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                  Required Quantity / Units
-                </span>
-                <p className="text-xl font-black text-slate-900 font-mono">
-                  {item.quantity ? `${item.quantity.toLocaleString()} Units` : 'Check Bid Notice PDF'}
-                </p>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 space-y-1">
-                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                  Status
-                </span>
-                <p className="text-sm font-bold text-slate-900 capitalize">
-                  {item.status || 'Live Submission'}
-                </p>
-              </div>
-            </div>
-
-            {/* Department Details */}
-            <div className="space-y-2.5">
-              <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Landmark className="w-3.5 h-3.5" /> Buyer / Department
-              </h3>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 text-sm font-semibold text-slate-800">
-                {item.department_name || 'Ministry / PSU Department'}
-              </div>
-            </div>
-
-            {/* Schedule Timeline */}
-            <div className="space-y-2.5">
-              <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" /> Submission Timeline
-              </h3>
-              <div className="bg-slate-50 p-5 rounded-xl border border-slate-150 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-medium text-slate-600">
-                  <div>
-                    <span className="text-slate-400 block mb-0.5">Start Date & Time</span>
-                    <span className="font-bold text-slate-900 text-sm">
-                      {new Date(item.start_date).toLocaleString()}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block mb-0.5">End Date & Time</span>
-                    <span className="font-bold text-slate-900 text-sm">
-                      {new Date(item.end_date).toLocaleString()}
-                    </span>
-                  </div>
+            {/* Department & Authority Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              
+              {/* Department Overview */}
+              <div className="md:col-span-7 bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs flex flex-col justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <span>Procuring Department / Authority</span>
+                    <Info className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  </span>
+                  <span className="text-base font-black text-indigo-950 mt-1 flex items-center gap-2">
+                    <Landmark className="w-5 h-5 text-indigo-600 shrink-0" />
+                    {item.department || item.organisation || 'Government Authority'}
+                  </span>
                 </div>
-                <div className="border-t border-slate-200 pt-3 flex items-center gap-2 text-xs font-bold text-primary">
-                  <Clock className="w-4 h-4 shrink-0" />
-                  <span>{countdownStr}</span>
+
+                {item.organisation && item.organisation !== item.department && (
+                  <div className="border-t border-slate-100 pt-2 text-xs text-slate-600">
+                    <span className="font-semibold text-slate-400 uppercase text-[10px]">Organisation: </span>
+                    <span className="font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{item.organisation}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Quantity & Items Info */}
+              <div className="md:col-span-5 bg-gradient-to-br from-indigo-50 via-indigo-50/70 to-blue-50 border border-indigo-200/80 rounded-2xl p-4.5 flex flex-col justify-between shadow-2xs">
+                <div>
+                  <span className="text-[10.5px] font-black text-indigo-800 uppercase tracking-widest block">
+                    Quantity Required
+                  </span>
+                  <span className="text-2xl sm:text-3xl font-black text-indigo-950 block mt-1 tracking-tight">
+                    {item.quantity ? `${item.quantity.toLocaleString()} Units` : 'Lot Procurement'}
+                  </span>
                 </div>
               </div>
+
             </div>
 
-            {/* Official Documents & Corrigenda */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Download className="w-3.5 h-3.5 text-primary" /> Official Documents & Corrigenda
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {/* Primary Bid Notice Card */}
-                <div className="flex items-center justify-between p-3 rounded-lg border border-primary/30 bg-primary/5 shadow-3xs">
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                    <div className="truncate">
-                      <span className="text-xs font-bold text-primary block truncate">
-                        Bid Notice Document
+            {/* General Parameters Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              
+              {/* Location Details */}
+              <div className="md:col-span-6 bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
+                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                  <MapPin className="w-4 h-4 text-rose-500 shrink-0" />
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">State & Location</span>
+                </div>
+
+                <div className="flex flex-col">
+                  <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">State / Territory</span>
+                  <span className="text-[14px] font-extrabold text-slate-900 mt-0.5">
+                    {item.state || 'India'}
+                  </span>
+                </div>
+
+                {item.category_name && (
+                  <div className="flex flex-col border-t border-slate-100 pt-2">
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">Procurement Category</span>
+                    <span className="text-[13.5px] font-bold text-indigo-800 mt-0.5">{item.category_name}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bidding Schedule & Dates */}
+              <div className="md:col-span-6 bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
+                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                  <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">Bid Submission Timeline</span>
+                </div>
+
+                <div className="flex flex-col">
+                  <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">Bid Start Date</span>
+                  <span className="text-[13.5px] font-extrabold text-blue-950 mt-0.5">{safeDateStr(item.start_date)}</span>
+                </div>
+
+                <div className="flex flex-col border-t border-slate-100 pt-2">
+                  <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">Bid End Date</span>
+                  <span className="text-[13.5px] font-extrabold text-amber-900 mt-0.5">{safeDateStr(item.end_date)}</span>
+                </div>
+
+                <div className="flex flex-col border-t border-slate-100 pt-2">
+                  <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest mb-1">Bid Status</span>
+                  <div>
+                    {isClosed ? (
+                      <span className="inline-block font-black text-xs px-2.5 py-1 rounded-md border border-slate-300 text-slate-600 bg-slate-100">
+                        BID SUBMISSION CLOSED
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono block">Primary Tender PDF</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    <button
-                      onClick={() => openInAppViewer(targetBidDocUrl, `Bid Notice: ${item.bid_number}`, defaultBidFilename)}
-                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-primary text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                      title="Preview in-app"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </button>
-                    <a
-                      href={proxyBidDownloadUrl}
-                      download={defaultBidFilename}
-                      className="p-1.5 rounded-lg bg-primary text-white hover:bg-primary-hover text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                      title="Download PDF"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                    </a>
+                    ) : isLive ? (
+                      <span className="inline-block font-black text-xs px-2.5 py-1 rounded-md border border-emerald-300 text-emerald-800 bg-emerald-100 animate-pulse">
+                        LIVE PROCUREMENT BID
+                      </span>
+                    ) : (
+                      <span className="inline-block font-black text-xs px-2.5 py-1 rounded-md border border-blue-300 text-blue-800 bg-blue-100">
+                        UPCOMING BID
+                      </span>
+                    )}
                   </div>
                 </div>
+              </div>
 
-                {/* RA Notice if present */}
-                {item.ra_document_url && (
-                  <div className="flex items-center justify-between p-3 rounded-lg border border-emerald-200 bg-emerald-50/50 shadow-3xs">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                      <div className="truncate">
-                        <span className="text-xs font-bold text-emerald-800 block truncate">
-                          RA Document Notice
-                        </span>
-                        <span className="text-[10px] text-emerald-600/70 font-mono block">Reverse Auction PDF</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      <button
-                        onClick={() => openInAppViewer(item.ra_document_url!, `RA Notice: ${item.ra_number}`, `GeM_RA_${item.ra_number}.pdf`)}
-                        className="p-1.5 rounded-lg bg-white border border-emerald-200 text-emerald-800 hover:text-emerald-950 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                        title="Preview RA in-app"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      <a
-                        href={`/api/document-proxy?url=${encodeURIComponent(item.ra_document_url)}&filename=GeM_RA_${item.ra_number}.pdf&disposition=attachment`}
-                        download={`GeM_RA_${item.ra_number}.pdf`}
-                        className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                        title="Download RA PDF"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
-                  </div>
-                )}
+            </div>
 
-                {/* Corrigendum PDFs */}
-                {item.corrigendum_urls && item.corrigendum_urls.map((cUrl, idx) => {
-                  const corrFilename = `GeM_Bid_${item.bid_number}_Corrigendum_${idx + 1}.pdf`;
-                  const corrDownloadUrl = `/api/document-proxy?url=${encodeURIComponent(cUrl)}&filename=${encodeURIComponent(corrFilename)}&disposition=attachment`;
-                  return (
-                    <div key={cUrl || idx} className="flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-amber-50/50 shadow-3xs">
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                        <div className="truncate">
-                          <span className="text-xs font-bold text-amber-900 block truncate">
-                            Corrigendum #{idx + 1}
+            {/* Bidding Timeline Countdown Banner */}
+            <div className="bg-indigo-50/70 border border-indigo-150 rounded-2xl p-4 flex items-center justify-between text-indigo-950 shadow-3xs">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-800">
+                Bidding Timeline
+              </span>
+              <span className="font-black text-sm sm:text-base tracking-wide flex items-center gap-2 text-indigo-900">
+                <span className="w-2 h-2 bg-indigo-500 rounded-full animate-ping shrink-0" />
+                {countdownStr}
+              </span>
+            </div>
+
+            {/* Items & Specifications Summary */}
+            {item.items && (
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2.5 flex items-center gap-2">
+                  <AlignLeft className="w-4 h-4 text-slate-400" /> Items & Procurement Scope
+                </h4>
+                <p className="text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-150 leading-relaxed whitespace-pre-wrap">
+                  {item.items}
+                </p>
+              </div>
+            )}
+
+            {/* Official Bid Documents List */}
+            {availableDocs.length > 0 && (
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-slate-400" />
+                    <span>Official GeM Bid Documents ({availableDocs.length})</span>
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {availableDocs.map((doc, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-xl hover:bg-slate-100/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <div className="p-2 rounded-lg bg-indigo-100 text-indigo-700 shrink-0">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-slate-900 truncate block" title={doc.label}>
+                            {doc.label}
                           </span>
-                          <span className="text-[10px] text-amber-700/80 font-mono block">Amendment Notice</span>
+                          <span className="text-[10px] text-slate-500 font-mono block">BidPlus Document Proxy</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
-                          onClick={() => openInAppViewer(cUrl, `Corrigendum #${idx + 1} - Bid ${item.bid_number}`, corrFilename)}
-                          className="p-1.5 rounded-lg bg-white border border-amber-200 text-amber-800 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                          title="Preview Corrigendum in-app"
+                          onClick={() => openInAppViewer(doc.url, `${doc.label}: ${item.items || item.bid_number}`, doc.safeName)}
+                          className="p-2 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                          title="Preview in App"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                         <a
-                          href={corrDownloadUrl}
-                          download={corrFilename}
-                          className="p-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                          title="Download Corrigendum PDF"
+                          href={doc.downloadUrl}
+                          download={doc.safeName}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-colors cursor-pointer"
+                          title="Download PDF"
                         >
                           <Download className="w-3.5 h-3.5" />
                         </a>
                       </div>
                     </div>
-                  );
-                })}
-
-                {/* Additional attached documents (ATC / Specs) */}
-                {item.document_urls && item.document_urls
-                  .filter((dUrl) => dUrl !== item.document_url && dUrl !== item.ra_document_url && !(item.corrigendum_urls || []).includes(dUrl))
-                  .map((dUrl, idx) => {
-                    const atcFilename = `GeM_Bid_${item.bid_number}_Attachment_${idx + 1}.pdf`;
-                    const atcDownloadUrl = `/api/document-proxy?url=${encodeURIComponent(dUrl)}&filename=${encodeURIComponent(atcFilename)}&disposition=attachment`;
-                    return (
-                      <div key={dUrl || idx} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50 shadow-3xs">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
-                          <div className="truncate">
-                            <span className="text-xs font-bold text-slate-800 block truncate">
-                              Attachment #{idx + 1}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-mono block">ATC / Technical Spec</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                          <button
-                            onClick={() => openInAppViewer(dUrl, `Attachment #${idx + 1} - Bid ${item.bid_number}`, atcFilename)}
-                            className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-primary text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                            title="Preview in-app"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          <a
-                            href={atcDownloadUrl}
-                            download={atcFilename}
-                            className="p-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-900 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                            title="Download PDF"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-
-            {/* Raw payload description if present */}
-            {item.raw_description && (
-              <div className="space-y-2.5">
-                <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <AlignLeft className="w-3.5 h-3.5" /> Original Listing Raw Description
-                </h3>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 text-xs font-mono text-slate-600 whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed shadow-3xs">
-                  {item.raw_description}
+                  ))}
                 </div>
               </div>
             )}
+
           </div>
 
-          {/* Footer Action buttons */}
-          <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-wrap justify-end gap-3 shrink-0">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-slate-200 text-slate-655 font-bold text-xs rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              Close
-            </button>
-            <button
-              onClick={() => openInAppViewer(targetBidDocUrl, `Bid Notice: ${item.bid_number}`, defaultBidFilename)}
-              className="flex items-center gap-1.5 px-4.5 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800 shadow-xs transition-colors cursor-pointer"
-            >
-              <Eye className="w-3.5 h-3.5" /> Preview Bid in App
-            </button>
-            <a
-              href={proxyBidDownloadUrl}
-              download={defaultBidFilename}
-              className="flex items-center gap-1.5 px-4.5 py-2 bg-primary text-white font-bold text-xs rounded-xl hover:bg-primary-hover shadow-xs transition-colors cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" /> Download Bid Notice PDF
-            </a>
+          {/* Right Panel: Side Document / Gallery Preview Sidebar */}
+          {(itemImage || availableDocs.length > 0) && (
+            <div className="w-full lg:w-[420px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50 p-5 overflow-visible lg:overflow-y-auto flex flex-col space-y-5">
+              
+              {/* Category Reference Image */}
+              {itemImage && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2">
+                    <span>Category Reference Image</span>
+                  </h4>
+                  <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-video border border-slate-200 shadow-2xs">
+                    <img
+                      src={itemImage}
+                      alt={item.items || item.bid_number}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Catalog Document Preview (Rendered when doc exists) */}
+              {availableDocs.length > 0 && primaryDoc && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
+                    <span>Catalog Document Preview</span>
+                    <span className="text-[9.5px] bg-slate-100 text-slate-700 border border-slate-300 font-bold px-2 py-0.5 rounded">
+                      {availableDocs.length} Docs
+                    </span>
+                  </h4>
+
+                  <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-2xs space-y-3">
+                    {/* Embedded Live PDF Viewer Frame */}
+                    <div className="relative w-full h-[380px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                      <iframe
+                        src={`/api/document-proxy?url=${encodeURIComponent(primaryDoc.url)}&filename=${encodeURIComponent(primaryDoc.safeName)}&disposition=inline`}
+                        className="w-full h-full border-0"
+                        title={primaryDoc.label}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-1">
+                      <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h5 className="text-xs font-bold text-slate-900 truncate" title={primaryDoc.label}>
+                          {primaryDoc.label}
+                        </h5>
+                        <span className="text-[10px] text-slate-500 font-mono block">Official GeM Bid PDF</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.items || item.bid_number}`, primaryDoc.safeName)}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-slate-600" />
+                        <span>View Full Screen</span>
+                      </button>
+                      <a
+                        href={primaryDoc.downloadUrl}
+                        download={primaryDoc.safeName}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-primary transition-colors cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download PDF</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
+
+        </div>
+
+        {/* Footer Actions */}
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0">
+          <button
+            onClick={onClose}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-all cursor-pointer text-center"
+          >
+            Close Details
+          </button>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            {primaryDoc && (
+              <>
+                <button
+                  onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.items || item.bid_number}`, primaryDoc.safeName)}
+                  className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View Bid Document
+                </button>
+
+                <a
+                  href={primaryDoc.downloadUrl}
+                  download={primaryDoc.safeName}
+                  className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Bid PDF
+                </a>
+              </>
+            )}
           </div>
         </div>
+
       </div>
 
       {/* In-App PDF Document Viewer */}
@@ -446,6 +634,6 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
         documentUrl={viewerState.url}
         filename={viewerState.filename}
       />
-    </>
+    </div>
   );
 };
