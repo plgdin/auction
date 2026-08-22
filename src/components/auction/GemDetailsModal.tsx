@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Clock, Eye, Heart, Calendar, Building2, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Clock, Eye, Heart, Calendar, Building2, FileText } from 'lucide-react';
 import clsx from 'clsx';
 import type { GemAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
@@ -66,8 +66,60 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
 
   const safeDateStr = (d?: string | null): string => {
     const parsed = safeParse(d);
-    return parsed ? parsed.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not Available';
+    return parsed ? parsed.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'As per Notice';
   };
+
+  // Helper to extract clean description without scraped website noise
+  const cleanDescription = useMemo(() => {
+    if (!item.raw_description) return null;
+    
+    let text = item.raw_description;
+
+    // Remove lines like "51) Auction ID : 38867", "Start Date : ...", "View More", "Event Notice", "Document"
+    text = text
+      .replace(/^\d+\)\s*Auction ID\s*:\s*\d+/gi, '')
+      .replace(/Auction ID\s*:\s*\d+/gi, '')
+      .replace(/Start Date\s*:\s*\d{2}\/\d{2}\/\d{4}[^\n]*/gi, '')
+      .replace(/End Date\s*:\s*\d{2}\/\d{2}\/\d{4}[^\n]*/gi, '')
+      .replace(/View More/gi, '')
+      .replace(/Event Notice/gi, '')
+      .replace(/Document/gi, '')
+      .replace(/\s*-\s*/g, ' - ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    // If description is just the title or too short, omit
+    if (!text || text.toLowerCase() === item.title.toLowerCase().trim()) {
+      return null;
+    }
+
+    return text;
+  }, [item.raw_description, item.title]);
+
+  // Helper to extract clean location details if missing
+  const locationDetails = useMemo(() => {
+    const city = item.city || '';
+    const state = item.state || (item.location !== 'India' ? item.location : '');
+    const pin = item.pincode || '';
+
+    // If pincode is found in raw_description and not set
+    let extractedPin = pin;
+    if (!extractedPin && item.raw_description) {
+      const pinMatch = item.raw_description.match(/\b\d{6}\b/);
+      if (pinMatch) extractedPin = pinMatch[0];
+    }
+
+    const parts = [city, state].filter(Boolean);
+    const locationStr = parts.join(', ') + (extractedPin ? ` - ${extractedPin}` : '');
+
+    return {
+      displayStr: locationStr || item.location || 'India',
+      city: city || 'Not Specified',
+      state: state || item.location || 'India',
+      pincode: extractedPin || null,
+      fullAddress: item.full_address || null
+    };
+  }, [item]);
 
   // Live bidding countdown timer
   useEffect(() => {
@@ -115,7 +167,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
   };
 
   const handleCopyAddress = () => {
-    const addr = item.full_address || `${item.city ? `${item.city}, ` : ''}${item.location}`;
+    const addr = locationDetails.fullAddress || locationDetails.displayStr;
     navigator.clipboard.writeText(addr);
     setCopiedAddress(true);
     setTimeout(() => setCopiedAddress(false), 2000);
@@ -127,7 +179,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
         currency: 'INR',
         maximumFractionDigits: 0,
       }).format(item.reserve_price_value)
-    : item.reserve_price_text || 'No Reserve Price';
+    : item.reserve_price_text || 'Refer to Notice Document';
 
   const now = new Date();
   const startD = safeParse(item.auction_start_date);
@@ -199,7 +251,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
       {/* Main Container */}
       <div className="relative bg-white rounded-3xl w-full max-w-6xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200 text-left">
         
-        {/* Top Header Bar (White / Light Theme matching MSTC modal) */}
+        {/* Top Header Bar */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
           <div className="flex items-center gap-3">
             <span className="text-base font-bold text-slate-500">Ref: {item.gem_auction_id}</span>
@@ -256,12 +308,12 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
         {/* Main Content Body (Split Screen) */}
         <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row">
           
-          {/* Left Panel: Auction Information */}
+          {/* Left Panel: Clean Information */}
           <div className="flex-1 p-6 space-y-6 overflow-y-auto">
             
             {/* Category & Title Header */}
             <div>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider">
                   GeM NOTICE BOARD
                 </span>
@@ -270,10 +322,10 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                     {item.category_name}
                   </span>
                 )}
-                {item.location && (
+                {locationDetails.displayStr && (
                   <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-red-500" />
-                    {item.location}
+                    {locationDetails.displayStr}
                   </span>
                 )}
               </div>
@@ -286,7 +338,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
             <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-3xs">
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  Official GeM Auction ID
+                  Official GeM Auction Reference Number
                 </span>
                 <span className="text-base font-bold text-slate-800 break-all select-all font-mono">
                   {item.gem_auction_id}
@@ -315,10 +367,10 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
               </button>
             </div>
 
-            {/* Starting / Reserve Price Banner & Department Grid */}
+            {/* Price & Organisation Grid */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               
-              {/* Reserve Price Card (Priority Highlight) */}
+              {/* Reserve Price Card */}
               <div className="md:col-span-5 bg-gradient-to-br from-emerald-50 via-emerald-50/70 to-teal-50 border border-emerald-300/80 rounded-2xl p-4.5 flex flex-col justify-between shadow-2xs">
                 <div>
                   <span className="text-[10.5px] font-black text-emerald-800 uppercase tracking-widest block">
@@ -334,7 +386,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
               <div className="md:col-span-7 bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs flex flex-col justify-between gap-3">
                 <div className="flex flex-col">
                   <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <span>Issuing Authority / Organisation</span>
+                    <span>Issuing Department / Organisation</span>
                     <Info className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                   </span>
                   <span className="text-base font-black text-indigo-950 mt-1 flex items-center gap-2">
@@ -361,10 +413,10 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
 
             </div>
 
-            {/* General Parameters Grid */}
+            {/* Necessary Parameters Grid */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               
-              {/* Location & Address Details */}
+              {/* Location Specifications */}
               <div className="md:col-span-6 bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
                   <MapPin className="w-4 h-4 text-rose-500 shrink-0" />
@@ -374,20 +426,20 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                 <div className="flex flex-col">
                   <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">State / Region</span>
                   <span className="text-[14px] font-extrabold text-slate-900 mt-0.5">
-                    {item.location || 'India'}
+                    {locationDetails.state}
                   </span>
                 </div>
 
-                {item.city && (
+                {locationDetails.city && locationDetails.city !== 'Not Specified' && (
                   <div className="flex flex-col border-t border-slate-100 pt-2">
                     <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">City / District</span>
                     <span className="text-[14px] font-extrabold text-blue-900 mt-0.5">
-                      {item.city} {item.pincode ? `(${item.pincode})` : ''}
+                      {locationDetails.city} {locationDetails.pincode ? `(${locationDetails.pincode})` : ''}
                     </span>
                   </div>
                 )}
 
-                {item.full_address && (
+                {locationDetails.fullAddress && (
                   <div className="flex flex-col border-t border-slate-100 pt-2">
                     <div className="flex justify-between items-center">
                       <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">Full Address</span>
@@ -400,7 +452,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                       </button>
                     </div>
                     <p className="text-xs text-slate-700 mt-1 font-medium leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-150">
-                      {item.full_address}
+                      {locationDetails.fullAddress}
                     </p>
                   </div>
                 )}
@@ -456,19 +508,19 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
               </span>
             </div>
 
-            {/* Raw Description / Ingestion Details */}
-            {item.raw_description && (
+            {/* Clean Notice Summary & Details (Only rendered when relevant extra info exists) */}
+            {cleanDescription && (
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
                 <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2.5 flex items-center gap-2">
-                  <AlignLeft className="w-4 h-4 text-slate-400" /> Notice Description & Technical Specifications
+                  <AlignLeft className="w-4 h-4 text-slate-400" /> Notice Summary & Scope
                 </h4>
                 <p className="text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-150 leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
-                  {item.raw_description}
+                  {cleanDescription}
                 </p>
               </div>
             )}
 
-            {/* Official Documents List */}
+            {/* Official Notice Documents List */}
             {availableDocs.length > 0 && (
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
@@ -492,7 +544,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                           <span className="text-xs font-bold text-slate-900 truncate block" title={doc.label}>
                             {doc.label}
                           </span>
-                          <span className="text-[10px] text-slate-500 font-mono block">GeM Official Proxy</span>
+                          <span className="text-[10px] text-slate-500 font-mono block">GeM Official PDF</span>
                         </div>
                       </div>
 
@@ -544,7 +596,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                 </div>
               )}
 
-              {/* Catalog Document Preview (Rendered when doc exists) */}
+              {/* Catalog Document Preview */}
               {availableDocs.length > 0 && primaryDoc && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
