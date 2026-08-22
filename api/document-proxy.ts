@@ -261,6 +261,10 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
     .replace(/href="\/[^"]*"/gi, 'href="javascript:void(0)"')
     .replace(/href="http[^"]*"/gi, 'href="javascript:void(0)" target="_self"');
 
+  // Format key label patterns into styled label tags
+  const keyLabelRegex = /(Office\/Zone|Seller\/Auctioneer Name|Auctioneer Name|Seller Name|Reference No\.|Category|Auction Brief|Auction Detail|Starting Price|Reserve Price|EMD Amount|Payment Terms|Inspection Date)\s*:/gi;
+  cleanContent = cleanContent.replace(keyLabelRegex, '<div class="field-label-pill">$1</div>');
+
   const titleMatch = rawHtml.match(/<title>([^<]+)<\/title>/i);
   const docTitle = titleMatch ? titleMatch[1].trim() : 'Official Government e-Auction Notice Document';
 
@@ -272,14 +276,20 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
   <title>${escapeHtml(docTitle)}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --slate-950: #020617;
       --slate-900: #0f172a;
       --slate-800: #1e293b;
       --slate-700: #334155;
-      --border: #cbd5e1;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-100: #f1f5f9;
+      --slate-50: #f8fafc;
+      --border: #e2e8f0;
     }
     * {
       box-sizing: border-box;
@@ -288,54 +298,116 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
     }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #ffffff;
-      color: #0f172a;
-      line-height: 1.5;
-      padding: 20px;
-      font-size: 13px;
+      background: #f8fafc;
+      color: var(--slate-900);
+      line-height: 1.6;
+      padding: 24px;
+      font-size: 13.5px;
+      -webkit-font-smoothing: antialiased;
     }
     .document-wrapper {
-      max-width: 100%;
+      max-width: 960px;
       margin: 0 auto;
       background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+    }
+    .document-header-banner {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #ffffff;
+      padding: 20px 28px;
+      border-bottom: 3px solid #2563eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .document-header-banner h2 {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #f8fafc;
+      border: none;
+      margin: 0;
+      padding: 0;
+    }
+    .document-header-banner .badge {
+      background: rgba(37, 99, 235, 0.3);
+      border: 1px solid rgba(147, 197, 253, 0.4);
+      color: #bfdbfe;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
     .document-body {
-      padding: 0;
+      padding: 28px;
+    }
+    .field-label-pill {
+      display: inline-block;
+      margin-top: 14px;
+      margin-bottom: 4px;
+      color: #2563eb;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: #eff6ff;
+      border: 1px solid #dbeafe;
+      padding: 2px 8px;
+      border-radius: 6px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 14px 0 20px 0;
-      font-size: 12px;
-      border-radius: 8px;
+      margin: 18px 0 24px 0;
+      font-size: 12.5px;
+      border-radius: 12px;
       overflow: hidden;
-      border: 1px solid #cbd5e1;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
     }
     th, td {
-      padding: 9px 14px;
-      border: 1px solid #cbd5e1;
+      padding: 11px 16px;
+      border: 1px solid #e2e8f0;
       text-align: left;
+      vertical-align: middle;
     }
     th {
-      background: #f1f5f9;
+      background: #f8fafc;
       font-weight: 700;
-      color: #0f172a;
+      color: #1e293b;
       text-transform: uppercase;
       font-size: 11px;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #cbd5e1;
     }
     tr:nth-child(even) td {
-      background: #f8fafc;
+      background: #f8fafc/60;
+    }
+    tr:hover td {
+      background: #f1f5f9;
     }
     h1, h2, h3, h4, .general-detail-title {
       color: #0f172a;
       font-weight: 800;
-      margin: 12px 0 10px 0;
-      padding-bottom: 6px;
+      margin: 20px 0 12px 0;
+      padding-bottom: 8px;
       border-bottom: 2px solid #2563eb;
       font-size: 15px;
       text-transform: uppercase;
       letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    strong, b {
+      color: #0f172a;
+      font-weight: 700;
     }
     a {
       color: #2563eb;
@@ -353,12 +425,17 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
       .document-wrapper {
         border: none;
         box-shadow: none;
+        border-radius: 0;
       }
     }
   </style>
 </head>
 <body>
   <div class="document-wrapper">
+    <div class="document-header-banner">
+      <h2>Official e-Auction Notice Document</h2>
+      <span class="badge">Verified Government Notice</span>
+    </div>
     <div class="document-body">
       ${cleanContent}
     </div>

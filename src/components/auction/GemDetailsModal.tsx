@@ -5,6 +5,8 @@ import type { GemAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
 import { getGemItemImage } from '../../utils/gemImageResolver';
 import { cleanCategoryName } from '../../utils/cleanCategory';
+import { parseGemNoticeContent } from '../../utils/gemDocumentParser';
+import type { GemExtractedData } from '../../utils/gemDocumentParser';
 import { BidIntelligencePanel } from './BidIntelligencePanel';
 
 interface GemDetailsModalProps {
@@ -121,81 +123,78 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     };
   }, [item]);
 
-  // Helper to extract Contact Officers & Phone Numbers from Title and Raw Description
-  const contactDetails = useMemo(() => {
-    const combinedText = `${item.title} ${item.raw_description || ''}`;
-    const contacts: { name: string; phone?: string }[] = [];
+  // Live Document Extracted Content State
+  const [docExtraDetails, setDocExtraDetails] = useState<GemExtractedData>({
+    officers: [],
+  });
 
-    const phoneMatches = Array.from(
-      new Set(combinedText.match(/\b[6-9]\d{9}\b|\b\d{5}\s*\d{5}\b|\b\d{3,5}[-\s]\d{6,8}\b/g) || [])
-    );
+  // Asynchronously parse document HTML when document_url is present
+  useEffect(() => {
+    if (!item.document_url) return;
+    let isMounted = true;
 
-    const nameRegex = /(?:mr\.?|mrs\.?|ms\.?|contact|officer|person)\s*:?\s*([a-zA-Z\s.]{3,30})/gi;
-    let match;
-    const namesFound: string[] = [];
+    async function fetchAndParseDoc() {
+      try {
+        const proxyUrl = `/api/document-proxy?url=${encodeURIComponent(item.document_url!)}`;
+        const res = await fetch(proxyUrl);
+        if (!res.ok) return;
+        const html = await res.text();
+        if (!isMounted || !html) return;
 
-    while ((match = nameRegex.exec(combinedText)) !== null) {
-      const cleaned = match[1].split(/[-,\d\n]/)[0].trim();
-      if (cleaned.length > 2 && !namesFound.includes(cleaned)) {
-        namesFound.push(cleaned);
+        // Parse HTML to plain text
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const docText = doc.body.textContent || '';
+
+        const parsed = parseGemNoticeContent(docText, item.title);
+        setDocExtraDetails(parsed);
+      } catch {
+        // Fallback gracefully to item-level parsing
       }
     }
 
-    if (namesFound.length > 0) {
-      namesFound.forEach((name, idx) => {
-        contacts.push({
-          name,
-          phone: phoneMatches[idx] || undefined,
-        });
-      });
-
-      if (phoneMatches.length > namesFound.length) {
-        phoneMatches.slice(namesFound.length).forEach((ph) => {
-          contacts.push({
-            name: 'Auction Officer / Helpline',
-            phone: ph,
-          });
-        });
-      }
-    } else if (phoneMatches.length > 0) {
-      phoneMatches.forEach((ph) => {
-        contacts.push({
-          name: 'Auction Officer / Helpline Contact',
-          phone: ph,
-        });
-      });
-    }
-
-    return contacts;
-  }, [item.title, item.raw_description]);
-
-  // Helper to parse Ministry / Department / Organisation if not set
-  const authorityDetails = useMemo(() => {
-    let ministry = item.ministry || null;
-    let department = item.department || null;
-    let organisation = item.organisation || null;
-
-    if (item.raw_description) {
-      const lines = item.raw_description.split('\n').map((l) => l.trim()).filter(Boolean);
-      lines.forEach((line) => {
-        if (!ministry && line.toLowerCase().includes('ministry of')) {
-          ministry = line;
-        } else if (!department && line.toLowerCase().includes('department')) {
-          department = line;
-        } else if (!organisation && (line.includes('Corporation') || line.includes('Institute') || line.includes('Board') || line.includes('Limited') || line.includes('Ltd'))) {
-          if (!line.includes('Ministry') && !line.includes('Department')) {
-            organisation = line;
-          }
-        }
-      });
-    }
-
-    return {
-      organisation: organisation || department || ministry || 'Government Authority',
-      ministry,
-      department,
+    fetchAndParseDoc();
+    return () => {
+      isMounted = false;
     };
-  }, [item]);
+  }, [item.document_url, item.title]);
+
+  // Combined item-level and doc-level extraction
+  const parsedItemDetails = useMemo(() => {
+    const rawParsed = parseGemNoticeContent(item.raw_description || '', item.title);
+
+    // Merge doc-level details if present
+    return {
+      sellerAuctioneerName: docExtraDetails.sellerAuctioneerName || rawParsed.sellerAuctioneerName,
+      sellerRole: docExtraDetails.sellerRole || rawParsed.sellerRole,
+      ministry: item.ministry || docExtraDetails.ministry || rawParsed.ministry,
+      organisation: item.organisation || docExtraDetails.organisation || rawParsed.organisation,
+      department: item.department || docExtraDetails.department || rawParsed.department,
+      division: docExtraDetails.division || rawParsed.division,
+      referenceNo: docExtraDetails.referenceNo || rawParsed.referenceNo,
+      emdAmount: docExtraDetails.emdAmount || rawParsed.emdAmount,
+      quantityStr: docExtraDetails.quantityStr || rawParsed.quantityStr,
+      officers: [
+        ...(docExtraDetails.officers || []),
+        ...(rawParsed.officers || []),
+      ].filter((v, i, a) => a.findIndex((t) => t.name === v.name && t.phone === v.phone) === i),
+    };
+  }, [item, docExtraDetails]);
+
+  const contactDetails = parsedItemDetails.officers;
+
+  // Helper to structure Ministry / Department / Organisation
+  const authorityDetails = useMemo(() => {
+    return {
+      organisation: parsedItemDetails.organisation || parsedItemDetails.department || parsedItemDetails.ministry || 'Government Authority / PSU',
+      ministry: parsedItemDetails.ministry,
+      department: parsedItemDetails.department,
+      division: parsedItemDetails.division,
+      sellerAuctioneerName: parsedItemDetails.sellerAuctioneerName,
+      sellerRole: parsedItemDetails.sellerRole,
+      referenceNo: parsedItemDetails.referenceNo,
+    };
+  }, [parsedItemDetails]);
 
   // Live bidding countdown timer
   useEffect(() => {
@@ -445,7 +444,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
             <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-3xs">
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  Official GeM Auction Reference Number
+                  Official GeM Auction Reference Number {authorityDetails.referenceNo ? `• ${authorityDetails.referenceNo}` : ''}
                 </span>
                 <span className="text-base font-bold text-slate-800 break-all select-all font-mono">
                   {item.gem_auction_id}
@@ -500,9 +499,18 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                     <Landmark className="w-5 h-5 text-indigo-600 shrink-0" />
                     {authorityDetails.organisation}
                   </span>
+                  {authorityDetails.sellerAuctioneerName && (
+                    <span className="text-xs font-bold text-slate-600 mt-1 flex items-center gap-1.5">
+                      <span>Seller / Auctioneer:</span>
+                      <strong className="text-slate-900 font-extrabold">{authorityDetails.sellerAuctioneerName}</strong>
+                      <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
+                        {authorityDetails.sellerRole || 'Auctioneer'}
+                      </span>
+                    </span>
+                  )}
                 </div>
 
-                {(authorityDetails.ministry || authorityDetails.department) && (
+                {(authorityDetails.ministry || authorityDetails.department || authorityDetails.division) && (
                   <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 flex flex-wrap gap-2">
                     {authorityDetails.ministry && (
                       <span className="font-bold text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
@@ -514,62 +522,123 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                         {authorityDetails.department}
                       </span>
                     )}
+                    {authorityDetails.division && (
+                      <span className="font-bold text-teal-800 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200">
+                        {authorityDetails.division}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
 
             </div>
 
-            {/* Auctioneer Contact Officers & Helpline Info */}
+            {/* Auctioneer Contact Officers & Nodal Helpline Info */}
             {contactDetails.length > 0 && (
-              <div className="bg-gradient-to-r from-amber-50/80 via-amber-50/50 to-orange-50/60 rounded-2xl p-4.5 border border-amber-200/80 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
-                  <span className="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-amber-700 shrink-0" />
-                    Auctioneer Contact Officers & Helpline
+              <div className="bg-gradient-to-r from-amber-50/90 via-amber-50/60 to-orange-50/70 rounded-2xl p-5 border border-amber-200/80 shadow-2xs space-y-3.5">
+                <div className="flex items-center justify-between border-b border-amber-200/70 pb-2.5">
+                  <span className="text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-2">
+                    <UserCheck className="w-4.5 h-4.5 text-amber-700 shrink-0" />
+                    <span>Auctioneer Contact Officers & Helpline</span>
                   </span>
-                  <span className="text-[10px] bg-amber-200/80 text-amber-950 font-black px-2 py-0.5 rounded">
+                  <span className="text-[10px] bg-amber-200 text-amber-950 font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider">
                     DIRECT CONTACT
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {contactDetails.map((contact, idx) => (
                     <div
                       key={idx}
-                      className="bg-white rounded-xl p-3 border border-amber-200/70 flex items-center justify-between gap-3 shadow-3xs"
+                      className="bg-white rounded-xl p-3.5 border border-amber-200/80 flex flex-col justify-between gap-3 shadow-3xs"
                     >
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold text-slate-900 block truncate">
-                          {contact.name}
-                        </span>
+                      <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-slate-900 truncate">
+                            {contact.name}
+                          </span>
+                          <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded uppercase shrink-0">
+                            {contact.role || 'Officer'}
+                          </span>
+                        </div>
                         {contact.phone && (
-                          <span className="text-xs font-mono font-extrabold text-amber-900 block mt-0.5">
+                          <span className="text-sm font-mono font-black text-amber-950 block mt-1">
                             {contact.phone}
                           </span>
                         )}
+                        {contact.email && (
+                          <a
+                            href={`mailto:${contact.email}`}
+                            className="text-xs font-medium text-primary hover:underline block truncate mt-0.5"
+                          >
+                            {contact.email}
+                          </a>
+                        )}
                       </div>
 
-                      {contact.phone && (
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <a
-                            href={`tel:${contact.phone.replace(/[\s-]/g, '')}`}
-                            className="p-2 rounded-lg bg-amber-100 text-amber-900 hover:bg-amber-200 transition-colors font-bold text-xs cursor-pointer"
-                            title="Call Officer"
-                          >
-                            <Phone className="w-3.5 h-3.5" />
-                          </a>
-                          <button
-                            onClick={() => handleCopyPhone(contact.phone!)}
-                            className="p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors text-xs font-bold cursor-pointer"
-                            title="Copy Phone Number"
-                          >
-                            {copiedPhone === contact.phone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 pt-2 border-t border-slate-100 mt-auto">
+                        {contact.phone && (
+                          <>
+                            <a
+                              href={`tel:${contact.phone.replace(/[\s-]/g, '')}`}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-3xs"
+                              title="Call Officer Directly"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                              <span>Call Officer</span>
+                            </a>
+                            <button
+                              onClick={() => handleCopyPhone(contact.phone!)}
+                              className="inline-flex items-center justify-center gap-1 py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer shrink-0"
+                              title="Copy Phone Number"
+                            >
+                              {copiedPhone === contact.phone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{copiedPhone === contact.phone ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Document Extracted Specifications & Commercial Terms Card */}
+            {(docExtraDetails.emdAmount || docExtraDetails.quantityStr) && (
+              <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-blue-50/70 rounded-2xl p-4.5 border border-blue-200/80 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
+                  <span className="text-xs font-black text-blue-950 uppercase tracking-wider flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-700 shrink-0" />
+                    <span>Extracted Document Specifications</span>
+                  </span>
+                  <span className="text-[10px] bg-blue-100 text-blue-900 font-black px-2 py-0.5 rounded">
+                    DOCUMENT DATA
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {docExtraDetails.quantityStr && (
+                    <div className="bg-white rounded-xl p-3 border border-blue-100">
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Estimated Lot Quantity
+                      </span>
+                      <span className="text-sm font-black text-slate-900 mt-0.5 block">
+                        {docExtraDetails.quantityStr}
+                      </span>
+                    </div>
+                  )}
+
+                  {docExtraDetails.emdAmount && (
+                    <div className="bg-white rounded-xl p-3 border border-blue-100">
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Caution / EMD Amount
+                      </span>
+                      <span className="text-sm font-black text-emerald-700 mt-0.5 block">
+                        {docExtraDetails.emdAmount}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
