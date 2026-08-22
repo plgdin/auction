@@ -217,8 +217,6 @@ export interface PaymentInvoiceData {
   transactionId: string;
   billingCycle: string;
   baseSubtotal: number;
-  extraSeats: number;
-  extraSeatsCost: number;
   discountAmount: number;
   couponCode: string | null;
   subtotal: number;
@@ -233,7 +231,6 @@ export function getPaymentConfirmationTemplate(data: PaymentInvoiceData): string
   const fmtPrice = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const receiptNo = `REC-${data.transactionId.slice(-8)}`;
-  const totalSeats = 1 + data.extraSeats;
 
   const contentHtml = `
     <!-- Invoice Title -->
@@ -294,21 +291,11 @@ export function getPaymentConfirmationTemplate(data: PaymentInvoiceData): string
           <td style="padding: 12px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #94a3b8; font-weight: 700;">1</td>
           <td style="padding: 12px; font-size: 13px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-weight: 700;">
             Lelam ${data.planName} Plan
-            <div style="font-size: 11px; color: #64748b; font-weight: 400; margin-top: 2px;">Full platform access &bull; ${totalSeats} seat${totalSeats > 1 ? 's' : ''}</div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 400; margin-top: 2px;">Full platform access</div>
           </td>
           <td style="padding: 12px; font-size: 12px; border-bottom: 1px solid #e2e8f0; text-align: center; text-transform: capitalize; color: #334155;">${data.billingCycle}</td>
           <td style="padding: 12px; font-size: 13px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #334155; font-family: 'Courier New', Courier, monospace;">${fmtPrice(data.baseSubtotal)}</td>
         </tr>
-        ${data.extraSeats > 0 ? `
-        <tr>
-          <td style="padding: 12px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #94a3b8; font-weight: 700;">2</td>
-          <td style="padding: 12px; font-size: 13px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-weight: 700;">
-            Additional Team Seats (${data.extraSeats})
-            <div style="font-size: 11px; color: #64748b; font-weight: 400; margin-top: 2px;">${data.extraSeats} extra team member seat${data.extraSeats > 1 ? 's' : ''}</div>
-          </td>
-          <td style="padding: 12px; font-size: 12px; border-bottom: 1px solid #e2e8f0; text-align: center; text-transform: capitalize; color: #334155;">${data.billingCycle}</td>
-          <td style="padding: 12px; font-size: 13px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #334155; font-family: 'Courier New', Courier, monospace;">${fmtPrice(data.extraSeatsCost)}</td>
-        </tr>` : ''}
       </tbody>
     </table>
 
@@ -320,21 +307,14 @@ export function getPaymentConfirmationTemplate(data: PaymentInvoiceData): string
           <table border="0" cellpadding="0" cellspacing="0" width="100%">
             <tr>
               <td style="padding: 6px 0; font-size: 12px; color: #64748b;">Subtotal</td>
-              <td style="padding: 6px 0; font-size: 12px; font-weight: 600; color: #334155; text-align: right; font-family: 'Courier New', Courier, monospace;">${fmtPrice(data.baseSubtotal + data.extraSeatsCost)}</td>
+              <td style="padding: 6px 0; font-size: 12px; font-weight: 600; color: #334155; text-align: right; font-family: 'Courier New', Courier, monospace;">${fmtPrice(data.baseSubtotal)}</td>
             </tr>
             ${data.discountAmount > 0 ? `
             <tr>
               <td style="padding: 6px 0; font-size: 12px; color: #059669; font-weight: 600;">Discount${data.couponCode ? ` (${data.couponCode})` : ''}</td>
               <td style="padding: 6px 0; font-size: 12px; font-weight: 700; color: #059669; text-align: right; font-family: 'Courier New', Courier, monospace;">- ${fmtPrice(data.discountAmount)}</td>
             </tr>` : ''}
-            <tr>
-              <td style="padding: 6px 0; font-size: 12px; color: #64748b;">CGST (9%)</td>
-              <td style="padding: 6px 0; font-size: 12px; font-weight: 600; color: #334155; text-align: right; font-family: 'Courier New', Courier, monospace;">${fmtPrice(data.cgst)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0; font-size: 12px; color: #64748b;">SGST (9%)</td>
-              <td style="padding: 6px 0; font-size: 12px; font-weight: 600; color: #334155; text-align: right; font-family: 'Courier New', Courier, monospace;">${fmtPrice(data.sgst)}</td>
-            </tr>
+
             <tr>
               <td style="padding: 12px 0 6px 0; font-size: 14px; font-weight: 800; color: #0f172a; border-top: 2px solid #0f172a;">Total Amount Paid</td>
               <td style="padding: 12px 0 6px 0; font-size: 15px; font-weight: 800; color: #0284c7; text-align: right; font-family: 'Courier New', Courier, monospace; border-top: 2px solid #0f172a;">${fmtPrice(data.total)}</td>

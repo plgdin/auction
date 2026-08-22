@@ -111,7 +111,7 @@ export default async function handler(req: any, res: any) {
     // 2. Verify signature using timingSafeEqual to block timing attacks
     const generatedSignature = crypto
       .createHmac('sha256', keySecret)
-      .update(`${order_id}|${payment_id}`)
+      .update(`${payment_id}|${order_id}`)
       .digest('hex');
 
     const signatureBuf = Buffer.from(signature);
@@ -163,13 +163,12 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // 4. Fetch order details from Razorpay to get the pricing and plan name metadata
-    const order = await razorpay.orders.fetch(order_id);
-    const planId = String(order.notes?.planId || 'premium');
-    const billingCycle = String(order.notes?.billingCycle || 'monthly');
-    const amountInRs = Number(order.amount) / 100;
-    const extraSeatsNum = parseInt(String(order.notes?.extraSeats || '0')) || 0;
-    const couponApplied = String(order.notes?.couponApplied || '');
+    // 4. Fetch subscription details from Razorpay to get the metadata
+    const subscription = await razorpay.subscriptions.fetch(order_id);
+    const planId = String(subscription.notes?.planId || dbOrder.plan_id || 'premium');
+    const billingCycle = String(subscription.notes?.billingCycle || dbOrder.billing_cycle || 'monthly');
+    const amountInRs = Number(dbOrder.amount);
+    const couponApplied = String(subscription.notes?.couponApplied || '');
 
     let planName = 'Explorer';
     if (planId === 'go' || planId === 'go-subscription') planName = 'Individual';
@@ -185,25 +184,28 @@ export default async function handler(req: any, res: any) {
         baseSubtotal = billingCycle === 'annual' ? 15830 : 1499;
       }
     }
-    const seatUnitPrice = billingCycle === 'annual' ? 4990 : 499;
-    const extraSeatsCost = isExplorerFree ? 0 : extraSeatsNum * seatUnitPrice;
-    const subtotalAfterDiscount = Math.round(amountInRs / 1.18);
-    const subtotalBeforeDiscount = baseSubtotal + extraSeatsCost;
+    const subtotalAfterDiscount = amountInRs;
+    const subtotalBeforeDiscount = baseSubtotal;
     const discountAmount = Math.max(0, subtotalBeforeDiscount - subtotalAfterDiscount);
-    const gstTotal = amountInRs - subtotalAfterDiscount;
-    const cgst = Math.round(gstTotal / 2);
-    const sgst = Math.round(gstTotal / 2);
+    const cgst = 0;
+    const sgst = 0;
 
+    const isTrial = subscription.notes?.isTrial === 'true';
     const planToSet = (planId === 'pro' || planId === 'premium') ? 'pro' : (planId === 'go' || planId === 'go-subscription') ? 'go' : 'explorer';
-    const durationDays = billingCycle === 'annual' ? 365 : 30;
+    const durationDays = isTrial ? 30 : (billingCycle === 'annual' ? 365 : 30);
     const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+
+    const updates: any = {
+      subscription_plan: planToSet,
+      subscription_expires_at: expiresAt
+    };
+    if (isTrial) {
+      updates.trial_claimed = true;
+    }
 
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ 
-        subscription_plan: planToSet,
-        subscription_expires_at: expiresAt
-      })
+      .update(updates)
       .eq('id', user.id);
 
     if (updateError) {
@@ -228,8 +230,6 @@ export default async function handler(req: any, res: any) {
       transactionId: payment_id,
       billingCycle,
       baseSubtotal,
-      extraSeats: extraSeatsNum,
-      extraSeatsCost,
       discountAmount,
       couponCode: couponApplied && couponApplied !== 'None' ? couponApplied : null,
       subtotal: subtotalAfterDiscount,

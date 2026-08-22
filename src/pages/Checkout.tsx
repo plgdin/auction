@@ -7,7 +7,7 @@ import { formatPrice } from '../utils/currency';
 import { 
   Lock, ArrowRight, CheckCircle2, AlertCircle, Loader2, 
   CreditCard, ChevronRight, User, Building2, Check, ChevronLeft,
-  ShoppingBag, ChevronDown, Users, Plus, Minus, Sparkles, XCircle, RotateCcw, HelpCircle, Printer, Shield, Download
+  ShoppingBag, ChevronDown, Sparkles, XCircle, RotateCcw, HelpCircle, Printer, Shield, Download
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -117,7 +117,6 @@ export function CheckoutPage() {
   const [pincodeError, setPincodeError] = useState<string | null>(null);
   const [gstin, setGstin] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
-  const [seats, setSeats] = useState<number>(1);
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
 
   // Close state dropdown when clicking outside
@@ -316,14 +315,10 @@ export function CheckoutPage() {
       ? (billingCycle === 'annual' ? 8438 : 799)
       : (billingCycle === 'annual' ? 15830 : 1499);
 
-  const seatUnitPrice = billingCycle === 'annual' ? 4990 : 499;
-  const extraSeats = Math.max(0, seats - 1);
-  const extraSeatsCost = isFreeActivation ? 0 : extraSeats * seatUnitPrice;
-  const subtotalBeforeDiscount = baseSubtotal + extraSeatsCost;
+  const subtotalBeforeDiscount = baseSubtotal;
   const discountAmount = Math.round(subtotalBeforeDiscount * appliedDiscount);
   const subtotal = subtotalBeforeDiscount - discountAmount;
-  const gst = Math.round(subtotal * 0.18);
-  const total = subtotal + gst;
+  const total = subtotal;
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -373,8 +368,8 @@ export function CheckoutPage() {
     const rzpKey = (import.meta.env.VITE_RAZORPAY_KEY_ID || (import.meta.env as any).RAZORPAY_KEY_ID || 'rzp_test_mockkey12345').trim();
     const isMockMode = rzpKey === 'rzp_test_mockkey12345' || rzpKey.includes('mockkey');
 
-    // If it's a free Explorer/Individual setup, 30-day trial, or using a dummy key, mock activation directly
-    if (total === 0 || isFreeActivation || isMockMode) {
+    // If it's a free Explorer setup or using a dummy key, mock activation directly. Trial plans MUST go through Razorpay.
+    if (isExplorerFree || isMockMode) {
       setTimeout(() => {
         setIsProcessing(false);
         setStep('success');
@@ -416,7 +411,6 @@ export function CheckoutPage() {
           logUserActivity('checkout_success_free_or_trial', 'payment', planId, {
             planId,
             billingCycle,
-            seats,
             isTrial,
             couponApplied: appliedDiscount > 0 ? couponCode : undefined,
             discountPct: appliedDiscount > 0 ? appliedDiscount * 100 : undefined
@@ -453,8 +447,8 @@ export function CheckoutPage() {
           receipt: `rcpt_${Date.now()}`,
           planId,
           billingCycle,
-          extraSeats,
-          couponCode: appliedDiscount > 0 ? appliedCouponCode : undefined
+          couponCode: appliedDiscount > 0 ? appliedCouponCode : undefined,
+          isTrial
         })
       });
 
@@ -475,12 +469,10 @@ export function CheckoutPage() {
     // Configure Razorpay Checkout options
     const options = {
       key: rzpKey,
-      amount: total * 100, // paise
-      currency: 'INR',
       name: 'Lelam Company',
       description: `Lelam ${(planId === 'pro' || planId === 'premium') ? 'Bidder Pro' : (planId === 'go' || planId === 'go-subscription') ? 'Go Subscription' : 'Explorer'} plan (${billingCycle})`,
       image: window.location.protocol === 'https:' ? '/favicon.svg' : undefined,
-      order_id: orderId,
+      subscription_id: orderId,
       config: {
         display: {
           blocks: {
@@ -511,7 +503,7 @@ export function CheckoutPage() {
               'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-              order_id: response.razorpay_order_id,
+              order_id: response.razorpay_subscription_id,
               payment_id: response.razorpay_payment_id,
               signature: response.razorpay_signature
             })
@@ -558,7 +550,6 @@ export function CheckoutPage() {
             logUserActivity('checkout_success_razorpay', 'payment', planId, {
               planId,
               billingCycle,
-              seats,
               orderId: response.razorpay_order_id,
               paymentId: response.razorpay_payment_id,
               couponApplied: appliedDiscount > 0 ? couponCode : undefined,
@@ -631,8 +622,7 @@ export function CheckoutPage() {
   const generateInvoiceHTML = (): string => {
     const receiptNo = `REC-${transactionId.slice(-8) || '20260805'}`;
     const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    const cgstAmount = Math.round(gst / 2);
-    const sgstAmount = Math.round(gst / 2);
+
     const fmt = (n: number) => `\u20B9${n.toLocaleString('en-IN')}`;
 
     return `
@@ -746,7 +736,6 @@ export function CheckoutPage() {
             <th style="width: 5%">#</th>
             <th style="width: 50%">Item Description</th>
             <th class="center" style="width: 15%">Cycle</th>
-            <th class="center" style="width: 10%">Seats</th>
             <th class="right" style="width: 20%">Amount (INR)</th>
           </tr>
         </thead>
@@ -758,20 +747,9 @@ export function CheckoutPage() {
               <div class="item-subtitle">Full access to MSTC auctions, document vault, valuation engine & bidding tools</div>
             </td>
             <td class="center" style="text-transform: uppercase; font-weight: 500;">${billingCycle}</td>
-            <td class="center" style="font-weight: 700;">${seats}</td>
             <td class="right">${fmt(baseSubtotal)}</td>
           </tr>
-          ${extraSeats > 0 ? `
-          <tr>
-            <td style="font-weight: 700; color: #94a3b8;">2</td>
-            <td>
-              <div class="item-title">Additional Team Member Seats (${extraSeats})</div>
-              <div class="item-subtitle">${extraSeats} extra seats \u00D7 ${fmt(seatUnitPrice)}/${billingCycle === 'annual' ? 'yr' : 'mo'}</div>
-            </td>
-            <td class="center" style="text-transform: uppercase; font-weight: 500;">${billingCycle}</td>
-            <td class="center" style="font-weight: 700;">${extraSeats}</td>
-            <td class="right">${fmt(extraSeatsCost)}</td>
-          </tr>` : ''}
+
         </tbody>
       </table>
       
@@ -790,14 +768,7 @@ export function CheckoutPage() {
                 <td>Discount (${appliedDiscount * 100}% Off)</td>
                 <td class="val" style="color: #059669; font-weight: 700;">- ${fmt(discountAmount)}</td>
               </tr>` : ''}
-              <tr class="totals-row">
-                <td>CGST (9%)</td>
-                <td class="val">${fmt(cgstAmount)}</td>
-              </tr>
-              <tr class="totals-row">
-                <td>SGST (9%)</td>
-                <td class="val">${fmt(sgstAmount)}</td>
-              </tr>
+
               <tr class="totals-row grand">
                 <td>Total Amount Paid</td>
                 <td class="val">${fmt(total)}</td>
@@ -1593,7 +1564,6 @@ export function CheckoutPage() {
                         <th className="py-2.5 px-3 rounded-l">#</th>
                         <th className="py-2.5 px-3">Item Description</th>
                         <th className="py-2.5 px-3 text-center">Cycle</th>
-                        <th className="py-2.5 px-3 text-center">Seats</th>
                         <th className="py-2.5 px-3 text-right rounded-r">Amount (INR)</th>
                       </tr>
                     </thead>
@@ -1605,21 +1575,9 @@ export function CheckoutPage() {
                           <p className="text-slate-500 text-[11px]">Full access to MSTC auctions, document vault, valuation engine & bidding tools</p>
                         </td>
                         <td className="py-3 px-3 text-center font-medium uppercase">{billingCycle}</td>
-                        <td className="py-3 px-3 text-center font-bold">{seats}</td>
                         <td className="py-3 px-3 text-right font-mono font-bold">{formatPrice(baseSubtotal)}</td>
                       </tr>
-                      {extraSeats > 0 && (
-                        <tr>
-                          <td className="py-3 px-3 font-bold text-slate-500">2</td>
-                          <td className="py-3 px-3">
-                            <p className="font-bold text-slate-900">Additional Team Member Seats ({extraSeats})</p>
-                            <p className="text-slate-500 text-[11px]">{extraSeats} extra seats included</p>
-                          </td>
-                          <td className="py-3 px-3 text-center font-medium uppercase">{billingCycle}</td>
-                          <td className="py-3 px-3 text-center font-bold">{extraSeats}</td>
-                          <td className="py-3 px-3 text-right font-mono font-bold">{formatPrice(extraSeatsCost)}</td>
-                        </tr>
-                      )}
+
                     </tbody>
                   </table>
 
@@ -1630,14 +1588,7 @@ export function CheckoutPage() {
                         <span>Subtotal</span>
                         <span className="font-mono font-semibold">{formatPrice(subtotal)}</span>
                       </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>CGST (9%)</span>
-                        <span className="font-mono font-semibold">{formatPrice(Math.round(gst / 2))}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>SGST (9%)</span>
-                        <span className="font-mono font-semibold">{formatPrice(Math.round(gst / 2))}</span>
-                      </div>
+
                       <div className="flex justify-between text-sm font-black border-t-2 border-slate-900 pt-2 text-slate-900">
                         <span>Total Amount Paid</span>
                         <span className="font-mono">{formatPrice(total)}</span>
@@ -1868,52 +1819,7 @@ export function CheckoutPage() {
                     </span>
                   </div>
 
-                  {(planId === 'pro' || planId === 'premium') && (
-                    <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5 cursor-pointer">
-                            <Users className="w-4 h-4 text-primary" /> Team Seats
-                          </Label>
-                          <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                            {seats === 1 ? '1 seat included' : `${seats} team seats included`}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-                          <button
-                            type="button"
-                            onClick={() => setSeats((prev) => Math.max(1, prev - 1))}
-                            disabled={seats <= 1}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-30 transition-colors font-bold text-sm cursor-pointer"
-                            aria-label="Decrease seats"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <span className="w-7 text-center font-bold text-xs text-slate-900 font-mono">
-                            {seats}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setSeats((prev) => Math.min(25, prev + 1))}
-                            disabled={seats >= 25}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-primary hover:bg-primary/95 text-white disabled:opacity-30 transition-colors font-bold text-sm cursor-pointer shadow-sm"
-                            aria-label="Increase seats"
-                          >
-                            <Plus className="w-3.5 h-3.5 text-white" />
-                          </button>
-                        </div>
-                      </div>
 
-                      {extraSeats > 0 && (
-                        <div className="flex justify-between items-center text-xs font-semibold text-slate-600 pt-2.5 border-t border-slate-200/60">
-                          <span>
-                            {extraSeats} Additional {extraSeats === 1 ? 'Seat' : 'Seats'} ({formatPrice(seatUnitPrice)}/{billingCycle === 'annual' ? 'yr' : 'mo'})
-                          </span>
-                          <span className="font-mono text-primary font-bold">{formatPrice(extraSeatsCost)}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   <hr className="border-slate-100" />
 
@@ -1944,10 +1850,7 @@ export function CheckoutPage() {
                         )}
                       </AnimatePresence>
 
-                      <div className="flex justify-between items-center text-xs font-medium text-slate-500">
-                        <span>GST (18%)</span>
-                        <span className="font-mono text-slate-800 font-semibold">{formatPrice(gst)}</span>
-                      </div>
+
                       <hr className="border-slate-100" />
                     </>
                   )}
