@@ -135,7 +135,7 @@ export default async function handler(req: any, res: any): Promise<void> {
         return;
       }
 
-      // If it's an HTML page (like GeM view-auction-notice), clean and transform into a premium official document
+      // If it's an HTML page (like GeM view-auction-notice), clean and transform into a clean document starting at GENERAL DETAIL
       if (contentType.includes('html') || contentType.includes('text')) {
         let rawHtml = '';
         proxyRes.setEncoding('utf-8');
@@ -218,42 +218,45 @@ function getGeMSessionCookies(): Promise<string> {
 }
 
 /**
- * Transforms raw GeM portal HTML into a clean, professional in-app document
+ * Transforms raw GeM portal HTML into a clean document starting directly at GENERAL DETAIL
  */
 function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
-  // Strip away broken headers, navbars, and phone number links
   let cleanContent = rawHtml;
 
-  // Find the start of the actual notice content
-  const startMarkers = [
-    '<div class="container"',
-    'Auction Notice',
-    'General Detail',
-    '<table',
-    '<form',
-  ];
-
-  let bestIndex = -1;
-  for (const marker of startMarkers) {
-    const idx = cleanContent.indexOf(marker);
-    if (idx !== -1 && (bestIndex === -1 || idx < bestIndex)) {
-      bestIndex = idx;
+  // Search specifically for GENERAL DETAIL / General Details header
+  const genDetailMatch = cleanContent.match(/(?:GENERAL|General)\s+DETAIL/i);
+  if (genDetailMatch && genDetailMatch.index !== undefined) {
+    const matchIdx = genDetailMatch.index;
+    
+    // Look backwards up to 300 characters to capture the opening heading/div tag of GENERAL DETAIL
+    const beforeChunk = cleanContent.substring(Math.max(0, matchIdx - 300), matchIdx);
+    const tagMatch = beforeChunk.match(/<(div|h[1-6]|section|article)[^>]*>[^<]*$/i);
+    
+    if (tagMatch && tagMatch.index !== undefined) {
+      cleanContent = cleanContent.substring(Math.max(0, matchIdx - 300) + tagMatch.index);
+    } else {
+      cleanContent = cleanContent.substring(matchIdx);
+    }
+  } else {
+    // Fallback: search for first table or main content div if GENERAL DETAIL marker is missing
+    const tableMatch = cleanContent.match(/<table/i);
+    if (tableMatch && tableMatch.index !== undefined) {
+      cleanContent = cleanContent.substring(tableMatch.index);
     }
   }
 
-  if (bestIndex !== -1) {
-    cleanContent = cleanContent.substring(bestIndex);
-  }
-
-  // Remove common navbar and header/footer website junk that might linger
+  // Strip all lingering website navigation junk, headers, buttons, and redundant labels
   cleanContent = cleanContent
+    .replace(/AUCTION NOTICE\s*SAVE AS PDF\s*\|\s*GO BACK/gi, '')
+    .replace(/SAVE AS PDF\s*\|\s*GO BACK/gi, '')
+    .replace(/SAVE AS PDF/gi, '')
+    .replace(/GO BACK/gi, '')
+    .replace(/Auction Notice/gi, '')
     .replace(/1800-419-3436[\s\S]*?Need Help\?[\s\S]*?<\/ul>/gi, '')
     .replace(/<header[\s\S]*?<\/header>/gi, '')
     .replace(/<footer[\s\S]*?<\/footer>/gi, '')
     .replace(/<nav[\s\S]*?<\/nav>/gi, '')
-    .replace(/<ul[\s\S]*?Forward Auction[\s\S]*?<\/ul>/gi, '')
-    .replace(/<ul[\s\S]*?Sign Up[\s\S]*?<\/ul>/gi, '')
-    .replace(/<ul[\s\S]*?Login[\s\S]*?<\/ul>/gi, '')
+    .replace(/<ul[\s\S]*?<\/ul>/gi, (m) => (m.includes('Bids') || m.includes('Login') || m.includes('Help') ? '' : m))
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/href="\/[^"]*"/gi, 'href="javascript:void(0)"')
     .replace(/href="http[^"]*"/gi, 'href="javascript:void(0)" target="_self"');
@@ -273,14 +276,10 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
   <style>
     :root {
       --primary: #2563eb;
-      --primary-dark: #1d4ed8;
       --slate-900: #0f172a;
       --slate-800: #1e293b;
       --slate-700: #334155;
-      --slate-600: #475569;
-      --slate-100: #f1f5f9;
-      --slate-50: #f8fafc;
-      --border: #e2e8f0;
+      --border: #cbd5e1;
     }
     * {
       box-sizing: border-box;
@@ -292,8 +291,8 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
       background: #ffffff;
       color: #0f172a;
       line-height: 1.5;
-      padding: 16px;
-      font-size: 12px;
+      padding: 20px;
+      font-size: 13px;
     }
     .document-wrapper {
       max-width: 100%;
@@ -301,19 +300,19 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
       background: #ffffff;
     }
     .document-body {
-      padding: 8px;
+      padding: 0;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 12px 0 16px 0;
-      font-size: 11.5px;
-      border-radius: 6px;
+      margin: 14px 0 20px 0;
+      font-size: 12px;
+      border-radius: 8px;
       overflow: hidden;
       border: 1px solid #cbd5e1;
     }
     th, td {
-      padding: 8px 12px;
+      padding: 9px 14px;
       border: 1px solid #cbd5e1;
       text-align: left;
     }
@@ -322,19 +321,19 @@ function renderStyledNoticeDocument(rawHtml: string, filename: string): string {
       font-weight: 700;
       color: #0f172a;
       text-transform: uppercase;
-      font-size: 10.5px;
+      font-size: 11px;
       letter-spacing: 0.03em;
     }
     tr:nth-child(even) td {
       background: #f8fafc;
     }
-    h2, h3, h4 {
+    h1, h2, h3, h4, .general-detail-title {
       color: #0f172a;
       font-weight: 800;
-      margin: 16px 0 8px 0;
-      padding-bottom: 4px;
-      border-bottom: 2px solid #e2e8f0;
-      font-size: 13px;
+      margin: 12px 0 10px 0;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #2563eb;
+      font-size: 15px;
       text-transform: uppercase;
       letter-spacing: -0.01em;
     }
