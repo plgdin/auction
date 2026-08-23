@@ -2846,6 +2846,71 @@ export const BaanknetSearchService = {
     }
   },
 
+  getBaanknetSearchSuggestions: PageCache.memoize(async function getBaanknetSearchSuggestions(this: any, query: string): Promise<SearchSuggestion[]> {
+    try {
+      const trimmedQuery = query.trim().toLowerCase();
+      if (!trimmedQuery) {
+        return [
+          { type: 'category', text: 'Residential Property', subtext: 'Category' },
+          { type: 'category', text: 'Commercial Property', subtext: 'Category' },
+          { type: 'location', text: 'Maharashtra', subtext: 'State' },
+          { type: 'location', text: 'Delhi', subtext: 'State' }
+        ];
+      }
+      
+      const options = await this.getBaanknetFilterOptions();
+      const suggestions: SearchSuggestion[] = [];
+      const seen = new Set<string>();
+
+      const addSuggestion = (s: SearchSuggestion) => {
+        const key = `${s.type}:${s.text.toLowerCase()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          suggestions.push(s);
+        }
+      };
+
+      options.categories.forEach((cat: string) => {
+        if (cat.toLowerCase().includes(trimmedQuery)) {
+          addSuggestion({ type: 'category', text: cat, subtext: 'Property Type' });
+        }
+      });
+
+      options.locations.forEach((loc: string) => {
+        if (loc.toLowerCase().includes(trimmedQuery)) {
+          addSuggestion({ type: 'location', text: loc, subtext: 'Location' });
+        }
+      });
+
+      options.regionalOffices.forEach((bank: string) => {
+        if (bank.toLowerCase().includes(trimmedQuery)) {
+          addSuggestion({ type: 'seller', text: bank, subtext: 'Bank' });
+        }
+      });
+
+      if (trimmedQuery.length >= 2) {
+        const { data } = await supabase
+          .from('baanknet_auctions')
+          .select('title, bank_name')
+          .ilike('title', `%${trimmedQuery}%`)
+          .limit(4);
+        if (data) {
+          data.forEach(item => {
+            if (item.title) {
+               const cleanTitle = item.title.length > 50 ? item.title.substring(0, 47) + '...' : item.title;
+               addSuggestion({ type: 'auction', text: cleanTitle, subtext: item.bank_name || 'Bank Auction' });
+            }
+          });
+        }
+      }
+
+      return suggestions.slice(0, 8);
+    } catch (e) {
+      console.error('Failed to get BaankNet suggestions:', e);
+      return [];
+    }
+  }, 'baanknet_search_sug'),
+
   /**
    * Fetches single BaankNet property by its database ID
    */
@@ -3008,6 +3073,71 @@ export const GemSearchService = {
     }
   },
 
+  getGemSearchSuggestions: PageCache.memoize(async function getGemSearchSuggestions(this: any, query: string): Promise<SearchSuggestion[]> {
+    try {
+      const trimmedQuery = query.trim().toLowerCase();
+      if (!trimmedQuery) {
+        return [
+          { type: 'category', text: 'Vehicles', subtext: 'Category' },
+          { type: 'category', text: 'Computers', subtext: 'Category' },
+          { type: 'location', text: 'Delhi', subtext: 'State' },
+          { type: 'location', text: 'Maharashtra', subtext: 'State' }
+        ];
+      }
+      
+      const options = await this.getGemFilterOptions();
+      const suggestions: SearchSuggestion[] = [];
+      const seen = new Set<string>();
+
+      const addSuggestion = (s: SearchSuggestion) => {
+        const key = `${s.type}:${s.text.toLowerCase()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          suggestions.push(s);
+        }
+      };
+
+      options.categories.forEach((cat: string) => {
+        if (cat.toLowerCase().includes(trimmedQuery)) {
+          addSuggestion({ type: 'category', text: cat, subtext: 'Category' });
+        }
+      });
+
+      options.locations.forEach((loc: string) => {
+        if (loc.toLowerCase().includes(trimmedQuery)) {
+          addSuggestion({ type: 'location', text: loc, subtext: 'Location' });
+        }
+      });
+
+      options.regionalOffices.forEach((org: string) => {
+        if (org.toLowerCase().includes(trimmedQuery)) {
+          addSuggestion({ type: 'seller', text: org, subtext: 'Organisation' });
+        }
+      });
+
+      if (trimmedQuery.length >= 2) {
+        const { data } = await supabase
+          .from('gem_auctions')
+          .select('title, organisation')
+          .ilike('title', `%${trimmedQuery}%`)
+          .limit(4);
+        if (data) {
+          data.forEach(item => {
+            if (item.title) {
+               const cleanTitle = item.title.length > 50 ? item.title.substring(0, 47) + '...' : item.title;
+               addSuggestion({ type: 'auction', text: cleanTitle, subtext: item.organisation || 'GeM Auction' });
+            }
+          });
+        }
+      }
+
+      return suggestions.slice(0, 8);
+    } catch (e) {
+      console.error('Failed to get GeM suggestions:', e);
+      return [];
+    }
+  }, 'gem_search_sug'),
+
   /**
    * Fetches single GeM auction notice by its database ID
    */
@@ -3148,6 +3278,65 @@ export const GemBidSearchService = {
     }
   },
 
+  getGemBidSearchSuggestions: PageCache.memoize(async function getGemBidSearchSuggestions(this: any, query: string): Promise<SearchSuggestion[]> {
+    try {
+      const trimmedQuery = query.trim().toLowerCase();
+      if (!trimmedQuery) {
+        return [
+          { type: 'category', text: 'Computer Equipment', subtext: 'Category' },
+          { type: 'category', text: 'Furniture', subtext: 'Category' },
+          { type: 'seller', text: 'Ministry of Defence', subtext: 'Department' },
+          { type: 'seller', text: 'Ministry of Railways', subtext: 'Department' }
+        ];
+      }
+      
+      const options = await this.getGemBidFilterOptions();
+      const suggestions: SearchSuggestion[] = [];
+      const seen = new Set<string>();
+
+      const addSuggestion = (s: SearchSuggestion) => {
+        const key = `${s.type}:${s.text.toLowerCase()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          suggestions.push(s);
+        }
+      };
+
+      options.categories.forEach((cat: string) => {
+        if (cat.toLowerCase().includes(trimmedQuery)) {
+          addSuggestion({ type: 'category', text: cat, subtext: 'Category' });
+        }
+      });
+
+      options.departments.forEach((dept: string) => {
+        if (dept.toLowerCase().includes(trimmedQuery)) {
+          addSuggestion({ type: 'seller', text: dept, subtext: 'Department' });
+        }
+      });
+
+      if (trimmedQuery.length >= 2) {
+        const { data } = await supabase
+          .from('gem_bids')
+          .select('items, department_name, bid_number')
+          .ilike('items', `%${trimmedQuery}%`)
+          .limit(4);
+        if (data) {
+          data.forEach(item => {
+            if (item.items) {
+               const cleanTitle = item.items.length > 50 ? item.items.substring(0, 47) + '...' : item.items;
+               addSuggestion({ type: 'auction', text: cleanTitle, subtext: item.department_name || item.bid_number });
+            }
+          });
+        }
+      }
+
+      return suggestions.slice(0, 8);
+    } catch (e) {
+      console.error('Failed to get GeM Bid suggestions:', e);
+      return [];
+    }
+  }, 'gem_bid_search_sug'),
+
   /**
    * Fetch single GeM bid details by database ID
    */
@@ -3198,4 +3387,52 @@ export const GemBidSearchService = {
       return { categories: [], departments: [] };
     }
   }
+};
+
+export const CommercialSearchService = {
+  getCommercialSearchSuggestions: PageCache.memoize(async function getCommercialSearchSuggestions(this: any, query: string): Promise<SearchSuggestion[]> {
+    try {
+      const trimmedQuery = query.trim().toLowerCase();
+      if (!trimmedQuery) {
+        return [
+          { type: 'category', text: 'Vehicles', subtext: 'Category' },
+          { type: 'category', text: 'Real Estate', subtext: 'Category' },
+          { type: 'location', text: 'Delhi', subtext: 'State' },
+          { type: 'location', text: 'Maharashtra', subtext: 'State' }
+        ];
+      }
+      
+      const suggestions: SearchSuggestion[] = [];
+      const seen = new Set<string>();
+
+      const addSuggestion = (s: SearchSuggestion) => {
+        const key = `${s.type}:${s.text.toLowerCase()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          suggestions.push(s);
+        }
+      };
+
+      if (trimmedQuery.length >= 2) {
+        const { data } = await supabase
+          .from('auctions')
+          .select('title, seller:organizations(name)')
+          .ilike('title', `%${trimmedQuery}%`)
+          .limit(4);
+        if (data) {
+          data.forEach(item => {
+            if (item.title) {
+               const cleanTitle = item.title.length > 50 ? item.title.substring(0, 47) + '...' : item.title;
+               addSuggestion({ type: 'auction', text: cleanTitle, subtext: (item.seller as any)?.name || 'Commercial Auction' });
+            }
+          });
+        }
+      }
+
+      return suggestions.slice(0, 8);
+    } catch (e) {
+      console.error('Failed to get Commercial suggestions:', e);
+      return [];
+    }
+  }, 'commercial_search_sug')
 };

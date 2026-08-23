@@ -529,13 +529,13 @@ export function AuctionFilters({
 
   const customSubcategoryOptions = availableSubcategories.map(sub => ({ key: sub, label: sub }));
   
-  const currentRegionalOffices = (activeTab === 'mstc' || activeTab === 'gem' || activeTab === 'gem-bids') ? customRegionalOffices : REGIONAL_OFFICES;
+  const currentRegionalOffices = (activeTab === 'mstc' || activeTab === 'gem' || activeTab === 'gem-bids' || activeTab === 'baanknet') ? customRegionalOffices : REGIONAL_OFFICES;
   const regionalOfficeOptions = currentRegionalOffices.map(office => ({
     key: office,
     label: activeTab === 'mstc' ? expandMstcOffice(office) : office
   }));
 
-  const currentLocations = (activeTab === 'mstc' || activeTab === 'gem' || activeTab === 'gem-bids') ? customLocations : LOCATIONS;
+  const currentLocations = (activeTab === 'mstc' || activeTab === 'gem' || activeTab === 'gem-bids' || activeTab === 'baanknet') ? customLocations : LOCATIONS;
   const locationOptions = currentLocations.map(loc => ({ key: loc, label: loc }));
 
   const expandMstcOfficeMap = activeTab === 'mstc' ? customRegionalOffices.reduce((acc, office) => {

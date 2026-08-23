@@ -18,7 +18,7 @@ import { useAuthStore } from '../store/authStore';
 import { useAppStore } from '../store/appStore';
 import { dashboardService } from '../services/dashboardService';
 import type { Auction } from '../types/database.types';
-import { MstcSearchService, expandMstcOffice, BaanknetSearchService, GemSearchService, GemBidSearchService, publicService } from '../services/publicService';
+import { MstcSearchService, expandMstcOffice, BaanknetSearchService, GemSearchService, GemBidSearchService, CommercialSearchService, publicService } from '../services/publicService';
 import type { MstcSanitizedAuction, SearchSuggestion, BaanknetAuction, GemAuction, GemBid } from '../services/publicService';
 import clsx from 'clsx';
 import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
@@ -447,13 +447,19 @@ export function Auctions() {
 
   // Fetch suggestions as-you-type (debounced)
   useEffect(() => {
-    if (activeTab !== 'mstc') {
-      setSuggestions([]);
-      return;
-    }
-
     const timer = setTimeout(async () => {
-      const list = await MstcSearchService.getMstcSearchSuggestions(searchQuery);
+      let list: SearchSuggestion[] = [];
+      if (activeTab === 'mstc') {
+        list = await MstcSearchService.getMstcSearchSuggestions(searchQuery);
+      } else if (activeTab === 'baanknet') {
+        list = await BaanknetSearchService.getBaanknetSearchSuggestions(searchQuery);
+      } else if (activeTab === 'gem') {
+        list = await GemSearchService.getGemSearchSuggestions(searchQuery);
+      } else if (activeTab === 'gem-bids') {
+        list = await GemBidSearchService.getGemBidSearchSuggestions(searchQuery);
+      } else if (activeTab === 'commercial') {
+        list = await CommercialSearchService.getCommercialSearchSuggestions(searchQuery);
+      }
       setSuggestions(list);
     }, 250);
 
