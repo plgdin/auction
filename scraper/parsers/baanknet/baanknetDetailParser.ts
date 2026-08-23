@@ -40,9 +40,38 @@ export interface DetailPageData {
   inspectionEndDate: string;
   emdEndDate: string;
   emdAmountText: string;
+  bidIncrementText?: string;
+  emdAccountNumber?: string;
+  emdAccountIfsc?: string;
+  emdBankName?: string;
+  outstandingDuesText?: string;
+  tenderFeeText?: string;
+  cersaiId?: string;
+  titleType?: string;
+  encumbrancesText?: string;
+  branchName?: string;
+  officerDesignation?: string;
+  officerEmail?: string;
   contactPerson: string;
   contactPhone: string;
   lenderName: string;
+  propertyAddress?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  mapUrl?: string;
+  boundaries?: {
+    north?: string;
+    south?: string;
+    east?: string;
+    west?: string;
+  };
+  corporateDebtorName?: string;
+  corporateDebtorCin?: string;
+  liquidatorRegNo?: string;
+  liquidatorEmail?: string;
+  ncltBench?: string;
+  ncltCaseNo?: string;
+  processMemoUrl?: string;
 }
 
 // ─── DOM Extraction Functions (run inside Puppeteer page context) ────────────
@@ -381,29 +410,218 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
   }
 
   let emdAmountText = "";
+  // Pattern 1: "EMD Amount : ₹11,88,000.00" or "EMD ⓘ ₹11,88,000.00" (sidebar + Business Rule tab)
   const emdAmountMatch = bodyText.match(
-    /EMD\s*(?:Amount)?\s*:?\s*(₹\s*[\d,.]+\s*(?:Lakh|Lac|Crore|Cr)?)/i
+    /EMD\s*(?:Amount)?\s*(?:ⓘ)?\s*:?\s*(?:₹|Rs\.?)\s*([\d,.]+\s*(?:Lakh|Lac|Crore|Cr)?)/i
   );
   if (emdAmountMatch) {
-    emdAmountText = emdAmountMatch[1].trim();
+    emdAmountText = `₹ ${emdAmountMatch[1].trim()}`;
   }
+  // Fallback: "EMD Amount ₹11,88,000.00" without colon (sidebar sticky card)
+  if (!emdAmountText) {
+    const sidebarEmdMatch = bodyText.match(
+      /EMD\s*Amount\s*(?:₹|Rs\.?)\s*([\d,.]+)/i
+    );
+    if (sidebarEmdMatch) {
+      emdAmountText = `₹ ${sidebarEmdMatch[1].trim()}`;
+    }
+  }
+
+  let bidIncrementText = "";
+  // Matches: "Increment Price ⓘ ₹1,00,000.00", "Bid Increment : ₹50,000", "Minimum Increment : ₹1 Lakh"
+  const bidIncMatch = bodyText.match(
+    /(?:Bid\s*Increment|Bid\s*Multiplier|Minimum\s*(?:Bid\s*)?Increment|Increment\s*(?:Price|Value))\s*(?:ⓘ)?\s*:?\s*(?:₹|Rs\.?)\s*([\d,.]+\s*(?:Lakh|Lac|Crore|Cr|K)?)/i
+  );
+  if (bidIncMatch) bidIncrementText = `₹ ${bidIncMatch[1].trim()}`;
+  // Fallback for "Increment Price During Extension" variant
+  if (!bidIncrementText) {
+    const extIncMatch = bodyText.match(
+      /Increment\s*Price\s*During\s*Extension\s*(?:ⓘ)?\s*:?\s*(?:₹|Rs\.?)\s*([\d,.]+)/i
+    );
+    if (extIncMatch) bidIncrementText = `₹ ${extIncMatch[1].trim()}`;
+  }
+
+  let emdAccountNumber = "";
+  const accMatch = bodyText.match(/(?:A\/[Cc]\s*(?:No\.?|Number)?|Account\s*(?:No\.?|Number)?)\s*:?\s*([0-9]{9,18})/i);
+  if (accMatch) emdAccountNumber = accMatch[1].trim();
+
+  let emdAccountIfsc = "";
+  const ifscMatch = bodyText.match(/(?:IFSC(?:\s*Code)?|RTGS\/NEFT\s*IFSC|IFS\s*Code)\s*:?\s*([A-Z]{4}0[A-Z0-9]{6})/i);
+  if (ifscMatch) emdAccountIfsc = ifscMatch[1].trim().toUpperCase();
+
+  let emdBankName = "";
+  const emdBankMatch = bodyText.match(/(?:EMD\s*Remittance\s*Bank|Bank\s*Branch\s*Name|Beneficiary\s*Bank)\s*:?\s*([A-Za-z\s&]+(?:Bank|Branch))/i);
+  if (emdBankMatch) emdBankName = emdBankMatch[1].trim();
+
+  let outstandingDuesText = "";
+  const duesMatch = bodyText.match(/(?:Total\s*Outstanding|Outstanding\s*(?:Amount|Dues)|Demand\s*Notice\s*Amount|Recovery\s*Amount)\s*:?\s*(?:₹|Rs\.?)?\s*([\d,.]+\s*(?:Lakh|Lac|Crore|Cr)?)/i);
+  if (duesMatch) outstandingDuesText = `₹ ${duesMatch[1].trim()}`;
+
+  let tenderFeeText = "";
+  const feeMatch = bodyText.match(/(?:Tender\s*Fee|Processing\s*Fee|Application\s*Fee)\s*:?\s*(?:₹|Rs\.?)?\s*([\d,.]+\s*(?:Lakh|Lac|Crore|Cr)?)/i);
+  if (feeMatch) tenderFeeText = `₹ ${feeMatch[1].trim()}`;
+
+  let cersaiId = "";
+  const cersaiMatch = bodyText.match(/(?:CERSAI\s*(?:ID|No\.?|Number|Security\s*Interest)?|Security\s*Interest\s*ID)\s*:?\s*([A-Za-z0-9_-]{6,30})/i);
+  if (cersaiMatch) cersaiId = cersaiMatch[1].trim();
+
+  let titleType = "";
+  const titleTypeMatch = bodyText.match(/(?:Title\s*Type|Property\s*Nature|Type\s*of\s*Ownership|Ownership\s*Type|Title)\s*:?\s*(Freehold|Leasehold|Cooperative\s*Society|Society\s*Share|Allotment)/i);
+  if (titleTypeMatch) {
+    titleType = titleTypeMatch[1].trim();
+  } else if (/freehold/i.test(bodyText)) {
+    titleType = "Freehold";
+  } else if (/leasehold/i.test(bodyText)) {
+    titleType = "Leasehold";
+  }
+
+  let encumbrancesText = "";
+  const encMatch = bodyText.match(/(?:Encumbrance|Known\s*Encumbrances?|Known\s*Liabilities|Pending\s*Dues)\s*:?\s*([^\n]{3,200})/i);
+  if (encMatch) {
+    encumbrancesText = encMatch[1].trim();
+  } else if (bodyText.includes("Free from all encumbrances") || bodyText.includes("Not known to bank")) {
+    encumbrancesText = "Free from all encumbrances to bank's knowledge";
+  }
+
+  let branchName = "";
+  // "Branch : ARMB RAIPUR 830300" or "Branch Address : RAIPUR"
+  const branchMatch = bodyText.match(/(?:Branch\s*(?:Name|Address)?|SARB|SAMB|Asset\s*Recovery\s*Branch|Asset\s*Management\s*Branch)\s*:?\s*([A-Za-z0-9\s,-]+?)(?=\n|District|City|State|Pin|Tel|Phone|Email|Officer|Dealing|Mobile|$)/i);
+  if (branchMatch) branchName = branchMatch[1].trim();
 
   let contactPerson = "";
   let contactPhone = "";
+  // "Dealing Officer Name,Designation : pawan Kumar" from Inspection Detail tab
+  const dealingOfficerMatch = bodyText.match(
+    /Dealing\s*Officer\s*Name\s*,?\s*Designation\s*:?\s*([^\n]{3,80})/i
+  );
   const contactPersonMatch = bodyText.match(
     /(?:Contact\s*Person|Authorized\s*Officer|Nodal\s*Officer)\s*:?\s*([^\n]{3,60})/i
   );
-  if (contactPersonMatch) contactPerson = contactPersonMatch[1].trim();
-  const phoneMatch = bodyText.match(/(?:Contact\s*(?:No\.?|Number)?|Mobile|Phone)\s*:?\s*(\+?91[\s-]?\d{10}|\d{10})/i);
-  if (phoneMatch) contactPhone = phoneMatch[1].trim();
+  if (dealingOfficerMatch) {
+    contactPerson = dealingOfficerMatch[1].trim();
+  } else if (contactPersonMatch) {
+    contactPerson = contactPersonMatch[1].trim();
+  }
+  // "Mobile No. : 9770780508" from Inspection Detail tab
+  const mobileNoMatch = bodyText.match(/Mobile\s*No\.?\s*:?\s*(\d{10,12})/i);
+  const phoneMatch = bodyText.match(/(?:Contact\s*(?:No\.?|Number)?|Phone)\s*:?\s*(\+?91[\s-]?\d{10}|\d{10})/i);
+  if (mobileNoMatch) {
+    contactPhone = mobileNoMatch[1].trim();
+  } else if (phoneMatch) {
+    contactPhone = phoneMatch[1].trim();
+  }
+
+  let officerDesignation = "";
+  const desigMatch = bodyText.match(/(?:Designation|Officer\s*Designation)\s*:?\s*([^\n]{3,60})/i);
+  if (desigMatch) {
+    officerDesignation = desigMatch[1].trim();
+  } else {
+    const desigFallback = bodyText.match(/(Chief\s*Manager|Assistant\s*General\s*Manager|AGM|DGM|General\s*Manager|Authorized\s*Officer|Recovery\s*Officer|Branch\s*Manager)/i);
+    if (desigFallback) officerDesignation = desigFallback[1].trim();
+  }
+
+  let officerEmail = "";
+  const emailMatch = bodyText.match(/(?:Email|E-mail|Mail)\s*:?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+  if (emailMatch) {
+    officerEmail = emailMatch[1].trim();
+  } else {
+    const anyEmail = bodyText.match(/\b([a-zA-Z0-9._%+-]+@(?:pnb|sbi|bankofbaroda|canarabank|unionbankofindia|indianbank|ucobank|bankofindia|psballiance|baanknet)\.[a-zA-Z.]+)\b/i);
+    if (anyEmail) officerEmail = anyEmail[1].trim();
+  }
+
+  let latitude: number | null = null;
+  let longitude: number | null = null;
+  let mapUrl = "";
+
+  const mapLink = document.querySelector('a[href*="google.com/maps"], a[href*="maps.google"], a[href*="goo.gl/maps"]') as HTMLAnchorElement | null;
+  if (mapLink && mapLink.href) {
+    mapUrl = mapLink.href;
+    const coordMatch = mapUrl.match(/[@=]([-0-9.]+),([-0-9.]+)/);
+    if (coordMatch) {
+      latitude = parseFloat(coordMatch[1]);
+      longitude = parseFloat(coordMatch[2]);
+    }
+  }
+
+  if (!latitude) {
+    const latLongMatch = bodyText.match(/(?:Lat(?:itude)?|GPS)\s*:?\s*([-0-9.]+)\s*[,;/ ]\s*(?:Long(?:itude)?|Lng)\s*:?\s*([-0-9.]+)/i);
+    if (latLongMatch) {
+      latitude = parseFloat(latLongMatch[1]);
+      longitude = parseFloat(latLongMatch[2]);
+      if (!mapUrl) mapUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+    }
+  }
+
+  let boundaries: { north?: string; south?: string; east?: string; west?: string } | undefined = undefined;
+  const northM = bodyText.match(/North\s*(?:By|Side)?\s*:?\s*([^\n,]{3,60})/i);
+  const southM = bodyText.match(/South\s*(?:By|Side)?\s*:?\s*([^\n,]{3,60})/i);
+  const eastM = bodyText.match(/East\s*(?:By|Side)?\s*:?\s*([^\n,]{3,60})/i);
+  const westM = bodyText.match(/West\s*(?:By|Side)?\s*:?\s*([^\n,]{3,60})/i);
+
+  if (northM || southM || eastM || westM) {
+    boundaries = {
+      north: northM ? northM[1].trim() : undefined,
+      south: southM ? southM[1].trim() : undefined,
+      east: eastM ? eastM[1].trim() : undefined,
+      west: westM ? westM[1].trim() : undefined,
+    };
+  }
+
+  let corporateDebtorName = "";
+  const cdMatch = bodyText.match(/(?:Corporate\s*Debtor|Company\s*in\s*Liquidation|CD\s*Name)\s*:?\s*([^\n]{3,80})/i);
+  if (cdMatch) corporateDebtorName = cdMatch[1].trim();
+
+  let corporateDebtorCin = "";
+  const cinMatch = bodyText.match(/\b([UL]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6})\b/);
+  if (cinMatch) corporateDebtorCin = cinMatch[1].trim().toUpperCase();
+
+  let liquidatorRegNo = "";
+  const ipRegMatch = bodyText.match(/(IBBI\/IPA-[A-Za-z0-9\/\-_]+)/i);
+  if (ipRegMatch) liquidatorRegNo = ipRegMatch[1].trim();
+
+  let liquidatorEmail = "";
+  const liqEmailMatch = bodyText.match(/(?:Liquidator|RP|IP)\s*(?:Email|Mail)?\s*:?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+  if (liqEmailMatch) liquidatorEmail = liqEmailMatch[1].trim();
+
+  let ncltBench = "";
+  const ncltBenchMatch = bodyText.match(/(NCLT\s*[A-Za-z\s]+(?:Bench)?(?:\s*-\s*[A-Z0-9]+)?)/i);
+  if (ncltBenchMatch) ncltBench = ncltBenchMatch[1].trim();
+
+  let ncltCaseNo = "";
+  const ncltCaseMatch = bodyText.match(/((?:CP|CA)\s*(?:\(IB\))?\s*(?:No\.?)?\s*[\d\/\w-]+)/i);
+  if (ncltCaseMatch) ncltCaseNo = ncltCaseMatch[1].trim();
+
+  let processMemoUrl = "";
+  const memoEl = document.querySelector('a[href*="process-memo"], a[href*="memo"], a[href*="form-g"]') as HTMLAnchorElement | null;
+  if (memoEl && memoEl.href) processMemoUrl = memoEl.href;
 
   let lenderName = matchLenderInline(bodyText, knownLenders);
   if (!lenderName) {
+    // "Bank : Punjab National Bank" from General Detail tab
     const lenderFallbackMatch = bodyText.match(
       /(?:🏛|Bank\s*(?:Name)?|Lender)\s*:?\s*([A-Za-z\s&]+(?:Bank|of\s+\w+|Finance|Financial|Housing|ARC|Reconstruction))/i
     );
     if (lenderFallbackMatch) {
       lenderName = lenderFallbackMatch[1].trim();
+    }
+  }
+
+  // Property Address from "Property Detail" tab:
+  // "Property Address: Residential House bearing Plot No. A-3(3)...PIN 492001, Area: 4000 Sq.Ft."
+  let propertyAddress = "";
+  const propAddrMatch = bodyText.match(
+    /Property\s*Address\s*:?\s*([\s\S]{10,600}?)(?=\n\s*\n|Is\s*this\s*property|Loan\s*offer|Inspection\s*Detail|Business\s*Rule|$)/i
+  );
+  if (propAddrMatch) {
+    propertyAddress = propAddrMatch[1].replace(/\s+/g, " ").trim();
+  }
+  // Fallback: "Registered Address of Borrower" from General Detail tab
+  if (!propertyAddress) {
+    const regAddrMatch = bodyText.match(
+      /Registered\s*Address\s*(?:of\s*Borrower)?\s*:?\s*([^\n]{10,200})/i
+    );
+    if (regAddrMatch) {
+      propertyAddress = regAddrMatch[1].trim();
     }
   }
 
@@ -424,9 +642,33 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
     inspectionEndDate,
     emdEndDate,
     emdAmountText,
+    bidIncrementText,
+    emdAccountNumber,
+    emdAccountIfsc,
+    emdBankName,
+    outstandingDuesText,
+    tenderFeeText,
+    cersaiId,
+    titleType,
+    encumbrancesText,
+    branchName,
+    officerDesignation,
+    officerEmail,
     contactPerson,
     contactPhone,
     lenderName,
+    propertyAddress,
+    latitude,
+    longitude,
+    mapUrl,
+    boundaries,
+    corporateDebtorName,
+    corporateDebtorCin,
+    liquidatorRegNo,
+    liquidatorEmail,
+    ncltBench,
+    ncltCaseNo,
+    processMemoUrl,
   };
 }
 
@@ -495,19 +737,62 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
     return true;
   }
 
+  function isGarbageTitle(str: string): boolean {
+    if (!str || str.length < 3) return true;
+    const lower = str.toLowerCase().trim();
+    return (
+      lower.startsWith("showing") ||
+      lower.includes("results") ||
+      lower.includes("properties found") ||
+      lower.includes("sort by") ||
+      lower.includes("filter") ||
+      lower.includes("page ") ||
+      lower.includes("search results") ||
+      lower.includes("view details") ||
+      lower.includes("reserve price") ||
+      lower.includes("bank property id") ||
+      lower.includes("10000+")
+    );
+  }
+
+  function isBankOrGarbage(str: string): boolean {
+    if (!str || str.length < 2) return true;
+    const lower = str.toLowerCase().trim();
+    return (
+      lower.includes("bank") ||
+      lower.includes("lender") ||
+      lower.includes("finance") ||
+      lower.includes("financial") ||
+      lower.includes("arc") ||
+      lower.includes("nbfc") ||
+      lower.includes("corporation") ||
+      lower.includes("ltd") ||
+      lower.includes("pvt") ||
+      lower.includes("limited") ||
+      lower.includes("showing") ||
+      lower.includes("result") ||
+      lower.includes("property id") ||
+      lower.includes("auction id") ||
+      lower.includes("details")
+    );
+  }
+
   const cards = document.querySelectorAll(
-    "app-property-card, mat-card, .card, [class*='property-card'], [class*='listing-card'], " +
-    "[class*='property-list'], [class*='result-card'], [class*='property-item'], [class*='col-'] > div"
+    "app-property-card, mat-card.property-card, .property-card, [class*='property-card'], " +
+    "[class*='listing-card'], [class*='property-list'], [class*='property-item']"
   );
 
   const effectiveCards = cards.length > 0
     ? cards
-    : document.querySelectorAll(".row > div, div[class*='box']");
+    : document.querySelectorAll(".card, [class*='result-card'], .row > div, div[class*='box']");
 
   effectiveCards.forEach((card) => {
     const text = (card as HTMLElement).innerText || "";
     if (text.length < 30 || text.length > 8000) return;
     if (!text.includes("Property") && !text.includes("Auction") && !text.includes("₹") && !text.includes("Reserve")) return;
+
+    // Filter out search filter headers and counter bars
+    if (text.toLowerCase().includes("showing") && !text.includes("₹") && !text.includes("Reserve")) return;
 
     const detailLink = card.querySelector(
       'a[href*="view-property"], a[href*="property-detail"], a[href*="View Details"], ' +
@@ -522,8 +807,52 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
     if (!bankPropertyId && !detailUrl.includes("property")) return;
     const finalId = bankPropertyId || `PROP_${Math.abs(text.slice(0, 40).split("").reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0))}`;
 
-    const titleEl = card.querySelector("h3, h4, h5, [class*='title'], [class*='name'], strong, b") as HTMLElement;
-    const title = titleEl?.innerText?.trim() || text.split("\n").filter(l => l.trim().length > 3)[0] || "Bank Auction Property";
+    // Extract area first for fallback title synthesis
+    const areaMatch = text.match(
+      /(?:Carpet|Built[\s-]*Up|Area)\s*:?\s*([\d,.]+\s*(?:sq\.?\s*(?:feet|ft|meter|metre)|sqft|sqm))/i
+    );
+    const carpetArea = areaMatch ? areaMatch[1].trim() : "";
+
+    // Extract state, district, and city with strict anti-bank filtering
+    const stateMatch = text.match(/State\s*:?\s*([A-Za-z\s]+?)(?=\n|District|City|Pincode|Pin|$)/i);
+    const rawState = stateMatch ? stateMatch[1].trim() : "";
+    const state = !isBankOrGarbage(rawState) ? rawState : "";
+
+    const districtMatch = text.match(/District\s*:?\s*([A-Za-z\s]+?)(?=\n|City|State|Pincode|Pin|$)/i);
+    const rawDistrict = districtMatch ? districtMatch[1].trim() : "";
+    const district = !isBankOrGarbage(rawDistrict) ? rawDistrict : "";
+
+    const cityMatch = text.match(/City\s*:?\s*([A-Za-z\s]+?)(?=\n|State|District|Inspection|Pincode|Pin|$)/i);
+    const rawCity = cityMatch ? cityMatch[1].trim() : "";
+    const city = !isBankOrGarbage(rawCity) ? rawCity : "";
+
+    // Robust title extraction
+    let title = "";
+    const candidateEls = card.querySelectorAll("h3, h4, h5, [class*='title'], [class*='name'], a[href*='property'], strong, b");
+    for (const el of candidateEls) {
+      const candidate = (el as HTMLElement).innerText?.trim() || "";
+      if (!isGarbageTitle(candidate)) {
+        title = candidate;
+        break;
+      }
+    }
+
+    if (!title) {
+      const lines = text.split("\n").map((l: string) => l.trim()).filter((l: string) => l.length > 3);
+      for (const line of lines) {
+        if (!isGarbageTitle(line) && !line.includes(":") && !line.includes("₹")) {
+          title = line;
+          break;
+        }
+      }
+    }
+
+    // Synthesize clean title if still empty or generic
+    if (!title || isGarbageTitle(title)) {
+      const areaPrefix = carpetArea ? `${carpetArea} ` : "";
+      const locSuffix = city ? ` in ${city}` : (state ? ` in ${state}` : "");
+      title = `${areaPrefix}Bank Foreclosure Property${locSuffix}`;
+    }
 
     const priceMatch = text.match(/₹\s*([\d,.]+\s*(?:Lakh?|Lac|Crore?|Cr)?)/i);
     const reservePrice = priceMatch ? `₹ ${priceMatch[1]}` : "";
@@ -538,11 +867,6 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
       bankName = bankMatch ? bankMatch[1].trim() : "";
     }
 
-    const areaMatch = text.match(
-      /(?:Carpet|Built[\s-]*Up|Area)\s*:?\s*([\d,.]+\s*(?:sq\.?\s*(?:feet|ft|meter|metre)|sqft|sqm))/i
-    );
-    const carpetArea = areaMatch ? areaMatch[1].trim() : "";
-
     const furnMatch = text.match(/Furnish(?:ing|ed)?\s*:?\s*(Furnished|Unfurnished|Semi[\s-]*Furnished)/i);
     const furnishing = furnMatch ? furnMatch[1].trim() : "";
 
@@ -552,13 +876,8 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
     const actionMatch = text.match(/(?:Type\s*of\s*Action|Under)\s*:?\s*((?:Under\s*)?SARFAESI|IBC|DRT)/i);
     const actionType = actionMatch ? actionMatch[1].replace(/^Under\s*/i, "").trim().toUpperCase() : "";
 
-    const stateMatch = text.match(/State\s*:?\s*([A-Za-z\s]+?)(?=\n|District|City|$)/i);
-    const districtMatch = text.match(/District\s*:?\s*([A-Za-z\s]+?)(?=\n|City|State|$)/i);
-    const cityMatch = text.match(/City\s*:?\s*([A-Za-z\s]+?)(?=\n|State|District|Inspection|$)/i);
-
-    const state = stateMatch ? stateMatch[1].trim() : "";
-    const district = districtMatch ? districtMatch[1].trim() : "";
-    const city = cityMatch ? cityMatch[1].trim() : "";
+    const locParts = [city, state].filter(Boolean);
+    const location = locParts.length > 0 ? locParts.join(", ") : "India";
 
     const auctionStartMatch = text.match(
       /Auction\s*Start\s*(?:Date\s*(?:&\s*Time)?)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i
@@ -624,16 +943,238 @@ export function extractPropertyListingCards(knownLenders: string[] = []): {
   return items;
 }
 
-export function extractIBCListingCards(knownLenders: string[] = []): {
+export function extractVehicleListingCards(knownLenders: string[] = []): {
   auctionId: string;
+  bankPropertyId?: string;
   title: string;
+  propertyType: string;
   reservePrice: string;
   bankName: string;
   location: string;
+  address: string;
+  state: string;
+  city: string;
+  district?: string;
+  startDate: string;
+  endDate: string;
+  emdEndDate?: string;
+  inspectionStartDate?: string;
+  inspectionEndDate?: string;
+  detailUrl: string;
+  thumbnailUrl?: string;
+  photoUrls?: string[];
+  status: string;
+  regYear?: string;
+  fuelType?: string;
+  odometer?: string;
+  transmission?: string;
+  regNo?: string;
+  insurancePolicy?: string;
+}[] {
+  if (typeof (window as any).__name === "undefined") {
+    (window as any).__name = (target: any) => target;
+  }
+  const items: ReturnType<typeof extractVehicleListingCards> = [];
+
+  function matchLenderInline(text: string, lenders: string[]): string {
+    for (const lender of lenders) {
+      const escaped = lender.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`\\b${escaped}\\b`, "i");
+      if (re.test(text)) return lender;
+    }
+    return "";
+  }
+
+  function isBankOrGarbage(str: string): boolean {
+    if (!str || str.length < 2) return true;
+    const lower = str.toLowerCase().trim();
+    return (
+      lower.includes("bank") ||
+      lower.includes("lender") ||
+      lower.includes("finance") ||
+      lower.includes("showing") ||
+      lower.includes("result") ||
+      lower.includes("filter")
+    );
+  }
+
+  const cards = document.querySelectorAll(
+    ".infinite-scroll-component > div > div, .card, [class*='vehicle-card'], [class*='listing'], div[class*='rounded-lg bg-white']"
+  );
+
+  cards.forEach((card) => {
+    const text = (card as HTMLElement).innerText || "";
+    if (text.length < 20 || text.length > 8000) return;
+    if (!text.includes("₹") && !text.match(/(?:Reserve|Vehicle|Sale|Asset|Auction|Lac|Cr|Lakh)/i)) return;
+
+    const detailLink = card.querySelector(
+      'a[href*="vehicle-detail"], a[href*="view"], a[href*="detail"], button'
+    ) as HTMLAnchorElement | null;
+    let detailUrl = detailLink?.href || detailLink?.getAttribute("href") || "";
+
+    const idMatch = text.match(/Asset\s*ID\s*:?\s*([A-Za-z0-9_-]+)/i);
+    const urlIdMatch = detailUrl.match(/vehicle-detail\/([A-Za-z0-9_-]+)/i);
+    const auctionId = idMatch ? idMatch[1] : (urlIdMatch ? urlIdMatch[1] : "");
+
+    if (!auctionId && !detailUrl.includes("vehicle")) return;
+    const finalId = auctionId || `VEH_${Math.abs(text.slice(0, 30).split("").reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0))}`;
+
+    const titleEl = card.querySelector("h6, h5, h4, h3, [class*='title'], strong") as HTMLElement;
+    let title = titleEl?.innerText?.trim() || "";
+    if (!title || title.toLowerCase().startsWith("showing") || title.includes("Results")) {
+      const firstLine = text.split("\n").filter(l => l.trim().length > 5 && !l.includes("Results") && !l.includes("Asset ID"))[0];
+      title = firstLine || "Bank Auction Vehicle";
+    }
+
+    const priceMatch = text.match(/(?:Reserve\s*Price|Price)\s*:?\s*(?:₹|Rs\.?)?\s*([\d,.]+\s*(?:Lakh|Crore|Lac|Cr)?)/i) ||
+      text.match(/₹\s*([\d,.]+\s*(?:Lakh?|Lac|Crore?|Cr)?)/i) ||
+      text.match(/([\d,.]+\s*(?:Lac|Lakh|Cr|Crore))/i);
+    const reservePrice = priceMatch ? `₹ ${priceMatch[1]}` : "";
+
+    let bankName = matchLenderInline(text, knownLenders);
+    if (!bankName) {
+      const bankMatch = text.match(/(?:Bank\s*of\s*[A-Za-z]+|State\s*Bank\s*of\s*India|Punjab\s*National\s*Bank|Canara\s*Bank|Union\s*Bank|Indian\s*Bank|UCO\s*Bank|Central\s*Bank)/i);
+      bankName = bankMatch ? bankMatch[0].trim() : "";
+    }
+
+    // Vehicle Specifications
+    const regYearMatch = text.match(/Registration\s*Year\s*:?\s*(\d{4})/i);
+    const regYear = regYearMatch ? regYearMatch[1] : undefined;
+
+    const fuelMatch = text.match(/Fuel\s*Type\s*:?\s*(Diesel|Petrol|CNG|Electric|LPG|Hybrid)/i);
+    const fuelType = fuelMatch ? fuelMatch[1] : undefined;
+
+    const odoMatch = text.match(/Odometer\s*:?\s*([\d,.]+\s*(?:km|kms)?|NA)/i);
+    const odometer = odoMatch ? odoMatch[1] : undefined;
+
+    const transMatch = text.match(/Transmission\s*:?\s*(Manual|Automatic|Other)/i);
+    const transmission = transMatch ? transMatch[1] : undefined;
+
+    const regNoMatch = text.match(/Registration\s*No\.?\s*:?\s*([A-Za-z0-9*_-]+)/i);
+    const regNo = regNoMatch ? regNoMatch[1] : undefined;
+
+    const insMatch = text.match(/Insurance\s*(?:Policy)?\s*:?\s*(Yes|No|Expired|Valid)/i);
+    const insurancePolicy = insMatch ? insMatch[1] : undefined;
+
+    // Location extraction
+    const locMatch = text.match(/(?:Gorakhpur|Mumbai|Delhi|Bengaluru|Chennai|Kolkata|Hyderabad|Pune|Ahmedabad|Ernakulam|Raigarh|Bilaspur|Ratlam|Lucknow|Jaipur|Surat|Kanpur|Nagpur|Indore|Thane|Bhopal|Visakhapatnam|Pimpri|Patna|Vadodara|Ghaziabad|Ludhiana|Agra|Nashik|Faridabad|Meerut|Rajkot|Kalyan|Vasai|Varanasi|Srinagar|Aurangabad|Dhanbad|Amritsar|Navi Mumbai|Allahabad|Ranchi|Howrah|Coimbatore|Jabalpur|Gwalior|Vijayawada|Jodhpur|Madurai|Raipur|Kota|Guwahati|Chandigarh)[A-Za-z,\s]+?(?=\n|Contact|View|$)/i);
+    let location = locMatch ? locMatch[0].trim() : "";
+    let state = "";
+    let city = "";
+    let district = "";
+
+    if (location) {
+      const parts = location.split(/[,–-]/).map((p: string) => p.trim()).filter((p: string) => !isBankOrGarbage(p));
+      if (parts.length >= 3) {
+        city = parts[0];
+        district = parts[1];
+        state = parts[2];
+      } else if (parts.length === 2) {
+        city = parts[0];
+        state = parts[1];
+      } else if (parts.length === 1) {
+        city = parts[0];
+      }
+    }
+
+    // Schedule dates
+    const startMatch = text.match(/(?:Auction\s*Start|Start)\s*(?:Date\s*(?:&\s*Time)?)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
+    const endMatch = text.match(/(?:Auction\s*End|End)\s*(?:Date\s*(?:&?\s*[Tt]ime)?)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
+    const emdMatch = text.match(/EMD\s*End\s*(?:Date\s*(?:&?\s*[Tt]ime)?)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
+    const inspStartMatch = text.match(/Inspection\s*Start\s*(?:Date\s*(?:&\s*Time)?)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
+    const inspEndMatch = text.match(/Inspection\s*End\s*(?:Date\s*(?:&?\s*[Tt]ime)?)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
+
+    // Photos
+    const imgs = card.querySelectorAll("img");
+    const photoUrls: string[] = [];
+    imgs.forEach((img) => {
+      const htmlImg = img as HTMLImageElement;
+      const src = htmlImg.src || htmlImg.getAttribute("data-src") || htmlImg.getAttribute("data-lazy") || "";
+      if (src && !src.endsWith(".svg") && !src.includes("icon") && !src.includes("logo") && !photoUrls.includes(src)) {
+        photoUrls.push(src);
+      }
+    });
+
+    const statusBadge = card.querySelector("[class*='badge'], [class*='text-white'][class*='rounded'], [class*='Upcoming']") as HTMLElement;
+    const status = statusBadge?.innerText?.trim().toUpperCase() || "UPCOMING";
+
+    // Detect vehicle type
+    let propertyType = "Commercial Vehicle";
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes("car") || lowerTitle.includes("alto") || lowerTitle.includes("altroz") || lowerTitle.includes("sedan") || lowerTitle.includes("hatchback") || lowerTitle.includes("swift") || lowerTitle.includes("creta")) {
+      propertyType = "Four Wheeler / Car";
+    } else if (lowerTitle.includes("bike") || lowerTitle.includes("motorcycle") || lowerTitle.includes("scooter") || lowerTitle.includes("hero") || lowerTitle.includes("honda") || lowerTitle.includes("royal enfield")) {
+      propertyType = "Two Wheeler / Bike";
+    } else if (lowerTitle.includes("tractor") || lowerTitle.includes("mahindra") || lowerTitle.includes("sonalika") || lowerTitle.includes("swaraj")) {
+      propertyType = "Tractor / Agricultural";
+    } else if (lowerTitle.includes("truck") || lowerTitle.includes("blazo") || lowerTitle.includes("leyland") || lowerTitle.includes("bharatbenz") || lowerTitle.includes("tata 1212") || lowerTitle.includes("trailer")) {
+      propertyType = "Commercial / Truck";
+    } else if (lowerTitle.includes("bus")) {
+      propertyType = "Commercial / Bus";
+    }
+
+    items.push({
+      auctionId: finalId,
+      bankPropertyId: finalId,
+      title,
+      propertyType,
+      reservePrice,
+      bankName: bankName || "Public Sector Bank",
+      location: location || state || city || "India",
+      address: location,
+      state,
+      city,
+      district,
+      startDate: startMatch ? startMatch[1] : "",
+      endDate: endMatch ? endMatch[1] : "",
+      emdEndDate: emdMatch ? emdMatch[1] : undefined,
+      inspectionStartDate: inspStartMatch ? inspStartMatch[1] : undefined,
+      inspectionEndDate: inspEndMatch ? inspEndMatch[1] : undefined,
+      detailUrl,
+      thumbnailUrl: photoUrls[0] || "",
+      photoUrls,
+      status,
+      regYear,
+      fuelType,
+      odometer,
+      transmission,
+      regNo,
+      insurancePolicy,
+    });
+  });
+
+  return items;
+}
+
+export function extractIBCListingCards(knownLenders: string[] = []): {
+  auctionId: string;
+  bankPropertyId?: string;
+  title: string;
+  propertyType?: string;
+  reservePrice: string;
+  emdAmountText?: string;
+  bidIncrementText?: string;
+  bankName: string;
+  location: string;
+  address?: string;
+  state?: string;
+  city?: string;
+  district?: string;
+  contactPerson?: string;
+  officerDesignation?: string;
   startDate: string;
   endDate: string;
   detailUrl: string;
   status: string;
+  thumbnailUrl?: string;
+  photoUrls?: string[];
+  corporateDebtorName?: string;
+  corporateDebtorCin?: string;
+  liquidatorRegNo?: string;
+  liquidatorEmail?: string;
+  ncltBench?: string;
+  ncltCaseNo?: string;
+  processMemoUrl?: string;
 }[] {
   if (typeof (window as any).__name === "undefined") {
     (window as any).__name = (target: any) => target;
@@ -664,38 +1205,167 @@ export function extractIBCListingCards(knownLenders: string[] = []): {
     ) as HTMLAnchorElement | null;
     const detailUrl = detailLink?.href || detailLink?.getAttribute("href") || "";
 
-    const idMatch = text.match(/(?:Asset|Auction|Sale|ID|No\.?)\s*(?:ID|No\.?|Code)?\s*:?\s*([A-Za-z0-9_-]+)/i);
+    // 1. Clean Numeric Asset ID
+    let rawId = "";
+    const idDigitsMatch = text.match(/(?:Asset|Auction|Sale|ID|No\.?)\s*(?:ID|No\.?|Code)?\s*:?\s*(\d+)/i);
+    const idAlphaNumMatch = text.match(/(?:Asset|Auction|Sale|ID|No\.?)\s*(?:ID|No\.?|Code)?\s*:?\s*([A-Za-z0-9_-]+)/i);
+    if (idDigitsMatch) {
+      rawId = idDigitsMatch[1];
+    } else if (idAlphaNumMatch) {
+      rawId = idAlphaNumMatch[1].replace(/(?:Asset|Classification|Fixed|Location|IP|Reserve).*$/i, "");
+    }
     const urlIdMatch = detailUrl.match(/(?:asset|id|view)[/=]([A-Za-z0-9_-]+)/i);
-    const auctionId = idMatch ? idMatch[1] : (urlIdMatch ? urlIdMatch[1] : "");
+    const auctionId = rawId || (urlIdMatch ? urlIdMatch[1] : "");
 
-    if (!auctionId && !detailUrl.includes("asset")) return;
-    const finalId = auctionId || `IBC_${Math.abs(text.slice(0, 30).split("").reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0))}`;
+    const isFakeNav =
+      !auctionId ||
+      auctionId.toLowerCase() === "guide" ||
+      auctionId.toLowerCase() === "eauction" ||
+      auctionId.toLowerCase() === "home" ||
+      auctionId.toLowerCase() === "about" ||
+      auctionId.toLowerCase() === "contact" ||
+      detailUrl.toLowerCase().includes("downloads") ||
+      detailUrl.toLowerCase().includes("user-guide");
 
-    const titleEl = card.querySelector("h3, h4, h5, [class*='title'], strong, b, td:first-child") as HTMLElement;
-    const title = titleEl?.innerText?.trim() || text.split("\n").filter(l => l.trim().length > 3)[0] || "IBC Auction Asset";
+    if (isFakeNav) return;
+    const finalId = auctionId;
 
-    const priceMatch = text.match(/₹?\s*([\d,.]+\s*(?:Lakh?|Lac|Crore?|Cr)?)/i);
-    let bankName = matchLenderInline(text, knownLenders);
-    if (!bankName) {
-      const bankMatch = text.match(/(?:Bank|Institution|Creditor|Liquidator)\s*:?\s*([A-Za-z\s]+?)(?=\n|$)/i);
-      bankName = bankMatch ? bankMatch[1].trim() : "";
+    // 2. Asset Classification / Type
+    let classification = "";
+    const classMatch = text.match(/Asset\s*Classification\s*:?\s*([A-Za-z0-9\s&,/-]+?)(?=Fixed|Asset|Location|IP|Liquidator|Reserve|EMD|Price|Contact|$)/i);
+    if (classMatch) {
+      classification = classMatch[1].replace(/Contact\s*Us/i, "").trim();
     }
 
-    const locationMatch = text.match(/(?:Location|State|City)\s*:?\s*([A-Za-z,\s]+?)(?=\n|$)/i);
+    // 3. Location / Address
+    let locationStr = "";
+    const locMatch = text.match(/(?:Fixed\s*Asset\s*Location|Asset\s*Location|Location)\s*:?\s*([A-Za-z0-9\s&,/-]+?)(?=IP|Liquidator|RP|Reserve|EMD|Price|Contact|Classification|$)/i);
+    if (locMatch) {
+      locationStr = locMatch[1].replace(/Contact\s*Us/i, "").trim();
+    }
+
+    // Split location into state, city, district
+    let state = "";
+    let city = "";
+    let district = "";
+    if (locationStr) {
+      const parts = locationStr.split(/[,–-]/).map((p: string) => p.trim()).filter(Boolean);
+      if (parts.length >= 3) {
+        state = parts[0];
+        city = parts[1];
+        district = parts[2];
+      } else if (parts.length === 2) {
+        state = parts[0];
+        city = parts[1];
+      } else if (parts.length === 1) {
+        state = parts[0];
+      }
+    }
+
+    // 4. IP / Liquidator Name
+    let ipName = "";
+    const ipMatch = text.match(/(?:IP\s*Name|Liquidator\s*Name|Liquidator|RP\s*Name|IP)\s*:?\s*([A-Za-z0-9\s.,-]+?)(?=Contact|Email|Phone|Reserve|EMD|Price|Asset|$)/i);
+    if (ipMatch) {
+      ipName = ipMatch[1].replace(/Contact\s*Us/i, "").trim();
+    }
+
+    // 5. Title
+    let title = "";
+    const rawTitleEl = card.querySelector(".text-formlabel span, span.line-clamp-2, h3, h4, h5, [class*='title']") as HTMLElement;
+    const extractedHeadline = rawTitleEl?.innerText?.trim() || "";
+    if (extractedHeadline && !extractedHeadline.includes("Asset ID") && !extractedHeadline.includes("Asset Classification") && extractedHeadline.length > 5) {
+      title = extractedHeadline;
+    } else if (classification) {
+      const locSuffix = city ? ` in ${city}, ${state}` : (locationStr ? ` in ${locationStr}` : "");
+      title = `${classification}${locSuffix}`;
+    } else {
+      title = locationStr ? `Insolvency Asset in ${locationStr}` : "IBC Auction Asset";
+    }
+
+    // 5b. Photos & Images
+    const imgEls = card.querySelectorAll("img") as NodeListOf<HTMLImageElement>;
+    const photoUrls: string[] = [];
+    imgEls.forEach((img) => {
+      const src = img.src || img.getAttribute("src") || "";
+      if (src && !src.includes("logo") && !src.includes("icon") && !src.includes("avatar") && !src.startsWith("data:") && !photoUrls.includes(src)) {
+        photoUrls.push(src);
+      }
+    });
+
+    // 6. Financial & Bidding Details
+    const priceMatch = text.match(/(?:Reserve\s*Price|Price)\s*:?\s*(?:₹|Rs\.?)?\s*([\d,.]+\s*(?:Lakh|Crore|Lac|Cr)?)/i) ||
+      text.match(/₹\s*([\d,.]+\s*(?:Lakh?|Lac|Crore?|Cr)?)/i);
+    const emdMatch = text.match(/(?:EMD|Earnest\s*Money)\s*(?:Amount)?\s*:?\s*(?:₹|Rs\.?)?\s*([\d,.]+\s*(?:Lakh|Crore|Lac|Cr)?)/i);
+    const incMatch = text.match(/(?:Bid\s*Increment|Increment\s*Amount|Step)\s*:?\s*(?:₹|Rs\.?)?\s*([\d,.]+\s*(?:Lakh|Crore|Lac|Cr)?)/i);
+
+    let bankName = matchLenderInline(text, knownLenders);
+    if (!bankName) {
+      const bankMatch = text.match(/(?:Bank|Institution|Creditor|Lender)\s*:?\s*([A-Za-z\s]+?)(?=\n|IP|Liquidator|$)/i);
+      bankName = bankMatch ? bankMatch[1].trim() : "NCLT / IBBI Insolvency";
+    }
 
     const startMatch = text.match(/(?:Start|Auction\s*Start)\s*(?:Date)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
     const endMatch = text.match(/(?:End|Auction\s*End|Closing)\s*(?:Date)?\s*:?\s*([\d\-/]+\s+[\d:]+)/i);
 
+    let corporateDebtorName = "";
+    const cdMatch = text.match(/(?:Corporate\s*Debtor|Company|CD\s*Name)\s*:?\s*([^\n]{3,80})/i);
+    if (cdMatch) corporateDebtorName = cdMatch[1].trim();
+
+    let corporateDebtorCin = "";
+    const cinMatch = text.match(/\b([UL]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6})\b/);
+    if (cinMatch) corporateDebtorCin = cinMatch[1].trim().toUpperCase();
+
+    let liquidatorRegNo = "";
+    const ipRegMatch = text.match(/(IBBI\/IPA-[A-Za-z0-9\/\-_]+)/i);
+    if (ipRegMatch) liquidatorRegNo = ipRegMatch[1].trim();
+
+    let liquidatorEmail = "";
+    const liqEmailMatch = text.match(/(?:Liquidator|RP|IP)?\s*(?:Email|Mail)?\s*:?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    if (liqEmailMatch) liquidatorEmail = liqEmailMatch[1].trim();
+
+    let ncltBench = "";
+    const ncltBenchMatch = text.match(/(NCLT\s*[A-Za-z\s]+(?:Bench)?(?:\s*-\s*[A-Z0-9]+)?)/i);
+    if (ncltBenchMatch) ncltBench = ncltBenchMatch[1].trim();
+
+    let ncltCaseNo = "";
+    const ncltCaseMatch = text.match(/((?:CP|CA)\s*(?:\(IB\))?\s*(?:No\.?)?\s*[\d\/\w-]+)/i);
+    if (ncltCaseMatch) ncltCaseNo = ncltCaseMatch[1].trim();
+
+    let processMemoUrl = "";
+    const memoLink = card.querySelector('a[href*="process-memo"], a[href*="memo"], a[href*="form-g"]') as HTMLAnchorElement | null;
+    if (memoLink && memoLink.href) processMemoUrl = memoLink.href;
+
+    const detailUrlFinal = detailUrl || `https://ibbi.baanknet.com/asset-detail/${finalId}`;
+
     items.push({
       auctionId: finalId,
+      bankPropertyId: finalId,
       title: title || "IBC Auction Asset",
+      propertyType: classification || "Insolvency Asset",
       reservePrice: priceMatch ? `₹ ${priceMatch[1]}` : "",
-      bankName: bankName || "",
-      location: locationMatch ? locationMatch[1].trim() : "",
+      emdAmountText: emdMatch ? `₹ ${emdMatch[1]}` : undefined,
+      bidIncrementText: incMatch ? `₹ ${incMatch[1]}` : undefined,
+      bankName: bankName || "NCLT / IBBI Insolvency",
+      location: locationStr || state || "India",
+      address: locationStr,
+      state,
+      city,
+      district,
+      contactPerson: ipName || undefined,
+      officerDesignation: ipName ? "Insolvency Professional / Liquidator" : undefined,
       startDate: startMatch ? startMatch[1] : "",
       endDate: endMatch ? endMatch[1] : "",
-      detailUrl,
+      detailUrl: detailUrlFinal,
       status: "UPCOMING",
+      photoUrls: photoUrls.length > 0 ? photoUrls : undefined,
+      thumbnailUrl: photoUrls.length > 0 ? photoUrls[0] : undefined,
+      corporateDebtorName: corporateDebtorName || undefined,
+      corporateDebtorCin: corporateDebtorCin || undefined,
+      liquidatorRegNo: liquidatorRegNo || undefined,
+      liquidatorEmail: liquidatorEmail || undefined,
+      ncltBench: ncltBench || undefined,
+      ncltCaseNo: ncltCaseNo || undefined,
+      processMemoUrl: processMemoUrl || undefined,
     });
   });
 
@@ -704,6 +1374,7 @@ export function extractIBCListingCards(knownLenders: string[] = []): {
 
 export function mergeDetailData(
   item: {
+    address?: string;
     borrowerName?: string;
     borrowerNames?: string[];
     description?: string;
@@ -718,14 +1389,40 @@ export function mergeDetailData(
     inspectionEndDate?: string;
     emdEndDate?: string;
     emdAmountText?: string;
+    bidIncrementText?: string;
+    emdAccountNumber?: string;
+    emdAccountIfsc?: string;
+    emdBankName?: string;
+    outstandingDuesText?: string;
+    tenderFeeText?: string;
+    cersaiId?: string;
+    titleType?: string;
+    encumbrancesText?: string;
+    branchName?: string;
+    officerDesignation?: string;
+    officerEmail?: string;
     contactPerson?: string;
     contactPhone?: string;
     bankName?: string;
     photoUrls?: string[];
     thumbnailUrl?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    mapUrl?: string;
+    boundaries?: { north?: string; south?: string; east?: string; west?: string };
+    corporateDebtorName?: string;
+    corporateDebtorCin?: string;
+    liquidatorRegNo?: string;
+    liquidatorEmail?: string;
+    ncltBench?: string;
+    ncltCaseNo?: string;
+    processMemoUrl?: string;
   },
   detail: DetailPageData
 ): void {
+  if (detail.propertyAddress && (!item.address || item.address.length < 15)) {
+    item.address = detail.propertyAddress;
+  }
   if (!item.borrowerName && detail.borrowerName) {
     item.borrowerName = detail.borrowerName;
   }
@@ -747,6 +1444,42 @@ export function mergeDetailData(
   }
   if (!item.emdAmountText && detail.emdAmountText) {
     item.emdAmountText = detail.emdAmountText;
+  }
+  if (!item.bidIncrementText && detail.bidIncrementText) {
+    item.bidIncrementText = detail.bidIncrementText;
+  }
+  if (!item.emdAccountNumber && detail.emdAccountNumber) {
+    item.emdAccountNumber = detail.emdAccountNumber;
+  }
+  if (!item.emdAccountIfsc && detail.emdAccountIfsc) {
+    item.emdAccountIfsc = detail.emdAccountIfsc;
+  }
+  if (!item.emdBankName && detail.emdBankName) {
+    item.emdBankName = detail.emdBankName;
+  }
+  if (!item.outstandingDuesText && detail.outstandingDuesText) {
+    item.outstandingDuesText = detail.outstandingDuesText;
+  }
+  if (!item.tenderFeeText && detail.tenderFeeText) {
+    item.tenderFeeText = detail.tenderFeeText;
+  }
+  if (!item.cersaiId && detail.cersaiId) {
+    item.cersaiId = detail.cersaiId;
+  }
+  if (!item.titleType && detail.titleType) {
+    item.titleType = detail.titleType;
+  }
+  if (!item.encumbrancesText && detail.encumbrancesText) {
+    item.encumbrancesText = detail.encumbrancesText;
+  }
+  if (!item.branchName && detail.branchName) {
+    item.branchName = detail.branchName;
+  }
+  if (!item.officerDesignation && detail.officerDesignation) {
+    item.officerDesignation = detail.officerDesignation;
+  }
+  if (!item.officerEmail && detail.officerEmail) {
+    item.officerEmail = detail.officerEmail;
   }
   if (!item.contactPerson && detail.contactPerson) {
     item.contactPerson = detail.contactPerson;
@@ -780,6 +1513,39 @@ export function mergeDetailData(
   }
   if (!item.emdEndDate && detail.emdEndDate) {
     item.emdEndDate = detail.emdEndDate;
+  }
+  if (item.latitude === undefined && detail.latitude !== undefined) {
+    item.latitude = detail.latitude;
+  }
+  if (item.longitude === undefined && detail.longitude !== undefined) {
+    item.longitude = detail.longitude;
+  }
+  if (!item.mapUrl && detail.mapUrl) {
+    item.mapUrl = detail.mapUrl;
+  }
+  if (!item.boundaries && detail.boundaries) {
+    item.boundaries = detail.boundaries;
+  }
+  if (!item.corporateDebtorName && detail.corporateDebtorName) {
+    item.corporateDebtorName = detail.corporateDebtorName;
+  }
+  if (!item.corporateDebtorCin && detail.corporateDebtorCin) {
+    item.corporateDebtorCin = detail.corporateDebtorCin;
+  }
+  if (!item.liquidatorRegNo && detail.liquidatorRegNo) {
+    item.liquidatorRegNo = detail.liquidatorRegNo;
+  }
+  if (!item.liquidatorEmail && detail.liquidatorEmail) {
+    item.liquidatorEmail = detail.liquidatorEmail;
+  }
+  if (!item.ncltBench && detail.ncltBench) {
+    item.ncltBench = detail.ncltBench;
+  }
+  if (!item.ncltCaseNo && detail.ncltCaseNo) {
+    item.ncltCaseNo = detail.ncltCaseNo;
+  }
+  if (!item.processMemoUrl && detail.processMemoUrl) {
+    item.processMemoUrl = detail.processMemoUrl;
   }
   if (detail.photoUrls.length > 0) {
     const existing = new Set(item.photoUrls || []);

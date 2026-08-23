@@ -30,6 +30,7 @@ import {
   BAANKNET_BASE_URL,
   BAANKNET_EAUCTION_PATH,
   BAANKNET_PROPERTY_LISTING_PATH,
+  BAANKNET_VEHICLE_LISTING_PATH,
   BAANKNET_IBC_BASE_URL,
   BAANKNET_IBC_LISTING_PATH,
   BAANKNET_SCRAPE_DELAY_MS,
@@ -50,6 +51,7 @@ import {
 import {
   extractEAuctionDetail,
   extractPropertyListingCards,
+  extractVehicleListingCards,
   extractIBCListingCards,
   mergeDetailData,
   type DetailPageData,
@@ -105,11 +107,11 @@ function parseCliArgs(): CliArgs {
     if (arg === "--no-details") scrapeDetails = false;
     if (arg === "--rescrape" || arg === "--force-details") rescrape = true;
     if (arg === "--refresh-documents" || arg === "--refresh-docs") refreshDocuments = true;
-    if (arg.startsWith("--status=")) {
-      statusFilters = arg.replace("--status=", "").split(",");
+    if (arg.startsWith("--status=") || arg.startsWith("--statuses=")) {
+      statusFilters = arg.replace(/^--status(es)?=/, "").split(",");
     }
-    if (arg.startsWith("--module=")) {
-      modules = arg.replace("--module=", "").split(",");
+    if (arg.startsWith("--module=") || arg.startsWith("--modules=")) {
+      modules = arg.replace(/^--modules?=/, "").split(",");
     }
     if (arg.startsWith("--max-pages=")) {
       maxPages = parseInt(arg.replace("--max-pages=", ""), 10);
@@ -136,42 +138,40 @@ function randomDelay(baseMs: number): Promise<void> {
  */
 async function expandDetailPageInteractiveContent(page: any): Promise<void> {
   try {
+    // Phase 1: Click all 4 named detail tabs sequentially with delays.
+    // BaankNet uses Angular mat-tabs that lazy-render content only on click:
+    // Tabs: General Detail, Property Detail, Inspection Detail, Business Rule
+    await page.evaluate(async () => {
+      const tabElements = Array.from(document.querySelectorAll("button, div, span, a, [role='tab'], .nav-link"));
+      for (const el of tabElements) {
+        const text = el.textContent?.trim() || "";
+        if (["General Detail", "Property Detail", "Inspection Detail", "Business Rule"].includes(text)) {
+          try {
+            (el as HTMLElement).click();
+            await new Promise((res) => setTimeout(res, 800));
+          } catch {}
+        }
+      }
+    });
+
+    await randomDelay(1000);
+
+    // Phase 2: Open all accordions and <details> elements
     await page.evaluate(() => {
-      // 1. Click all tabs, accordions, and expansion headers
-      const clickableSelectors = [
-        '[role="tab"]',
-        '.nav-tabs .nav-link',
-        '.nav-item a',
-        '[data-toggle="tab"]',
-        '[data-bs-toggle="tab"]',
+      const collapseSelectors = [
         '[data-toggle="collapse"]',
         '[data-bs-toggle="collapse"]',
         '.accordion-button.collapsed',
         '.accordion-header:not(.active)',
-        'mat-tab-header .mat-tab-label',
-        '.ant-tabs-tab',
         'details:not([open]) summary',
-        'button.tab-btn',
-        'button.tab',
-        'button.tab-link',
       ];
-
-      const elements = Array.from(document.querySelectorAll(clickableSelectors.join(",")));
+      const elements = Array.from(document.querySelectorAll(collapseSelectors.join(",")));
       for (const el of elements) {
-        const text = el.textContent?.toLowerCase().trim() || "";
-        const isTarget =
-          /document|attachment|annexure|notice|tender|form|download|legal|photo|gallery|asset/i.test(text) ||
-          el.getAttribute("role") === "tab" ||
-          el.classList.contains("nav-link");
-
-        if (isTarget && typeof (el as HTMLElement).click === "function") {
-          try {
-            (el as HTMLElement).click();
-          } catch {}
+        if (typeof (el as HTMLElement).click === "function") {
+          try { (el as HTMLElement).click(); } catch {}
         }
       }
-
-      // Also open all <details> elements
+      // Open all <details> elements
       document.querySelectorAll("details:not([open])").forEach((d) => {
         d.setAttribute("open", "true");
       });
@@ -179,7 +179,7 @@ async function expandDetailPageInteractiveContent(page: any): Promise<void> {
 
     await randomDelay(800);
 
-    // 2. Exhaust "Load More" / "View All" / "Show More" buttons within document sections
+    // Phase 3: Exhaust "Load More" / "View All" / "Show More" buttons
     for (let cycle = 0; cycle < 5; cycle++) {
       const clicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll("button, a, .btn, span.cursor-pointer"));
@@ -206,6 +206,7 @@ async function expandDetailPageInteractiveContent(page: any): Promise<void> {
     // Non-critical: continue with existing DOM
   }
 }
+
 
 /**
  * Process a batch of items concurrently for detail page scraping.
@@ -409,22 +410,57 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
       bankName = bankMatch ? bankMatch[1].trim() : "";
     }
 
+    // Helper to filter out header/search artifacts
+    function isGarbageTitle(str: string): boolean {
+      if (!str || str.length < 3) return true;
+      const lower = str.toLowerCase().trim();
+      return (
+        lower.startsWith("showing") ||
+        lower.includes("results") ||
+        lower.includes("properties found") ||
+        lower.includes("sort by") ||
+        lower.includes("filter") ||
+        lower.includes("10000+")
+      );
+    }
+
+    function isBankOrGarbage(str: string): boolean {
+      if (!str || str.length < 2) return true;
+      const lower = str.toLowerCase().trim();
+      return (
+        lower.includes("bank") ||
+        lower.includes("lender") ||
+        lower.includes("showing") ||
+        lower.includes("result")
+      );
+    }
+
     // Title extraction
     const lines = text.split("\n").map((l: string) => l.trim()).filter((l: string) => l.length > 0);
     let title = "";
     for (const line of lines) {
       const titleMatch = line.match(/^\d+\)\s*(.+)/);
-      if (titleMatch) {
+      if (titleMatch && !isGarbageTitle(titleMatch[1])) {
         title = titleMatch[1].trim();
         break;
       }
     }
-    if (!title && lines.length > 0) title = lines[0];
+    if (!title) {
+      for (const line of lines) {
+        if (!isGarbageTitle(line) && !line.includes(":") && !line.includes("₹") && line.length > 5) {
+          title = line;
+          break;
+        }
+      }
+    }
+    if (!title || isGarbageTitle(title)) {
+      title = "Bank Foreclosure Property";
+    }
 
     // Location
     let locationStr = "";
     for (const line of lines) {
-      if (/^\w+,\s*\w+.*\d{6}/.test(line) || /^\w+,\s*\w+,\s*\w+/.test(line)) {
+      if ((/^\w+,\s*\w+.*\d{6}/.test(line) || /^\w+,\s*\w+,\s*\w+/.test(line)) && !isBankOrGarbage(line)) {
         locationStr = line;
         break;
       }
@@ -435,7 +471,7 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
     for (const line of lines) {
       if (line.includes("ROAD") || line.includes("STREET") || line.includes("NAGAR") ||
           line.includes("COLONY") || line.includes("SECTOR") || /^\d+/.test(line)) {
-        if (!line.includes("Auction") && !line.includes("Date") && !line.includes("Price")) {
+        if (!line.includes("Auction") && !line.includes("Date") && !line.includes("Price") && !isBankOrGarbage(line)) {
           address = line;
           break;
         }
@@ -447,8 +483,8 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
     const endMatch = text.match(/End\s*Date\s*:\s*([\d\-/]+\s+[\d:]+)/i);
 
     // Detail and property links
-    const auctionDetailLink = card.querySelector('a[href*="view-auction"], a[data-original-title*="View Auction"], a[title="View"]') as HTMLAnchorElement;
-    const propertyDetailLink = card.querySelector('a[href*="view-property"], a[data-original-title*="View Property"], a[href*="property-detail"]') as HTMLAnchorElement;
+    const auctionDetailLink = card.querySelector('a[href*="auction-detail"], a[href*="view-auction"], a[href*="view"], a[href*="detail"], a[data-original-title*="View"], a[title*="View"], button[title*="View"]') as HTMLAnchorElement;
+    const propertyDetailLink = card.querySelector('a[href*="property-detail"], a[href*="property"], a[data-original-title*="Property"]') as HTMLAnchorElement;
     let detailUrl = auctionDetailLink?.getAttribute("href") || auctionDetailLink?.href ||
                     propertyDetailLink?.getAttribute("href") || propertyDetailLink?.href || "";
 
@@ -456,6 +492,8 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
       detailUrl = detailUrl.replace("http://baanknet.com", "https://baanknet.com");
     } else if (detailUrl.startsWith("/")) {
       detailUrl = `https://baanknet.com${detailUrl}`;
+    } else if (!detailUrl && auctionIdMatch && auctionIdMatch[1]) {
+      detailUrl = `https://baanknet.com/eauction-psb/view-detail/${auctionIdMatch[1]}`;
     }
 
     // Extract thumbnail/photo if present on the listing card
@@ -822,6 +860,132 @@ async function scrapePropertyListings(
   return allItems;
 }
 
+// ─── Module: Vehicle Listings ───────────────────────────────────────────────
+
+async function scrapeVehicleListings(
+  browser: any,
+  page: any,
+  maxScrollCycles: number,
+  scrapeDetails: boolean,
+): Promise<RawBaankNetItem[]> {
+  log.info({ maxScrollCycles }, "Scraping Vehicle Listings (/vehicle-listing)");
+
+  const targetUrl = `${BAANKNET_BASE_URL}${BAANKNET_VEHICLE_LISTING_PATH}`;
+  log.info({ url: targetUrl }, "Navigating to Vehicle Listings...");
+
+  await page.goto(targetUrl, {
+    waitUntil: "domcontentloaded",
+    timeout: 45000,
+  });
+
+  await randomDelay(4000);
+
+  // Wait for vehicles to load
+  try {
+    await page.waitForFunction(
+      () => {
+        const bodyText = document.body?.innerText || "";
+        return (
+          bodyText.includes("Asset ID") ||
+          bodyText.includes("Reserve") ||
+          bodyText.includes("Vehicles for Sale") ||
+          bodyText.includes("Registration Year")
+        );
+      },
+      { timeout: 30000 }
+    );
+    log.info("Vehicle listings detected.");
+  } catch {
+    log.warn("Timeout waiting for vehicle listings.");
+  }
+
+  const allItems: RawBaankNetItem[] = [];
+  const seenIds = new Set<string>();
+  let lastHeight = 0;
+  let noNewContentCount = 0;
+
+  for (let scroll = 1; scroll <= maxScrollCycles; scroll++) {
+    const rawCards = await page.evaluate(extractVehicleListingCards, KNOWN_LENDERS);
+
+    let newCount = 0;
+    for (const card of rawCards) {
+      if (seenIds.has(card.auctionId)) continue;
+      seenIds.add(card.auctionId);
+
+      allItems.push({
+        auctionId: card.auctionId,
+        bankPropertyId: card.bankPropertyId || card.auctionId,
+        title: card.title,
+        propertyType: card.propertyType,
+        reservePrice: card.reservePrice,
+        bankName: card.bankName,
+        location: card.location,
+        address: card.address || card.location || "",
+        district: card.district,
+        startDate: card.startDate,
+        endDate: card.endDate,
+        detailUrl: card.detailUrl,
+        inspectionStartDate: card.inspectionStartDate,
+        inspectionEndDate: card.inspectionEndDate,
+        emdEndDate: card.emdEndDate,
+        thumbnailUrl: card.thumbnailUrl,
+        photoUrls: card.photoUrls,
+        auctionModule: "vehicle",
+      });
+      newCount++;
+    }
+
+    log.info(
+      {
+        scroll,
+        cardsOnPage: rawCards.length,
+        newItems: newCount,
+        total: allItems.length,
+      },
+      "Vehicle scroll cycle complete"
+    );
+
+    if (newCount === 0) {
+      noNewContentCount++;
+      if (noNewContentCount >= 3) {
+        log.info("No new vehicle content after 3 scroll cycles. Stopping.");
+        break;
+      }
+    } else {
+      noNewContentCount = 0;
+    }
+
+    // Scroll down
+    const currentHeight = await page.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight);
+      return document.body.scrollHeight;
+    });
+
+    if (currentHeight === lastHeight && newCount === 0) {
+      log.info("Vehicle page height unchanged. Reached bottom.");
+      break;
+    }
+    lastHeight = currentHeight;
+
+    await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
+  }
+
+  // Scrape detail pages for enrichment if requested
+  if (scrapeDetails) {
+    const toEnrich = allItems.filter((item) => item.detailUrl);
+    if (toEnrich.length > 0) {
+      await scrapeDetailPages(browser, toEnrich, BAANKNET_BASE_URL, BAANKNET_DETAIL_CONCURRENCY);
+    }
+  }
+
+  if (allItems.length > 0) {
+    const parsed = parseListings(allItems, "upcoming");
+    await upsertListings(parsed);
+  }
+
+  return allItems;
+}
+
 // ─── IBC eAuction: Separate Subdomain ────────────────────────────────────────
 
 async function scrapeIBCAuctions(
@@ -873,27 +1037,45 @@ async function scrapeIBCAuctions(
       log.warn("Timeout waiting for IBC listings. Page may be empty or loading slowly.");
     }
 
-    for (let pageNum = startPage; pageNum <= maxPages; pageNum++) {
+    let noNewContentCount = 0;
+    let lastHeight = 0;
+    const maxScrolls = Math.max(maxPages * 5, BAANKNET_MAX_SCROLL_CYCLES);
+
+    for (let scroll = 1; scroll <= maxScrolls; scroll++) {
       const rawCards = await ibcPage.evaluate(extractIBCListingCards, KNOWN_LENDERS);
 
       const pageNewItems: RawBaankNetItem[] = [];
       for (const card of rawCards) {
-        if (seenIds.has(card.auctionId)) continue;
+        if (!card.auctionId || seenIds.has(card.auctionId)) continue;
         seenIds.add(card.auctionId);
 
         const itemObj: RawBaankNetItem = {
           auctionId: card.auctionId,
-          bankPropertyId: "",
+          bankPropertyId: card.bankPropertyId || card.auctionId,
           title: card.title,
           reservePrice: card.reservePrice,
+          emdAmountText: card.emdAmountText,
+          bidIncrementText: card.bidIncrementText,
           bankName: card.bankName,
           location: card.location,
-          address: "",
+          address: card.address || card.location || "",
+          district: card.district,
+          contactPerson: card.contactPerson,
+          officerDesignation: card.officerDesignation,
           startDate: card.startDate,
           endDate: card.endDate,
           detailUrl: card.detailUrl,
+          thumbnailUrl: card.thumbnailUrl,
+          photoUrls: card.photoUrls,
           actionType: "IBC",
           auctionModule: "ibc",
+          corporateDebtorName: card.corporateDebtorName,
+          corporateDebtorCin: card.corporateDebtorCin,
+          liquidatorRegNo: card.liquidatorRegNo,
+          liquidatorEmail: card.liquidatorEmail,
+          ncltBench: card.ncltBench,
+          ncltCaseNo: card.ncltCaseNo,
+          processMemoUrl: card.processMemoUrl,
         };
         pageNewItems.push(itemObj);
         allItems.push(itemObj);
@@ -908,33 +1090,45 @@ async function scrapeIBCAuctions(
         }
         const parsed = parseListings(pageNewItems, "upcoming");
         await upsertListings(parsed);
-        log.info({ page: pageNum, saved: parsed.length, total: allItems.length }, "IBC page scraped and saved to DB");
+        log.info({ scroll, saved: parsed.length, total: allItems.length }, "IBC assets scraped and saved to DB");
+        noNewContentCount = 0;
+      } else {
+        noNewContentCount++;
       }
 
-      if (rawCards.length === 0) {
-        log.info({ page: pageNum }, "No IBC items found. Reached last page.");
+      // Check if end of infinite scroll reached
+      if (noNewContentCount >= 4) {
+        log.info("No new IBC assets found after 4 scroll attempts. Reached bottom.");
         break;
       }
 
-      // Navigate to next page
-      const navigated = await ibcPage.evaluate(() => {
-        const buttons = Array.from(document.querySelectorAll("button, a, .page-link"));
-        for (const btn of buttons) {
-          const text = btn.textContent?.toLowerCase().trim() || "";
-          if (text === "next" || text === ">" || text.includes("next")) {
-            if (!btn.hasAttribute("disabled") && !(btn as any).disabled) {
-              (btn as HTMLElement).click();
-              return true;
-            }
-          }
-        }
-        return false;
+      // Scroll to trigger lazy loading / infinite scroll
+      const currentHeight = await ibcPage.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+        return document.body.scrollHeight;
       });
 
-      if (!navigated) {
-        log.info("IBC pagination: reached last page.");
-        break;
+      if (currentHeight === lastHeight && noNewContentCount >= 2) {
+        // Try clicking next/more button if exists
+        const clicked = await ibcPage.evaluate(() => {
+          const buttons = Array.from(document.querySelectorAll("button, a, .page-link"));
+          for (const btn of buttons) {
+            const text = btn.textContent?.toLowerCase().trim() || "";
+            if (text === "next" || text === ">" || text.includes("load more") || text.includes("show more")) {
+              if (!btn.hasAttribute("disabled") && !(btn as any).disabled) {
+                (btn as HTMLElement).click();
+                return true;
+              }
+            }
+          }
+          return false;
+        });
+        if (!clicked && noNewContentCount >= 3) {
+          log.info("Page height unchanged and no pagination buttons. Reached last item.");
+          break;
+        }
       }
+      lastHeight = currentHeight;
 
       await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
     }
@@ -996,7 +1190,7 @@ async function clickStatusTab(page: any, statusLabel: string): Promise<boolean> 
 
 // ─── Database Upsert ─────────────────────────────────────────────────────────
 
-async function upsertListings(listings: ReturnType<typeof parseListings>): Promise<void> {
+export async function upsertListings(listings: ReturnType<typeof parseListings>): Promise<void> {
   if (listings.length === 0) {
     log.info("No listings to upsert.");
     return;
@@ -1136,7 +1330,7 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
     }
   }
 
-  // Update existing records
+  // Update existing records (Symmetric with insert)
   for (const listing of updatedListings) {
     const { error } = await supabase
       .from("baanknet_auctions")
@@ -1146,7 +1340,23 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
         auction_end_date: listing.auction_end_date,
         reserve_price_text: listing.reserve_price_text,
         reserve_price_value: listing.reserve_price_value,
-        // Update detail fields if they were freshly scraped
+
+        // Core fields (Symmetric with insert to prevent stale data)
+        ...(listing.title ? { title: listing.title } : {}),
+        ...(listing.bank_property_id ? { bank_property_id: listing.bank_property_id } : {}),
+        ...(listing.bank_name ? { bank_name: listing.bank_name } : {}),
+        ...(listing.property_type ? { property_type: listing.property_type } : {}),
+        ...(listing.category_name ? { category_name: listing.category_name } : {}),
+        ...(listing.state ? { state: listing.state } : {}),
+        ...(listing.city ? { city: listing.city } : {}),
+        ...(listing.pincode ? { pincode: listing.pincode } : {}),
+        ...(listing.full_address ? { full_address: listing.full_address } : {}),
+        ...(listing.location ? { location: listing.location } : {}),
+        ...(listing.raw_description ? { raw_description: listing.raw_description } : {}),
+        ...(listing.dedup_fingerprint ? { dedup_fingerprint: listing.dedup_fingerprint } : {}),
+        ...(listing.auction_module ? { auction_module: listing.auction_module } : {}),
+
+        // Detail & intelligence fields
         ...(listing.carpet_area ? { carpet_area: listing.carpet_area } : {}),
         ...(listing.carpet_area_sqft ? { carpet_area_sqft: listing.carpet_area_sqft } : {}),
         ...(listing.furnishing ? { furnishing: listing.furnishing } : {}),
@@ -1154,12 +1364,44 @@ async function upsertListings(listings: ReturnType<typeof parseListings>): Promi
         ...(listing.action_type ? { action_type: listing.action_type } : {}),
         ...(listing.district ? { district: listing.district } : {}),
         ...(listing.borrower_name ? { borrower_name: listing.borrower_name } : {}),
+        ...(listing.borrower_names && listing.borrower_names.length > 0 ? { borrower_names: listing.borrower_names } : {}),
         ...(listing.property_description ? { property_description: listing.property_description } : {}),
         ...(listing.thumbnail_url ? { thumbnail_url: listing.thumbnail_url } : {}),
         ...(listing.photo_count ? { photo_count: listing.photo_count } : {}),
         ...(listing.inspection_start_date ? { inspection_start_date: listing.inspection_start_date } : {}),
         ...(listing.inspection_end_date ? { inspection_end_date: listing.inspection_end_date } : {}),
         ...(listing.emd_end_date ? { emd_end_date: listing.emd_end_date } : {}),
+        ...(listing.emd_amount_text ? { emd_amount_text: listing.emd_amount_text } : {}),
+        ...(listing.emd_amount_value !== undefined ? { emd_amount_value: listing.emd_amount_value } : {}),
+        ...(listing.bid_increment_text ? { bid_increment_text: listing.bid_increment_text } : {}),
+        ...(listing.bid_increment_amount !== undefined ? { bid_increment_amount: listing.bid_increment_amount } : {}),
+        ...(listing.emd_account_number ? { emd_account_number: listing.emd_account_number } : {}),
+        ...(listing.emd_account_ifsc ? { emd_account_ifsc: listing.emd_account_ifsc } : {}),
+        ...(listing.emd_bank_name ? { emd_bank_name: listing.emd_bank_name } : {}),
+        ...(listing.outstanding_dues_text ? { outstanding_dues_text: listing.outstanding_dues_text } : {}),
+        ...(listing.outstanding_dues_value !== undefined ? { outstanding_dues_value: listing.outstanding_dues_value } : {}),
+        ...(listing.tender_fee_text ? { tender_fee_text: listing.tender_fee_text } : {}),
+        ...(listing.tender_fee_value !== undefined ? { tender_fee_value: listing.tender_fee_value } : {}),
+        ...(listing.cersai_id ? { cersai_id: listing.cersai_id } : {}),
+        ...(listing.title_type ? { title_type: listing.title_type } : {}),
+        ...(listing.encumbrances_text ? { encumbrances_text: listing.encumbrances_text } : {}),
+        ...(listing.branch_name ? { branch_name: listing.branch_name } : {}),
+        ...(listing.officer_designation ? { officer_designation: listing.officer_designation } : {}),
+        ...(listing.officer_email ? { officer_email: listing.officer_email } : {}),
+        ...(listing.contact_person ? { contact_person: listing.contact_person } : {}),
+        ...(listing.contact_phone ? { contact_phone: listing.contact_phone } : {}),
+        ...(listing.latitude !== undefined && listing.latitude !== null ? { latitude: listing.latitude } : {}),
+        ...(listing.longitude !== undefined && listing.longitude !== null ? { longitude: listing.longitude } : {}),
+        ...(listing.map_url ? { map_url: listing.map_url } : {}),
+        ...(listing.boundaries ? { boundaries: listing.boundaries } : {}),
+        ...(listing.corporate_debtor_name ? { corporate_debtor_name: listing.corporate_debtor_name } : {}),
+        ...(listing.corporate_debtor_cin ? { corporate_debtor_cin: listing.corporate_debtor_cin } : {}),
+        ...(listing.liquidator_reg_no ? { liquidator_reg_no: listing.liquidator_reg_no } : {}),
+        ...(listing.liquidator_email ? { liquidator_email: listing.liquidator_email } : {}),
+        ...(listing.nclt_bench ? { nclt_bench: listing.nclt_bench } : {}),
+        ...(listing.nclt_case_no ? { nclt_case_no: listing.nclt_case_no } : {}),
+        ...(listing.process_memo_url ? { process_memo_url: listing.process_memo_url } : {}),
+        ...(listing.extracted_pdf_text ? { extracted_pdf_text: listing.extracted_pdf_text } : {}),
         ...(listing.document_url ? { document_url: listing.document_url } : {}),
         ...(listing.document_urls && listing.document_urls.length > 0 ? { document_urls: listing.document_urls } : {}),
         ...(listing.source_url ? { source_url: listing.source_url } : {}),
@@ -1633,7 +1875,26 @@ async function executeBaankNetScraper(): Promise<void> {
       }
     }
 
-    // ── Module 3: IBC eAuction ──────────────────────────────────────────
+    // ── Module 3: Vehicle Listings ───────────────────────────────────────
+    if (modules.includes("vehicle")) {
+      log.info("═══ Starting Module: Vehicle Listings ═══");
+      const page = await setupPage(browser);
+
+      try {
+        const rawItems = await scrapeVehicleListings(
+          browser, page, BAANKNET_MAX_SCROLL_CYCLES, scrapeDetails
+        );
+
+        totalScraped += rawItems.length;
+        log.info({ count: rawItems.length }, "Vehicle listings module complete");
+      } catch (err: any) {
+        log.error({ error: err.message }, "Vehicle Listing module error");
+      } finally {
+        await page.close().catch(() => {});
+      }
+    }
+
+    // ── Module 4: IBC eAuction ──────────────────────────────────────────
     if (modules.includes("ibc")) {
       log.info("═══ Starting Module: IBC eAuction ═══");
 

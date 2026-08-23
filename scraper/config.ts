@@ -107,11 +107,14 @@ export const BAANKNET_EAUCTION_PATH =
 export const BAANKNET_PROPERTY_LISTING_PATH =
   process.env.BAANKNET_PROPERTY_LISTING_PATH || "/property-listing";
 
+export const BAANKNET_VEHICLE_LISTING_PATH =
+  process.env.BAANKNET_VEHICLE_LISTING_PATH || "/vehicle-listing";
+
 export const BAANKNET_IBC_BASE_URL =
   process.env.BAANKNET_IBC_BASE_URL || "https://ibbi.baanknet.com";
 
 export const BAANKNET_IBC_LISTING_PATH =
-  process.env.BAANKNET_IBC_LISTING_PATH || "/";
+  process.env.BAANKNET_IBC_LISTING_PATH || "/asset-listing";
 
 export const BAANKNET_SCRAPE_DELAY_MS = parseInt(
   process.env.BAANKNET_SCRAPE_DELAY_MS || "3000",
@@ -141,6 +144,7 @@ export const BAANKNET_DETAIL_CONCURRENCY = parseInt(
 );
 
 export const BAANKNET_MODULES: string[] = (
-  process.env.BAANKNET_MODULES || "eauction,property,ibc"
+  process.env.BAANKNET_MODULES || "eauction,property,vehicle,ibc"
 ).split(",");
+
 

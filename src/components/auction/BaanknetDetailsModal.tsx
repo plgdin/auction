@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, Calendar, Landmark, Heart, Clock, Download, Eye, ChevronLeft, ChevronRight, Shield, User, FileText, Info, MapPin, Building2, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  X, Copy, Check, Calendar, Landmark, Heart, Clock, Download, Eye, Image, Ruler,
+  ChevronLeft, ChevronRight, Shield, User, FileText, Scale, Building, Building2, Info,
+  MapPin, Tag, Award,
+  Layers, Gavel, ShieldCheck, Car, Gauge, Fuel, Wrench, ZoomIn
+} from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
 import type { BaanknetAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
+import { ImageViewerModal } from '../common/ImageViewerModal';
 import { BidIntelligencePanel } from './BidIntelligencePanel';
+import { getAuctionDossierDataUrl } from '../../utils/auctionDossierGenerator';
 
 interface BaanknetDetailsModalProps {
   item: BaanknetAuction;
@@ -21,10 +28,12 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
 }) => {
   const [copiedRef, setCopiedRef] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [copiedCersai, setCopiedCersai] = useState(false);
+  const [countdownStr, setCountdownStr] = useState<string>('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'valuation'>('details');
-  const [countdownStr, setCountdownStr] = useState<string>('');
 
   // In-app document viewer state
   const [viewerState, setViewerState] = useState<{
@@ -98,7 +107,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   // Escape key handler to close modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !viewerState.isOpen && !isPhotoViewerOpen) {
         onClose();
       }
     };
@@ -106,9 +115,9 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onClose]);
+  }, [onClose, viewerState.isOpen, isPhotoViewerOpen]);
 
-  // Safe date parser — never returns Invalid Date
+  // Safe date parser
   const safeParse = (d?: string | null): Date | null => {
     if (!d) return null;
     const parsed = new Date(d);
@@ -147,7 +156,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
         const diff = startMs - now;
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const mins = Math.floor((diff % (1000 * 60)) / 1000);
         setCountdownStr(`Starts in: ${days}d ${hours}h ${mins}m`);
       } else {
         setCountdownStr('Schedule Pending');
@@ -165,11 +174,156 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
     setTimeout(() => setCopiedRef(false), 2000);
   };
 
+  const isBankOrGeneric = (s?: string) => {
+    if (!s) return true;
+    const lower = s.toLowerCase().trim();
+    return (
+      lower === 'india' ||
+      lower.includes('bank') ||
+      lower.includes('showing') ||
+      lower.includes('lender') ||
+      lower.includes('result') ||
+      lower.includes('filter')
+    );
+  };
+  
+  // Extract clean IBC and raw fields if data was concatenated
+  const rawTextBlob = `${item.title || ''} ${item.property_description || ''} ${item.raw_description || ''}`;
+  const ibcClassMatch = rawTextBlob.match(/Asset\s*Classification\s*:?\s*([A-Za-z0-9\s&,/-]+?)(?=Fixed|Asset|Location|IP|Liquidator|Reserve|EMD|Price|Contact|$)/i);
+  const ibcLocMatch = rawTextBlob.match(/(?:Fixed\s*Asset\s*Location|Asset\s*Location|Location)\s*:?\s*([A-Za-z0-9\s&,/-]+?)(?=IP|Liquidator|RP|Reserve|EMD|Price|Contact|Classification|$)/i);
+  const ibcIpMatch = rawTextBlob.match(/(?:IP\s*Name|Liquidator\s*Name|Liquidator|RP\s*Name|IP)\s*:?\s*([A-Za-z0-9\s.,-]+?)(?=Contact|Email|Phone|Reserve|EMD|Price|Asset|$)/i);
+  const ibcClassification = ibcClassMatch ? ibcClassMatch[1].replace(/Contact\s*Us/i, '').trim() : '';
+  const ibcLocation = ibcLocMatch ? ibcLocMatch[1].replace(/Contact\s*Us/i, '').trim() : '';
+  const ibcIpName = ibcIpMatch ? ibcIpMatch[1].replace(/Contact\s*Us/i, '').trim() : '';
+
+  // Extract location from title (e.g. "... for sale in East Singhbhum, Jharkhand")
+  const titleLocation = useMemo(() => {
+    if (!item.title) return { city: '', state: '' };
+    const match = item.title.match(/(?:for\s*sale\s*in|in|at)\s+([A-Za-z\s.-]+?),\s*([A-Za-z\s.-]+?)(?:$|\s*\(|\s*-)/i);
+    if (match) {
+      return { city: match[1].trim(), state: match[2].trim() };
+    }
+    const singleMatch = item.title.match(/for\s*sale\s*in\s+([A-Za-z\s.-]+)$/i);
+    if (singleMatch) {
+      const parts = singleMatch[1].split(',').map(s => s.trim());
+      return { city: parts[0] || '', state: parts[1] || '' };
+    }
+    return { city: '', state: '' };
+  }, [item.title]);
+
+  const cleanCity = !isBankOrGeneric(item.city) 
+    ? item.city! 
+    : (titleLocation.city || (ibcLocation.split(',')[1]?.trim() || ''));
+
+  const cleanState = !isBankOrGeneric(item.state) 
+    ? item.state! 
+    : (titleLocation.state || (!isBankOrGeneric(item.location) ? item.location! : (ibcLocation.split(',')[0]?.trim() || '')));
+
+  const cleanLocationStr = [cleanCity, cleanState].filter(Boolean).join(', ') || ibcLocation || 'India';
+
+  const isVehicle = useMemo(() => {
+    const pType = (item.property_type || '').toLowerCase();
+    const title = (item.title || '').toLowerCase();
+    return (
+      item.auction_module === 'vehicle' ||
+      pType.includes('vehicle') ||
+      pType.includes('car') ||
+      pType.includes('truck') ||
+      pType.includes('bus') ||
+      pType.includes('wheeler') ||
+      pType.includes('commercial') ||
+      title.includes('truck') ||
+      title.includes('car') ||
+      title.includes('bus') ||
+      title.includes('ashok leyland') ||
+      title.includes('tata') ||
+      title.includes('mahindra') ||
+      title.includes('maruti') ||
+      title.includes('hyundai')
+    );
+  }, [item.property_type, item.title, item.auction_module]);
+
+  // Extract vehicle attributes from title & description
+  const vehicleSpecs = useMemo(() => {
+    if (!isVehicle) return null;
+    const year = item.title?.match(/\b(20[0-2]\d|19\d\d)\b/)?.[0] || undefined;
+    const regNo = rawTextBlob.match(/\b([A-Z]{2}\s*\d{1,2}\s*[A-Z]{1,3}\s*\d{4})\b/i)?.[0] || undefined;
+    const fuel = rawTextBlob.match(/Fuel\s*Type\s*:?\s*(Diesel|Petrol|CNG|Electric|LPG|Hybrid)/i)?.[1] || undefined;
+    const odo = rawTextBlob.match(/Odometer\s*:?\s*([\d,.]+\s*(?:km|kms)?)/i)?.[1] || undefined;
+    const trans = rawTextBlob.match(/Transmission\s*:?\s*(Manual|Automatic)/i)?.[1] || undefined;
+    
+    let makeModel = '';
+    if (item.title) {
+      const cleaned = item.title
+        .replace(/^(?:19\d\d|20\d\d)\s*/i, '')
+        .replace(/\s*for\s*sale\s*in.*$/i, '')
+        .trim();
+      if (cleaned) makeModel = cleaned;
+    }
+
+    return {
+      year,
+      makeModel: makeModel || item.property_type,
+      regNo,
+      fuel,
+      odo,
+      trans,
+    };
+  }, [isVehicle, item.title, rawTextBlob, item.property_type]);
+
+  const displayTitle = useMemo(() => {
+    if (
+      !item.title ||
+      /showing\s+\d+/i.test(item.title) ||
+      item.title.includes('10000+') ||
+      item.title.toLowerCase().includes('results found') ||
+      item.title.toLowerCase().includes('search results') ||
+      item.title.includes('Asset Classification') ||
+      item.title.includes('Asset ID') ||
+      item.title.includes('IP Name') ||
+      item.title === 'Bank Auction Property' ||
+      item.title === 'IBC Auction Asset'
+    ) {
+      if (ibcClassification) {
+        const loc = cleanCity ? ` in ${cleanCity}, ${cleanState}` : (cleanLocationStr && cleanLocationStr !== 'India' ? ` in ${cleanLocationStr}` : '');
+        return `${ibcClassification}${loc}`;
+      }
+      const area = item.carpet_area ? `${item.carpet_area} ` : '';
+      const pType = item.property_type && item.property_type !== 'Bank Foreclosure Property' ? item.property_type : 'Bank Foreclosure Property';
+      const loc = cleanCity ? ` in ${cleanCity}` : (cleanState ? ` in ${cleanState}` : '');
+      return `${area}${pType}${loc}` || 'Bank Foreclosure Asset';
+    }
+    return item.title;
+  }, [item.title, item.carpet_area, item.property_type, cleanCity, cleanState, ibcClassification, cleanLocationStr]);
+
+  const displayAuctionId = useMemo(() => {
+    const raw = item.baanknet_auction_id || '';
+    const num = raw.match(/\d+/)?.[0];
+    return num || raw.replace(/Asset.*$/i, '') || raw;
+  }, [item.baanknet_auction_id]);
+
+  const displayPropertyId = useMemo(() => {
+    const raw = item.bank_property_id || '';
+    const num = raw.match(/\d+/)?.[0];
+    return num || raw.replace(/Asset.*$/i, '') || displayAuctionId;
+  }, [item.bank_property_id, displayAuctionId]);
+
+  const displayFullAddress = useMemo(() => {
+    if (item.full_address && item.full_address.trim().length > 3 && !item.full_address.includes('Asset Classification') && item.full_address.trim().toLowerCase() !== 'india') {
+      return item.full_address;
+    }
+    if (ibcLocation) return ibcLocation;
+    if (cleanLocationStr && cleanLocationStr.toLowerCase() !== 'india') return cleanLocationStr;
+    return 'Address details not provided. Please refer to the official bank listing portal.';
+  }, [item.full_address, ibcLocation, cleanLocationStr]);
+
   const handleCopyAddress = () => {
-    navigator.clipboard.writeText(item.full_address || `${item.city || ''}, ${item.location || ''}`);
+    navigator.clipboard.writeText(displayFullAddress);
     setCopiedAddress(true);
     setTimeout(() => setCopiedAddress(false), 2000);
   };
+
+  const displayContactPerson = item.contact_person || ibcIpName || undefined;
 
   const formattedPrice = item.reserve_price_value
     ? new Intl.NumberFormat('en-IN', {
@@ -226,15 +380,14 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
           });
         }
       });
-      if (entries.length > 0) return entries;
     }
 
-    // Fallback to live URLs via proxy
+    // Direct / proxied URLs from listing
     const rawList: string[] = [];
-    if (item.document_url) rawList.push(item.document_url);
+    if (item.document_url && !entries.some(e => e.url === item.document_url)) rawList.push(item.document_url);
     if (Array.isArray(item.document_urls)) {
       for (const d of item.document_urls) {
-        if (d && !rawList.includes(d)) rawList.push(d);
+        if (d && !rawList.includes(d) && !entries.some(e => e.url === d)) rawList.push(d);
       }
     }
 
@@ -251,6 +404,28 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
       });
     });
 
+    // Always include the Official Bank Auction Due Diligence Dossier
+    const dossierDataUrl = getAuctionDossierDataUrl(item);
+    const dossierSafeName = `Bank_Auction_Dossier_${item.baanknet_auction_id}.html`;
+
+    if (entries.length === 0) {
+      entries.push({
+        url: dossierDataUrl,
+        isStored: true,
+        label: 'Official Bank Auction Dossier & Notice',
+        safeName: dossierSafeName,
+        downloadUrl: dossierDataUrl,
+      });
+    } else {
+      entries.push({
+        url: dossierDataUrl,
+        isStored: true,
+        label: 'Bank Due Diligence & Asset Dossier',
+        safeName: dossierSafeName,
+        downloadUrl: dossierDataUrl,
+      });
+    }
+
     return entries;
   };
 
@@ -264,12 +439,12 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Main Container */}
-      <div className="relative bg-white rounded-3xl w-full max-w-6xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200 text-left">
+      <div className="relative bg-white rounded-2xl sm:rounded-3xl w-full max-w-5xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 text-left">
         
-        {/* Top Header Bar (White / Light Theme matching MSTC modal) */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="text-base font-bold text-slate-500">Ref: {item.baanknet_auction_id}</span>
+        {/* Top Header Bar */}
+        <div className="px-4 sm:px-6 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <span className="text-sm sm:text-base font-bold text-slate-500">Ref: {item.baanknet_auction_id}</span>
             <button
               onClick={handleCopyRef}
               className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-400 hover:text-slate-700 cursor-pointer flex items-center justify-center"
@@ -282,7 +457,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
               <button
                 onClick={onInterestedToggle}
                 className={clsx(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border shadow-2xs",
+                  "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border shadow-2xs",
                   isInterested 
                     ? "bg-rose-50 border-rose-200 text-rose-700" 
                     : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -304,12 +479,12 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="px-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-6">
+        <div className="px-4 sm:px-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-4 sm:gap-6">
             <button
               onClick={() => setActiveTab('details')}
               className={clsx(
-                "py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer",
+                "py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer",
                 activeTab === 'details'
                   ? "border-primary text-primary"
                   : "border-transparent text-slate-400 hover:text-slate-700"
@@ -320,7 +495,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
             <button
               onClick={() => setActiveTab('valuation')}
               className={clsx(
-                "py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer flex items-center gap-2",
+                "py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer flex items-center gap-1.5",
                 activeTab === 'valuation'
                   ? "border-primary text-primary"
                   : "border-transparent text-slate-400 hover:text-slate-700"
@@ -334,459 +509,536 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
 
         {/* Main Content Body */}
         {activeTab === 'valuation' ? (
-          <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
-            <div className="max-w-5xl mx-auto">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50">
+            <div className="max-w-4xl mx-auto">
               <BidIntelligencePanel
+                itemTitle={displayTitle}
                 reservePrice={item.reserve_price_value || (item.reserve_price_text ? parseFloat(item.reserve_price_text.replace(/[^\d.]/g, '')) : 0)}
+                categoryName={item.property_type || item.category_name}
+                location={cleanLocationStr}
+                rawDescription={item.property_description || item.raw_description}
               />
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row">
-          
-          {/* Left Panel: Auction Information */}
-          <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row min-h-0">
             
-            {/* Category & Title Header */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider">
-                  {item.property_type || 'BANK AUCTION'}
-                </span>
-                {item.location && (
-                  <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-red-500" />
-                    {item.location}
-                  </span>
-                )}
-              </div>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-950 leading-tight">
-                {item.title}
-              </h3>
-            </div>
-
-            {/* Official Auction Reference Banner */}
-            <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-3xs">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  Official Auction Reference Number
-                </span>
-                <span className="text-base font-bold text-slate-800 break-all select-all font-mono">
-                  {item.baanknet_auction_id}
-                </span>
-              </div>
-              <button
-                onClick={handleCopyRef}
-                className={clsx(
-                  "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border font-bold text-xs transition-all shrink-0 cursor-pointer shadow-3xs",
-                  copiedRef
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary hover:border-primary/30"
-                )}
-              >
-                {copiedRef ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-600" />
-                    <span>Reference Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    <span>Copy Ref Number</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Reserve Price Banner & Lending Bank Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            {/* Left Panel: Auction Information */}
+            <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-5 min-w-0">
               
-              {/* Reserve Price Card (Priority Gold/Emerald Highlight) */}
-              <div className="md:col-span-5 bg-gradient-to-br from-emerald-50 via-emerald-50/70 to-teal-50 border border-emerald-300/80 rounded-2xl p-4.5 flex flex-col justify-between shadow-2xs">
-                <div>
-                  <span className="text-[10.5px] font-black text-emerald-800 uppercase tracking-widest block flex items-center gap-1.5">
-                    <span>Reserve Price</span>
-                    <span className="bg-emerald-200/80 text-emerald-900 text-[9px] px-1.5 py-0.5 rounded font-black">ESTIMATED</span>
+              {/* Category & Title Header */}
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
+                    {ibcClassification || item.property_type || 'Bank Foreclosure'}
                   </span>
-                  <span className="text-2xl sm:text-3xl font-black text-emerald-900 block mt-1 tracking-tight">
-                    {formattedPrice}
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-emerald-600" />
+                    Verified Bank Auction
+                  </span>
+                  {isLive && (
+                    <span className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider animate-pulse flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Live Auction
+                    </span>
+                  )}
+                  {isClosed && (
+                    <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      Auction Closed
+                    </span>
+                  )}
+                </div>
+
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
+                  {displayTitle}
+                </h2>
+
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-mono mt-1.5">
+                  <span>Auction ID: {displayAuctionId}</span>
+                  {displayPropertyId && <span>Property ID: {displayPropertyId}</span>}
+                </div>
+              </div>
+
+              {/* 4-Stat Metrics Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 sm:p-3.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Reserve Price</span>
+                  <span className="text-base sm:text-lg font-black text-slate-950 block mt-0.5">{formattedPrice}</span>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 sm:p-3.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">EMD Amount</span>
+                  <span className="text-xs sm:text-sm font-extrabold text-slate-900 block mt-0.5 truncate">
+                    {item.emd_amount_text || (item.emd_amount_value ? `₹ ${item.emd_amount_value.toLocaleString('en-IN')}` : 'Refer Notice')}
                   </span>
                 </div>
-                {item.action_type && (
-                  <div className="mt-3 pt-2.5 border-t border-emerald-200/70 flex items-center gap-1.5 text-xs font-bold text-emerald-850">
-                    <Shield className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                    <span>{item.action_type}</span>
-                  </div>
-                )}
+
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 sm:p-3.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bid Increment</span>
+                  <span className="text-xs font-bold text-indigo-700 block mt-0.5 truncate flex items-center gap-1">
+                    <Layers className="w-3 h-3 shrink-0" />
+                    {item.bid_increment_text || (item.bid_increment_amount ? `₹ ${item.bid_increment_amount.toLocaleString('en-IN')}` : 'As per Bank Terms')}
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 sm:p-3.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Title Nature</span>
+                  <span className="text-xs font-bold text-emerald-700 block mt-0.5 truncate flex items-center gap-1">
+                    <Award className="w-3 h-3 shrink-0" />
+                    {item.title_type || 'Bank Verified Asset'}
+                  </span>
+                </div>
               </div>
 
-              {/* Lending Bank Details */}
-              <div className="md:col-span-7 bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs flex flex-col justify-between gap-3">
-                <div className="flex flex-col">
-                  <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <span>Lending Institution</span>
-                    <Info className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                  </span>
-                  <span className="text-base font-black text-indigo-950 mt-1 flex items-center gap-2">
-                    <Landmark className="w-5 h-5 text-indigo-600 shrink-0" />
+              {/* Lending Institution & Branch */}
+              <div className="bg-slate-50 border border-slate-150 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Lending Institution / Creditor</span>
+                  <span className="text-sm font-bold text-slate-950 block mt-0.5 flex items-center gap-1.5">
+                    <Landmark className="w-4 h-4 text-slate-500 shrink-0" />
                     {item.bank_name || 'Foreclosing Bank'}
                   </span>
                 </div>
-
-                {item.bank_property_id && (
-                  <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 font-mono">
-                    <span className="font-semibold text-slate-400 uppercase text-[10px]">Bank Property ID: </span>
-                    <span className="font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{item.bank_property_id}</span>
+                {item.branch_name && (
+                  <div className="sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Dealing Branch</span>
+                    <span className="text-xs font-semibold text-slate-800 flex items-center sm:justify-end gap-1 mt-0.5">
+                      <Building className="w-3 h-3 text-slate-400 shrink-0" />
+                      {item.branch_name}
+                    </span>
                   </div>
                 )}
               </div>
 
-            </div>
-
-            {/* General Parameters Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              
-              {/* Location & Property Type (Priority Blue Accent) */}
-              <div className="md:col-span-6 bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <MapPin className="w-4 h-4 text-rose-500 shrink-0" />
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">Location Details</span>
-                </div>
-
-                <div className="flex flex-col">
-                  <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">State / Territory</span>
-                  <span className="text-[14px] font-extrabold text-slate-900 mt-0.5 flex items-center gap-1">
-                    {item.location || 'India'}
-                  </span>
-                </div>
-
-                {item.city && (
-                  <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">City / District</span>
-                    <span className="text-[14px] font-extrabold text-blue-900 mt-0.5">
-                      {item.city} {item.pincode ? `(${item.pincode})` : ''}
-                    </span>
-                  </div>
-                )}
-
-                {item.property_type && (
-                  <div className="flex flex-col border-t border-slate-100 pt-2">
-                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">Asset Category</span>
-                    <span className="text-[13.5px] font-bold text-indigo-800 mt-0.5">{item.property_type}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Schedule & Bidding Dates (Priority Dates Highlighted) */}
-              <div className="md:col-span-6 bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs flex flex-col justify-start gap-3">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">Bidding Schedule</span>
-                </div>
-
-                <div className="flex flex-col">
-                  <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">Bid Opening Time</span>
-                  <span className="text-[13.5px] font-extrabold text-blue-950 mt-0.5">{safeDateStr(item.auction_start_date)}</span>
-                </div>
-
-                <div className="flex flex-col border-t border-slate-100 pt-2">
-                  <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest">Bid Closing Time</span>
-                  <span className="text-[13.5px] font-extrabold text-amber-900 mt-0.5">{safeDateStr(item.auction_end_date)}</span>
-                </div>
-
-                {/* Priority Highlight: EMD Deadline */}
-                {item.emd_end_date && (
-                  <div className="flex flex-col border-t border-rose-100 pt-2 bg-rose-50/70 -mx-4.5 px-4.5 py-2.5 border-l-4 border-l-rose-500 rounded-r-xl">
-                    <span className="text-[10.5px] font-black text-rose-700 uppercase tracking-widest flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-rose-600" />
-                      EMD DEADLINE
-                    </span>
-                    <span className="text-[14px] font-black text-rose-950 mt-0.5">{safeDateStr(item.emd_end_date)}</span>
-                  </div>
-                )}
-
-                <div className="flex flex-col border-t border-slate-100 pt-2">
-                  <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest mb-1">Auction Status</span>
-                  <div>
-                    {isClosed ? (
-                      <span className="inline-block font-black text-xs px-2.5 py-1 rounded-md border border-slate-300 text-slate-600 bg-slate-100">
-                        BID CLOSED
-                      </span>
-                    ) : isLive ? (
-                      <span className="inline-block font-black text-xs px-2.5 py-1 rounded-md border border-emerald-300 text-emerald-800 bg-emerald-100 animate-pulse">
-                        LIVE AUCTION
-                      </span>
-                    ) : (
-                      <span className="inline-block font-black text-xs px-2.5 py-1 rounded-md border border-blue-300 text-blue-800 bg-blue-100">
-                        UPCOMING BIDDING
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Bidding Timeline Countdown Banner */}
-            <div className="bg-indigo-50/70 border border-indigo-150 rounded-2xl p-4 flex items-center justify-between text-indigo-950 shadow-3xs">
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-800">
-                Bidding Timeline
-              </span>
-              <span className="font-black text-sm sm:text-base tracking-wide flex items-center gap-2 text-indigo-900">
-                <span className="w-2 h-2 bg-indigo-500 rounded-full animate-ping shrink-0" />
-                {countdownStr}
-              </span>
-            </div>
-
-            {/* Borrower & Description Card */}
-            {(item.borrower_name || item.property_description) && (
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2.5 flex items-center gap-2">
-                  <User className="w-4 h-4 text-slate-400" />
-                  <span>Borrower & Description</span>
-                </h4>
-
-                {item.borrower_name && (
-                  <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3.5">
-                    <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
-                      Borrower / Guarantor
-                    </span>
-                    <span className="text-sm font-bold text-amber-950 mt-0.5 block">
-                      {item.borrower_name}
-                    </span>
-                  </div>
-                )}
-
-                {item.property_description && (
-                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-4 text-xs sm:text-sm text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
-                    {item.property_description}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Physical Property Specifications */}
-            {(item.carpet_area || item.furnishing || item.possession_status || item.full_address) && (
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2.5 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-slate-400" />
-                  <span>Property Specifications & Location</span>
-                </h4>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {item.carpet_area && (
-                    <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Carpet Area</span>
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5 block">{item.carpet_area}</span>
-                      {item.carpet_area_sqft && (
-                        <span className="text-[10px] text-slate-500 block">{item.carpet_area_sqft.toLocaleString()} sq ft</span>
-                      )}
-                    </div>
-                  )}
-
-                  {item.furnishing && (
-                    <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Furnishing</span>
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5 block">{item.furnishing}</span>
-                    </div>
-                  )}
-
-                  {item.possession_status && (
-                    <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Possession</span>
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5 block">{item.possession_status}</span>
-                    </div>
-                  )}
-                </div>
-
-                {item.full_address && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400" /> Full Address
-                      </span>
-                      <button
-                        onClick={handleCopyAddress}
-                        className="text-[10px] font-bold text-primary hover:text-primary-700 flex items-center gap-1 cursor-pointer bg-transparent border-0"
-                      >
-                        {copiedAddress ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                        {copiedAddress ? 'Copied' : 'Copy Address'}
-                      </button>
-                    </div>
-                    <p className="bg-slate-50 border border-slate-150 rounded-xl p-4 text-xs sm:text-sm text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
-                      {item.full_address}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Official Documents Section */}
-            {availableDocs.length > 0 && (
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-indigo-600" />
-                    <span>Official Auction Documents ({availableDocs.length})</span>
-                  </h4>
-                  {availableDocs.some((d) => d.isStored) && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                      <Check className="w-3 h-3 text-emerald-600" /> Storage Verified
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {availableDocs.map((doc, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow-3xs hover:border-indigo-300 transition-all"
-                    >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div
-                          className={`p-2.5 rounded-xl ${
-                            doc.isStored ? "bg-emerald-100 text-emerald-800" : "bg-indigo-100 text-indigo-700"
-                          } shrink-0 mt-0.5`}
-                        >
-                          <FileText className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <h5 className="text-xs font-bold text-slate-900 truncate" title={doc.label}>
-                            {doc.label}
-                          </h5>
-                          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
-                            {doc.isStored ? "Permanent Mirror PDF" : "Bank Gateway PDF"}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Explicit & Simple Action Buttons */}
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <button
-                          onClick={() => openInAppViewer(doc.url, `${doc.label}: ${item.title}`, doc.safeName)}
-                          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 hover:text-slate-900 shadow-3xs transition-all cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Preview</span>
-                        </button>
-
-                        <a
-                          href={doc.downloadUrl}
-                          download={doc.safeName}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-2xs transition-all cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Download PDF</span>
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          </div>
-
-          {/* Right Panel: Side Document / Gallery Preview Sidebar */}
-          {(photos.length > 0 || availableDocs.length > 0) && (
-            <div className="w-full lg:w-[420px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50 p-5 overflow-visible lg:overflow-y-auto flex flex-col space-y-5">
-              
-              {/* Property Photos Gallery */}
-              {photos.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
-                    <span>Property Photos</span>
-                    <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded">
-                      {photos.length} Photos
-                    </span>
-                  </h4>
-                  <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-video border border-slate-200 shadow-2xs">
+              {/* Photo Gallery Carousel with Interactive Zoom Button */}
+              {photos.length > 0 ? (
+                <div className="space-y-2.5">
+                  <div className="relative bg-slate-950 rounded-xl overflow-hidden h-52 sm:h-64 w-full flex items-center justify-center border border-slate-200 shadow-inner group">
                     <img
                       src={photos[activePhotoIdx]}
-                      alt={`Property photo ${activePhotoIdx + 1}`}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
+                      alt={`${item.title} photo ${activePhotoIdx + 1}`}
+                      className="w-full h-full object-contain p-1 cursor-pointer transition-transform duration-200 group-hover:scale-[1.02]"
+                      onClick={() => setIsPhotoViewerOpen(true)}
                     />
+
+                    {/* Expand / Zoom Button Overlay */}
+                    <button
+                      onClick={() => setIsPhotoViewerOpen(true)}
+                      className="absolute top-2.5 right-2.5 p-2 bg-black/70 hover:bg-black/90 text-white rounded-xl backdrop-blur-xs transition-all cursor-pointer shadow-md flex items-center gap-1.5 text-xs font-bold border border-white/10"
+                      title="Open Fullscreen Zoom Viewer"
+                    >
+                      <ZoomIn className="w-3.5 h-3.5 text-indigo-300" />
+                      <span className="hidden sm:inline">Zoom Photo</span>
+                    </button>
+                    
                     {photos.length > 1 && (
                       <>
                         <button
-                          onClick={() => setActivePhotoIdx((i) => (i - 1 + photos.length) % photos.length)}
-                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 cursor-pointer transition-colors"
+                          onClick={() => setActivePhotoIdx((prev) => (prev === 0 ? photos.length - 1 : prev - 1))}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-all cursor-pointer shadow-md"
+                          title="Previous photo"
                         >
                           <ChevronLeft className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setActivePhotoIdx((i) => (i + 1) % photos.length)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 cursor-pointer transition-colors"
+                          onClick={() => setActivePhotoIdx((prev) => (prev === photos.length - 1 ? 0 : prev + 1))}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full transition-all cursor-pointer shadow-md"
+                          title="Next photo"
                         >
                           <ChevronRight className="w-4 h-4" />
                         </button>
-                        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-md font-mono">
-                          {activePhotoIdx + 1} / {photos.length}
+                        
+                        <div className="absolute bottom-2.5 right-2.5 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs flex items-center gap-1">
+                          <Image className="w-3 h-3" />
+                          <span>{activePhotoIdx + 1} / {photos.length}</span>
                         </div>
                       </>
                     )}
                   </div>
+
                   {photos.length > 1 && (
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
                       {photos.map((url, idx) => (
                         <button
                           key={idx}
                           onClick={() => setActivePhotoIdx(idx)}
-                          className={clsx(
-                            "rounded-lg overflow-hidden border-2 aspect-square cursor-pointer transition-all bg-white",
-                            idx === activePhotoIdx ? "border-primary shadow-sm scale-105" : "border-slate-200 opacity-70 hover:opacity-100"
-                          )}
+                          className={`relative shrink-0 w-14 h-10 rounded-md overflow-hidden border-2 transition-all cursor-pointer ${
+                            activePhotoIdx === idx ? 'border-primary shadow-xs ring-2 ring-primary/20' : 'border-slate-200 opacity-60 hover:opacity-100'
+                          }`}
                         >
-                          <img src={url} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                          <img src={url} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
+              ) : (
+                <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-4 text-center text-slate-400 text-xs">
+                  <Image className="w-6 h-6 mx-auto mb-1.5 text-slate-300" />
+                  <span>No photographic assets attached to this catalog record.</span>
+                </div>
               )}
 
-              {/* Catalog Document Action Card without embedded iframe */}
+              {/* Asset Specifications: Vehicle vs Real Estate */}
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-bold text-slate-900 border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-slate-400" /> {isVehicle ? 'Vehicle & Automobile Specifications' : 'Asset & Property Specifications'}
+                </h3>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {/* Vehicle Specific Cards */}
+                  {isVehicle && vehicleSpecs && (
+                    <>
+                      {vehicleSpecs.makeModel && (
+                        <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100 col-span-2">
+                          <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Make & Model</span>
+                          <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                            <Car className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                            <span className="truncate">{vehicleSpecs.makeModel}</span>
+                          </span>
+                        </div>
+                      )}
+
+                      {vehicleSpecs.year && (
+                        <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                          <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Model / Mfg Year</span>
+                          <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            {vehicleSpecs.year}
+                          </span>
+                        </div>
+                      )}
+
+                      {vehicleSpecs.regNo && (
+                        <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                          <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Registration No.</span>
+                          <span className="text-xs font-mono font-bold text-indigo-700 mt-0.5 truncate block">{vehicleSpecs.regNo}</span>
+                        </div>
+                      )}
+
+                      {vehicleSpecs.fuel && (
+                        <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                          <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Fuel Type</span>
+                          <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                            <Fuel className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            {vehicleSpecs.fuel}
+                          </span>
+                        </div>
+                      )}
+
+                      {vehicleSpecs.odo && (
+                        <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                          <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Odometer</span>
+                          <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                            <Gauge className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            {vehicleSpecs.odo}
+                          </span>
+                        </div>
+                      )}
+
+                      {vehicleSpecs.trans && (
+                        <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                          <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Transmission</span>
+                          <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                            <Wrench className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            {vehicleSpecs.trans}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Real Estate Specific Cards */}
+                  {!isVehicle && item.carpet_area && (
+                    <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                      <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Carpet / Built-up Area</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                        <Ruler className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        {item.carpet_area}
+                      </span>
+                    </div>
+                  )}
+
+                  {!isVehicle && item.possession_status && (
+                    <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                      <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Possession Status</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                        <Shield className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        {item.possession_status}
+                      </span>
+                    </div>
+                  )}
+
+                  {!isVehicle && item.action_type && (
+                    <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                      <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Legal Action Type</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                        <Scale className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        {item.action_type}
+                      </span>
+                    </div>
+                  )}
+
+                  {!isVehicle && item.furnishing && (
+                    <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                      <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Furnishing</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5 truncate">{item.furnishing}</span>
+                    </div>
+                  )}
+
+                  {/* Clean City & State Cards */}
+                  {cleanCity && (
+                    <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                      <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">District / City</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5 truncate">{cleanCity}</span>
+                    </div>
+                  )}
+
+                  {cleanState && (
+                    <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                      <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">State</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5 truncate">{cleanState}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Verified Location & Full Cadastral Address */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                  <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" /> Asset Location & Address
+                  </h3>
+                  <button
+                    onClick={handleCopyAddress}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedAddress ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedAddress ? 'Copied' : 'Copy Address'}</span>
+                  </button>
+                </div>
+                
+                <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 sm:p-3.5">
+                  <p className="text-xs text-slate-800 leading-relaxed font-mono">
+                    {displayFullAddress}
+                  </p>
+                </div>
+              </div>
+
+              {/* Live Bidding & Official Participation Protocol */}
+              <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 text-white rounded-xl p-4 sm:p-4.5 border border-indigo-900/50 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-amber-400/20 text-amber-300 border border-amber-400/30 shrink-0">
+                      <Gavel className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-extrabold text-white flex items-center gap-1.5">
+                        Official Bank e-Auction Participation
+                      </h4>
+                      <span className="text-[10px] text-slate-300">
+                        {isLive ? '🟢 Live bidding in progress' : 'Scheduled Bank Foreclosure e-Auction under SARFAESI / IBC rules'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {primaryDoc && (
+                    <button
+                      onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View Notice & Terms</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-3 text-xs">
+                  <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
+                    <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Opening Reserve</span>
+                    <span className="font-extrabold text-amber-300 text-xs sm:text-sm mt-0.5 block">{formattedPrice}</span>
+                  </div>
+
+                  <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
+                    <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Min. Increment Step</span>
+                    <span className="font-extrabold text-indigo-300 text-xs sm:text-sm mt-0.5 block truncate">
+                      {item.bid_increment_text || (item.bid_increment_amount ? `₹ ${item.bid_increment_amount.toLocaleString('en-IN')}` : 'As per Bank Terms')}
+                    </span>
+                  </div>
+
+                  <div className="bg-white/5 rounded-lg p-2.5 border border-white/10">
+                    <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">EMD Deposit Req.</span>
+                    <span className="font-extrabold text-emerald-300 text-xs sm:text-sm mt-0.5 block truncate">
+                      {item.emd_amount_text || (item.emd_amount_value ? `₹ ${item.emd_amount_value.toLocaleString('en-IN')}` : '10% of Reserve')}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-slate-400 mt-2.5 leading-relaxed bg-white/5 p-2.5 rounded-lg border border-white/5">
+                  🔒 <strong>Bidding Protocol:</strong> Live bids are placed securely inside the bank's designated e-Auction room. Ensure you have submitted your KYC, EMD deposit, and received approved bidder credentials before bidding closes.
+                </p>
+              </div>
+
+              {/* Legal Due Diligence, CERSAI & Encumbrances */}
+              {(item.cersai_id || item.encumbrances_text || item.title_type) && (
+                <div className="space-y-2.5">
+                  <h3 className="text-xs font-bold text-slate-900 border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                    <Scale className="w-3.5 h-3.5 text-slate-400" /> Legal & Due Diligence Metadata
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                    {item.cersai_id && (
+                      <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
+                        <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">CERSAI Security ID</span>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <span className="font-mono font-bold text-xs text-slate-900 truncate">{item.cersai_id}</span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(item.cersai_id || '');
+                              setCopiedCersai(true);
+                              setTimeout(() => setCopiedCersai(false), 2000);
+                            }}
+                            className="p-1 text-slate-400 hover:text-slate-700"
+                            title="Copy CERSAI ID"
+                          >
+                            {copiedCersai ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {item.title_type && (
+                      <div className="bg-slate-50 border border-slate-150 rounded-xl p-3">
+                        <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Title / Ownership</span>
+                        <span className="font-semibold text-xs text-slate-900 block mt-0.5">{item.title_type}</span>
+                      </div>
+                    )}
+
+                    {item.encumbrances_text && (
+                      <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 col-span-1 md:col-span-3">
+                        <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Known Encumbrances</span>
+                        <p className="text-xs text-slate-700 mt-0.5 leading-relaxed">{item.encumbrances_text}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Nodal Officer & Dealing Contact */}
+              {(displayContactPerson || item.contact_phone || item.officer_email) && (
+                <div className="space-y-2.5">
+                  <h3 className="text-xs font-bold text-slate-900 border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-slate-400" /> Nodal & Dealing Officer Details
+                  </h3>
+                  
+                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 sm:p-3.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {displayContactPerson && (
+                      <div>
+                        <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Dealing Officer</span>
+                        <span className="text-xs font-bold text-slate-900 block mt-0.5 truncate">{displayContactPerson}</span>
+                      </div>
+                    )}
+
+                    {item.contact_phone && (
+                      <div>
+                        <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Contact Phone</span>
+                        <a href={`tel:${item.contact_phone}`} className="text-xs font-bold text-indigo-600 hover:underline block mt-0.5 truncate">
+                          {item.contact_phone}
+                        </a>
+                      </div>
+                    )}
+
+                    {item.officer_email && (
+                      <div>
+                        <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Officer Email</span>
+                        <a href={`mailto:${item.officer_email}`} className="text-xs font-bold text-indigo-600 hover:underline block mt-0.5 truncate">
+                          {item.officer_email}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Right Panel: Price, Dates & Documents */}
+            <div className="w-full lg:w-80 lg:shrink-0 border-t lg:border-t-0 lg:border-l border-slate-100 p-4 sm:p-5 space-y-4 sm:space-y-5 bg-slate-50/50">
+              
+              {/* Price & Schedule Card */}
+              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs space-y-3">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Reserve Price</span>
+                  <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">
+                    {formattedPrice}
+                  </div>
+                </div>
+
+                {/* Countdown Timer */}
+                <div className="bg-slate-900 text-white rounded-lg p-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                    <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Status</span>
+                  </div>
+                  <span className="text-xs font-bold text-amber-400 font-mono">{countdownStr}</span>
+                </div>
+
+                {/* Auction Dates */}
+                <div className="space-y-2 pt-1.5 border-t border-slate-100 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Auction Start:</span>
+                    <span className="font-bold text-slate-800">{safeDateStr(item.auction_start_date)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Auction End:</span>
+                    <span className="font-bold text-slate-800">{safeDateStr(item.auction_end_date)}</span>
+                  </div>
+                  {item.emd_end_date && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">EMD Submission:</span>
+                      <span className="font-bold text-amber-700">{safeDateStr(item.emd_end_date)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Official Bank Document & Due Diligence Dossier Card */}
               {availableDocs.length > 0 && primaryDoc && (
                 <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
-                    <span>Official Bank Document</span>
-                    <span className="text-[9.5px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-2 py-0.5 rounded">
-                      {availableDocs.length} Docs
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-1.5 flex items-center justify-between">
+                    <span>Official Notice & Dossier</span>
+                    <span className="text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-1.5 py-0.5 rounded">
+                      {availableDocs.length} {availableDocs.length === 1 ? 'Doc' : 'Docs'}
                     </span>
                   </h4>
 
-                  <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 rounded-2xl p-5 text-white border border-slate-800 shadow-xl flex flex-col justify-between gap-5 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+                  <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 rounded-xl p-4 text-white border border-slate-800 shadow-md flex flex-col justify-between gap-3.5 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl pointer-events-none" />
                     
-                    <div className="flex items-start justify-between gap-3 relative z-10">
-                      <div className="p-3.5 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 shrink-0 shadow-inner">
-                        <FileText className="w-8 h-8" />
+                    <div className="flex items-start justify-between gap-2 relative z-10">
+                      <div className="p-2 rounded-xl bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 shrink-0">
+                        <FileText className="w-6 h-6" />
                       </div>
-                      <span className="text-[10px] font-black tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-full uppercase flex items-center gap-1 shrink-0">
+                      <span className="text-[9.5px] font-black tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded-full uppercase flex items-center gap-1 shrink-0">
                         <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                        Verified Bank PDF
+                        Verified PDF
                       </span>
                     </div>
 
-                    <div className="space-y-1 relative z-10">
-                      <h5 className="text-sm sm:text-base font-extrabold text-slate-100 line-clamp-2 leading-snug">
+                    <div className="space-y-0.5 relative z-10">
+                      <h5 className="text-xs sm:text-sm font-extrabold text-slate-100 line-clamp-2 leading-snug">
                         {primaryDoc.label}
                       </h5>
-                      <span className="text-[11px] text-slate-400 font-mono block">
+                      <span className="text-[10px] text-slate-400 font-mono block">
                         Official Bank Foreclosure e-Auction Document
                       </span>
                     </div>
 
                     {/* Prominent Action Buttons */}
-                    <div className="flex flex-col gap-2.5 pt-2 relative z-10">
+                    <div className="flex flex-col gap-2 pt-1 relative z-10">
                       <button
                         onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-slate-900 bg-white hover:bg-slate-100 active:scale-[0.98] transition-all cursor-pointer shadow-md"
+                        className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold text-slate-900 bg-white hover:bg-slate-100 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
                       >
-                        <Eye className="w-4 h-4 text-indigo-600" />
+                        <Eye className="w-3.5 h-3.5 text-indigo-600" />
                         <span>Preview Document in Fullscreen</span>
                       </button>
 
@@ -795,40 +1047,82 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                         download={primaryDoc.safeName}
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] transition-all cursor-pointer shadow-md border border-indigo-400/30"
+                        className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] transition-all cursor-pointer shadow-xs border border-indigo-400/30"
                       >
-                        <Download className="w-4 h-4" />
-                        <span>Download Official PDF Document</span>
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download Official PDF</span>
                       </a>
                     </div>
                   </div>
+
+                  {/* Additional Attachment Documents if available */}
+                  {availableDocs.length > 1 && (
+                    <div className="space-y-2 pt-2">
+                      <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider block">
+                        Attached Documents & Annexures ({availableDocs.length - 1})
+                      </span>
+                      <div className="space-y-1.5">
+                        {availableDocs.slice(1).map((doc, idx) => (
+                          <div
+                            key={idx}
+                            className="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs hover:border-slate-300 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                              <span className="text-xs font-semibold text-slate-800 truncate" title={doc.label}>
+                                {doc.label}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() => openInAppViewer(doc.url, `${doc.label}: ${item.title}`, doc.safeName)}
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                                title="Preview Document"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <a
+                                href={doc.downloadUrl}
+                                download={doc.safeName}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer"
+                                title="Download PDF"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
             </div>
-          )}
 
-        </div>
+          </div>
         )}
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0">
+        <div className="px-4 sm:px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-2.5 shrink-0">
           <button
             onClick={onClose}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-all cursor-pointer text-center"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-all cursor-pointer text-center"
           >
             Close Details
           </button>
 
-          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {primaryDoc && (
               <>
                 <button
                   onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                  className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                  className="w-full sm:w-auto inline-flex justify-center items-center py-2 px-4 rounded-xl text-xs sm:text-sm font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 >
-                  <Eye className="w-4 h-4 mr-2" />
-                  View Catalog
+                  <Eye className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                  View Notice in Fullscreen
                 </button>
 
                 <a
@@ -836,10 +1130,10 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   download={primaryDoc.safeName}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                  className="w-full sm:w-auto inline-flex justify-center items-center py-2 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download PDF Catalog
+                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                  Download Official PDF
                 </a>
               </>
             )}
@@ -856,7 +1150,15 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
         documentUrl={viewerState.url}
         filename={viewerState.filename}
       />
+
+      {/* Interactive Fullscreen Image Zoom Lightbox */}
+      <ImageViewerModal
+        isOpen={isPhotoViewerOpen}
+        onClose={() => setIsPhotoViewerOpen(false)}
+        images={photos}
+        initialIndex={activePhotoIdx}
+        title={displayTitle}
+      />
     </div>
   );
 };
-

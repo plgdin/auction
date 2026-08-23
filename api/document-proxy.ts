@@ -1,6 +1,7 @@
 import https from 'https';
 import http from 'http';
 import { URL } from 'url';
+import { isAllowedOrigin } from './utils/cors.js';
 
 // Allowlist of trusted auction sources to protect against SSRF (OWASP A10 Compliance)
 const ALLOWED_HOSTNAMES = [
@@ -122,6 +123,8 @@ export default async function handler(req: any, res: any): Promise<void> {
 
       const contentType = proxyRes.headers['content-type'] || 'application/pdf';
       const sanitizedFilename = customFilename.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const origin = req.headers.origin || req.headers.Origin || '';
+      const corsOrigin = isAllowedOrigin(origin) ? origin : (process.env.NODE_ENV === 'production' ? 'https://lelam.co' : '*');
 
       // If it's a binary PDF, pipe it directly
       if (contentType.includes('pdf') || contentType.includes('octet-stream')) {
@@ -129,7 +132,8 @@ export default async function handler(req: any, res: any): Promise<void> {
           'Content-Type': 'application/pdf',
           'Content-Disposition': `${disposition}; filename="${sanitizedFilename}"`,
           'Cache-Control': 'public, max-age=86400, s-maxage=86400',
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': corsOrigin,
+          Vary: 'Origin',
         });
         proxyRes.pipe(res);
         return;
@@ -147,7 +151,8 @@ export default async function handler(req: any, res: any): Promise<void> {
           res.writeHead(200, {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'public, max-age=3600',
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': corsOrigin,
+            Vary: 'Origin',
           });
           res.end(styledHtml);
         });
@@ -158,6 +163,8 @@ export default async function handler(req: any, res: any): Promise<void> {
       res.writeHead(200, {
         'Content-Type': contentType,
         'Content-Disposition': `${disposition}; filename="${sanitizedFilename}"`,
+        'Access-Control-Allow-Origin': corsOrigin,
+        Vary: 'Origin',
       });
       proxyRes.pipe(res);
     });

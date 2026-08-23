@@ -7,11 +7,20 @@ import { useAppStore } from '../../store/appStore';
 import { formatPrice } from '../../utils/currency';
 
 interface BidIntelligencePanelProps {
+  itemTitle?: string;
   reservePrice?: number | null;
+  categoryName?: string;
+  location?: string;
+  quantity?: number;
+  rawDescription?: string;
 }
 
 export const BidIntelligencePanel: React.FC<BidIntelligencePanelProps> = ({
   reservePrice = 0,
+  categoryName,
+  location,
+  quantity = 1,
+  rawDescription: _rawDescription,
 }) => {
   const { currency } = useAppStore();
   const baseBid = reservePrice && reservePrice > 0 ? reservePrice : 100000;
@@ -119,6 +128,22 @@ export const BidIntelligencePanel: React.FC<BidIntelligencePanelProps> = ({
 
   return (
     <div className="space-y-6 text-left animate-in fade-in duration-200">
+      {itemTitle && (
+        <div className="bg-white border border-slate-200/80 rounded-2xl px-4 py-3 shadow-2xs flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-bold text-slate-800 text-sm truncate">{itemTitle}</span>
+            {categoryName && (
+              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider shrink-0">
+                {categoryName}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-xs text-slate-500 shrink-0">
+            {location && <span>📍 {location}</span>}
+            {quantity && quantity > 1 && <span className="text-indigo-600 font-bold">Qty: {quantity}</span>}
+          </div>
+        </div>
+      )}
       
       {/* Hero Recommendation Card */}
       <div

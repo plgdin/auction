@@ -1,6 +1,7 @@
 import { useState, useMemo, memo } from 'react';
 import { Eye, MapPin, Building2, Calendar, Clock, Landmark, Copy, Check, Gavel, Info, Download } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
+import type { GemAuction } from '../../services/publicService';
 import { getGemItemImage } from '../../utils/gemImageResolver';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/appStore';

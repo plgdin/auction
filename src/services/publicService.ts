@@ -2745,6 +2745,7 @@ export interface BaanknetAuction {
   pincode: string;
   full_address: string;
   property_type: string;
+  category_name?: string;
   auction_start_date: string;
   auction_end_date: string;
   auction_status?: string;
@@ -2767,9 +2768,47 @@ export interface BaanknetAuction {
   inspection_end_date?: string;
   emd_end_date?: string;
   borrower_name?: string;
+  borrower_names?: string[];
   property_description?: string;
+  raw_description?: string;
   photo_count?: number;
   thumbnail_url?: string;
+  emd_amount_text?: string;
+  emd_amount_value?: number | null;
+  bid_increment_text?: string;
+  bid_increment_amount?: number | null;
+  emd_account_number?: string;
+  emd_account_ifsc?: string;
+  emd_bank_name?: string;
+  outstanding_dues_text?: string;
+  outstanding_dues_value?: number | null;
+  tender_fee_text?: string;
+  tender_fee_value?: number | null;
+  cersai_id?: string;
+  title_type?: string;
+  encumbrances_text?: string;
+  branch_name?: string;
+  officer_designation?: string;
+  officer_email?: string;
+  contact_person?: string;
+  contact_phone?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  map_url?: string;
+  boundaries?: {
+    north?: string;
+    south?: string;
+    east?: string;
+    west?: string;
+  };
+  corporate_debtor_name?: string;
+  corporate_debtor_cin?: string;
+  liquidator_reg_no?: string;
+  liquidator_email?: string;
+  nclt_bench?: string;
+  nclt_case_no?: string;
+  process_memo_url?: string;
+  extracted_pdf_text?: string;
 }
 
 export const BaanknetSearchService = {
@@ -3201,6 +3240,9 @@ export interface GemBid {
   items: string;
   quantity?: string | null;
   department_name?: string | null;
+  department?: string | null;
+  organisation?: string | null;
+  ministry?: string | null;
   start_date: string;
   end_date: string;
   status: string;
@@ -3210,6 +3252,12 @@ export interface GemBid {
   corrigendum_urls?: string[] | null;
   category_name: string;
   raw_description?: string | null;
+  source_url?: string | null;
+  location?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  full_address?: string | null;
   created_at: string;
   updated_at: string;
 }

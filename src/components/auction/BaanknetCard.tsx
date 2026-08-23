@@ -26,11 +26,11 @@ export const BaanknetCard = memo(function BaanknetCard({
   const [imageError, setImageError] = useState(false);
   const [highResLoaded, setHighResLoaded] = useState(false);
 
-  const shortId = item.baanknet_auction_id || item.id?.substring(0, 8) || 'N/A';
+  const shortId = (item.baanknet_auction_id?.match(/\d+/)?.[0] || item.baanknet_auction_id || item.id?.substring(0, 8) || 'N/A').replace(/Asset.*$/i, '');
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(item.baanknet_auction_id || item.id);
+    navigator.clipboard.writeText(shortId || item.baanknet_auction_id || item.id);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -140,7 +140,74 @@ export const BaanknetCard = memo(function BaanknetCard({
     return 'Contact Bank for Schedule';
   }, [startDate, endDate]);
 
-  const locationDisplay = [item.city, item.state || item.location].filter(Boolean).join(', ') || 'India';
+  const rawTextBlob = `${item.title || ''} ${item.property_description || ''} ${item.raw_description || ''}`;
+  const ibcClassMatch = rawTextBlob.match(/Asset\s*Classification\s*:?\s*([A-Za-z0-9\s&,/-]+?)(?=Fixed|Asset|Location|IP|Liquidator|Reserve|EMD|Price|Contact|$)/i);
+  const ibcLocMatch = rawTextBlob.match(/(?:Fixed\s*Asset\s*Location|Asset\s*Location|Location)\s*:?\s*([A-Za-z0-9\s&,/-]+?)(?=IP|Liquidator|RP|Reserve|EMD|Price|Contact|Classification|$)/i);
+  const ibcClassification = ibcClassMatch ? ibcClassMatch[1].replace(/Contact\s*Us/i, '').trim() : '';
+  const ibcLocation = ibcLocMatch ? ibcLocMatch[1].replace(/Contact\s*Us/i, '').trim() : '';
+
+  const displayTitle = useMemo(() => {
+    if (
+      !item.title ||
+      /showing\s+\d+/i.test(item.title) ||
+      item.title.includes('10000+') ||
+      item.title.toLowerCase().includes('results found') ||
+      item.title.toLowerCase().includes('search results') ||
+      item.title.includes('Asset Classification') ||
+      item.title.includes('Asset ID') ||
+      item.title.includes('IP Name') ||
+      item.title === 'Bank Auction Property' ||
+      item.title === 'IBC Auction Asset'
+    ) {
+      if (ibcClassification) {
+        const isBank = (s?: string) => !s || s.toLowerCase().includes('bank') || s.toLowerCase().includes('showing');
+        const loc = !isBank(item.city) ? ` in ${item.city}` : (ibcLocation ? ` in ${ibcLocation}` : '');
+        return `${ibcClassification}${loc}`;
+      }
+      const area = item.carpet_area ? `${item.carpet_area} ` : '';
+      const pType = item.property_type && item.property_type !== 'Bank Foreclosure Property' ? item.property_type : 'Bank Foreclosure Property';
+      const isBank = (s?: string) => !s || s.toLowerCase().includes('bank') || s.toLowerCase().includes('showing');
+      const loc = !isBank(item.city) ? ` in ${item.city}` : (!isBank(item.state) ? ` in ${item.state}` : '');
+      return `${area}${pType}${loc}` || 'Bank Foreclosure Asset';
+    }
+    return item.title;
+  }, [item.title, item.carpet_area, item.property_type, item.city, item.state, ibcClassification, ibcLocation]);
+
+  const locationDisplay = useMemo(() => {
+    const isBankOrGeneric = (s?: string) => {
+      if (!s) return true;
+      const lower = s.toLowerCase().trim();
+      return lower === 'india' || lower.includes('bank') || lower.includes('showing') || lower.includes('lender') || lower.includes('result');
+    };
+
+    let titleCity = '';
+    let titleState = '';
+    if (item.title) {
+      const match = item.title.match(/(?:for\s*sale\s*in|in|at)\s+([A-Za-z\s.-]+?),\s*([A-Za-z\s.-]+?)(?:$|\s*\(|\s*-)/i);
+      if (match) {
+        titleCity = match[1].trim();
+        titleState = match[2].trim();
+      } else {
+        const single = item.title.match(/for\s*sale\s*in\s+([A-Za-z\s.-]+)$/i);
+        if (single) {
+          const parts = single[1].split(',').map(s => s.trim());
+          titleCity = parts[0] || '';
+          titleState = parts[1] || '';
+        }
+      }
+    }
+
+    const validCity = !isBankOrGeneric(item.city) ? item.city : titleCity;
+    const validState = !isBankOrGeneric(item.state) ? item.state : (titleState || (!isBankOrGeneric(item.location) ? item.location : ''));
+    const parts = [validCity, validState].filter(Boolean);
+    if (parts.length > 0) return parts.join(', ');
+    if (ibcLocation) return ibcLocation;
+    if (item.full_address && !isBankOrGeneric(item.full_address) && !item.full_address.includes('Asset Classification')) {
+      return item.full_address.length > 35 ? `${item.full_address.slice(0, 35)}...` : item.full_address;
+    }
+    return 'India';
+  }, [item.city, item.state, item.location, item.full_address, item.title, ibcLocation]);
+
   const mainCategory = item.property_type || 'Bank Property';
 
   const isArchived = Boolean(
@@ -209,6 +276,16 @@ export const BaanknetCard = memo(function BaanknetCard({
             {isArchived ? "Verified PDF" : "Notice PDF Available"}
           </span>
         )}
+        {(item.emd_amount_text || item.emd_amount_value) && (
+          <span className="bg-amber-50 border border-amber-200/80 text-amber-800 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0 flex items-center gap-1">
+            EMD: {item.emd_amount_text || `₹ ${item.emd_amount_value?.toLocaleString('en-IN')}`}
+          </span>
+        )}
+        {item.title_type && (
+          <span className="bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0 flex items-center gap-1">
+            {item.title_type}
+          </span>
+        )}
         {item.carpet_area && (
           <span className="bg-sky-50 border border-sky-200/60 text-sky-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0 flex items-center gap-1">
             <Ruler className="w-2.5 h-2.5" /> {item.carpet_area}
@@ -217,6 +294,11 @@ export const BaanknetCard = memo(function BaanknetCard({
         {item.action_type && (
           <span className="bg-violet-50 border border-violet-200/60 text-violet-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0 flex items-center gap-1">
             <Shield className="w-2.5 h-2.5" /> {item.action_type}
+          </span>
+        )}
+        {item.cersai_id && (
+          <span className="bg-slate-100 border border-slate-200 text-slate-700 text-[9px] sm:text-[10px] font-mono font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+            CERSAI: {item.cersai_id.slice(0, 10)}...
           </span>
         )}
       </div>
@@ -260,8 +342,8 @@ export const BaanknetCard = memo(function BaanknetCard({
 
               <div className="mb-3">
                 <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCategory}</div>
-                <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.title}>
-                  {item.title}
+                <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={displayTitle}>
+                  {displayTitle}
                 </h3>
               </div>
 
@@ -404,8 +486,8 @@ export const BaanknetCard = memo(function BaanknetCard({
 
           <div className="mb-3">
             <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCategory}</div>
-            <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={item.title}>
-              {item.title}
+            <h3 className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2" title={displayTitle}>
+              {displayTitle}
             </h3>
           </div>
 

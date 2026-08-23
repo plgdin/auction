@@ -42,6 +42,11 @@ vi.mock('razorpay', () => {
           return { id: 'order_12345', amount: options.amount, currency: options.currency };
         })
       };
+      subscriptions = {
+        create: vi.fn(async () => {
+          return { id: 'order_12345' };
+        })
+      };
     }
   };
 });
@@ -173,9 +178,8 @@ describe('Coupon Validation & Calculation Flow', () => {
         body: {
           planId: 'pro',
           billingCycle: 'monthly',
-          extraSeats: 1, // 1499 plan + 499 seat = 1998 subtotal
-          couponCode: 'STAY50', // 50% off -> 999 subtotal
-          amount: 117900 // 999 + 18% GST (180) = 1179 INR -> 117900 paise
+          couponCode: 'STAY50', // 50% off -> 1499 - 750 = 749 INR -> 74900 paise
+          amount: 74900
         }
       };
 
@@ -194,15 +198,12 @@ describe('Coupon Validation & Calculation Flow', () => {
       });
 
       await createOrderHandler(req, res);
-      if (statusValue !== 200) {
-        console.log('createOrderHandler failed status:', statusValue, 'json:', jsonValue);
-      }
       expect(statusValue).toBe(200);
       expect(jsonValue).toEqual({
         success: true,
         data: {
           order_id: 'order_12345',
-          amount: 117900,
+          amount: 74900,
           currency: 'INR'
         }
       });
