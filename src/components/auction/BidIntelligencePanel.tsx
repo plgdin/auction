@@ -16,6 +16,7 @@ interface BidIntelligencePanelProps {
 }
 
 export const BidIntelligencePanel: React.FC<BidIntelligencePanelProps> = ({
+  itemTitle,
   reservePrice = 0,
   categoryName,
   location,

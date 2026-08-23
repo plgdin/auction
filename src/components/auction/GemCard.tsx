@@ -7,8 +7,6 @@ import clsx from 'clsx';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice, formatPriceString } from '../../utils/currency';
 import { cleanCategoryName } from '../../utils/cleanCategory';
-import type { GemAuction } from '../../services/publicService';
-
 interface GemCardProps {
   item: GemAuction;
   isGrid?: boolean;

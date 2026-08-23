@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   X, Copy, Check, Calendar, Landmark, Heart, Clock, Download, Eye, Image, Ruler,
-  ChevronLeft, ChevronRight, Shield, User, FileText, Scale, Building, Building2, Info,
+  ChevronLeft, ChevronRight, Shield, User, FileText, Scale, Building,
   MapPin, Tag, Award,
   Layers, Gavel, ShieldCheck, Car, Gauge, Fuel, Wrench, ZoomIn
 } from 'lucide-react';
