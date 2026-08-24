@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: 'npm'
 
       - name: Install Dependencies
@@ -29,9 +29,3 @@ jobs:
 
       - name: Run Vitest Test Suite
         run: npx vitest run
-        env:
-          VITE_SUPABASE_URL: "https://mock.supabase.co"
-          VITE_SUPABASE_ANON_KEY: "mock_anon_key"
-          SUPABASE_SERVICE_ROLE_KEY: "mock_service_key"
-          VITE_RAZORPAY_KEY_ID: "rzp_test_mockkey"
-          RAZORPAY_KEY_SECRET: "mock_razorpay_secret"
