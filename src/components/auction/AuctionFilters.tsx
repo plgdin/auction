@@ -7,8 +7,6 @@ import type { AuctionCategory } from '../../types/database.types';
 import clsx from 'clsx';
 import { Dropdown } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
-import { formatDateRange } from 'little-date';
-import type { DateRange } from 'react-day-picker';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuthStore } from '../../store/authStore';
@@ -906,67 +904,98 @@ export function AuctionFilters({
         {/* Date Range */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Auction Date Range</h3>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="w-full flex justify-between items-center px-3.5 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
-              >
-                <span className="truncate">
-                  {startDate && endDate
-                    ? formatDateRange(parseLocalDate(startDate)!, parseLocalDate(endDate)!, { includeTime: false })
-                    : startDate
-                      ? `From ${parseLocalDate(startDate)!.toLocaleDateString()}`
-                      : 'Select date range'}
-                </span>
-                <CalendarDays className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-fit overflow-hidden p-0 rounded-2xl border border-slate-200 shadow-lg"
-              align="start"
-              sideOffset={4}
-              side="bottom"
-              avoidCollisions={true}
-              container={containerRef.current}
-            >
-              <Calendar
-                mode="range"
-                numberOfMonths={typeof window !== 'undefined' && window.innerWidth < 640 ? 1 : 2}
-                pagedNavigation
-                selected={{
-                  from: parseLocalDate(startDate),
-                  to: parseLocalDate(endDate),
-                } as DateRange}
-                month={calendarMonth}
-                onMonthChange={setCalendarMonth}
-                captionLayout="dropdown"
-                onSelect={(range: DateRange | undefined) => {
-                  if (range?.from) {
-                    const y = range.from.getFullYear();
-                    const m = String(range.from.getMonth() + 1).padStart(2, '0');
-                    const d = String(range.from.getDate()).padStart(2, '0');
-                    setStartDate(`${y}-${m}-${d}`);
-                  } else {
-                    setStartDate('');
-                  }
-                  if (range?.to) {
-                    const y = range.to.getFullYear();
-                    const m = String(range.to.getMonth() + 1).padStart(2, '0');
-                    const d = String(range.to.getDate()).padStart(2, '0');
-                    setEndDate(`${y}-${m}-${d}`);
-                  } else {
-                    setEndDate('');
-                  }
-                }}
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">From Date</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-full flex justify-between items-center px-3 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-xs sm:text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                  >
+                    <span className="truncate">
+                      {startDate ? parseLocalDate(startDate)!.toLocaleDateString() : 'Select date'}
+                    </span>
+                    <CalendarDays className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-fit overflow-hidden p-0 rounded-2xl border border-slate-200 shadow-lg"
+                  align="start"
+                  sideOffset={4}
+                  side="bottom"
+                  avoidCollisions={true}
+                  container={containerRef.current}
+                >
+                  <Calendar
+                    mode="single"
+                    selected={parseLocalDate(startDate)}
+                    month={calendarMonth}
+                    onMonthChange={setCalendarMonth}
+                    captionLayout="dropdown"
+                    onSelect={(date: Date | undefined) => {
+                      if (date) {
+                        const y = date.getFullYear();
+                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                        const d = String(date.getDate()).padStart(2, '0');
+                        setStartDate(`${y}-${m}-${d}`);
+                      } else {
+                        setStartDate('');
+                      }
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">To Date</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-full flex justify-between items-center px-3 py-2.5 border border-slate-200 rounded-xl shadow-2xs bg-white text-xs sm:text-sm text-slate-700 hover:border-primary hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-left cursor-pointer"
+                  >
+                    <span className="truncate">
+                      {endDate ? parseLocalDate(endDate)!.toLocaleDateString() : 'Select date'}
+                    </span>
+                    <CalendarDays className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-fit overflow-hidden p-0 rounded-2xl border border-slate-200 shadow-lg"
+                  align="start"
+                  sideOffset={4}
+                  side="bottom"
+                  avoidCollisions={true}
+                  container={containerRef.current}
+                >
+                  <Calendar
+                    mode="single"
+                    selected={parseLocalDate(endDate)}
+                    month={calendarMonth}
+                    onMonthChange={setCalendarMonth}
+                    captionLayout="dropdown"
+                    onSelect={(date: Date | undefined) => {
+                      if (date) {
+                        const y = date.getFullYear();
+                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                        const d = String(date.getDate()).padStart(2, '0');
+                        setEndDate(`${y}-${m}-${d}`);
+                      } else {
+                        setEndDate('');
+                      }
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
           {(startDate || endDate) && (
             <button
               type="button"
               onClick={() => { setStartDate(''); setEndDate(''); }}
-              className="mt-2 text-xs text-primary hover:text-primary-700 font-medium cursor-pointer"
+              className="mt-3 text-xs text-primary hover:text-primary-700 font-medium cursor-pointer"
             >
               Clear dates
             </button>
