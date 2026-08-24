@@ -385,6 +385,9 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
     // Direct / proxied URLs from listing
     const rawList: string[] = [];
     if (item.document_url && !entries.some(e => e.url === item.document_url)) rawList.push(item.document_url);
+    if (item.process_memo_url && !rawList.includes(item.process_memo_url) && !entries.some(e => e.url === item.process_memo_url)) {
+      rawList.push(item.process_memo_url);
+    }
     if (Array.isArray(item.document_urls)) {
       for (const d of item.document_urls) {
         if (d && !rawList.includes(d) && !entries.some(e => e.url === d)) rawList.push(d);
