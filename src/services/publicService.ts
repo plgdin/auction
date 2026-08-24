@@ -2819,8 +2819,11 @@ export const BaanknetSearchService = {
     query: string,
     filters?: {
       category?: string;
+      categories?: string[];
       location?: string;
+      locations?: string[];
       regionalOffice?: string;
+      regionalOffices?: string[];
       page?: number;
       limit?: number;
       sortBy?: string;
@@ -2836,17 +2839,23 @@ export const BaanknetSearchService = {
         .select('*', { count: 'exact' });
 
       // Apply category (property type) filter
-      if (filters?.category && filters.category !== 'All Categories') {
+      if (filters?.categories && filters.categories.length > 0) {
+        q = q.in('property_type', filters.categories);
+      } else if (filters?.category && filters.category !== 'All Categories') {
         q = q.eq('property_type', filters.category);
       }
 
       // Apply location (state) filter
-      if (filters?.location && filters.location !== 'All Locations') {
+      if (filters?.locations && filters.locations.length > 0) {
+        q = q.in('location', filters.locations);
+      } else if (filters?.location && filters.location !== 'All Locations') {
         q = q.eq('location', filters.location);
       }
 
       // Apply regionalOffice (bank name) filter
-      if (filters?.regionalOffice && filters.regionalOffice !== 'All Regional Offices') {
+      if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
+        q = q.in('bank_name', filters.regionalOffices);
+      } else if (filters?.regionalOffice && filters.regionalOffice !== 'All Regional Offices') {
         q = q.eq('bank_name', filters.regionalOffice);
       }
 
@@ -3046,8 +3055,11 @@ export const GemSearchService = {
     query: string,
     filters?: {
       category?: string;
+      categories?: string[];
       location?: string;
+      locations?: string[];
       regionalOffice?: string;
+      regionalOffices?: string[];
       page?: number;
       limit?: number;
       sortBy?: string;
@@ -3063,17 +3075,23 @@ export const GemSearchService = {
         .select('*', { count: 'exact' });
 
       // Apply category filter
-      if (filters?.category && filters.category !== 'All Categories') {
+      if (filters?.categories && filters.categories.length > 0) {
+        q = q.in('category_name', filters.categories);
+      } else if (filters?.category && filters.category !== 'All Categories') {
         q = q.eq('category_name', filters.category);
       }
 
       // Apply location (state) filter
-      if (filters?.location && filters.location !== 'All Locations') {
+      if (filters?.locations && filters.locations.length > 0) {
+        q = q.in('location', filters.locations);
+      } else if (filters?.location && filters.location !== 'All Locations') {
         q = q.eq('location', filters.location);
       }
 
       // Apply regionalOffice (organisation) filter
-      if (filters?.regionalOffice && filters.regionalOffice !== 'All Regional Offices') {
+      if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
+        q = q.in('organisation', filters.regionalOffices);
+      } else if (filters?.regionalOffice && filters.regionalOffice !== 'All Regional Offices') {
         q = q.eq('organisation', filters.regionalOffice);
       }
 
@@ -3270,7 +3288,9 @@ export const GemBidSearchService = {
     query: string,
     filters?: {
       category?: string;
+      categories?: string[];
       department?: string;
+      departments?: string[];
       page?: number;
       limit?: number;
       sortBy?: string;
@@ -3286,12 +3306,16 @@ export const GemBidSearchService = {
         .select('*', { count: 'exact' });
 
       // Apply category filter
-      if (filters?.category && filters.category !== 'All Categories') {
+      if (filters?.categories && filters.categories.length > 0) {
+        q = q.in('category_name', filters.categories);
+      } else if (filters?.category && filters.category !== 'All Categories') {
         q = q.eq('category_name', filters.category);
       }
 
       // Apply department filter
-      if (filters?.department && filters.department !== 'All Departments') {
+      if (filters?.departments && filters.departments.length > 0) {
+        q = q.in('department_name', filters.departments);
+      } else if (filters?.department && filters.department !== 'All Departments') {
         q = q.eq('department_name', filters.department);
       }
 

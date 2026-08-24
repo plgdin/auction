@@ -781,8 +781,11 @@ export function Auctions() {
       const qParam = searchParams.get('q') || '';
       const result = await BaanknetSearchService.searchBaanknetCatalog(qParam, {
         category: selectedMstcCategories[0] || undefined,
+        categories: selectedMstcCategories.length > 0 ? selectedMstcCategories : undefined,
         location: selectedMstcLocations[0] || undefined,
+        locations: selectedMstcLocations.length > 0 ? selectedMstcLocations : undefined,
         regionalOffice: selectedMstcRegionalOffices[0] || undefined,
+        regionalOffices: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined,
         page,
         limit,
         sortBy
@@ -820,8 +823,11 @@ export function Auctions() {
       const qParam = searchParams.get('q') || '';
       const result = await GemSearchService.searchGemCatalog(qParam, {
         category: selectedMstcCategories[0] || undefined,
+        categories: selectedMstcCategories.length > 0 ? selectedMstcCategories : undefined,
         location: selectedMstcLocations[0] || undefined,
+        locations: selectedMstcLocations.length > 0 ? selectedMstcLocations : undefined,
         regionalOffice: selectedMstcRegionalOffices[0] || undefined,
+        regionalOffices: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined,
         page,
         limit,
         sortBy
@@ -859,7 +865,9 @@ export function Auctions() {
       const qParam = searchParams.get('q') || '';
       const result = await GemBidSearchService.searchGemBids(qParam, {
         category: selectedMstcCategories[0] || undefined,
+        categories: selectedMstcCategories.length > 0 ? selectedMstcCategories : undefined,
         department: selectedMstcRegionalOffices[0] || undefined,
+        departments: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined,
         page,
         limit,
         sortBy
