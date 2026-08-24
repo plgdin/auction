@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  X, Copy, Check, Calendar, Landmark, Heart, Clock, Download, Eye, Image, Ruler,
+  X, Copy, Check, Calendar, Landmark, Heart, Download, Eye, Image, Ruler,
   ChevronLeft, ChevronRight, Shield, User, FileText, Scale, Building,
   MapPin, Tag, Award,
-  Layers, ShieldCheck, Car, Gauge, Fuel, Wrench, ZoomIn
+  Layers, Car, Gauge, Fuel, Wrench, ZoomIn
 } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
@@ -952,169 +952,134 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                 </div>
               )}
 
-            </div>
-
-            {/* Right Panel: Price, Dates & Documents */}
-            <div className="w-full lg:w-80 lg:shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 p-4 sm:p-5 space-y-4 sm:space-y-5 bg-white">
-              
-              {/* Price & Schedule Card */}
-              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs space-y-3">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Reserve Price</span>
-                  <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">
-                    {formattedPrice}
-                  </div>
+              {/* Auction Timing & Schedule Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 sm:p-3.5 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Auction Start Time</span>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 block">{safeDateStr(item.auction_start_date)}</span>
                 </div>
 
-                {/* Countdown Timer */}
-                <div className="bg-indigo-50/70 border border-indigo-100 rounded-lg p-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
-                    <Clock className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Status</span>
-                  </div>
-                  <span className="text-xs font-bold text-indigo-700 font-mono">{countdownStr}</span>
+                <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 sm:p-3.5 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Auction End Time</span>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 block">{safeDateStr(item.auction_end_date)}</span>
                 </div>
 
-                {/* Auction Dates */}
-                <div className="space-y-2 pt-1.5 border-t border-slate-100 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Auction Start:</span>
-                    <span className="font-bold text-slate-800">{safeDateStr(item.auction_start_date)}</span>
+                {item.emd_end_date && (
+                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 sm:p-3.5 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">EMD Submission Deadline</span>
+                    <span className="text-xs sm:text-sm font-bold text-amber-700 block">{safeDateStr(item.emd_end_date)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Auction End:</span>
-                    <span className="font-bold text-slate-800">{safeDateStr(item.auction_end_date)}</span>
-                  </div>
-                  {item.emd_end_date && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">EMD Submission:</span>
-                      <span className="font-bold text-amber-700">{safeDateStr(item.emd_end_date)}</span>
-                    </div>
-                  )}
+                )}
+
+                <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 sm:p-3.5 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Auction Status</span>
+                  <span className={clsx(
+                    "inline-block font-bold text-xs px-2.5 py-1 rounded border",
+                    isLive ? "text-emerald-700 bg-emerald-50 border-emerald-200 animate-pulse" :
+                    isClosed ? "text-rose-700 bg-rose-50 border-rose-200" :
+                    "text-indigo-700 bg-indigo-50 border-indigo-200 font-mono"
+                  )}>
+                    {countdownStr || 'Schedule Pending'}
+                  </span>
                 </div>
               </div>
 
-              {/* Official Bank Document & Due Diligence Dossier Card */}
-              {availableDocs.length > 0 && primaryDoc && (
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-1.5 flex items-center justify-between">
-                    <span>Official Notice & Dossier</span>
-                    <span className="text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-1.5 py-0.5 rounded">
-                      {availableDocs.length} {availableDocs.length === 1 ? 'Doc' : 'Docs'}
-                    </span>
-                  </h4>
+            </div>
 
-                  <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-between gap-3.5 relative overflow-hidden">
-                    <div className="flex items-start justify-between gap-2 relative z-10">
-                      <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 shrink-0">
-                        <FileText className="w-6 h-6" />
-                      </div>
-                      <span className="text-[9.5px] font-black tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full uppercase flex items-center gap-1 shrink-0">
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                        Verified PDF
-                      </span>
-                    </div>
+            {/* Right Panel: Catalog Document Preview (Matching MSTC Layout) */}
+            <div className="w-full lg:w-[420px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 p-4 sm:p-5 space-y-4 bg-white flex flex-col">
+              <div className="space-y-3 flex-1 flex flex-col min-h-0">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center justify-between">
+                  <span>Catalog Document Preview</span>
+                  <span className="text-[9.5px] bg-slate-100 text-slate-700 border border-slate-300 font-bold px-2 py-0.5 rounded">
+                    1 Pages
+                  </span>
+                </h4>
 
-                    <div className="space-y-0.5 relative z-10">
-                      <h5 className="text-xs sm:text-sm font-extrabold text-slate-900 line-clamp-2 leading-snug">
-                        {primaryDoc.label}
-                      </h5>
-                      <span className="text-[10px] text-slate-500 font-mono block">
-                        Official Bank Foreclosure e-Auction Document
-                      </span>
-                    </div>
+                <div className="relative flex-1 min-h-[500px] rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1 flex flex-col">
+                  <iframe
+                    src={primaryDoc?.url || getAuctionDossierDataUrl(item)}
+                    title="Catalog Document Preview"
+                    className="w-full flex-1 min-h-[480px] border-0 rounded-lg bg-white"
+                    sandbox="allow-same-origin allow-scripts allow-popups"
+                  />
+                  <div
+                    onClick={() => {
+                      if (primaryDoc) {
+                        openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName);
+                      }
+                    }}
+                    className="absolute inset-0 bg-transparent hover:bg-slate-900/5 transition-colors cursor-zoom-in"
+                    title="Click to preview document in fullscreen"
+                  />
+                </div>
+              </div>
 
-                    {/* Prominent Action Buttons */}
-                    <div className="flex flex-col gap-2 pt-1 relative z-10">
-                      <button
-                        onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                        className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 active:scale-[0.98] transition-all cursor-pointer shadow-2xs"
+              {/* Additional Attachment Documents if available */}
+              {availableDocs.length > 1 && (
+                <div className="space-y-2 pt-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Attached Documents & Annexures ({availableDocs.length - 1})
+                  </span>
+                  <div className="space-y-1.5">
+                    {availableDocs.slice(1).map((doc, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs hover:border-slate-300 transition-colors"
                       >
-                        <Eye className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Preview Document in Fullscreen</span>
-                      </button>
-
-                      <a
-                        href={primaryDoc.downloadUrl}
-                        download={primaryDoc.safeName}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Download Official PDF</span>
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Additional Attachment Documents if available */}
-                  {availableDocs.length > 1 && (
-                    <div className="space-y-2 pt-2">
-                      <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Attached Documents & Annexures ({availableDocs.length - 1})
-                      </span>
-                      <div className="space-y-1.5">
-                        {availableDocs.slice(1).map((doc, idx) => (
-                          <div
-                            key={idx}
-                            className="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs hover:border-slate-300 transition-colors"
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <span className="text-xs font-semibold text-slate-800 truncate" title={doc.label}>
+                            {doc.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => openInAppViewer(doc.url, `${doc.label}: ${item.title}`, doc.safeName)}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                            title="Preview Document"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
-                              <span className="text-xs font-semibold text-slate-800 truncate" title={doc.label}>
-                                {doc.label}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <button
-                                onClick={() => openInAppViewer(doc.url, `${doc.label}: ${item.title}`, doc.safeName)}
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                                title="Preview Document"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-                              <a
-                                href={doc.downloadUrl}
-                                download={doc.safeName}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer"
-                                title="Download PDF"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                              </a>
-                            </div>
-                          </div>
-                        ))}
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <a
+                            href={doc.downloadUrl}
+                            download={doc.safeName}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer"
+                            title="Download PDF"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
               )}
-
             </div>
 
           </div>
         )}
 
         {/* Footer Actions */}
-        <div className="px-4 sm:px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-2.5 shrink-0">
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0">
           <button
             onClick={onClose}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-all cursor-pointer text-center"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-all cursor-pointer text-center"
           >
             Close Details
           </button>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
             {primaryDoc && (
               <>
                 <button
                   onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                  className="w-full sm:w-auto inline-flex justify-center items-center py-2 px-4 rounded-xl text-xs sm:text-sm font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                  className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-slate-800 bg-white border border-slate-200 hover:bg-slate-50 hover:shadow-xs active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 >
-                  <Eye className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
-                  View Notice in Fullscreen
+                  <Eye className="w-4 h-4 mr-2 text-indigo-600" />
+                  View Catalog
                 </button>
 
                 <a
@@ -1122,10 +1087,10 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   download={primaryDoc.safeName}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full sm:w-auto inline-flex justify-center items-center py-2 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                  className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-black active:scale-[0.98] transition-all duration-200 cursor-pointer shadow-xs"
                 >
-                  <Download className="w-3.5 h-3.5 mr-1.5" />
-                  Download Official PDF
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF Catalog
                 </a>
               </>
             )}
