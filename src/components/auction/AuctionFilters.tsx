@@ -569,7 +569,7 @@ export function AuctionFilters({
         {/* Categories */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Categories</h3>
-          {(activeTab === 'mstc' || activeTab === 'gem' || activeTab === 'gem-bids') ? (
+          {(activeTab === 'mstc' || activeTab === 'gem' || activeTab === 'gem-bids' || activeTab === 'baanknet') ? (
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
