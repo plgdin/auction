@@ -3,7 +3,7 @@ import {
   X, Copy, Check, Calendar, Landmark, Heart, Clock, Download, Eye, Image, Ruler,
   ChevronLeft, ChevronRight, Shield, User, FileText, Scale, Building,
   MapPin, Tag, Award,
-  Layers, Gavel, ShieldCheck, Car, Gauge, Fuel, Wrench, ZoomIn
+  Layers, ShieldCheck, Car, Gauge, Fuel, Wrench, ZoomIn
 } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
@@ -825,29 +825,23 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
               </div>
 
               {/* Live Bidding & Official Participation Protocol */}
-              <div className="bg-gradient-to-br from-indigo-50/60 via-slate-50/80 to-white text-slate-900 rounded-xl p-4 sm:p-4.5 border border-indigo-100/80 shadow-2xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-200/70">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200/80 shrink-0">
-                      <Gavel className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
-                        Official Bank e-Auction Participation
-                      </h4>
-                      <span className="text-[10px] text-slate-500">
-                        {isLive ? '🟢 Live bidding in progress' : 'Scheduled Bank Foreclosure e-Auction under SARFAESI / IBC rules'}
-                      </span>
-                    </div>
+              <div className="bg-white text-slate-900 rounded-xl p-4 sm:p-4.5 border border-slate-200 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100">
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-extrabold text-slate-900">
+                      Official Bank e-Auction Participation
+                    </h4>
+                    <span className="text-[10px] text-slate-500">
+                      {isLive ? '🟢 Live bidding in progress' : 'Scheduled Bank Foreclosure e-Auction under SARFAESI / IBC rules'}
+                    </span>
                   </div>
 
                   {primaryDoc && (
                     <button
                       onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+                      className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
                     >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>View Notice & Terms</span>
+                      View Notice & Terms
                     </button>
                   )}
                 </div>
@@ -873,8 +867,8 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   </div>
                 </div>
 
-                <p className="text-[10px] text-slate-600 mt-2.5 leading-relaxed bg-white/70 p-2.5 rounded-lg border border-slate-200/60">
-                  🔒 <strong className="text-slate-800">Bidding Protocol:</strong> Live bids are placed securely inside the bank's designated e-Auction room. Ensure you have submitted your KYC, EMD deposit, and received approved bidder credentials before bidding closes.
+                <p className="text-[10px] text-slate-600 mt-2.5 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-150">
+                  <strong className="text-slate-800">Bidding Protocol:</strong> Live bids are placed securely inside the bank's designated e-Auction room. Ensure you have submitted your KYC, EMD deposit, and received approved bidder credentials before bidding closes.
                 </p>
               </div>
 
@@ -961,7 +955,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
             </div>
 
             {/* Right Panel: Price, Dates & Documents */}
-            <div className="w-full lg:w-80 lg:shrink-0 border-t lg:border-t-0 lg:border-l border-slate-100 p-4 sm:p-5 space-y-4 sm:space-y-5 bg-slate-50/50">
+            <div className="w-full lg:w-80 lg:shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 p-4 sm:p-5 space-y-4 sm:space-y-5 bg-white">
               
               {/* Price & Schedule Card */}
               <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs space-y-3">
@@ -1010,9 +1004,9 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                     </span>
                   </h4>
 
-                  <div className="bg-gradient-to-br from-indigo-50/70 via-white to-slate-50 rounded-xl p-4 border border-indigo-100 shadow-2xs flex flex-col justify-between gap-3.5 relative overflow-hidden">
+                  <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs flex flex-col justify-between gap-3.5 relative overflow-hidden">
                     <div className="flex items-start justify-between gap-2 relative z-10">
-                      <div className="p-2 rounded-xl bg-indigo-100 border border-indigo-200/60 text-indigo-600 shrink-0">
+                      <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 shrink-0">
                         <FileText className="w-6 h-6" />
                       </div>
                       <span className="text-[9.5px] font-black tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full uppercase flex items-center gap-1 shrink-0">
@@ -1034,7 +1028,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                     <div className="flex flex-col gap-2 pt-1 relative z-10">
                       <button
                         onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                        className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 active:scale-[0.98] transition-all cursor-pointer shadow-2xs"
+                        className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 active:scale-[0.98] transition-all cursor-pointer shadow-2xs"
                       >
                         <Eye className="w-3.5 h-3.5 text-indigo-600" />
                         <span>Preview Document in Fullscreen</span>
