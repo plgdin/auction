@@ -34,3 +34,8 @@ scratch_pdf_*.txt
 scratch_pdf_text.txt
 *.cookie
 *.session
+
+# CI and Alerting files
+.github/workflows/ci.yml
+.github/workflows/scraper-cron.yml
+scraper/utils/common/alertingService.ts
