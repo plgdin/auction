@@ -175,16 +175,6 @@ export const GemCard = memo(function GemCard({
             GeM Disposal
           </span>
         </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-            </span>
-            BETA
-          </span>
-        </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5 justify-start">

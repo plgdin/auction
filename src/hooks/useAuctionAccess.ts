@@ -42,7 +42,7 @@ export const ALL_AUCTION_TYPES: AuctionTypeDefinition[] = [
     badgeBg: 'bg-indigo-50',
     badgeText: 'text-indigo-700',
     badgeBorder: 'border-indigo-200',
-    isBeta: true,
+    isBeta: false,
   },
   {
     key: 'gem_bids',
@@ -53,7 +53,7 @@ export const ALL_AUCTION_TYPES: AuctionTypeDefinition[] = [
     badgeBg: 'bg-emerald-50',
     badgeText: 'text-emerald-700',
     badgeBorder: 'border-emerald-200',
-    isBeta: true,
+    isBeta: false,
   },
   {
     key: 'gem_auctions',
@@ -64,7 +64,7 @@ export const ALL_AUCTION_TYPES: AuctionTypeDefinition[] = [
     badgeBg: 'bg-purple-50',
     badgeText: 'text-purple-700',
     badgeBorder: 'border-purple-200',
-    isBeta: true,
+    isBeta: false,
   },
   {
     key: 'gem_pbp',
@@ -75,7 +75,7 @@ export const ALL_AUCTION_TYPES: AuctionTypeDefinition[] = [
     badgeBg: 'bg-amber-50',
     badgeText: 'text-amber-700',
     badgeBorder: 'border-amber-200',
-    isBeta: true,
+    isBeta: false,
   },
   {
     key: 'custom',

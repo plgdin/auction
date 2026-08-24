@@ -191,9 +191,6 @@ function AuctionDetailInner({
         <div className="flex flex-col lg:flex-row justify-between items-start gap-6 mb-8">
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <span className="px-2.5 py-1 text-xs font-black rounded-full uppercase tracking-wider bg-amber-500 text-white shadow-xs">
-                BETA
-              </span>
               <span className={clsx(
                 "px-3 py-1 text-xs font-bold rounded-full shadow-sm uppercase tracking-wider text-white",
                 isActive ? "bg-green-500" : auction.status === 'upcoming' ? "bg-blue-500" : "bg-slate-500"
