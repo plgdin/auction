@@ -3,7 +3,7 @@ import {
   X, Copy, Check, Calendar, Landmark, Heart, Download, Eye, Image, Ruler,
   ChevronLeft, ChevronRight, Shield, User, FileText, Scale, Building,
   MapPin, Tag, Award,
-  Layers, Car, Gauge, Fuel, Wrench, ZoomIn
+  Layers, Car, Gauge, Fuel, Wrench, ZoomIn, ExternalLink
 } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
@@ -472,13 +472,26 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
             )}
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
-            title="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href={item.source_url || 'https://baanknet.com/eauction-psb/home'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-indigo-50 text-indigo-700 hover:text-indigo-800 border border-indigo-200 hover:border-indigo-300 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer"
+              title="Open this listing directly on the official BaankNet website"
+            >
+              <span>BaankNet Portal</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab Navigation */}

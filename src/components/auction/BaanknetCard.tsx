@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from 'react';
-import { Eye, MapPin, Building2, Calendar, Clock, Landmark, Copy, Check, Shield, Ruler, Info, Download } from 'lucide-react';
+import { Eye, MapPin, Building2, Calendar, Clock, Landmark, Copy, Check, Shield, Ruler, Info, Download, ExternalLink } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import type { BaanknetAuction } from '../../services/publicService';
 import clsx from 'clsx';
@@ -245,9 +245,17 @@ export const BaanknetCard = memo(function BaanknetCard({
               )}
             </button>
           </div>
-          <span className="text-[10px] font-black px-2 py-0.5 rounded-md border tracking-wider shrink-0 uppercase text-indigo-700 bg-indigo-50 border-indigo-200">
-            BaankNet Bank Auction
-          </span>
+          <a
+            href={item.source_url || `https://baanknet.com/eauction-psb/home`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-[10px] font-black px-2 py-0.5 rounded-md border tracking-wider shrink-0 uppercase text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
+            title="Open listing on official BaankNet website"
+          >
+            <span>BaankNet</span>
+            <ExternalLink className="w-2.5 h-2.5" />
+          </a>
         </div>
       </div>
 
