@@ -61,6 +61,12 @@ interface CategoryNode {
   children: CategoryNode[];
 }
 
+const parseLocalDate = (dateStr?: string) => {
+  if (!dateStr) return undefined;
+  const [y, m, d] = dateStr.split('-');
+  return new Date(Number(y), Number(m) - 1, Number(d));
+};
+
 export function AuctionFilters({
   onFilterChange,
   onClose,
@@ -94,7 +100,7 @@ export function AuctionFilters({
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
-    if (initialFilters.startDate) return new Date(initialFilters.startDate);
+    if (initialFilters.startDate) return parseLocalDate(initialFilters.startDate) || new Date();
     return new Date();
   });
 
@@ -131,7 +137,7 @@ export function AuctionFilters({
     setIsReauction(initialFilters.isReauction || false);
 
     if (initialFilters.startDate) {
-      setCalendarMonth(new Date(initialFilters.startDate));
+      setCalendarMonth(parseLocalDate(initialFilters.startDate) || new Date());
     } else {
       setCalendarMonth(new Date());
     }
@@ -908,9 +914,9 @@ export function AuctionFilters({
               >
                 <span className="truncate">
                   {startDate && endDate
-                    ? formatDateRange(new Date(startDate), new Date(endDate), { includeTime: false })
+                    ? formatDateRange(parseLocalDate(startDate)!, parseLocalDate(endDate)!, { includeTime: false })
                     : startDate
-                      ? `From ${new Date(startDate).toLocaleDateString()}`
+                      ? `From ${parseLocalDate(startDate)!.toLocaleDateString()}`
                       : 'Select date range'}
                 </span>
                 <CalendarDays className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
@@ -926,9 +932,11 @@ export function AuctionFilters({
             >
               <Calendar
                 mode="range"
+                numberOfMonths={typeof window !== 'undefined' && window.innerWidth < 640 ? 1 : 2}
+                pagedNavigation
                 selected={{
-                  from: startDate ? new Date(startDate) : undefined,
-                  to: endDate ? new Date(endDate) : undefined,
+                  from: parseLocalDate(startDate),
+                  to: parseLocalDate(endDate),
                 } as DateRange}
                 month={calendarMonth}
                 onMonthChange={setCalendarMonth}
