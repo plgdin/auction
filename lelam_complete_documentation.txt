@@ -1,0 +1,260 @@
+================================================================================
+Lelam.co — Complete Platform & System Documentation
+================================================================================
+
+Lelam.co is a search engine, discovery, and bidding assistance platform
+for government and industrial surplus auctions (specifically MSTC eAuctions). 
+
+Because official government portals are difficult to navigate and contain dense 
+catalog PDFs, Lelam.co automatically reads these PDFs, parses them into searchable 
+listings, runs optical character recognition (OCR) on tables, and provides 
+calculation tools to help buyers estimate costs, run market price predictions, 
+and assess ROI before bidding.
+
+--------------------------------------------------------------------------------
+1. Complete Website Navigation Flow (Roadmap)
+--------------------------------------------------------------------------------
+
+[ Public Viewers ]
+Landing / Home Page
+  │
+  ├──► Auctions Search Page ◄──► FAQ & Market News
+  │            │
+  │            ▼
+  ├──► Auction Details (Side Drawer)
+  │            ├─► Catalog Details & Inventory Quote Table
+  │            └─► Valuation & ROI Calculation Engine
+  │
+  ├──► Login / Register Page
+
+[ Authenticated Users ]
+User Dashboard
+  ├─► Watchlist (Save & receive email/SMS alerts)
+  ├─► Document Vault (Keep licenses like GST & PCB safe)
+  ├─► Profile Settings (Configure material preferences)
+  └─► Log Out
+
+[ Platform Administrators ]
+Login Page ──► Authenticates Admin Role ──► Admin Dashboard Panel
+                                                    │
+     ┌──────────────────┬───────────────────────────┴───────┬──────────────────┐
+     ▼                  ▼                                   ▼                  ▼
+Admin Overview   Scraper Console                     Market Price Index   Help & FAQs
+                                                            │
+                                                            └─► ML Scrap Price Predictor
+
+--------------------------------------------------------------------------------
+2. Page-by-Page Breakdown & Components
+--------------------------------------------------------------------------------
+
+A. Home / Landing Page ("/")
+----------------------------
+* Purpose: Welcome visitors, explain what the platform does, and direct them to search active auctions.
+* Components:
+  - Header Navigation: Contains Logo, links to main pages (Home, Auctions, News, FAQ, About, Contact), a Currency Selector (toggle between Indian Rupees Rs. and US Dollars $), and a Sign In button.
+  - Hero Banner: The main introductory section featuring the slogan "Bringing Auctions to the Masses" and a search launcher.
+  - Explore by Category Grid: Clickable cards representing auction sectors (Metals, Plant Machinery, Vehicles, Real Estate, E-Waste, Minerals).
+  - Recommended Auctions (Locked): Interactive preview cards prompting users to sign in to unlock personalized alerts.
+  - How It Works: Visual step-by-step instructions.
+  - Footer: Quick links to corporate terms, cookies, and privacy policies.
+
+B. Auctions Directory ("/auctions")
+-----------------------------------
+* Purpose: The core search engine interface to browse through active and upcoming government catalogs.
+* Components:
+  - Search Input Bar: Text field at the top to search catalog numbers, sellers, or materials.
+  - Filters Sidebar: Refines search results by Category, Attachments, Regional Office, Location, and Pre-Bid EMD limits.
+  - Results Grid: Displays matching cards containing ref IDs, dates, timers, and detail triggers.
+
+C. The Details Drawer (Opens from Auctions Page)
+-----------------------------------------------
+* Purpose: A slide-out panel containing complete catalog analysis without loading a new page.
+* Tabs:
+  1. Catalog Details Tab: Displays seller details, regional offices, and parsed inventory tables with quantities. Features a Download PDF Catalog button.
+  2. Valuation & ROI Engine Tab: Features an Interactive Cost Estimator Form where users enter their Current Bid, Transportation, Loading, and Refurbishment costs to view live projections of Profit margins and Break-Even Bids.
+
+D. Helpful Info Pages ("/news", "/faq", "/about", "/contact")
+--------------------------------------------------------------
+* News Page: Simple layout showing industry updates and scrap metal market pricing trends.
+* FAQ Page: Accordion system split into MSTC eAuctions queries (handling deposits, extensions, missing photos) and Lelam Platform queries (calculators, updates, subscription tiers).
+* About Page: Outlines Lelam's mission, historic numbers, and platform security.
+* Contact Page: A support page with an interactive contact form, corporate email address (Support@lelam.co), and Bangalore office location details.
+
+--------------------------------------------------------------------------------
+3. Technology Stack & Core Dependencies
+--------------------------------------------------------------------------------
+
+The Lelam.co platform is constructed utilizing a modern, high-performance, and secure technical stack:
+
+Frontend Core & User Interface:
+* React 19: Powered by React hooks, providing client-side state management for fast component updates and immediate currency exchanges without page reloads.
+* TypeScript: Enforces strong compile-time type safety across database entities and component states.
+* Vite: Ultra-fast bundler and development build toolchain.
+* Zustand: Lightweight global state manager handling persistent application states such as authentication tokens, watchlist counts, and currency preferences.
+* React Router DOM v7: Manages robust declarative routing across different pages and layouts.
+
+UI & Styling System:
+* Tailwind CSS v4: Utility-first CSS processing for rapid development of visual styles and responsive grids.
+* Ant Design (antd & @ant-design/icons): Provides robust, accessible enterprise design system components, layout panels, and tabular elements.
+* Radix UI: Unstyled primitive components for accessible layout structures (Labels, Popovers, Slots).
+* Lucide React: Premium, consistent vector icon library representing categories, calculations, and dashboard actions.
+* Framer Motion: Custom physics-based animation engine enabling subtle micro-animations and smooth layout transitions.
+* Recharts & D3: Data visualization libraries that drive the responsive market price trend graphs and historic commodity charts.
+
+Backend, Database, & Security (BaaS):
+* Supabase Service Layer: Orchestrates database connections, file storage, and authentication.
+* PostgreSQL Database: High-performance relational database containing profiles, indexed auctions, commodity listings, watchlists, logs, and FAQs.
+* Row Level Security (RLS): Enforces server-side PostgreSQL policies, securing company assets, business licenses, and watchlists so users can only access their authorized files.
+* Supabase Storage Buckets:
+  - auction_documents: Hosts original government catalog PDFs and rendered lot preview images.
+  - avatars: Manages profile avatars.
+
+Automation, Crawling, & Heavy Lifters:
+* Node.js (tsx / npm run scripts): Backend runtime coordinating cron workers, scrapers, and data pipelines.
+* Puppeteer & Puppeteer-Extra: Control headless instances of Google Chrome.
+* Puppeteer Stealth Plugin: Modifies headless browser footprints, bypassing basic anti-bot blockers on official government portals.
+* pdf-parse: Fast Node utility extracting raw digital text and tabular structures from downloaded catalog PDFs.
+* Tesseract.js OCR: Client/Server computer vision library executing Optical Character Recognition on scanned tables, image assets, or blurry catalog sheets.
+* @xenova/transformers (all-MiniLM-L6-v2): Local artificial intelligence model generating semantic vector embeddings to power conceptual searches.
+
+--------------------------------------------------------------------------------
+4. Complete Admin Dashboard Documentation ("/admin")
+--------------------------------------------------------------------------------
+
+To access the administrative system, navigate to the login portal and authenticate using authorized administrative credentials.
+
+Access Credentials:
+* Administrative Email: admin@auction.com
+* Administrative Password: admin123
+
+Once logged in, the admin page offers several major control tabs to oversee system health, crawler scrapers, and raw pricing indexes.
+
+Tab 1: Admin Overview
+---------------------
+* Purpose: Provides a bird's-eye view of website activity and system statistics.
+* Components: Stats widgets (active users, crawled catalogs, active reminders) and a recent user activity log.
+* Database Connection: Reads counts directly from profiles, mstc_auctions, and audit_logs.
+
+Tab 2: Scraper Dashboard
+------------------------
+* Purpose: Manages the automated workers that download and read government catalog PDFs.
+* Key Sections:
+  1. Scraper Statistics: Displays counts of catalogs grouped by status (Pending, Processing, Completed, Failed).
+  2. Active Catalogs List: Tabbed lists to view catalogs needing review (needs-review), accepted catalogs (accepted), and all catalogs.
+  3. Execution Console: Real-time terminal output logs with command buttons:
+     - Trigger Scraper Button: Launches the Puppeteer scraper to discover new auctions.
+     - Trigger Worker Button: Starts parsing downloaded PDFs, running OCR on tables, and generating text.
+     - Generate Vectors Button: Builds search embeddings to improve lookup accuracy.
+* Database Connection: Writes updates to status rows in mstc_auctions.
+
+Tab 3: Market Price Management & Estimation
+--------------------------------------------
+* Purpose: Controls the baseline pricing index used to calculate estimated lot values, and hosts the ML Scrap Price Predictor tool.
+* Key Components:
+  - Commodity Table: Lists commodity prices (e.g. Copper, Steel, Iron) with input fields to change prices and multiplier factors.
+  - Commodity Trend Chart: Responsive area graph showing historical price changes for the selected material.
+  - Add Commodity Form: Fields to create new material categories, unit measures, keyword lists (e.g. ['wire', 'cable', 'pipe']), and baseline cost values.
+  - ML Scrap Price Predictor Component:
+    * Dynamic Prediction Model: Utilizes a trained linear regression algorithm to predict current scrap steel and iron pricing per Ton based on active economic inputs.
+    * Model Features (Inputs): Scrap Grade, Region, LME Steel Scrap Price (USD), USD to INR Exchange Rate, Domestic Iron Ore (INR), Domestic Coal (INR), Construction Index, and Monsoon Season Toggle.
+    * Factor Contribution Breakdown: Displays a real-time list of inputs indicating their exact positive (green) or negative (red) monetary impact in INR on the final calculated price per Ton.
+    * Current DB Comparison Engine: A button that performs a live query of PostgreSQL indices (scaling the commodity per-kg prices up to per-Ton rates), compares it side-by-side with the ML mathematical output, and calculates a Suggested Average Price to aid in strategic bidding.
+* Database Connection: Updates records inside the market_indices table, reads active indices, and appends historical records to market_price_history.
+
+Tab 4: User & Content Management
+--------------------------------
+* User Management Panel: Allows administrators to view user profiles, verify organizations, adjust security roles (buyer, seller, admin), and toggle active status.
+* FAQ Management Panel: Edit existing accordion cards and write new help answers to the database.
+* Contact Messages Panel: View support tickets submitted through the site's contact page.
+* Database Connection: Writes edits to profiles, faq_items, news_updates, and reads from contact_messages.
+
+--------------------------------------------------------------------------------
+5. Button Documentation & Database Actions
+--------------------------------------------------------------------------------
+
+| Button / Control Name | Location            | What It Does (In Simple Words) | Technical Database Action                    |
+| --------------------- | ------------------- | ------------------------------ | ------------------------------------------- |
+| Login                 | /auth/login         | Authenticates credentials      | Validates session token against auth schema |
+| Search                | Header / Auctions   | Searches parsed database       | Executes search_mstc_catalog search query   |
+| Add to Watchlist      | Auction Card        | Saves auction to dashboard     | Inserts/Deletes row in watchlists table     |
+| View Details          | Auction Card        | Opens side detail drawer       | Reads fields from mstc_auctions table       |
+| Apply Filters          | Sidebar Filter      | Refines shown auctions list    | Reloads state with filter values in query    |
+| Currency Switcher     | Navigation Bar      | Swaps INR/USD view rates       | Client-side React state swap (No DB write)  |
+| Submit Form           | Contact Page        | Sends inquiry to Lelam support | Inserts message into contact_messages       |
+| Upload Document       | Document Vault      | Saves compliance certifications | Uploads to Supabase Storage & updates logs  |
+| Trigger Scraper       | Admin Console        | Begins crawling MSTC listings  | Triggers Puppeteer scraper background task  |
+| Save Prices           | Admin Price Manager | Updates metal commodity index  | Updates rows inside market_indices table   |
+| Add Commodity         | Admin Price Manager | Adds a new price indicator     | Inserts a new row into market_indices      |
+| Add FAQ Item          | FAQ Panel           | Publishes a help article       | Inserts a new row into faq_items            |
+| Verify User           | User Panel          | Approves credentials           | Updates verification status in profiles     |
+| Reset Model Inputs    | ML Price Predictor  | Restores model features to defaults | Client-side React state reset (No DB write)  |
+| Compare Database      | ML Price Predictor  | Computes average bid indexes   | Queries market_indices and averages results |
+
+--------------------------------------------------------------------------------
+6. Technical Architecture & Backend Flow
+--------------------------------------------------------------------------------
+
+Lelam.co automates the ingestion of government eAuctions through a multi-stage background collection pipeline.
+
+Flow Diagram:
+[ Puppeteer Crawler ]
+        │
+        ▼ (Finds New Catalogs)
+[ Supabase Database (status: 'pending') ]
+        │
+        ▼ (Polled by Background Asset Worker)
+[ Asset Worker Processes PDF ]
+        ├─► Converts Pages to Images (for preview & OCR)
+        ├─► Reads Text (using pdf-parse)
+        ├─► Runs OCR (Tesseract.js for scanned tables)
+        ├─► Computes Search Embeddings (@xenova/transformers)
+        │
+        ▼ (Updates Records)
+[ Supabase Storage & PostgreSQL Search Index ]
+
+Collection Pipeline Details:
+1. Discovery (Scraper): 
+   - A Node.js cron worker launches a Puppeteer Stealth browser instance.
+   - It navigates to official listing portals, bypasses basic anti-bot scripts, reads the catalog table list, and detects new auction numbers.
+   - It inserts a new row in mstc_auctions with asset_status = 'pending'.
+2. Download & Storage:
+   - The Asset Worker polls the database for pending rows.
+   - It downloads the raw catalog PDF, uploads the original file to the auction_documents bucket inside Supabase Storage, and sets a unique file URL path.
+3. OCR & Text Extraction:
+   - The worker runs pdf-parse to read embedded text.
+   - For pages containing scanned tables, lot details, or photos, the worker converts the PDF pages into JPEG images.
+   - It feeds these images to Tesseract.js to perform Optical Character Recognition (OCR), extracting hidden quantity numbers, contact details, and locations.
+4. Vector Embedding Generation:
+   - Using the @xenova/transformers library (running the all-MiniLM-L6-v2 model), the worker converts parsed item descriptions into high-dimensional vector arrays.
+   - These vectors are saved to the database to support semantic search.
+
+ML Estimation Architecture:
+The platform runs a lightweight, deterministic prediction algorithm powered by pre-calculated coefficients from a trained linear regression model (scrap_model_metadata.json):
+* Equation: Predicted Price = Intercept + Sum(Feature_i * Coefficient_i)
+* Grade and Region categories are converted via one-hot encoding offsets stored in coefficients, while numerical components (LME, exchange rates, domestic commodities, construction indicators, season) scale linearly.
+* Real-time updates occur via standard React side-effects on input modifications, ensuring instant calculation speeds.
+
+Database Storage Structure:
+* Core Relational Tables:
+  - mstc_auctions: Holds parsed MSTC catalog entries (numbers, seller, raw material JSON, status, document links).
+  - profiles: Stores user account details and role classifications (buyer, seller, admin, superadmin).
+  - watchlists: A join table mapping user profiles to saved auctions.
+  - market_indices: Stores metal commodities with their current unit costs, keyword mappings, and formulas.
+* Storage Buckets:
+  - auction_documents: Stores raw catalog PDFs and rendered first-page previews (JPEGs) used in listing cards.
+  - avatars: Stores user profile pictures.
+
+--------------------------------------------------------------------------------
+7. Simple Explanation of Technical Terms
+--------------------------------------------------------------------------------
+
+* Scraping / Crawling: An automated program that visits websites to download catalog sheets.
+* OCR (Optical Character Recognition): Reads text inside images or scanned PDFs, making tables searchable.
+* Database (Supabase / Postgres): The digital filing cabinet storing user profiles, watchlists, prices, and catalogs.
+* Landed Cost: The total price of scrap items after adding transport, labor, and taxes (GST/TCS/customs).
+* ROI (Return on Investment): The estimated profit margin you make after subtracting all costs from the market value.
+* RLS (Row Level Security): A digital security lock that ensures user A cannot view or edit the documents or watchlists uploaded by user B.
+* Vector Embeddings: Numerical representations of text that let search engines understand context (e.g. searching for "cable" matches "wire").
+* Linear Regression Model: A mathematical model that makes pricing predictions by finding straight-line relationships between factors (like exchange rates or coal costs) and metal prices.
+* Coefficient & Intercept: The starting price baseline (intercept) and the positive or negative impact weight (coefficient) assigned to each predictor factor.
+================================================================================

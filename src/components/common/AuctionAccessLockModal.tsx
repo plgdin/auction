@@ -26,7 +26,7 @@ export const AuctionAccessLockModal: React.FC<AuctionAccessLockModalProps> = ({
     badgeBg: '',
     badgeText: '',
     badgeBorder: '',
-    isBeta: auctionType !== 'mstc',
+    isBeta: false,
   };
 
   return (

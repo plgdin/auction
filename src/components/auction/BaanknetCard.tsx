@@ -1,7 +1,7 @@
 import { useState, useMemo, memo } from 'react';
-import { Eye, MapPin, Building2, Calendar, Clock, Landmark, Copy, Check, Shield, Ruler, Info, Download } from 'lucide-react';
+import { Eye, MapPin, Building2, Calendar, Clock, Landmark, Copy, Check, Shield, Ruler, Info, Download, ExternalLink } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
-import type { BaanknetAuction } from '../../services/publicService';
+import { type BaanknetAuction, getBaanknetDirectUrl } from '../../services/publicService';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice, formatPriceString } from '../../utils/currency';
@@ -245,26 +245,25 @@ export const BaanknetCard = memo(function BaanknetCard({
               )}
             </button>
           </div>
-          <span className="text-[10px] font-black px-2 py-0.5 rounded-md border tracking-wider shrink-0 uppercase text-indigo-700 bg-indigo-50 border-indigo-200">
-            BaankNet Bank Auction
-          </span>
-          {item.bank_name && (
-            <span className="text-[11px] font-bold text-slate-700 truncate max-w-[200px]" title={item.bank_name}>
-              {item.bank_name}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-            </span>
-            BETA
-          </span>
+          <a
+            href={getBaanknetDirectUrl(item)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-[10px] font-black px-2 py-0.5 rounded-md border tracking-wider shrink-0 uppercase text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
+            title="Open listing on official BaankNet website"
+          >
+            <span>BaankNet</span>
+            <ExternalLink className="w-2.5 h-2.5" />
+          </a>
         </div>
       </div>
+
+      {item.bank_name && (
+        <div className="text-xs sm:text-sm font-bold text-slate-900 truncate" title={item.bank_name}>
+          {item.bank_name}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-1.5 justify-start">
         {primaryDocUrl && (

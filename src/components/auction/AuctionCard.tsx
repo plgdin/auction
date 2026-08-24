@@ -125,9 +125,6 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
             )}>
               {statusBadgeLabel}
             </span>
-            <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-amber-500 text-white shadow-xs">
-              BETA
-            </span>
           </div>
           <button
             onClick={handleWatchlistToggle}
@@ -219,9 +216,6 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
             statusBadgeColor
           )}>
             {statusBadgeLabel}
-          </span>
-          <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-amber-500 text-white shadow-xs">
-            BETA
           </span>
         </div>
         <button

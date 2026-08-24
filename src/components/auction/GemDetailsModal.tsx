@@ -403,7 +403,11 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
           <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
             <div className="max-w-5xl mx-auto">
               <BidIntelligencePanel
+                itemTitle={item.title}
                 reservePrice={0}
+                categoryName={item.category_name}
+                location={locationDetails.displayStr}
+                rawDescription={item.raw_description || item.title}
               />
             </div>
           </div>
@@ -836,24 +840,22 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                     </span>
                   </h4>
 
-                  <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 rounded-2xl p-5 text-white border border-slate-800 shadow-xl flex flex-col justify-between gap-5 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-                    
+                  <div className="bg-gradient-to-br from-indigo-50/70 via-white to-slate-50 rounded-2xl p-5 border border-indigo-100 shadow-2xs flex flex-col justify-between gap-5 relative overflow-hidden">
                     <div className="flex items-start justify-between gap-3 relative z-10">
-                      <div className="p-3.5 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 shrink-0 shadow-inner">
+                      <div className="p-3.5 rounded-2xl bg-indigo-100 border border-indigo-200/60 text-indigo-600 shrink-0">
                         <FileText className="w-8 h-8" />
                       </div>
-                      <span className="text-[10px] font-black tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-full uppercase flex items-center gap-1 shrink-0">
-                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                      <span className="text-[10px] font-black tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase flex items-center gap-1 shrink-0">
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
                         Verified PDF Notice
                       </span>
                     </div>
 
                     <div className="space-y-1 relative z-10">
-                      <h5 className="text-sm sm:text-base font-extrabold text-slate-100 line-clamp-2 leading-snug">
+                      <h5 className="text-sm sm:text-base font-extrabold text-slate-900 line-clamp-2 leading-snug">
                         {primaryDoc.label}
                       </h5>
-                      <span className="text-[11px] text-slate-400 font-mono block">
+                      <span className="text-[11px] text-slate-500 font-mono block">
                         Official Government e-Auction Notice Document
                       </span>
                     </div>
@@ -862,7 +864,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                     <div className="flex flex-col gap-2.5 pt-2 relative z-10">
                       <button
                         onClick={() => openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName)}
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-slate-900 bg-white hover:bg-slate-100 active:scale-[0.98] transition-all cursor-pointer shadow-md"
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 active:scale-[0.98] transition-all cursor-pointer shadow-2xs"
                       >
                         <Eye className="w-4 h-4 text-indigo-600" />
                         <span>Preview Document in Fullscreen</span>
@@ -873,7 +875,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                         download={primaryDoc.safeName}
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] transition-all cursor-pointer shadow-md border border-indigo-400/30"
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
                       >
                         <Download className="w-4 h-4" />
                         <span>Download Official PDF Document</span>
@@ -914,7 +916,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                   download={primaryDoc.safeName}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-white bg-slate-950 hover:bg-primary hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                  className="w-full sm:w-auto inline-flex justify-center items-center py-2.5 px-5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Download Official PDF
