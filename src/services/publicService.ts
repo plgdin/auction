@@ -2824,6 +2824,8 @@ export const BaanknetSearchService = {
       locations?: string[];
       regionalOffice?: string;
       regionalOffices?: string[];
+      startDate?: string;
+      endDate?: string;
       page?: number;
       limit?: number;
       sortBy?: string;
@@ -2857,6 +2859,14 @@ export const BaanknetSearchService = {
         q = q.in('bank_name', filters.regionalOffices);
       } else if (filters?.regionalOffice && filters.regionalOffice !== 'All Regional Offices') {
         q = q.eq('bank_name', filters.regionalOffice);
+      }
+
+      // Apply date filters
+      if (filters?.startDate) {
+        q = q.gte('auction_start_date', filters.startDate);
+      }
+      if (filters?.endDate) {
+        q = q.lte('auction_start_date', filters.endDate + 'T23:59:59.999Z');
       }
 
       // Text search
@@ -3060,6 +3070,8 @@ export const GemSearchService = {
       locations?: string[];
       regionalOffice?: string;
       regionalOffices?: string[];
+      startDate?: string;
+      endDate?: string;
       page?: number;
       limit?: number;
       sortBy?: string;
@@ -3093,6 +3105,14 @@ export const GemSearchService = {
         q = q.in('organisation', filters.regionalOffices);
       } else if (filters?.regionalOffice && filters.regionalOffice !== 'All Regional Offices') {
         q = q.eq('organisation', filters.regionalOffice);
+      }
+
+      // Apply date filters
+      if (filters?.startDate) {
+        q = q.gte('auction_start_date', filters.startDate);
+      }
+      if (filters?.endDate) {
+        q = q.lte('auction_start_date', filters.endDate + 'T23:59:59.999Z');
       }
 
       // Text search
@@ -3291,6 +3311,8 @@ export const GemBidSearchService = {
       categories?: string[];
       department?: string;
       departments?: string[];
+      startDate?: string;
+      endDate?: string;
       page?: number;
       limit?: number;
       sortBy?: string;
@@ -3317,6 +3339,14 @@ export const GemBidSearchService = {
         q = q.in('department_name', filters.departments);
       } else if (filters?.department && filters.department !== 'All Departments') {
         q = q.eq('department_name', filters.department);
+      }
+
+      // Apply date filters
+      if (filters?.startDate) {
+        q = q.gte('start_date', filters.startDate);
+      }
+      if (filters?.endDate) {
+        q = q.lte('start_date', filters.endDate + 'T23:59:59.999Z');
       }
 
       // Full text search

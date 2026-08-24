@@ -786,6 +786,8 @@ export function Auctions() {
         locations: selectedMstcLocations.length > 0 ? selectedMstcLocations : undefined,
         regionalOffice: selectedMstcRegionalOffices[0] || undefined,
         regionalOffices: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined,
+        startDate,
+        endDate,
         page,
         limit,
         sortBy
@@ -803,6 +805,8 @@ export function Auctions() {
     selectedMstcCategoriesJoined,
     selectedMstcLocationsJoined,
     selectedMstcRegionalOfficesJoined,
+    startDate,
+    endDate,
     page,
     limit,
     sortBy
@@ -828,6 +832,8 @@ export function Auctions() {
         locations: selectedMstcLocations.length > 0 ? selectedMstcLocations : undefined,
         regionalOffice: selectedMstcRegionalOffices[0] || undefined,
         regionalOffices: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined,
+        startDate,
+        endDate,
         page,
         limit,
         sortBy
@@ -845,6 +851,8 @@ export function Auctions() {
     selectedMstcCategoriesJoined,
     selectedMstcLocationsJoined,
     selectedMstcRegionalOfficesJoined,
+    startDate,
+    endDate,
     page,
     limit,
     sortBy
@@ -868,6 +876,8 @@ export function Auctions() {
         categories: selectedMstcCategories.length > 0 ? selectedMstcCategories : undefined,
         department: selectedMstcRegionalOffices[0] || undefined,
         departments: selectedMstcRegionalOffices.length > 0 ? selectedMstcRegionalOffices : undefined,
+        startDate,
+        endDate,
         page,
         limit,
         sortBy
@@ -884,6 +894,8 @@ export function Auctions() {
     searchParams,
     selectedMstcCategoriesJoined,
     selectedMstcRegionalOfficesJoined,
+    startDate,
+    endDate,
     page,
     limit,
     sortBy
