@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
-import type { BaanknetAuction } from '../../services/publicService';
+import { type BaanknetAuction, getBaanknetDirectUrl } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
 import { ImageViewerModal } from '../common/ImageViewerModal';
 import { getAuctionDossierDataUrl } from '../../utils/auctionDossierGenerator';
@@ -474,7 +474,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
 
           <div className="flex items-center gap-2">
             <a
-              href={item.source_url || 'https://baanknet.com/eauction-psb/home'}
+              href={getBaanknetDirectUrl(item)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-indigo-50 text-indigo-700 hover:text-indigo-800 border border-indigo-200 hover:border-indigo-300 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer"

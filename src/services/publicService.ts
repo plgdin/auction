@@ -2811,6 +2811,26 @@ export interface BaanknetAuction {
   extracted_pdf_text?: string;
 }
 
+/**
+ * Returns the exact, direct URL to this specific auction on the official BaankNet portal.
+ */
+export function getBaanknetDirectUrl(item: BaanknetAuction): string {
+  if (item.source_url && (item.source_url.includes('/view-detail/') || item.source_url.includes('/asset-detail/') || item.source_url.includes('/property-detail/'))) {
+    return item.source_url;
+  }
+  const rawId = item.baanknet_auction_id?.replace(/[^\d]/g, '') || item.bank_property_id?.replace(/[^\d]/g, '');
+  if (rawId) {
+    const isIbbi = (item.property_type && item.property_type.toLowerCase().includes('ibc')) ||
+                   (item.action_type && item.action_type.toLowerCase().includes('ibc')) ||
+                   (item.source_url && item.source_url.includes('ibbi'));
+    if (isIbbi) {
+      return `https://ibbi.baanknet.com/asset-detail/${rawId}`;
+    }
+    return `https://baanknet.com/eauction-psb/view-detail/${rawId}`;
+  }
+  return item.source_url || 'https://baanknet.com/eauction-psb/home';
+}
+
 export const BaanknetSearchService = {
   /**
    * High-speed catalog search for BaankNet bank properties

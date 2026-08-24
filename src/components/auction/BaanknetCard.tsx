@@ -1,7 +1,7 @@
 import { useState, useMemo, memo } from 'react';
 import { Eye, MapPin, Building2, Calendar, Clock, Landmark, Copy, Check, Shield, Ruler, Info, Download, ExternalLink } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
-import type { BaanknetAuction } from '../../services/publicService';
+import { type BaanknetAuction, getBaanknetDirectUrl } from '../../services/publicService';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice, formatPriceString } from '../../utils/currency';
@@ -246,7 +246,7 @@ export const BaanknetCard = memo(function BaanknetCard({
             </button>
           </div>
           <a
-            href={item.source_url || `https://baanknet.com/eauction-psb/home`}
+            href={getBaanknetDirectUrl(item)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
