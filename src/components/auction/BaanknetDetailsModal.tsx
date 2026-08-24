@@ -521,10 +521,10 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row min-h-0">
+          <div className="flex-grow flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden min-h-0">
             
             {/* Left Panel: Auction Information */}
-            <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-5 min-w-0">
+            <div className="flex-grow shrink-0 lg:shrink overflow-visible lg:overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 min-w-0">
               
               {/* Category & Title Header */}
               <div>
@@ -987,30 +987,21 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
             </div>
 
             {/* Right Panel: Catalog Document Preview (Matching MSTC Layout) */}
-            <div className="w-full lg:w-[420px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 p-4 sm:p-5 space-y-4 bg-white flex flex-col">
-              <div className="space-y-3 flex-1 flex flex-col min-h-0">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center justify-between">
+            <div className="w-full lg:w-[420px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50/50 p-5 overflow-visible lg:overflow-y-auto flex flex-col space-y-5">
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
                   <span>Catalog Document Preview</span>
                   <span className="text-[9.5px] bg-slate-100 text-slate-700 border border-slate-300 font-bold px-2 py-0.5 rounded">
                     1 Pages
                   </span>
                 </h4>
 
-                <div className="relative flex-1 min-h-[500px] rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1 flex flex-col">
+                <div className="relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs bg-white group p-1">
                   <iframe
                     src={primaryDoc?.url || getAuctionDossierDataUrl(item)}
                     title="Catalog Document Preview"
-                    className="w-full flex-1 min-h-[480px] border-0 rounded-lg bg-white"
+                    className="w-full h-[540px] border-0 rounded-lg bg-white"
                     sandbox="allow-same-origin allow-scripts allow-popups"
-                  />
-                  <div
-                    onClick={() => {
-                      if (primaryDoc) {
-                        openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName);
-                      }
-                    }}
-                    className="absolute inset-0 bg-transparent hover:bg-slate-900/5 transition-colors cursor-zoom-in"
-                    title="Click to preview document in fullscreen"
                   />
                 </div>
               </div>
