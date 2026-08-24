@@ -86,6 +86,9 @@ interface CliArgs {
   headful: boolean;
   maxPages: number;
   startPage: number;
+  maxScrolls: number;
+  concurrency: number;
+  batchSize: number;
   scrapeDetails: boolean;
   rescrape: boolean;
   refreshDocuments: boolean;
@@ -98,6 +101,9 @@ function parseCliArgs(): CliArgs {
   let modules = [...BAANKNET_MODULES];
   let maxPages = BAANKNET_MAX_PAGES;
   let startPage = 1;
+  let maxScrolls = BAANKNET_MAX_SCROLL_CYCLES;
+  let concurrency = BAANKNET_DETAIL_CONCURRENCY;
+  let batchSize = 50;
   let scrapeDetails = BAANKNET_SCRAPE_DETAILS;
   let rescrape = false;
   let refreshDocuments = false;
@@ -119,9 +125,30 @@ function parseCliArgs(): CliArgs {
     if (arg.startsWith("--start-page=")) {
       startPage = parseInt(arg.replace("--start-page=", ""), 10);
     }
+    if (arg.startsWith("--max-scrolls=") || arg.startsWith("--max-scroll=")) {
+      maxScrolls = parseInt(arg.replace(/^--max-scrolls?=/, ""), 10);
+    }
+    if (arg.startsWith("--concurrency=")) {
+      concurrency = parseInt(arg.replace("--concurrency=", ""), 10);
+    }
+    if (arg.startsWith("--batch-size=")) {
+      batchSize = parseInt(arg.replace("--batch-size=", ""), 10);
+    }
   }
 
-  return { modules, statusFilters, headful, maxPages, startPage, scrapeDetails, rescrape, refreshDocuments };
+  return {
+    modules,
+    statusFilters,
+    headful,
+    maxPages,
+    startPage,
+    maxScrolls,
+    concurrency,
+    batchSize,
+    scrapeDetails,
+    rescrape,
+    refreshDocuments,
+  };
 }
 
 // ─── Utility Functions ───────────────────────────────────────────────────────
@@ -133,28 +160,61 @@ function randomDelay(baseMs: number): Promise<void> {
 }
 
 /**
+ * Helper to recursively search JSON response payloads for document and PDF URLs.
+ */
+function extractDocUrlsFromJson(obj: any, collected: string[]): void {
+  if (!obj) return;
+  if (typeof obj === "string") {
+    const lower = obj.toLowerCase();
+    if (
+      (lower.includes(".pdf") || lower.includes("cloudfront.net") || lower.includes("/uploads/") || lower.includes("/document") || lower.includes("/notice") || lower.includes("/client-document") || lower.includes("/asset/")) &&
+      (obj.startsWith("http://") || obj.startsWith("https://") || obj.startsWith("/")) &&
+      !lower.endsWith(".svg") && !lower.endsWith(".css") && !lower.endsWith(".js") && !lower.endsWith(".ico")
+    ) {
+      const fullUrl = obj.startsWith("http") ? obj : `https://baanknet.com${obj.startsWith("/") ? "" : "/"}${obj}`;
+      if (!collected.includes(fullUrl)) collected.push(fullUrl);
+    }
+    return;
+  }
+  if (Array.isArray(obj)) {
+    for (const item of obj) extractDocUrlsFromJson(item, collected);
+    return;
+  }
+  if (typeof obj === "object") {
+    for (const key of Object.keys(obj)) {
+      extractDocUrlsFromJson(obj[key], collected);
+    }
+  }
+}
+
+/**
  * Unfolds interactive tabs, accordions, and paginated document sections
  * so all lazily-rendered documents and photos are present in the DOM before parsing.
  */
 async function expandDetailPageInteractiveContent(page: any): Promise<void> {
   try {
-    // Phase 1: Click all 4 named detail tabs sequentially with delays.
+    // Phase 1: Click all named detail tabs sequentially with delays.
     // BaankNet uses Angular mat-tabs that lazy-render content only on click:
-    // Tabs: General Detail, Property Detail, Inspection Detail, Business Rule
     await page.evaluate(async () => {
-      const tabElements = Array.from(document.querySelectorAll("button, div, span, a, [role='tab'], .nav-link"));
+      const targetKeywords = [
+        "general detail", "property detail", "inspection detail", "business rule",
+        "document", "documents", "attachment", "attachments", "notice", "notices",
+        "auction notice", "tender document", "tender documents", "event document",
+        "client document", "client documents", "file detail", "file details", "downloads", "download"
+      ];
+      const tabElements = Array.from(document.querySelectorAll("button, div, span, a, [role='tab'], .nav-link, mat-tab-header .mdc-tab"));
       for (const el of tabElements) {
-        const text = el.textContent?.trim() || "";
-        if (["General Detail", "Property Detail", "Inspection Detail", "Business Rule"].includes(text)) {
+        const text = el.textContent?.toLowerCase().trim() || "";
+        if (targetKeywords.some((kw) => text.includes(kw))) {
           try {
             (el as HTMLElement).click();
-            await new Promise((res) => setTimeout(res, 800));
+            await new Promise((res) => setTimeout(res, 600));
           } catch {}
         }
       }
     });
 
-    await randomDelay(1000);
+    await randomDelay(800);
 
     // Phase 2: Open all accordions and <details> elements
     await page.evaluate(() => {
@@ -177,7 +237,7 @@ async function expandDetailPageInteractiveContent(page: any): Promise<void> {
       });
     });
 
-    await randomDelay(800);
+    await randomDelay(600);
 
     // Phase 3: Exhaust "Load More" / "View All" / "Show More" buttons
     for (let cycle = 0; cycle < 5; cycle++) {
@@ -200,13 +260,12 @@ async function expandDetailPageInteractiveContent(page: any): Promise<void> {
       });
 
       if (!clicked) break;
-      await randomDelay(600);
+      await randomDelay(500);
     }
   } catch (err: any) {
     // Non-critical: continue with existing DOM
   }
 }
-
 
 /**
  * Process a batch of items concurrently for detail page scraping.
@@ -247,6 +306,21 @@ async function scrapeDetailPages(
           (window as any).__name = (window as any).__name || ((fn: any) => fn);
         });
 
+        // Intercept network responses for document API payloads
+        const interceptedDocUrls: string[] = [];
+        detailPage.on("response", async (response: any) => {
+          try {
+            const resUrl = response.url();
+            const contentType = response.headers()["content-type"] || "";
+            if (contentType.includes("application/json") || resUrl.includes("/api/") || resUrl.includes("cloudfront.net")) {
+              const json = await response.json().catch(() => null);
+              if (json) {
+                extractDocUrlsFromJson(json, interceptedDocUrls);
+              }
+            }
+          } catch {}
+        });
+
         await detailPage.goto(absoluteUrl, {
           waitUntil: "domcontentloaded",
           timeout: 30000,
@@ -258,6 +332,19 @@ async function scrapeDetailPages(
 
         const detail: DetailPageData = await detailPage.evaluate(extractEAuctionDetail, KNOWN_LENDERS);
 
+        // Merge intercepted document URLs from API responses
+        if (interceptedDocUrls.length > 0) {
+          if (!detail.documentUrls) detail.documentUrls = [];
+          for (const u of interceptedDocUrls) {
+            if (!detail.documentUrls.includes(u)) {
+              detail.documentUrls.push(u);
+            }
+          }
+          if (!detail.documentUrl && detail.documentUrls.length > 0) {
+            detail.documentUrl = detail.documentUrls[0];
+          }
+        }
+
         // Merge detail data into the item
         mergeDetailData(item, detail);
 
@@ -265,6 +352,7 @@ async function scrapeDetailPages(
           {
             auctionId: item.auctionId,
             photos: detail.photoUrls.length,
+            docs: detail.documentUrls?.length || (detail.documentUrl ? 1 : 0),
             hasBorrower: !!detail.borrowerName,
           },
           "Detail page scraped"
@@ -553,6 +641,7 @@ async function scrapeEAuctionPages(
   maxPages: number,
   scrapeDetails: boolean,
   rescrape: boolean = false,
+  concurrency: number = BAANKNET_DETAIL_CONCURRENCY,
 ): Promise<RawBaankNetItem[]> {
   log.info({ statusFilter, startPage, maxPages, rescrape }, "Scraping eAuction PSB pages");
 
@@ -652,7 +741,7 @@ async function scrapeEAuctionPages(
           (item) => item.detailUrl && (rescrape || !item.borrowerName || !item.documentUrl || !item.photoUrls || item.photoUrls.length === 0)
         );
         if (toScrape.length > 0) {
-          await scrapeDetailPages(browser, toScrape, BAANKNET_BASE_URL, BAANKNET_DETAIL_CONCURRENCY, rescrape);
+          await scrapeDetailPages(browser, toScrape, BAANKNET_BASE_URL, concurrency, rescrape);
         }
       }
 
@@ -742,8 +831,11 @@ async function scrapePropertyListings(
   page: any,
   maxScrolls: number,
   scrapeDetails: boolean,
+  rescrape: boolean = false,
+  concurrency: number = BAANKNET_DETAIL_CONCURRENCY,
+  batchSize: number = 50,
 ): Promise<RawBaankNetItem[]> {
-  log.info({ maxScrolls }, "Scraping Property Listings with infinite scroll");
+  log.info({ maxScrolls, concurrency, batchSize, rescrape }, "Scraping Property Listings with streaming infinite scroll");
 
   const targetUrl = `${BAANKNET_BASE_URL}${BAANKNET_PROPERTY_LISTING_PATH}`;
   log.info({ url: targetUrl }, "Navigating to Property Listing page...");
@@ -770,9 +862,58 @@ async function scrapePropertyListings(
   }
 
   const allItems: RawBaankNetItem[] = [];
+  const pendingBatch: RawBaankNetItem[] = [];
   const seenPropertyIds = new Set<string>();
   let lastHeight = 0;
   let noNewContentCount = 0;
+
+  async function flushPropertyBatch(batch: RawBaankNetItem[]): Promise<void> {
+    if (batch.length === 0) return;
+
+    log.info({ batchCount: batch.length, totalSoFar: allItems.length }, "Flushing property batch to database...");
+
+    const itemIds = batch.map((item) => item.auctionId).filter(Boolean);
+    const existingMap = new Map<string, { document_url: string | null; borrower_name: string | null }>();
+    if (itemIds.length > 0) {
+      const { data: existingRows } = await supabase
+        .from("baanknet_auctions")
+        .select("baanknet_auction_id, document_url, borrower_name")
+        .in("baanknet_auction_id", itemIds);
+      if (existingRows) {
+        for (const row of existingRows) {
+          existingMap.set(row.baanknet_auction_id, {
+            document_url: row.document_url,
+            borrower_name: row.borrower_name,
+          });
+        }
+      }
+    }
+
+    for (const item of batch) {
+      const existing = existingMap.get(item.auctionId);
+      if (existing) {
+        item.documentUrl = existing.document_url || undefined;
+        if (existing.borrower_name) item.borrowerName = existing.borrower_name;
+      }
+    }
+
+    // Incremental Detail Scraping for this batch
+    if (scrapeDetails) {
+      const toEnrich = batch.filter(
+        (item) => item.detailUrl && (rescrape || !item.borrowerName || !item.documentUrl || !item.photoUrls || item.photoUrls.length === 0)
+      );
+      if (toEnrich.length > 0) {
+        await scrapeDetailPages(browser, toEnrich, BAANKNET_BASE_URL, concurrency, rescrape);
+      }
+    }
+
+    const parsed = parseListings(batch, "upcoming");
+    await upsertListings(parsed);
+    log.info(
+      { batchSaved: parsed.length, totalSoFar: allItems.length },
+      "Property batch enriched and saved to database"
+    );
+  }
 
   for (let scroll = 1; scroll <= maxScrolls; scroll++) {
     // Extract current visible cards
@@ -784,7 +925,7 @@ async function scrapePropertyListings(
       if (!uniqueId || seenPropertyIds.has(uniqueId)) continue;
       seenPropertyIds.add(uniqueId);
 
-      allItems.push({
+      const newItem: RawBaankNetItem = {
         auctionId: card.auctionId,
         bankPropertyId: card.bankPropertyId,
         title: card.title,
@@ -806,7 +947,10 @@ async function scrapePropertyListings(
         thumbnailUrl: card.thumbnailUrl,
         photoUrls: card.photoUrls,
         auctionModule: "property",
-      });
+      };
+
+      allItems.push(newItem);
+      pendingBatch.push(newItem);
       newCount++;
     }
 
@@ -814,14 +958,21 @@ async function scrapePropertyListings(
       scroll,
       cardsOnPage: rawCards.length,
       newItems: newCount,
+      pendingInBatch: pendingBatch.length,
       total: allItems.length,
     }, "Scroll cycle complete");
+
+    // Flush batch if threshold reached
+    if (pendingBatch.length >= batchSize) {
+      await flushPropertyBatch(pendingBatch);
+      pendingBatch.length = 0;
+    }
 
     // Check for end of content
     if (newCount === 0) {
       noNewContentCount++;
-      if (noNewContentCount >= 3) {
-        log.info("No new content after 3 scroll cycles. Stopping.");
+      if (noNewContentCount >= 4) {
+        log.info("No new content after 4 scroll cycles. Stopping infinite scroll.");
         break;
       }
     } else {
@@ -834,7 +985,7 @@ async function scrapePropertyListings(
       return document.body.scrollHeight;
     });
 
-    if (currentHeight === lastHeight && newCount === 0) {
+    if (currentHeight === lastHeight && newCount === 0 && noNewContentCount >= 2) {
       log.info("Page height unchanged and no new items. Reached bottom.");
       break;
     }
@@ -844,17 +995,10 @@ async function scrapePropertyListings(
     await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
   }
 
-  // Scrape detail pages for enrichment
-  if (scrapeDetails) {
-    const toEnrich = allItems.filter((item) => item.detailUrl);
-    if (toEnrich.length > 0) {
-      await scrapeDetailPages(browser, toEnrich, BAANKNET_BASE_URL, BAANKNET_DETAIL_CONCURRENCY);
-    }
-  }
-
-  if (allItems.length > 0) {
-    const parsed = parseListings(allItems, "upcoming");
-    await upsertListings(parsed);
+  // Final flush for remaining pending items
+  if (pendingBatch.length > 0) {
+    await flushPropertyBatch(pendingBatch);
+    pendingBatch.length = 0;
   }
 
   return allItems;
@@ -867,8 +1011,11 @@ async function scrapeVehicleListings(
   page: any,
   maxScrollCycles: number,
   scrapeDetails: boolean,
+  rescrape: boolean = false,
+  concurrency: number = BAANKNET_DETAIL_CONCURRENCY,
+  batchSize: number = 50,
 ): Promise<RawBaankNetItem[]> {
-  log.info({ maxScrollCycles }, "Scraping Vehicle Listings (/vehicle-listing)");
+  log.info({ maxScrollCycles, concurrency, batchSize, rescrape }, "Scraping Vehicle Listings (/vehicle-listing)");
 
   const targetUrl = `${BAANKNET_BASE_URL}${BAANKNET_VEHICLE_LISTING_PATH}`;
   log.info({ url: targetUrl }, "Navigating to Vehicle Listings...");
@@ -900,9 +1047,57 @@ async function scrapeVehicleListings(
   }
 
   const allItems: RawBaankNetItem[] = [];
+  const pendingBatch: RawBaankNetItem[] = [];
   const seenIds = new Set<string>();
   let lastHeight = 0;
   let noNewContentCount = 0;
+
+  async function flushVehicleBatch(batch: RawBaankNetItem[]): Promise<void> {
+    if (batch.length === 0) return;
+
+    log.info({ batchCount: batch.length, totalSoFar: allItems.length }, "Flushing vehicle batch to database...");
+
+    const itemIds = batch.map((item) => item.auctionId).filter(Boolean);
+    const existingMap = new Map<string, { document_url: string | null; borrower_name: string | null }>();
+    if (itemIds.length > 0) {
+      const { data: existingRows } = await supabase
+        .from("baanknet_auctions")
+        .select("baanknet_auction_id, document_url, borrower_name")
+        .in("baanknet_auction_id", itemIds);
+      if (existingRows) {
+        for (const row of existingRows) {
+          existingMap.set(row.baanknet_auction_id, {
+            document_url: row.document_url,
+            borrower_name: row.borrower_name,
+          });
+        }
+      }
+    }
+
+    for (const item of batch) {
+      const existing = existingMap.get(item.auctionId);
+      if (existing) {
+        item.documentUrl = existing.document_url || undefined;
+        if (existing.borrower_name) item.borrowerName = existing.borrower_name;
+      }
+    }
+
+    if (scrapeDetails) {
+      const toEnrich = batch.filter(
+        (item) => item.detailUrl && (rescrape || !item.borrowerName || !item.documentUrl || !item.photoUrls || item.photoUrls.length === 0)
+      );
+      if (toEnrich.length > 0) {
+        await scrapeDetailPages(browser, toEnrich, BAANKNET_BASE_URL, concurrency, rescrape);
+      }
+    }
+
+    const parsed = parseListings(batch, "upcoming");
+    await upsertListings(parsed);
+    log.info(
+      { batchSaved: parsed.length, totalSoFar: allItems.length },
+      "Vehicle batch enriched and saved to database"
+    );
+  }
 
   for (let scroll = 1; scroll <= maxScrollCycles; scroll++) {
     const rawCards = await page.evaluate(extractVehicleListingCards, KNOWN_LENDERS);
@@ -912,7 +1107,7 @@ async function scrapeVehicleListings(
       if (seenIds.has(card.auctionId)) continue;
       seenIds.add(card.auctionId);
 
-      allItems.push({
+      const newItem: RawBaankNetItem = {
         auctionId: card.auctionId,
         bankPropertyId: card.bankPropertyId || card.auctionId,
         title: card.title,
@@ -931,7 +1126,10 @@ async function scrapeVehicleListings(
         thumbnailUrl: card.thumbnailUrl,
         photoUrls: card.photoUrls,
         auctionModule: "vehicle",
-      });
+      };
+
+      allItems.push(newItem);
+      pendingBatch.push(newItem);
       newCount++;
     }
 
@@ -940,15 +1138,21 @@ async function scrapeVehicleListings(
         scroll,
         cardsOnPage: rawCards.length,
         newItems: newCount,
+        pendingInBatch: pendingBatch.length,
         total: allItems.length,
       },
       "Vehicle scroll cycle complete"
     );
 
+    if (pendingBatch.length >= batchSize) {
+      await flushVehicleBatch(pendingBatch);
+      pendingBatch.length = 0;
+    }
+
     if (newCount === 0) {
       noNewContentCount++;
-      if (noNewContentCount >= 3) {
-        log.info("No new vehicle content after 3 scroll cycles. Stopping.");
+      if (noNewContentCount >= 4) {
+        log.info("No new vehicle content after 4 scroll cycles. Stopping.");
         break;
       }
     } else {
@@ -961,7 +1165,7 @@ async function scrapeVehicleListings(
       return document.body.scrollHeight;
     });
 
-    if (currentHeight === lastHeight && newCount === 0) {
+    if (currentHeight === lastHeight && newCount === 0 && noNewContentCount >= 2) {
       log.info("Vehicle page height unchanged. Reached bottom.");
       break;
     }
@@ -970,17 +1174,10 @@ async function scrapeVehicleListings(
     await randomDelay(BAANKNET_SCRAPE_DELAY_MS);
   }
 
-  // Scrape detail pages for enrichment if requested
-  if (scrapeDetails) {
-    const toEnrich = allItems.filter((item) => item.detailUrl);
-    if (toEnrich.length > 0) {
-      await scrapeDetailPages(browser, toEnrich, BAANKNET_BASE_URL, BAANKNET_DETAIL_CONCURRENCY);
-    }
-  }
-
-  if (allItems.length > 0) {
-    const parsed = parseListings(allItems, "upcoming");
-    await upsertListings(parsed);
+  // Final flush for remaining pending items
+  if (pendingBatch.length > 0) {
+    await flushVehicleBatch(pendingBatch);
+    pendingBatch.length = 0;
   }
 
   return allItems;
@@ -993,6 +1190,8 @@ async function scrapeIBCAuctions(
   startPage: number,
   maxPages: number,
   scrapeDetails: boolean,
+  rescrape: boolean = false,
+  concurrency: number = BAANKNET_DETAIL_CONCURRENCY,
 ): Promise<RawBaankNetItem[]> {
   log.info({ startPage, maxPages }, "Scraping IBC eAuction (ibbi.baanknet.com)");
 
@@ -1083,9 +1282,9 @@ async function scrapeIBCAuctions(
 
       if (pageNewItems.length > 0) {
         if (scrapeDetails) {
-          const toEnrich = pageNewItems.filter(item => item.detailUrl);
+          const toEnrich = pageNewItems.filter(item => item.detailUrl && (rescrape || !item.borrowerName || !item.documentUrl || !item.photoUrls || item.photoUrls.length === 0));
           if (toEnrich.length > 0) {
-            await scrapeDetailPages(browser, toEnrich, BAANKNET_IBC_BASE_URL, BAANKNET_DETAIL_CONCURRENCY);
+            await scrapeDetailPages(browser, toEnrich, BAANKNET_IBC_BASE_URL, concurrency, rescrape);
           }
         }
         const parsed = parseListings(pageNewItems, "upcoming");
@@ -1778,7 +1977,19 @@ export async function refreshAllBaanknetDocuments(
 // ─── Main Scraper Entry Point ────────────────────────────────────────────────
 
 async function executeBaankNetScraper(): Promise<void> {
-  const { modules, statusFilters, headful, maxPages, startPage, scrapeDetails, rescrape, refreshDocuments } = parseCliArgs();
+  const {
+    modules,
+    statusFilters,
+    headful,
+    maxPages,
+    startPage,
+    maxScrolls,
+    concurrency,
+    batchSize,
+    scrapeDetails,
+    rescrape,
+    refreshDocuments,
+  } = parseCliArgs();
 
   if (refreshDocuments) {
     log.info("Mode: Full Document Refresh (--refresh-documents)");
@@ -1787,7 +1998,7 @@ async function executeBaankNetScraper(): Promise<void> {
   }
 
   log.info(
-    { modules, statusFilters, headful, maxPages, startPage, scrapeDetails, rescrape },
+    { modules, statusFilters, headful, maxPages, startPage, maxScrolls, concurrency, batchSize, scrapeDetails, rescrape },
     "Starting BaankNet multi-module scraper"
   );
 
@@ -1838,7 +2049,7 @@ async function executeBaankNetScraper(): Promise<void> {
           await randomDelay(3000);
 
           const rawItems = await scrapeEAuctionPages(
-            browser, page, statusFilter, startPage, maxPages, scrapeDetails, rescrape
+            browser, page, statusFilter, startPage, maxPages, scrapeDetails, rescrape, concurrency
           );
 
           totalScraped += rawItems.length;
@@ -1863,7 +2074,7 @@ async function executeBaankNetScraper(): Promise<void> {
 
       try {
         const rawItems = await scrapePropertyListings(
-          browser, page, BAANKNET_MAX_SCROLL_CYCLES, scrapeDetails
+          browser, page, maxScrolls, scrapeDetails, rescrape, concurrency, batchSize
         );
 
         totalScraped += rawItems.length;
@@ -1882,7 +2093,7 @@ async function executeBaankNetScraper(): Promise<void> {
 
       try {
         const rawItems = await scrapeVehicleListings(
-          browser, page, BAANKNET_MAX_SCROLL_CYCLES, scrapeDetails
+          browser, page, maxScrolls, scrapeDetails, rescrape, concurrency, batchSize
         );
 
         totalScraped += rawItems.length;
@@ -1899,7 +2110,7 @@ async function executeBaankNetScraper(): Promise<void> {
       log.info("═══ Starting Module: IBC eAuction ═══");
 
       try {
-        const rawItems = await scrapeIBCAuctions(browser, startPage, maxPages, scrapeDetails);
+        const rawItems = await scrapeIBCAuctions(browser, startPage, maxPages, scrapeDetails, rescrape, concurrency);
 
         totalScraped += rawItems.length;
         log.info({ count: rawItems.length }, "IBC eAuction module complete");
