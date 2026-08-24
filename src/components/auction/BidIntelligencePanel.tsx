@@ -128,17 +128,6 @@ export const BidIntelligencePanel: React.FC<BidIntelligencePanelProps> = ({
     contingencyCost,
   ]);
 
-  const stars = Array.from({ length: 5 }, (_, i) => i < calculation.starCount ? '★' : '☆').join('');
-
-  const isBuy = calculation.status === 'Buy' || calculation.status === 'Strong Buy';
-  const isAvoid = calculation.status === 'Avoid';
-  const bgGradient = isBuy
-    ? 'from-emerald-600 via-emerald-500 to-teal-500'
-    : isAvoid
-    ? 'from-red-800 via-red-700 to-rose-900'
-    : 'from-amber-500 via-amber-400 to-yellow-400';
-  const displayStatus = isBuy ? calculation.status.toUpperCase() : isAvoid ? 'AVOID' : 'WATCH';
-
   return (
     <div className="space-y-6 text-left animate-in fade-in duration-200">
       {itemTitle && (
@@ -381,55 +370,7 @@ export const BidIntelligencePanel: React.FC<BidIntelligencePanelProps> = ({
         </div>
       </div>
 
-      {/* ═══════ SECTION 2: Hero Summary Card — CP / SP / Profit (Matching MSTC Layout) ═══════ */}
-      <div className={clsx('rounded-3xl p-6 bg-gradient-to-r text-white shadow-lg', bgGradient)}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="text-2xl font-black tracking-tight">{displayStatus}</div>
-            <div className="text-lg mt-0.5 tracking-wide" style={{ letterSpacing: '0.15em' }}>{stars}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">
-              Bid Intelligence
-            </div>
-            <div className="text-[9px] opacity-60 mt-0.5 font-medium">
-              {calculation.confidence}% accuracy
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-2">
-          <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3.5 text-center">
-            <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">You'll Spend</div>
-            <div className="text-lg font-black mt-1">
-              {calculation.totalCost > 0 ? formatPrice(calculation.totalCost, currency) : '—'}
-            </div>
-            <div className="text-[9px] opacity-70 mt-0.5">Bid + tax + all costs</div>
-          </div>
-
-          <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3.5 text-center">
-            <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">You Can Sell For</div>
-            <div className="text-lg font-black mt-1">
-              {calculation.totalLotValue > 0 ? formatPrice(calculation.totalLotValue, currency) : '—'}
-            </div>
-            <div className="text-[9px] opacity-70 mt-0.5">Market price</div>
-          </div>
-
-          <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3.5 text-center">
-            <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">Your Profit</div>
-            <div className="text-lg font-black mt-1">
-              {calculation.totalLotValue > 0
-                ? `${calculation.estimatedProfit >= 0 ? '+' : ''}${formatPrice(calculation.estimatedProfit, currency)}`
-                : '—'}
-            </div>
-            <div className="text-[9px] opacity-70 mt-0.5">
-              {calculation.totalLotValue > 0 && calculation.totalCost > 0 ? `${calculation.roiPercent}% return` : 'Sell − Spend'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ═══════ SECTION 3: Financial Summary — 4-Card Layout (Matching MSTC) ═══════ */}
+      {/* ═══════ SECTION 2: Financial Summary — 4-Card Layout ═══════ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Selling Price */}
         <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs space-y-1">
