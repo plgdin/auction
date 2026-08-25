@@ -206,18 +206,15 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
       return null;
     }
 
-    // Ignore known image and static asset extensions
+    // Ignore web design assets
     const lower = trimmed.toLowerCase();
     if (
-      lower.endsWith(".png") ||
-      lower.endsWith(".jpg") ||
-      lower.endsWith(".jpeg") ||
-      lower.endsWith(".webp") ||
       lower.endsWith(".svg") ||
-      lower.endsWith(".gif") ||
       lower.endsWith(".ico") ||
       lower.endsWith(".css") ||
-      lower.endsWith(".js")
+      lower.endsWith(".js") ||
+      lower.endsWith(".map") ||
+      lower.endsWith(".json")
     ) {
       return null;
     }
@@ -285,7 +282,8 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
     'a[href*="sale-notice"], a[href*="possession"], a[href*="process-memo"], a[href*="form-g"], ' +
     'a[href*="getfile"], a[href*="view-document"], a[href*="download-attachment"], a[href*="client-document"], ' +
     'button[data-url], button[data-file], button[data-href], button[data-download], button[data-pdf], ' +
-    'button[onclick*="download"], a[onclick*="download"], a[onclick*="window.open"], [data-document-url]'
+    'button[onclick*="download"], a[onclick*="download"], a[onclick*="window.open"], [data-document-url], ' +
+    '[ng-reflect-href], [ng-reflect-url], [ng-reflect-download]'
   );
   directDocElements.forEach((el) => {
     const rawHrefAttr = el.getAttribute("href") || "";
@@ -299,6 +297,9 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
                el.getAttribute("data-download") || 
                el.getAttribute("data-pdf") || 
                el.getAttribute("data-document-url") || 
+               el.getAttribute("ng-reflect-href") || 
+               el.getAttribute("ng-reflect-url") || 
+               el.getAttribute("ng-reflect-download") || 
                "";
     if (!href) {
       const onclick = el.getAttribute("onclick") || "";
@@ -323,7 +324,7 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
       /document|attachment|annexure|notice|form|tender/i.test(container.className || "")
     ) {
       // Extract any <a> with href inside this container
-      const links = container.querySelectorAll("a[href], button[data-url], button[data-file], button[data-href], button[onclick]");
+      const links = container.querySelectorAll("a[href], button[data-url], button[data-file], button[data-href], button[onclick], button, [ng-reflect-href], [ng-reflect-url]");
       links.forEach((linkEl) => {
         const rawHrefAttr = linkEl.getAttribute("href") || "";
         if (rawHrefAttr.startsWith("#") || rawHrefAttr.startsWith("javascript:")) return;
@@ -332,7 +333,10 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
                    (linkEl as HTMLAnchorElement).href || 
                    linkEl.getAttribute("data-url") || 
                    linkEl.getAttribute("data-file") || 
-                   linkEl.getAttribute("data-href") || "";
+                   linkEl.getAttribute("data-href") || 
+                   linkEl.getAttribute("ng-reflect-href") || 
+                   linkEl.getAttribute("ng-reflect-url") || 
+                   "";
         if (!href) {
           const onclick = linkEl.getAttribute("onclick") || "";
           const match = onclick.match(/['"](https?:\/\/[^'"]+|\/[^'"]+)['"]/);
@@ -348,11 +352,44 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
   tableCells.forEach((cell) => {
     const text = cell.textContent?.trim() || "";
     if (/download|view\s*notice|view\s*doc|view\s*pdf|notice\s*pdf/i.test(text)) {
-      const link = cell.querySelector("a[href], button");
+      const link = cell.querySelector("a[href], button, [data-url], [ng-reflect-href]");
       if (link) {
-        const href = (link as HTMLAnchorElement).href || link.getAttribute("href") || link.getAttribute("data-url") || "";
+        const href = (link as HTMLAnchorElement).href || link.getAttribute("href") || link.getAttribute("data-url") || link.getAttribute("ng-reflect-href") || "";
         if (href) addDocCandidate(href);
       }
+    }
+  });
+
+  // 4. Document Cards (Angular document cards with PDF icon, "Download" button, file size, e.g. "E Auction 11.09.2026...")
+  const docCards = document.querySelectorAll(
+    "app-document-card, app-property-document, .document-card, [class*='document-card'], " +
+    "[class*='doc-card'], [class*='file-card'], [class*='attachment-card'], mat-card, .card, div[class*='rounded']"
+  );
+  docCards.forEach((card) => {
+    const cardText = (card as HTMLElement).innerText || "";
+    if (
+      /download|auction|notice|tender|\.pdf|mb|kb|annexure/i.test(cardText)
+    ) {
+      const clickables = card.querySelectorAll("a, button, img[src*='notice'], img[src*='document'], [data-url], [data-file], [data-href], [data-download], [ng-reflect-href], [ng-reflect-url]");
+      clickables.forEach((el) => {
+        const rawHref = el.getAttribute("href") ||
+                        (el as HTMLAnchorElement).href ||
+                        el.getAttribute("data-url") ||
+                        el.getAttribute("data-file") ||
+                        el.getAttribute("data-href") ||
+                        el.getAttribute("data-download") ||
+                        el.getAttribute("ng-reflect-href") ||
+                        el.getAttribute("ng-reflect-url") ||
+                        el.getAttribute("src") ||
+                        "";
+        if (rawHref) addDocCandidate(rawHref);
+
+        const onclick = el.getAttribute("onclick") || "";
+        if (onclick) {
+          const match = onclick.match(/['"](https?:\/\/[^'"]+|\/[^'"]+)['"]/);
+          if (match) addDocCandidate(match[1]);
+        }
+      });
     }
   });
 

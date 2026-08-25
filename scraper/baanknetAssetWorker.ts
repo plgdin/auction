@@ -83,6 +83,35 @@ export function buildBaanknetHeaders(targetUrlStr: string): Record<string, strin
 }
 
 /**
+ * Detects document binary format by verifying %PDF or image header magic bytes.
+ */
+export function detectDocumentFormat(buffer: Buffer): { isValid: boolean; contentType: string; ext: string } {
+  if (!buffer || buffer.length < 4) return { isValid: false, contentType: "application/octet-stream", ext: "bin" };
+
+  // PDF (%PDF)
+  if (buffer.subarray(0, 4).toString("utf-8") === "%PDF") {
+    return { isValid: true, contentType: "application/pdf", ext: "pdf" };
+  }
+
+  // PNG (\x89PNG)
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return { isValid: true, contentType: "image/png", ext: "png" };
+  }
+
+  // JPEG/JPG (\xff\xd8\xff)
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return { isValid: true, contentType: "image/jpeg", ext: "jpg" };
+  }
+
+  // WebP (RIFF....WEBP)
+  if (buffer.subarray(0, 4).toString("utf-8") === "RIFF" && buffer.length >= 12 && buffer.subarray(8, 12).toString("utf-8") === "WEBP") {
+    return { isValid: true, contentType: "image/webp", ext: "webp" };
+  }
+
+  return { isValid: false, contentType: "application/octet-stream", ext: "bin" };
+}
+
+/**
  * Validates that buffer starts with the `%PDF` (0x25 0x50 0x44 0x46) magic bytes.
  */
 export function isValidPdfBuffer(buffer: Buffer): boolean {
@@ -117,7 +146,8 @@ export function getBaanknetStoragePath(
 
   // Sanitize filename
   filename = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-  if (!filename.toLowerCase().endsWith(".pdf")) {
+  const hasValidExt = /\.(pdf|jpg|jpeg|png|webp)$/i.test(filename);
+  if (!hasValidExt) {
     filename = `${filename}.pdf`;
   }
 
@@ -280,30 +310,33 @@ export async function mirrorDocumentToStorage(
     throw lastError || new Error("Failed to fetch document buffer from upstream");
   }
 
-  // 3. Verify PDF Structure & Magic Bytes
-  if (!isValidPdfBuffer(fileBuffer)) {
+  // 3. Verify Document Structure & Magic Bytes (PDF or high-res notice scans)
+  const format = detectDocumentFormat(fileBuffer);
+  if (!format.isValid) {
     const preview = fileBuffer.subarray(0, 300).toString("utf-8");
     if (preview.includes("<html") || preview.includes("<!DOCTYPE") || preview.includes("<HTML")) {
-      throw new Error("Upstream server returned HTML error page instead of a valid PDF document");
+      throw new Error("Upstream server returned HTML error page instead of a valid document");
     }
-    throw new Error("Downloaded document failed %PDF magic byte validation");
+    throw new Error("Downloaded document failed format / magic byte validation");
   }
 
-  // 4. Extract text from PDF using pdf-parse
+  // 4. Extract text from PDF using pdf-parse (if PDF)
   let extractedText = "";
-  try {
-    const parsedPdf = await pdfParse(fileBuffer);
-    if (parsedPdf && parsedPdf.text) {
-      extractedText = parsedPdf.text.trim();
-      docLog.debug({ textLength: extractedText.length }, "Extracted text from notice PDF");
+  if (format.contentType === "application/pdf") {
+    try {
+      const parsedPdf = await pdfParse(fileBuffer);
+      if (parsedPdf && parsedPdf.text) {
+        extractedText = parsedPdf.text.trim();
+        docLog.debug({ textLength: extractedText.length }, "Extracted text from notice PDF");
+      }
+    } catch (err: any) {
+      docLog.warn({ error: err.message }, "Non-critical: pdf-parse failed to extract text from PDF");
     }
-  } catch (err: any) {
-    docLog.warn({ error: err.message }, "Non-critical: pdf-parse failed to extract text from PDF");
   }
 
-  // 5. Upload to Supabase Storage
-  const publicUrl = await uploadToStorage(storagePath, fileBuffer, "application/pdf");
-  docLog.info({ publicUrl, storagePath, sizeBytes: fileBuffer.length }, "Document successfully mirrored to storage");
+  // 5. Upload to Supabase Storage with dynamic content-type
+  const publicUrl = await uploadToStorage(storagePath, fileBuffer, format.contentType);
+  docLog.info({ publicUrl, storagePath, sizeBytes: fileBuffer.length, contentType: format.contentType }, "Document successfully mirrored to storage");
 
   return { publicUrl, wasCached: false, text: extractedText || undefined };
 }
@@ -519,12 +552,12 @@ export async function runBaanknetAssetPipeline(
 /**
  * Continuous worker daemon loop for background polling.
  */
-export async function startBaanknetAssetWorker(): Promise<void> {
-  log.info({ pollIntervalMs: POLL_INTERVAL_MS }, "BaankNet Document Asset Worker Service started");
+export async function startBaanknetAssetWorker(batchSize: number = QUEUE_BATCH_SIZE): Promise<void> {
+  log.info({ pollIntervalMs: POLL_INTERVAL_MS, batchSize }, "BaankNet Document Asset Worker Service started");
 
   while (true) {
     try {
-      await runBaanknetAssetPipeline();
+      await runBaanknetAssetPipeline(batchSize);
     } catch (err: any) {
       log.error({ errorMessage: err.message }, "BaankNet worker iteration failed");
     }
@@ -541,8 +574,11 @@ const isMain =
 
 if (isMain) {
   const once = process.argv.includes("--once");
+  const batchArg = process.argv.find((a) => a.startsWith("--batch-size="));
+  const batchSize = batchArg ? parseInt(batchArg.replace("--batch-size=", ""), 10) : QUEUE_BATCH_SIZE;
+
   if (once) {
-    runBaanknetAssetPipeline()
+    runBaanknetAssetPipeline(batchSize)
       .then((summary) => {
         console.log("\n📊 Execution Summary:");
         console.log(`   Inspected: ${summary.totalInspected}`);
@@ -563,6 +599,6 @@ if (isMain) {
         process.exit(1);
       });
   } else {
-    startBaanknetAssetWorker();
+    startBaanknetAssetWorker(batchSize);
   }
 }

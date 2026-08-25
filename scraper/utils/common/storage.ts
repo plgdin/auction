@@ -65,28 +65,56 @@ export async function uploadToStorage(
   storagePath: string,
   buffer: Buffer,
   contentType: string,
+  maxAttempts: number = 3,
 ): Promise<string> {
   assertSupabaseCredentials();
 
-  const { error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(storagePath, buffer, {
-      contentType,
-      upsert: true,
-    });
+  let lastError: any = null;
 
-  if (error) {
-    logger.error(
-      { storagePath, errorMessage: error.message },
-      "Storage upload failed",
-    );
-    throw error;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const { error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(storagePath, buffer, {
+          contentType,
+          upsert: true,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      const { data } = supabase.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(storagePath);
+
+      return data.publicUrl;
+    } catch (err: any) {
+      lastError = err;
+      const isTransient =
+        err.message?.includes("timed out") ||
+        err.message?.includes("connection") ||
+        err.message?.includes("504") ||
+        err.message?.includes("503") ||
+        err.message?.includes("502") ||
+        err.message?.includes("network");
+
+      logger.warn(
+        { storagePath, attempt, maxAttempts, errorMessage: err.message, isTransient },
+        "Storage upload attempt failed"
+      );
+
+      if (attempt < maxAttempts) {
+        const delayMs = 1500 * attempt;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
   }
 
-  const { data } = supabase.storage
-    .from(STORAGE_BUCKET)
-    .getPublicUrl(storagePath);
-
-  return data.publicUrl;
+  logger.error(
+    { storagePath, errorMessage: lastError?.message },
+    "Storage upload failed after all retry attempts"
+  );
+  throw lastError || new Error("Failed to upload file to storage");
 }
 
