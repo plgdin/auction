@@ -1017,7 +1017,6 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                     src={primaryDoc?.url || getAuctionDossierDataUrl(item)}
                     title="Catalog Document Preview"
                     className="w-full h-[540px] border-0 rounded-lg bg-white"
-                    sandbox="allow-same-origin allow-scripts allow-popups"
                   />
                 </div>
               </div>
