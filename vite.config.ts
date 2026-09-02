@@ -444,6 +444,26 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             const normalizedId = id.replace(/\\/g, '/');
             
+            // Jodit Rich Text Editor — admin only, heavy
+            if (normalizedId.includes('jodit') || normalizedId.includes('jodit-react')) {
+              return 'jodit-vendor';
+            }
+            // Ant Design & icons — admin / complex UI components
+            if (normalizedId.includes('antd') || normalizedId.includes('@ant-design')) {
+              return 'antd-vendor';
+            }
+            // Recharts & D3 charting
+            if (normalizedId.includes('recharts') || normalizedId.includes('d3') || normalizedId.includes('victory')) {
+              return 'charts-vendor';
+            }
+            // Three.js & WebGL rendering
+            if (normalizedId.includes('three') || normalizedId.includes('@react-three') || normalizedId.includes('ogl')) {
+              return 'three-vendor';
+            }
+            // Framer motion animations
+            if (normalizedId.includes('framer-motion')) {
+              return 'framer-motion-vendor';
+            }
             // ML/AI models — huge, only used on-demand for semantic search
             if (normalizedId.includes('@xenova') || normalizedId.includes('onnxruntime')) {
               return 'transformers';

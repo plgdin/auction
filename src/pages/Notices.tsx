@@ -2,10 +2,18 @@ import { useEffect, useState } from 'react';
 import { publicService } from '../services/publicService';
 import type { Announcement } from '../types/database.types';
 import { Bell, Calendar, FileText } from 'lucide-react';
+import { usePageSeo } from '../utils/seo';
 
 export function Notices() {
   const [notices, setNotices] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  usePageSeo({
+    title: 'Official Notices & eAuction Regulatory Circulars | Lelam',
+    description: 'Official notices, portal releases, government advisories, and system circulars for Indian eAuction participants.',
+    canonicalPath: '/notices',
+    keywords: 'eAuction notices, MSTC circulars, government auction advisories, Lelam platform announcements',
+  });
 
   useEffect(() => {
     async function loadNotices() {

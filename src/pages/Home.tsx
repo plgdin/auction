@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { HeroSection } from '../components/home/HeroSection';
+import { usePageSeo } from '../utils/seo';
 
 // Below-fold sections: lazy-loaded to reduce Total Blocking Time (TBT)
 const ServiceCategoriesSection = lazy(() => import('../components/home/ServiceCategoriesSection').then(m => ({ default: m.ServiceCategoriesSection })));
@@ -16,6 +17,13 @@ function SectionSkeleton() {
 
 export function Home() {
   const [loadBelowFold, setLoadBelowFold] = useState(false);
+
+  usePageSeo({
+    title: 'Lelam | India\'s Multi-Portal eAuction & Bidding Analytics Platform (MSTC, BaankNet, GeM)',
+    description: 'Lelam (www.lelam.co) is India\'s leading unified eAuction intelligence platform aggregating MSTC scrap metal auctions, BaankNet SARFAESI bank property & vehicle auctions, and GeM portal government tenders. Automatically calculate total landed costs, ROI margins, and track EMD deposits.',
+    canonicalPath: '/',
+    keywords: 'MSTC eAuctions, BaankNet bank auctions, SARFAESI property auction, GeM portal bids, scrap metal bidding, landed cost calculator',
+  });
 
   // Keep below-fold work out of the initial-load window. Load it when the
   // visitor starts scrolling, when the content is actually needed.

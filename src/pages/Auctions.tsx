@@ -24,6 +24,7 @@ import clsx from 'clsx';
 import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from '../utils/mstcHelpers';
 import { recommendationService } from '../services/recommendationService';
 import { useAuctionAccess } from '../hooks/useAuctionAccess';
+import { usePageSeo } from '../utils/seo';
 
 const renderSuggestionText = (text: string, query: string) => {
   if (!query) return <span>{text}</span>;
@@ -144,6 +145,44 @@ export function Auctions() {
 
   const rawTab = searchParams.get('tab');
   const activeTab = rawTab === 'commercial' ? 'commercial' : rawTab === 'baanknet' ? 'baanknet' : rawTab === 'gem' ? 'gem' : rawTab === 'gem-bids' ? 'gem-bids' : 'mstc';
+
+  const portalSeoMap = {
+    mstc: {
+      title: 'MSTC Government eAuctions & Scrap Catalogs | Lelam',
+      desc: 'Browse, search, and analyze verified MSTC government eAuctions, scrap metal tenders, railway & defence PSU disposal catalogs with landed cost calculators.',
+      kw: 'MSTC eAuctions, MSTC scrap metal, government auctions India, railway scrap bidding, defence auction catalogs',
+    },
+    baanknet: {
+      title: 'BaankNet Bank Property & SARFAESI eAuctions | Lelam',
+      desc: 'Search bank-auctioned residential properties, commercial real estate, vehicles, and IBC/NCLT liquidation assets from SBI, PNB, BoB, HDFC, and ICICI.',
+      kw: 'BaankNet bank auctions, SARFAESI property auction, bank seized vehicles, IBC liquidation properties, bank NPA auction',
+    },
+    gem: {
+      title: 'GeM Notice Board & Government eAuctions | Lelam',
+      desc: 'Live Government e-Marketplace (GeM) auction notice board, product auctions, and PSU disposals across India.',
+      kw: 'GeM auctions, GeM notice board, government e-marketplace auction, PSU tender auction',
+    },
+    'gem-bids': {
+      title: 'GeM Procurement Bids & Government Tenders | Lelam',
+      desc: 'Search active GeM custom bids, reverse auctions, and government procurement tenders with itemized specification breakdown.',
+      kw: 'GeM bids, GeM custom tenders, reverse auctions India, government procurement bids',
+    },
+    commercial: {
+      title: 'Commercial & Industrial Surplus Auctions | Lelam',
+      desc: 'Explore verified commercial auctions, factory surplus machinery, vehicles, and industrial scrap across India.',
+      kw: 'commercial auctions, factory surplus auction, industrial machinery auction',
+    }
+  };
+
+  const activeSeo = portalSeoMap[activeTab] || portalSeoMap.mstc;
+  const currentSearchQuery = (searchParams.get('q') || '').trim();
+
+  usePageSeo({
+    title: currentSearchQuery ? `Search "${currentSearchQuery}" in ${activeSeo.title}` : activeSeo.title,
+    description: activeSeo.desc,
+    keywords: activeSeo.kw,
+    canonicalPath: `/auctions?tab=${activeTab}`,
+  }, [activeTab, currentSearchQuery]);
 
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [totalCount, setTotalCount] = useState(0);

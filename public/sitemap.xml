@@ -3,79 +3,79 @@
   <!-- Homepage -->
   <url>
     <loc>https://www.lelam.co/</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.00</priority>
   </url>
   
-  <!-- Auctions Directory -->
+  <!-- Auctions & Bids Directory (MSTC, BaankNet, GeM) -->
   <url>
     <loc>https://www.lelam.co/auctions</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.90</priority>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>always</changefreq>
+    <priority>0.95</priority>
   </url>
   
-    <!-- Pricing -->
+  <!-- Pricing & Subscription Plans -->
   <url>
     <loc>https://www.lelam.co/pricing</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
   </url>
 
-  <!-- Quotes & ROI Builder -->
+  <!-- Landed Cost Calculator & B2B Quote Builder -->
   <url>
     <loc>https://www.lelam.co/quotes</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.80</priority>
+    <priority>0.85</priority>
   </url>
 
-  <!-- Blog -->
-  <url>
-    <loc>https://www.lelam.co/blog</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.80</priority>
-  </url>
-
-  <!-- News & Market Trends -->
+  <!-- Scrap Metal Intelligence & LME Market Trends -->
   <url>
     <loc>https://www.lelam.co/news</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.70</priority>
+    <priority>0.80</priority>
   </url>
 
-  <!-- Official Notices -->
+  <!-- Knowledge Base & Bidding Guides -->
+  <url>
+    <loc>https://www.lelam.co/blog</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Official eAuction Notices & Advisories -->
   <url>
     <loc>https://www.lelam.co/notices</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.70</priority>
+    <priority>0.75</priority>
   </url>
 
-  <!-- FAQ & Help Center -->
+  <!-- FAQ & eAuction Help Center -->
   <url>
     <loc>https://www.lelam.co/faq</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.60</priority>
+    <priority>0.70</priority>
   </url>
 
   <!-- About Us -->
   <url>
     <loc>https://www.lelam.co/about</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.60</priority>
   </url>
   
-  <!-- Contact -->
+  <!-- Contact & Enterprise Consultation -->
   <url>
     <loc>https://www.lelam.co/contact</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.60</priority>
   </url>
@@ -83,7 +83,7 @@
   <!-- Privacy Policy -->
   <url>
     <loc>https://www.lelam.co/privacy</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.30</priority>
   </url>
@@ -91,7 +91,7 @@
   <!-- Terms of Service -->
   <url>
     <loc>https://www.lelam.co/terms</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.30</priority>
   </url>
@@ -99,7 +99,7 @@
   <!-- Cookie Policy -->
   <url>
     <loc>https://www.lelam.co/cookies</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.30</priority>
   </url>

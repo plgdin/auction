@@ -802,13 +802,18 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 sm:p-6 md:p-8 animate-fade-in">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 sm:p-6 md:p-8 animate-fade-in"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mstc-modal-title"
+      >
         <div className="relative w-full max-w-7xl h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-scale-up animate-duration-200">
           
           {/* Modal Header */}
           <div className="px-6 py-4.5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <div className="flex items-center gap-2.5">
-              <span className="text-base font-bold text-slate-500 ">
+              <span id="mstc-modal-title" className="text-base font-bold text-slate-500 ">
                 Ref: {shortId}
               </span>
               <button
@@ -819,6 +824,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                 }}
                 className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-400 hover:text-slate-700 cursor-pointer flex items-center justify-center"
                 title="Copy Reference ID"
+                aria-label="Copy Reference ID"
               >
                 {copiedRef ? (
                   <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -840,6 +846,7 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
               onClick={onClose}
               className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
               title="Close"
+              aria-label="Close dialog"
             >
               <X className="w-5.5 h-5.5" />
             </button>

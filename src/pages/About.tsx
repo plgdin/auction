@@ -1,6 +1,13 @@
 import { Target, Eye } from 'lucide-react';
+import { usePageSeo } from '../utils/seo';
 
 export function About() {
+  usePageSeo({
+    title: 'About Us | Lelam eAuction Intelligence & Analytics',
+    description: 'Learn about Lelam, India\'s independent eAuction consultancy and procurement analytics platform for MSTC scrap, BaankNet bank properties, and GeM tenders.',
+    canonicalPath: '/about',
+    keywords: 'about Lelam, eAuction analytics company, scrap bidding platform India, bank asset procurement',
+  });
 
   return (
     <div className="bg-slate-50/50 min-h-screen text-slate-800 font-sans">

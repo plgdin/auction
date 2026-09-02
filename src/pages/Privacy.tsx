@@ -1,6 +1,13 @@
 import { Shield } from 'lucide-react';
+import { usePageSeo } from '../utils/seo';
 
 export function Privacy() {
+  usePageSeo({
+    title: 'Privacy Policy | Lelam eAuctions',
+    description: 'Privacy policy and data protection terms for users of the Lelam eAuction intelligence platform.',
+    canonicalPath: '/privacy',
+  });
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
       <div className="text-center mb-12">

@@ -324,10 +324,15 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
   const itemImage = getGemItemImage(item.title, item.category_name);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-xs select-text overflow-hidden">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-xs select-text overflow-hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="gem-modal-title"
+    >
       
       {/* Modal Backdrop */}
-      <div className="absolute inset-0" onClick={onClose} />
+      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
       {/* Main Container */}
       <div className="relative bg-white rounded-3xl w-full max-w-6xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200 text-left">
@@ -335,11 +340,12 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
         {/* Top Header Bar */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
           <div className="flex items-center gap-3">
-            <span className="text-base font-bold text-slate-500">Ref: {item.gem_auction_id}</span>
+            <span id="gem-modal-title" className="text-base font-bold text-slate-500">Ref: {item.gem_auction_id}</span>
             <button
               onClick={handleCopyRef}
               className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-400 hover:text-slate-700 cursor-pointer flex items-center justify-center"
               title="Copy Reference ID"
+              aria-label="Copy Reference ID"
             >
               {copiedRef ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
@@ -364,6 +370,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
             onClick={onClose}
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
             title="Close"
+            aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
           </button>

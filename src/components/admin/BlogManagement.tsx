@@ -1,9 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { 
   Plus, Edit, Trash2, CheckCircle, XCircle, 
   ArrowUp, ArrowDown, Image as ImageIcon, Save, X, FileText, UploadCloud, Loader2
 } from 'lucide-react';
-import JoditEditor from 'jodit-react';
+
+const JoditEditor = lazy(() => import('jodit-react'));
 import { blogService } from '../../services/blogService';
 import { storageService } from '../../services/storageService';
 import type { Blog } from '../../types/database.types';
@@ -409,12 +410,19 @@ export function BlogManagement() {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Content</label>
-                <div className="border border-slate-300 rounded-lg">
-                  <JoditEditor
-                    value={currentBlog.content || ''} 
-                    config={editorConfig}
-                    onBlur={(newContent) => setCurrentBlog({...currentBlog, content: newContent})}
-                  />
+                <div className="border border-slate-300 rounded-lg min-h-[400px]">
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center h-[400px] text-slate-400">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary mr-2" />
+                      <span>Loading Editor...</span>
+                    </div>
+                  }>
+                    <JoditEditor
+                      value={currentBlog.content || ''} 
+                      config={editorConfig}
+                      onBlur={(newContent) => setCurrentBlog({...currentBlog, content: newContent})}
+                    />
+                  </Suspense>
                 </div>
               </div>
 

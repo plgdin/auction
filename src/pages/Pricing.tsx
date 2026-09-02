@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Minus, ChevronDown, Zap, Shield, BarChart3, Brain, Truck, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { COMPARISON_FEATURES } from '../utils/pricingConfig';
+import { usePageSeo } from '../utils/seo';
 
 const CATEGORY_ICONS: Record<string, any> = {
   'Discovery & Search': Zap,
@@ -115,6 +116,13 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 export function PricingPage() {
   const [isYearly, setIsYearly] = useState(false);
   const [expandedMobileCategories, setExpandedMobileCategories] = useState<Record<string, boolean>>({});
+
+  usePageSeo({
+    title: 'Subscription Plans & eAuction Pricing | Lelam',
+    description: 'Explore flexible subscription tiers: free explorer, day passes, individual pro, and enterprise analytics for MSTC scrap, BaankNet bank properties, and GeM tenders.',
+    canonicalPath: '/pricing',
+    keywords: 'eAuction subscription, MSTC tool pricing, BaankNet bank property pass, scrap bidding analytics cost',
+  });
 
   const toggleMobileCategory = (name: string) => {
     setExpandedMobileCategories((prev) => ({

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { Mail, Phone, MapPin, Send, ChevronDown, Bug, HelpCircle, CreditCard, ShieldAlert, PackageSearch, MessageSquare, AlertTriangle, Receipt } from 'lucide-react';
 import { publicService } from '../services/publicService';
 import clsx from 'clsx';
+import { usePageSeo } from '../utils/seo';
 
 const ISSUE_TYPES = [
   { value: '', label: 'Select an issue type', icon: MessageSquare },
@@ -33,6 +34,13 @@ type ContactFormValues = z.infer<typeof contactSchema>;
 
 export function Contact() {
   const [searchParams] = useSearchParams();
+
+  usePageSeo({
+    title: 'Contact Us & Enterprise Support | Lelam',
+    description: 'Get in touch with the Lelam team for enterprise consultation, eAuction bidding assistance, technical support, or billing queries.',
+    canonicalPath: '/contact',
+    keywords: 'contact Lelam, eAuction support, MSTC bidding help, bank auction consultation',
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);

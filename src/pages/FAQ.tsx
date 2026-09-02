@@ -3,6 +3,7 @@ import { publicService } from '../services/publicService';
 import type { FaqItem } from '../types/database.types';
 import { ChevronDown, ChevronUp, Search, HelpCircle, Building2, Smartphone } from 'lucide-react';
 import clsx from 'clsx';
+import { usePageSeo } from '../utils/seo';
 
 export function FAQ() {
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
@@ -12,7 +13,6 @@ export function FAQ() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    document.title = 'MSTC & eAuctions Help & FAQ | Lelam';
     async function loadFaqs() {
       const data = await publicService.getActiveFaqs();
       setFaqs(data);
@@ -40,7 +40,6 @@ export function FAQ() {
     );
   });
 
-  // Generate structured FAQPage schema for search engine crawlers
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -54,14 +53,16 @@ export function FAQ() {
     }))
   };
 
+  usePageSeo({
+    title: 'MSTC & eAuctions Help Center & FAQ | Lelam',
+    description: 'Frequently asked questions regarding MSTC eAuctions, BaankNet bank property auctions, EMD deposits, GST/TCS tax calculations, and Lelam platform features.',
+    canonicalPath: '/faq',
+    keywords: 'MSTC FAQ, eAuction help, bank property auction questions, EMD refund timeline, landed cost calculation help',
+    structuredData: displayedFaqs.length > 0 ? faqSchema : undefined,
+  }, [displayedFaqs.length, activeTab]);
+
   return (
     <div className="bg-slate-50 min-h-screen py-16">
-      {/* Dynamic JSON-LD Structured Data for Crawlers */}
-      {!isLoading && displayedFaqs.length > 0 && (
-        <script type="application/ld+json">
-          {JSON.stringify(faqSchema)}
-        </script>
-      )}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
         
         {/* Title / Header */}

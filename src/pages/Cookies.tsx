@@ -1,6 +1,13 @@
 import { Cookie } from 'lucide-react';
+import { usePageSeo } from '../utils/seo';
 
 export function Cookies() {
+  usePageSeo({
+    title: 'Cookie Policy | Lelam eAuctions',
+    description: 'Cookie policy and local session storage practices for the Lelam eAuction platform.',
+    canonicalPath: '/cookies',
+  });
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
       <div className="text-center mb-12">

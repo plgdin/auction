@@ -16,6 +16,7 @@ import { toast } from 'react-hot-toast';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice } from '../../utils/currency';
+import { usePageSeo } from '../../utils/seo';
 
 interface CustomDropdownProps {
   value: any;
@@ -111,6 +112,13 @@ export function QuotePage() {
                     profile?.subscription_plan === 'enterprise' || 
                     profile?.role === 'admin' || 
                     profile?.role === 'superadmin';
+
+  usePageSeo({
+    title: 'Landed Cost Calculator & Procurement Quote Builder | Lelam',
+    description: 'Calculate total landed cost with GST, TCS 1%, customs duties, loading charges, and freight for MSTC, BaankNet, and GeM auction lots. Export client-ready quotes.',
+    canonicalPath: '/quotes',
+    keywords: 'landed cost calculator, MSTC quote builder, scrap metal tax calculator, TCS 206C calculator, freight estimator',
+  });
 
   const {
     activeQuote,

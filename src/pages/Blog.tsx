@@ -2,14 +2,22 @@ import { useEffect, useState } from 'react';
 import { blogService } from '../services/blogService';
 import type { Blog as BlogType } from '../types/database.types';
 import { format } from 'date-fns';
-import { Sparkles, Calendar, User, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, Calendar, User, ArrowRight, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { sanitizeHtml } from '../utils/blogHtmlParser';
+import { usePageSeo } from '../utils/seo';
 
 export function Blog() {
   const [blogs, setBlogs] = useState<BlogType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  usePageSeo({
+    title: 'eAuction Insights, Bank Property Guides & Scrap Trends | Lelam Blog',
+    description: 'Expert guides, bidding strategies, SARFAESI property tutorials, and metal scrap valuation models for MSTC, BaankNet, and GeM auctions in India.',
+    canonicalPath: '/blog',
+    keywords: 'eAuction blog, MSTC bidding strategy, SARFAESI bank property guide, GeM portal tips, scrap metal valuation, landed cost tutorials',
+  });
 
   const featuredBlogs = blogs.filter(b => b.is_featured);
   const remainingBlogs = blogs.filter(b => !b.is_featured);
@@ -95,8 +103,22 @@ export function Blog() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
       
+      {/* Page Heading */}
+      <div className="text-center max-w-3xl mx-auto space-y-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>Knowledge Hub</span>
+        </div>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
+          eAuction Insights &amp; Market Intelligence
+        </h1>
+        <p className="text-base sm:text-lg text-slate-600">
+          In-depth guides on SARFAESI bank properties, GeM government tenders, scrap metal pricing, and bidding analytics.
+        </p>
+      </div>
+
       {/* Featured Blogs Slideshow */}
       {featuredBlogs.length > 0 && (
         <div className="relative group/slider">
@@ -120,7 +142,7 @@ export function Blog() {
                       <span className="flex items-center"><Calendar className="w-4 h-4 mr-1.5 text-primary" /> {format(new Date(topBlog.published_at || topBlog.created_at), 'MMM d, yyyy')}</span>
                       <span className="flex items-center"><User className="w-4 h-4 mr-1.5 text-primary" /> {topBlog.author_name || 'Admin'}</span>
                     </div>
-                    <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6 leading-tight group-hover:text-primary transition-colors">
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mb-6 leading-tight group-hover:text-primary transition-colors">
                       {topBlog.title}
                     </h2>
                     <div className="text-slate-600 line-clamp-3 mb-8 prose" dangerouslySetInnerHTML={{ __html: sanitizeHtml(topBlog.content) }} />
@@ -139,13 +161,15 @@ export function Blog() {
             <>
               <button 
                 onClick={prevSlide}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/80 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg opacity-0 group-hover/slider:opacity-100 transition-opacity focus:outline-none"
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/80 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg opacity-0 group-hover/slider:opacity-100 transition-opacity focus:outline-none cursor-pointer"
+                aria-label="Previous article slide"
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
               <button 
                 onClick={nextSlide}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/80 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg opacity-0 group-hover/slider:opacity-100 transition-opacity focus:outline-none"
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/80 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg opacity-0 group-hover/slider:opacity-100 transition-opacity focus:outline-none cursor-pointer"
+                aria-label="Next article slide"
               >
                 <ChevronRight className="w-6 h-6" />
               </button>
@@ -156,7 +180,8 @@ export function Blog() {
                   <button 
                     key={idx}
                     onClick={() => setCurrentSlide(idx)}
-                    className={`w-2 h-2 rounded-full transition-all ${idx === currentSlide ? 'bg-primary w-6' : 'bg-slate-300 hover:bg-slate-400'}`}
+                    className={`w-2 h-2 rounded-full transition-all cursor-pointer ${idx === currentSlide ? 'bg-primary w-6' : 'bg-slate-300 hover:bg-slate-400'}`}
+                    aria-label={`Go to slide ${idx + 1}`}
                   />
                 ))}
               </div>

@@ -21,7 +21,7 @@ async function getSecurityAttemptContext() {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 600);
     const res = await fetch('https://ipapi.co/json/', { signal: controller.signal });
     clearTimeout(timeoutId);
     if (res.ok) {
@@ -41,16 +41,7 @@ async function getSecurityAttemptContext() {
       };
     }
   } catch (_) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      const res2 = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (res2.ok) {
-        const data2 = await res2.json();
-        ipAddress = data2.ip || 'Unknown';
-      }
-    } catch (__) {}
+    // Fast fallback without chain blocking
   }
 
   const nav = navigator as Navigator & {

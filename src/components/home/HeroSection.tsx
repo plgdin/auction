@@ -39,17 +39,8 @@ export function HeroSection() {
   }, []);
 
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-
-    // Keep the mobile animation, but let the first paint finish before the
-    // decorative WebGL chunk is evaluated.
-    if (isMobile) {
-      const frame = requestAnimationFrame(() => setShowHills(true));
-      return () => cancelAnimationFrame(frame);
-    }
-
-    // WebGL is decorative. Start it after the initial interaction/idle window,
-    // so it cannot compete with first paint or input readiness.
+    // WebGL is purely decorative background. Start it after the initial
+    // paint and idle window so it never competes with FCP, LCP, or input readiness.
     let started = false;
     const start = () => {
       if (started) return;
@@ -57,14 +48,19 @@ export function HeroSection() {
       setShowHills(true);
       window.removeEventListener('pointerdown', start);
       window.removeEventListener('scroll', start);
+      window.removeEventListener('touchstart', start);
     };
-    const timer = window.setTimeout(start, 8000);
+
+    const timer = window.setTimeout(start, 2500);
     window.addEventListener('pointerdown', start, { once: true, passive: true });
     window.addEventListener('scroll', start, { once: true, passive: true });
+    window.addEventListener('touchstart', start, { once: true, passive: true });
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener('pointerdown', start);
       window.removeEventListener('scroll', start);
+      window.removeEventListener('touchstart', start);
       if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current);
     };
   }, []);

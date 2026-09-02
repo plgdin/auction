@@ -5,7 +5,7 @@ import type { Blog as BlogType } from '../types/database.types';
 import { format } from 'date-fns';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 import { parseHtmlWithLinkPreviews } from '../utils/blogHtmlParser';
-
+import { updatePageSeo } from '../utils/seo';
 
 export function BlogDetail() {
   const { id } = useParams<{ id: string }>();
@@ -24,29 +24,49 @@ export function BlogDetail() {
       const data = await blogService.getBlogById(blogId);
       if (data && data.is_published) {
         setBlog(data);
-        document.title = `${data.title} | Lelam Blog`;
         
-        // Extract plain text snippet from HTML content for meta description
+        // Extract clean description snippet from HTML
         const temp = document.createElement('div');
         temp.innerHTML = data.content;
         const plainText = temp.textContent || temp.innerText || '';
-        const snippet = plainText.trim().replace(/\s+/g, ' ').substring(0, 155) + '...';
-        
-        const metaDesc = document.querySelector('meta[name="description"]');
-        if (metaDesc) {
-          metaDesc.setAttribute('content', snippet);
-        }
+        const snippet = plainText.trim().replace(/\s+/g, ' ').substring(0, 160) || data.title;
+        const slugOrId = data.slug || data.id;
 
-        // Set canonical link specifically to this blog's slug-based URL
-        let canonicalLink = document.querySelector('link[rel="canonical"]');
-        if (!canonicalLink) {
-          canonicalLink = document.createElement('link');
-          canonicalLink.setAttribute('rel', 'canonical');
-          document.head.appendChild(canonicalLink);
-        }
-        canonicalLink.setAttribute('href', `https://www.lelam.co/blog/${data.slug || data.id}`);
+        const blogPostingSchema = {
+          "@context": "https://schema.org",
+          "@type": "BlogPosting",
+          "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": `https://www.lelam.co/blog/${slugOrId}`
+          },
+          "headline": data.title,
+          "description": snippet,
+          "image": data.image_url ? [data.image_url] : ["https://www.lelam.co/LOGOWITHTEXT.png"],
+          "datePublished": data.published_at || data.created_at,
+          "dateModified": data.updated_at || data.published_at || data.created_at,
+          "author": [{
+            "@type": "Person",
+            "name": data.author_name || "Lelam Editorial Team"
+          }],
+          "publisher": {
+            "@type": "Organization",
+            "name": "Lelam",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://www.lelam.co/LOGOWITHTEXT.png"
+            }
+          }
+        };
+
+        updatePageSeo({
+          title: `${data.title} | Lelam Insights`,
+          description: snippet,
+          canonicalPath: `/blog/${slugOrId}`,
+          ogImage: data.image_url || 'https://www.lelam.co/LOGOWITHTEXT.png',
+          ogType: 'article',
+          structuredData: blogPostingSchema,
+        });
       } else {
-        // If not found or not published, redirect back to blog index
         navigate('/blog');
       }
     } catch (error) {
@@ -69,33 +89,8 @@ export function BlogDetail() {
     return null;
   }
 
-  const blogPostingSchema = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    "headline": blog.title,
-    "image": blog.image_url ? [blog.image_url] : undefined,
-    "datePublished": blog.created_at,
-    "author": [{
-      "@type": "Organization",
-      "name": "Lelam",
-      "url": "https://www.lelam.co"
-    }],
-    "publisher": {
-      "@type": "Organization",
-      "name": "Lelam",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://www.lelam.co/LOGOWITHTEXT.png"
-      }
-    },
-    "description": blog.title
-  };
-
   return (
-    <div className="bg-white min-h-screen pb-20">
-      <script type="application/ld+json">
-        {JSON.stringify(blogPostingSchema)}
-      </script>
+    <article className="bg-white min-h-screen pb-20">
       {/* Hero Section */}
       <div className="relative w-full h-[400px] md:h-[500px] bg-slate-900">
         {blog.image_url ? (
@@ -141,6 +136,6 @@ export function BlogDetail() {
           {parseHtmlWithLinkPreviews(blog.content)}
         </div>
       </div>
-    </div>
+    </article>
   );
 }

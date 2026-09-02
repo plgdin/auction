@@ -2,10 +2,18 @@ import { useEffect, useState } from 'react';
 import { publicService } from '../services/publicService';
 import type { NewsUpdate } from '../types/database.types';
 import { Newspaper, Calendar, ArrowRight } from 'lucide-react';
+import { usePageSeo } from '../utils/seo';
 
 export function News() {
   const [news, setNews] = useState<NewsUpdate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  usePageSeo({
+    title: 'eAuction Industry News & Scrap Metal Trends | Lelam',
+    description: 'Latest market releases, LME scrap metal benchmark movements, policy circulars, and technology updates for Indian eAuctions.',
+    canonicalPath: '/news',
+    keywords: 'eAuction news, scrap metal market news, LME price movements, MSTC circulars, Indian auction updates',
+  });
 
   useEffect(() => {
     async function loadNews() {

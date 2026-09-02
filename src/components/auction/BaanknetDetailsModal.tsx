@@ -436,10 +436,15 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const primaryDoc = availableDocs[0];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-xs select-text overflow-hidden">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-xs select-text overflow-hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="baanknet-modal-title"
+    >
       
       {/* Modal Backdrop */}
-      <div className="absolute inset-0" onClick={onClose} />
+      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
       {/* Main Container */}
       <div className="relative bg-white rounded-2xl sm:rounded-3xl w-full max-w-5xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 text-left">
@@ -447,11 +452,12 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
         {/* Top Header Bar */}
         <div className="px-4 sm:px-6 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
           <div className="flex items-center gap-2.5">
-            <span className="text-sm sm:text-base font-bold text-slate-500">Ref: {item.baanknet_auction_id}</span>
+            <span id="baanknet-modal-title" className="text-sm sm:text-base font-bold text-slate-500">Ref: {item.baanknet_auction_id}</span>
             <button
               onClick={handleCopyRef}
               className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-400 hover:text-slate-700 cursor-pointer flex items-center justify-center"
               title="Copy Reference Number"
+              aria-label="Copy Reference Number"
             >
               {copiedRef ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
@@ -488,6 +494,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
               onClick={onClose}
               className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
               title="Close"
+              aria-label="Close dialog"
             >
               <X className="w-5 h-5" />
             </button>
