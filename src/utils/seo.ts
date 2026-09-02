@@ -10,7 +10,7 @@ export interface PageSeoOptions {
   structuredData?: Record<string, any>;
 }
 
-const DEFAULT_IMAGE = 'https://www.lelam.co/LOGOWITHTEXT.png';
+const DEFAULT_IMAGE = 'https://www.lelam.co/png_lelam_1.webp';
 const BASE_URL = 'https://www.lelam.co';
 
 export function updatePageSeo({

@@ -25,8 +25,6 @@ Allow: /llms-full.txt
 Allow: /sitemap.xml
 Allow: /assets/
 Allow: /png_lelam_1.webp
-Allow: /logo.png
-Allow: /LOGOWITHTEXT.png
 
 # Block crawlers from private workspaces, payment checkouts, and admin consoles
 Disallow: /auth/

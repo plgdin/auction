@@ -157,12 +157,12 @@ export function PageTracker() {
     updateMetaTag({ property: 'og:description' }, description);
     updateMetaTag({ property: 'og:url' }, fullCanonicalUrl);
     updateMetaTag({ property: 'og:type' }, 'website');
-    updateMetaTag({ property: 'og:image' }, 'https://www.lelam.co/LOGOWITHTEXT.png');
+    updateMetaTag({ property: 'og:image' }, 'https://www.lelam.co/png_lelam_1.webp');
 
     // Update Twitter Card tags
     updateMetaTag({ name: 'twitter:title' }, title);
     updateMetaTag({ name: 'twitter:description' }, description);
-    updateMetaTag({ name: 'twitter:image' }, 'https://www.lelam.co/LOGOWITHTEXT.png');
+    updateMetaTag({ name: 'twitter:image' }, 'https://www.lelam.co/png_lelam_1.webp');
 
     // Update AI Citation Meta Tags
     updateMetaTag({ name: 'ai-citation' }, `Allowed; Source: Lelam (${fullCanonicalUrl})`);

@@ -41,7 +41,7 @@ export function BlogDetail() {
           },
           "headline": data.title,
           "description": snippet,
-          "image": data.image_url ? [data.image_url] : ["https://www.lelam.co/LOGOWITHTEXT.png"],
+          "image": data.image_url ? [data.image_url] : ["https://www.lelam.co/png_lelam_1.webp"],
           "datePublished": data.published_at || data.created_at,
           "dateModified": data.updated_at || data.published_at || data.created_at,
           "author": [{
@@ -53,7 +53,7 @@ export function BlogDetail() {
             "name": "Lelam",
             "logo": {
               "@type": "ImageObject",
-              "url": "https://www.lelam.co/LOGOWITHTEXT.png"
+              "url": "https://www.lelam.co/png_lelam_1.webp"
             }
           }
         };
@@ -62,7 +62,7 @@ export function BlogDetail() {
           title: `${data.title} | Lelam Insights`,
           description: snippet,
           canonicalPath: `/blog/${slugOrId}`,
-          ogImage: data.image_url || 'https://www.lelam.co/LOGOWITHTEXT.png',
+          ogImage: data.image_url || 'https://www.lelam.co/png_lelam_1.webp',
           ogType: 'article',
           structuredData: blogPostingSchema,
         });
