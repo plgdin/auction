@@ -25,20 +25,26 @@ const parseStyleString = (styleStr: string): Record<string, string> => {
 };
 
 /**
- * Lightweight, dependency-free HTML sanitizer using native DOMParser.
- * Removes dangerous tags (script, iframe, object, embed, etc.) and
- * cleans event listener attributes (on*) and javascript: protocols.
+ * Lightweight, robust HTML sanitizer using native DOMParser.
+ * Blocks dangerous tags (script, iframe, object, embed, form, base, svg, etc.) and
+ * cleans event listener attributes (on*) and dangerous URL schemes.
  */
 export function sanitizeHtml(htmlString: string): string {
   if (!htmlString) return '';
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlString, 'text/html');
   
+  const BLOCKED_TAGS = [
+    'script', 'iframe', 'object', 'embed', 'link', 'style', 'meta', 'base',
+    'form', 'input', 'button', 'select', 'textarea', 'svg', 'math', 'applet',
+    'frame', 'frameset', 'portal', 'template', 'shadow'
+  ];
+
   const cleanNode = (node: Element) => {
     const tagName = node.tagName.toLowerCase();
     
     // Remove dangerous tags completely
-    if (['script', 'iframe', 'object', 'embed', 'link', 'style'].includes(tagName)) {
+    if (BLOCKED_TAGS.includes(tagName)) {
       node.remove();
       return;
     }
@@ -49,15 +55,26 @@ export function sanitizeHtml(htmlString: string): string {
       const name = attr.name.toLowerCase();
       const value = attr.value.toLowerCase().trim();
       
-      // Remove inline event handlers (onclick, onload, onerror, etc.)
-      if (name.startsWith('on')) {
+      // Remove inline event handlers (onclick, onload, onerror, onmouseover, etc.)
+      if (name.startsWith('on') || name.startsWith('data-on')) {
         node.removeAttribute(attr.name);
       }
-      // Remove javascript: and data: URIs in href or src
-      else if ((name === 'href' || name === 'src') && (value.startsWith('javascript:') || value.startsWith('data:text/html'))) {
-        node.removeAttribute(attr.name);
+      // Block javascript:, vbscript:, data:, file:, blob: protocols in href or src
+      else if (name === 'href' || name === 'src' || name === 'action' || name === 'formaction') {
+        const isDisallowedScheme = /^(javascript|vbscript|data|file|blob):/i.test(value);
+        if (isDisallowedScheme && !value.startsWith('data:image/')) {
+          node.removeAttribute(attr.name);
+        }
       }
     });
+
+    // Enforce noopener noreferrer on links
+    if (tagName === 'a') {
+      node.setAttribute('rel', 'noopener noreferrer');
+      if (node.getAttribute('href')?.startsWith('http')) {
+        node.setAttribute('target', '_blank');
+      }
+    }
     
     // Clean child elements recursively
     const children = Array.from(node.children);
