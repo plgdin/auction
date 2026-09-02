@@ -204,9 +204,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
                   )}
                 </button>
               </div>
-              <span className="bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider shrink-0">
-                MSTC India
-              </span>
+
             </div>
 
             {isBusinessUser && item.is_reauction && (
@@ -257,9 +255,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
               )}
             </button>
           </div>
-          <span className="bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider shrink-0">
-            MSTC India
-          </span>
+
           {isBusinessUser && item.is_reauction && (
             <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
