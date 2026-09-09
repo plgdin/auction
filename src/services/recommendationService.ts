@@ -257,20 +257,43 @@ export const recommendationService = {
 
           const { preBid, totalValue } = estimateAuctionValues(item);
 
-          const lotTitle = item.lot_name || item.raw_materials_text?.split('\n')?.[0]?.slice(0, 60) || `${subCat} - ${item.seller_name}`;
+          let lotTitle = item.lot_name;
+          let description = '';
+
+          if (item.raw_materials_text) {
+            try {
+              const parsed = typeof item.raw_materials_text === 'string'
+                ? JSON.parse(item.raw_materials_text)
+                : item.raw_materials_text;
+              if (parsed && typeof parsed === 'object') {
+                if (parsed.items && Array.isArray(parsed.items) && parsed.items.length > 0 && parsed.items[0].description) {
+                  lotTitle = parsed.items[0].description;
+                }
+                description = parsed.scopeOfWork || parsed.overview || '';
+              }
+            } catch {
+              // Not JSON
+            }
+          }
+
+          if (!lotTitle || lotTitle.trim().startsWith('{')) {
+            lotTitle = subCat && subCat !== 'Unknown' && subCat !== mainCat
+              ? `${subCat} - ${item.seller_name}`
+              : (item.category_name || item.seller_name || 'Auction Lot');
+          }
 
           return {
             ...item,
             id: item.id,
             title: lotTitle,
-            description: item.raw_materials_text || '',
+            description: description || `${mainCat} offered by ${item.seller_name || 'MSTC'}`,
             starting_price: totalValue || item.starting_price || 150000,
             reserve_price: null,
             bid_increment: 0,
             emd_amount: preBid || item.emd_amount,
             start_time: item.opening_date,
             end_time: item.closing_date,
-            terms_conditions: item.raw_materials_text || '',
+            terms_conditions: description,
             status: 'active',
             reference_number: item.mstc_auction_number,
             location: item.location || item.state || 'India',

@@ -20,6 +20,19 @@ import type { UserPreference, RankedAuction } from '../services/recommendationSe
 import { PreferenceQuestionnaireModal } from '../components/dashboard/PreferenceQuestionnaireModal';
 import { marketPriceService, type FullCommodityConfig } from '../services/marketPriceService';
 
+function getCleanAuctionTitle(title: string | undefined): string {
+  if (!title) return 'Auction Lot';
+  if (title.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(title);
+      return parsed.items?.[0]?.description || parsed.scopeOfWork || parsed.overview || 'Auction Lot';
+    } catch {
+      return title.replace(/^\{.*?:["']?/, '').replace(/["'].*$/, '').trim() || 'Auction Lot';
+    }
+  }
+  return title;
+}
+
 export function Dashboard() {
   const { user, profile } = useAuthStore();
   const { currency, interestedMstcIds, toggleInterestedMstcId } = useAppStore();
@@ -388,7 +401,7 @@ export function Dashboard() {
 
                         <div className="flex justify-between items-start gap-4">
                           <h4 className="text-sm font-bold text-slate-800 line-clamp-2 leading-snug">
-                            {auc.title}
+                            {getCleanAuctionTitle(auc.title)}
                           </h4>
                           <button
                             onClick={() => handleToggleWatchlist(auc.id)}
@@ -474,7 +487,7 @@ export function Dashboard() {
                         </span>
                         <Link to={`/auctions?tab=${item.isMstc ? 'mstc' : 'commercial'}${item.isMstc ? `&preview=${item.id}` : ''}`}>
                           <h4 className="text-xs font-bold text-slate-800 hover:text-blue-600 line-clamp-1 mt-1 leading-tight cursor-pointer">
-                            {item.title}
+                            {getCleanAuctionTitle(item.title)}
                           </h4>
                         </Link>
                       </div>
