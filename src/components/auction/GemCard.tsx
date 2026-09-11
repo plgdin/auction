@@ -13,6 +13,7 @@ interface GemCardProps {
   onPreview: (item: GemAuction) => void;
   isInterested?: boolean;
   onInterestedToggle?: () => void;
+  distanceKm?: number | null;
 }
 
 export const GemCard = memo(function GemCard({
@@ -21,7 +22,9 @@ export const GemCard = memo(function GemCard({
   onPreview,
   isInterested = false,
   onInterestedToggle,
+  distanceKm,
 }: GemCardProps) {
+  const effectiveDistance = distanceKm ?? (item as any)?._distanceKm;
   const { currency } = useAppStore();
   const [copied, setCopied] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -240,9 +243,14 @@ export const GemCard = memo(function GemCard({
                       Org: {orgName}
                     </span>
                   </div>
-                  <div className="flex items-center text-slate-600" title={locationDisplay}>
-                    <MapPin className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                  <div className="flex items-center text-slate-600 gap-1.5 flex-wrap" title={locationDisplay}>
+                    <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
                     <span className="font-semibold text-slate-700 truncate text-base">{locationDisplay}</span>
+                    {effectiveDistance !== undefined && effectiveDistance !== null && (
+                      <span className="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0 shadow-2xs">
+                        {effectiveDistance} km away
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center text-slate-600" title="GeM Forward Auction">
                     <Gavel className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
@@ -377,7 +385,14 @@ export const GemCard = memo(function GemCard({
             </div>
 
             <div className="flex flex-col min-w-0">
-              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Location</span>
+              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+                <span>Location</span>
+                {effectiveDistance !== undefined && effectiveDistance !== null && (
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                    {effectiveDistance} km
+                  </span>
+                )}
+              </span>
               <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={locationDisplay}>
                 {locationDisplay}
               </span>

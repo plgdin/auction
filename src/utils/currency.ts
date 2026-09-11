@@ -22,10 +22,34 @@ export function formatPrice(priceInInr: number, currencyCode: string = 'INR'): s
 
 export function formatPriceString(priceStr: string, currencyCode: string = 'INR'): string {
   if (!priceStr) return priceStr;
+
+  const lower = priceStr.trim().toLowerCase();
+  // Handle empty numbers, stray commas, or 'not specified / as per stc'
+  if (
+    lower.includes('not specified') ||
+    lower.includes('as per stc') ||
+    lower.includes('not a auto') ||
+    lower.includes('not an auto') ||
+    lower.includes('no pre-bid') ||
+    lower.includes('no emd') ||
+    /^\s*rs\.?\s*,/i.test(priceStr)
+  ) {
+    const digits = priceStr.replace(/[^\d]/g, '');
+    if (!digits || parseInt(digits, 10) === 0) {
+      return 'Not a Auto Pre-bid EMD Auction';
+    }
+  }
+
+  // Check if string is just a stray comma, dot, or currency prefix with no digits
+  const anyDigits = priceStr.replace(/[^\d]/g, '');
+  if ((priceStr.includes(',') || /^\s*rs\.?/i.test(priceStr)) && (!anyDigits || parseInt(anyDigits, 10) === 0)) {
+    return 'Not a Auto Pre-bid EMD Auction';
+  }
+
   const currency = CURRENCIES[currencyCode] || CURRENCIES.INR;
   
-  // Replace rupee-prefixed amounts (e.g. ₹780, ₹ 3,50,000, INR 10,000, or mojibake Ôé╣780)
-  return priceStr.replace(/(?:₹|Ôé╣|INR)\s*([\d,]+(?:\.\d+)?)/gi, (match, priceNumStr) => {
+  // Replace rupee-prefixed amounts (e.g. ₹780, ₹ 3,50,000, INR 10,000, Rs. 50,000, or mojibake Ôé╣780)
+  return priceStr.replace(/(?:₹|Ôé╣|INR|Rs\.?)\s*([\d,]+(?:\.\d+)?)/gi, (match, priceNumStr) => {
     const rawPrice = parseFloat(priceNumStr.replace(/,/g, ''));
     if (isNaN(rawPrice)) return match;
     const converted = rawPrice * currency.rate;

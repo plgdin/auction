@@ -15,9 +15,11 @@ interface AuctionCardProps {
   auction: Auction;
   isGrid?: boolean;
   isWatchlistedInitial?: boolean;
+  distanceKm?: number | null;
 }
 
-export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = false }: AuctionCardProps) {
+export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = false, distanceKm }: AuctionCardProps) {
+  const effectiveDistance = distanceKm !== undefined ? distanceKm : (auction as any)?._distanceKm;
   const { isAuthenticated, user } = useAuthStore();
   const { currency } = useAppStore();
   const navigate = useNavigate();
@@ -170,9 +172,16 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
           </div>
 
           <div className="mt-auto grid grid-cols-2 gap-4 items-center">
-            <div className="flex items-center text-sm text-slate-500">
-              <MapPin className="w-4 h-4 mr-1.5" />
-              {auction.location || 'Multiple Locations'}
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <div className="flex items-center">
+                <MapPin className="w-4 h-4 mr-1.5 shrink-0" />
+                <span className="truncate">{auction.location || 'Multiple Locations'}</span>
+              </div>
+              {effectiveDistance !== undefined && effectiveDistance !== null && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                  {Math.round(effectiveDistance)} km away
+                </span>
+              )}
             </div>
             <div className="flex justify-end">
               {isActive ? (
@@ -237,9 +246,16 @@ export function AuctionCard({ auction, isGrid = true, isWatchlistedInitial = fal
         </h3>
         
         <div className="space-y-2 mb-4">
-          <div className="flex items-center text-sm text-slate-600">
-            <MapPin className="w-4 h-4 mr-1.5 text-slate-400 shrink-0" />
-            <span className="truncate">{auction.location || 'Multiple Locations'}</span>
+          <div className="flex items-center justify-between gap-2 text-sm text-slate-600">
+            <div className="flex items-center min-w-0">
+              <MapPin className="w-4 h-4 mr-1.5 text-slate-400 shrink-0" />
+              <span className="truncate">{auction.location || 'Multiple Locations'}</span>
+            </div>
+            {effectiveDistance !== undefined && effectiveDistance !== null && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                {Math.round(effectiveDistance)} km away
+              </span>
+            )}
           </div>
           <div className="text-xs text-slate-500 flex justify-between items-center gap-2">
             <span className="truncate">Office: {auction.regional_office}</span>

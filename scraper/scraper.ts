@@ -428,9 +428,19 @@ async function executeDiscoveryScraper() {
           VAD: 'Gujarat',
           NRO: 'Delhi & NCR',
           GHY: 'Assam & North East',
-          HYD: 'Telangana'
+          HYD: 'Telangana',
+          PTN: 'Bihar'
         };
-        location = regionMap[region] || region;
+        
+        const sellerLower = (item.seller_name || '').toLowerCase();
+        const numLower = mstc_auction_number.toLowerCase();
+        if (sellerLower.includes('kochi') || sellerLower.includes('cochin') || numLower.includes('kochi') || numLower.includes('ambalamugal') || sellerLower.includes('ernakulam')) {
+          location = 'Kerala';
+        } else if (region === 'PTN') {
+          location = 'Bihar';
+        } else {
+          location = regionMap[region] || region;
+        }
       }
 
       if (mstc_auction_number.length > 100) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Copy, Check, Download, Heart, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Info } from 'lucide-react';
+import { X, Copy, Check, Download, Heart, FilePlus, Mail, Phone, ZoomIn, ZoomOut, RotateCcw, Eye, Info, AlertTriangle } from 'lucide-react';
 import type { MstcSanitizedAuction } from '../../services/publicService';
 import { expandMstcOffice } from '../../services/publicService';
 import { generateCatalogSummary, parsePdfDateTime, calculateLotValue, formatSellerName } from '../../utils/mstcHelpers';
@@ -643,6 +643,15 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           <td className="py-3 px-3.5 text-center  font-bold text-slate-400">{row.sr}</td>
                           <td className="py-3 px-3.5 text-slate-900">
                             <div className="font-bold">{row.description}</div>
+                            {((row.description || '').toLowerCase().includes('customs duty') || 
+                              (row.description || '').toLowerCase().includes('sez') ||
+                              (row.lotLocation || '').toLowerCase().includes('stf') ||
+                              (summary.complianceInfo?.customsDuty && summary.complianceInfo.customsDuty.isApplicable)) && (
+                              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span>Customs Duty / SEZ Notice: Prevailing customs duty must be paid by H1 bidder</span>
+                              </div>
+                            )}
                             {(row.pcbGroup || row.productType) && (
                               <div className="flex flex-wrap gap-1.5 mt-1">
                                 {row.pcbGroup && (
@@ -813,6 +822,22 @@ export const MstcDetailsModal: React.FC<MstcDetailsModalProps> = ({
                           </span>
                           <span className="text-[11px] text-slate-500 leading-normal">
                             {summary.complianceInfo.gstStatus.description}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {summary.complianceInfo?.customsDuty && summary.complianceInfo.customsDuty.isApplicable && (
+                      <div className="flex flex-col gap-1 bg-amber-50/80 p-3 rounded-xl border border-amber-200">
+                        <span className="text-amber-800 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 inline-block shrink-0" />
+                          <span>Customs Duty / SEZ</span>
+                        </span>
+                        <div className="mt-1 flex flex-col gap-1">
+                          <span className="font-bold text-amber-950 text-[13.5px]">
+                            {summary.complianceInfo.customsDuty.type}
+                          </span>
+                          <span className="text-[11px] text-amber-800 leading-normal">
+                            {summary.complianceInfo.customsDuty.description}
                           </span>
                         </div>
                       </div>

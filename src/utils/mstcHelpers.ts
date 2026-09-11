@@ -143,6 +143,8 @@ export interface CatalogSummary {
     pcbGroup?: string;
     productType?: string;
     preBidEmd?: string;
+    lotLocation?: string;
+    lotState?: string;
   }[];
   eligibility: string[];
   depositDetails: {
@@ -173,6 +175,11 @@ export interface ComplianceInfo {
   requiredDocuments: ComplianceDocument[];
   gstStatus: {
     isRcm: boolean;
+    type: string;
+    description: string;
+  };
+  customsDuty?: {
+    isApplicable: boolean;
     type: string;
     description: string;
   };
@@ -414,6 +421,37 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
     });
   }
 
+  // Customs Duty & SEZ Compliance
+  const isCustomsAuction = sellerUpper.includes('CUSTOMS') || (item.mstc_auction_number || '').toUpperCase().includes('CUSTOMS');
+  const isSez = textUpper.includes('SEZ') || textUpper.includes('SPECIAL ECONOMIC ZONE') || (parsedEligibility && parsedEligibility.some(el => el.toUpperCase().includes('SEZ')));
+  const mentionsCustomsDuty = textUpper.includes('CUSTOMS DUTY') || textUpper.includes('CUSTOM DUTY') || textUpper.includes('BASIC CUSTOMS DUTY') || textUpper.includes('BCD');
+
+  let customsDuty: { isApplicable: boolean; type: string; description: string } | undefined = undefined;
+
+  if (isSez) {
+    customsDuty = {
+      isApplicable: true,
+      type: 'SEZ Customs Duty Payable',
+      description: 'Material is situated within a Special Economic Zone (SEZ). Prevailing customs duty must be paid by the successful (H1) bidder.'
+    };
+    requiredDocuments.push({
+      name: 'SEZ Customs Clearance & Duty Payment',
+      description: 'Since the facility is under SEZ, prevailing customs duty must be paid by the H1 bidder.',
+      type: 'conditional'
+    });
+  } else if (isCustomsAuction || mentionsCustomsDuty) {
+    customsDuty = {
+      isApplicable: true,
+      type: 'Customs Duty Applicable',
+      description: 'Customs duty and clearance charges are payable by the successful bidder as per regulations.'
+    };
+    requiredDocuments.push({
+      name: 'Customs Clearance & Duty Payment',
+      description: 'Statutory compliance and applicable duty clearance required as specified in the catalogue.',
+      type: 'conditional'
+    });
+  }
+
   const gstStatus = {
     isRcm,
     type: isRcm ? 'Reverse Charge Mechanism (RCM)' : 'Regular GST Scheme',
@@ -424,7 +462,8 @@ export const deriveCompliance = (item: MstcSanitizedAuction, parsedEligibility?:
 
   return {
     requiredDocuments,
-    gstStatus
+    gstStatus,
+    customsDuty
   };
 };
 
@@ -738,6 +777,16 @@ export function cleanMaterialDescription(desc: string): string {
   if (!desc) return '';
   let cleaned = desc;
 
+  // Fix OCR hyphen/line break splits (e.g. ScrappedFe rrous -> Scrapped Ferrous)
+  cleaned = cleaned.replace(/Used\/ScrappedFe\s*rrous/gi, 'Used / Scrapped Ferrous');
+  cleaned = cleaned.replace(/\b([a-zA-Z]+)Fe\s+rrous\b/gi, '$1 Ferrous');
+  cleaned = cleaned.replace(/\bFe\s+rrous\b/gi, 'Ferrous');
+  cleaned = cleaned.replace(/\bCS\s*\/\s*AI\b/gi, 'CS / Al');
+  cleaned = cleaned.replace(/\bUsed\/Scrapped\b/gi, 'Used / Scrapped');
+  cleaned = cleaned.replace(/\bNOTE\s*[-–]\s*/g, 'Note: ');
+  cleaned = cleaned.replace(/^Scrapped\s+ferrous\s+scrap\s*-\s*Metal\s+Scraps\s+/i, '');
+  cleaned = cleaned.replace(/^([A-Za-z0-9\s]+?)\s*-\s*(?:(?:Mixed\s+)?(?:Metal|Steel|Iron|Scrap|Alloy|Electrical|Material)s?\s+)?\b(Disposal\s+of\b)/i, '$2');
+
   // New cleanups (Run specific warnings first to prevent generic split issues):
   // Remove Bidders Inspection & Caveat Emptor warnings
   cleaned = cleaned.replace(/\bBidders\s+are\s+required\s+to\s+inspect\s+the\s+site[\s\S]{1,180}?\bcaveat\s+emptor\s+shall\s+apply\s*(?:for\s+this\s+e[- ]auction)?\.?\b/gi, '');
@@ -894,7 +943,27 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
       ) {
         // EMD extraction/cleaning logic
         let emdVal = parsed.depositDetails.emd || '';
-        let preBidDdg = parsed.depositDetails.preBidDdg;
+        let rawPreBid = parsed.depositDetails.preBidDdg || '';
+        let rawPreBidAmt = parsed.depositDetails.preBidEmdAmount || '';
+
+        // If preBidDdg is empty, missing, or comma artifact like "Rs. ,", check preBidEmdAmount or raw text
+        const digitsInPreBid = rawPreBid.replace(/[^\d]/g, '');
+        if (!digitsInPreBid || parseInt(digitsInPreBid, 10) === 0) {
+          const altDigits = typeof rawPreBidAmt === 'string' ? rawPreBidAmt.replace(/[^\d]/g, '') : String(rawPreBidAmt || '');
+          if (altDigits && parseInt(altDigits, 10) > 0) {
+            rawPreBid = `₹${parseInt(altDigits, 10).toLocaleString('en-IN')}`;
+          } else if (item.raw_materials_text) {
+            const rawMatch = item.raw_materials_text.match(/Pre[\s-]*Bid\s*EMD\s*(?:Amount)?\s*[:\-–]?\s*(?:Rs\.?|INR|₹)?\s*([\d,.]+)/i);
+            if (rawMatch && rawMatch[1]) {
+              const num = parseInt(rawMatch[1].replace(/[^\d]/g, ''), 10);
+              if (!isNaN(num) && num > 0) {
+                rawPreBid = `₹${num.toLocaleString('en-IN')}`;
+              }
+            }
+          }
+        }
+
+        let preBidDdg = cleanPreBidEmd(rawPreBid);
 
         if (emdVal.includes('%')) {
           const percentMatch = emdVal.match(/([\d\.]+)\s*%/);
@@ -921,24 +990,22 @@ export const generateCatalogSummary = (item: MstcSanitizedAuction): CatalogSumma
                           /customs/i.test(item.mstc_auction_number || '');
 
         if (isCustoms && preBidDdg && preBidDdg.includes('MSME')) {
-          preBidDdg = 'Not Required';
+          preBidDdg = 'Not a Auto Pre-bid EMD Auction';
         }
 
         const hasMsme = !isCustoms && /msme|micro\s*,?\s*small/i.test(item.raw_materials_text || '');
         if (hasMsme && preBidDdg && !preBidDdg.includes('MSME')) {
-          if (preBidDdg.toLowerCase() !== 'not required') {
+          if (preBidDdg !== 'Not a Auto Pre-bid EMD Auction' && preBidDdg.toLowerCase() !== 'not required') {
             preBidDdg = `${preBidDdg} (Not required for registered MSME bidders)`;
-          } else {
-            preBidDdg = 'Not required for registered MSME bidders';
           }
         }
 
         let finalPreBid = preBidDdg;
         const required = isPreBidRequired(item);
         if (!required) {
-          finalPreBid = preBidDdg || 'Not Required';
+          finalPreBid = preBidDdg;
         } else {
-          finalPreBid = preBidDdg || fallbackPreBid;
+          finalPreBid = (preBidDdg && preBidDdg !== 'Not a Auto Pre-bid EMD Auction') ? preBidDdg : fallbackPreBid;
         }
 
         parsed.depositDetails.emd = emdVal;
@@ -1401,17 +1468,63 @@ export function formatSellerName(name: string | null | undefined): string {
   return name;
 }
 
+export function cleanPreBidEmd(val: string | undefined | null): string {
+  if (!val) return 'Not a Auto Pre-bid EMD Auction';
+  const trimmed = val.trim();
+  const lower = trimmed.toLowerCase();
+
+  // 1. Explicit non-auto / non-specified / STC phrases
+  if (
+    lower.includes('not specified') ||
+    lower.includes('as per stc') ||
+    lower.includes('not a auto') ||
+    lower.includes('not an auto') ||
+    lower.includes('no pre-bid') ||
+    lower.includes('not required') ||
+    lower.includes('no emd') ||
+    lower.includes('nil') ||
+    lower.includes('none') ||
+    lower === 'not applicable' ||
+    lower === 'na' ||
+    lower === 'n/a'
+  ) {
+    return 'Not a Auto Pre-bid EMD Auction';
+  }
+
+  // 2. Comma or currency artifact with no valid digits, e.g. "Rs. ,", "Rs. ,/-", "Rs.,", ",", "Rs.   ,"
+  const digitsOnly = trimmed.replace(/[^\d]/g, '');
+  if (!digitsOnly || parseInt(digitsOnly, 10) === 0) {
+    return 'Not a Auto Pre-bid EMD Auction';
+  }
+
+  // 3. Fix messy comma formatting with digits e.g. "Rs. , 50,000" or "Rs. ,50000"
+  if (/^rs\.?\s*,/i.test(trimmed)) {
+    const num = parseInt(digitsOnly, 10);
+    return `₹${num.toLocaleString('en-IN')}`;
+  }
+
+  return trimmed;
+}
+
 export function isPreBidRequired(item: MstcSanitizedAuction): boolean {
   if (!item.raw_materials_text) {
     return false;
   }
   try {
     const parsed = JSON.parse(item.raw_materials_text);
+    if (parsed?.depositDetails?.preBidEmdRequired === true) {
+      return true;
+    }
     const preBidDdg = parsed?.depositDetails?.preBidDdg;
     if (!preBidDdg) {
       return false;
     }
     
+    const cleaned = cleanPreBidEmd(preBidDdg);
+    if (cleaned === 'Not a Auto Pre-bid EMD Auction') {
+      return false;
+    }
+
     const matches = preBidDdg.match(/\d[\d,.]*/g);
     if (matches) {
       const hasPositiveVal = matches.some((valStr: string) => {
@@ -1436,9 +1549,227 @@ export function isPreBidRequired(item: MstcSanitizedAuction): boolean {
     ) {
       return false;
     }
-    return true;
+    return false;
   } catch {
-    return true;
+    return false;
   }
 }
+
+const STATE_MAPPING: Record<string, string> = {
+  'kerala': 'Kerala',
+  'kerela': 'Kerala',
+  'tamil': 'Tamil Nadu',
+  'tamil nadu': 'Tamil Nadu',
+  'tamilnadu': 'Tamil Nadu',
+  'karnataka': 'Karnataka',
+  'andhra': 'Andhra Pradesh',
+  'andhra pradesh': 'Andhra Pradesh',
+  'telangana': 'Telangana',
+  'maharashtra': 'Maharashtra',
+  'gujarat': 'Gujarat',
+  'rajasthan': 'Rajasthan',
+  'madhya pradesh': 'Madhya Pradesh',
+  'madhya': 'Madhya Pradesh',
+  'uttar pradesh': 'Uttar Pradesh',
+  'uttar': 'Uttar Pradesh',
+  'delhi': 'Delhi & NCR',
+  'west bengal': 'West Bengal',
+  'west': 'West Bengal',
+  'odisha': 'Odisha',
+  'orissa': 'Odisha',
+  'jharkhand': 'Jharkhand',
+  'bihar': 'Bihar',
+  'chhattisgarh': 'Chhattisgarh',
+  'punjab': 'Punjab & Haryana',
+  'haryana': 'Punjab & Haryana',
+  'punjab & haryana': 'Punjab & Haryana',
+  'assam': 'Assam & North East',
+  'assam & north east': 'Assam & North East',
+  'goa': 'Goa',
+  'uttarakhand': 'Uttarakhand',
+  'himachal': 'Himachal Pradesh',
+  'himachal pradesh': 'Himachal Pradesh'
+};
+
+const CITY_TO_STATE: Record<string, string> = {
+  'kochi': 'Kerala',
+  'cochin': 'Kerala',
+  'ernakulam': 'Kerala',
+  'ambalamugal': 'Kerala',
+  'puthuvypin': 'Kerala',
+  'trivandrum': 'Kerala',
+  'thiruvananthapuram': 'Kerala',
+  'calicut': 'Kerala',
+  'kozhikode': 'Kerala',
+  'palakkad': 'Kerala',
+  'kollam': 'Kerala',
+  'alappuzha': 'Kerala',
+  'kannur': 'Kerala',
+  'bengaluru': 'Karnataka',
+  'bangalore': 'Karnataka',
+  'mysore': 'Karnataka',
+  'mysuru': 'Karnataka',
+  'mangaluru': 'Karnataka',
+  'mangalore': 'Karnataka',
+  'hubli': 'Karnataka',
+  'belgaum': 'Karnataka',
+  'belagavi': 'Karnataka',
+  'chennai': 'Tamil Nadu',
+  'madras': 'Tamil Nadu',
+  'coimbatore': 'Tamil Nadu',
+  'madurai': 'Tamil Nadu',
+  'trichy': 'Tamil Nadu',
+  'tiruchirappalli': 'Tamil Nadu',
+  'salem': 'Tamil Nadu',
+  'tuticorin': 'Tamil Nadu',
+  'thoothukudi': 'Tamil Nadu',
+  'mumbai': 'Maharashtra',
+  'bombay': 'Maharashtra',
+  'pune': 'Maharashtra',
+  'nagpur': 'Maharashtra',
+  'nashik': 'Maharashtra',
+  'aurangabad': 'Maharashtra',
+  'uran': 'Maharashtra',
+  'ahmedabad': 'Gujarat',
+  'vadodara': 'Gujarat',
+  'baroda': 'Gujarat',
+  'surat': 'Gujarat',
+  'rajkot': 'Gujarat',
+  'gandhinagar': 'Gujarat',
+  'mundra': 'Gujarat',
+  'kutch': 'Gujarat',
+  'jamnagar': 'Gujarat',
+  'bhavnagar': 'Gujarat',
+  'porbandar': 'Gujarat',
+  'kolkata': 'West Bengal',
+  'calcutta': 'West Bengal',
+  'howrah': 'West Bengal',
+  'durgapur': 'West Bengal',
+  'asansol': 'West Bengal',
+  'siliguri': 'West Bengal',
+  'haldia': 'West Bengal',
+  'lucknow': 'Uttar Pradesh',
+  'kanpur': 'Uttar Pradesh',
+  'noida': 'Uttar Pradesh',
+  'ghaziabad': 'Uttar Pradesh',
+  'agra': 'Uttar Pradesh',
+  'varanasi': 'Uttar Pradesh',
+  'prayagraj': 'Uttar Pradesh',
+  'allahabad': 'Uttar Pradesh',
+  'meerut': 'Uttar Pradesh',
+  'bareilly': 'Uttar Pradesh',
+  'aligarh': 'Uttar Pradesh',
+  'moradabad': 'Uttar Pradesh',
+  'hyderabad': 'Telangana',
+  'secunderabad': 'Telangana',
+  'warangal': 'Telangana',
+  'visakhapatnam': 'Andhra Pradesh',
+  'vizag': 'Andhra Pradesh',
+  'vijayawada': 'Andhra Pradesh',
+  'guntur': 'Andhra Pradesh',
+  'nellore': 'Andhra Pradesh',
+  'tirupati': 'Andhra Pradesh',
+  'kakinada': 'Andhra Pradesh',
+  'rajahmundry': 'Andhra Pradesh',
+  'bhopal': 'Madhya Pradesh',
+  'indore': 'Madhya Pradesh',
+  'jabalpur': 'Madhya Pradesh',
+  'gwalior': 'Madhya Pradesh',
+  'ujjain': 'Madhya Pradesh',
+  'rewa': 'Madhya Pradesh',
+  'raipur': 'Chhattisgarh',
+  'bilaspur': 'Chhattisgarh',
+  'bhilai': 'Chhattisgarh',
+  'durg': 'Chhattisgarh',
+  'korba': 'Chhattisgarh',
+  'jaipur': 'Rajasthan',
+  'jodhpur': 'Rajasthan',
+  'udaipur': 'Rajasthan',
+  'kota': 'Rajasthan',
+  'bikaner': 'Rajasthan',
+  'ajmer': 'Rajasthan',
+  'patna': 'Bihar',
+  'gaya': 'Bihar',
+  'bhagalpur': 'Bihar',
+  'muzaffarpur': 'Bihar',
+  'ranchi': 'Jharkhand',
+  'jamshedpur': 'Jharkhand',
+  'dhanbad': 'Jharkhand',
+  'bokaro': 'Jharkhand',
+  'bhubaneswar': 'Odisha',
+  'cuttack': 'Odisha',
+  'rourkela': 'Odisha',
+  'sambalpur': 'Odisha',
+  'amritsar': 'Punjab & Haryana',
+  'ludhiana': 'Punjab & Haryana',
+  'jalandhar': 'Punjab & Haryana',
+  'chandigarh': 'Punjab & Haryana',
+  'faridabad': 'Punjab & Haryana',
+  'gurugram': 'Punjab & Haryana',
+  'gurgaon': 'Punjab & Haryana',
+  'panipat': 'Punjab & Haryana',
+  'guwahati': 'Assam & North East',
+  'dibrugarh': 'Assam & North East',
+  'silchar': 'Assam & North East',
+  'jorhat': 'Assam & North East'
+};
+
+export function resolveAuctionPhysicalLocation(
+  item: { location?: string | null; seller_name?: string | null; mstc_auction_number?: string | null; raw_materials_text?: string | null } | null | undefined
+): string {
+  if (!item) return 'India';
+
+  let lotState = '';
+  let lotLocation = '';
+  const sellerText = (item.seller_name || '').toLowerCase();
+  const aucNum = (item.mstc_auction_number || '').toLowerCase();
+
+  if (item.raw_materials_text) {
+    try {
+      const p = typeof item.raw_materials_text === 'string' ? JSON.parse(item.raw_materials_text) : item.raw_materials_text;
+      if (p && p.items && p.items[0]) {
+        lotState = (p.items[0].lotState || '').trim();
+        lotLocation = (p.items[0].lotLocation || '').trim();
+      }
+    } catch {}
+  }
+
+  // 1. Direct lotState mapping from catalog
+  if (lotState) {
+    const norm = lotState.toLowerCase().trim();
+    if (STATE_MAPPING[norm]) {
+      return STATE_MAPPING[norm];
+    }
+  }
+
+  // 2. Specific check for Kochi / BPCL Refinery / Ambalamugal / Puthuvypin
+  if (
+    sellerText.includes('kochi') || 
+    sellerText.includes('cochin') ||
+    aucNum.includes('kochi') || 
+    aucNum.includes('cochin') || 
+    aucNum.includes('ambalamugal') || 
+    lotLocation.toLowerCase().includes('puthuvypin') ||
+    sellerText.includes('ernakulam')
+  ) {
+    return 'Kerala';
+  }
+
+  // 3. City lookup in seller_name, auction number, and lotLocation
+  const fullText = `${sellerText} ${aucNum} ${lotLocation.toLowerCase()}`;
+  for (const [city, state] of Object.entries(CITY_TO_STATE)) {
+    const regex = new RegExp(`\\b${city}\\b`, 'i');
+    if (regex.test(fullText)) {
+      return state;
+    }
+  }
+
+  // 4. "PTN" office code fallback
+  if ((item.location || '').toUpperCase() === 'PTN') {
+    return 'Bihar';
+  }
+
+  return item.location || 'India';
+}
+
 

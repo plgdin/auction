@@ -3,7 +3,7 @@ import { Eye, MapPin, Building2, Calendar, Clock, ShieldCheck, Landmark, Copy, C
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import { expandMstcOffice } from '../../services/publicService';
 import type { MstcSanitizedAuction } from '../../services/publicService';
-import { generateCatalogSummary, parsePdfDateTime, hasConfirmedAssetDocuments } from '../../utils/mstcHelpers';
+import { generateCatalogSummary, parsePdfDateTime, hasConfirmedAssetDocuments, resolveAuctionPhysicalLocation } from '../../utils/mstcHelpers';
 import clsx from 'clsx';
 import { storageService } from '../../services/storageService';
 import { useAppStore } from '../../store/appStore';
@@ -16,9 +16,11 @@ interface MstcCardProps {
   onPreview: (item: MstcSanitizedAuction) => void;
   isInterested?: boolean;
   onInterestedToggle?: (id: string) => void;
+  distanceKm?: number | null;
 }
 
-export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview, isInterested = false, onInterestedToggle }: MstcCardProps) {
+export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview, isInterested = false, onInterestedToggle, distanceKm }: MstcCardProps) {
+  const effectiveDistance = distanceKm ?? (item as any)?._distanceKm;
   const { currency } = useAppStore();
   const shortId = (item?.mstc_auction_number || '').split('/').pop() || item?.id?.substring(0, 8) || 'N/A';
   // Calculate summary asynchronously to prevent main-thread blocking when rendering many cards
@@ -89,7 +91,7 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
   const parts = (item?.mstc_auction_number || '').split('/');
   const rawOffice = parts.length > 1 && parts[0].toUpperCase() === 'MSTC' ? parts[1] : item?.seller_name || '';
   const regionalOfficeName = expandMstcOffice(rawOffice);
-  const locationName = expandMstcOffice(item?.location);
+  const locationName = resolveAuctionPhysicalLocation(item);
 
   // Parse start and close dates
   const parsedStartDate = summary?.auctionStartTime ? parsePdfDateTime(summary.auctionStartTime) : null;
@@ -352,9 +354,14 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
                   </span>
                 </div>
                 {item.location && (
-                  <div className="flex items-center text-slate-600" title={locationName}>
-                    <MapPin className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                  <div className="flex items-center text-slate-600 gap-1.5 flex-wrap" title={locationName}>
+                    <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
                     <span className="font-semibold text-slate-700 truncate text-base">{locationName}</span>
+                    {effectiveDistance !== undefined && effectiveDistance !== null && (
+                      <span className="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0 shadow-2xs">
+                        {effectiveDistance} km away
+                      </span>
+                    )}
                   </div>
                 )}
                 <div className="flex items-center text-slate-600" title={summary?.auctionType || 'O-General'}>
@@ -516,7 +523,14 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
             </span>
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Location</span>
+            <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+              <span>Location</span>
+              {effectiveDistance !== undefined && effectiveDistance !== null && (
+                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                  {effectiveDistance} km
+                </span>
+              )}
+            </span>
             <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={locationName || 'N/A'}>
               {locationName || 'N/A'}
             </span>

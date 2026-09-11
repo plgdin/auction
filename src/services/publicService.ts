@@ -59,9 +59,109 @@ const INDIA_LOCATIONS: Record<string, string[]> = {
   'ladakh': ['ladakh', 'leh'],
 };
 
+// ─── India Regional Zones & Major Zones ──────────────────────────────────────
+export interface RegionDefinition {
+  key: string;
+  name: string;
+  aliases: string[];
+  states: string[];
+  offices: string[];
+}
+
+export const INDIA_REGIONS: Record<string, RegionDefinition> = {
+  'north india': {
+    key: 'north india',
+    name: 'North India',
+    aliases: [
+      'north india', 'north indian', 'northern india', 'north zone', 'northern zone', 'north',
+      'northen india', 'northen'
+    ],
+    states: [
+      'Delhi', 'Uttar Pradesh', 'Haryana', 'Punjab', 'Rajasthan',
+      'Himachal Pradesh', 'Uttarakhand', 'Uttaranchal', 'Jammu and Kashmir', 'Jammu & Kashmir', 'Chandigarh', 'Ladakh'
+    ],
+    offices: ['DELHI', 'LUCKNOW', 'JAIPUR', 'CHANDIGARH', 'DEHRADUN', 'JAMMU', 'KANPUR']
+  },
+  'south india': {
+    key: 'south india',
+    name: 'South India',
+    aliases: [
+      'south india', 'south indian', 'southern india', 'south zone', 'southern zone', 'south',
+      'southen india', 'southen'
+    ],
+    states: [
+      'Tamil Nadu', 'Kerala', 'Karnataka', 'Andhra Pradesh', 'Telangana', 'Puducherry', 'Pondicherry'
+    ],
+    offices: ['CHENNAI', 'BANGALORE', 'HYDERABAD', 'TRIVANDRUM', 'KOCHI', 'VIZAG', 'VISAKHAPATNAM', 'COIMBATORE']
+  },
+  'east india': {
+    key: 'east india',
+    name: 'East India',
+    aliases: [
+      'east india', 'east indian', 'eastern india', 'east zone', 'eastern zone', 'east',
+      'eatern india'
+    ],
+    states: [
+      'West Bengal', 'Odisha', 'Orissa', 'Bihar', 'Jharkhand', 'Assam', 'Sikkim', 'Tripura', 'Meghalaya', 'Manipur', 'Nagaland', 'Mizoram', 'Arunachal Pradesh'
+    ],
+    offices: ['KOLKATA', 'BHUBANESWAR', 'PATNA', 'RANCHI', 'GUWAHATI', 'JAMSHEDPUR', 'ROURKELA']
+  },
+  'west india': {
+    key: 'west india',
+    name: 'West India',
+    aliases: [
+      'west india', 'west indian', 'western india', 'west zone', 'western zone', 'west',
+      'western'
+    ],
+    states: [
+      'Maharashtra', 'Gujarat', 'Goa'
+    ],
+    offices: ['MUMBAI', 'PUNE', 'NAGPUR', 'AHMEDABAD', 'VADODARA', 'SURAT', 'GOA']
+  },
+  'central india': {
+    key: 'central india',
+    name: 'Central India',
+    aliases: [
+      'central india', 'central zone', 'central'
+    ],
+    states: [
+      'Madhya Pradesh', 'Chhattisgarh'
+    ],
+    offices: ['BHOPAL', 'INDORE', 'JABALPUR', 'RAIPUR', 'BILASPUR']
+  },
+  'northeast india': {
+    key: 'northeast india',
+    name: 'Northeast India',
+    aliases: [
+      'northeast india', 'north east india', 'north-east india', 'northeast', 'north east', 'north-east', 'ne india'
+    ],
+    states: [
+      'Assam', 'Meghalaya', 'Manipur', 'Mizoram', 'Nagaland', 'Tripura', 'Arunachal Pradesh', 'Sikkim'
+    ],
+    offices: ['GUWAHATI', 'SHILLONG']
+  }
+};
+
+function findRegionMatch(candidate: string, hasPreposition: boolean = false): RegionDefinition | null {
+  const c = candidate.trim().toLowerCase();
+  if (!c) return null;
+
+  for (const region of Object.values(INDIA_REGIONS)) {
+    for (const alias of region.aliases) {
+      if (alias === c) {
+        if (['north', 'south', 'east', 'west', 'central', 'northen', 'southen'].includes(alias) && !hasPreposition) {
+          continue;
+        }
+        return region;
+      }
+    }
+  }
+  return null;
+}
+
 /**
- * Extract a location mentioned in the query (e.g. "in Kerala", "at Mumbai", "from UP", bare "Kerala").
- * Returns the canonical location key and the query with the location phrase stripped.
+ * Extract a location or regional zone mentioned in the query (e.g. "in North India", "in Kerala", "at Mumbai", "from UP").
+ * Returns the canonical key, mapped locations/states, and the query with the location phrase stripped.
  */
 function findLocationMatch(candidate: string): string | null {
   const c = candidate.trim().toLowerCase();
@@ -110,8 +210,13 @@ function findLocationMatch(candidate: string): string | null {
   return bestCanonical;
 }
 
-function extractLocationFromQuery(query: string): { canonical: string | null; remainingQuery: string } {
-  if (!query) return { canonical: null, remainingQuery: query };
+export function extractLocationFromQuery(query: string): {
+  canonical: string | null;
+  locations: string[];
+  region?: RegionDefinition;
+  remainingQuery: string;
+} {
+  if (!query) return { canonical: null, locations: [], remainingQuery: query };
   const lower = query.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
   const words = lower.split(' ');
 
@@ -136,17 +241,36 @@ function extractLocationFromQuery(query: string): { canonical: string | null; re
     }
 
     if (prepIndex !== -1) {
-      // Look at sequences of length 1, 2, 3 following the preposition
+      // Look at sequences of length 3, 2, 1 following the preposition
       const startIndex = prepIndex + prepWords.length;
       for (let len = 3; len >= 1; len--) {
         if (startIndex + len <= words.length) {
           const candidate = words.slice(startIndex, startIndex + len).join(' ');
-          const matched = findLocationMatch(candidate);
-          if (matched) {
-            // Strip preposition and candidate from the query
+          
+          // Check regional match first
+          const regionMatched = findRegionMatch(candidate, true);
+          if (regionMatched) {
             const remainingWords = [...words];
             remainingWords.splice(prepIndex, prepWords.length + len);
-            return { canonical: matched, remainingQuery: remainingWords.join(' ') };
+            return {
+              canonical: regionMatched.key,
+              locations: regionMatched.states,
+              region: regionMatched,
+              remainingQuery: remainingWords.join(' ')
+            };
+          }
+
+          // Check city/state match
+          const matched = findLocationMatch(candidate);
+          if (matched) {
+            const remainingWords = [...words];
+            remainingWords.splice(prepIndex, prepWords.length + len);
+            const titleCased = matched.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            return {
+              canonical: matched,
+              locations: [titleCased],
+              remainingQuery: remainingWords.join(' ')
+            };
           }
         }
       }
@@ -157,28 +281,73 @@ function extractLocationFromQuery(query: string): { canonical: string | null; re
   for (let len = 3; len >= 1; len--) {
     for (let i = 0; i <= words.length - len; i++) {
       const candidate = words.slice(i, i + len).join(' ');
+
+      // Check regional match first
+      const regionMatched = findRegionMatch(candidate, false);
+      if (regionMatched) {
+        const remainingWords = [...words];
+        remainingWords.splice(i, len);
+        return {
+          canonical: regionMatched.key,
+          locations: regionMatched.states,
+          region: regionMatched,
+          remainingQuery: remainingWords.join(' ')
+        };
+      }
+
+      // Check city/state match
       const matched = findLocationMatch(candidate);
       if (matched) {
         const remainingWords = [...words];
         remainingWords.splice(i, len);
-        return { canonical: matched, remainingQuery: remainingWords.join(' ') };
+        const titleCased = matched.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        return {
+          canonical: matched,
+          locations: [titleCased],
+          remainingQuery: remainingWords.join(' ')
+        };
       }
     }
   }
 
-  return { canonical: null, remainingQuery: query };
+  return { canonical: null, locations: [], remainingQuery: query };
 }
 
 /**
- * Returns true if the DB location string contains any alias for the given canonical location.
- * Handles "Kochi, Kerala" matching both "kerala" and "kochi".
+ * Returns true if the DB location string or auction item matches the given canonical location/region.
  */
-function dbLocationMatchesCanonical(dbLocation: string, canonical: string): boolean {
-  if (!dbLocation || !canonical) return false;
-  const loc = dbLocation.toLowerCase();
+function dbLocationMatchesCanonical(itemOrDbLocation: string | any, canonical: string): boolean {
+  if (!itemOrDbLocation || !canonical) return false;
+  let loc = '';
+  let extraText = '';
+  if (typeof itemOrDbLocation === 'object' && itemOrDbLocation !== null) {
+    loc = (itemOrDbLocation.location || '').toLowerCase();
+    extraText = `${itemOrDbLocation.seller_name || ''} ${itemOrDbLocation.mstc_auction_number || ''}`.toLowerCase();
+    if (itemOrDbLocation.raw_materials_text) {
+      try {
+        const p = typeof itemOrDbLocation.raw_materials_text === 'string' ? JSON.parse(itemOrDbLocation.raw_materials_text) : itemOrDbLocation.raw_materials_text;
+        if (p?.items?.[0]?.lotState) {
+          loc = `${loc} ${p.items[0].lotState}`.toLowerCase();
+        }
+        if (p?.items?.[0]?.lotLocation) {
+          extraText = `${extraText} ${p.items[0].lotLocation}`.toLowerCase();
+        }
+      } catch {}
+    }
+  } else {
+    loc = String(itemOrDbLocation).toLowerCase();
+  }
+
+  // If canonical is a region (e.g. "north india")
+  if (INDIA_REGIONS[canonical]) {
+    const region = INDIA_REGIONS[canonical];
+    return region.states.some(st => loc.includes(st.toLowerCase()) || extraText.includes(st.toLowerCase()));
+  }
+
   const aliases = INDIA_LOCATIONS[canonical] || [];
   for (const alias of aliases) {
-    if (loc.includes(alias.toLowerCase())) return true;
+    const aLower = alias.toLowerCase();
+    if (loc.includes(aLower) || extraText.includes(aLower)) return true;
   }
   return false;
 }
@@ -1665,8 +1834,8 @@ export const MstcSearchService = {
       let workingQuery = cleanQueryFromPriceConstraint(cleanedQuery);
 
       // ── HARD FILTER 1: Location ───────────────────────────────────────────
-      // If user typed a location ("in Kerala", "at Mumbai", "UP" etc.),
-      // ONLY items from that location are returned. No other results shown.
+      // If user typed a location or region ("in North India", "in Kerala", "at Mumbai", "UP" etc.),
+      // ONLY items from that location/region are returned.
       const { canonical: locationCanonical, remainingQuery } = extractLocationFromQuery(workingQuery);
       workingQuery = remainingQuery;
 
@@ -2014,18 +2183,21 @@ export const MstcSearchService = {
         workingQuery = workingQuery.replace(reauctionRegex, '').trim();
       }
 
-      const { canonical: locationCanonical, remainingQuery } = extractLocationFromQuery(workingQuery);
+      const { canonical: locationCanonical, locations: extractedLocations, remainingQuery } = extractLocationFromQuery(workingQuery);
       workingQuery = remainingQuery;
       
       const precisionSubcategory = detectPrecisionSubcategory(workingQuery);
 
       // ── AUCTION NUMBER DIRECT LOOKUP ─────────────────────────────────────────
       // If the query looks like an auction number (e.g. "MSTC/ZG/POSTMASTER/1/...")
+      // or reference ID (e.g. "29121", "Ref: 29121", "ref 29121", "#29121"),
       // skip all NLP/embedding and do a direct ILIKE search on mstc_auction_number.
-      // Heuristic: contains 2+ slashes, OR starts with "MSTC", OR has year pattern like 25-26, OR is a standalone Ref ID
       const slashCount = (query.match(/\//g) || []).length;
       const cleanQ = query.trim();
-      const isExactRefId = /^\d{3,7}$/.test(cleanQ);
+      const refMatch = cleanQ.match(/(?:^(?:(?:official\s+)?(?:auction\s+)?(?:ref(?:erence)?|lot)\s*(?:no\.?|id|number)?\s*[:#\-\.]?\s*|#\s*)|(?:ref(?:erence)?|lot)\s*(?:no\.?|id|number)?\s*[:#\-\.]?\s*)(\d{3,8})$/i);
+      const isExactRefId = /^\d{3,8}$/.test(cleanQ) || !!refMatch;
+      const refId = refMatch ? refMatch[1] : (/^\d{3,8}$/.test(cleanQ) ? cleanQ : null);
+
       const looksLikeAuctionNumber =
         slashCount >= 2 ||
         /^mstc/i.test(cleanQ) ||
@@ -2036,16 +2208,32 @@ export const MstcSearchService = {
         const page = filters?.page || 1;
         const limit = filters?.limit || 12;
         
-        // For standalone IDs, prefix with a slash to avoid matching random middle numbers
-        const searchPattern = isExactRefId ? `%/${cleanQ}%` : `%${cleanQ}%`;
+        // For standalone IDs or extracted refId, search by %/refId% or %cleanQ%
+        const searchPattern = refId ? `%/${refId}%` : `%${cleanQ}%`;
 
-        const { data: exactData, error: exactError, count: exactCount } = await supabase
+        let { data: exactData, error: exactError, count: exactCount } = await supabase
           .from('mstc_auctions')
           .select('*', { count: 'exact' })
           .eq('asset_status', 'completed')
           .ilike('mstc_auction_number', searchPattern)
           .order('scraped_at', { ascending: false })
           .range((page - 1) * limit, page * limit - 1);
+
+        if ((!exactData || exactData.length === 0) && refId) {
+          // Fallback if not preceded by slash
+          const fallback = await supabase
+            .from('mstc_auctions')
+            .select('*', { count: 'exact' })
+            .eq('asset_status', 'completed')
+            .ilike('mstc_auction_number', `%${refId}%`)
+            .order('scraped_at', { ascending: false })
+            .range((page - 1) * limit, page * limit - 1);
+          if (fallback.data && fallback.data.length > 0) {
+            exactData = fallback.data;
+            exactCount = fallback.count;
+            exactError = null;
+          }
+        }
 
         if (!exactError && exactData && exactData.length > 0) {
           const mapped = exactData.map(item => {
@@ -2113,10 +2301,15 @@ export const MstcSearchService = {
       let error: any = null;
 
       let finalLocations = filters?.locations?.length ? filters.locations : (filters?.location ? [filters.location] : null);
-      if (locationCanonical) {
+      if (extractedLocations && extractedLocations.length > 0) {
+        finalLocations = finalLocations ? [...finalLocations, ...extractedLocations] : [...extractedLocations];
+      } else if (locationCanonical) {
         // DB uses Title Case for states (e.g. "Kerala")
         const titleCased = locationCanonical.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
         finalLocations = finalLocations ? [...finalLocations, titleCased] : [titleCased];
+      }
+      if (finalLocations) {
+        finalLocations = Array.from(new Set(finalLocations));
       }
 
       let finalSubcategories = filters?.subcategories?.length ? filters.subcategories : (filters?.subcategory ? [filters.subcategory] : null);
@@ -2136,7 +2329,127 @@ export const MstcSearchService = {
         throw new Error('Bypassing RPC for pure price query to avoid statement timeout.');
       }
 
-      // Run Hybrid RPC for EVERYTHING (empty query acts as pure filter)
+      // When NO search query is entered (browsing/filtering), active auctions (closing_date >= NOW())
+      // MUST be shown on top and closed auctions moved to the last pages unless specifically searched for.
+      if (!rpcQuery || rpcQuery.trim() === '') {
+        const page = filters?.page || 1;
+        const limit = filters?.limit || 12;
+        const nowIso = new Date().toISOString();
+
+        const buildFilteredQuery = (qb: any) => {
+          qb = qb.eq('asset_status', 'completed');
+          if (finalLocations && finalLocations.length > 0) {
+            qb = qb.in('location', finalLocations);
+          }
+          if (finalCategories && finalCategories.length > 0) {
+            const catClauses = finalCategories.map(c => `category_name.ilike.${c} | %,category_name.eq.${c}`).join(',');
+            qb = qb.or(catClauses);
+          }
+          if (finalSubcategories && finalSubcategories.length > 0) {
+            const subClauses = finalSubcategories.map(s => `category_name.ilike.% | ${s}%`).join(',');
+            qb = qb.or(subClauses);
+          }
+          if (filters?.sellers && filters.sellers.length > 0) {
+            qb = qb.in('seller_name', filters.sellers);
+          }
+          if (filters?.regionalOffices && filters.regionalOffices.length > 0) {
+            const officeClauses = filters.regionalOffices.map(o => `mstc_auction_number.ilike.MSTC/${o}/%`).join(',');
+            qb = qb.or(officeClauses);
+          }
+          if (finalStartDate) {
+            qb = qb.gte('opening_date', finalStartDate);
+          }
+          if (finalEndDate) {
+            qb = qb.lte('opening_date', finalEndDate.includes('T') ? finalEndDate : `${finalEndDate}T23:59:59.999Z`);
+          }
+          if (filters?.hasImages) {
+            qb = qb.or('raw_materials_text.ilike.%"hasImages":true%,raw_materials_text.ilike.%"hasImages":"true"%,raw_materials_text.ilike.%"extracted_images":[%');
+          }
+          if (filters?.hasAssetDocuments) {
+            qb = qb.or('raw_materials_text.ilike.%"hasAssetDocuments":true%,raw_materials_text.ilike.%"hasAssetDocuments":"true"%');
+          }
+          if (isReauctionSearch !== undefined && isReauctionSearch !== null) {
+            qb = qb.eq('is_reauction', isReauctionSearch);
+          }
+          if (p_min_pre_bid !== undefined) {
+            qb = qb.gte('pre_bid', p_min_pre_bid);
+          }
+          if (p_max_pre_bid !== undefined) {
+            qb = qb.lte('pre_bid', p_max_pre_bid);
+          }
+          return qb;
+        };
+
+        try {
+          const [activeCountRes, closedCountRes] = await Promise.all([
+            buildFilteredQuery(supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).gte('closing_date', nowIso)),
+            buildFilteredQuery(supabase.from('mstc_auctions').select('*', { count: 'exact', head: true }).lt('closing_date', nowIso))
+          ]);
+
+          const activeCount = activeCountRes.count || 0;
+          const closedCount = closedCountRes.count || 0;
+          const totalBrowseCount = activeCount + closedCount;
+          const startIndex = (page - 1) * limit;
+
+          let pageItems: any[] = [];
+
+          if (startIndex < activeCount) {
+            const activeLimit = Math.min(limit, activeCount - startIndex);
+            const activeRes = await buildFilteredQuery(
+              supabase.from('mstc_auctions').select('*')
+            )
+              .gte('closing_date', nowIso)
+              .order('closing_date', { ascending: true })
+              .range(startIndex, startIndex + activeLimit - 1);
+
+            pageItems = activeRes.data || [];
+
+            if (pageItems.length < limit && closedCount > 0) {
+              const neededClosed = limit - pageItems.length;
+              const closedRes = await buildFilteredQuery(
+                supabase.from('mstc_auctions').select('*')
+              )
+                .lt('closing_date', nowIso)
+                .order('closing_date', { ascending: false })
+                .range(0, neededClosed - 1);
+
+              if (closedRes.data) {
+                pageItems = [...pageItems, ...closedRes.data];
+              }
+            }
+          } else {
+            const closedOffset = startIndex - activeCount;
+            const closedRes = await buildFilteredQuery(
+              supabase.from('mstc_auctions').select('*')
+            )
+              .lt('closing_date', nowIso)
+              .order('closing_date', { ascending: false })
+              .range(closedOffset, closedOffset + limit - 1);
+
+            pageItems = closedRes.data || [];
+          }
+
+          let mapped = pageItems.map(item => {
+            const { category, subcategory } = mapRawCategory(item.category_name);
+            return { ...item, is_reauction: !!item.is_reauction, category_name: `${category} | ${subcategory}` } as MstcSanitizedAuction;
+          });
+
+          if (locationCanonical && mapped.length > 0) {
+            mapped = mapped.filter(item => dbLocationMatchesCanonical(item.location || '', locationCanonical));
+          }
+
+          return {
+            data: mapped,
+            count: totalBrowseCount,
+            hasDirectMatches: true
+          };
+        } catch (browseErr) {
+          console.warn('Direct browse query failed, falling back to RPC:', browseErr);
+          // Fall through to RPC if unexpected error
+        }
+      }
+
+      // Run Hybrid RPC for search queries
       const rpcResult = await supabase.rpc('hybrid_search_mstc_catalog', {
         p_search_query: rpcQuery || null,
         p_embedding: embeddingStr as any,
@@ -2223,6 +2536,23 @@ export const MstcSearchService = {
         const { category, subcategory } = mapRawCategory(item.category_name);
         return { ...item, is_reauction: !!item.is_reauction, category_name: `${category} | ${subcategory}` } as MstcSanitizedAuction;
       });
+
+      // When searching, sort active matches above closed matches while preserving search relevance
+      const nowMs = Date.now();
+      mapped.sort((a, b) => {
+        const aClosed = a.closing_date ? new Date(a.closing_date).getTime() < nowMs : false;
+        const bClosed = b.closing_date ? new Date(b.closing_date).getTime() < nowMs : false;
+        if (aClosed !== bClosed) {
+          return aClosed ? 1 : -1;
+        }
+        return 0;
+      });
+
+      // Strict post-filter: If a specific location/region was requested in the search, ensure zero leakage
+      if (locationCanonical && mapped.length > 0) {
+        mapped = mapped.filter(item => dbLocationMatchesCanonical(item.location || '', locationCanonical));
+        totalCount = mapped.length;
+      }
 
       return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery, hasDirectMatches };
     } catch (error) {
@@ -2530,12 +2860,15 @@ export const MstcSearchService = {
       
       // 3. Fast direct DB lookup for top 4 auction numbers
       let matchingAuctions: any[] = [];
-      if (lowerCategory.length >= 2 && locationPart.length === 0) {
+      const cleanRefMatch = lowerCategory.match(/(?:^(?:(?:official\s+)?(?:auction\s+)?(?:ref(?:erence)?|lot)\s*(?:no\.?|id|number)?\s*[:#\-\.]?\s*|#\s*)|(?:ref(?:erence)?|lot)\s*(?:no\.?|id|number)?\s*[:#\-\.]?\s*)(\d{3,8})$/i);
+      const termToMatch = cleanRefMatch ? cleanRefMatch[1] : lowerCategory;
+
+      if (termToMatch.length >= 2 && locationPart.length === 0) {
         const { data } = await supabase
           .from('mstc_auctions')
           .select('mstc_auction_number, seller_name, location')
           .eq('asset_status', 'completed')
-          .ilike('mstc_auction_number', `%${lowerCategory}%`)
+          .ilike('mstc_auction_number', `%${termToMatch}%`)
           .limit(4);
         if (data) {
           matchingAuctions = data;
@@ -2557,6 +2890,11 @@ export const MstcSearchService = {
       };
 
       if (locationPart.length > 0) {
+        for (const region of Object.values(INDIA_REGIONS)) {
+          if (isLocationMatch(region.name, region.aliases, lowerLocation)) {
+            matchedLocations.add(region.name);
+          }
+        }
         for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
           const canonicalDisplay = canonical.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
           if (isLocationMatch(canonical, aliases, lowerLocation)) {
@@ -2564,6 +2902,11 @@ export const MstcSearchService = {
           }
         }
       } else if (lowerCategory.length > 0) {
+        for (const region of Object.values(INDIA_REGIONS)) {
+          if (isLocationMatch(region.name, region.aliases, lowerCategory)) {
+            matchedLocations.add(region.name);
+          }
+        }
         // Fallback matching locations from static INDIA_LOCATIONS map using lowerCategory
         for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
           const canonicalDisplay = canonical.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -2621,7 +2964,7 @@ export const MstcSearchService = {
       // 2. Suggest actual matching catalog/auction numbers (up to 4)
       if (matchingAuctions.length > 0 && locationPart.length === 0) {
         matchingAuctions
-          .filter(item => item.mstc_auction_number.toLowerCase().includes(lowerCategory))
+          .filter(item => item.mstc_auction_number.toLowerCase().includes(termToMatch))
           .slice(0, 4)
           .forEach(item => {
             const subText = `${item.seller_name} | ${item.location}`;
@@ -2867,11 +3210,17 @@ export const BaanknetSearchService = {
         q = q.eq('property_type', filters.category);
       }
 
+      // Extract location or regional zone if present in query
+      const { locations: extractedLocations, remainingQuery } = extractLocationFromQuery(query);
+      const cleanSearchQuery = remainingQuery.trim();
+
       // Apply location (state) filter
       if (filters?.locations && filters.locations.length > 0) {
         q = q.in('location', filters.locations);
       } else if (filters?.location && filters.location !== 'All Locations') {
         q = q.eq('location', filters.location);
+      } else if (extractedLocations && extractedLocations.length > 0) {
+        q = q.in('location', extractedLocations);
       }
 
       // Apply regionalOffice (bank name) filter
@@ -2890,9 +3239,9 @@ export const BaanknetSearchService = {
       }
 
       // Text search
-      if (query.trim()) {
-        const cleanQuery = query.trim();
-        q = q.or(`title.ilike.%${cleanQuery}%,bank_name.ilike.%${cleanQuery}%,location.ilike.%${cleanQuery}%,city.ilike.%${cleanQuery}%,full_address.ilike.%${cleanQuery}%,baanknet_auction_id.ilike.%${cleanQuery}%`);
+      const textToSearch = cleanSearchQuery || query.trim();
+      if (textToSearch) {
+        q = q.or(`title.ilike.%${textToSearch}%,bank_name.ilike.%${textToSearch}%,location.ilike.%${textToSearch}%,city.ilike.%${textToSearch}%,full_address.ilike.%${textToSearch}%,baanknet_auction_id.ilike.%${textToSearch}%`);
       }
 
       // Sorting
@@ -3113,11 +3462,17 @@ export const GemSearchService = {
         q = q.eq('category_name', filters.category);
       }
 
+      // Extract location or regional zone if present in query
+      const { locations: extractedLocations, remainingQuery } = extractLocationFromQuery(query);
+      const cleanSearchQuery = remainingQuery.trim();
+
       // Apply location (state) filter
       if (filters?.locations && filters.locations.length > 0) {
         q = q.in('location', filters.locations);
       } else if (filters?.location && filters.location !== 'All Locations') {
         q = q.eq('location', filters.location);
+      } else if (extractedLocations && extractedLocations.length > 0) {
+        q = q.in('location', extractedLocations);
       }
 
       // Apply regionalOffice (organisation) filter
@@ -3136,9 +3491,9 @@ export const GemSearchService = {
       }
 
       // Text search
-      if (query.trim()) {
-        const cleanQuery = query.trim();
-        q = q.or(`title.ilike.%${cleanQuery}%,organisation.ilike.%${cleanQuery}%,ministry.ilike.%${cleanQuery}%,location.ilike.%${cleanQuery}%,city.ilike.%${cleanQuery}%,category_name.ilike.%${cleanQuery}%,gem_auction_id.ilike.%${cleanQuery}%`);
+      const textToSearch = cleanSearchQuery || query.trim();
+      if (textToSearch) {
+        q = q.or(`title.ilike.%${textToSearch}%,organisation.ilike.%${textToSearch}%,ministry.ilike.%${textToSearch}%,location.ilike.%${textToSearch}%,city.ilike.%${textToSearch}%,category_name.ilike.%${textToSearch}%,gem_auction_id.ilike.%${textToSearch}%`);
       }
 
       // Sorting

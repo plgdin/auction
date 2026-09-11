@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { useSearchParams } from 'react-router-dom';
-import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, MapPin, Tag, CornerDownLeft, FileText, Phone, Mail, Sparkles, Gift, Zap } from 'lucide-react';
+import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, MapPin, Tag, CornerDownLeft, FileText, Phone, Mail, Sparkles, Gift, Zap, Navigation, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
+import { toast } from 'react-hot-toast';
 import { AuctionCard } from '../components/auction/AuctionCard';
 import { MstcCard } from '../components/auction/MstcCard';
 import { BaanknetCard } from '../components/auction/BaanknetCard';
@@ -25,6 +26,9 @@ import { generateCatalogSummary, formatDateOrdinal, formatDateTimeOrdinal } from
 import { recommendationService } from '../services/recommendationService';
 import { useAuctionAccess } from '../hooks/useAuctionAccess';
 import { usePageSeo } from '../utils/seo';
+import { useUserLocation } from '../hooks/useUserLocation';
+import { getAuctionDistance, findLocationsWithinRadius, parseNearbyQuery } from '../utils/geoCoordinates';
+import { LocationPromptModal } from '../components/common/LocationPromptModal';
 
 const renderSuggestionText = (text: string, query: string) => {
   if (!query) return <span>{text}</span>;
@@ -176,6 +180,21 @@ export function Auctions() {
 
   const activeSeo = portalSeoMap[activeTab] || portalSeoMap.mstc;
   const currentSearchQuery = (searchParams.get('q') || '').trim();
+
+  // User geolocation for nearby auctions within 200km
+  const { lat: userLat, lng: userLng, locationName, isLoading: isLocating, error: locationError, permissionDenied, requestLocation } = useUserLocation();
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [pendingNearbyRadius, setPendingNearbyRadius] = useState(200);
+  const [pendingNearbyQuery, setPendingNearbyQuery] = useState<string | undefined>(undefined);
+  const [pendingNearbyRawQuery, setPendingNearbyRawQuery] = useState<string | undefined>(undefined);
+  const nearbyRadiusParam = searchParams.get('nearby') ? parseInt(searchParams.get('nearby')!) : null;
+  const urlLat = searchParams.get('lat') ? parseFloat(searchParams.get('lat')!) : null;
+  const urlLng = searchParams.get('lng') ? parseFloat(searchParams.get('lng')!) : null;
+
+  const activeUserLat = urlLat || userLat;
+  const activeUserLng = urlLng || userLng;
+  const isNearbyActive = Boolean(nearbyRadiusParam && activeUserLat !== null && activeUserLng !== null);
+  const activeRadius = nearbyRadiusParam || 200;
 
   usePageSeo({
     title: currentSearchQuery ? `Search "${currentSearchQuery}" in ${activeSeo.title}` : activeSeo.title,
@@ -451,10 +470,10 @@ export function Auctions() {
     };
   }, [isFiltersOpen]);
 
-  // Sync searchQuery local input state with query params
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  // Sync searchQuery local input state with query params (preserves typed string via display_q)
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('display_q') || searchParams.get('q') || '');
   useEffect(() => {
-    setSearchQuery(searchParams.get('q') || '');
+    setSearchQuery(searchParams.get('display_q') || searchParams.get('q') || '');
   }, [searchParams]);
 
 
@@ -499,15 +518,40 @@ export function Auctions() {
       } else if (activeTab === 'commercial') {
         list = await CommercialSearchService.getCommercialSearchSuggestions(searchQuery);
       }
+
+      const cleanQ = searchQuery.trim().toLowerCase();
+      const parsed = parseNearbyQuery(searchQuery);
+
+      if (parsed.isNearby) {
+        const titleText = parsed.cleanedQuery
+          ? `Find "${parsed.cleanedQuery}" within ${parsed.radius}km`
+          : `Find auctions within ${parsed.radius}km (using my location)`;
+        const nearbyItem: SearchSuggestion = {
+          type: 'nearby' as any,
+          text: titleText,
+          subtext: locationName ? `Near ${locationName} • ${parsed.radius}km radius` : `Detect browser location & show auctions within ${parsed.radius}km`,
+        };
+        list = [nearbyItem, ...list.filter(item => item.text !== nearbyItem.text)];
+      } else if (!cleanQ || cleanQ.includes('near') || cleanQ.includes('within') || cleanQ.includes('loc') || cleanQ.includes('me')) {
+        const nearbyItem: SearchSuggestion = {
+          type: 'nearby' as any,
+          text: 'Find auctions within 200km (using my location)',
+          subtext: locationName ? `Near ${locationName} • 200km radius` : 'Detect browser location & show nearby auctions',
+        };
+        list = [nearbyItem, ...list.filter(item => item.text !== nearbyItem.text)];
+      }
+
       setSuggestions(list);
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, activeTab]);
+  }, [searchQuery, activeTab, locationName]);
 
   // Hybrid search examples cycling typing animation
   const placeholderExamples = [
+    "Find auctions within 200km",
     "Show me auctions in Delhi",
+    "Auctions near me",
     "Show me vehicle auctions",
     "Show me property auctions",
     "Copper scrap auctions in Mumbai",
@@ -554,7 +598,76 @@ export function Auctions() {
     return () => clearTimeout(timer);
   }, [phCharIdx, phPhase, phExampleIdx]);
 
+  const handleActivateNearby = async (radius = 200, queryOverride?: string, rawQuery?: string) => {
+    let lat = activeUserLat;
+    let lng = activeUserLng;
+
+    if (!lat || !lng) {
+      setPendingNearbyRadius(radius);
+      setPendingNearbyQuery(queryOverride);
+      setPendingNearbyRawQuery(rawQuery);
+      toast('Requesting your browser location...', { icon: '📍' });
+      const coords = await requestLocation();
+      if (coords) {
+        lat = coords.lat;
+        lng = coords.lng;
+        setShowLocationModal(false);
+        toast.success(`Location detected! Showing auctions within ${radius}km.`);
+      } else {
+        setShowLocationModal(true);
+        toast.error('Location services are not enabled. Please allow location access.');
+        return;
+      }
+    }
+
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('nearby', radius.toString());
+      if (lat && lng) {
+        next.set('lat', lat.toString());
+        next.set('lng', lng.toString());
+      }
+      if (queryOverride !== undefined) {
+        if (queryOverride) {
+          next.set('q', queryOverride);
+        } else {
+          next.delete('q');
+        }
+      }
+      if (rawQuery) {
+        next.set('display_q', rawQuery);
+        setSearchQuery(rawQuery);
+      } else {
+        next.delete('display_q');
+        if (queryOverride !== undefined) {
+          setSearchQuery(queryOverride);
+        }
+      }
+      next.set('page', '1');
+      return next;
+    });
+  };
+
+  const handleClearNearby = () => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('nearby');
+      next.delete('lat');
+      next.delete('lng');
+      next.delete('display_q');
+      next.set('page', '1');
+      return next;
+    });
+  };
+
   const selectSuggestion = (suggestion: SearchSuggestion) => {
+    if (suggestion.type === 'nearby' || suggestion.text.includes('within') || suggestion.text.includes('near me')) {
+      setShowSuggestions(false);
+      const parsed = parseNearbyQuery(suggestion.text);
+      handleActivateNearby(parsed.radius || 200, parsed.cleanedQuery, suggestion.text);
+      return;
+    }
+
     let queryText = suggestion.text;
     if (suggestion.type === 'location' && queryText.startsWith('Auctions in ')) {
       queryText = queryText.replace('Auctions in ', '');
@@ -570,6 +683,10 @@ export function Auctions() {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       next.set('q', queryText);
+      next.delete('display_q');
+      next.delete('nearby');
+      next.delete('lat');
+      next.delete('lng');
       next.set('page', '1');
       return next;
     });
@@ -626,10 +743,14 @@ export function Auctions() {
     preBid,
     startDate,
     endDate,
+    nearbyRadius: nearbyRadiusParam || undefined,
+    userLat: activeUserLat || undefined,
+    userLng: activeUserLng || undefined,
   };
 
   const mstcActiveFilters = [
     ...(submittedSearchQuery ? [{ label: 'Search', value: submittedSearchQuery }] : []),
+    ...(isNearbyActive ? [{ label: 'Proximity', value: `Within ${activeRadius}km${locationName ? ` (${locationName})` : ''}` }] : []),
     ...(selectedMstcCategories.length ? [{ label: 'Category', value: selectedMstcCategories.join(', ') }] : []),
     ...(selectedMstcSubcategories.length ? [{ label: 'Subcategory', value: selectedMstcSubcategories.join(', ') }] : []),
     ...(selectedMstcLocations.length ? [{ label: 'Location', value: selectedMstcLocations.join(', ') }] : []),
@@ -649,6 +770,7 @@ export function Auctions() {
     filters.preBid ||
     filters.startDate ||
     filters.endDate ||
+    isNearbyActive ||
     searchParams.get('q')
   );
 
@@ -715,7 +837,10 @@ export function Auctions() {
     hasAssetDocuments: mstcHasAssetDocuments,
     hasImages: mstcHasImages,
     isReauction: mstcIsReauction,
-    preBid: mstcPreBid
+    preBid: mstcPreBid,
+    nearbyRadius: nearbyRadiusParam || undefined,
+    userLat: activeUserLat || undefined,
+    userLng: activeUserLng || undefined,
   }), [
     selectedMstcCategoriesJoined,
     selectedMstcSubcategoriesJoined,
@@ -726,7 +851,10 @@ export function Auctions() {
     mstcHasAssetDocuments,
     mstcHasImages,
     mstcIsReauction,
-    mstcPreBid
+    mstcPreBid,
+    nearbyRadiusParam,
+    activeUserLat,
+    activeUserLng,
   ]);
 
   const loadMstcData = useCallback(async () => {
@@ -1050,10 +1178,25 @@ export function Auctions() {
     if (user && searchQuery) {
       recommendationService.logUserSearch(user.id, searchQuery);
     }
+
+    const parsedNearby = parseNearbyQuery(searchQuery);
+    if (parsedNearby.isNearby) {
+      handleActivateNearby(parsedNearby.radius, parsedNearby.cleanedQuery, searchQuery);
+      return;
+    }
+
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      if (searchQuery) {
-        next.set('q', searchQuery);
+      // When searching a regular term without proximity semantics,
+      // clear any proximity filters that were applied from previous nearby searches.
+      next.delete('display_q');
+      next.delete('nearby');
+      next.delete('lat');
+      next.delete('lng');
+
+      const cleanKeyword = searchQuery.trim();
+      if (cleanKeyword) {
+        next.set('q', cleanKeyword);
       } else {
         next.delete('q');
       }
@@ -1169,6 +1312,21 @@ export function Auctions() {
         }
       }
 
+      // Update nearby filters
+      if ('nearbyRadius' in newFilters) {
+        if (newFilters.nearbyRadius) {
+          next.set('nearby', newFilters.nearbyRadius.toString());
+          if (newFilters.userLat && newFilters.userLng) {
+            next.set('lat', newFilters.userLat.toString());
+            next.set('lng', newFilters.userLng.toString());
+          }
+        } else {
+          next.delete('nearby');
+          next.delete('lat');
+          next.delete('lng');
+        }
+      }
+
       next.set('page', '1');
       return next;
     });
@@ -1246,6 +1404,21 @@ export function Auctions() {
         }
       }
 
+      // Update nearby filters
+      if ('nearbyRadius' in newFilters) {
+        if (newFilters.nearbyRadius) {
+          next.set('nearby', newFilters.nearbyRadius.toString());
+          if (newFilters.userLat && newFilters.userLng) {
+            next.set('lat', newFilters.userLat.toString());
+            next.set('lng', newFilters.userLng.toString());
+          }
+        } else {
+          next.delete('nearby');
+          next.delete('lat');
+          next.delete('lng');
+        }
+      }
+
       next.set('page', '1');
       return next;
     });
@@ -1280,6 +1453,50 @@ export function Auctions() {
 
   const startIndex = (page - 1) * limit;
   const paginatedMstcAuctions = mstcAuctions;
+
+  const displayedMstcAuctions = useMemo(() => {
+    if (!isNearbyActive || !activeUserLat || !activeUserLng) return paginatedMstcAuctions;
+    return paginatedMstcAuctions
+      .map(item => {
+        const dist = getAuctionDistance(item, activeUserLat, activeUserLng);
+        return { ...item, _distanceKm: dist };
+      })
+      .filter(item => item._distanceKm !== null && item._distanceKm <= activeRadius)
+      .sort((a, b) => (a._distanceKm ?? 99999) - (b._distanceKm ?? 99999));
+  }, [paginatedMstcAuctions, isNearbyActive, activeUserLat, activeUserLng, activeRadius]);
+
+  const displayedBaanknetAuctions = useMemo(() => {
+    if (!isNearbyActive || !activeUserLat || !activeUserLng) return baanknetAuctions;
+    return baanknetAuctions
+      .map(item => {
+        const dist = getAuctionDistance(item, activeUserLat, activeUserLng);
+        return { ...item, _distanceKm: dist };
+      })
+      .filter(item => item._distanceKm !== null && item._distanceKm <= activeRadius)
+      .sort((a, b) => (a._distanceKm ?? 99999) - (b._distanceKm ?? 99999));
+  }, [baanknetAuctions, isNearbyActive, activeUserLat, activeUserLng, activeRadius]);
+
+  const displayedGemAuctions = useMemo(() => {
+    if (!isNearbyActive || !activeUserLat || !activeUserLng) return gemAuctions;
+    return gemAuctions
+      .map(item => {
+        const dist = getAuctionDistance(item, activeUserLat, activeUserLng);
+        return { ...item, _distanceKm: dist };
+      })
+      .filter(item => item._distanceKm !== null && item._distanceKm <= activeRadius)
+      .sort((a, b) => (a._distanceKm ?? 99999) - (b._distanceKm ?? 99999));
+  }, [gemAuctions, isNearbyActive, activeUserLat, activeUserLng, activeRadius]);
+
+  const displayedCommercialAuctions = useMemo(() => {
+    if (!isNearbyActive || !activeUserLat || !activeUserLng) return auctions;
+    return auctions
+      .map(item => {
+        const dist = getAuctionDistance(item, activeUserLat, activeUserLng);
+        return { ...item, _distanceKm: dist };
+      })
+      .filter(item => item._distanceKm !== null && item._distanceKm <= activeRadius)
+      .sort((a, b) => (a._distanceKm ?? 99999) - (b._distanceKm ?? 99999));
+  }, [auctions, isNearbyActive, activeUserLat, activeUserLng, activeRadius]);
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -1393,6 +1610,9 @@ export function Auctions() {
                       )}
                     >
                       <div className="flex items-center space-x-3">
+                        {suggestion.type === 'nearby' && (
+                          <Navigation className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
+                        )}
                         {suggestion.type === 'location' && (
                           <MapPin className="h-4.5 w-4.5 text-rose-500 shrink-0" />
                         )}
@@ -1597,6 +1817,34 @@ export function Auctions() {
                         >
                           <span className="font-bold text-slate-900 shrink-0">{filter.label}:</span>{' '}
                           <span className="truncate">{filter.value}</span>
+                          {filter.label === 'Proximity' ? (
+                            <button
+                              type="button"
+                              onClick={handleClearNearby}
+                              className="ml-1 text-slate-400 hover:text-slate-700 cursor-pointer inline-flex items-center"
+                              title="Remove location filter"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          ) : filter.label === 'Search' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearchQuery('');
+                                setSearchParams(prev => {
+                                  const next = new URLSearchParams(prev);
+                                  next.delete('q');
+                                  next.delete('display_q');
+                                  next.set('page', '1');
+                                  return next;
+                                });
+                              }}
+                              className="ml-1 text-slate-400 hover:text-slate-700 cursor-pointer inline-flex items-center"
+                              title="Clear search"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          ) : null}
                         </span>
                       ))}
                     </div>
@@ -1682,31 +1930,58 @@ export function Auctions() {
                       isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}
                   />
-                ) : auctions.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">No auctions found</h3>
-                    <p className="text-slate-500 mb-6">Try adjusting your search criteria or filters.</p>
-                    <button
-                      onClick={() => {
-                        setSearchParams({});
-                      }}
-                      className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50"
-                    >
-                      Clear all filters
-                    </button>
-                  </div>
+                ) : displayedCommercialAuctions.length === 0 ? (
+                  isNearbyActive && auctions.length > 0 ? (
+                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
+                      <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                        <Navigation className="w-6 h-6" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">No commercial auctions within {activeRadius}km</h3>
+                      <p className="text-slate-500 mb-6 max-w-md mx-auto">
+                        No auctions found within {activeRadius}km{locationName ? ` of ${locationName}` : ''}. Try expanding the search radius.
+                      </p>
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => handleActivateNearby(500)}
+                          className="px-5 py-2 text-sm font-medium rounded-lg text-white bg-primary hover:bg-primary/90 cursor-pointer shadow-sm"
+                        >
+                          Expand to 500 km
+                        </button>
+                        <button
+                          onClick={handleClearNearby}
+                          className="px-5 py-2 border border-slate-300 text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
+                        >
+                          Clear location filter
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">No auctions found</h3>
+                      <p className="text-slate-500 mb-6">Try adjusting your search criteria or filters.</p>
+                      <button
+                        onClick={() => {
+                          setSearchParams({});
+                        }}
+                        className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50"
+                      >
+                        Clear all filters
+                      </button>
+                    </div>
+                  )
                 ) : (
                   <>
                     <div className={clsx(
                       "gap-6",
                       isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}>
-                      {auctions.map(auction => (
+                      {displayedCommercialAuctions.map(auction => (
                         <AuctionCard
                           key={auction.id}
                           auction={auction}
                           isGrid={isGridView}
                           isWatchlistedInitial={watchlistIds.includes(auction.id)}
+                          distanceKm={auction._distanceKm}
                         />
                       ))}
                     </div>
@@ -1804,26 +2079,52 @@ export function Auctions() {
                       isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}
                   />
-                ) : baanknetAuctions.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-350 flex-grow text-left">
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">No BaankNet auctions found</h3>
-                    <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
-                    <button
-                      onClick={() => {
-                        setSearchParams({ tab: 'baanknet' });
-                      }}
-                      className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
-                    >
-                      Clear search & filters
-                    </button>
-                  </div>
+                ) : displayedBaanknetAuctions.length === 0 ? (
+                  isNearbyActive && baanknetAuctions.length > 0 ? (
+                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
+                      <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                        <Navigation className="w-6 h-6" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">No bank auctions within {activeRadius}km</h3>
+                      <p className="text-slate-500 mb-6 max-w-md mx-auto">
+                        No bank properties found within {activeRadius}km{locationName ? ` of ${locationName}` : ''}. Try expanding the search radius.
+                      </p>
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => handleActivateNearby(500)}
+                          className="px-5 py-2 text-sm font-medium rounded-lg text-white bg-primary hover:bg-primary/90 cursor-pointer shadow-sm"
+                        >
+                          Expand to 500 km
+                        </button>
+                        <button
+                          onClick={handleClearNearby}
+                          className="px-5 py-2 border border-slate-300 text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
+                        >
+                          Clear location filter
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-350 flex-grow text-left">
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">No BaankNet auctions found</h3>
+                      <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
+                      <button
+                        onClick={() => {
+                          setSearchParams({ tab: 'baanknet' });
+                        }}
+                        className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
+                      >
+                        Clear search & filters
+                      </button>
+                    </div>
+                  )
                 ) : (
                   <>
                     <div className={clsx(
                       "gap-6",
                       isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}>
-                      {baanknetAuctions.map(item => (
+                      {displayedBaanknetAuctions.map(item => (
                         <BaanknetCard
                           key={item.id}
                           item={item}
@@ -1831,6 +2132,7 @@ export function Auctions() {
                           onPreview={handleBaanknetPreview}
                           isInterested={watchlistIds.includes(item.id)}
                           onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
+                          distanceKm={item._distanceKm}
                         />
                       ))}
                     </div>
@@ -1928,31 +2230,58 @@ export function Auctions() {
                       isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}
                   />
-                ) : gemAuctions.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-350 flex-grow text-left">
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">No GeM auctions found</h3>
-                    <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
-                    <button
-                      onClick={() => {
-                        setSearchParams({ tab: 'gem' });
-                      }}
-                      className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
-                    >
-                      Clear search & filters
-                    </button>
-                  </div>
+                ) : displayedGemAuctions.length === 0 ? (
+                  isNearbyActive && gemAuctions.length > 0 ? (
+                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
+                      <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                        <Navigation className="w-6 h-6" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">No GeM auctions within {activeRadius}km</h3>
+                      <p className="text-slate-500 mb-6 max-w-md mx-auto">
+                        No GeM notices found within {activeRadius}km{locationName ? ` of ${locationName}` : ''}. Try expanding the search radius.
+                      </p>
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => handleActivateNearby(500)}
+                          className="px-5 py-2 text-sm font-medium rounded-lg text-white bg-primary hover:bg-primary/90 cursor-pointer shadow-sm"
+                        >
+                          Expand to 500 km
+                        </button>
+                        <button
+                          onClick={handleClearNearby}
+                          className="px-5 py-2 border border-slate-300 text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
+                        >
+                          Clear location filter
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-350 flex-grow text-left">
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">No GeM auctions found</h3>
+                      <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
+                      <button
+                        onClick={() => {
+                          setSearchParams({ tab: 'gem' });
+                        }}
+                        className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
+                      >
+                        Clear search & filters
+                      </button>
+                    </div>
+                  )
                 ) : (
                   <>
                     <div className={clsx(
                       "gap-6",
                       isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}>
-                      {gemAuctions.map(item => (
+                      {displayedGemAuctions.map(item => (
                         <GemCard
                           key={item.id}
                           item={item}
                           isGrid={isGridView}
                           onPreview={handleGemPreview}
+                          distanceKm={item._distanceKm}
                         />
                       ))}
                     </div>
@@ -2171,19 +2500,45 @@ export function Auctions() {
                       isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}
                   />
-                ) : mstcAuctions.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">No MSTC catalogs found</h3>
-                    <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
-                    <button
-                      onClick={() => {
-                        setSearchParams({ tab: 'mstc' });
-                      }}
-                      className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50"
-                    >
-                      Clear search & filters
-                    </button>
-                  </div>
+                ) : displayedMstcAuctions.length === 0 ? (
+                  isNearbyActive && mstcAuctions.length > 0 ? (
+                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
+                      <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                        <Navigation className="w-6 h-6" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">No MSTC auctions within {activeRadius}km</h3>
+                      <p className="text-slate-500 mb-6 max-w-md mx-auto">
+                        No government catalogs found within {activeRadius}km{locationName ? ` of ${locationName}` : ''}. Try expanding the search radius.
+                      </p>
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => handleActivateNearby(500)}
+                          className="px-5 py-2 text-sm font-medium rounded-lg text-white bg-primary hover:bg-primary/90 cursor-pointer shadow-sm"
+                        >
+                          Expand to 500 km
+                        </button>
+                        <button
+                          onClick={handleClearNearby}
+                          className="px-5 py-2 border border-slate-300 text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
+                        >
+                          Clear location filter
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300 flex-grow">
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">No MSTC catalogs found</h3>
+                      <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
+                      <button
+                        onClick={() => {
+                          setSearchParams({ tab: 'mstc' });
+                        }}
+                        className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50"
+                      >
+                        Clear search & filters
+                      </button>
+                    </div>
+                  )
                 ) : (
                   <>
                     {isShowingSimilarMstc && submittedSearchQuery && (
@@ -2200,7 +2555,7 @@ export function Auctions() {
                       "gap-6",
                       isGridView ? clsx("grid", getGridColsClass(columns)) : "flex flex-col space-y-4"
                     )}>
-                      {paginatedMstcAuctions.map(item => (
+                      {displayedMstcAuctions.map(item => (
                         <MstcCard
                           key={item.id}
                           item={item}
@@ -2208,6 +2563,7 @@ export function Auctions() {
                           onPreview={handleMstcPreview}
                           isInterested={interestedMstcIds.includes(item.id)}
                           onInterestedToggle={() => handleMstcInterestedToggle(item.id)}
+                          distanceKm={item._distanceKm}
                         />
                       ))}
                     </div>
@@ -2512,7 +2868,21 @@ export function Auctions() {
         </Suspense>
       )}
 
-      {/* Catalog Modals */}
+      {/* Location Access Prompt Modal */}
+      <LocationPromptModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onAllow={async () => {
+          const coords = await requestLocation();
+          if (coords) {
+            setShowLocationModal(false);
+            handleActivateNearby(pendingNearbyRadius, pendingNearbyQuery, pendingNearbyRawQuery);
+          }
+        }}
+        isLoading={isLocating}
+        error={locationError}
+        permissionDenied={permissionDenied}
+      />
     </div>
   );
 }

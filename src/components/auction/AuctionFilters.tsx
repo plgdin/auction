@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { Filter, ChevronRight, ChevronDown, CalendarDays, Sparkles, Zap, X, Lock } from 'lucide-react';
+import { Filter, ChevronRight, ChevronDown, CalendarDays, Sparkles, Zap, X, Lock, Navigation, MapPin, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { auctionService } from '../../services/auctionService';
 import { expandMstcOffice } from '../../services/publicService';
@@ -10,6 +10,8 @@ import { DownOutlined } from '@ant-design/icons';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuthStore } from '../../store/authStore';
+import { useUserLocation } from '../../hooks/useUserLocation';
+import { LocationPromptModal } from '../common/LocationPromptModal';
 
 interface AuctionFiltersProps {
   onFilterChange: (filters: {
@@ -27,6 +29,9 @@ interface AuctionFiltersProps {
     hasAssetDocuments?: boolean;
     hasImages?: boolean;
     isReauction?: boolean;
+    nearbyRadius?: number;
+    userLat?: number;
+    userLng?: number;
   }) => void;
   onClose: () => void;
   initialFilters: {
@@ -44,6 +49,9 @@ interface AuctionFiltersProps {
     hasAssetDocuments?: boolean;
     hasImages?: boolean;
     isReauction?: boolean;
+    nearbyRadius?: number;
+    userLat?: number;
+    userLng?: number;
   };
   activeTab?: 'commercial' | 'mstc' | 'baanknet' | 'gem' | 'gem-bids';
   customCategories?: string[];
@@ -102,6 +110,11 @@ export function AuctionFilters({
     return new Date();
   });
 
+  const { lat: userLat, lng: userLng, locationName, isLoading: isLocating, error: locationError, permissionDenied, requestLocation } = useUserLocation();
+  const [isNearbyEnabled, setIsNearbyEnabled] = useState<boolean>(Boolean(initialFilters.nearbyRadius));
+  const [nearbyRadius, setNearbyRadius] = useState<number>(initialFilters.nearbyRadius || 200);
+  const [showLocationModal, setShowLocationModal] = useState<boolean>(false);
+
   const { profile, isAuthenticated } = useAuthStore();
   const isBusinessUser = (isAuthenticated && (profile?.subscription_plan === 'pro' || profile?.subscription_plan === 'enterprise')) || profile?.role === 'admin' || profile?.role === 'superadmin';
 
@@ -133,6 +146,10 @@ export function AuctionFilters({
     setHasAssetDocuments(initialFilters.hasAssetDocuments || false);
     setHasImages(initialFilters.hasImages || false);
     setIsReauction(initialFilters.isReauction || false);
+    setIsNearbyEnabled(Boolean(initialFilters.nearbyRadius));
+    if (initialFilters.nearbyRadius) {
+      setNearbyRadius(initialFilters.nearbyRadius);
+    }
 
     if (initialFilters.startDate) {
       setCalendarMonth(parseLocalDate(initialFilters.startDate) || new Date());
@@ -301,6 +318,17 @@ export function AuctionFilters({
     setSelectedSubcategories(prev => prev.filter(sub => stillAvailable.includes(sub)));
   };
 
+  const handleToggleNearby = async () => {
+    const next = !isNearbyEnabled;
+    setIsNearbyEnabled(next);
+    if (next && (!userLat || !userLng)) {
+      const coords = await requestLocation();
+      if (!coords) {
+        setShowLocationModal(true);
+      }
+    }
+  };
+
   const handleApply = () => {
     onFilterChange({
       categoryIds: selectedCategories.length > 0 ? selectedCategories : undefined,
@@ -317,6 +345,9 @@ export function AuctionFilters({
       hasAssetDocuments: hasAssetDocuments || undefined,
       hasImages: hasImages || undefined,
       isReauction: isReauction || undefined,
+      nearbyRadius: isNearbyEnabled ? nearbyRadius : undefined,
+      userLat: isNearbyEnabled ? (userLat || initialFilters.userLat || undefined) : undefined,
+      userLng: isNearbyEnabled ? (userLng || initialFilters.userLng || undefined) : undefined,
     });
     onClose();
   };
@@ -333,6 +364,8 @@ export function AuctionFilters({
     setHasAssetDocuments(false);
     setHasImages(false);
     setIsReauction(false);
+    setIsNearbyEnabled(false);
+    setNearbyRadius(200);
     onFilterChange({
       categoryIds: [],
       subcategory: undefined,
@@ -348,6 +381,9 @@ export function AuctionFilters({
       hasAssetDocuments: undefined,
       hasImages: undefined,
       isReauction: undefined,
+      nearbyRadius: undefined,
+      userLat: undefined,
+      userLng: undefined,
     });
   };
 
@@ -843,6 +879,135 @@ export function AuctionFilters({
           </div>
         )}
 
+        {/* Nearby Auctions (Within 200km) */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-primary-50 text-primary flex items-center justify-center">
+                <Navigation className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Nearby Auctions</h3>
+                <p className="text-[11px] text-slate-500 font-normal">Find auctions close to your location</p>
+              </div>
+            </div>
+          </div>
+
+          <div className={clsx(
+            "p-3.5 rounded-2xl border transition-all duration-200",
+            isNearbyEnabled
+              ? "border-primary/40 bg-primary-50/20 shadow-xs ring-1 ring-primary/20"
+              : "border-slate-200 bg-slate-50/50 hover:border-slate-300"
+          )}>
+            <div
+              onClick={handleToggleNearby}
+              className="flex items-center justify-between cursor-pointer group select-none"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className={clsx(
+                  "w-5 h-5 rounded border-2 transition-all duration-150 flex items-center justify-center shrink-0",
+                  isNearbyEnabled
+                    ? "border-primary bg-primary"
+                    : "border-slate-300 bg-white group-hover:border-slate-400"
+                )}>
+                  {isNearbyEnabled && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3 text-white">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-sm font-semibold text-slate-800">
+                  Within {nearbyRadius >= 1000 ? '1,000+ km' : `${nearbyRadius} km`} of me
+                </span>
+              </div>
+              {isLocating && (
+                <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+              )}
+            </div>
+
+            {isNearbyEnabled && (
+              <div className="mt-3 pt-3 border-t border-slate-200/70 space-y-3 animate-fadeIn select-none">
+                {/* Radius Slider up to 1000km+ */}
+                <div className="space-y-2 select-none">
+                  <div className="flex items-center justify-between cursor-pointer select-none">
+                    <label htmlFor="radius-slider" className="text-[11px] font-bold text-slate-600 uppercase tracking-wider cursor-pointer select-none">
+                      Search Radius
+                    </label>
+                    <span className="text-xs font-black text-primary bg-primary-50 border border-primary/20 px-2.5 py-0.5 rounded-full font-mono select-none cursor-pointer">
+                      {nearbyRadius >= 1000 ? '1,000+ km' : `${nearbyRadius} km`}
+                    </span>
+                  </div>
+                  <div className="relative py-1 cursor-pointer">
+                    <input
+                      id="radius-slider"
+                      type="range"
+                      min={50}
+                      max={1000}
+                      step={10}
+                      value={nearbyRadius}
+                      onChange={(e) => setNearbyRadius(Number(e.target.value))}
+                      style={{
+                        background: `linear-gradient(to right, #0284c7 0%, #0284c7 ${((nearbyRadius - 50) / 950) * 100}%, #e2e8f0 ${((nearbyRadius - 50) / 950) * 100}%, #e2e8f0 100%)`
+                      }}
+                      className="w-full h-2 rounded-full appearance-none cursor-pointer select-none focus:outline-none transition-all [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4.5 [&::-webkit-slider-thumb]:h-4.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-125 active:[&::-webkit-slider-thumb]:scale-125 [&::-moz-range-thumb]:w-4.5 [&::-moz-range-thumb]:h-4.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-bold text-slate-400 select-none px-0.5">
+                    <button type="button" onClick={() => setNearbyRadius(50)} className="hover:text-slate-800 cursor-pointer select-none">50km</button>
+                    <button type="button" onClick={() => setNearbyRadius(200)} className="hover:text-slate-800 cursor-pointer select-none">200km</button>
+                    <button type="button" onClick={() => setNearbyRadius(500)} className="hover:text-slate-800 cursor-pointer select-none">500km</button>
+                    <button type="button" onClick={() => setNearbyRadius(1000)} className="hover:text-primary font-black cursor-pointer select-none">1000km+</button>
+                  </div>
+                </div>
+
+                {/* Location Status */}
+                {userLat && userLng ? (
+                  <div className="flex items-center justify-between text-xs bg-emerald-50 text-emerald-800 p-2 rounded-xl border border-emerald-200">
+                    <span className="flex items-center gap-1.5 truncate">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                      <span className="truncate">
+                        {locationName ? `Near ${locationName}` : `${userLat.toFixed(2)}°, ${userLng.toFixed(2)}°`}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => requestLocation()}
+                      className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 underline ml-2 shrink-0 cursor-pointer"
+                    >
+                      Update
+                    </button>
+                  </div>
+                ) : isLocating ? (
+                  <div className="text-xs text-slate-500 flex items-center gap-1.5 p-2 bg-white rounded-xl border border-slate-200">
+                    <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+                    <span>Detecting your location...</span>
+                  </div>
+                ) : locationError ? (
+                  <div className="text-xs text-rose-700 p-2 bg-rose-50 rounded-xl border border-rose-200 space-y-1">
+                    <p>{locationError}</p>
+                    <button
+                      type="button"
+                      onClick={() => requestLocation()}
+                      className="text-[11px] font-bold text-rose-800 underline cursor-pointer"
+                    >
+                      Retry Location Access
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => requestLocation()}
+                    className="w-full text-xs font-semibold py-1.5 px-2.5 rounded-xl border border-primary/30 text-primary bg-white hover:bg-primary-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>Detect Current Location</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Location */}
         {activeTab !== 'gem-bids' && (
           <div className="mb-8">
@@ -1073,6 +1238,19 @@ export function AuctionFilters({
           </div>
         </div>
       )}
+
+      {/* Location Access Prompt Modal */}
+      <LocationPromptModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onAllow={async () => {
+          const res = await requestLocation();
+          if (res) setShowLocationModal(false);
+        }}
+        isLoading={isLocating}
+        error={locationError}
+        permissionDenied={permissionDenied}
+      />
     </div>
   );
 }
