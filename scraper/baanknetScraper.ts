@@ -388,7 +388,7 @@ async function cleanupExpiredAuctions(): Promise<void> {
 
   const { data: expired, error: fetchError } = await supabase
     .from("baanknet_auctions")
-    .select("id, baanknet_auction_id, auction_end_date")
+    .select("id, baanknet_auction_id, auction_end_date, stored_document_urls")
     .lt("auction_end_date", oneWeekAgo.toISOString());
 
   if (fetchError) {
@@ -422,6 +422,40 @@ async function cleanupExpiredAuctions(): Promise<void> {
     }
   }
 
+  // Remove mirrored documents from Supabase Storage
+  for (const auc of expired) {
+    const auctionId = auc.baanknet_auction_id;
+    if (!auctionId) continue;
+
+    try {
+      // List all files under baanknet-documents/{baanknet_auction_id}/
+      const storagePath = `baanknet-documents/${auctionId}`;
+      const { data: files, error: listError } = await supabase.storage
+        .from("auction_documents")
+        .list(storagePath);
+
+      if (listError) {
+        log.warn({ auctionId, error: listError.message }, "Failed to list storage files for expired auction");
+        continue;
+      }
+
+      if (files && files.length > 0) {
+        const filePaths = files.map((f) => `${storagePath}/${f.name}`);
+        const { error: removeError } = await supabase.storage
+          .from("auction_documents")
+          .remove(filePaths);
+
+        if (removeError) {
+          log.warn({ auctionId, error: removeError.message }, "Failed to remove storage files for expired auction");
+        } else {
+          log.debug({ auctionId, count: filePaths.length }, "Removed storage files for expired auction");
+        }
+      }
+    } catch (storageErr: any) {
+      log.warn({ auctionId, error: storageErr.message }, "Exception during storage cleanup for expired auction");
+    }
+  }
+
   // Delete records in batches of 100 (photos cascade via FK)
   const idsToDelete = expired.map((auc) => auc.id);
   let deleteSuccessCount = 0;
@@ -442,6 +476,7 @@ async function cleanupExpiredAuctions(): Promise<void> {
 
   log.info({ deleted: deleteSuccessCount, total: expired.length }, "Expired BaankNet auctions cleanup complete");
 }
+
 
 // ─── DOM Extraction (eAuction PSB — runs inside Puppeteer page context) ──────
 

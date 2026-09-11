@@ -2,10 +2,10 @@ import { supabase } from '../lib/supabase';
 import type { AuditLog, Notification, Announcement, FaqItem, NewsUpdate, ContactMessage, PromoCode } from '../types/database.types';
 
 export const adminService = {
-  async getAuditLogs(limit: number = 50): Promise<AuditLog[]> {
+  async getAuditLogs(limit: number = 25): Promise<AuditLog[]> {
     const { data, error } = await supabase
       .from('audit_logs')
-      .select('*')
+      .select('id, user_id, action, entity_type, entity_id, details, ip_address, created_at')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -13,7 +13,7 @@ export const adminService = {
       console.error('Error fetching audit logs:', error);
       return [];
     }
-    return data;
+    return data as AuditLog[];
   },
 
   async getUserAuditLogs(userId: string, limit: number = 50): Promise<AuditLog[]> {
@@ -365,7 +365,10 @@ export const adminService = {
       activeGemListingsRes,
       activeGemBidsRes,
       upcomingGemAuctionsRes,
-      upcomingGemBidsRes
+      upcomingGemBidsRes,
+      baanknetTotalRes,
+      baanknetLiveRes,
+      baanknetUpcomingRes
     ] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('auctions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
@@ -375,15 +378,26 @@ export const adminService = {
       supabase.from('gem_auctions').select('*', { count: 'exact', head: true }),
       supabase.from('gem_bids').select('*', { count: 'exact', head: true }).eq('status', 'live'),
       supabase.from('gem_auctions').select('*', { count: 'exact', head: true }).gt('auction_start_date', now),
-      supabase.from('gem_bids').select('*', { count: 'exact', head: true }).gt('start_date', now)
+      supabase.from('gem_bids').select('*', { count: 'exact', head: true }).gt('start_date', now),
+      supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }),
+      supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'live'),
+      supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'upcoming')
     ]);
+
+    const mstcCount = activeListingsRes.count || 0;
+    const gemCount = (activeGemListingsRes.count || 0) + (activeGemBidsRes.count || 0);
+    const baanknetActiveCount = (baanknetLiveRes.count || 0) + (baanknetUpcomingRes.count || 0);
 
     return {
       totalUsers: userRes.count || 0,
       activeAuctions: auctionRes.count || 0,
       activeTenders: tenderRes.count || 0,
-      activeListings: (activeListingsRes.count || 0) + (activeGemListingsRes.count || 0) + (activeGemBidsRes.count || 0),
-      upcomingAuctions: (upcomingRes.count || 0) + (upcomingGemAuctionsRes.count || 0) + (upcomingGemBidsRes.count || 0)
+      activeListings: mstcCount + gemCount + baanknetActiveCount,
+      activeMstc: mstcCount,
+      activeGem: gemCount,
+      activeBaanknet: baanknetActiveCount,
+      totalBaanknet: baanknetTotalRes.count || 0,
+      upcomingAuctions: (upcomingRes.count || 0) + (upcomingGemAuctionsRes.count || 0) + (upcomingGemBidsRes.count || 0) + (baanknetUpcomingRes.count || 0)
     };
   },
 
@@ -620,7 +634,7 @@ export const adminService = {
   async getScraperAuctions(limit: number = 100): Promise<any[]> {
     const { data, error } = await supabase
       .from('mstc_auctions')
-      .select('*')
+      .select('id, mstc_auction_number, category_name, seller_name, location, opening_date, closing_date, asset_status, error_log, retry_count, source_pdf_url, sanitized_document_path, raw_materials_text, scraped_at')
       .order('scraped_at', { ascending: false })
       .limit(limit);
 
@@ -652,10 +666,335 @@ export const adminService = {
     }
   },
 
+  async getBaanknetDetailedAnalytics() {
+    try {
+      const [totalRes, upcomingRes, liveRes, closedRes, rowsRes] = await Promise.all([
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }),
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'upcoming'),
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).eq('auction_status', 'live'),
+        supabase.from('baanknet_auctions').select('*', { count: 'exact', head: true }).in('auction_status', ['closed', 'cancelled', 'ended']),
+        supabase.from('baanknet_auctions')
+          .select('id, baanknet_auction_id, bank_name, title, category_name, property_type, state, city, district, reserve_price_value, reserve_price_text, emd_amount_value, emd_amount_text, possession_status, auction_status, auction_start_date, auction_end_date, source_url')
+          .order('created_at', { ascending: false })
+          .limit(2500)
+      ]);
+
+      const totalCount = totalRes.count || 0;
+      const upcomingCount = upcomingRes.count || 0;
+      const liveCount = liveRes.count || 0;
+      const closedCount = closedRes.count || 0;
+      const auctions = rowsRes.data || [];
+
+      // 1. Category Distribution Map
+      const categoryMap: Record<string, {
+        name: string;
+        parent: string;
+        count: number;
+        totalReserve: number;
+        liveCount: number;
+        upcomingCount: number;
+        banks: Record<string, number>;
+        propertyTypes: Record<string, number>;
+        states: Record<string, number>;
+      }> = {};
+
+      // 2. Bank Distribution Map
+      const bankMap: Record<string, {
+        count: number;
+        totalReserve: number;
+        categories: Record<string, number>;
+        propertyTypes: Record<string, number>;
+        states: Record<string, number>;
+      }> = {};
+
+      // 3. Property Type Distribution Map
+      const propMap: Record<string, {
+        count: number;
+        totalReserve: number;
+        parentCategory: string;
+        banks: Record<string, number>;
+        states: Record<string, number>;
+      }> = {};
+
+      // 4. State Distribution Map
+      const stateMap: Record<string, {
+        count: number;
+        totalReserve: number;
+        banks: Record<string, number>;
+        categories: Record<string, number>;
+      }> = {};
+
+      // 5. Valuation brackets
+      const priceBrackets: Record<string, number> = {
+        'Under ₹10L': 0,
+        '₹10L - ₹50L': 0,
+        '₹50L - ₹1 Cr': 0,
+        '₹1 Cr - ₹5 Cr': 0,
+        'Above ₹5 Cr': 0,
+        'Disclosed in Doc': 0
+      };
+
+      let totalReserve = 0;
+      let validReserveCount = 0;
+      let maxReserve = 0;
+
+      const getParentDomain = (cat: string, prop: string): string => {
+        const str = `${cat} ${prop}`.toLowerCase();
+        if (str.includes('vehicle') || str.includes('car') || str.includes('truck') || str.includes('bus') || str.includes('bike') || str.includes('automobile') || str.includes('tractor') || str.includes('wheel')) {
+          return 'Vehicles';
+        }
+        if (str.includes('industrial') || str.includes('machinery') || str.includes('plant') || str.includes('equipment')) {
+          return 'Industrial';
+        }
+        return 'Real Estate';
+      };
+
+      auctions.forEach((a: any) => {
+        // Clean bank name
+        const rawBank = (a.bank_name || '').trim();
+        const bankName = !rawBank || rawBank.toLowerCase() === 'unknown bank' || rawBank.toLowerCase() === 'asset id' || rawBank.toLowerCase() === 'balance'
+          ? 'Other PSB Banks' 
+          : rawBank;
+
+        // Clean property type
+        const rawProp = (a.property_type || '').trim();
+        const propType = !rawProp || rawProp.toLowerCase() === 'bank foreclosure property'
+          ? 'Bank Foreclosure Property'
+          : rawProp;
+
+        // Clean / infer category name
+        let catName = (a.category_name || '').trim();
+        if (!catName) {
+          if (propType.includes('Truck') || propType.includes('Bus')) {
+            catName = 'Vehicles | Commercial Vehicles & Trucks';
+          } else if (propType.includes('Car') || propType.includes('Automobile')) {
+            catName = 'Vehicles | Cars & Automobiles';
+          } else if (propType.includes('Vehicle') || propType.includes('Bike')) {
+            catName = 'Vehicles | Automobiles';
+          } else if (propType.includes('Machinery') || propType.includes('Plant')) {
+            catName = 'Industrial | Plant & Machinery';
+          } else if (propType.includes('Plot') || propType.includes('Land')) {
+            catName = 'Real Estate | Land / Plot';
+          } else if (propType.includes('Building') || propType.includes('Commercial')) {
+            catName = 'Real Estate | Commercial Building';
+          } else if (propType.includes('Flat') || propType.includes('Apartment')) {
+            catName = 'Real Estate | Flat / Apartment';
+          } else if (propType.includes('Bungalow') || propType.includes('House')) {
+            catName = 'Real Estate | House / Bungalow';
+          } else {
+            catName = 'Real Estate | Bank Foreclosure Property';
+          }
+        }
+
+        const parentDomain = getParentDomain(catName, propType);
+
+        // Clean state
+        const rawState = (a.state || '').trim();
+        const state = !rawState || rawState.toLowerCase() === 'india'
+          ? 'Pan-India / Central'
+          : rawState;
+
+        const val = typeof a.reserve_price_value === 'number' && !isNaN(a.reserve_price_value) && a.reserve_price_value > 0
+          ? a.reserve_price_value
+          : 0;
+
+        const isLive = a.auction_status === 'live';
+        const isUpcoming = a.auction_status === 'upcoming';
+
+        if (val > 0) {
+          totalReserve += val;
+          validReserveCount += 1;
+          if (val > maxReserve) maxReserve = val;
+
+          if (val < 1000000) {
+            priceBrackets['Under ₹10L'] += 1;
+          } else if (val < 5000000) {
+            priceBrackets['₹10L - ₹50L'] += 1;
+          } else if (val < 10000000) {
+            priceBrackets['₹50L - ₹1 Cr'] += 1;
+          } else if (val < 50000000) {
+            priceBrackets['₹1 Cr - ₹5 Cr'] += 1;
+          } else {
+            priceBrackets['Above ₹5 Cr'] += 1;
+          }
+        } else {
+          priceBrackets['Disclosed in Doc'] += 1;
+        }
+
+        // 1. Aggregate Category
+        if (!categoryMap[catName]) {
+          categoryMap[catName] = {
+            name: catName,
+            parent: parentDomain,
+            count: 0,
+            totalReserve: 0,
+            liveCount: 0,
+            upcomingCount: 0,
+            banks: {},
+            propertyTypes: {},
+            states: {}
+          };
+        }
+        categoryMap[catName].count += 1;
+        categoryMap[catName].totalReserve += val;
+        if (isLive) categoryMap[catName].liveCount += 1;
+        if (isUpcoming) categoryMap[catName].upcomingCount += 1;
+        categoryMap[catName].banks[bankName] = (categoryMap[catName].banks[bankName] || 0) + 1;
+        categoryMap[catName].propertyTypes[propType] = (categoryMap[catName].propertyTypes[propType] || 0) + 1;
+        categoryMap[catName].states[state] = (categoryMap[catName].states[state] || 0) + 1;
+
+        // 2. Aggregate Bank
+        if (!bankMap[bankName]) {
+          bankMap[bankName] = { count: 0, totalReserve: 0, categories: {}, propertyTypes: {}, states: {} };
+        }
+        bankMap[bankName].count += 1;
+        bankMap[bankName].totalReserve += val;
+        bankMap[bankName].categories[catName] = (bankMap[bankName].categories[catName] || 0) + 1;
+        bankMap[bankName].propertyTypes[propType] = (bankMap[bankName].propertyTypes[propType] || 0) + 1;
+        bankMap[bankName].states[state] = (bankMap[bankName].states[state] || 0) + 1;
+
+        // 3. Aggregate Property Type
+        if (!propMap[propType]) {
+          propMap[propType] = { count: 0, totalReserve: 0, parentCategory: parentDomain, banks: {}, states: {} };
+        }
+        propMap[propType].count += 1;
+        propMap[propType].totalReserve += val;
+        propMap[propType].banks[bankName] = (propMap[propType].banks[bankName] || 0) + 1;
+        propMap[propType].states[state] = (propMap[propType].states[state] || 0) + 1;
+
+        // 4. Aggregate State
+        if (!stateMap[state]) {
+          stateMap[state] = { count: 0, banks: {}, categories: {}, totalReserve: 0 };
+        }
+        stateMap[state].count += 1;
+        stateMap[state].totalReserve += val;
+        stateMap[state].banks[bankName] = (stateMap[state].banks[bankName] || 0) + 1;
+        stateMap[state].categories[catName] = (stateMap[state].categories[catName] || 0) + 1;
+      });
+
+      const totalItems = auctions.length || 1;
+
+      // Format category distribution
+      const categoryDistribution = Object.entries(categoryMap)
+        .map(([name, data]) => {
+          const sortedBanks = Object.entries(data.banks).sort((a, b) => b[1] - a[1]);
+          const sortedProps = Object.entries(data.propertyTypes).sort((a, b) => b[1] - a[1]);
+          const sortedStates = Object.entries(data.states).sort((a, b) => b[1] - a[1]);
+          return {
+            name,
+            parent: data.parent,
+            cleanName: name.includes('|') ? name.split('|')[1].trim() : name,
+            count: data.count,
+            percentage: Number(((data.count / totalItems) * 100).toFixed(1)),
+            totalReserve: data.totalReserve,
+            avgReserve: data.count > 0 ? Math.round(data.totalReserve / data.count) : 0,
+            liveCount: data.liveCount,
+            upcomingCount: data.upcomingCount,
+            topBank: sortedBanks[0]?.[0] || 'N/A',
+            topBanks: sortedBanks.slice(0, 3).map(([bank, count]) => ({ bank, count })),
+            topBanksText: sortedBanks.slice(0, 3).map(([bank, count]) => `${bank} (${count})`).join(', '),
+            propertyTypes: sortedProps.map(([type, count]) => ({ type, count })),
+            propertyTypesText: sortedProps.map(([type]) => type).join(', '),
+            topState: sortedStates[0]?.[0] || 'Pan-India',
+            topStates: sortedStates.slice(0, 3).map(([state, count]) => ({ state, count }))
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+
+      // Format bank distribution with full category detail
+      const bankDistribution = Object.entries(bankMap)
+        .map(([name, data]) => {
+          const sortedCats = Object.entries(data.categories).sort((a, b) => b[1] - a[1]);
+          const sortedProps = Object.entries(data.propertyTypes).sort((a, b) => b[1] - a[1]);
+          const sortedStates = Object.entries(data.states).sort((a, b) => b[1] - a[1]);
+          return {
+            bank: name,
+            count: data.count,
+            totalReserve: data.totalReserve,
+            avgReserve: data.count > 0 ? Math.round(data.totalReserve / data.count) : 0,
+            percentage: Number(((data.count / totalItems) * 100).toFixed(1)),
+            topCategory: sortedCats[0]?.[0] || 'Bank Foreclosure',
+            categories: sortedCats.map(([cat, count]) => ({ name: cat, count })),
+            categoriesText: sortedCats.map(([cat, count]) => `${cat.replace('Real Estate | ', '').replace('Vehicles | ', '').replace('Industrial | ', '')} (${count})`).join(', '),
+            topPropertyType: sortedProps[0]?.[0] || 'Property',
+            propertyTypes: sortedProps.map(([prop, count]) => ({ name: prop, count })),
+            topState: sortedStates[0]?.[0] || 'Pan-India'
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+
+      // Format property type distribution
+      const propertyTypeDistribution = Object.entries(propMap)
+        .map(([type, data]) => {
+          const sortedBanks = Object.entries(data.banks).sort((a, b) => b[1] - a[1]);
+          const sortedStates = Object.entries(data.states).sort((a, b) => b[1] - a[1]);
+          return {
+            type,
+            parentCategory: data.parentCategory,
+            count: data.count,
+            totalReserve: data.totalReserve,
+            avgReserve: data.count > 0 ? Math.round(data.totalReserve / data.count) : 0,
+            percentage: Number(((data.count / totalItems) * 100).toFixed(1)),
+            topBank: sortedBanks[0]?.[0] || 'N/A',
+            topState: sortedStates[0]?.[0] || 'Pan-India'
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+
+      // Format state distribution
+      const stateDistribution = Object.entries(stateMap)
+        .map(([state, data]) => {
+          const sortedBanks = Object.entries(data.banks).sort((a, b) => b[1] - a[1]);
+          const sortedCats = Object.entries(data.categories).sort((a, b) => b[1] - a[1]);
+          return {
+            state,
+            count: data.count,
+            totalReserve: data.totalReserve,
+            percentage: Number(((data.count / totalItems) * 100).toFixed(1)),
+            topBank: sortedBanks[0]?.[0] || 'N/A',
+            topCategory: sortedCats[0]?.[0] || 'Bank Property',
+            categories: sortedCats.map(([cat, count]) => ({ name: cat, count }))
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+
+      const priceBracketDistribution = Object.entries(priceBrackets).map(([tier, count]) => ({
+        tier,
+        count,
+        percentage: Number(((count / totalItems) * 100).toFixed(1))
+      }));
+
+      return {
+        summary: {
+          total: totalCount,
+          upcoming: upcomingCount,
+          live: liveCount,
+          closed: closedCount,
+          totalReserveValue: totalReserve,
+          avgReservePrice: validReserveCount > 0 ? Math.round(totalReserve / validReserveCount) : 0,
+          maxReservePrice: maxReserve,
+          participatingBanksCount: bankDistribution.filter(b => b.bank !== 'Other PSB Banks').length,
+          categoriesCount: categoryDistribution.length,
+          propertyTypesCount: propertyTypeDistribution.length,
+          statesCount: stateDistribution.filter(s => s.state !== 'Pan-India / Central').length
+        },
+        categoryDistribution,
+        bankDistribution,
+        propertyTypeDistribution,
+        stateDistribution,
+        priceBracketDistribution,
+        sampleAuctions: auctions.slice(0, 150)
+      };
+    } catch (error) {
+      console.error('Error fetching detailed BaankNet analytics:', error);
+      return null;
+    }
+  },
+
   async getBaanknetScraperAuctions(limit: number = 100): Promise<any[]> {
     const { data, error } = await supabase
       .from('baanknet_auctions')
-      .select('*')
+      .select('id, bank_name, title, property_type, reserve_price_text, auction_start_date, auction_end_date, auction_status, location, state, district, source_url, document_url, created_at')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -666,10 +1005,10 @@ export const adminService = {
     return data;
   },
 
-  async getScraperLogs(limit: number = 100): Promise<AuditLog[]> {
+  async getScraperLogs(limit: number = 50): Promise<AuditLog[]> {
     const { data, error } = await supabase
       .from('audit_logs')
-      .select('*')
+      .select('id, user_id, action, entity_type, entity_id, details, ip_address, created_at')
       .in('action', ['mstc_auction_downloaded', 'mstc_auction_deleted', 'mstc_auction_failed'])
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -681,10 +1020,10 @@ export const adminService = {
     return (data as AuditLog[]) || [];
   },
 
-  async getBaanknetScraperLogs(limit: number = 100): Promise<AuditLog[]> {
+  async getBaanknetScraperLogs(limit: number = 50): Promise<AuditLog[]> {
     const { data, error } = await supabase
       .from('audit_logs')
-      .select('*')
+      .select('id, user_id, action, entity_type, entity_id, details, ip_address, created_at')
       .in('action', ['baanknet_auction_deleted', 'baanknet_auction_scraped'])
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -719,7 +1058,7 @@ export const adminService = {
   async getGemScraperAuctions(limit: number = 100): Promise<any[]> {
     const { data, error } = await supabase
       .from('gem_auctions')
-      .select('*')
+      .select('id, auction_id, title, organisation, state, city, auction_status, auction_start_date, auction_end_date, reserve_price, source_url, created_at')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -730,10 +1069,10 @@ export const adminService = {
     return data;
   },
 
-  async getGemScraperLogs(limit: number = 100): Promise<AuditLog[]> {
+  async getGemScraperLogs(limit: number = 50): Promise<AuditLog[]> {
     const { data, error } = await supabase
       .from('audit_logs')
-      .select('*')
+      .select('id, user_id, action, entity_type, entity_id, details, ip_address, created_at')
       .in('action', ['gem_auction_deleted', 'gem_auction_scraped'])
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -742,7 +1081,7 @@ export const adminService = {
       console.error('Error fetching GeM scraper audit logs:', error);
       return [];
     }
-    return data || [];
+    return (data as AuditLog[]) || [];
   },
 
   async getGemBidsScraperAnalytics() {
@@ -768,7 +1107,7 @@ export const adminService = {
   async getGemBidsScraperBids(limit: number = 100): Promise<any[]> {
     const { data, error } = await supabase
       .from('gem_bids')
-      .select('*')
+      .select('id, bid_number, title, department, status, start_date, end_date, quantity, source_url, created_at')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -779,10 +1118,10 @@ export const adminService = {
     return data;
   },
 
-  async getGemBidsScraperLogs(limit: number = 100): Promise<AuditLog[]> {
+  async getGemBidsScraperLogs(limit: number = 50): Promise<AuditLog[]> {
     const { data, error } = await supabase
       .from('audit_logs')
-      .select('*')
+      .select('id, user_id, action, entity_type, entity_id, details, ip_address, created_at')
       .in('action', ['gem_bid_deleted', 'gem_bid_scraped', 'gem_pbp_scraped', 'gem_pbp_failed', 'gem_bidnext_scraped', 'gem_bidnext_failed'])
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -791,7 +1130,7 @@ export const adminService = {
       console.error('Error fetching GeM bids scraper audit logs:', error);
       return [];
     }
-    return data || [];
+    return (data as AuditLog[]) || [];
   },
 
   // Contact Messages Management
@@ -1032,7 +1371,7 @@ export const adminService = {
 
         supabase
           .from('mstc_auctions')
-          .select('id, mstc_auction_number, opening_date, closing_date, asset_status, category_name')
+          .select('id, mstc_auction_number, opening_date, closing_date, asset_status, category_name, raw_materials_text')
       ]);
 
       if (emdError || walletError || bidsError || mstcError) {

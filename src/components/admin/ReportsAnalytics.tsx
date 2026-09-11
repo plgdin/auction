@@ -20,7 +20,13 @@ import {
   MapPin,
   Globe,
   Building2,
-  Navigation
+  Navigation,
+  Landmark,
+  Building,
+  ShieldCheck,
+  Coins,
+  ExternalLink,
+  Filter
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -31,6 +37,7 @@ import { supabase } from '../../lib/supabase';
 import clsx from 'clsx';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+const BANK_COLORS = ['#d97706', '#0284c7', '#059669', '#7c3aed', '#dc2626', '#f59e0b', '#0d9488', '#ea580c', '#6366f1', '#64748b'];
 
 const getCategoryColor = (name: string) => {
   if (name === 'Others') return '#94a3b8';
@@ -182,7 +189,26 @@ export function ReportsAnalytics() {
   const [exportMessage, setExportMessage] = useState<string | null>(null);
 
   // Tabs state
-  const [activeTab, setActiveTab] = useState<'overview' | 'location'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'location' | 'baanknet'>('overview');
+
+  // BaankNet stats state
+  const [baanknetStats, setBaanknetStats] = useState<any>(null);
+  const [isLoadingBaanknet, setIsLoadingBaanknet] = useState(true);
+  const [baanknetSearchQuery, setBaanknetSearchQuery] = useState('');
+  const [baanknetBankFilter, setBaanknetBankFilter] = useState('all');
+  const [baanknetPropertyFilter, setBaanknetPropertyFilter] = useState('all');
+  const [baanknetStateFilter, setBaanknetStateFilter] = useState('all');
+  const [baanknetCategorySearch, setBaanknetCategorySearch] = useState('');
+  const [baanknetParentFilter, setBaanknetParentFilter] = useState<'all' | 'Real Estate' | 'Vehicles' | 'Industrial'>('all');
+  const [expandedBaanknetCategory, setExpandedBaanknetCategory] = useState<string | null>(null);
+  const [overviewSourceFilter, setOverviewSourceFilter] = useState<'all' | 'mstc' | 'baanknet'>('all');
+  const [baanknetChartType, setBaanknetChartType] = useState<'bar' | 'pie'>('bar');
+  const [globalCounts, setGlobalCounts] = useState<{
+    activeMstc: number;
+    activeGem: number;
+    activeBaanknet: number;
+    totalBaanknet: number;
+  }>({ activeMstc: 0, activeGem: 0, activeBaanknet: 0, totalBaanknet: 0 });
 
   // Location stats state
   const [locationStats, setLocationStats] = useState<{
@@ -262,18 +288,30 @@ export function ReportsAnalytics() {
       setIsLoadingLocations(true);
       setIsLoadingCategories(true);
       setIsLoadingFinancial(true);
+      setIsLoadingBaanknet(true);
 
       try {
-        const [locData, catData, globalData, finData, profilesRes] = await Promise.all([
+        const [locData, catData, globalData, finData, profilesRes, baanknetData] = await Promise.all([
           adminService.getLocationAnalytics(),
           adminService.getCategoryAnalytics(),
           adminService.getGlobalAnalytics(),
           adminService.getFinancialAnalytics(),
-          supabase.from('profiles').select('created_at, role')
+          supabase.from('profiles').select('created_at, role'),
+          adminService.getBaanknetDetailedAnalytics()
         ]);
 
         if (locData) setLocationStats(locData);
         if (catData) setCategoryStats(groupStatsByParent(catData));
+        if (baanknetData) setBaanknetStats(baanknetData);
+
+        if (globalData) {
+          setGlobalCounts({
+            activeMstc: globalData.activeMstc || 0,
+            activeGem: globalData.activeGem || 0,
+            activeBaanknet: globalData.activeBaanknet || 0,
+            totalBaanknet: globalData.totalBaanknet || 0
+          });
+        }
 
         if (globalData && finData) {
           setFinancialData({
@@ -328,6 +366,7 @@ export function ReportsAnalytics() {
         setIsLoadingLocations(false);
         setIsLoadingCategories(false);
         setIsLoadingFinancial(false);
+        setIsLoadingBaanknet(false);
       }
     }
 
@@ -526,6 +565,11 @@ export function ReportsAnalytics() {
     const parentAverages: Record<string, { preBidSum: number, preBidCount: number, emdPctSum: number, emdPctCount: number }> = {};
     
     filteredEmdTx.forEach((tx: any) => {
+      // If viewing Current Inventory, only count currently held / active auctions
+      if (totalsTab === 'current' && tx.status !== 'held') {
+        return;
+      }
+
       const parent = tx.category_name || 'Uncategorized';
       if (!parentAverages[parent]) {
         parentAverages[parent] = { preBidSum: 0, preBidCount: 0, emdPctSum: 0, emdPctCount: 0 };
@@ -582,26 +626,41 @@ export function ReportsAnalytics() {
   };
 
   const downloadCategoryCSV = () => {
-    const totalItems = displayTotals.reduce((sum, c) => sum + c.count, 0);
+    const mstcList = (overviewSourceFilter === 'baanknet') ? [] : displayTotals.map(c => ({
+      name: c.name,
+      count: c.count,
+      source: 'MSTC Scrap',
+      avgVal: categoryAverages[c.name]?.avgPreBid || 0,
+      emdPct: categoryAverages[c.name]?.avgEmdPct || 0
+    }));
+
+    const baanknetList = (overviewSourceFilter === 'mstc' || !baanknetStats?.categoryDistribution) ? [] : 
+      baanknetStats.categoryDistribution.map((c: any) => ({
+        name: c.name,
+        count: c.count,
+        source: 'BaankNet',
+        avgVal: c.avgReserve || 0,
+        emdPct: 10
+      }));
+
+    const combined = [...mstcList, ...baanknetList].sort((a, b) => b.count - a.count);
+    const totalCount = combined.reduce((sum, c) => sum + c.count, 0);
+
     const lines: string[] = [
-      'Category,Item Count,Share of Total,Avg Pre-Bid EMD (₹),Avg EMD (%)'
+      'Category Name,Source,Item Count,Share of Total (%)'
     ];
 
-    displayTotals.forEach(cat => {
-      const catPct = totalItems > 0 ? ((cat.count / totalItems) * 100).toFixed(2) : '0.00';
-      const avgPreBid = categoryAverages[cat.name]?.avgPreBid || 0;
-      const rawEmdPct = categoryAverages[cat.name]?.avgEmdPct || 0;
-
+    combined.forEach(cat => {
+      const catPct = totalCount > 0 ? ((cat.count / totalCount) * 100).toFixed(2) : '0.00';
       lines.push([
-        csvCell(cat.name), 
-        cat.count, 
-        `${catPct}%`,
-        Math.round(avgPreBid),
-        rawEmdPct > 100 ? '100.00%' : `${rawEmdPct.toFixed(2)}%`
+        csvCell(cat.name),
+        csvCell(cat.source),
+        cat.count,
+        `${catPct}%`
       ].join(','));
     });
 
-    const filterLabel = dateFilter === 'all' ? totalsTab : dateFilter;
+    const filterLabel = `${overviewSourceFilter}_${dateFilter === 'all' ? totalsTab : dateFilter}`;
     triggerCsvDownload(lines.join('\n'), `category_inventory_${filterLabel}_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
@@ -664,6 +723,89 @@ export function ReportsAnalytics() {
     triggerCsvDownload([headers.join(','), ...rows].join('\n'), `bids_ledger_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  const downloadBaanknetCategoriesCSV = () => {
+    if (!baanknetStats || !baanknetStats.categoryDistribution) return;
+    const headers = [
+      'Category Name',
+      'Parent Domain',
+      'Property Classes Included',
+      'Auctions Count',
+      'Share of BaankNet (%)',
+      'Total Estimated Reserve (₹)',
+      'Average Reserve Price (₹)',
+      'Live Auctions',
+      'Upcoming Auctions',
+      'Leading Offering Bank',
+      'Top Participating Banks',
+      'Primary State'
+    ];
+    const rows = baanknetStats.categoryDistribution.map((c: any) =>
+      [
+        csvCell(c.name),
+        csvCell(c.parent),
+        csvCell(c.propertyTypesText || ''),
+        c.count,
+        `${c.percentage}%`,
+        Math.round(c.totalReserve || 0),
+        Math.round(c.avgReserve || 0),
+        c.liveCount || 0,
+        c.upcomingCount || 0,
+        csvCell(c.topBank || 'N/A'),
+        csvCell(c.topBanksText || ''),
+        csvCell(c.topState || 'Pan-India')
+      ].join(',')
+    );
+    triggerCsvDownload([headers.join(','), ...rows].join('\n'), `baanknet_categories_breakdown_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const downloadBaanknetCSV = () => {
+    if (!baanknetStats || !baanknetStats.bankDistribution) return;
+    const headers = [
+      'Bank / Financial Institution',
+      'Auctions Count',
+      'Share of Total (%)',
+      'Total Reserve Price (₹)',
+      'Average Reserve Price (₹)',
+      'All Categories Handled',
+      'Top Asset Class',
+      'Primary Operating State'
+    ];
+    const rows = baanknetStats.bankDistribution.map((b: any) =>
+      [
+        csvCell(b.bank),
+        b.count,
+        `${b.percentage}%`,
+        Math.round(b.totalReserve || 0),
+        Math.round(b.avgReserve || 0),
+        csvCell(b.categoriesText || 'Bank Foreclosure'),
+        csvCell(b.topPropertyType || 'N/A'),
+        csvCell(b.topState || 'Pan-India')
+      ].join(',')
+    );
+    triggerCsvDownload([headers.join(','), ...rows].join('\n'), `baanknet_bank_distribution_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const downloadBaanknetListingsCSV = () => {
+    if (!baanknetStats || !baanknetStats.sampleAuctions) return;
+    const headers = ['Bank Name', 'Title', 'Category', 'Property Type', 'State', 'City', 'Reserve Price (₹)', 'Status', 'Start Date', 'End Date', 'Source URL'];
+    const rows = baanknetStats.sampleAuctions.map((a: any) =>
+      [
+        csvCell(a.bank_name || 'N/A'),
+        csvCell(a.title || 'N/A'),
+        csvCell(a.category_name || 'Bank Foreclosure'),
+        csvCell(a.property_type || 'N/A'),
+        csvCell(a.state || 'N/A'),
+        csvCell(a.city || 'N/A'),
+        a.reserve_price_value || 0,
+        csvCell(a.auction_status || 'upcoming'),
+        csvCell(a.auction_start_date ? new Date(a.auction_start_date).toLocaleDateString() : 'N/A'),
+        csvCell(a.auction_end_date ? new Date(a.auction_end_date).toLocaleDateString() : 'N/A'),
+        csvCell(a.source_url || '')
+      ].join(',')
+    );
+    triggerCsvDownload([headers.join(','), ...rows].join('\n'), `baanknet_auctions_catalog_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
   const handleExportCSV = () => {
     const filterLabel = dateFilter === 'all' ? totalsTab : dateFilter;
     const lines: string[] = [];
@@ -672,37 +814,43 @@ export function ReportsAnalytics() {
     lines.push('PLATFORM SUMMARY METRICS');
     lines.push('Metric,Value');
     lines.push(`Total Registered Users,${financialData.summary.totalUsers || 0}`);
-    lines.push(`Active Auction Listings,${financialData.summary.activeListings || 0}`);
+    lines.push(`Total Active Listings (All Sources),${financialData.summary.activeListings || 0}`);
+    lines.push(`"  • MSTC Active Scrap Listings",${globalCounts.activeMstc || 0}`);
+    lines.push(`"  • BaankNet Active Bank Properties",${globalCounts.activeBaanknet || 0}`);
+    lines.push(`"  • GeM Procurement Listings & Bids",${globalCounts.activeGem || 0}`);
     lines.push(`Pre-Bid EMD Currently Held (₹),${Math.round(financialData.summary.emdHeld || 0)}`);
     lines.push(`Total Pre-Bid EMD Volume (₹),${Math.round(financialData.summary.emdVolume || 0)}`);
+    if (baanknetStats?.summary) {
+      lines.push(`BaankNet Bank Reserve Portfolio Value (₹),${Math.round(baanknetStats.summary.totalReserveValue || 0)}`);
+      lines.push(`BaankNet Participating Banks,${baanknetStats.summary.participatingBanksCount || 0}`);
+      lines.push(`BaankNet Categories Count,${baanknetStats.summary.categoriesCount || 0}`);
+      lines.push(`BaankNet Property Types Count,${baanknetStats.summary.propertyTypesCount || 0}`);
+      lines.push(`BaankNet States Covered,${baanknetStats.summary.statesCount || 0}`);
+    }
     lines.push('');
     lines.push('');
 
-    // ── Section 2: Category Inventory Breakdown ──
+    // ── Section 2: MSTC Category Inventory Breakdown ──
     const totalItems = displayTotals.reduce((sum, c) => sum + c.count, 0);
 
-    lines.push('CATEGORY INVENTORY BREAKDOWN');
-    lines.push('Category Name,Item Count,Share of Total,Avg Pre-Bid EMD (₹),Avg EMD (%)');
+    lines.push('MSTC INDUSTRIAL SCRAP CATEGORY INVENTORY');
+    lines.push('Category Name,Item Count,Share of Total');
 
     displayTotals.forEach(cat => {
       const catPct = totalItems > 0 ? ((cat.count / totalItems) * 100).toFixed(2) : '0.00';
-      const avgPreBid = categoryAverages[cat.name]?.avgPreBid || 0;
-      const rawEmdPct = categoryAverages[cat.name]?.avgEmdPct || 0;
 
       lines.push([
         csvCell(cat.name), 
         cat.count, 
-        `${catPct}%`,
-        Math.round(avgPreBid),
-        rawEmdPct > 100 ? '100.00%' : `${rawEmdPct.toFixed(2)}%`
+        `${catPct}%`
       ].join(','));
     });
-    lines.push([csvCell('TOTAL CATEGORIES SUMMARY'), totalItems, '100.00%', '', ''].join(','));
+    lines.push([csvCell('TOTAL MSTC CATEGORIES SUMMARY'), totalItems, '100.00%'].join(','));
     lines.push('');
     lines.push('');
 
     // ── Section 3: Location & Region Breakdown ──
-    lines.push('LOCATION & REGION BREAKDOWN');
+    lines.push('MSTC LOCATION & REGION BREAKDOWN');
     lines.push('State,District / Regional HQ,Auctions Count,Share of Total,Primary Category');
 
     locationStats.locations.forEach(loc => {
@@ -716,6 +864,102 @@ export function ReportsAnalytics() {
     });
     lines.push([csvCell('TOTAL REGIONS SUMMARY'), `${locationStats.locations.length} Regions Tracked`, locationStats.totalAuctions, '100.00%', 'All Categories'].join(','));
     lines.push('');
+    lines.push('');
+
+    // ── Section 4: BaankNet Category Inventory Breakdown ──
+    if (baanknetStats && baanknetStats.categoryDistribution) {
+      lines.push('BAANKNET CATEGORY INVENTORY BREAKDOWN (PSB ALLIANCE)');
+      lines.push('Category Name,Parent Domain,Auctions Count,Share of Total (%),Total Reserve Price (₹),Avg Reserve Price (₹),Live Auctions,Upcoming Auctions,Leading Offering Bank,Property Types Included,Primary State');
+      baanknetStats.categoryDistribution.forEach((c: any) => {
+        lines.push([
+          csvCell(c.name),
+          csvCell(c.parent),
+          c.count,
+          `${c.percentage}%`,
+          Math.round(c.totalReserve || 0),
+          Math.round(c.avgReserve || 0),
+          c.liveCount || 0,
+          c.upcomingCount || 0,
+          csvCell(c.topBank || 'N/A'),
+          csvCell(c.propertyTypesText || ''),
+          csvCell(c.topState || 'Pan-India')
+        ].join(','));
+      });
+      lines.push('');
+      lines.push('');
+    }
+
+    // ── Section 5: BaankNet Property Asset Classification ──
+    if (baanknetStats && baanknetStats.propertyTypeDistribution) {
+      lines.push('BAANKNET PROPERTY ASSET CLASSIFICATION');
+      lines.push('Property Class,Parent Domain,Auctions Count,Share of Total (%),Total Reserve Price (₹),Avg Reserve Price (₹),Top Offering Bank,Primary State');
+      baanknetStats.propertyTypeDistribution.forEach((p: any) => {
+        lines.push([
+          csvCell(p.type),
+          csvCell(p.parentCategory),
+          p.count,
+          `${p.percentage}%`,
+          Math.round(p.totalReserve || 0),
+          Math.round(p.avgReserve || 0),
+          csvCell(p.topBank || 'N/A'),
+          csvCell(p.topState || 'Pan-India')
+        ].join(','));
+      });
+      lines.push('');
+      lines.push('');
+    }
+
+    // ── Section 6: BaankNet Bank Asset Auctions (PSB Alliance) ──
+    if (baanknetStats && baanknetStats.bankDistribution) {
+      lines.push('BAANKNET BANK ASSET AUCTIONS (PSB ALLIANCE)');
+      lines.push('Bank Name,Auctions Count,Share of Total (%),Total Reserve Price (₹),Avg Reserve Price (₹),All Categories Handled,Top Asset Class,Primary Operating State');
+      baanknetStats.bankDistribution.forEach((b: any) => {
+        lines.push([
+          csvCell(b.bank),
+          b.count,
+          `${b.percentage}%`,
+          Math.round(b.totalReserve || 0),
+          Math.round(b.avgReserve || 0),
+          csvCell(b.categoriesText || 'Bank Foreclosure'),
+          csvCell(b.topPropertyType || 'N/A'),
+          csvCell(b.topState || 'Pan-India')
+        ].join(','));
+      });
+      lines.push('');
+      lines.push('');
+    }
+
+    // ── Section 7: BaankNet Geographic State Breakdown ──
+    if (baanknetStats && baanknetStats.stateDistribution) {
+      lines.push('BAANKNET GEOGRAPHIC STATE BREAKDOWN');
+      lines.push('State / Union Territory,Auctions Count,Share of Total (%),Total Reserve Price (₹),Leading Bank,Top Category');
+      baanknetStats.stateDistribution.forEach((s: any) => {
+        lines.push([
+          csvCell(s.state),
+          s.count,
+          `${s.percentage}%`,
+          Math.round(s.totalReserve || 0),
+          csvCell(s.topBank || 'N/A'),
+          csvCell(s.topCategory || 'Bank Property')
+        ].join(','));
+      });
+      lines.push('');
+      lines.push('');
+    }
+
+    // ── Section 8: BaankNet Valuation Brackets ──
+    if (baanknetStats && baanknetStats.priceBracketDistribution) {
+      lines.push('BAANKNET VALUATION BRACKETS');
+      lines.push('Valuation Tier,Auctions Count,Share of Total (%)');
+      baanknetStats.priceBracketDistribution.forEach((t: any) => {
+        lines.push([
+          csvCell(t.tier),
+          t.count,
+          `${t.percentage}%`
+        ].join(','));
+      });
+      lines.push('');
+    }
 
     triggerCsvDownload(lines.join('\n'), `platform_analytics_report_${filterLabel}_${new Date().toISOString().split('T')[0]}.csv`);
   };
@@ -757,7 +1001,7 @@ export function ReportsAnalytics() {
 
       {/* Tab Navigation */}
       <div className="flex border-b border-slate-200 gap-6 print:hidden overflow-x-auto">
-        {(['overview', 'location'] as const).map((tab) => (
+        {(['overview', 'location', 'baanknet'] as const).map((tab) => (
           <button
             key={tab}
             type="button"
@@ -765,18 +1009,26 @@ export function ReportsAnalytics() {
             className={clsx(
               "pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer capitalize whitespace-nowrap flex items-center gap-2",
               activeTab === tab
-                ? "border-primary text-primary"
+                ? tab === 'baanknet'
+                  ? "border-amber-500 text-amber-600"
+                  : "border-primary text-primary"
                 : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
             )}
           >
             {tab === 'location' && <MapPin className="w-4 h-4" />}
-            {tab === 'location' ? 'Location Analytics' : 'Overview'}
+            {tab === 'baanknet' && <Landmark className="w-4 h-4 text-amber-500" />}
+            {tab === 'location' ? 'Location Analytics' : tab === 'baanknet' ? 'BaankNet Bank Analytics' : 'Overview'}
+            {tab === 'baanknet' && (
+              <span className="px-1.5 py-0.5 text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 rounded-full border border-amber-200">
+                PSB Alliance
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Loading State */}
-      {isLoadingCategories || isLoadingFinancial ? (
+      {isLoadingCategories || isLoadingFinancial || isLoadingBaanknet ? (
         <div className="flex justify-center py-20 bg-white rounded-2xl border border-slate-200">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -785,34 +1037,72 @@ export function ReportsAnalytics() {
           {activeTab === 'overview' && (
             <>
               {/* KPI Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 print:grid-cols-3">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 print:grid-cols-4">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
               <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                 <Users className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Users</h3>
                 <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{(financialData.summary.totalUsers || 0).toLocaleString()}</p>
+                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Buyers & sellers registered</p>
               </div>
             </div>
             
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <Gavel className="w-6 h-6" />
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between hover:shadow-md transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Gavel className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Active Listings</h3>
+                  <p className="text-2xl font-extrabold text-slate-900 leading-none mt-0.5">{(financialData.summary.activeListings || 0).toLocaleString()}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Active Listings</h3>
-                <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{(financialData.summary.activeListings || 0).toLocaleString()}</p>
+              <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2.5 border-t border-slate-100 text-[11px] font-bold">
+                <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100" title="MSTC Scrap Auctions">
+                  MSTC: {globalCounts.activeMstc}
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1" title="BaankNet PSB Bank Assets">
+                  <Landmark className="w-3 h-3 text-amber-600" />
+                  Bank: {globalCounts.activeBaanknet}
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100" title="GeM Procurement">
+                  GeM: {globalCounts.activeGem}
+                </span>
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-all">
+              <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
                 <Lock className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Pre-Bid EMD Held</h3>
                 <p className="text-2xl font-extrabold text-slate-900 mt-0.5">₹{(financialData.summary.emdHeld || 0).toLocaleString()}</p>
+                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Secured bidder deposits</p>
+              </div>
+            </div>
+
+            <div 
+              onClick={() => setActiveTab('baanknet')}
+              className="bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-white p-5 rounded-2xl shadow-sm border border-amber-200 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
+                <Landmark className="w-6 h-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-amber-800 text-xs font-bold uppercase tracking-wider truncate">BaankNet Reserve</h3>
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-amber-500 text-white">PSB</span>
+                </div>
+                <p className="text-2xl font-black text-slate-900 mt-0.5 truncate">
+                  ₹{baanknetStats?.summary?.totalReserveValue ? (baanknetStats.summary.totalReserveValue >= 10000000 ? (baanknetStats.summary.totalReserveValue / 10000000).toFixed(1) + ' Cr' : (baanknetStats.summary.totalReserveValue / 100000).toFixed(1) + ' L') : '0'}
+                </p>
+                <p className="text-[11px] text-amber-700/80 font-bold flex items-center gap-1 mt-0.5">
+                  <span>{(baanknetStats?.summary?.total || 0).toLocaleString()} Bank Assets</span>
+                  <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                </p>
               </div>
             </div>
           </div>
@@ -1328,7 +1618,11 @@ export function ReportsAnalytics() {
                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2.5">
                   <FileText className="w-5 h-5 text-primary" /> Total Items by Category
                   <span className="px-2.5 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full font-bold select-none">
-                    {totalItems.toLocaleString()} Total Items
+                    {overviewSourceFilter === 'baanknet'
+                      ? `${(baanknetStats?.summary?.total || 0).toLocaleString()} BaankNet Items`
+                      : overviewSourceFilter === 'mstc'
+                      ? `${totalItems.toLocaleString()} MSTC Items`
+                      : `${(totalItems + (baanknetStats?.summary?.total || 0)).toLocaleString()} Combined Items`}
                   </span>
                 </h2>
                 <button
@@ -1364,6 +1658,40 @@ export function ReportsAnalytics() {
                 </button>
               </div>
 
+              {/* Source Switcher: All | MSTC Industrial | BaankNet Real Estate & Bank Assets */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl mb-4 print:hidden">
+                <button
+                  type="button"
+                  onClick={() => setOverviewSourceFilter('all')}
+                  className={clsx(
+                    "flex-1 text-xs font-bold py-1.5 rounded-lg transition-all cursor-pointer select-none",
+                    overviewSourceFilter === 'all' ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                  )}
+                >
+                  All Sources
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOverviewSourceFilter('mstc')}
+                  className={clsx(
+                    "flex-1 text-xs font-bold py-1.5 rounded-lg transition-all cursor-pointer select-none",
+                    overviewSourceFilter === 'mstc' ? "bg-primary text-white shadow-xs" : "text-slate-500 hover:text-slate-800"
+                  )}
+                >
+                  MSTC Scrap ({displayTotals.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOverviewSourceFilter('baanknet')}
+                  className={clsx(
+                    "flex-1 text-xs font-bold py-1.5 rounded-lg transition-all cursor-pointer select-none flex items-center justify-center gap-1",
+                    overviewSourceFilter === 'baanknet' ? "bg-amber-600 text-white shadow-xs" : "text-amber-800 hover:text-amber-900"
+                  )}
+                >
+                  <Landmark className="w-3 h-3" /> BaankNet ({baanknetStats?.categoryDistribution?.length || 0})
+                </button>
+              </div>
+
               {/* Search box inside category totals list */}
               <div className="relative mb-4 print:hidden">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
@@ -1377,46 +1705,79 @@ export function ReportsAnalytics() {
               </div>
 
               <div className="overflow-y-auto pr-1 flex-1 max-h-[550px] print:max-h-none custom-scrollbar">
-                {filteredDisplayTotals.length === 0 ? (
-                  <p className="text-slate-500 text-sm text-center py-4">No categories found.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="pb-2.5 font-bold">Category</th>
-                          <th className="pb-2.5 font-bold text-right">Avg Pre-Bid</th>
-                          <th className="pb-2.5 font-bold text-right">Avg EMD</th>
-                          <th className="pb-2.5 font-bold text-right">Count</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-600">
-                        {filteredDisplayTotals.map((cat) => (
-                          <tr key={cat.name} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-2.5 flex items-center gap-1.5 min-w-0">
-                              <div 
-                                className="w-2.5 h-2.5 rounded-full shrink-0" 
-                                style={{ backgroundColor: getCategoryColor(cat.name) }}
-                              />
-                              <span className="truncate font-semibold text-slate-700 max-w-[350px] sm:max-w-[450px]" title={cat.name}>
-                                {cat.name}
-                              </span>
-                            </td>
-                            <td className="py-2.5 text-right font-mono text-xs text-slate-500">
-                              ₹{(categoryAverages[cat.name]?.avgPreBid || 0).toLocaleString()}
-                            </td>
-                            <td className="py-2.5 text-right font-mono text-xs text-slate-500">
-                              {(categoryAverages[cat.name]?.avgEmdPct || 0)}%
-                            </td>
-                            <td className="py-2.5 text-right font-bold text-slate-900">
-                              {cat.count}
-                            </td>
+                {(() => {
+                  const mstcList = (overviewSourceFilter === 'baanknet') ? [] : filteredDisplayTotals.map(c => ({
+                    ...c,
+                    source: 'MSTC Scrap',
+                    isBaanknet: false,
+                    avgReserve: null
+                  }));
+                  const baanknetList = (overviewSourceFilter === 'mstc' || !baanknetStats?.categoryDistribution) ? [] : 
+                    baanknetStats.categoryDistribution
+                      .filter((c: any) => !categorySearchQuery || c.name.toLowerCase().includes(categorySearchQuery.toLowerCase()))
+                      .map((c: any) => ({
+                        name: c.name,
+                        count: c.count,
+                        source: 'BaankNet',
+                        isBaanknet: true,
+                        avgReserve: c.avgReserve,
+                        totalReserve: c.totalReserve
+                      }));
+
+                  const combinedList = [...mstcList, ...baanknetList].sort((a, b) => b.count - a.count);
+
+                  if (combinedList.length === 0) {
+                    return <p className="text-slate-500 text-sm text-center py-4">No categories found.</p>;
+                  }
+
+                  return (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400 font-bold">
+                            <th className="pb-2.5 font-bold">Category</th>
+                            <th className="pb-2.5 font-bold text-center">Source</th>
+                            <th className="pb-2.5 font-bold text-center">Share of Total</th>
+                            <th className="pb-2.5 font-bold text-right">Count</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                        </thead>
+                        <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-600">
+                          {combinedList.map((cat) => {
+                            const totalFilteredCount = combinedList.reduce((sum, c) => sum + c.count, 0);
+                            const sharePct = totalFilteredCount > 0 ? ((cat.count / totalFilteredCount) * 100).toFixed(1) : '0.0';
+                            return (
+                              <tr key={`${cat.source}-${cat.name}`} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="py-2.5 flex items-center gap-1.5 min-w-0">
+                                  <div 
+                                    className="w-2.5 h-2.5 rounded-full shrink-0" 
+                                    style={{ backgroundColor: cat.isBaanknet ? '#d97706' : getCategoryColor(cat.name) }}
+                                  />
+                                  <span className="truncate font-semibold text-slate-700 max-w-[340px] sm:max-w-[450px]" title={cat.name}>
+                                    {cat.name}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 text-center">
+                                  <span className={clsx(
+                                    "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                    cat.isBaanknet ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-blue-100 text-blue-800 border border-blue-200"
+                                  )}>
+                                    {cat.source}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 text-center font-mono text-xs text-slate-500 font-semibold">
+                                  {sharePct}%
+                                </td>
+                                <td className="py-2.5 text-right font-bold text-slate-900 font-mono">
+                                  {cat.count.toLocaleString()}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -1805,6 +2166,798 @@ export function ReportsAnalytics() {
                         </td>
                       </tr>
                     ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'baanknet' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* BaankNet Hero Header Banner */}
+          <div className="bg-gradient-to-r from-amber-500/15 via-amber-400/5 to-slate-50 border border-amber-300/80 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/25">
+                <Landmark className="w-7 h-7" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 text-xs font-black uppercase tracking-wider bg-amber-500 text-white rounded-md shadow-2xs">
+                    PSB Alliance Network
+                  </span>
+                  <span className="text-xs font-bold text-amber-900/70 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200">
+                    Bank Asset Auction Feeds & Foreclosures
+                  </span>
+                </div>
+                <h2 className="text-xl font-extrabold text-slate-900 mt-1 flex items-center gap-2">
+                  BaankNet Bank Asset Intelligence & Analytics
+                </h2>
+                <p className="text-xs text-slate-600 mt-0.5 max-w-2xl">
+                  Dedicated analytical breakdown of public sector bank property auctions, distressed commercial assets, reserve valuation profiles, and state-wise banking auction footprints.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0 print:hidden">
+              <button
+                type="button"
+                onClick={downloadBaanknetCategoriesCSV}
+                className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer select-none"
+                title="Export detailed Category Inventory CSV"
+              >
+                <Download className="w-4 h-4 text-amber-600" /> Export Categories CSV
+              </button>
+              <button
+                type="button"
+                onClick={downloadBaanknetCSV}
+                className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer select-none"
+                title="Export Bank Distribution CSV"
+              >
+                <Download className="w-4 h-4 text-amber-600" /> Export Banks CSV
+              </button>
+              <button
+                type="button"
+                onClick={downloadBaanknetListingsCSV}
+                className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer select-none"
+                title="Export Bank Auctions Catalog CSV"
+              >
+                <Download className="w-4 h-4" /> Export Catalog CSV
+              </button>
+            </div>
+          </div>
+
+          {/* BaankNet KPI Cards Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-amber-100 hover:shadow-md hover:border-amber-300 transition-all">
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Listings</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">
+                {(baanknetStats?.summary?.total || 0).toLocaleString()}
+              </p>
+              <p className="text-[11px] font-semibold text-slate-500 mt-1">All indexed properties</p>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 hover:shadow-md hover:border-emerald-300 transition-all">
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Live Auctions
+              </p>
+              <p className="text-2xl font-black text-emerald-600 mt-1">
+                {(baanknetStats?.summary?.live || 0).toLocaleString()}
+              </p>
+              <p className="text-[11px] font-semibold text-emerald-700/80 mt-1">Active bidding window</p>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-amber-100 hover:shadow-md hover:border-amber-300 transition-all">
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-500" /> Upcoming
+              </p>
+              <p className="text-2xl font-black text-amber-600 mt-1">
+                {(baanknetStats?.summary?.upcoming || 0).toLocaleString()}
+              </p>
+              <p className="text-[11px] font-semibold text-amber-700/80 mt-1">Scheduled for auction</p>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-amber-100 hover:shadow-md hover:border-amber-300 transition-all">
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+                <Coins className="w-3.5 h-3.5 text-amber-600" /> Portfolio Reserve
+              </p>
+              <p className="text-2xl font-black text-slate-900 mt-1">
+                ₹{baanknetStats?.summary?.totalReserveValue ? (baanknetStats.summary.totalReserveValue >= 10000000 ? (baanknetStats.summary.totalReserveValue / 10000000).toFixed(1) + ' Cr' : (baanknetStats.summary.totalReserveValue / 100000).toFixed(1) + ' L') : '0'}
+              </p>
+              <p className="text-[11px] font-semibold text-slate-500 mt-1">Total asset valuation</p>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-100 hover:shadow-md hover:border-blue-300 transition-all">
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Building className="w-3.5 h-3.5 text-blue-500" /> Public Banks
+              </p>
+              <p className="text-2xl font-black text-blue-600 mt-1">
+                {baanknetStats?.summary?.participatingBanksCount || 0}
+              </p>
+              <p className="text-[11px] font-semibold text-slate-500 mt-1">PSB & Commercial</p>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100 hover:shadow-md hover:border-purple-300 transition-all">
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-purple-500" /> States / UTs
+              </p>
+              <p className="text-2xl font-black text-purple-600 mt-1">
+                {baanknetStats?.summary?.statesCount || 0}
+              </p>
+              <p className="text-[11px] font-semibold text-slate-500 mt-1">Pan-India coverage</p>
+            </div>
+          </div>
+
+          {/* Section 1: BaankNet Master Category Directory & Asset Classification */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-amber-600" /> Category Inventory & Asset Classification
+                  </h3>
+                  <span className="px-2.5 py-0.5 text-xs font-black bg-amber-100 text-amber-900 rounded-full border border-amber-300">
+                    {baanknetStats?.categoryDistribution?.length || 0} Categories
+                  </span>
+                </div>
+                <p className="text-slate-500 text-xs mt-0.5">
+                  Complete breakdown of indexed banking assets across Real Estate, Vehicles, and Industrial Plant & Machinery.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 print:hidden">
+                {/* Domain Pill Filter */}
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                  {(['all', 'Real Estate', 'Vehicles', 'Industrial'] as const).map((domain) => (
+                    <button
+                      key={domain}
+                      type="button"
+                      onClick={() => setBaanknetParentFilter(domain)}
+                      className={clsx(
+                        "px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer select-none",
+                        baanknetParentFilter === domain ? "bg-amber-600 text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
+                      )}
+                    >
+                      {domain === 'all' ? 'All Domains' : domain}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Category Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search category or asset..."
+                    value={baanknetCategorySearch}
+                    onChange={(e) => setBaanknetCategorySearch(e.target.value)}
+                    className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all w-48 sm:w-56"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={downloadBaanknetCategoriesCSV}
+                  className="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all border border-slate-200 shadow-2xs cursor-pointer"
+                  title="Download Category Breakdown CSV"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Category Directory Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/70 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+                    <th className="px-4 py-3 font-bold">Category & Domain</th>
+                    <th className="px-4 py-3 font-bold">Asset Classes Included</th>
+                    <th className="px-4 py-3 font-bold text-center">Auctions</th>
+                    <th className="px-4 py-3 font-bold text-center">Share</th>
+                    <th className="px-4 py-3 font-bold text-right">Est. Reserve Value</th>
+                    <th className="px-4 py-3 font-bold text-right">Avg Reserve</th>
+                    <th className="px-4 py-3 font-bold">Leading Bank</th>
+                    <th className="px-4 py-3 font-bold text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                  {(!baanknetStats?.categoryDistribution || baanknetStats.categoryDistribution.length === 0) ? (
+                    <tr>
+                      <td colSpan={8} className="text-center py-8 text-slate-400 font-semibold">
+                        No BaankNet category records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    baanknetStats.categoryDistribution
+                      .filter((c: any) => {
+                        const matchesDomain = baanknetParentFilter === 'all' || c.parent === baanknetParentFilter;
+                        const q = baanknetCategorySearch.toLowerCase();
+                        const matchesSearch = !q || c.name.toLowerCase().includes(q) || (c.propertyTypesText || '').toLowerCase().includes(q) || (c.topBank || '').toLowerCase().includes(q);
+                        return matchesDomain && matchesSearch;
+                      })
+                      .map((c: any) => {
+                        const isExpanded = expandedBaanknetCategory === c.name;
+                        return (
+                          <Fragment key={c.name}>
+                            <tr 
+                              onClick={() => setExpandedBaanknetCategory(isExpanded ? null : c.name)}
+                              className={clsx(
+                                "hover:bg-amber-50/30 transition-colors cursor-pointer",
+                                isExpanded && "bg-amber-50/50"
+                              )}
+                            >
+                              <td className="px-4 py-3 font-bold text-slate-900 flex items-center gap-2">
+                                <span className={clsx(
+                                  "px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shrink-0",
+                                  c.parent === 'Real Estate' ? "bg-blue-100 text-blue-800 border border-blue-200" :
+                                  c.parent === 'Vehicles' ? "bg-amber-100 text-amber-800 border border-amber-200" :
+                                  "bg-purple-100 text-purple-800 border border-purple-200"
+                                )}>
+                                  {c.parent}
+                                </span>
+                                <span className="text-xs text-slate-800 truncate max-w-[200px]" title={c.name}>
+                                  {c.name.includes('|') ? c.name.split('|')[1].trim() : c.name}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-slate-600 max-w-[220px]">
+                                <div className="flex flex-wrap gap-1">
+                                  {(c.propertyTypes || []).slice(0, 2).map((pt: any) => (
+                                    <span key={pt.name} className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px]">
+                                      {pt.name} ({pt.count})
+                                    </span>
+                                  ))}
+                                  {(c.propertyTypes || []).length > 2 && (
+                                    <span className="text-[10px] text-slate-400 font-bold">
+                                      +{(c.propertyTypes || []).length - 2} more
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center font-bold text-amber-700 font-mono text-sm">
+                                {c.count.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 text-center font-mono font-bold text-slate-600">
+                                {c.percentage}%
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">
+                                {c.totalReserve > 0 ? `₹${(c.totalReserve >= 10000000 ? (c.totalReserve / 10000000).toFixed(2) + ' Cr' : (c.totalReserve / 100000).toFixed(1) + ' L')}` : 'In Catalog'}
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono text-slate-600">
+                                {c.avgReserve > 0 ? `₹${(c.avgReserve >= 10000000 ? (c.avgReserve / 10000000).toFixed(2) + ' Cr' : (c.avgReserve / 100000).toFixed(1) + ' L')}` : 'N/A'}
+                              </td>
+                              <td className="px-4 py-3 text-slate-800 text-xs truncate max-w-[140px]" title={c.topBank}>
+                                <div className="flex items-center gap-1.5">
+                                  <Landmark className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <span className="truncate">{c.topBank || 'N/A'}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="inline-flex items-center gap-1 text-[11px] font-mono">
+                                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold" title="Live Auctions">
+                                    {c.liveCount} Live
+                                  </span>
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold" title="Upcoming Auctions">
+                                    {c.upcomingCount} Soon
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+
+                            {/* Detailed breakdown sub-row when expanded */}
+                            {isExpanded && (
+                              <tr className="bg-amber-50/40 border-y border-amber-200/60">
+                                <td colSpan={8} className="p-4">
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                                    <div className="bg-white p-3 rounded-xl border border-amber-200/70">
+                                      <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <Building className="w-3.5 h-3.5 text-amber-600" /> Participating Banks ({c.banks?.length || 0})
+                                      </p>
+                                      <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                                        {(c.banks || []).map((b: any) => (
+                                          <div key={b.name} className="flex justify-between items-center text-slate-600">
+                                            <span className="truncate font-medium">{b.name}</span>
+                                            <span className="font-mono font-bold text-amber-700 ml-2">{b.count}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-white p-3 rounded-xl border border-amber-200/70">
+                                      <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <Layers className="w-3.5 h-3.5 text-blue-600" /> Property Asset Sub-Types ({c.propertyTypes?.length || 0})
+                                      </p>
+                                      <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                                        {(c.propertyTypes || []).map((pt: any) => (
+                                          <div key={pt.name} className="flex justify-between items-center text-slate-600">
+                                            <span className="truncate font-medium">{pt.name}</span>
+                                            <span className="font-mono font-bold text-blue-700 ml-2">{pt.count}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-white p-3 rounded-xl border border-amber-200/70">
+                                      <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <MapPin className="w-3.5 h-3.5 text-purple-600" /> Regional Footprint ({c.states?.length || 0} States)
+                                      </p>
+                                      <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                                        {(c.states || []).map((st: any) => (
+                                          <div key={st.name} className="flex justify-between items-center text-slate-600">
+                                            <span className="truncate font-medium">{st.name}</span>
+                                            <span className="font-mono font-bold text-purple-700 ml-2">{st.count}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Section 2: Bank-wise Distribution Analysis */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Landmark className="w-5 h-5 text-amber-600" /> Bank Distribution & Market Share
+                </h3>
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl print:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setBaanknetChartType('bar')}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                      baanknetChartType === 'bar' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    <BarChart3 className="w-4 h-4 text-amber-600" /> Volume
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBaanknetChartType('pie')}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                      baanknetChartType === 'pie' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    <PieIcon className="w-4 h-4 text-amber-600" /> Share
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 print:hidden">
+                <span className="px-3 py-1 bg-amber-50 text-amber-800 text-xs font-bold rounded-xl border border-amber-200">
+                  {baanknetStats?.bankDistribution?.length || 0} Financial Institutions
+                </span>
+                <button
+                  type="button"
+                  onClick={downloadBaanknetCSV}
+                  className="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all border border-slate-200 shadow-2xs cursor-pointer"
+                  title="Export Bank Distribution CSV"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Bank Chart View */}
+            {baanknetChartType === 'bar' ? (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={(baanknetStats?.bankDistribution || []).slice(0, 10)} margin={{ top: 10, right: 10, left: -10, bottom: 25 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="bank" 
+                      tick={{fontSize: 11, fill: '#64748b'}} 
+                      interval={0} 
+                      angle={-20} 
+                      textAnchor="end" 
+                      tickLine={false} 
+                      axisLine={false} 
+                    />
+                    <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{fill: '#fef3c7'}} />
+                    <Bar dataKey="count" name="Auctions" fill="#d97706" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-80 flex flex-col md:flex-row items-center justify-center gap-8">
+                {(!baanknetStats?.bankDistribution || baanknetStats.bankDistribution.length === 0) ? (
+                  <p className="text-slate-500 text-sm font-semibold">No bank data available.</p>
+                ) : (
+                  <>
+                    <div className="w-full md:w-1/2 h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={(baanknetStats?.bankDistribution || []).slice(0, 8).map(b => ({ name: b.bank, value: b.count }))}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={65}
+                            outerRadius={95}
+                            paddingAngle={3}
+                            dataKey="value"
+                          >
+                            {(baanknetStats?.bankDistribution || []).slice(0, 8).map((entry, index) => (
+                              <Cell key={`cell-bank-${index}`} fill={BANK_COLORS[index % BANK_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="w-full md:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto custom-scrollbar p-2">
+                      {(baanknetStats?.bankDistribution || []).slice(0, 8).map((entry, index) => (
+                        <div key={entry.bank} className="flex items-center gap-2 p-2 bg-amber-50/50 border border-amber-100 rounded-xl">
+                          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: BANK_COLORS[index % BANK_COLORS.length] }} />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 truncate" title={entry.bank}>{entry.bank}</p>
+                            <p className="text-[10px] text-amber-700 font-bold mt-0.5">{entry.count} ({entry.percentage}%)</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Bank Distribution Table */}
+            <div className="mt-6 pt-6 border-t border-slate-100">
+              <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center justify-between">
+                <span>Participating Banks Inventory Table</span>
+                <span className="text-xs font-semibold text-slate-400 font-mono">
+                  {baanknetStats?.bankDistribution?.length || 0} Banks Ranked
+                </span>
+              </h4>
+              <div className="overflow-x-auto max-h-72 overflow-y-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400 font-bold bg-slate-50/50">
+                      <th className="py-2.5 px-3 font-bold">Bank Name</th>
+                      <th className="py-2.5 px-3 font-bold">All Categories Handled</th>
+                      <th className="py-2.5 px-3 font-bold">Primary Asset Type</th>
+                      <th className="py-2.5 px-3 font-bold text-center">Share</th>
+                      <th className="py-2.5 px-3 font-bold text-right">Est. Reserve Value</th>
+                      <th className="py-2.5 px-3 font-bold text-right">Auctions Count</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-600">
+                    {(baanknetStats?.bankDistribution || []).map((b, idx) => (
+                      <tr key={`${b.bank}-${idx}`} className="hover:bg-amber-50/30 transition-colors">
+                        <td className="py-2.5 px-3 flex items-center gap-2 font-bold text-slate-900">
+                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: BANK_COLORS[idx % BANK_COLORS.length] }} />
+                          <span className="truncate max-w-[160px]" title={b.bank}>{b.bank}</span>
+                        </td>
+                        <td className="py-2.5 px-3 max-w-[240px]">
+                          <div className="flex flex-wrap gap-1">
+                            {(b.categories || []).slice(0, 2).map((cat: any) => (
+                              <span key={cat.name} className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
+                                {cat.name.replace('Real Estate | ', '').replace('Vehicles | ', '').replace('Industrial | ', '')} ({cat.count})
+                              </span>
+                            ))}
+                            {(b.categories || []).length > 2 && (
+                              <span className="text-[10px] text-slate-400 font-bold">
+                                +{(b.categories || []).length - 2} more
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-xs text-slate-500 font-semibold truncate max-w-[130px]" title={b.topPropertyType}>
+                          {b.topPropertyType}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono text-xs text-amber-700 font-bold">
+                          {b.percentage}%
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-xs text-slate-700 font-bold">
+                          {b.totalReserve > 0 ? `₹${(b.totalReserve >= 10000000 ? (b.totalReserve / 10000000).toFixed(2) + ' Cr' : (b.totalReserve / 100000).toFixed(1) + ' L')}` : 'In Document'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold text-slate-900 font-mono">
+                          {b.count.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Property Type & Valuation Tiers (2 Columns) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Property Classification Panel */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-amber-600" /> Property & Asset Types
+                </h3>
+                <p className="text-xs text-slate-500 mb-4">Breakdown by asset classification (residential foreclosures, commercial spaces, vehicles, land).</p>
+
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={(baanknetStats?.propertyTypeDistribution || []).slice(0, 6)} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="type" tick={{fontSize: 10, fill: '#64748b'}} interval={0} angle={-15} textAnchor="end" tickLine={false} axisLine={false} />
+                      <YAxis tick={{fontSize: 11, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                      <Tooltip cursor={{fill: '#fef3c7'}} />
+                      <Bar dataKey="count" name="Auctions" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-4 pt-4 border-t border-slate-100">
+                {(baanknetStats?.propertyTypeDistribution || []).slice(0, 4).map((p) => (
+                  <div key={p.type} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                      <span className="text-xs font-bold text-slate-700 truncate">{p.type}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 font-mono text-xs">
+                      <span className="text-slate-400 font-semibold">{p.percentage}%</span>
+                      <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-bold">{p.count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Valuation Brackets Panel */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-amber-600" /> Reserve Price Valuation Brackets
+                </h3>
+                <p className="text-xs text-slate-500 mb-4">Asset reserve price distribution across value tiers (from sub-₹10L to luxury/industrial ₹5Cr+).</p>
+
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={baanknetStats?.priceBracketDistribution || []} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="tier" tick={{fontSize: 10, fill: '#64748b'}} interval={0} angle={-15} textAnchor="end" tickLine={false} axisLine={false} />
+                      <YAxis tick={{fontSize: 11, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                      <Tooltip cursor={{fill: '#fef3c7'}} />
+                      <Bar dataKey="count" name="Auctions" fill="#0284c7" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-slate-100">
+                {(baanknetStats?.priceBracketDistribution || []).map((t) => (
+                  <div key={t.tier} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <p className="text-[11px] font-bold text-slate-500 truncate">{t.tier}</p>
+                    <p className="text-sm font-black text-slate-900 mt-0.5 flex items-baseline justify-between">
+                      <span>{t.count}</span>
+                      <span className="text-[11px] font-semibold text-slate-400 font-mono">{t.percentage}%</span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Geographic Distribution (State-wise) */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-amber-600" /> Geographic Footprint (State & Region Breakdown)
+                </h3>
+                <p className="text-slate-500 text-xs mt-0.5">Distribution of bank foreclosure assets across Indian States and Union Territories.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-amber-50 text-amber-800 text-xs font-bold rounded-xl border border-amber-200">
+                  {baanknetStats?.stateDistribution?.length || 0} States Identified
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* State Volume Bar Chart */}
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={(baanknetStats?.stateDistribution || []).slice(0, 10)} margin={{ top: 10, right: 10, left: -10, bottom: 25 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="state" tick={{fontSize: 11, fill: '#64748b'}} interval={0} angle={-20} textAnchor="end" tickLine={false} axisLine={false} />
+                    <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{fill: '#fef3c7'}} />
+                    <Bar dataKey="count" name="Auctions" fill="#d97706" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* State Breakdown Table */}
+              <div className="overflow-x-auto max-h-72 overflow-y-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400 font-bold bg-slate-50/50">
+                      <th className="py-2.5 px-3 font-bold">State / Territory</th>
+                      <th className="py-2.5 px-3 font-bold">Leading Bank</th>
+                      <th className="py-2.5 px-3 font-bold text-center">Share</th>
+                      <th className="py-2.5 px-3 font-bold text-right">Auctions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 text-sm font-semibold text-slate-600">
+                    {(baanknetStats?.stateDistribution || []).map((s, idx) => (
+                      <tr key={`${s.state}-${idx}`} className="hover:bg-amber-50/30 transition-colors">
+                        <td className="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span className="truncate">{s.state}</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-xs text-slate-500 font-semibold truncate">
+                          {s.topBank}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono text-xs text-amber-700 font-bold">
+                          {s.percentage}%
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold text-slate-900 font-mono">
+                          {s.count.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Live / Upcoming Bank Auctions Catalog Inspector */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-amber-600" /> Bank Assets Catalog Inspector
+                </h3>
+                <p className="text-slate-500 text-xs mt-0.5">
+                  Browse and inspect recently ingested PSB Alliance bank property auction listings.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search bank or property..."
+                    value={baanknetSearchQuery}
+                    onChange={(e) => setBaanknetSearchQuery(e.target.value)}
+                    className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
+                  />
+                </div>
+
+                <select
+                  value={baanknetBankFilter}
+                  onChange={(e) => setBaanknetBankFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-amber-500 transition-all cursor-pointer"
+                >
+                  <option value="all">All Banks</option>
+                  {(baanknetStats?.bankDistribution || []).map(b => (
+                    <option key={b.bank} value={b.bank}>{b.bank} ({b.count})</option>
+                  ))}
+                </select>
+
+                <select
+                  value={baanknetPropertyFilter}
+                  onChange={(e) => setBaanknetPropertyFilter(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-amber-500 transition-all cursor-pointer"
+                >
+                  <option value="all">All Categories & Classes</option>
+                  {(baanknetStats?.categoryDistribution || []).map((cat: any) => (
+                    <option key={cat.name} value={cat.name}>
+                      {cat.name.includes('|') ? cat.name.split('|')[1].trim() : cat.name} ({cat.count})
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={downloadBaanknetListingsCSV}
+                  className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-xl flex items-center gap-2 transition-colors cursor-pointer select-none"
+                >
+                  <Download className="w-4 h-4 text-amber-600" /> CSV
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
+                    <th className="px-5 py-3 font-bold">Bank Name</th>
+                    <th className="px-5 py-3 font-bold">Category & Domain</th>
+                    <th className="px-5 py-3 font-bold">Property Title / Description</th>
+                    <th className="px-5 py-3 font-bold">Property Class</th>
+                    <th className="px-5 py-3 font-bold">State / Location</th>
+                    <th className="px-5 py-3 font-bold text-right">Reserve Price</th>
+                    <th className="px-5 py-3 font-bold text-center">Status</th>
+                    <th className="px-5 py-3 font-bold text-right">Auction Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-sm font-semibold text-slate-700">
+                  {(!baanknetStats?.sampleAuctions || baanknetStats.sampleAuctions.length === 0) ? (
+                    <tr>
+                      <td colSpan={8} className="text-center py-8 text-slate-400 font-semibold">
+                        No BaankNet auctions found.
+                      </td>
+                    </tr>
+                  ) : (
+                    baanknetStats.sampleAuctions
+                      .filter((a: any) => {
+                        const q = baanknetSearchQuery.toLowerCase();
+                        const matchesQuery = !q || (a.bank_name || '').toLowerCase().includes(q) || (a.title || '').toLowerCase().includes(q) || (a.state || '').toLowerCase().includes(q) || (a.property_type || '').toLowerCase().includes(q) || (a.category_name || '').toLowerCase().includes(q);
+                        const matchesBank = baanknetBankFilter === 'all' || a.bank_name === baanknetBankFilter;
+                        const matchesProperty = baanknetPropertyFilter === 'all' || a.category_name === baanknetPropertyFilter || a.property_type === baanknetPropertyFilter;
+                        return matchesQuery && matchesBank && matchesProperty;
+                      })
+                      .slice(0, 25)
+                      .map((a: any) => {
+                        const isLive = a.auction_status === 'live';
+                        return (
+                          <tr key={a.id} className="hover:bg-amber-50/20 transition-colors">
+                            <td className="px-5 py-3 font-bold text-slate-900 flex items-center gap-2">
+                              <Landmark className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              <span className="truncate max-w-[150px]" title={a.bank_name || 'Bank'}>
+                                {a.bank_name || 'Public Sector Bank'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-xs font-semibold text-slate-700">
+                              <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 font-bold border border-amber-200 text-[10px]">
+                                {a.category_name ? (a.category_name.includes('|') ? a.category_name.split('|')[1].trim() : a.category_name) : 'Bank Foreclosure'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-xs text-slate-700 max-w-[280px] truncate" title={a.title}>
+                              {a.source_url ? (
+                                <a 
+                                  href={a.source_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="text-slate-800 hover:text-amber-600 hover:underline flex items-center gap-1"
+                                >
+                                  <span className="truncate">{a.title || 'Bank Auction Property'}</span>
+                                  <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+                                </a>
+                              ) : (
+                                a.title || 'Bank Auction Property'
+                              )}
+                            </td>
+                            <td className="px-5 py-3 text-xs font-semibold text-slate-600">
+                              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px]">
+                                {a.property_type || 'Foreclosure'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-xs text-slate-600">
+                              <span className="truncate">{a.city && a.city !== a.state ? `${a.city}, ` : ''}{a.state || 'India'}</span>
+                            </td>
+                            <td className="px-5 py-3 text-right font-mono font-bold text-slate-900 text-xs">
+                              {a.reserve_price_value ? `₹${Number(a.reserve_price_value).toLocaleString('en-IN')}` : (a.reserve_price_text || 'See Document')}
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                              <span className={clsx(
+                                "px-2.5 py-0.5 rounded-full text-xs font-extrabold uppercase tracking-wider inline-flex items-center gap-1",
+                                isLive ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-amber-100 text-amber-800 border border-amber-200"
+                              )}>
+                                {isLive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />}
+                                {a.auction_status || 'Upcoming'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-right text-xs font-mono text-slate-500">
+                              {a.auction_start_date ? new Date(a.auction_start_date).toLocaleDateString() : 'TBD'}
+                            </td>
+                          </tr>
+                        );
+                      })
+                  )}
                 </tbody>
               </table>
             </div>

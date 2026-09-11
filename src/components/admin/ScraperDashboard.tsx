@@ -110,43 +110,60 @@ export function ScraperDashboard() {
   const gemTerminalRef = useRef<HTMLDivElement>(null);
   const gemBidsTerminalRef = useRef<HTMLDivElement>(null);
 
-  const loadDashboardData = async (silent = false) => {
+  const loadDashboardData = async (silent = false, tab?: string) => {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
 
-    try {
-      const [
-        statsData, auctionsData, logsData, 
-        bnStats, bnAuctions, bnLogs, 
-        gemStatsData, gemAuctionsData, gemLogsData,
-        gemBidsStatsData, gemBidsData, gemBidsLogsData
-      ] = await Promise.all([
-        adminService.getScraperAnalytics(),
-        adminService.getScraperAuctions(500),
-        adminService.getScraperLogs(100),
-        adminService.getBaanknetScraperAnalytics(),
-        adminService.getBaanknetScraperAuctions(500),
-        adminService.getBaanknetScraperLogs(100),
-        adminService.getGemScraperAnalytics(),
-        adminService.getGemScraperAuctions(500),
-        adminService.getGemScraperLogs(100),
-        adminService.getGemBidsScraperAnalytics(),
-        adminService.getGemBidsScraperBids(500),
-        adminService.getGemBidsScraperLogs(100)
-      ]);
+    const activeTab = tab || sourceTab;
 
-      setStats(statsData);
-      setAuctions(auctionsData);
-      setLogs(logsData);
-      setBaanknetStats(bnStats);
-      setBaanknetAuctions(bnAuctions);
-      setBaanknetLogs(bnLogs);
-      setGemStats(gemStatsData);
-      setGemAuctions(gemAuctionsData);
-      setGemLogs(gemLogsData);
-      setGemBidsStats(gemBidsStatsData);
-      setGemBids(gemBidsData);
-      setGemBidsLogs(gemBidsLogsData);
+    try {
+      // Load only the active tab's data (3 queries instead of 12)
+      switch (activeTab) {
+        case 'mstc': {
+          const [statsData, auctionsData, logsData] = await Promise.all([
+            adminService.getScraperAnalytics(),
+            adminService.getScraperAuctions(100),
+            adminService.getScraperLogs(50)
+          ]);
+          setStats(statsData);
+          setAuctions(auctionsData);
+          setLogs(logsData);
+          break;
+        }
+        case 'baanknet': {
+          const [bnStats, bnAuctions, bnLogs] = await Promise.all([
+            adminService.getBaanknetScraperAnalytics(),
+            adminService.getBaanknetScraperAuctions(100),
+            adminService.getBaanknetScraperLogs(50)
+          ]);
+          setBaanknetStats(bnStats);
+          setBaanknetAuctions(bnAuctions);
+          setBaanknetLogs(bnLogs);
+          break;
+        }
+        case 'gem': {
+          const [gemStatsData, gemAuctionsData, gemLogsData] = await Promise.all([
+            adminService.getGemScraperAnalytics(),
+            adminService.getGemScraperAuctions(100),
+            adminService.getGemScraperLogs(50)
+          ]);
+          setGemStats(gemStatsData);
+          setGemAuctions(gemAuctionsData);
+          setGemLogs(gemLogsData);
+          break;
+        }
+        case 'gem-bids': {
+          const [gemBidsStatsData, gemBidsData, gemBidsLogsData] = await Promise.all([
+            adminService.getGemBidsScraperAnalytics(),
+            adminService.getGemBidsScraperBids(100),
+            adminService.getGemBidsScraperLogs(50)
+          ]);
+          setGemBidsStats(gemBidsStatsData);
+          setGemBids(gemBidsData);
+          setGemBidsLogs(gemBidsLogsData);
+          break;
+        }
+      }
     } catch (err: any) {
       console.error('Failed to load scraper dashboard data:', err);
       toast.error('Failed to reload database metrics.');
@@ -156,9 +173,11 @@ export function ScraperDashboard() {
     }
   };
 
+  // Load data when tab changes or on initial mount
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    loadDashboardData(false, sourceTab);
+  }, [sourceTab]);
+
 
   const getAuthToken = async (): Promise<string> => {
     const { data: { session } } = await supabase.auth.getSession();
