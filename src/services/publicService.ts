@@ -353,9 +353,8 @@ function dbLocationMatchesCanonical(itemOrDbLocation: string | any, canonical: s
 }
 
 // ─── Subcategory Precision Map ────────────────────────────────────────────────
-// When the user's query matches a phrase here, ONLY that specific subcategory is returned.
-// Future-proof: add new entries as subcategories are added to the system.
-const SUBCATEGORY_EXACT_MAP: Array<{ phrase: string; subcategory: string }> = [
+// When the user's query matches a phrase here, that specific subcategory intent is detected.
+export const SUBCATEGORY_EXACT_MAP: Array<{ phrase: string; subcategory: string }> = [
   // Metal subcategories
   { phrase: 'iron and steel', subcategory: 'Iron and steel' },
   { phrase: 'iron & steel', subcategory: 'Iron and steel' },
@@ -390,7 +389,8 @@ const SUBCATEGORY_EXACT_MAP: Array<{ phrase: string; subcategory: string }> = [
   { phrase: 'generators', subcategory: 'DG Sets / Generators' },
   { phrase: 'genset', subcategory: 'DG Sets / Generators' },
   { phrase: 'gensets', subcategory: 'DG Sets / Generators' },
-  { phrase: 'air conditioner', subcategory: 'Others' },
+  { phrase: 'air conditioner', subcategory: 'Air conditioner / AC Plant' },
+  { phrase: 'ac plant', subcategory: 'Air conditioner / AC Plant' },
   { phrase: 'cable', subcategory: 'Cables' },
   { phrase: 'cables', subcategory: 'Cables' },
   { phrase: 'wire', subcategory: 'Cables' },
@@ -398,35 +398,41 @@ const SUBCATEGORY_EXACT_MAP: Array<{ phrase: string; subcategory: string }> = [
   // Vehicle subcategories
   { phrase: 'car', subcategory: 'Car' },
   { phrase: 'cars', subcategory: 'Car' },
-  { phrase: 'vehicle', subcategory: 'Car' },
-  { phrase: 'vehicles', subcategory: 'Car' },
-  { phrase: 'automobiles', subcategory: 'Car' },
   { phrase: 'automobile', subcategory: 'Car' },
+  { phrase: 'automobiles', subcategory: 'Car' },
   { phrase: 'automotive', subcategory: 'Car' },
-  { phrase: 'vechicle', subcategory: 'Car' },
-  { phrase: 'vechicles', subcategory: 'Car' },
-  { phrase: 'truck', subcategory: 'Car' },
-  { phrase: 'trucks', subcategory: 'Car' },
   { phrase: 'jeep', subcategory: 'Car' },
   { phrase: 'jeeps', subcategory: 'Car' },
-  { phrase: 'bus', subcategory: 'Car' },
-  { phrase: 'buses', subcategory: 'Car' },
-  { phrase: 'scooter', subcategory: 'Car' },
-  { phrase: 'scooters', subcategory: 'Car' },
-  { phrase: 'bike', subcategory: 'Car' },
-  { phrase: 'bikes', subcategory: 'Car' },
-  { phrase: 'motorcycle', subcategory: 'Car' },
-  { phrase: 'motorcycles', subcategory: 'Car' },
-  { phrase: 'dumper', subcategory: 'Car' },
-  { phrase: 'dumpers', subcategory: 'Car' },
-  { phrase: 'tipper', subcategory: 'Car' },
-  { phrase: 'tippers', subcategory: 'Car' },
-  { phrase: 'tractor', subcategory: 'Car' },
-  { phrase: 'tractors', subcategory: 'Car' },
-  { phrase: 'elv', subcategory: 'Car' },
-  { phrase: 'elvs', subcategory: 'Car' },
-  { phrase: 'van', subcategory: 'Car' },
-  { phrase: 'vans', subcategory: 'Car' },
+  { phrase: 'truck', subcategory: 'Truck' },
+  { phrase: 'trucks', subcategory: 'Truck' },
+  { phrase: 'lorry', subcategory: 'Truck' },
+  { phrase: 'lorries', subcategory: 'Truck' },
+  { phrase: 'bus', subcategory: 'Bus' },
+  { phrase: 'buses', subcategory: 'Bus' },
+  { phrase: 'scooter', subcategory: 'Two-wheeler' },
+  { phrase: 'scooters', subcategory: 'Two-wheeler' },
+  { phrase: 'bike', subcategory: 'Two-wheeler' },
+  { phrase: 'bikes', subcategory: 'Two-wheeler' },
+  { phrase: 'motorcycle', subcategory: 'Two-wheeler' },
+  { phrase: 'motorcycles', subcategory: 'Two-wheeler' },
+  { phrase: 'two wheeler', subcategory: 'Two-wheeler' },
+  { phrase: 'two-wheeler', subcategory: 'Two-wheeler' },
+  { phrase: 'two wheelers', subcategory: 'Two-wheeler' },
+  { phrase: 'auto rickshaw', subcategory: 'Auto Rickshaw' },
+  { phrase: 'auto-rickshaw', subcategory: 'Auto Rickshaw' },
+  { phrase: 'autorickshaw', subcategory: 'Auto Rickshaw' },
+  { phrase: 'e-rickshaw', subcategory: 'E-Rickshaw' },
+  { phrase: 'erickshaw', subcategory: 'E-Rickshaw' },
+  { phrase: 'elv', subcategory: 'End of Life Vehicles' },
+  { phrase: 'elvs', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end of life vehicle', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end of life vehicles', subcategory: 'End of Life Vehicles' },
+  { phrase: 'dumper', subcategory: 'Special Purpose Vehicle' },
+  { phrase: 'dumpers', subcategory: 'Special Purpose Vehicle' },
+  { phrase: 'tipper', subcategory: 'Special Purpose Vehicle' },
+  { phrase: 'tippers', subcategory: 'Special Purpose Vehicle' },
+  { phrase: 'tractor', subcategory: 'Special Purpose Vehicle' },
+  { phrase: 'tractors', subcategory: 'Special Purpose Vehicle' },
   // Electronics subcategories
   { phrase: 'computer', subcategory: 'Computers / Peripherals' },
   { phrase: 'computers', subcategory: 'Computers / Peripherals' },
@@ -440,50 +446,64 @@ const SUBCATEGORY_EXACT_MAP: Array<{ phrase: string; subcategory: string }> = [
   { phrase: 'monitors', subcategory: 'Computers / Peripherals' },
   { phrase: 'printer', subcategory: 'Computers / Peripherals' },
   { phrase: 'printers', subcategory: 'Computers / Peripherals' },
-  { phrase: 'mobile', subcategory: 'Computers / Peripherals' },
-  { phrase: 'tablet', subcategory: 'Computers / Peripherals' },
+  { phrase: 'mobile', subcategory: 'Mobile / Tablet' },
+  { phrase: 'tablet', subcategory: 'Mobile / Tablet' },
   { phrase: 'e-waste', subcategory: 'Computers / Peripherals' },
   { phrase: 'ewaste', subcategory: 'Computers / Peripherals' },
   { phrase: 'electronics', subcategory: 'Computers / Peripherals' },
   { phrase: 'electronic', subcategory: 'Computers / Peripherals' },
   // Forest Produce
-  { phrase: 'teak timber', subcategory: 'Timber' },
-  { phrase: 'rosewood', subcategory: 'Timber' },
-  { phrase: 'firewood', subcategory: 'Timber' },
-  { phrase: 'sandalwood', subcategory: 'Timber' },
-  { phrase: 'sandal wood', subcategory: 'Timber' },
+  { phrase: 'teak timber', subcategory: 'Timber - Teak' },
+  { phrase: 'teak wood', subcategory: 'Timber - Teak' },
+  { phrase: 'teak logs', subcategory: 'Timber - Teak' },
+  { phrase: 'teak', subcategory: 'Timber - Teak' },
+  { phrase: 'rosewood', subcategory: 'Timber - Rosewood' },
+  { phrase: 'rose wood', subcategory: 'Timber - Rosewood' },
+  { phrase: 'firewood', subcategory: 'Firewood' },
+  { phrase: 'fire wood', subcategory: 'Firewood' },
+  { phrase: 'sandalwood', subcategory: 'Sandal wood' },
+  { phrase: 'sandal wood', subcategory: 'Sandal wood' },
+  { phrase: 'red sander', subcategory: 'Red sander' },
+  { phrase: 'red sanders', subcategory: 'Red sander' },
+  { phrase: 'timber cut sizes', subcategory: 'Timber cut sizes' },
   { phrase: 'timber', subcategory: 'Timber' },
+  { phrase: 'timbers', subcategory: 'Timber' },
   { phrase: 'wood', subcategory: 'Timber' },
   { phrase: 'log', subcategory: 'Timber' },
   { phrase: 'logs', subcategory: 'Timber' },
-  { phrase: 'teak', subcategory: 'Timber' },
   // Ash
-  { phrase: 'fly ash', subcategory: 'Others' },
-  { phrase: 'pond ash', subcategory: 'Others' },
-  { phrase: 'bottom ash', subcategory: 'Others' },
-  { phrase: 'ash', subcategory: 'Others' },
-  { phrase: 'ashes', subcategory: 'Others' },
+  { phrase: 'fly ash', subcategory: 'Fly ash' },
+  { phrase: 'pond ash', subcategory: 'Pond ash' },
+  { phrase: 'bottom ash', subcategory: 'Bottom ash' },
+  { phrase: 'ash', subcategory: 'Fly ash' },
+  { phrase: 'ashes', subcategory: 'Fly ash' },
   // Chemicals
-  { phrase: 'spent catalyst', subcategory: 'Others' },
+  { phrase: 'spent catalyst', subcategory: 'Spent catalyst' },
   // Coal
   { phrase: 'coal linkage', subcategory: 'Coal' },
   { phrase: 'coal', subcategory: 'Coal' },
+  // Minerals
   { phrase: 'lignite', subcategory: 'Minerals' },
   { phrase: 'coke', subcategory: 'Minerals' },
+  { phrase: 'granite', subcategory: 'Granite' },
+  { phrase: 'gypsum', subcategory: 'Gypsum' },
+  { phrase: 'iron ore', subcategory: 'Iron ore' },
+  { phrase: 'limestone', subcategory: 'Limestone' },
+  { phrase: 'marble', subcategory: 'Marble' },
   // Property
-  { phrase: 'godown', subcategory: 'Plot/Land' },
-  { phrase: 'godowns', subcategory: 'Plot/Land' },
-  { phrase: 'warehouse', subcategory: 'Plot/Land' },
-  { phrase: 'warehouses', subcategory: 'Plot/Land' },
-  { phrase: 'property', subcategory: 'Plot/Land' },
-  { phrase: 'properties', subcategory: 'Plot/Land' },
-  { phrase: 'land', subcategory: 'Plot/Land' },
-  { phrase: 'plot', subcategory: 'Plot/Land' },
-  { phrase: 'plots', subcategory: 'Plot/Land' },
-  { phrase: 'real estate', subcategory: 'Plot/Land' },
-  { phrase: 'realestate', subcategory: 'Plot/Land' },
-  { phrase: 'building', subcategory: 'Plot/Land' },
-  { phrase: 'buildings', subcategory: 'Plot/Land' },
+  { phrase: 'godown', subcategory: 'Residential / Plot/Land' },
+  { phrase: 'godowns', subcategory: 'Residential / Plot/Land' },
+  { phrase: 'warehouse', subcategory: 'Residential / Plot/Land' },
+  { phrase: 'warehouses', subcategory: 'Residential / Plot/Land' },
+  { phrase: 'property', subcategory: 'Residential' },
+  { phrase: 'properties', subcategory: 'Residential' },
+  { phrase: 'land', subcategory: 'Residential / Plot/Land' },
+  { phrase: 'plot', subcategory: 'Residential / Plot/Land' },
+  { phrase: 'plots', subcategory: 'Residential / Plot/Land' },
+  { phrase: 'real estate', subcategory: 'Residential / Plot/Land' },
+  { phrase: 'realestate', subcategory: 'Residential / Plot/Land' },
+  { phrase: 'building', subcategory: 'Residential / Plot/Land' },
+  { phrase: 'buildings', subcategory: 'Residential / Plot/Land' },
   { phrase: 'office', subcategory: 'Commercial' },
   { phrase: 'offices', subcategory: 'Commercial' },
   { phrase: 'shop', subcategory: 'Commercial' },
@@ -500,9 +520,94 @@ const SUBCATEGORY_EXACT_MAP: Array<{ phrase: string; subcategory: string }> = [
   { phrase: 'apartments', subcategory: 'Residential' },
   { phrase: 'home', subcategory: 'Residential' },
   { phrase: 'homes', subcategory: 'Residential' },
+  // Miscellaneous
+  { phrase: 'furniture', subcategory: 'Furniture' },
+  { phrase: 'building materials', subcategory: 'Building materials' },
 ];
 
-function detectPrecisionSubcategory(query: string): string | null {
+/**
+ * All known leaf subcategories in MSTC auctions.
+ * Used to expand umbrella subcategories (e.g. 'Timber' -> 'Timber - Teak', 'Timber - Others', etc.)
+ */
+export const ALL_MSTC_SUBCATEGORIES: string[] = [
+  // Forest Produce
+  'Timber', 'Timber - Others', 'Timber - Teak', 'Timber - Rosewood', 'Timber cut sizes',
+  'Poles - Teak', 'Poles - Others', 'Firewood', 'Red sander', 'Sandal wood', 'Pulpwood',
+  // Transport Vehicles
+  'Car', 'Truck', 'Bus', 'Two-wheeler', 'Auto Rickshaw', 'E-Rickshaw', 'End of Life Vehicles', 'Special Purpose Vehicle',
+  // Electrical Items
+  'Air conditioner / AC Plant', 'Battery', 'Cables', 'Circuit breaker', 'Conductors', 'DG Sets / Generators', 'Meter scrap', 'Transformer',
+  // Electronics Items
+  'Computers / Peripherals', 'Mobile / Tablet',
+  // Metal
+  'Aluminium', 'Brass', 'Copper', 'Iron and steel', 'Mixed metal scraps', 'Other metals', 'Silver', 'Zinc', 'Gun metal/bronze',
+  // Immovable Property
+  'Agriculture', 'Commercial', 'Commercial / Parking Lot', 'Commercial / Washrooms', 'Residential', 'Residential / Plot/Land',
+  // Minerals
+  'Granite', 'Gypsum', 'Iron ore', 'Iron ore / Mixed Fines & Lumps', 'Limestone', 'Manganese / Ferro-manganese', 'Marble', 'Sand', 'Weathered / Mixed stone',
+  // Coal
+  'Coal',
+  // Ash
+  'Bottom ash', 'Fly ash', 'Pond ash',
+  // Chemicals
+  'Acid', 'Resins', 'Spent catalyst',
+  // Container
+  'Barrel/drum', 'Barrel/drum / MS Barrel/Drum', 'Barrel/drum / Plastic Barrel/Drum', 'Can/tin',
+  // Miscellaneous
+  'Building materials', 'Cenosphere', 'Cloth / Garments', 'Cloth / Garments / Fabric',
+  'Custom goods / CFS Containers', 'Custom goods / Unclaimed Cargo', 'Dismantling of buildings/plants',
+  'FGD Gypsum', 'Fiberglass scrap', 'Footwear', 'Furniture', 'Garbage & Sweeping Waste', 'Glass',
+  'Household & office items', 'Human hair', 'Leather', 'Medical / Medical Equipment',
+  'Medical / Medical Machinery', 'Medical / Medical Waste', 'Miscellaneous items', 'Others',
+  'Packing material', 'Paper & related products', 'Plastic', 'Rubber', 'Stone block',
+  'Textile / Cotton items', 'Wooden items'
+];
+
+export function matchSubcategory(itemSub: string, targetSub: string): boolean {
+  const item = itemSub.toLowerCase().trim();
+  const target = targetSub.toLowerCase().trim();
+  if (item === target) return true;
+
+  // Prefix match with separator (e.g. "Timber" matches "Timber - Others", "Timber - Teak", "Timber cut sizes")
+  if (item.startsWith(target + ' ') || item.startsWith(target + ' -') || item.startsWith(target + ' /')) {
+    return true;
+  }
+
+  const itemNorm = item.replace(/[^a-z0-9]/g, '');
+  const targetNorm = target.replace(/[^a-z0-9]/g, '');
+  if (itemNorm === targetNorm) return true;
+
+  // Word boundary match (prevents false matches like 'cargo' matching 'car')
+  const wordRegex = new RegExp(`(^|[\\s\\/\\-_])${target.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}($|[\\s\\/\\-_])`, 'i');
+  if (wordRegex.test(item)) return true;
+
+  // Equivalences / Synonyms
+  if (targetNorm === 'car' || targetNorm === 'endoflifevehicles') {
+    return itemNorm === 'car' || itemNorm === 'endoflifevehicles';
+  }
+
+  return false;
+}
+
+/**
+ * Expands high-level or umbrella subcategories into all matching database leaf subcategories.
+ * E.g. ['Timber'] -> ['Timber', 'Timber - Others', 'Timber - Teak', 'Timber - Rosewood', 'Timber cut sizes']
+ */
+export function expandSubcategories(subcategories?: string[] | null): string[] | undefined {
+  if (!subcategories || subcategories.length === 0) return undefined;
+  const result = new Set<string>();
+  for (const sub of subcategories) {
+    result.add(sub);
+    for (const known of ALL_MSTC_SUBCATEGORIES) {
+      if (matchSubcategory(known, sub)) {
+        result.add(known);
+      }
+    }
+  }
+  return Array.from(result);
+}
+
+export function detectPrecisionSubcategory(query: string): string | null {
   if (!query) return null;
   const lower = query.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
   const words = lower.split(' ');
@@ -511,7 +616,9 @@ function detectPrecisionSubcategory(query: string): string | null {
 
   // Try exact match first
   for (const { phrase, subcategory } of sortedMap) {
-    if (lower.includes(phrase)) return subcategory;
+    const pLower = phrase.toLowerCase();
+    const phraseRegex = new RegExp(`(^|\\s)${pLower.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}($|\\s)`);
+    if (phraseRegex.test(lower)) return subcategory;
   }
 
   // Try fuzzy matching of word sequences
@@ -529,7 +636,7 @@ function detectPrecisionSubcategory(query: string): string | null {
       let allowed = false;
       if (dist === 0) {
         allowed = true;
-      } else if (dist === 1 && phrase.length >= 3) {
+      } else if (dist === 1 && phrase.length >= 4) {
         allowed = true;
       } else if (dist === 2 && phrase.length >= 7 && candidate.length >= 7) {
         allowed = true;
@@ -542,26 +649,6 @@ function detectPrecisionSubcategory(query: string): string | null {
   }
 
   return null;
-}
-
-function matchSubcategory(itemSub: string, targetSub: string): boolean {
-  const item = itemSub.toLowerCase().trim();
-  const target = targetSub.toLowerCase().trim();
-  if (item === target) return true;
-
-  const itemNorm = item.replace(/[^a-z0-9]/g, '');
-  const targetNorm = target.replace(/[^a-z0-9]/g, '');
-  if (itemNorm === targetNorm) return true;
-
-  // Check if one contains the other as a substring (e.g. 'timber' matching 'timber - rosewood')
-  if (itemNorm.includes(targetNorm) || targetNorm.includes(itemNorm)) return true;
-
-  // Equivalences / Synonyms
-  if (targetNorm === 'car' || targetNorm === 'endoflifevehicles') {
-    return itemNorm === 'car' || itemNorm === 'endoflifevehicles' || itemNorm.includes('vehicle') || itemNorm.includes('car');
-  }
-
-  return false;
 }
 
 
@@ -1809,15 +1896,16 @@ export const MstcSearchService = {
       }
 
       if (filters?.subcategories && filters.subcategories.length > 0) {
-        const subcats = filters.subcategories;
+        const subcats = expandSubcategories(filters.subcategories) || filters.subcategories;
         mapped = mapped.filter(item => {
           const parts = item.category_name.split(' | ');
-          return subcats.includes(parts[1]);
+          return subcats.some(s => matchSubcategory(parts[1] || '', s));
         });
       } else if (filters?.subcategory) {
+        const subcats = expandSubcategories([filters.subcategory]) || [filters.subcategory];
         mapped = mapped.filter(item => {
           const parts = item.category_name.split(' | ');
-          return parts[1] === filters.subcategory;
+          return subcats.some(s => matchSubcategory(parts[1] || '', s));
         });
       }
 
@@ -1852,11 +1940,13 @@ export const MstcSearchService = {
       // ONLY that specific subcategory is returned.
       const precisionSubcategory = detectPrecisionSubcategory(workingQuery);
       if (precisionSubcategory) {
-        mapped = mapped.filter(item => {
+        const precisionFiltered = mapped.filter(item => {
           const sub = (item.category_name || '').split(' | ')[1] || '';
           return matchSubcategory(sub, precisionSubcategory);
         });
-        if (mapped.length === 0) return [];
+        if (precisionFiltered.length > 0) {
+          mapped = precisionFiltered;
+        }
       }
 
       // ── Tokenize remaining query terms
@@ -2316,6 +2406,9 @@ export const MstcSearchService = {
       if (precisionSubcategory) {
         finalSubcategories = finalSubcategories ? [...finalSubcategories, precisionSubcategory] : [precisionSubcategory];
       }
+      if (finalSubcategories && finalSubcategories.length > 0) {
+        finalSubcategories = expandSubcategories(finalSubcategories) || finalSubcategories;
+      }
 
       let finalCategories = filters?.categories?.length ? filters.categories : (filters?.category ? [filters.category] : null);
 
@@ -2472,6 +2565,32 @@ export const MstcSearchService = {
       searchData = rpcResult.data;
       error = rpcResult.error;
 
+      // If heuristic precisionSubcategory filter yielded 0 results, relax the subcategory filter to search by keywords & location
+      if ((!searchData || searchData.length === 0) && precisionSubcategory && !filters?.subcategories?.length && !filters?.subcategory) {
+        const relaxedResult = await supabase.rpc('hybrid_search_mstc_catalog', {
+          p_search_query: rpcQuery || null,
+          p_embedding: embeddingStr as any,
+          p_categories: finalCategories,
+          p_subcategories: null,
+          p_locations: finalLocations,
+          p_sellers: filters?.sellers?.length ? filters.sellers : (filters?.seller ? [filters.seller] : null),
+          p_regional_offices: filters?.regionalOffices?.length ? filters.regionalOffices : (filters?.regionalOffice ? [filters.regionalOffice] : null),
+          p_start_date: finalStartDate,
+          p_end_date: finalEndDate,
+          p_has_images: filters?.hasImages || null,
+          p_has_docs: filters?.hasAssetDocuments || null,
+          p_min_pre_bid: p_min_pre_bid ?? null,
+          p_max_pre_bid: p_max_pre_bid ?? null,
+          p_is_reauction: isReauctionSearch ?? null,
+          p_page: rpcPage,
+          p_limit: rpcLimit
+        });
+        if (!relaxedResult.error && relaxedResult.data && relaxedResult.data.length > 0) {
+          searchData = relaxedResult.data;
+          error = null;
+        }
+      }
+
       if ((!searchData || searchData.length === 0) && rpcQuery && rpcQuery.trim() !== '') {
         const { data: correctedQuery, error: correctionError } = await supabase.rpc('suggest_search_correction', {
           p_query: rpcQuery
@@ -2481,11 +2600,12 @@ export const MstcSearchService = {
           if ((import.meta as any).env?.DEV) {
             console.log(`Auto-correcting search from "${rpcQuery}" to "${correctedQuery}"`);
           }
+          const retrySubcategories = (!searchData || searchData.length === 0) && precisionSubcategory && !filters?.subcategories?.length ? null : finalSubcategories;
           const retryResult = await supabase.rpc('hybrid_search_mstc_catalog', {
             p_search_query: correctedQuery,
             p_embedding: embeddingStr as any,
-            p_categories: filters?.categories?.length ? filters.categories : (filters?.category ? [filters.category] : null),
-            p_subcategories: finalSubcategories,
+            p_categories: finalCategories,
+            p_subcategories: retrySubcategories,
             p_locations: finalLocations,
             p_sellers: filters?.sellers?.length ? filters.sellers : (filters?.seller ? [filters.seller] : null),
             p_regional_offices: filters?.regionalOffices?.length ? filters.regionalOffices : (filters?.regionalOffice ? [filters.regionalOffice] : null),
@@ -3239,7 +3359,7 @@ export const BaanknetSearchService = {
       }
 
       // Text search
-      const textToSearch = cleanSearchQuery || query.trim();
+      const textToSearch = (removeStopWords(cleanSearchQuery) || cleanSearchQuery || query).trim();
       if (textToSearch) {
         q = q.or(`title.ilike.%${textToSearch}%,bank_name.ilike.%${textToSearch}%,location.ilike.%${textToSearch}%,city.ilike.%${textToSearch}%,full_address.ilike.%${textToSearch}%,baanknet_auction_id.ilike.%${textToSearch}%`);
       }
@@ -3491,7 +3611,7 @@ export const GemSearchService = {
       }
 
       // Text search
-      const textToSearch = cleanSearchQuery || query.trim();
+      const textToSearch = (removeStopWords(cleanSearchQuery) || cleanSearchQuery || query).trim();
       if (textToSearch) {
         q = q.or(`title.ilike.%${textToSearch}%,organisation.ilike.%${textToSearch}%,ministry.ilike.%${textToSearch}%,location.ilike.%${textToSearch}%,city.ilike.%${textToSearch}%,category_name.ilike.%${textToSearch}%,gem_auction_id.ilike.%${textToSearch}%`);
       }
@@ -3726,8 +3846,11 @@ export const GemBidSearchService = {
 
       // Full text search
       if (query.trim()) {
-        const cleanQuery = query.trim();
-        q = q.or(`bid_number.ilike.%${cleanQuery}%,ra_number.ilike.%${cleanQuery}%,items.ilike.%${cleanQuery}%,department_name.ilike.%${cleanQuery}%,category_name.ilike.%${cleanQuery}%`);
+        const { remainingQuery } = extractLocationFromQuery(query);
+        const cleanQuery = (removeStopWords(remainingQuery) || remainingQuery.trim() || query.trim());
+        if (cleanQuery) {
+          q = q.or(`bid_number.ilike.%${cleanQuery}%,ra_number.ilike.%${cleanQuery}%,items.ilike.%${cleanQuery}%,department_name.ilike.%${cleanQuery}%,category_name.ilike.%${cleanQuery}%`);
+        }
       }
 
       // Sorting
