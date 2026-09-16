@@ -160,9 +160,10 @@ function sleep(ms: number) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const isTest = args.includes('--test');
+  const emailArg = args.find(a => a.includes('@') && !a.startsWith('--'));
+  const isTest = args.includes('--test') || Boolean(emailArg);
   const testEmailIndex = args.indexOf('--test');
-  const testEmail = testEmailIndex !== -1 ? args[testEmailIndex + 1] : '';
+  const testEmail = (testEmailIndex !== -1 && args[testEmailIndex + 1]) ? args[testEmailIndex + 1] : (emailArg || '');
 
   const isDryRun = args.includes('--dry-run');
   const isSend = args.includes('--send');
