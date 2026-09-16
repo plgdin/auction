@@ -18,6 +18,7 @@
     "scrape:mstc": "tsx scraper/mstcScraper.ts",
     "worker": "tsx scraper/assetWorker.ts",
     "worker:baanknet": "tsx scraper/baanknetAssetWorker.ts",
+    "send:campaign": "tsx scripts/send_campaign.ts",
     "test": "vitest run"
   },
   "dependencies": {
