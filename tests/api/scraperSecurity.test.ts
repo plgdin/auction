@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { isAllowedOrigin, setCorsHeaders } from '../../api/utils/cors.js';
+import { isAllowedOrigin, setCorsHeaders } from '../../api/_utils/cors.js';
 
 // Mock Supabase client
 const deletedTables: string[] = [];

@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { isRateLimited, getClientIp } from './utils/rateLimiter.js';
-import { sendEmail, getSignupWelcomeTemplate } from './utils/email.js';
-import { handleCorsPreflightIfNeeded, setCorsHeaders } from './utils/cors.js';
+import { isRateLimited, getClientIp } from './_utils/rateLimiter.js';
+import { sendEmail, getSignupWelcomeTemplate } from './_utils/email.js';
+import { handleCorsPreflightIfNeeded, setCorsHeaders } from './_utils/cors.js';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();

@@ -1,7 +1,7 @@
 import https from 'https';
 import http from 'http';
 import { URL } from 'url';
-import { isAllowedOrigin } from './utils/cors.js';
+import { isAllowedOrigin } from './_utils/cors.js';
 
 // Allowlist of trusted auction sources to protect against SSRF (OWASP A10 Compliance)
 const ALLOWED_HOSTNAMES = [
