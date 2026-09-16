@@ -18,6 +18,7 @@
     "scrape:mstc": "tsx scraper/mstcScraper.ts",
     "worker": "tsx scraper/assetWorker.ts",
     "worker:baanknet": "tsx scraper/baanknetAssetWorker.ts",
+    "worker:gem": "tsx scraper/gemAssetWorker.ts",
     "test": "vitest run"
   },
   "dependencies": {

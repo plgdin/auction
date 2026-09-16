@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck } from 'lucide-react';
+import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck, Layers, Gavel } from 'lucide-react';
 import clsx from 'clsx';
 import type { GemAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
@@ -76,6 +76,9 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
 
   // Helper to extract clean description without scraped website noise
   const cleanDescription = useMemo(() => {
+    if (item.detailed_description && item.detailed_description.trim()) {
+      return item.detailed_description.trim();
+    }
     if (!item.raw_description) return null;
     
     let text = item.raw_description;
@@ -97,11 +100,11 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     }
 
     return text;
-  }, [item.raw_description, item.title]);
+  }, [item.detailed_description, item.raw_description, item.title]);
 
   // Helper to extract clean location details if missing
   const locationDetails = useMemo(() => {
-    const city = item.city || '';
+    const city = item.district || item.city || '';
     const state = item.state || (item.location !== 'India' ? item.location : '');
     const pin = item.pincode || '';
 
@@ -163,21 +166,30 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
   const parsedItemDetails = useMemo(() => {
     const rawParsed = parseGemNoticeContent(item.raw_description || '', item.title);
 
-    // Merge doc-level details if present
+    const officersList = [
+      ...(item.contact_phone || item.contact_email ? [{
+        name: item.seller_name || 'Nodal Officer',
+        phone: item.contact_phone || undefined,
+        email: item.contact_email || undefined,
+        role: 'Seller / Auctioneer',
+      }] : []),
+      ...(docExtraDetails.officers || []),
+      ...(rawParsed.officers || []),
+    ].filter((v, i, a) => a.findIndex((t) => t.name === v.name && t.phone === v.phone) === i);
+
     return {
-      sellerAuctioneerName: docExtraDetails.sellerAuctioneerName || rawParsed.sellerAuctioneerName,
+      sellerAuctioneerName: item.seller_name || docExtraDetails.sellerAuctioneerName || rawParsed.sellerAuctioneerName,
       sellerRole: docExtraDetails.sellerRole || rawParsed.sellerRole,
       ministry: item.ministry || docExtraDetails.ministry || rawParsed.ministry,
       organisation: item.organisation || docExtraDetails.organisation || rawParsed.organisation,
       department: item.department || docExtraDetails.department || rawParsed.department,
       division: docExtraDetails.division || rawParsed.division,
-      referenceNo: docExtraDetails.referenceNo || rawParsed.referenceNo,
-      emdAmount: docExtraDetails.emdAmount || rawParsed.emdAmount,
+      referenceNo: item.reference_no || docExtraDetails.referenceNo || rawParsed.referenceNo,
+      emdAmount: item.emd_amount != null
+        ? (typeof item.emd_amount === 'number' ? `₹${item.emd_amount.toLocaleString('en-IN')}` : String(item.emd_amount))
+        : docExtraDetails.emdAmount || rawParsed.emdAmount,
       quantityStr: docExtraDetails.quantityStr || rawParsed.quantityStr,
-      officers: [
-        ...(docExtraDetails.officers || []),
-        ...(rawParsed.officers || []),
-      ].filter((v, i, a) => a.findIndex((t) => t.name === v.name && t.phone === v.phone) === i),
+      officers: officersList,
     };
   }, [item, docExtraDetails]);
 
@@ -268,11 +280,14 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
   const isClosed = endD ? now > endD : false;
   const isLive = startD && endD ? (now >= startD && now <= endD) : false;
 
+  const isDirectStorageUrl = Boolean(item.document_url && item.document_url.includes('supabase.co'));
   const targetDocUrl =
     item.document_url ||
     `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`;
   const defaultFilename = `GeM_Auction_${item.gem_auction_id.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
-  const proxyDownloadUrl = `/api/document-proxy?url=${encodeURIComponent(targetDocUrl)}&filename=${encodeURIComponent(defaultFilename)}&disposition=attachment`;
+  const proxyDownloadUrl = isDirectStorageUrl
+    ? targetDocUrl
+    : `/api/document-proxy?url=${encodeURIComponent(targetDocUrl)}&filename=${encodeURIComponent(defaultFilename)}&disposition=attachment`;
 
   const openInAppViewer = (url: string, title: string, filename: string) => {
     setViewerState({
@@ -289,6 +304,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     label: string;
     safeName: string;
     downloadUrl: string;
+    isCloudStored?: boolean;
   }
 
   const getAvailableDocuments = (): DocumentEntry[] => {
@@ -296,22 +312,46 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     if (targetDocUrl) {
       entries.push({
         url: targetDocUrl,
-        label: 'e-Auction Notice PDF',
+        label: isDirectStorageUrl ? 'Official e-Auction Notice (Cloud PDF)' : 'e-Auction Notice PDF',
         safeName: defaultFilename,
         downloadUrl: proxyDownloadUrl,
+        isCloudStored: isDirectStorageUrl,
+      });
+    }
+
+    if (Array.isArray(item.corrigendum_urls)) {
+      item.corrigendum_urls.forEach((url, idx) => {
+        if (url && url !== targetDocUrl && !entries.some((e) => e.url === url)) {
+          const safeName = `GeM_${item.gem_auction_id}_Corrigendum_${idx + 1}.pdf`;
+          const isCloud = url.includes('supabase.co');
+          const downloadUrl = isCloud
+            ? url
+            : `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
+          entries.push({
+            url,
+            label: `Corrigendum Notice #${idx + 1}`,
+            safeName,
+            downloadUrl,
+            isCloudStored: isCloud,
+          });
+        }
       });
     }
 
     if (Array.isArray(item.document_urls)) {
       item.document_urls.forEach((url, idx) => {
-        if (url && url !== targetDocUrl && url !== item.source_url) {
+        if (url && url !== targetDocUrl && url !== item.source_url && !entries.some((e) => e.url === url)) {
           const safeName = `GeM_${item.gem_auction_id}_Attachment_${idx + 1}.pdf`;
-          const downloadUrl = `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
+          const isCloud = url.includes('supabase.co');
+          const downloadUrl = isCloud
+            ? url
+            : `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
           entries.push({
             url,
             label: `Notice Attachment #${idx + 1}`,
             safeName,
             downloadUrl,
+            isCloudStored: isCloud,
           });
         }
       });
@@ -611,22 +651,58 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
               </div>
             )}
 
-            {/* Document Extracted Specifications & Commercial Terms Card */}
-            {(docExtraDetails.emdAmount || docExtraDetails.quantityStr) && (
-              <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-blue-50/70 rounded-2xl p-4.5 border border-blue-200/80 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
-                  <span className="text-xs font-black text-blue-950 uppercase tracking-wider flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-blue-700 shrink-0" />
-                    <span>Extracted Document Specifications</span>
+            {/* EMD Deposit & Commercial Terms Card */}
+            {(item.emd_amount != null || item.emd_mode || docExtraDetails.emdAmount || docExtraDetails.quantityStr) && (
+              <div className="bg-gradient-to-r from-emerald-50/70 via-teal-50/50 to-emerald-50/70 rounded-2xl p-4.5 border border-emerald-200/80 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
+                  <span className="text-xs font-black text-emerald-950 uppercase tracking-wider flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span>Earnest Money Deposit (EMD) & Commercial Terms</span>
                   </span>
-                  <span className="text-[10px] bg-blue-100 text-blue-900 font-black px-2 py-0.5 rounded">
-                    DOCUMENT DATA
+                  <span className="text-[10px] bg-emerald-100 text-emerald-900 font-black px-2 py-0.5 rounded">
+                    OFFICIAL TERMS
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {docExtraDetails.quantityStr && (
-                    <div className="bg-white rounded-xl p-3 border border-blue-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="bg-white rounded-xl p-3 border border-emerald-100">
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
+                      Caution / EMD Amount
+                    </span>
+                    <span className="text-base font-black text-emerald-800 mt-0.5 block">
+                      {item.emd_amount != null
+                        ? (typeof item.emd_amount === 'number'
+                            ? `₹${item.emd_amount.toLocaleString('en-IN')}`
+                            : String(item.emd_amount))
+                        : docExtraDetails.emdAmount || 'Refer Notice Document'}
+                    </span>
+                  </div>
+
+                  {item.emd_mode && (
+                    <div className="bg-white rounded-xl p-3 border border-emerald-100">
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Payment Mode
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 mt-1 block">
+                        {item.emd_mode}
+                      </span>
+                    </div>
+                  )}
+
+                  {(item.emd_start_date || item.emd_end_date) && (
+                    <div className="bg-white rounded-xl p-3 border border-emerald-100">
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
+                        EMD Submission Window
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-700 mt-1 block">
+                        {item.emd_start_date ? safeDateStr(item.emd_start_date) : 'Start'} –{' '}
+                        {item.emd_end_date ? safeDateStr(item.emd_end_date) : 'End'}
+                      </span>
+                    </div>
+                  )}
+
+                  {docExtraDetails.quantityStr && !item.emd_mode && (
+                    <div className="bg-white rounded-xl p-3 border border-emerald-100">
                       <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
                         Estimated Lot Quantity
                       </span>
@@ -635,17 +711,127 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                       </span>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
 
-                  {docExtraDetails.emdAmount && (
-                    <div className="bg-white rounded-xl p-3 border border-blue-100">
-                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
-                        Caution / EMD Amount
+            {/* Bidding Rules & Auction Governance */}
+            {(item.bidding_access || item.auto_extension || item.bidding_template || item.item_wise_time) && (
+              <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <span className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <Gavel className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>Bidding Rules & Protocol</span>
+                  </span>
+                  <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded border border-indigo-100">
+                    GOVERNANCE
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {item.bidding_access && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Bidding Access
                       </span>
-                      <span className="text-sm font-black text-emerald-700 mt-0.5 block">
-                        {docExtraDetails.emdAmount}
+                      <span className="text-xs font-extrabold text-slate-900 mt-0.5 block">
+                        {item.bidding_access}
                       </span>
                     </div>
                   )}
+
+                  {item.auto_extension && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Auto Extension
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-900 mt-0.5 block">
+                        {item.auto_extension}
+                      </span>
+                    </div>
+                  )}
+
+                  {item.bidding_template && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Auction Template
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-900 mt-0.5 block">
+                        {item.bidding_template}
+                      </span>
+                    </div>
+                  )}
+
+                  {item.item_wise_time && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Item-wise Time
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-900 mt-0.5 block">
+                        {item.item_wise_time}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Schedule of Lots & Inventory Items Table */}
+            {item.items_schedule && item.items_schedule.length > 0 && (
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-indigo-600" />
+                    <span>Schedule of Lots & Items ({item.items_schedule.length})</span>
+                  </h4>
+                  <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded border border-indigo-100">
+                    INVENTORY LOTS
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto -mx-1">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="py-2.5 px-3">Item #</th>
+                        <th className="py-2.5 px-3">Item / Lot Description</th>
+                        <th className="py-2.5 px-3">Quantity</th>
+                        <th className="py-2.5 px-3">Brand / Model</th>
+                        <th className="py-2.5 px-3">Year</th>
+                        <th className="py-2.5 px-3">Specification</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {item.items_schedule.map((lot, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-3 px-3 font-mono font-bold text-slate-500">
+                            {lot.item_no || idx + 1}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-slate-900 block">{lot.item_name}</span>
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {lot.quantity ? (
+                              <span className="inline-flex items-center gap-1 font-extrabold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
+                                {lot.quantity}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-slate-700">
+                            {lot.brand_name || '—'}
+                          </td>
+                          <td className="py-3 px-3 text-slate-600 font-mono">
+                            {lot.purchased_year || '—'}
+                          </td>
+                          <td className="py-3 px-3 text-slate-600 text-[11px] leading-relaxed max-w-xs">
+                            {lot.specs || 'As per Notice'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
@@ -854,7 +1040,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                       </div>
                       <span className="text-[10px] font-black tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase flex items-center gap-1 shrink-0">
                         <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                        Verified PDF Notice
+                        {isDirectStorageUrl ? 'Verified Cloud Document' : 'Verified PDF Notice'}
                       </span>
                     </div>
 

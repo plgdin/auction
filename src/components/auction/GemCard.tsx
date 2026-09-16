@@ -149,7 +149,7 @@ export const GemCard = memo(function GemCard({
     return 'See Official Tender Document';
   }, [startDate, endDate]);
 
-  const locationDisplay = [item.city, item.state || item.location].filter(Boolean).join(', ') || 'India';
+  const locationDisplay = [item.city, item.district && item.district !== item.city ? item.district : null, item.state || item.location].filter(Boolean).join(', ') || 'India';
   const orgName = item.organisation || item.department || 'Government of India';
   const mainCategory = cleanCategoryName(item.category_name, item.title);
 
@@ -177,10 +177,25 @@ export const GemCard = memo(function GemCard({
           <span className="bg-purple-50 border border-purple-200 text-purple-700 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider shrink-0">
             GeM Disposal
           </span>
+          {item.reference_no && (
+            <span className="text-[10px] font-mono font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-[150px]" title={item.reference_no}>
+              {item.reference_no}
+            </span>
+          )}
         </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5 justify-start">
+        {item.emd_amount != null && item.emd_amount > 0 && (
+          <span className="bg-amber-50 border border-amber-200 text-amber-800 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+            EMD: ₹{item.emd_amount.toLocaleString('en-IN')}
+          </span>
+        )}
+        {item.items_schedule && item.items_schedule.length > 0 && (
+          <span className="bg-blue-50 border border-blue-200 text-blue-800 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+            {item.items_schedule.length} {item.items_schedule.length === 1 ? 'Lot' : 'Lots'} Listed
+          </span>
+        )}
         {item.document_url && (
           <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
             Notice PDF Available

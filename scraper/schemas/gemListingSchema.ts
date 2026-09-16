@@ -36,6 +36,7 @@ export const gemListingSchema = z
     organisation: z.string().optional(),
     state: z.string().optional(),
     city: z.string().optional(),
+    district: z.string().optional(),
     pincode: z.string().optional(),
     full_address: z.string().optional(),
     location: z.string().optional(),
@@ -55,8 +56,26 @@ export const gemListingSchema = z
 
     document_url: z.string().optional(),
     document_urls: z.array(z.string()).optional(),
+    corrigendum_urls: z.array(z.string()).optional(),
     category_name: z.string().optional(),
     raw_description: z.string().optional(),
+    detailed_description: z.string().optional(),
+
+    reference_no: z.string().optional(),
+    seller_name: z.string().optional(),
+    contact_phone: z.string().optional(),
+    contact_email: z.string().optional(),
+
+    emd_amount: z.number().nullable().optional(),
+    emd_mode: z.string().optional(),
+    emd_start_date: z.string().nullable().optional(),
+    emd_end_date: z.string().nullable().optional(),
+
+    bidding_access: z.string().optional(),
+    item_wise_time: z.string().optional(),
+    auto_extension: z.string().optional(),
+    bidding_template: z.string().optional(),
+    items_schedule: z.array(z.record(z.any())).optional(),
   })
   .refine(
     (data) => {

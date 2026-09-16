@@ -2,6 +2,7 @@ import https from 'https';
 import http from 'http';
 import { URL } from 'url';
 import { isAllowedOrigin } from './utils/cors.js';
+import { checkFileExistsInStorage } from '../scraper/utils/common/storage.js';
 
 // Allowlist of trusted auction sources to protect against SSRF (OWASP A10 Compliance)
 const ALLOWED_HOSTNAMES = [
@@ -79,6 +80,33 @@ export default async function handler(req: any, res: any): Promise<void> {
     return;
   }
 
+  // 0-Latency Supabase Storage Cache Check for GeM Auctions
+  if (parsedTarget.hostname.includes('forwardauction.gem.gov.in') || rawUrl.includes('gem')) {
+    const gemIdMatch =
+      rawUrl.match(/(?:view-auction-notice|eauction-download-document)\/(\d+)/i) ||
+      customFilename.match(/GeM_(?:Auction_)?(\d+)/i);
+    if (gemIdMatch) {
+      const auctionId = gemIdMatch[1];
+      const storagePath = `gem-documents/GeM_Notice_${auctionId}.pdf`;
+      try {
+        const { exists, publicUrl } = await checkFileExistsInStorage(storagePath);
+        if (exists && publicUrl) {
+          const origin = req.headers.origin || req.headers.Origin || '';
+          const corsOrigin = isAllowedOrigin(origin) ? origin : (process.env.NODE_ENV === 'production' ? 'https://lelam.co' : '*');
+          res.writeHead(302, {
+            Location: publicUrl,
+            'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+            'Access-Control-Allow-Origin': corsOrigin,
+          });
+          res.end();
+          return;
+        }
+      } catch {
+        // Fallback to upstream fetch
+      }
+    }
+  }
+
   try {
     let sessionCookies = '';
 
@@ -89,6 +117,14 @@ export default async function handler(req: any, res: any): Promise<void> {
       } catch {
         // Fallback: proceed without cookies
       }
+    }
+
+    // If rawUrl is an eauction-download-document link without PKI, route to the public notice endpoint
+    let targetUrlString = parsedTarget.toString();
+    const eauctionMatch = targetUrlString.match(/\/eprocure\/eauction-download-document\/(\d+)/i);
+    if (eauctionMatch) {
+      targetUrlString = `https://forwardauction.gem.gov.in/eprocure/view-auction-notice/${eauctionMatch[1]}`;
+      parsedTarget = new URL(targetUrlString);
     }
 
     // Prepare upstream request options

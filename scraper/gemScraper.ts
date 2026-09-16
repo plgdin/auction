@@ -2,12 +2,16 @@
  * GeM Portal Forward Auction Scraper
  *
  * Scrapes active government asset auctions from the GeM Portal (gem.gov.in).
+ * Full fidelity pipeline: captures 100% of available portal intelligence, schedules,
+ * EMD conditions, rules, documents, and contact data.
+ *
  * Uses Puppeteer with stealth plugin. Fully headless by default.
  *
  * Usage:
  *   npx tsx scraper/gemScraper.ts
  *   npx tsx scraper/gemScraper.ts --headful
- *   npx tsx scraper/gemScraper.ts --max-pages=5
+ *   npx tsx scraper/gemScraper.ts --tab=all --max-pages=50
+ *   npx tsx scraper/gemScraper.ts --tab=live --max-pages=5
  */
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
@@ -23,14 +27,18 @@ import { logger } from "./utils/logger.js";
 import {
   parseLocation,
   parseGeMDate,
-  parseReservePrice,
   parseIndianPriceRange,
   normalizeGeMAuctionStatus,
   classifyGeMListing,
+  parseGemNoticeHtml,
   type GeMListing,
 } from "./parsers/gemParser.js";
 import { gemListingSchema } from "./schemas/gemListingSchema.js";
 import { computeListingsFingerprint, isPaginationStalled } from "./utils/common/fingerprint.js";
+import {
+  generateAndUploadGemNoticePdf,
+  downloadAndUploadGemAttachment,
+} from "./utils/gem/gemDocumentService.js";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -56,6 +64,9 @@ interface CliArgs {
   headful: boolean;
   maxPages: number;
   startPage: number;
+  tab: string; // 'live' | 'all' | 'closed' | 'cancelled'
+  includeDetails: boolean;
+  downloadDocs: boolean;
 }
 
 function parseCliArgs(): CliArgs {
@@ -63,6 +74,9 @@ function parseCliArgs(): CliArgs {
   let headful = false;
   let maxPages = 100; // Default limit (covers all pages up to 1000 records)
   let startPage = 1;
+  let tab = "live";
+  let includeDetails = true;
+  let downloadDocs = true;
 
   for (const arg of args) {
     if (arg === "--headful") headful = true;
@@ -72,9 +86,21 @@ function parseCliArgs(): CliArgs {
     if (arg.startsWith("--start-page=")) {
       startPage = parseInt(arg.replace("--start-page=", ""), 10);
     }
+    if (arg.startsWith("--tab=")) {
+      tab = arg.replace("--tab=", "").toLowerCase().trim();
+    }
+    if (arg === "--no-details" || arg === "--include-details=false") {
+      includeDetails = false;
+    }
+    if (arg === "--no-docs" || arg === "--download-docs=false") {
+      downloadDocs = false;
+    }
+    if (arg === "--download-docs" || arg === "--download-docs=true") {
+      downloadDocs = true;
+    }
   }
 
-  return { headful, maxPages, startPage };
+  return { headful, maxPages, startPage, tab, includeDetails, downloadDocs };
 }
 
 // ─── Delay Utility ───────────────────────────────────────────────────────────
@@ -82,6 +108,33 @@ function parseCliArgs(): CliArgs {
 function delay(ms: number): Promise<void> {
   const jitter = Math.floor(Math.random() * ms * 0.3);
   return new Promise((resolve) => setTimeout(resolve, ms + jitter));
+}
+
+// ─── Schema Cache & Dynamic Column Filter ────────────────────────────────────
+
+let cachedDbColumns: Set<string> | null = null;
+const warnedMissingCols = new Set<string>();
+
+async function getAvailableDbColumns(): Promise<Set<string>> {
+  if (cachedDbColumns) return cachedDbColumns;
+  try {
+    const { data, error } = await supabase
+      .from("gem_auctions")
+      .select("*")
+      .limit(1);
+
+    if (!error && data && data.length > 0) {
+      cachedDbColumns = new Set(Object.keys(data[0]));
+      log.info(
+        { columnCount: cachedDbColumns.size },
+        "Discovered remote gem_auctions table schema columns"
+      );
+      return cachedDbColumns;
+    }
+  } catch (err: any) {
+    log.warn({ error: err.message }, "Failed to auto-detect gem_auctions columns");
+  }
+  return new Set();
 }
 
 // ─── Expired Auction Cleanup ─────────────────────────────────────────────────
@@ -145,7 +198,7 @@ function extractGeMListingsFromDOM(): any[] {
   const items: any[] = [];
   
   // Find all brief/title links which indicate an auction item
-  const briefLinks = document.querySelectorAll("a.brief.text-wrap");
+  const briefLinks = document.querySelectorAll("a.brief.text-wrap, a.brief");
   
   briefLinks.forEach((linkEl) => {
     const briefLink = linkEl as HTMLAnchorElement;
@@ -220,12 +273,12 @@ function extractGeMListingsFromDOM(): any[] {
     const allDocUrls: string[] = [];
     const docLinks = container.querySelectorAll("a[href*='eauction-download-document'], a[href*='view-auction-notice'], a[href*='download'], a[href*='notice'], a[href*='document'], a[href*='.pdf']");
     docLinks.forEach((dLink) => {
-      const href = (dLink as HTMLAnchorElement).getAttribute("href") || "";
-      if (href && !allDocUrls.includes(href)) {
-        allDocUrls.push(href);
+      const dHref = (dLink as HTMLAnchorElement).getAttribute("href") || "";
+      if (dHref && !allDocUrls.includes(dHref)) {
+        allDocUrls.push(dHref);
       }
     });
-    const primaryDocUrl = allDocUrls[0] || `/eprocure/eauction-download-document/${auctionId}`;
+    const primaryDocUrl = allDocUrls.find(u => u.includes("eauction-download-document")) || allDocUrls[0] || `/eprocure/eauction-download-document/${auctionId}`;
 
     // Reserve Price / Starting price
     let reservePriceText = "";
@@ -306,9 +359,12 @@ function extractGeMListingsFromDOM(): any[] {
 // ─── Scraper Execution ───────────────────────────────────────────────────────
 
 async function runScraper() {
-  const { headful, maxPages, startPage } = parseCliArgs();
+  const { headful, maxPages, startPage, tab, includeDetails, downloadDocs } = parseCliArgs();
   
-  log.info({ headful, maxPages, startPage }, "Starting GeM Forward Auction Scraper...");
+  log.info(
+    { headful, maxPages, startPage, tab, includeDetails, downloadDocs },
+    "Starting GeM Forward Auction Scraper (Full Intelligence Mode)..."
+  );
   
   // Cleanup expired items first
   await cleanupExpiredAuctions().catch((err) => {
@@ -336,13 +392,33 @@ async function runScraper() {
     // Wait for the listings or the main tab container to load
     log.info("Waiting for page layouts to compile...");
     await page.waitForSelector(".TabbedPanelsTabGroup, label, a.brief", { timeout: 20000 });
+
+    // Handle tab switching if user requested a non-live tab
+    const tabMap: Record<string, string> = {
+      live: "6",
+      closed: "3",
+      cancelled: "4",
+      all: "7",
+    };
+    const targetTabIndex = tabMap[tab] || "6";
+
+    if (targetTabIndex !== "6") {
+      log.info({ tab, targetTabIndex }, "Switching to requested GeM Portal tab...");
+      await page.evaluate((tIndex: string) => {
+        const tabEl = document.querySelector(
+          `#auctionList .TabbedPanelsTab[tabindex="${tIndex}"] a, .TabbedPanelsTab[tabindex="${tIndex}"]`
+        ) as HTMLElement;
+        if (tabEl) tabEl.click();
+      }, targetTabIndex);
+      await delay(4000);
+    }
     
-    // Try to verify if there's a total record count visible
+    // Total record count visible on active tab
     const totalCountText = await page.evaluate(() => {
       const el = document.getElementById("totrecord");
       return el ? el.innerText : "unknown";
     });
-    log.info({ totalCountText }, "Detected total records");
+    log.info({ totalCountText, activeTab: tab }, "Detected total records for selected tab");
     
     let currentPage = 1;
     let scrapedCount = 0;
@@ -351,7 +427,7 @@ async function runScraper() {
     
     // If startPage > 1, navigate to it using page input
     if (startPage > 1) {
-      log.info({ startPage }, "Jumping directly to page");
+      log.info({ startPage }, "Jumping directly to start page");
       await page.evaluate((target: number) => {
         const input = document.getElementById("gotoPage") as HTMLInputElement;
         const btn = document.getElementById("btnGoto") as HTMLButtonElement;
@@ -387,20 +463,106 @@ async function runScraper() {
         break;
       }
       lastPageFingerprint = currentFingerprint;
+
+      // ─── Fetch Full Notice Details In-Session ─────────────────────────────
+      let noticeHtmlMap: Record<string, string> = {};
+      if (includeDetails) {
+        log.info({ count: rawListings.length }, "Fetching detailed notice documents in-session...");
+        noticeHtmlMap = await page.evaluate(async (items) => {
+          const map: Record<string, string> = {};
+          for (const item of items) {
+            if (!item.source_url) continue;
+            try {
+              const res = await fetch(item.source_url);
+              if (res.ok) {
+                map[item.gem_auction_id] = await res.text();
+              }
+            } catch (e) {
+              // Ignore single item fetch failure
+            }
+          }
+          return map;
+        }, rawListings);
+      }
       
-      // Parse, classify, and format listings for Supabase
+      // ─── Generate & Store Official Documents in Supabase Storage ──────────
+      const storedDocUrls: Record<string, string> = {};
+      const storedCorrigendumUrls: Record<string, string[]> = {};
+      if (downloadDocs && includeDetails) {
+        log.info({ count: rawListings.length }, "Generating official PDFs and uploading to Supabase Storage...");
+        for (const item of rawListings) {
+          const rawHtml = noticeHtmlMap[item.gem_auction_id];
+          if (!rawHtml) continue;
+          try {
+            const docResult = await generateAndUploadGemNoticePdf(
+              browser,
+              item.gem_auction_id,
+              rawHtml,
+              item.title
+            );
+            storedDocUrls[item.gem_auction_id] = docResult.publicUrl;
+
+            // Extract and upload any corrigendums/attachments
+            const notice = parseGemNoticeHtml(rawHtml);
+            if (notice.corrigendum_urls && notice.corrigendum_urls.length > 0) {
+              const corrs: string[] = [];
+              for (let i = 0; i < notice.corrigendum_urls.length; i++) {
+                const corrUpload = await downloadAndUploadGemAttachment(
+                  browser,
+                  item.gem_auction_id,
+                  notice.corrigendum_urls[i],
+                  i + 1
+                );
+                if (corrUpload) corrs.push(corrUpload);
+              }
+              if (corrs.length > 0) {
+                storedCorrigendumUrls[item.gem_auction_id] = corrs;
+              }
+            }
+          } catch (docErr: any) {
+            log.warn(
+              { auctionId: item.gem_auction_id, error: docErr.message },
+              "Notice PDF generation skipped on error"
+            );
+          }
+        }
+      }
+
+      // ─── Parse, enrich, and format listings for Supabase ─────────────────
       const finalListings: GeMListing[] = rawListings.map((item) => {
+        const rawHtml = noticeHtmlMap[item.gem_auction_id];
+        const notice = rawHtml ? parseGemNoticeHtml(rawHtml) : {};
+
         const loc = parseLocation(item.locationText);
-        const parsedStartDate = parseGeMDate(item.startDateStr);
-        const parsedEndDate = parseGeMDate(item.endDateStr);
+
+        // Dates: prefer precise notice dates over card snippets
+        const parsedStartDate = notice.auction_start_date || parseGeMDate(item.startDateStr);
+        const parsedEndDate = notice.auction_end_date || parseGeMDate(item.endDateStr);
         
         const startDate = parsedStartDate;
         const endDate = parsedEndDate;
         const start_date_unparsed = !parsedStartDate;
         const end_date_unparsed = !parsedEndDate;
-        const location_unparsed = loc.location_unparsed || !loc.location;
+
+        // Location: prefer exact table extracted location
+        const city = notice.city || loc.city || undefined;
+        const district = notice.district || undefined;
+        const state = notice.state || loc.state || undefined;
+        const pincode = notice.pin_code || loc.pincode || undefined;
+
+        const locationParts = [city, district, state].filter(Boolean);
+        const location = locationParts.length > 0
+          ? locationParts.join(", ")
+          : (loc.location || "India");
+
+        const location_unparsed = notice.pin_code
+          ? false
+          : (loc.location_unparsed || !loc.location);
         
-        const category_name = classifyGeMListing(item.title);
+        // Category: prefer official GeM notice category
+        const category_name = notice.category_name || classifyGeMListing(item.title);
+
+        // Price range
         const priceRange = parseIndianPriceRange(item.reserve_price_text);
         const reserve_price_value = priceRange.value;
         const reserve_price_value_min = priceRange.min;
@@ -414,18 +576,24 @@ async function runScraper() {
           );
         }
         
-        // Format absolute URLs
+        // Format absolute URLs (prefer persistent Supabase Storage URLs)
         const absoluteSourceUrl = item.source_url.startsWith("http")
           ? item.source_url
           : `https://forwardauction.gem.gov.in${item.source_url.startsWith('/') ? '' : '/'}${item.source_url}`;
           
-        const absoluteDocUrl = item.document_url 
+        const absoluteDocUrl = storedDocUrls[item.gem_auction_id] || (item.document_url 
           ? (item.document_url.startsWith("http") ? item.document_url : `https://forwardauction.gem.gov.in${item.document_url.startsWith('/') ? '' : '/'}${item.document_url}`)
-          : `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`;
+          : `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`);
 
-        const absoluteDocUrls = Array.isArray(item.document_urls) && item.document_urls.length > 0
-          ? item.document_urls.map((u: string) => u.startsWith("http") ? u : `https://forwardauction.gem.gov.in${u.startsWith('/') ? '' : '/'}${u}`)
-          : [absoluteDocUrl];
+        const absoluteDocUrls = storedDocUrls[item.gem_auction_id]
+          ? [storedDocUrls[item.gem_auction_id]]
+          : (Array.isArray(item.document_urls) && item.document_urls.length > 0
+            ? item.document_urls.map((u: string) => u.startsWith("http") ? u : `https://forwardauction.gem.gov.in${u.startsWith('/') ? '' : '/'}${u}`)
+            : [absoluteDocUrl]);
+
+        const absoluteCorrigendumUrls = storedCorrigendumUrls[item.gem_auction_id] || (Array.isArray(notice.corrigendum_urls) && notice.corrigendum_urls.length > 0
+          ? notice.corrigendum_urls.map((u: string) => u.startsWith("http") ? u : `https://forwardauction.gem.gov.in${u.startsWith('/') ? '' : '/'}${u}`)
+          : undefined);
           
         return {
           gem_auction_id: item.gem_auction_id,
@@ -434,13 +602,14 @@ async function runScraper() {
           reserve_price_value,
           reserve_price_value_min,
           reserve_price_value_max,
-          ministry: item.ministry || undefined,
-          department: item.department || undefined,
-          organisation: item.organisation || undefined,
-          state: loc.state || undefined,
-          city: loc.city || undefined,
-          pincode: loc.pincode || undefined,
-          location: loc.location,
+          ministry: notice.ministry || item.ministry || undefined,
+          department: notice.department || item.department || undefined,
+          organisation: notice.organisation || item.organisation || undefined,
+          state,
+          city,
+          district,
+          pincode,
+          location,
           location_unparsed,
           auction_start_date: startDate,
           auction_end_date: endDate,
@@ -450,8 +619,23 @@ async function runScraper() {
           source_url: absoluteSourceUrl,
           document_url: absoluteDocUrl || undefined,
           document_urls: absoluteDocUrls.length > 0 ? absoluteDocUrls : undefined,
+          corrigendum_urls: absoluteCorrigendumUrls,
           category_name,
           raw_description: item.raw_description || undefined,
+          detailed_description: notice.detailed_description || undefined,
+          reference_no: notice.reference_no || undefined,
+          seller_name: notice.seller_name || undefined,
+          contact_phone: notice.contact_phone || undefined,
+          contact_email: notice.contact_email || undefined,
+          emd_amount: notice.emd_amount,
+          emd_mode: notice.emd_mode || undefined,
+          emd_start_date: notice.emd_start_date || undefined,
+          emd_end_date: notice.emd_end_date || undefined,
+          bidding_access: notice.bidding_access || undefined,
+          item_wise_time: notice.item_wise_time || undefined,
+          auto_extension: notice.auto_extension || undefined,
+          bidding_template: notice.bidding_template || undefined,
+          items_schedule: notice.items_schedule,
         };
       });
 
@@ -535,10 +719,29 @@ async function runScraper() {
           }
         }
         
-        // 2. Perform the main table upsert
+        // 2. Filter payload against currently available columns in database schema
+        const availableCols = await getAvailableDbColumns();
+        const payloadToInsert = validatedListings.map((listing) => {
+          if (availableCols.size === 0) return listing;
+          const safeRecord: Record<string, any> = {};
+          for (const [key, value] of Object.entries(listing)) {
+            if (availableCols.has(key)) {
+              safeRecord[key] = value;
+            } else if (!warnedMissingCols.has(key)) {
+              warnedMissingCols.add(key);
+              log.warn(
+                { column: key },
+                `Column '${key}' does not yet exist in remote gem_auctions table. Run migration 20260916180000_gem_auctions_full_details.sql to enable persistence for this field.`
+              );
+            }
+          }
+          return safeRecord;
+        });
+
+        // 3. Perform the main table upsert
         const { error: upsertError } = await supabase
           .from("gem_auctions")
-          .upsert(validatedListings, {
+          .upsert(payloadToInsert, {
             onConflict: "gem_auction_id",
             ignoreDuplicates: false, // Update fields if they change
           });
@@ -554,6 +757,8 @@ async function runScraper() {
               gem_auction_id: item.gem_auction_id,
               title: item.title,
               organisation: item.organisation || "",
+              has_schedule: !!(item.items_schedule && item.items_schedule.length > 0),
+              emd_amount: item.emd_amount,
             },
           }));
           const { error: auditError } = await supabase.from("audit_logs").insert(auditLogs);
@@ -569,7 +774,6 @@ async function runScraper() {
       // Check if we hit pagination end
       const hasNextPage = await page.evaluate(() => {
         const btnNext = document.getElementById("btnNext") as HTMLButtonElement;
-        // Check if disabled or not clickable
         if (!btnNext || btnNext.disabled || btnNext.classList.contains("disabled")) {
           return false;
         }
@@ -592,7 +796,7 @@ async function runScraper() {
     }
     
     log.info(
-      { totalScraped: scrapedCount, totalInvalid: invalidCount },
+      { totalScraped: scrapedCount, totalInvalid: invalidCount, tab },
       "GeM scraper task completed successfully"
     );
     

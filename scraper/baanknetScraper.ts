@@ -1715,6 +1715,42 @@ export async function upsertListings(listings: ReturnType<typeof parseListings>)
     }
 
     log.info({ categories: Object.keys(statsMap).length }, "Daily stats recorded");
+
+    // Location daily stats (mirrors MSTC/GeM analytics pipeline)
+    const locStats: Record<string, number> = {};
+    newListings.forEach((l) => {
+      const loc = l.location || l.city || l.state || "Unknown";
+      const cat = l.category_name || "Uncategorized";
+      const locKey = `${loc}|||${cat}`;
+      locStats[locKey] = (locStats[locKey] || 0) + 1;
+    });
+
+    for (const [compoundKey, count] of Object.entries(locStats)) {
+      const [loc, cat] = compoundKey.split("|||");
+      const { data: existingLocStat } = await supabase
+        .from("location_daily_stats")
+        .select("id, items_added")
+        .eq("date", today)
+        .eq("location", loc)
+        .eq("category_name", cat)
+        .maybeSingle();
+
+      if (existingLocStat) {
+        await supabase
+          .from("location_daily_stats")
+          .update({ items_added: existingLocStat.items_added + count })
+          .eq("id", existingLocStat.id);
+      } else {
+        await supabase.from("location_daily_stats").insert({
+          date: today,
+          location: loc,
+          category_name: cat,
+          items_added: count,
+        });
+      }
+    }
+
+    log.info({ locations: Object.keys(locStats).length }, "Location daily stats recorded");
   }
 }
 

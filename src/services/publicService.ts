@@ -3394,6 +3394,15 @@ export const BaanknetSearchService = {
   }
 };
 
+export interface GemItemSchedule {
+  item_no: string;
+  item_name: string;
+  quantity: string;
+  purchased_year?: string;
+  brand_name?: string;
+  specs?: string;
+}
+
 export interface GemAuction {
   id: string;
   gem_auction_id: string;
@@ -3408,6 +3417,7 @@ export interface GemAuction {
   department?: string;
   location: string;
   city?: string;
+  district?: string;
   state?: string;
   pincode?: string;
   full_address?: string;
@@ -3419,11 +3429,26 @@ export interface GemAuction {
   source_url: string;
   document_url?: string;
   document_urls?: string[];
+  corrigendum_urls?: string[];
   scraped_at?: string;
   created_at?: string;
   updated_at?: string;
   raw_description?: string;
+  detailed_description?: string;
   auction_status?: string;
+  reference_no?: string;
+  seller_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  emd_amount?: number | null;
+  emd_mode?: string;
+  emd_start_date?: string | null;
+  emd_end_date?: string | null;
+  bidding_access?: string;
+  item_wise_time?: string;
+  auto_extension?: string;
+  bidding_template?: string;
+  items_schedule?: GemItemSchedule[];
 }
 
 export const GemSearchService = {

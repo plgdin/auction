@@ -38,4 +38,3 @@ scratch_pdf_text.txt
 # CI and Alerting files
 .github/workflows/ci.yml
 .github/workflows/scraper-cron.yml
-scraper/utils/common/alertingService.ts
