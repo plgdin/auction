@@ -1,0 +1,8 @@
+# Exclude tests from Vercel Serverless Function discovery
+api/__tests__
+
+# Exclude local scratch files and heavy artifacts
+campaign_progress.json
+exporters_companies_and_emails.csv
+debug_page.html
+build.log
