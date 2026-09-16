@@ -18,7 +18,7 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
 
 const PROGRESS_FILE = path.resolve('campaign_progress.json');
 const CSV_FILE = path.resolve('exporters_companies_and_emails.csv');
-const SUBJECT = 'Source industrial machinery & materials at liquidation prices — Lelam.co';
+const SUBJECT = 'What if Rubber Industry Auctions Were All in One Place? | Lelam.co';
 
 interface Recipient {
   company: string;
@@ -135,6 +135,7 @@ async function sendSingleEmail(recipient: Recipient): Promise<{ success: boolean
       body: JSON.stringify({
         from: FROM_ADDRESS,
         to: recipient.email,
+        reply_to: 'business@lelam.co',
         subject: SUBJECT,
         html,
         headers: {

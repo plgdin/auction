@@ -15,100 +15,139 @@ export function generateCampaignEmailHtml(params: {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lelam - Sourcing Industrial Machinery & Materials</title>
+  <title>What if Rubber Industry Auctions Were All in One Place? | Lelam.co</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 32px 16px;">
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 24px 12px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
-          <!-- Header -->
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);">
+          
+          <!-- Top Header Image -->
           <tr>
-            <td style="background-color: #0f172a; padding: 24px 32px; text-align: left;">
-              <a href="https://lelam.co" target="_blank" style="text-decoration: none;">
-                <span style="font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">lelam<span style="color: #38bdf8;">.co</span></span>
+            <td align="center" style="background-color: #ffffff; line-height: 0;">
+              <a href="https://lelam.co" target="_blank" style="display: block; text-decoration: none;">
+                <img src="https://lelam.co/email-header.jpg" alt="Lelam.co" width="600" style="display: block; width: 100%; max-width: 600px; height: auto; border: 0;" />
               </a>
-              <div style="color: #94a3b8; font-size: 13px; margin-top: 4px; font-weight: 500;">India's Auctions Marketplace & Intelligence Platform</div>
             </td>
           </tr>
 
-          <!-- Main Body -->
+          <!-- Banner Image -->
+          <tr>
+            <td align="center" style="background-color: #ffffff; line-height: 0;">
+              <a href="https://lelam.co" target="_blank" style="display: block; text-decoration: none;">
+                <img src="https://lelam.co/email-banner.jpg" alt="Lelam Rubber Auctions" width="600" style="display: block; width: 100%; max-width: 600px; height: auto; border: 0;" />
+              </a>
+            </td>
+          </tr>
+
+          <!-- Main Content Card -->
           <tr>
             <td style="padding: 32px 32px 24px 32px;">
-              <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 16px;">
+              <p style="font-size: 16px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 16px;">
                 Hi Team at ${company},
-              </h2>
-
-              <p style="font-size: 15px; color: #334155; margin-bottom: 16px;">
-                I hope this email finds you well.
               </p>
 
-              <p style="font-size: 15px; color: #334155; margin-bottom: 20px;">
-                We noticed <strong>${company}</strong>'s active role in the manufacturing and export sector. Sourcing reliable industrial equipment, machinery, processing tools, and raw materials at competitive rates is a key driver for business margins.
+              <p style="font-size: 15px; color: #334155; margin-bottom: 14px;">
+                I hope you&rsquo;re doing well.
+              </p>
+
+              <p style="font-size: 15px; color: #334155; margin-bottom: 14px;">
+                As a company operating in India&rsquo;s rubber industry, you may regularly come across opportunities to source rubber-related materials, processing equipment, machinery, vehicles, and other industrial assets.
+              </p>
+
+              <p style="font-size: 15px; font-weight: 700; color: #0284c7; margin-bottom: 14px;">
+                Lelam.co is built to make discovering these opportunities easier.
               </p>
 
               <p style="font-size: 15px; color: #334155; margin-bottom: 24px;">
-                At <strong>Lelam</strong> (<a href="https://lelam.co" style="color: #0284c7; text-decoration: underline;">lelam.co</a>), we track and aggregate official <strong>Government (MSTC, GeM), Bank, and Industrial Liquidation Auctions</strong> across India into a single, searchable platform.
+                We aggregate auction listings from official Government platforms such as MSTC and GeM, bank auctions, and industrial liquidation sales across India into one searchable platform &mdash; so businesses can discover relevant auction opportunities without having to search across multiple portals.
               </p>
 
-              <!-- Value Prop Box -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; border-radius: 8px; border-left: 4px solid #0284c7; padding: 16px; margin-bottom: 24px;">
+              <!-- How Lelam Can Help Section -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; padding: 20px; margin-bottom: 24px;">
                 <tr>
                   <td>
-                    <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">How Lelam helps ${company}:</div>
-                    <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #334155;">
-                      <li style="margin-bottom: 8px;"><strong>Direct Sourcing:</strong> Find industrial machinery, plant equipment, vehicles, and scrap materials at 40%–70% below market price.</li>
-                      <li style="margin-bottom: 8px;"><strong>Single Window:</strong> Search MSTC eAuctions, BaankNet bank properties, and commercial liquidations without visiting 10+ portals.</li>
-                      <li style="margin-bottom: 0;"><strong>Smart Catalog Data:</strong> Instant access to lot specifications, estimated values, and auction schedules.</li>
-                    </ul>
+                    <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 16px;">
+                      How Lelam can help ${company}:
+                    </div>
+
+                    <div style="margin-bottom: 14px;">
+                      <div style="font-size: 14px; font-weight: 700; color: #0369a1; margin-bottom: 3px;">
+                        &bull; Rubber Industry Opportunities
+                      </div>
+                      <div style="font-size: 14px; color: #475569; padding-left: 12px;">
+                        Discover auctions involving rubber-related materials, machinery, processing equipment, plant assets, vehicles, and other industrial lots.
+                      </div>
+                    </div>
+
+                    <div style="margin-bottom: 14px;">
+                      <div style="font-size: 14px; font-weight: 700; color: #0369a1; margin-bottom: 3px;">
+                        &bull; One Platform, Multiple Auction Sources
+                      </div>
+                      <div style="font-size: 14px; color: #475569; padding-left: 12px;">
+                        Explore relevant listings from MSTC, GeM, bank auctions, and industrial liquidation auctions in one place.
+                      </div>
+                    </div>
+
+                    <div style="margin-bottom: 14px;">
+                      <div style="font-size: 14px; font-weight: 700; color: #0369a1; margin-bottom: 3px;">
+                        &bull; Detailed Auction Information
+                      </div>
+                      <div style="font-size: 14px; color: #475569; padding-left: 12px;">
+                        Quickly view lot descriptions, specifications, auction dates, locations, and other available details before deciding whether an opportunity is relevant to your business.
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style="font-size: 14px; font-weight: 700; color: #0369a1; margin-bottom: 3px;">
+                        &bull; Discover New Sourcing Opportunities
+                      </div>
+                      <div style="font-size: 14px; color: #475569; padding-left: 12px;">
+                        Find surplus, used, and liquidation assets that may be relevant to your procurement and operational requirements.
+                      </div>
+                    </div>
                   </td>
                 </tr>
               </table>
 
               <!-- CTA Button -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 28px 0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 28px 0 24px 0;">
                 <tr>
                   <td align="center">
-                    <a href="https://lelam.co/auctions" target="_blank" style="display: inline-block; background-color: #0284c7; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25);">
-                      Explore Live Auctions on Lelam.co &rarr;
+                    <a href="https://lelam.co" target="_blank" style="display: inline-block; background-color: #0284c7; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 8px; box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25);">
+                      Explore Rubber Industry Auctions on Lelam.co &rarr;
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 28px 0;" />
-
-              <!-- Contact Info -->
-              <h3 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">
-                Need assistance or looking for specific assets?
-              </h3>
-              <p style="font-size: 14px; color: #475569; margin-bottom: 16px;">
-                Our procurement team is available to help you find relevant lots:
+              <p style="font-size: 14px; color: #475569; line-height: 1.5; margin-bottom: 24px;">
+                If your procurement team is looking for a particular type of machinery, material, or industrial asset, our team can also help you explore relevant listings available on the platform.
               </p>
 
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size: 14px; color: #334155; line-height: 1.8;">
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+
+              <!-- Contact Info -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size: 13px; color: #334155; line-height: 1.8;">
                 <tr>
                   <td style="width: 24px; vertical-align: top;">&#128222;</td>
-                  <td><strong>Phone:</strong> <a href="tel:+919447753889" style="color: #0284c7; text-decoration: none;">+91 94477 53889</a> <span style="color: #64748b; font-size: 12px;">(Mon–Sat, 9:00 AM – 6:00 PM IST)</span></td>
+                  <td><strong>Phone:</strong> <a href="tel:+919447753889" style="color: #0284c7; text-decoration: none;">+91 94477 53889</a> <span style="color: #64748b;">(Mon&ndash;Sat, 9:00 AM&ndash;6:00 PM IST)</span></td>
                 </tr>
                 <tr>
                   <td style="width: 24px; vertical-align: top;">&#9993;</td>
                   <td><strong>Email:</strong> <a href="mailto:business@lelam.co" style="color: #0284c7; text-decoration: none;">business@lelam.co</a> / <a href="mailto:support@lelam.co" style="color: #0284c7; text-decoration: none;">support@lelam.co</a></td>
                 </tr>
                 <tr>
-                  <td style="width: 24px; vertical-align: top;">&#128205;</td>
-                  <td><strong>Office:</strong> No: 2, 20th Cross Lakshimpuram, Halasuru, Bangalore 560008</td>
-                </tr>
-                <tr>
                   <td style="width: 24px; vertical-align: top;">&#127760;</td>
-                  <td><strong>Website:</strong> <a href="https://lelam.co" style="color: #0284c7; text-decoration: none;">https://lelam.co</a></td>
+                  <td><strong>Website:</strong> <a href="https://lelam.co" style="color: #0284c7; text-decoration: none;">lelam.co</a></td>
                 </tr>
               </table>
 
               <p style="font-size: 14px; color: #334155; margin-top: 24px; margin-bottom: 0;">
                 Best regards,<br />
                 <strong>The Lelam Team</strong><br />
-                <span style="color: #64748b; font-size: 13px;">Lelam — India's Auctions Marketplace</span>
+                <span style="color: #64748b; font-size: 13px;"><em>Lelam &mdash; India&rsquo;s Auctions Marketplace</em></span>
               </p>
             </td>
           </tr>
@@ -116,11 +155,7 @@ export function generateCampaignEmailHtml(params: {
           <!-- Footer with Unsubscribe -->
           <tr>
             <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
-              <p style="font-size: 12px; color: #94a3b8; margin: 0 0 8px 0;">
-                &copy; ${new Date().getFullYear()} Lelam Company. All rights reserved.
-              </p>
               <p style="font-size: 12px; color: #94a3b8; margin: 0;">
-                You received this email because ${company} is an active enterprise in India.
                 If you do not wish to receive procurement alerts, 
                 <a href="${unsubUrl}" target="_blank" style="color: #64748b; text-decoration: underline;">unsubscribe here</a>.
               </p>
