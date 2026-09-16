@@ -138,7 +138,7 @@ export function generateCampaignEmailHtml(params: {
               <p style="font-size: 14px; color: #334155; margin-top: 24px; margin-bottom: 0;">
                 Best regards,<br />
                 <strong>The Lelam Team</strong><br />
-                <span style="color: #64748b; font-size: 13px;"><em>Lelam &mdash; Making Auction Mainstream</em></span>
+                <span style="color: #64748b; font-size: 13px;"><em>Lelam &mdash; Making Auctions Mainstream</em></span>
               </p>
             </td>
           </tr>
