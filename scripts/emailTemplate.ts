@@ -23,15 +23,6 @@ export function generateCampaignEmailHtml(params: {
       <td align="center">
         <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);">
           
-          <!-- Top Header Image -->
-          <tr>
-            <td align="center" style="background-color: #ffffff; line-height: 0;">
-              <a href="https://lelam.co" target="_blank" style="display: block; text-decoration: none;">
-                <img src="https://lelam.co/email-header.jpg" alt="Lelam.co" width="600" style="display: block; width: 100%; max-width: 600px; height: auto; border: 0;" />
-              </a>
-            </td>
-          </tr>
-
           <!-- Banner Image -->
           <tr>
             <td align="center" style="background-color: #ffffff; line-height: 0;">

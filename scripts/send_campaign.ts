@@ -8,7 +8,7 @@ dotenv.config({ path: '.env.local' });
 dotenv.config();
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const FROM_ADDRESS = process.env.SMTP_FROM || 'LELAM <marketing@notification.lelam.co>';
+const FROM_ADDRESS = process.env.SMTP_FROM || 'Lelam Team <team@notification.lelam.co>';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
@@ -138,9 +138,6 @@ async function sendSingleEmail(recipient: Recipient): Promise<{ success: boolean
         reply_to: 'business@lelam.co',
         subject: SUBJECT,
         html,
-        headers: {
-          'List-Unsubscribe': `<https://lelam.co/api/unsubscribe?email=${encodeURIComponent(recipient.email)}>`,
-        },
       }),
     });
 
