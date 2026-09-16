@@ -261,17 +261,21 @@ async function main() {
 
       // Optionally sync to Supabase queue
       if (supabase) {
-        supabase.from('email_campaign_queue').upsert({
-          campaign_name: 'rubber_exporters_intro',
-          recipient_email: r.email.toLowerCase(),
-          company_name: r.company,
-          category: r.category,
-          subject: SUBJECT,
-          html_body: 'template_rubber_intro',
-          status: 'sent',
-          resend_id: result.id,
-          sent_at: nowIso,
-        }, { onConflict: 'campaign_name,recipient_email' }).catch(() => {});
+        try {
+          await supabase.from('email_campaign_queue').upsert({
+            campaign_name: 'rubber_exporters_intro',
+            recipient_email: r.email.toLowerCase(),
+            company_name: r.company,
+            category: r.category,
+            subject: SUBJECT,
+            html_body: 'template_rubber_intro',
+            status: 'sent',
+            resend_id: result.id,
+            sent_at: nowIso,
+          }, { onConflict: 'campaign_name,recipient_email' });
+        } catch {
+          // sync error ignored
+        }
       }
     } else {
       console.log(`FAILED: ${result.error}`);
@@ -283,16 +287,20 @@ async function main() {
       failCount++;
 
       if (supabase) {
-        supabase.from('email_campaign_queue').upsert({
-          campaign_name: 'rubber_exporters_intro',
-          recipient_email: r.email.toLowerCase(),
-          company_name: r.company,
-          category: r.category,
-          subject: SUBJECT,
-          html_body: 'template_rubber_intro',
-          status: 'failed',
-          last_error: result.error,
-        }, { onConflict: 'campaign_name,recipient_email' }).catch(() => {});
+        try {
+          await supabase.from('email_campaign_queue').upsert({
+            campaign_name: 'rubber_exporters_intro',
+            recipient_email: r.email.toLowerCase(),
+            company_name: r.company,
+            category: r.category,
+            subject: SUBJECT,
+            html_body: 'template_rubber_intro',
+            status: 'failed',
+            last_error: result.error,
+          }, { onConflict: 'campaign_name,recipient_email' });
+        } catch {
+          // sync error ignored
+        }
       }
     }
 
