@@ -63,7 +63,11 @@ const localApiPlugin = () => ({
           pathname === '/api/verify-payment' ||
           pathname === '/api/validate-coupon' ||
           pathname === '/api/send-signup-email' ||
-          pathname === '/api/send-transactional-email'
+          pathname === '/api/send-transactional-email' ||
+          pathname === '/api/send-transactional-whatsapp' ||
+          pathname === '/api/whatsapp-webhook' ||
+          pathname === '/api/whatsapp-broadcast' ||
+          pathname === '/api/whatsapp-campaign'
         ) {
           // Add Vercel response helper methods
           res.status = (code: number) => {
@@ -100,6 +104,18 @@ const localApiPlugin = () => ({
             return;
           } else if (pathname === '/api/send-transactional-email') {
             import('./api/send-transactional-email.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/send-transactional-whatsapp') {
+            import('./api/send-transactional-whatsapp.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/whatsapp-webhook') {
+            import('./api/whatsapp-webhook.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/whatsapp-broadcast') {
+            import('./api/whatsapp-broadcast.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/whatsapp-campaign') {
+            import('./api/whatsapp-campaign.ts').then((m) => m.default(req, res)).catch(next);
             return;
           } else if (
             pathname === '/api/scraper/reset-failed' || 

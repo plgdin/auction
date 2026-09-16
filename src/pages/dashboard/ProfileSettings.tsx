@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText, Lock, SlidersHorizontal, Eye, EyeOff, CreditCard, Frown, X, Gift, AlertTriangle, Sparkles } from 'lucide-react';
+import { Save, User, Building, Bell, Mail, Smartphone, Shield, CheckCircle2, Trash2, Globe, FileText, Lock, SlidersHorizontal, Eye, EyeOff, CreditCard, Frown, X, Gift, AlertTriangle, Sparkles, MessageSquare, Send } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
@@ -211,14 +211,18 @@ export function ProfileSettings() {
     }
   };
 
-  // Mock Notification State
+  // Notification State
   const [prefs, setPrefs] = useState({
     email_bids: true,
     email_tenders: true,
     email_marketing: false,
     push_outbid: true,
-    push_system: true
+    push_system: true,
+    whatsapp_bids: true,
+    whatsapp_reminders: true,
+    whatsapp_marketing: false,
   });
+  const [isSendingTestWhatsApp, setIsSendingTestWhatsApp] = useState(false);
 
   useEffect(() => {
     if (user && activeTab === 'notifications') {
@@ -230,11 +234,14 @@ export function ProfileSettings() {
           .single();
         if (data && !error) {
           setPrefs({
-            email_bids: data.email_bids,
-            email_tenders: data.email_tenders,
-            email_marketing: data.email_marketing,
-            push_outbid: data.push_outbid,
-            push_system: data.push_system
+            email_bids: data.email_bids ?? true,
+            email_tenders: data.email_tenders ?? true,
+            email_marketing: data.email_marketing ?? false,
+            push_outbid: data.push_outbid ?? true,
+            push_system: data.push_system ?? true,
+            whatsapp_bids: data.whatsapp_bids ?? true,
+            whatsapp_reminders: data.whatsapp_reminders ?? true,
+            whatsapp_marketing: data.whatsapp_marketing ?? false,
           });
         }
       };
@@ -257,6 +264,40 @@ export function ProfileSettings() {
     if (!error) {
       setSuccessMsg('Notification preferences saved successfully.');
       setTimeout(() => setSuccessMsg(null), 3000);
+    }
+  };
+
+  const handleSendTestWhatsApp = async () => {
+    if (!user) return;
+    if (!profile?.phone) {
+      toast.error('Please save your phone number in the Profile tab first.');
+      return;
+    }
+    setIsSendingTestWhatsApp(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
+      const response = await fetch('/api/send-transactional-whatsapp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          type: 'test_notification',
+          payload: { user_id: user.id, phone: profile.phone }
+        })
+      });
+      const resData = await response.json();
+      if (resData.success) {
+        toast.success(resData.isMock ? 'Test WhatsApp simulated (Mock mode logged).' : 'Test WhatsApp message sent!');
+      } else {
+        toast.error(resData.error || 'Failed to send test WhatsApp message.');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Error triggering test WhatsApp');
+    } finally {
+      setIsSendingTestWhatsApp(false);
     }
   };
 
@@ -496,6 +537,92 @@ export function ProfileSettings() {
                   <div className="ml-3 text-sm">
                     <span className="font-bold text-slate-900 block">System Announcements</span>
                     <span className="text-slate-500">Show the global banner for maintenance and important system notices.</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <hr className="border-slate-100" />
+
+            {/* WhatsApp Preferences */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center">
+                  <MessageSquare className="w-4 h-4 mr-2 text-emerald-600" /> WhatsApp Notifications
+                </h3>
+                {profile?.phone && (
+                  <button
+                    type="button"
+                    onClick={handleSendTestWhatsApp}
+                    disabled={isSendingTestWhatsApp}
+                    className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-50"
+                  >
+                    <Send className="w-3 h-3 mr-1" />
+                    {isSendingTestWhatsApp ? 'Sending...' : 'Test WhatsApp'}
+                  </button>
+                )}
+              </div>
+
+              {!profile?.phone ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 mb-4 flex items-center justify-between">
+                  <span>To receive WhatsApp notifications, please add your phone number in your Profile tab.</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('profile')}
+                    className="font-bold underline ml-2 hover:text-amber-900"
+                  >
+                    Add Phone
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 mb-4">
+                  Alerts will be delivered to <strong className="text-slate-700">{profile.phone}</strong> via official WhatsApp automation.
+                </p>
+              )}
+
+              <div className="space-y-4">
+                <label className="flex items-start cursor-pointer">
+                  <div className="relative flex items-center h-5">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+                      checked={prefs.whatsapp_bids}
+                      onChange={(e) => setPrefs({ ...prefs, whatsapp_bids: e.target.checked })}
+                    />
+                  </div>
+                  <div className="ml-3 text-sm">
+                    <span className="font-bold text-slate-900 block">Outbid & Bid Confirmations</span>
+                    <span className="text-slate-500">Get instant WhatsApp alerts whenever you place a bid or if another bidder outbids you.</span>
+                  </div>
+                </label>
+
+                <label className="flex items-start cursor-pointer">
+                  <div className="relative flex items-center h-5">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+                      checked={prefs.whatsapp_reminders}
+                      onChange={(e) => setPrefs({ ...prefs, whatsapp_reminders: e.target.checked })}
+                    />
+                  </div>
+                  <div className="ml-3 text-sm">
+                    <span className="font-bold text-slate-900 block">Auction Closing Reminders</span>
+                    <span className="text-slate-500">Receive 1-hour and 24-hour countdown reminders before watched auctions close.</span>
+                  </div>
+                </label>
+
+                <label className="flex items-start cursor-pointer">
+                  <div className="relative flex items-center h-5">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-4 w-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+                      checked={prefs.whatsapp_marketing}
+                      onChange={(e) => setPrefs({ ...prefs, whatsapp_marketing: e.target.checked })}
+                    />
+                  </div>
+                  <div className="ml-3 text-sm">
+                    <span className="font-bold text-slate-900 block">Scrap Lot & Category Broadcasts</span>
+                    <span className="text-slate-500">Receive weekly alerts for newly listed scrap, machinery, and PSU auction opportunities.</span>
                   </div>
                 </label>
               </div>
