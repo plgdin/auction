@@ -88,6 +88,7 @@ export function ScraperDashboard() {
   const [baanknetRunning, setBaanknetRunning] = useState(false);
   const [baanknetWorkerRunning, setBaanknetWorkerRunning] = useState(false);
   const [gemRunning, setGemRunning] = useState(false);
+  const [gemWorkerRunning, setGemWorkerRunning] = useState(false);
   const [gemBidsRunning, setGemBidsRunning] = useState(false);
   const [liveScraperLogs, setLiveScraperLogs] = useState<string[]>([]);
   const [liveWorkerLogs, setLiveWorkerLogs] = useState<string[]>([]);
@@ -96,6 +97,7 @@ export function ScraperDashboard() {
   const [liveBaanknetLogs, setLiveBaanknetLogs] = useState<string[]>([]);
   const [liveBaanknetWorkerLogs, setLiveBaanknetWorkerLogs] = useState<string[]>([]);
   const [liveGemLogs, setLiveGemLogs] = useState<string[]>([]);
+  const [liveGemWorkerLogs, setLiveGemWorkerLogs] = useState<string[]>([]);
   const [liveGemBidsLogs, setLiveGemBidsLogs] = useState<string[]>([]);
   const [isLocalApiAvailable, setIsLocalApiAvailable] = useState(false);
   const [isServerless, setIsServerless] = useState(false);
@@ -108,6 +110,7 @@ export function ScraperDashboard() {
   const baanknetTerminalRef = useRef<HTMLDivElement>(null);
   const baanknetWorkerTerminalRef = useRef<HTMLDivElement>(null);
   const gemTerminalRef = useRef<HTMLDivElement>(null);
+  const gemWorkerTerminalRef = useRef<HTMLDivElement>(null);
   const gemBidsTerminalRef = useRef<HTMLDivElement>(null);
 
   const loadDashboardData = async (silent = false, tab?: string) => {
@@ -205,6 +208,7 @@ export function ScraperDashboard() {
         setBaanknetRunning(data.baanknetRunning);
         setBaanknetWorkerRunning(data.baanknetWorkerRunning || false);
         setGemRunning(data.gemRunning || false);
+        setGemWorkerRunning(data.gemWorkerRunning || false);
         setGemBidsRunning(data.gemBidsRunning || false);
         setLiveScraperLogs(data.scraperLogs || []);
         setLiveWorkerLogs(data.workerLogs || []);
@@ -213,6 +217,7 @@ export function ScraperDashboard() {
         setLiveBaanknetLogs(data.baanknetLogs || []);
         setLiveBaanknetWorkerLogs(data.baanknetWorkerLogs || []);
         setLiveGemLogs(data.gemLogs || []);
+        setLiveGemWorkerLogs(data.gemWorkerLogs || []);
         setLiveGemBidsLogs(data.gemBidsLogs || []);
         setIsLocalApiAvailable(true);
         setIsServerless(!!data.isServerless);
@@ -270,6 +275,12 @@ export function ScraperDashboard() {
       gemTerminalRef.current.scrollTop = gemTerminalRef.current.scrollHeight;
     }
   }, [liveGemLogs]);
+
+  useEffect(() => {
+    if (gemWorkerTerminalRef.current) {
+      gemWorkerTerminalRef.current.scrollTop = gemWorkerTerminalRef.current.scrollHeight;
+    }
+  }, [liveGemWorkerLogs]);
 
   useEffect(() => {
     if (gemBidsTerminalRef.current) {
@@ -452,6 +463,43 @@ export function ScraperDashboard() {
       });
       toast.success('GeM Portal scraper stop signal sent.');
       setGemRunning(false);
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const startGemWorker = async () => {
+    try {
+      const token = await getAuthToken();
+      const res = await fetch('/api/scraper/gem/worker/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('GeM Document Asset Worker started!');
+        setGemWorkerRunning(true);
+      } else {
+        toast.error(data.message || 'Failed to start GeM worker.');
+      }
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const stopGemWorker = async () => {
+    try {
+      const token = await getAuthToken();
+      await fetch('/api/scraper/gem/worker/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      toast.success('GeM Document Asset Worker stopped.');
+      setGemWorkerRunning(false);
     } catch (err) {
       toast.error('Could not connect to local API plugin.');
     }
@@ -1283,7 +1331,7 @@ export function ScraperDashboard() {
               : "text-slate-500 hover:text-slate-900"
           }`}
         >
-          🛒 GeM Auctions
+          🛒 GeM Forward Auctions
         </button>
         <button
           onClick={() => {
@@ -2572,46 +2620,64 @@ export function ScraperDashboard() {
                   </div>
                 </div>
 
-                {/* Info Panel */}
-                <div className="bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl border border-slate-800 p-6 text-white shadow-xl flex flex-col justify-between min-h-[480px]">
-                  <div>
-                    <div className="flex items-center gap-3.5 mb-6">
-                      <div className="p-2.5 bg-white/10 rounded-xl">
-                        <Terminal className="w-6 h-6 text-primary" />
-                      </div>
+                {/* GeM Document Asset Worker Panel */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
+                  
+                  {/* Header */}
+                  <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-slate-600" />
                       <div>
-                        <h3 className="font-extrabold text-base leading-tight">GeM Scraper System Intelligence</h3>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Automated crawling parameters and strategies</p>
+                        <h3 className="font-bold text-slate-900 leading-tight">GeM Document Asset Worker</h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Downloads authentic tender PDFs, extracts BOQ items & mirrors to Supabase Storage</p>
                       </div>
                     </div>
-
-                    <div className="space-y-4 text-xs leading-relaxed text-slate-350">
-                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                        <h4 className="font-bold text-white mb-1.5">No-Auth Index Mining</h4>
-                        <p>
-                          Unlike government buyer listings which require active session validations or CAPTCHA solving, GeM Forward Auctions directory pages are public-facing. HEADLESS browser automation handles navigation easily.
-                        </p>
-                      </div>
-
-                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                        <h4 className="font-bold text-white mb-1.5">Sequential Paging Delay</h4>
-                        <p>
-                          To maintain server request guidelines, the crawler employs 4-second paging delays and random jitter, preventing throttling or IP rate limiting.
-                        </p>
-                      </div>
-
-                      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                        <h4 className="font-bold text-white mb-1.5">Automatic Database Pruning</h4>
-                        <p>
-                          Like the BaankNet daemon, expired GeM auctions are automatically pruned if their closing date passes, keeping search lists fast and clean.
-                        </p>
-                      </div>
-                    </div>
+                    
+                    {/* Status indicator */}
+                    {gemWorkerRunning ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-ping" /> Worker Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                        <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Worker Stopped
+                      </span>
+                    )}
                   </div>
 
-                  <div className="pt-6 border-t border-white/5 text-[11px] text-slate-500 font-medium flex items-center justify-between mt-6">
-                    <span>Database: Postgres (Supabase RLS Active)</span>
-                    <span>Version 1.0.0</span>
+                  {/* Controls */}
+                  <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2">
+                    <button
+                      onClick={startGemWorker}
+                      disabled={!isLocalApiAvailable || gemWorkerRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Asset Worker
+                    </button>
+                    <button
+                      onClick={stopGemWorker}
+                      disabled={!isLocalApiAvailable || !gemWorkerRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Square className="w-3.5 h-3.5 mr-1.5 fill-rose-600 text-rose-600" /> Stop Worker
+                    </button>
+                  </div>
+
+                  {/* Console Viewer */}
+                  <div 
+                    ref={gemWorkerTerminalRef}
+                    className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-96 overflow-y-auto space-y-1 select-text scroll-smooth"
+                  >
+                    {liveGemWorkerLogs.length === 0 ? (
+                      <p className="text-slate-500 italic">No output logs. Click "Start Asset Worker" to process pending GeM auction documents.</p>
+                    ) : (
+                      liveGemWorkerLogs.map((line, idx) => (
+                        <p key={idx} className="leading-relaxed whitespace-pre-wrap">
+                          <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
+                          {line}
+                        </p>
+                      ))
+                    )}
                   </div>
                 </div>
               </>

@@ -19,6 +19,8 @@
     "worker": "tsx scraper/assetWorker.ts",
     "worker:baanknet": "tsx scraper/baanknetAssetWorker.ts",
     "worker:gem": "tsx scraper/gemAssetWorker.ts",
+    "gem:clear": "tsx scraper/clearGemAuctions.ts",
+    "gem:clear:expired": "tsx scraper/clearGemAuctions.ts --expired",
     "test": "vitest run"
   },
   "dependencies": {

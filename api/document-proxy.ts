@@ -87,19 +87,49 @@ export default async function handler(req: any, res: any): Promise<void> {
       customFilename.match(/GeM_(?:Auction_)?(\d+)/i);
     if (gemIdMatch) {
       const auctionId = gemIdMatch[1];
-      const storagePath = `gem-documents/GeM_Notice_${auctionId}.pdf`;
       try {
-        const { exists, publicUrl } = await checkFileExistsInStorage(storagePath);
-        if (exists && publicUrl) {
+        // 1. Check direct database document_url first for instant resolution
+        const { data: aucRecord } = await supabase
+          .from('gem_auctions')
+          .select('document_url, document_urls')
+          .eq('gem_auction_id', auctionId)
+          .maybeSingle();
+
+        const cloudUrl = (aucRecord?.document_url && aucRecord.document_url.includes('supabase.co'))
+          ? aucRecord.document_url
+          : (aucRecord?.document_urls?.find((u: string) => u.includes('supabase.co')));
+
+        if (cloudUrl) {
           const origin = req.headers.origin || req.headers.Origin || '';
           const corsOrigin = isAllowedOrigin(origin) ? origin : (process.env.NODE_ENV === 'production' ? 'https://lelam.co' : '*');
           res.writeHead(302, {
-            Location: publicUrl,
+            Location: cloudUrl,
             'Cache-Control': 'public, max-age=86400, s-maxage=86400',
             'Access-Control-Allow-Origin': corsOrigin,
           });
           res.end();
           return;
+        }
+
+        // 2. Fallback check common storage paths
+        const storagePaths = [
+          `gem-documents/${auctionId}/document_1.pdf`,
+          `gem-documents/GeM_Notice_${auctionId}.pdf`,
+        ];
+
+        for (const storagePath of storagePaths) {
+          const { exists, publicUrl } = await checkFileExistsInStorage(storagePath);
+          if (exists && publicUrl) {
+            const origin = req.headers.origin || req.headers.Origin || '';
+            const corsOrigin = isAllowedOrigin(origin) ? origin : (process.env.NODE_ENV === 'production' ? 'https://lelam.co' : '*');
+            res.writeHead(302, {
+              Location: publicUrl,
+              'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+              'Access-Control-Allow-Origin': corsOrigin,
+            });
+            res.end();
+            return;
+          }
         }
       } catch {
         // Fallback to upstream fetch
@@ -119,13 +149,7 @@ export default async function handler(req: any, res: any): Promise<void> {
       }
     }
 
-    // If rawUrl is an eauction-download-document link without PKI, route to the public notice endpoint
     let targetUrlString = parsedTarget.toString();
-    const eauctionMatch = targetUrlString.match(/\/eprocure\/eauction-download-document\/(\d+)/i);
-    if (eauctionMatch) {
-      targetUrlString = `https://forwardauction.gem.gov.in/eprocure/view-auction-notice/${eauctionMatch[1]}`;
-      parsedTarget = new URL(targetUrlString);
-    }
 
     // Prepare upstream request options
     const headers: Record<string, string> = {

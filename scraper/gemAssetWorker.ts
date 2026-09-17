@@ -1,25 +1,33 @@
 /**
- * GeM Dedicated Asset Worker
- * 
- * Scans public.gem_auctions for records that need official document generation
- * and Supabase Storage upload (analogous to MSTC assetWorker.ts and baanknetAssetWorker.ts).
- * 
+ * GeM Dedicated Authentic Asset Worker
+ *
+ * Scans public.gem_auctions for records needing genuine document ingestion:
+ * 1. Resolves active GeM portal session & download links
+ * 2. Downloads authentic government-uploaded PDF notices & attachments
+ * 3. Verifies %PDF binary integrity and magic bytes
+ * 4. Extracts selectable text and OCR from scanned government notices
+ * 5. Generates high-res page-1 preview thumbnails
+ * 6. Extracts structured BOQ schedule items
+ * 7. Uploads files to Supabase Storage and persists intelligence to the database
+ *
  * Usage:
- *   npx tsx scraper/gemAssetWorker.ts [--batch-size=20] [--force] [--headful]
+ *   npx tsx scraper/gemAssetWorker.ts [--batch-size=20] [--force] [--headful] [--daemon]
  */
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import type { Browser } from "puppeteer";
+import type { Browser, Page } from "puppeteer";
 import { supabase, assertSupabaseCredentials } from "./utils/common/storage.js";
 import { logger } from "./utils/common/logger.js";
 import { sendPipelineFailureAlert } from "./utils/common/alertingService.js";
 import {
-  generateAndUploadGemNoticePdf,
+  downloadAndProcessGemDocuments,
   downloadAndUploadGemAttachment,
+  archiveGemCorrigenda,
 } from "./utils/gem/gemDocumentService.js";
-import { parseGemNoticeHtml } from "./parsers/gem/gemParser.js";
+import { parseGemNoticeHtml, detectGeMReAuction } from "./parsers/gem/gemParser.js";
 import { parseGemNoticeText } from "./parsers/gem/gemNoticeTextParser.js";
-import { POLL_INTERVAL_MS } from "./config.js";
+import { parseGemBusinessRulesHtml } from "./parsers/gem/gemBusinessRulesParser.js";
+import { POLL_INTERVAL_MS, DEFAULT_USER_AGENT } from "./config.js";
 
 puppeteer.use(StealthPlugin());
 
@@ -43,18 +51,70 @@ function parseCliArgs(): WorkerOptions {
     if (arg.startsWith("--batch-size=")) {
       batchSize = parseInt(arg.replace("--batch-size=", ""), 10) || 20;
     }
-    if (arg === "--force") {
-      force = true;
-    }
-    if (arg === "--headful") {
-      headful = true;
-    }
-    if (arg === "--daemon") {
-      daemon = true;
-    }
+    if (arg === "--force") force = true;
+    if (arg === "--headful") headful = true;
+    if (arg === "--daemon") daemon = true;
   }
 
   return { batchSize, force, headful, daemon };
+}
+
+/**
+ * Searches the GeM Forward Auction portal home for an auction ID to obtain fresh,
+ * active in-session links for Business Rules, Download Document, and Notice.
+ */
+async function resolveFreshAuctionLinks(
+  page: Page,
+  auctionId: string
+): Promise<{
+  docPageUrl?: string;
+  rulesUrl?: string;
+  noticeUrl?: string;
+}> {
+  try {
+    log.info({ auctionId }, "Resolving fresh session links via GeM Portal search...");
+    await page.goto("https://forwardauction.gem.gov.in/eprocure/home", {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
+
+    await page.waitForSelector("#keywrdSearch, .x-keyword-search", { timeout: 15000 });
+
+    await page.evaluate((id: string) => {
+      const input = (document.getElementById("keywrdSearch") ||
+        document.querySelector(".x-keyword-search")) as HTMLInputElement;
+      if (input) input.value = id;
+
+      const btn = (document.getElementById("searchAuc") ||
+        document.querySelector(".searchAuc, .searchBtn")) as HTMLButtonElement;
+      if (btn) btn.click();
+    }, auctionId);
+
+    await new Promise((r) => setTimeout(r, 4000));
+
+    const links = await page.evaluate((id: string) => {
+      const docLink = document.querySelector(
+        `a[href*='eauction-download-document/${id}'], a[href*='eauction-download-document']`
+      ) as HTMLAnchorElement;
+      const rulesLink = document.querySelector(
+        `a[href*='view-configure-rule/${id}'], a[href*='view-configure-rule']`
+      ) as HTMLAnchorElement;
+      const noticeLink = document.querySelector(
+        `a[href*='view-auction-notice/${id}'], a[href*='view-auction-notice']`
+      ) as HTMLAnchorElement;
+
+      return {
+        docPageUrl: docLink ? docLink.getAttribute("href") || undefined : undefined,
+        rulesUrl: rulesLink ? rulesLink.getAttribute("href") || undefined : undefined,
+        noticeUrl: noticeLink ? noticeLink.getAttribute("href") || undefined : undefined,
+      };
+    }, auctionId);
+
+    return links;
+  } catch (err: any) {
+    log.warn({ auctionId, error: err.message }, "Could not resolve fresh links via search");
+    return {};
+  }
 }
 
 async function runGemAssetWorker(): Promise<void> {
@@ -63,19 +123,21 @@ async function runGemAssetWorker(): Promise<void> {
 
   log.info(
     { batchSize: options.batchSize, force: options.force },
-    "Starting GeM Asset Worker..."
+    "Starting GeM Authentic Asset Worker..."
   );
 
-  // 1. Query records needing document ingestion
+  // 1. Query records needing genuine document download & storage upload
   let query = supabase
     .from("gem_auctions")
-    .select("id, gem_auction_id, title, source_url, document_url, document_urls, corrigendum_urls")
+    .select(
+      "id, gem_auction_id, title, source_url, rules_url, doc_page_url, document_url, document_urls, corrigendum_urls, documents_archived, preview_url, boq_items, bid_increment_amount, office_zone, reserve_price_value"
+    )
     .order("created_at", { ascending: false })
     .limit(options.batchSize);
 
   if (!options.force) {
-    // Only process auctions whose document_url does not yet point to Supabase Storage
-    query = query.or("document_url.is.null,document_url.not.ilike.%supabase.co%");
+    // Process auctions where documents are not yet archived in Supabase Storage
+    query = query.or("documents_archived.is.null,documents_archived.eq.false,document_url.not.ilike.%supabase.co%");
   }
 
   const { data: records, error } = await query;
@@ -86,13 +148,13 @@ async function runGemAssetWorker(): Promise<void> {
   }
 
   if (!records || records.length === 0) {
-    log.info("No GeM auctions pending document download and storage upload. Exiting.");
-    process.exit(0);
+    log.info("No GeM auctions pending document processing. Exiting.");
+    return;
   }
 
-  log.info({ pendingCount: records.length }, "Found GeM auctions to process documents for");
+  log.info({ pendingCount: records.length }, "Found GeM auctions to process genuine documents for");
 
-  // 2. Launch headless browser
+  // 2. Launch headless browser with stealth
   const browser = (await puppeteer.launch({
     headless: !options.headful,
     args: [
@@ -110,105 +172,120 @@ async function runGemAssetWorker(): Promise<void> {
   const failures: Array<{ auctionId: string; error: string }> = [];
 
   try {
-    // Warm up home session for any required cookies
     const page = await browser.newPage();
+    await page.setUserAgent(DEFAULT_USER_AGENT);
+
+    // Warm up home session for session cookies and CSRF
     await page.goto("https://forwardauction.gem.gov.in/eprocure/home", {
-      waitUntil: "networkidle2",
-      timeout: 30000,
+      waitUntil: "domcontentloaded",
+      timeout: 35000,
     }).catch(() => {});
 
     for (const record of records) {
       const auctionId = record.gem_auction_id;
-      const sourceUrl = record.source_url || `https://forwardauction.gem.gov.in/eprocure/view-auction-notice/${auctionId}`;
-
-      log.info({ auctionId, title: record.title }, "Processing documents for GeM auction...");
+      log.info({ auctionId, title: record.title }, "Processing genuine assets for GeM auction...");
 
       try {
-        // Fetch notice HTML in-session
-        const noticeHtml = await page.evaluate(async (url: string) => {
-          const res = await fetch(url);
-          if (!res.ok) return "";
-          return await res.text();
-        }, sourceUrl);
+        // Find or resolve the authentic download document URL
+        let freshLinks: { docPageUrl?: string; rulesUrl?: string; noticeUrl?: string } = {};
+        let docPageUrl = record.document_url;
+        const isAlreadyStorage = Boolean(docPageUrl && docPageUrl.includes("supabase.co"));
 
-        if (!noticeHtml) {
-          log.warn({ auctionId, sourceUrl }, "Could not fetch notice HTML for auction");
-          failureCount++;
-          continue;
+        // If docPageUrl is missing or doesn't have the active token, resolve it via search
+        if (!docPageUrl || !docPageUrl.includes("eauction-download-document") || isAlreadyStorage) {
+          freshLinks = await resolveFreshAuctionLinks(page, auctionId);
+          if (freshLinks.docPageUrl) {
+            docPageUrl = freshLinks.docPageUrl;
+          }
         }
 
-        // 3. Render and upload official notice PDF to Supabase Storage
-        const docResult = await generateAndUploadGemNoticePdf(
+        if (!docPageUrl) {
+          docPageUrl = `/eprocure/eauction-download-document/${auctionId}`;
+        }
+
+        // 3. Download genuine official documents from portal and mirror to Supabase Storage
+        const docResult = await downloadAndProcessGemDocuments(
           browser,
+          page,
           auctionId,
-          noticeHtml,
-          record.title,
+          docPageUrl,
           options.force
         );
 
-        // 4. Extract any attachment or corrigendum links from the notice
-        const parsedNotice = parseGemNoticeHtml(noticeHtml);
-        const uploadedDocUrls: string[] = [docResult.publicUrl];
-        const uploadedCorrigendumUrls: string[] = [];
-
-        if (parsedNotice.corrigendum_urls && parsedNotice.corrigendum_urls.length > 0) {
-          for (let i = 0; i < parsedNotice.corrigendum_urls.length; i++) {
-            const corrUrl = parsedNotice.corrigendum_urls[i];
-            const uploadedUrl = await downloadAndUploadGemAttachment(browser, auctionId, corrUrl, i + 1);
-            if (uploadedUrl) {
-              uploadedCorrigendumUrls.push(uploadedUrl);
-            }
-          }
+        if (docResult.documents.length === 0) {
+          log.warn({ auctionId }, "No valid documents could be downloaded for auction");
+          failureCount++;
+          failures.push({ auctionId, error: "No valid documents extracted from download page" });
+          continue;
         }
 
-        // 5. Extract deep intelligence from the PDF text
-        let boqItems: any[] = [];
-        let inspectionDate: string | null = null;
-        let inspectionLocation: string | null = null;
+        const uploadedDocUrls = docResult.documents.map((d) => d.publicUrl);
+        const primaryDocUrl = docResult.primaryDocUrl || uploadedDocUrls[0];
+        const primaryPreviewUrl = docResult.primaryPreviewUrl || null;
 
-        if (docResult.extractedText && docResult.extractedText.length > 50) {
-          try {
-            const textIntel = parseGemNoticeText(docResult.extractedText);
-            boqItems = textIntel.boqItems;
-            inspectionDate = textIntel.inspectionDate;
-            inspectionLocation = textIntel.inspectionLocation;
-
-            if (boqItems.length > 0) {
-              log.info(
-                { auctionId, boqItemCount: boqItems.length },
-                "Extracted BOQ items from notice PDF text"
-              );
-            }
-          } catch (parseErr: any) {
-            log.warn({ auctionId, error: parseErr.message }, "Non-critical: notice text parsing failed");
-          }
-        }
-
-        // 6. Update database record with permanent Supabase Storage public URLs and intelligence
+        // 4. Update database record with permanent CDN URLs and extracted intelligence
         const updatePayload: Record<string, any> = {
-          document_url: docResult.publicUrl,
+          document_url: primaryDocUrl,
           document_urls: uploadedDocUrls,
           documents_archived: true,
           documents_archived_at: new Date().toISOString(),
         };
 
-        if (docResult.extractedText) {
-          updatePayload.extracted_pdf_text = docResult.extractedText.substring(0, 100000);
+        if (primaryPreviewUrl) {
+          updatePayload.preview_url = primaryPreviewUrl;
         }
-        if (docResult.previewUrl) {
-          updatePayload.preview_url = docResult.previewUrl;
+        if (docResult.combinedText && docResult.combinedText.trim().length > 20) {
+          updatePayload.extracted_pdf_text = docResult.combinedText.trim().substring(0, 100000);
         }
-        if (boqItems.length > 0) {
-          updatePayload.boq_items = boqItems;
+        if (docResult.combinedBoqItems && docResult.combinedBoqItems.length > 0) {
+          updatePayload.boq_items = docResult.combinedBoqItems;
         }
-        if (inspectionDate) {
-          updatePayload.inspection_date = inspectionDate;
+        if (docResult.discoveredAttachments && docResult.discoveredAttachments.length > 0) {
+          updatePayload.discovered_api_attachments = docResult.discoveredAttachments;
         }
-        if (inspectionLocation) {
-          updatePayload.inspection_location = inspectionLocation;
+        if (docResult.inspectionDate) {
+          updatePayload.inspection_date = docResult.inspectionDate;
         }
-        if (uploadedCorrigendumUrls.length > 0) {
-          updatePayload.corrigendum_urls = uploadedCorrigendumUrls;
+        if (docResult.inspectionLocation) {
+          updatePayload.inspection_location = docResult.inspectionLocation;
+        }
+
+        // Re-auction detection
+        const reAuction = detectGeMReAuction(record.title, docResult.combinedText);
+        if (reAuction.is_reauction) {
+          updatePayload.is_reauction = true;
+          if (reAuction.original_auction_id) {
+            updatePayload.original_auction_id = reAuction.original_auction_id;
+          }
+        }
+
+        // Archive corrigendum documents if available
+        if (record.corrigendum_urls && record.corrigendum_urls.length > 0) {
+          try {
+            const archivedCorri = await archiveGemCorrigenda(page, auctionId, record.corrigendum_urls);
+            if (archivedCorri.length > 0) {
+              updatePayload.corrigendum_urls = archivedCorri;
+            }
+          } catch {}
+        }
+
+        // Backfill business rules if missing from initial scrape
+        const targetRulesUrl = freshLinks.rulesUrl || record.rules_url;
+        if (targetRulesUrl && (!record.bid_increment_amount || !record.office_zone)) {
+          try {
+            await page.goto(targetRulesUrl, { waitUntil: "domcontentloaded", timeout: 20000 });
+            const rulesHtml = await page.content();
+            const parsedRules = parseGemBusinessRulesHtml(rulesHtml);
+            if (parsedRules.bid_increment_amount != null) updatePayload.bid_increment_amount = parsedRules.bid_increment_amount;
+            if (parsedRules.office_zone) updatePayload.office_zone = parsedRules.office_zone;
+            if (parsedRules.opening_price_value != null && !record.reserve_price_value) updatePayload.reserve_price_value = parsedRules.opening_price_value;
+            if (parsedRules.extend_time_last_bid_min != null) updatePayload.extend_time_last_bid_min = parsedRules.extend_time_last_bid_min;
+            if (parsedRules.extend_time_by_min != null) updatePayload.extend_time_by_min = parsedRules.extend_time_by_min;
+            if (parsedRules.auto_extension) updatePayload.auto_extension = parsedRules.auto_extension;
+            if (parsedRules.auto_extension_mode) updatePayload.auto_extension_mode = parsedRules.auto_extension_mode;
+          } catch (rulesErr: any) {
+            log.warn({ auctionId, error: rulesErr.message }, "Business rules backfill skipped on error");
+          }
         }
 
         const { error: updateErr } = await supabase
@@ -217,7 +294,7 @@ async function runGemAssetWorker(): Promise<void> {
           .eq("id", record.id);
 
         if (updateErr) {
-          log.warn({ auctionId, error: updateErr.message }, "Failed to update auction record in db");
+          log.error({ auctionId, error: updateErr.message }, "Failed to update auction record in db");
           failureCount++;
           failures.push({ auctionId, error: updateErr.message });
         } else {
@@ -228,20 +305,26 @@ async function runGemAssetWorker(): Promise<void> {
               entity_id: record.id,
               details: {
                 gem_auction_id: auctionId,
-                document_url: docResult.publicUrl,
-                corrigendum_count: uploadedCorrigendumUrls.length,
+                document_url: primaryDocUrl,
+                docs_count: uploadedDocUrls.length,
+                boq_items_count: docResult.combinedBoqItems.length,
               },
             });
           } catch {}
 
           log.info(
-            { auctionId, document_url: docResult.publicUrl },
-            "Successfully processed and stored GeM auction document"
+            {
+              auctionId,
+              document_url: primaryDocUrl,
+              docsCount: uploadedDocUrls.length,
+              boqCount: docResult.combinedBoqItems.length,
+            },
+            "Successfully downloaded, verified, and archived genuine GeM document"
           );
           successCount++;
         }
       } catch (err: any) {
-        log.error({ auctionId, error: err.message }, "Error processing GeM auction documents");
+        log.error({ auctionId, error: err.message }, "Error processing GeM auction genuine assets");
         failureCount++;
         failures.push({ auctionId, error: err.message });
       }
@@ -252,7 +335,7 @@ async function runGemAssetWorker(): Promise<void> {
 
   log.info(
     { total: records.length, successCount, failureCount },
-    "GeM Asset Worker run finished."
+    "GeM Authentic Asset Worker run finished."
   );
 
   if (failures.length > 0) {

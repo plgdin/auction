@@ -68,30 +68,56 @@ function extractBoqItems(text: string): BoqItem[] {
     }
   }
 
+  if (tableStartIndex < 0) {
+    // If no explicit table header found, look for any line starting with "1." or "1 " followed by item text
+    for (let i = 0; i < lines.length; i++) {
+      if (/^(?:1[.)]\s+|1\s+)[A-Z]{3,}/i.test(lines[i])) {
+        tableStartIndex = i;
+        break;
+      }
+    }
+  }
+
   if (tableStartIndex < 0) return items;
 
   // Parse rows after header
-  for (let i = tableStartIndex; i < lines.length && items.length < 50; i++) {
+  for (let i = tableStartIndex; i < lines.length && items.length < 100; i++) {
     const line = lines[i];
 
-    // Row pattern: "1 Item description text 100 Nos 2020 Brand XYZ"
-    const rowMatch = line.match(
-      /^(\d{1,3})\s+(.{5,120}?)\s+(\d[\d,.]*)\s*(nos|pcs|kg|mt|ton|lot|set|unit|pair|ltr|kl|mtr|sqm|sqft|each)?/i
+    // Pattern 1: Standard row: "1 Item description text 100 Nos 2020 Brand XYZ"
+    const rowMatch1 = line.match(
+      /^(\d{1,3})[.)]?\s+(.{3,120}?)\s+(\d[\d,.]*)\s*(nos|pcs|kg|mt|ton|lot|set|unit|pair|ltr|kl|mtr|sqm|sqft|each)?(?:\s+|$)/i
     );
 
-    if (rowMatch) {
+    // Pattern 2: Military / Central Govt format: "1. WIRE CUTTER KG 1" or "2. PICKET ALL SIZE NOS 164"
+    const rowMatch2 = line.match(
+      /^(\d{1,3})[.)]?\s+(.{3,120}?)\s+(nos|pcs|kg|mt|ton|lot|set|unit|pair|ltr|kl|mtr|sqm|sqft|each)\s+(\d[\d,.]*)(?:\s+|$)/i
+    );
+
+    if (rowMatch2) {
       const item: BoqItem = {
-        serialNo: rowMatch[1],
-        itemName: rowMatch[2].trim(),
-        quantity: rowMatch[3].replace(/,/g, ""),
-        unit: (rowMatch[4] || "nos").toLowerCase(),
+        serialNo: rowMatch2[1],
+        itemName: rowMatch2[2].trim(),
+        quantity: rowMatch2[4].replace(/,/g, ""),
+        unit: (rowMatch2[3] || "nos").toLowerCase(),
+        purchasedYear: null,
+        brandName: null,
+        specifications: null,
+      };
+      items.push(item);
+    } else if (rowMatch1) {
+      const item: BoqItem = {
+        serialNo: rowMatch1[1],
+        itemName: rowMatch1[2].trim(),
+        quantity: rowMatch1[3].replace(/,/g, ""),
+        unit: (rowMatch1[4] || "nos").toLowerCase(),
         purchasedYear: null,
         brandName: null,
         specifications: null,
       };
 
       // Try to extract year (4-digit year in the remainder)
-      const remainder = line.substring(rowMatch[0].length);
+      const remainder = line.substring(rowMatch1[0].length);
       const yearMatch = remainder.match(/\b(19|20)\d{2}\b/);
       if (yearMatch) {
         item.purchasedYear = yearMatch[0];
@@ -101,7 +127,7 @@ function extractBoqItems(text: string): BoqItem[] {
       const brandMatch = remainder.match(/(?:brand|make)\s*:?\s*([A-Za-z0-9\s&.-]{3,40})/i);
       if (brandMatch) {
         item.brandName = brandMatch[1].trim();
-      } else if (i + 1 < lines.length && !lines[i + 1].match(/^\d{1,3}\s/)) {
+      } else if (i + 1 < lines.length && !lines[i + 1].match(/^\d{1,3}[.)]?\s/)) {
         // Next line might be brand/specs continuation
         const nextLine = lines[i + 1];
         if (nextLine.length < 80 && !nextLine.match(/total|grand|sub\s*total/i)) {

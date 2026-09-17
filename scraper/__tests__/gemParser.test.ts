@@ -5,6 +5,7 @@ import {
   parseGeMLocation,
   normalizeGeMAuctionStatus,
   classifyGeMListing,
+  detectGeMReAuction,
 } from "../parsers/gem/gemParser.js";
 import { gemListingSchema } from "../schemas/gemListingSchema.js";
 
@@ -218,10 +219,58 @@ describe("GeM Parser & Schema Suite", () => {
         bidding_template: parsed.bidding_template,
         items_schedule: parsed.items_schedule,
         corrigendum_urls: parsed.corrigendum_urls,
+        discovered_api_attachments: [
+          {
+            name: "Detailed_Inventory.pdf",
+            size: "1.45 MB",
+            url: "https://forwardauction.gem.gov.in/attachment/123",
+            approval_date: "12/09/2026",
+            description: "Technical Specs",
+          },
+        ],
+        inspection_date: "15-10-2026 to 20-10-2026",
+        inspection_location: "Central Depot Yard, Solan, HP",
+        is_reauction: false,
+        original_auction_id: null,
+        bid_increment_amount: 500,
+        office_zone: "Northern Zone",
+        extend_time_by_min: 10,
+        extend_time_last_bid_min: 5,
+        auto_extension_mode: "Unlimited",
+        emd_in_favour_of: "Director ETDC Solan",
       };
 
       const result = gemListingSchema.safeParse(listing);
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe("detectGeMReAuction", () => {
+    it("detects re-auction and extracts parent auction ID from title", () => {
+      const res = detectGeMReAuction(
+        "DISPOSAL OF CONDEMNED VEHICLES (RE-AUCTION OF 10542)",
+        "Auction for old scrap"
+      );
+      expect(res.isReAuction).toBe(true);
+      expect(res.originalAuctionId).toBe("10542");
+    });
+
+    it("detects reauction keyword in description", () => {
+      const res = detectGeMReAuction(
+        "Disposal of IT assets",
+        "This is a reauction of auction id: 98765 due to bidder default"
+      );
+      expect(res.isReAuction).toBe(true);
+      expect(res.originalAuctionId).toBe("98765");
+    });
+
+    it("returns false for fresh auctions without re-auction phrases", () => {
+      const res = detectGeMReAuction(
+        "DISPOSAL OF UNSERVICEABLE STORE ITEMS",
+        "First time auction for office scrap items"
+      );
+      expect(res.isReAuction).toBe(false);
+      expect(res.originalAuctionId).toBeNull();
     });
   });
 });

@@ -13,6 +13,9 @@ import {
   type ParsedPriceRange,
 } from "../../utils/common/priceParser.js";
 
+export * from "./gemBusinessRulesParser.js";
+export * from "./gemDocumentPageParser.js";
+
 const log = logger.child({ module: "gemParser" });
 
 export interface GeMItemSchedule {
@@ -31,9 +34,11 @@ export interface GeMListing {
   reserve_price_value?: number | null;
   reserve_price_value_min?: number | null;
   reserve_price_value_max?: number | null;
+  bid_increment_amount?: number | null;
   ministry?: string;
   department?: string;
   organisation?: string;
+  office_zone?: string;
   state?: string;
   city?: string;
   district?: string;
@@ -47,9 +52,25 @@ export interface GeMListing {
   end_date_unparsed?: boolean;
   auction_status?: string | null;
   source_url: string;
+  rules_url?: string;
+  doc_page_url?: string;
   document_url?: string;
   document_urls?: string[];
   corrigendum_urls?: string[];
+  documents_archived?: boolean;
+  documents_archived_at?: string;
+  preview_url?: string;
+  extracted_pdf_text?: string;
+  boq_items?: any[];
+  discovered_api_attachments?: any[];
+  inspection_date?: string | null;
+  inspection_location?: string | null;
+  is_reauction?: boolean;
+  original_auction_id?: string | null;
+  extend_time_last_bid_min?: number | null;
+  extend_time_by_min?: number | null;
+  auto_extension_mode?: string;
+  emd_in_favour_of?: string;
   category_name: string;
   raw_description?: string;
   detailed_description?: string;
@@ -86,6 +107,9 @@ export interface GeMNoticeDetails {
   emd_mode?: string;
   emd_start_date?: string | null;
   emd_end_date?: string | null;
+  emd_in_favour_of?: string;
+  inspection_date?: string | null;
+  inspection_location?: string | null;
   auction_start_date?: string | null;
   auction_end_date?: string | null;
   auto_extension?: string;
@@ -96,6 +120,46 @@ export interface GeMNoticeDetails {
   contact_phone?: string;
   contact_email?: string;
   corrigendum_urls?: string[];
+}
+
+/**
+ * Detects whether an auction listing is a re-auction / re-tender and extracts original ID.
+ */
+export function detectGeMReAuction(
+  title: string,
+  description?: string
+): {
+  is_reauction: boolean;
+  original_auction_id: string | null;
+  isReAuction: boolean;
+  originalAuctionId: string | null;
+} {
+  const combined = `${title} ${description || ""}`;
+  const reMatch = combined.match(
+    /\b(re-?auction|re-?tender|2nd\s*call|3rd\s*call|second\s*call|third\s*call)\b/i
+  );
+  if (!reMatch) {
+    return {
+      is_reauction: false,
+      original_auction_id: null,
+      isReAuction: false,
+      originalAuctionId: null,
+    };
+  }
+
+  let origId: string | null = null;
+  const idMatch = combined.match(
+    /(?:re-?auction\s+(?:of|against)|against\s+auction|earlier\s+auction|previous\s+auction|(?:re-?auction|reauction)\s+(?:of\s+)?(?:auction\s+)?(?:id|no\.?))\s*[:#-]?\s*(\d{4,9})/i
+  );
+  if (idMatch) {
+    origId = idMatch[1];
+  }
+  return {
+    is_reauction: true,
+    original_auction_id: origId,
+    isReAuction: true,
+    originalAuctionId: origId,
+  };
 }
 
 export interface ParsedGeMLocation {
@@ -525,6 +589,38 @@ export function parseGemNoticeHtml(html: string): GeMNoticeDetails {
     }
   });
 
+  // 11. EMD In Favour Of / Payable To
+  const emdInFavourOf =
+    extractLabeledValue("EMD in favour of") ||
+    extractLabeledValue("In favour of") ||
+    extractLabeledValue("EMD Payable To") ||
+    extractLabeledValue("Payable at");
+
+  // 12. Inspection Schedule & Venue
+  const rawInspDate =
+    extractLabeledValue("Inspection Date") ||
+    extractLabeledValue("Inspection Period") ||
+    extractLabeledValue("Viewing Date");
+  let inspectionDate = rawInspDate;
+  if (!inspectionDate && detailedDescription) {
+    const m = detailedDescription.match(
+      /(?:inspection|viewing)\s*(?:date|period|time)\s*:?\s*([\d\-/]+\s*(?:to\s*[\d\-/]+)?)/i
+    );
+    if (m) inspectionDate = m[1].trim();
+  }
+
+  const rawInspLoc =
+    extractLabeledValue("Inspection Location") ||
+    extractLabeledValue("Inspection Venue") ||
+    extractLabeledValue("Inspection Place");
+  let inspectionLocation = rawInspLoc;
+  if (!inspectionLocation && detailedDescription) {
+    const m = detailedDescription.match(
+      /(?:inspection|viewing)\s*(?:location|place|venue|address)\s*:?\s*([^\n.,;]{8,100})/i
+    );
+    if (m) inspectionLocation = m[1].trim();
+  }
+
   return {
     ministry: ministry || undefined,
     department: department || undefined,
@@ -553,5 +649,8 @@ export function parseGemNoticeHtml(html: string): GeMNoticeDetails {
     contact_phone: contactPhone,
     contact_email: contactEmail,
     corrigendum_urls: corrigendumUrls.length > 0 ? corrigendumUrls : undefined,
+    emd_in_favour_of: emdInFavourOf || undefined,
+    inspection_date: inspectionDate || undefined,
+    inspection_location: inspectionLocation || undefined,
   };
 }

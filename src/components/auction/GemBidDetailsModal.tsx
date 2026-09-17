@@ -6,6 +6,7 @@ import { DocumentViewerModal } from '../common/DocumentViewerModal';
 import { getGemItemImage } from '../../utils/gemImageResolver';
 import { cleanCategoryName } from '../../utils/cleanCategory';
 import { BidIntelligencePanel } from './BidIntelligencePanel';
+import { isValidIndianPhoneNumber } from '../../utils/gemDocumentParser';
 
 interface GemBidDetailsModalProps {
   item: GemBid;
@@ -83,10 +84,12 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
 
     if (phoneMatches.length > 0) {
       phoneMatches.forEach((ph) => {
-        contacts.push({
-          name: 'Procurement Officer / Nodal Helpline',
-          phone: ph,
-        });
+        if (isValidIndianPhoneNumber(ph)) {
+          contacts.push({
+            name: 'Procurement Officer / Department Helpline',
+            phone: ph,
+          });
+        }
       });
     }
 

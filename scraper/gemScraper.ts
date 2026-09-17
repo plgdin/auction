@@ -31,12 +31,14 @@ import {
   normalizeGeMAuctionStatus,
   classifyGeMListing,
   parseGemNoticeHtml,
+  parseGemBusinessRulesHtml,
+  detectGeMReAuction,
   type GeMListing,
 } from "./parsers/gemParser.js";
 import { gemListingSchema } from "./schemas/gemListingSchema.js";
 import { computeListingsFingerprint, isPaginationStalled } from "./utils/common/fingerprint.js";
 import {
-  generateAndUploadGemNoticePdf,
+  downloadAndProcessGemDocuments,
   downloadAndUploadGemAttachment,
 } from "./utils/gem/gemDocumentService.js";
 
@@ -278,7 +280,18 @@ function extractGeMListingsFromDOM(): any[] {
         allDocUrls.push(dHref);
       }
     });
-    const primaryDocUrl = allDocUrls.find(u => u.includes("eauction-download-document")) || allDocUrls[0] || `/eprocure/eauction-download-document/${auctionId}`;
+
+    // Extract Dedicated GeM Portal Navigation Links
+    const rulesLink = container.querySelector("a[href*='view-configure-rule'], a[href*='configure-rule']");
+    const rulesUrl = rulesLink ? (rulesLink as HTMLAnchorElement).getAttribute("href") || "" : "";
+
+    const docPageLink = container.querySelector("a[href*='eauction-download-document'], a[href*='download-document']");
+    const docPageUrl = docPageLink
+      ? (docPageLink as HTMLAnchorElement).getAttribute("href") || ""
+      : (allDocUrls.find(u => u.includes("eauction-download-document")) || `/eprocure/eauction-download-document/${auctionId}`);
+
+    const noticeLink = container.querySelector("a[href*='view-auction-notice'], a[href*='auction-notice']");
+    const noticeUrl = noticeLink ? (noticeLink as HTMLAnchorElement).getAttribute("href") || "" : (href || `/eprocure/view-auction-notice/${auctionId}`);
 
     // Reserve Price / Starting price
     let reservePriceText = "";
@@ -346,8 +359,10 @@ function extractGeMListingsFromDOM(): any[] {
       locationText,
       startDateStr: startMatch ? startMatch[1].trim() : "",
       endDateStr: endMatch ? endMatch[1].trim() : "",
-      source_url: href || `/eprocure/view-auction-notice/${auctionId}`,
-      document_url: primaryDocUrl,
+      source_url: noticeUrl,
+      rules_url: rulesUrl,
+      doc_page_url: docPageUrl,
+      document_url: docPageUrl,
       document_urls: allDocUrls,
       raw_description: containerText
     });
@@ -383,15 +398,15 @@ async function runScraper() {
     
     log.info("Navigating to GeM Forward Auction home...");
     await page.goto("https://forwardauction.gem.gov.in/eprocure/home", {
-      waitUntil: "networkidle2",
-      timeout: 60000,
+      waitUntil: "domcontentloaded",
+      timeout: 45000,
     });
     
-    await delay(3000);
+    await delay(2000);
     
     // Wait for the listings or the main tab container to load
     log.info("Waiting for page layouts to compile...");
-    await page.waitForSelector(".TabbedPanelsTabGroup, label, a.brief", { timeout: 20000 });
+    await page.waitForSelector(".TabbedPanelsTabGroup, #auctionList, label, a.brief", { timeout: 30000 });
 
     // Handle tab switching if user requested a non-live tab
     const tabMap: Record<string, string> = {
@@ -464,65 +479,73 @@ async function runScraper() {
       }
       lastPageFingerprint = currentFingerprint;
 
-      // ─── Fetch Full Notice Details In-Session ─────────────────────────────
+      // ─── Fetch Full Notice & Business Rules In-Session ─────────────────────
       let noticeHtmlMap: Record<string, string> = {};
+      let rulesHtmlMap: Record<string, string> = {};
+
       if (includeDetails) {
-        log.info({ count: rawListings.length }, "Fetching detailed notice documents in-session...");
-        noticeHtmlMap = await page.evaluate(async (items) => {
-          const map: Record<string, string> = {};
+        log.info({ count: rawListings.length }, "Fetching detailed notices & business rules in-session...");
+        const fetchedData = await page.evaluate(async (items) => {
+          const nMap: Record<string, string> = {};
+          const rMap: Record<string, string> = {};
           for (const item of items) {
-            if (!item.source_url) continue;
-            try {
-              const res = await fetch(item.source_url);
-              if (res.ok) {
-                map[item.gem_auction_id] = await res.text();
-              }
-            } catch (e) {
-              // Ignore single item fetch failure
+            if (item.source_url) {
+              try {
+                const res = await fetch(item.source_url, { credentials: "include" });
+                if (res.ok) nMap[item.gem_auction_id] = await res.text();
+              } catch {}
+            }
+            if (item.rules_url) {
+              try {
+                const res = await fetch(item.rules_url, { credentials: "include" });
+                if (res.ok) rMap[item.gem_auction_id] = await res.text();
+              } catch {}
             }
           }
-          return map;
+          return { nMap, rMap };
         }, rawListings);
+        noticeHtmlMap = fetchedData.nMap;
+        rulesHtmlMap = fetchedData.rMap;
       }
       
-      // ─── Generate & Store Official Documents in Supabase Storage ──────────
+      // ─── Download Genuine Official Documents (If Flagged) ───────────────────
       const storedDocUrls: Record<string, string> = {};
-      const storedCorrigendumUrls: Record<string, string[]> = {};
-      if (downloadDocs && includeDetails) {
-        log.info({ count: rawListings.length }, "Generating official PDFs and uploading to Supabase Storage...");
-        for (const item of rawListings) {
-          const rawHtml = noticeHtmlMap[item.gem_auction_id];
-          if (!rawHtml) continue;
-          try {
-            const docResult = await generateAndUploadGemNoticePdf(
-              browser,
-              item.gem_auction_id,
-              rawHtml,
-              item.title
-            );
-            storedDocUrls[item.gem_auction_id] = docResult.publicUrl;
+      const storedDocArrays: Record<string, string[]> = {};
+      const storedPreviewUrls: Record<string, string> = {};
+      const storedBoqItems: Record<string, any[]> = {};
+      const storedExtractedTexts: Record<string, string> = {};
 
-            // Extract and upload any corrigendums/attachments
-            const notice = parseGemNoticeHtml(rawHtml);
-            if (notice.corrigendum_urls && notice.corrigendum_urls.length > 0) {
-              const corrs: string[] = [];
-              for (let i = 0; i < notice.corrigendum_urls.length; i++) {
-                const corrUpload = await downloadAndUploadGemAttachment(
-                  browser,
-                  item.gem_auction_id,
-                  notice.corrigendum_urls[i],
-                  i + 1
-                );
-                if (corrUpload) corrs.push(corrUpload);
-              }
-              if (corrs.length > 0) {
-                storedCorrigendumUrls[item.gem_auction_id] = corrs;
-              }
+      if (downloadDocs && includeDetails) {
+        log.info({ count: rawListings.length }, "Downloading authentic official documents from GeM portal...");
+        for (const item of rawListings) {
+          if (!item.doc_page_url) continue;
+          try {
+            const docResult = await downloadAndProcessGemDocuments(
+              browser,
+              page,
+              item.gem_auction_id,
+              item.doc_page_url,
+              false
+            );
+            if (docResult.primaryDocUrl) {
+              storedDocUrls[item.gem_auction_id] = docResult.primaryDocUrl;
+            }
+            if (docResult.documents && docResult.documents.length > 0) {
+              storedDocArrays[item.gem_auction_id] = docResult.documents.map((d) => d.publicUrl);
+            }
+            if (docResult.primaryPreviewUrl) {
+              storedPreviewUrls[item.gem_auction_id] = docResult.primaryPreviewUrl;
+            }
+            if (docResult.combinedBoqItems && docResult.combinedBoqItems.length > 0) {
+              storedBoqItems[item.gem_auction_id] = docResult.combinedBoqItems;
+            }
+            if (docResult.combinedText) {
+              storedExtractedTexts[item.gem_auction_id] = docResult.combinedText;
             }
           } catch (docErr: any) {
             log.warn(
               { auctionId: item.gem_auction_id, error: docErr.message },
-              "Notice PDF generation skipped on error"
+              "Authentic document download skipped on error"
             );
           }
         }
@@ -530,14 +553,16 @@ async function runScraper() {
 
       // ─── Parse, enrich, and format listings for Supabase ─────────────────
       const finalListings: GeMListing[] = rawListings.map((item) => {
-        const rawHtml = noticeHtmlMap[item.gem_auction_id];
-        const notice = rawHtml ? parseGemNoticeHtml(rawHtml) : {};
+        const rawNoticeHtml = noticeHtmlMap[item.gem_auction_id];
+        const rawRulesHtml = rulesHtmlMap[item.gem_auction_id];
+        const notice = rawNoticeHtml ? parseGemNoticeHtml(rawNoticeHtml) : {};
+        const rules = rawRulesHtml ? parseGemBusinessRulesHtml(rawRulesHtml) : { items: [] };
 
         const loc = parseLocation(item.locationText);
 
-        // Dates: prefer precise notice dates over card snippets
-        const parsedStartDate = notice.auction_start_date || parseGeMDate(item.startDateStr);
-        const parsedEndDate = notice.auction_end_date || parseGeMDate(item.endDateStr);
+        // Dates: prefer business rules precise time, then notice, then card
+        const parsedStartDate = rules.auction_start_date || notice.auction_start_date || parseGeMDate(item.startDateStr);
+        const parsedEndDate = rules.auction_end_date || notice.auction_end_date || parseGeMDate(item.endDateStr);
         
         const startDate = parsedStartDate;
         const endDate = parsedEndDate;
@@ -562,11 +587,13 @@ async function runScraper() {
         // Category: prefer official GeM notice category
         const category_name = notice.category_name || classifyGeMListing(item.title);
 
-        // Price range
+        // Price range & Authoritative Business Rules Opening Price
         const priceRange = parseIndianPriceRange(item.reserve_price_text);
-        const reserve_price_value = priceRange.value;
-        const reserve_price_value_min = priceRange.min;
-        const reserve_price_value_max = priceRange.max;
+        const reserve_price_value = rules.opening_price_value ?? priceRange.value ?? null;
+        const reserve_price_value_min = rules.opening_price_value ?? priceRange.min ?? null;
+        const reserve_price_value_max = rules.opening_price_value ?? priceRange.max ?? null;
+        const reserve_price_text = rules.opening_price_text || item.reserve_price_text || (reserve_price_value ? `₹${reserve_price_value.toLocaleString('en-IN')}` : undefined);
+        const bid_increment_amount = rules.bid_increment_amount ?? null;
 
         const normalizedStatus = normalizeGeMAuctionStatus(item.rawStatus);
         if (!normalizedStatus) {
@@ -576,35 +603,59 @@ async function runScraper() {
           );
         }
         
-        // Format absolute URLs (prefer persistent Supabase Storage URLs)
+        // Format absolute URLs
         const absoluteSourceUrl = item.source_url.startsWith("http")
           ? item.source_url
           : `https://forwardauction.gem.gov.in${item.source_url.startsWith('/') ? '' : '/'}${item.source_url}`;
-          
-        const absoluteDocUrl = storedDocUrls[item.gem_auction_id] || (item.document_url 
-          ? (item.document_url.startsWith("http") ? item.document_url : `https://forwardauction.gem.gov.in${item.document_url.startsWith('/') ? '' : '/'}${item.document_url}`)
-          : `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`);
 
-        const absoluteDocUrls = storedDocUrls[item.gem_auction_id]
-          ? [storedDocUrls[item.gem_auction_id]]
-          : (Array.isArray(item.document_urls) && item.document_urls.length > 0
-            ? item.document_urls.map((u: string) => u.startsWith("http") ? u : `https://forwardauction.gem.gov.in${u.startsWith('/') ? '' : '/'}${u}`)
-            : [absoluteDocUrl]);
+        const absoluteRulesUrl = item.rules_url
+          ? (item.rules_url.startsWith("http") ? item.rules_url : `https://forwardauction.gem.gov.in${item.rules_url.startsWith('/') ? '' : '/'}${item.rules_url}`)
+          : undefined;
 
-        const absoluteCorrigendumUrls = storedCorrigendumUrls[item.gem_auction_id] || (Array.isArray(notice.corrigendum_urls) && notice.corrigendum_urls.length > 0
-          ? notice.corrigendum_urls.map((u: string) => u.startsWith("http") ? u : `https://forwardauction.gem.gov.in${u.startsWith('/') ? '' : '/'}${u}`)
-          : undefined);
-          
+        const absoluteDocPageUrl = item.doc_page_url
+          ? (item.doc_page_url.startsWith("http") ? item.doc_page_url : `https://forwardauction.gem.gov.in${item.doc_page_url.startsWith('/') ? '' : '/'}${item.doc_page_url}`)
+          : `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`;
+
+        const isArchived = Boolean(storedDocUrls[item.gem_auction_id]);
+        const primaryDocUrl = storedDocUrls[item.gem_auction_id] || absoluteDocPageUrl;
+        const allUploadedDocs = storedDocArrays[item.gem_auction_id] || [primaryDocUrl];
+
+        // Combine items schedule from business rules table and notice schedule
+        let itemsSchedule = notice.items_schedule;
+        if (itemsSchedule && itemsSchedule.length > 0 && rules.items && rules.items.length > 0) {
+          // Enrich notice schedule with financial rules without losing quantity, year, and brand
+          itemsSchedule = itemsSchedule.map((lot, idx) => {
+            const ruleItem = rules.items[idx];
+            return {
+              ...lot,
+              specs: lot.specs
+                ? `${lot.specs}; Opening: ${ruleItem?.opening_price_text || 'N/A'}, Increment: ${ruleItem?.increment_price_text || 'N/A'}`
+                : `Opening: ${ruleItem?.opening_price_text || 'N/A'}, Increment: ${ruleItem?.increment_price_text || 'N/A'}`,
+            };
+          });
+        } else if ((!itemsSchedule || itemsSchedule.length === 0) && rules.items && rules.items.length > 0) {
+          itemsSchedule = rules.items.map((ri) => ({
+            item_no: ri.sr_no,
+            item_name: ri.item_name,
+            quantity: "1",
+            specs: `Opening: ${ri.opening_price_text}, Increment: ${ri.increment_price_text}`,
+          }));
+        }
+
+        const reAuction = detectGeMReAuction(item.title, item.raw_description || notice.detailed_description);
+
         return {
           gem_auction_id: item.gem_auction_id,
           title: item.title,
-          reserve_price_text: item.reserve_price_text || undefined,
+          reserve_price_text,
           reserve_price_value,
           reserve_price_value_min,
           reserve_price_value_max,
+          bid_increment_amount,
           ministry: notice.ministry || item.ministry || undefined,
           department: notice.department || item.department || undefined,
           organisation: notice.organisation || item.organisation || undefined,
+          office_zone: rules.office_zone || undefined,
           state,
           city,
           district,
@@ -617,25 +668,40 @@ async function runScraper() {
           end_date_unparsed,
           auction_status: normalizedStatus || null,
           source_url: absoluteSourceUrl,
-          document_url: absoluteDocUrl || undefined,
-          document_urls: absoluteDocUrls.length > 0 ? absoluteDocUrls : undefined,
-          corrigendum_urls: absoluteCorrigendumUrls,
+          rules_url: absoluteRulesUrl,
+          doc_page_url: absoluteDocPageUrl,
+          document_url: primaryDocUrl,
+          document_urls: allUploadedDocs,
+          documents_archived: isArchived,
+          documents_archived_at: isArchived ? new Date().toISOString() : undefined,
+          preview_url: storedPreviewUrls[item.gem_auction_id] || undefined,
+          extracted_pdf_text: storedExtractedTexts[item.gem_auction_id] || undefined,
+          boq_items: storedBoqItems[item.gem_auction_id] || undefined,
+          discovered_api_attachments: undefined,
+          inspection_date: notice.inspection_date || undefined,
+          inspection_location: notice.inspection_location || undefined,
+          is_reauction: reAuction.is_reauction || undefined,
+          original_auction_id: reAuction.original_auction_id || undefined,
+          extend_time_last_bid_min: rules.extend_time_last_bid_min || undefined,
+          extend_time_by_min: rules.extend_time_by_min || undefined,
+          auto_extension_mode: rules.auto_extension_mode || undefined,
           category_name,
           raw_description: item.raw_description || undefined,
-          detailed_description: notice.detailed_description || undefined,
-          reference_no: notice.reference_no || undefined,
-          seller_name: notice.seller_name || undefined,
+          detailed_description: rules.auction_brief || notice.detailed_description || undefined,
+          reference_no: rules.reference_no || notice.reference_no || undefined,
+          seller_name: rules.seller_name || notice.seller_name || undefined,
           contact_phone: notice.contact_phone || undefined,
           contact_email: notice.contact_email || undefined,
           emd_amount: notice.emd_amount,
           emd_mode: notice.emd_mode || undefined,
           emd_start_date: notice.emd_start_date || undefined,
           emd_end_date: notice.emd_end_date || undefined,
+          emd_in_favour_of: notice.emd_in_favour_of || undefined,
           bidding_access: notice.bidding_access || undefined,
           item_wise_time: notice.item_wise_time || undefined,
-          auto_extension: notice.auto_extension || undefined,
+          auto_extension: rules.auto_extension || notice.auto_extension || undefined,
           bidding_template: notice.bidding_template || undefined,
-          items_schedule: notice.items_schedule,
+          items_schedule: itemsSchedule,
         };
       });
 

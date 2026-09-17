@@ -54,6 +54,26 @@ export const gemListingSchema = z
       .nullable()
       .optional(),
 
+    bid_increment_amount: z.number().nullable().optional(),
+    office_zone: z.string().optional(),
+    rules_url: z.string().optional(),
+    doc_page_url: z.string().optional(),
+    documents_archived: z.boolean().optional(),
+    documents_archived_at: z.string().nullable().optional(),
+    preview_url: z.string().nullable().optional(),
+    extracted_pdf_text: z.string().optional(),
+    boq_items: z.array(z.record(z.any())).optional(),
+    discovered_api_attachments: z.array(z.record(z.any())).optional(),
+
+    inspection_date: z.string().nullable().optional(),
+    inspection_location: z.string().nullable().optional(),
+    is_reauction: z.boolean().optional(),
+    original_auction_id: z.string().nullable().optional(),
+
+    extend_time_last_bid_min: z.number().nullable().optional(),
+    extend_time_by_min: z.number().nullable().optional(),
+    auto_extension_mode: z.string().optional(),
+
     document_url: z.string().optional(),
     document_urls: z.array(z.string()).optional(),
     corrigendum_urls: z.array(z.string()).optional(),
@@ -70,6 +90,7 @@ export const gemListingSchema = z
     emd_mode: z.string().optional(),
     emd_start_date: z.string().nullable().optional(),
     emd_end_date: z.string().nullable().optional(),
+    emd_in_favour_of: z.string().optional(),
 
     bidding_access: z.string().optional(),
     item_wise_time: z.string().optional(),
