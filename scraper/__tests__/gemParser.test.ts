@@ -4,6 +4,7 @@ import {
   parseGeMDate,
   parseGeMLocation,
   normalizeGeMAuctionStatus,
+  deriveAuctionStatusFromDates,
   classifyGeMListing,
   detectGeMReAuction,
 } from "../parsers/gem/gemParser.js";
@@ -47,6 +48,30 @@ describe("GeM Parser & Schema Suite", () => {
 
     it("returns null on unrecognizable status text", () => {
       expect(normalizeGeMAuctionStatus("Random String")).toBeNull();
+    });
+  });
+
+  describe("deriveAuctionStatusFromDates", () => {
+    it("returns upcoming when start date is in future", () => {
+      const futureStart = new Date(Date.now() + 86400000 * 5).toISOString();
+      const futureEnd = new Date(Date.now() + 86400000 * 7).toISOString();
+      expect(deriveAuctionStatusFromDates(futureStart, futureEnd)).toBe("upcoming");
+    });
+
+    it("returns live when current time is between start and end date", () => {
+      const pastStart = new Date(Date.now() - 3600000).toISOString();
+      const futureEnd = new Date(Date.now() + 86400000).toISOString();
+      expect(deriveAuctionStatusFromDates(pastStart, futureEnd)).toBe("live");
+    });
+
+    it("returns closed when end date has passed", () => {
+      const pastStart = new Date(Date.now() - 86400000 * 5).toISOString();
+      const pastEnd = new Date(Date.now() - 3600000).toISOString();
+      expect(deriveAuctionStatusFromDates(pastStart, pastEnd)).toBe("closed");
+    });
+
+    it("returns null when dates are missing", () => {
+      expect(deriveAuctionStatusFromDates(null, null)).toBeNull();
     });
   });
 

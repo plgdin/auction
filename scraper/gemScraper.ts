@@ -29,6 +29,7 @@ import {
   parseGeMDate,
   parseIndianPriceRange,
   normalizeGeMAuctionStatus,
+  deriveAuctionStatusFromDates,
   classifyGeMListing,
   parseGemNoticeHtml,
   parseGemBusinessRulesHtml,
@@ -76,7 +77,7 @@ function parseCliArgs(): CliArgs {
   let headful = false;
   let maxPages = 100; // Default limit (covers all pages up to 1000 records)
   let startPage = 1;
-  let tab = "live";
+  let tab = "all";
   let includeDetails = true;
   let downloadDocs = true;
 
@@ -408,25 +409,47 @@ async function runScraper() {
     log.info("Waiting for page layouts to compile...");
     await page.waitForSelector(".TabbedPanelsTabGroup, #auctionList, label, a.brief", { timeout: 30000 });
 
-    // Handle tab switching if user requested a non-live tab
+    // Handle tab switching (by label or index)
     const tabMap: Record<string, string> = {
       live: "6",
       closed: "3",
       cancelled: "4",
       all: "7",
     };
-    const targetTabIndex = tabMap[tab] || "6";
+    const targetTabIndex = tabMap[tab] || "7";
 
-    if (targetTabIndex !== "6") {
-      log.info({ tab, targetTabIndex }, "Switching to requested GeM Portal tab...");
-      await page.evaluate((tIndex: string) => {
-        const tabEl = document.querySelector(
+    log.info({ tab, targetTabIndex }, "Switching to requested GeM Portal tab...");
+    await page.evaluate((targetTab: string, tIndex: string) => {
+      const allTabs = Array.from(
+        document.querySelectorAll(
+          '#auctionList .TabbedPanelsTabGroup li, .TabbedPanelsTab, [role="tab"], #auctionList li'
+        )
+      ) as HTMLElement[];
+
+      let clicked = false;
+      const matched = allTabs.find((t) => {
+        const txt = (t.innerText || t.textContent || '').trim().toUpperCase();
+        if (targetTab === 'all') return txt.startsWith('ALL') || txt.includes('ALL (');
+        if (targetTab === 'live') return txt.startsWith('LIVE');
+        if (targetTab === 'closed') return txt.startsWith('CLOSED');
+        if (targetTab === 'cancelled') return txt.startsWith('CANCELLED') || txt.startsWith('CANCELED');
+        return false;
+      });
+
+      if (matched) {
+        const link = matched.querySelector('a') || matched;
+        (link as HTMLElement).click();
+        clicked = true;
+      }
+
+      if (!clicked) {
+        const fallback = document.querySelector(
           `#auctionList .TabbedPanelsTab[tabindex="${tIndex}"] a, .TabbedPanelsTab[tabindex="${tIndex}"]`
         ) as HTMLElement;
-        if (tabEl) tabEl.click();
-      }, targetTabIndex);
-      await delay(4000);
-    }
+        if (fallback) fallback.click();
+      }
+    }, tab, targetTabIndex);
+    await delay(4000);
     
     // Total record count visible on active tab
     const totalCountText = await page.evaluate(() => {
@@ -595,11 +618,14 @@ async function runScraper() {
         const reserve_price_text = rules.opening_price_text || item.reserve_price_text || (reserve_price_value ? `₹${reserve_price_value.toLocaleString('en-IN')}` : undefined);
         const bid_increment_amount = rules.bid_increment_amount ?? null;
 
-        const normalizedStatus = normalizeGeMAuctionStatus(item.rawStatus);
+        let normalizedStatus = normalizeGeMAuctionStatus(item.rawStatus);
+        if (!normalizedStatus) {
+          normalizedStatus = deriveAuctionStatusFromDates(startDate, endDate);
+        }
         if (!normalizedStatus) {
           log.warn(
-            { auctionId: item.gem_auction_id, rawStatus: item.rawStatus },
-            "No reliable auction status signal found in DOM. Leaving auction_status as null."
+            { auctionId: item.gem_auction_id, rawStatus: item.rawStatus, startDate, endDate },
+            "No reliable auction status signal found in DOM or dates. Leaving auction_status as null."
           );
         }
         

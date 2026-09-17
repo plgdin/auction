@@ -240,6 +240,34 @@ export function normalizeGeMAuctionStatus(rawStatus: string | null | undefined):
   return null;
 }
 
+/**
+ * Derives auction status dynamically from start and end dates.
+ * Essential for the 'ALL' tab on GeM where auctions don't carry an explicit DOM status badge.
+ */
+export function deriveAuctionStatusFromDates(
+  startDate?: string | null,
+  endDate?: string | null
+): "live" | "upcoming" | "closed" | null {
+  if (!startDate && !endDate) return null;
+  const now = Date.now();
+  const startMs = startDate ? new Date(startDate).getTime() : NaN;
+  const endMs = endDate ? new Date(endDate).getTime() : NaN;
+
+  if (!isNaN(startMs) && now < startMs) {
+    return "upcoming";
+  }
+  if (!isNaN(startMs) && !isNaN(endMs) && now >= startMs && now <= endMs) {
+    return "live";
+  }
+  if (!isNaN(endMs) && now > endMs) {
+    return "closed";
+  }
+  if (!isNaN(startMs) && isNaN(endMs) && now >= startMs) {
+    return "live";
+  }
+  return null;
+}
+
 // ─── Price Parser ───────────────────────────────────────────────────────────
 
 export {
