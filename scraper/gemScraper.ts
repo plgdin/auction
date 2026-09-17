@@ -79,7 +79,7 @@ function parseCliArgs(): CliArgs {
   let startPage = 1;
   let tab = "all";
   let includeDetails = true;
-  let downloadDocs = true;
+  let downloadDocs = false;
 
   for (const arg of args) {
     if (arg === "--headful") headful = true;
@@ -199,6 +199,7 @@ async function cleanupExpiredAuctions(): Promise<void> {
 
 function extractGeMListingsFromDOM(): any[] {
   const items: any[] = [];
+  const seenIds = new Set<string>();
   
   // Find all brief/title links which indicate an auction item
   const briefLinks = document.querySelectorAll("a.brief.text-wrap, a.brief");
@@ -230,7 +231,8 @@ function extractGeMListingsFromDOM(): any[] {
       if (textIdMatch) auctionId = textIdMatch[1];
     }
     
-    if (!auctionId) return; // Skip if we can't extract the identifier
+    if (!auctionId || seenIds.has(auctionId)) return; // Skip invalid or duplicate identifiers
+    seenIds.add(auctionId);
     
     // Extract Location text preceding the View More link
     let locationText = "";
@@ -511,20 +513,36 @@ async function runScraper() {
         const fetchedData = await page.evaluate(async (items) => {
           const nMap: Record<string, string> = {};
           const rMap: Record<string, string> = {};
-          for (const item of items) {
-            if (item.source_url) {
-              try {
-                const res = await fetch(item.source_url, { credentials: "include" });
-                if (res.ok) nMap[item.gem_auction_id] = await res.text();
-              } catch {}
-            }
-            if (item.rules_url) {
-              try {
-                const res = await fetch(item.rules_url, { credentials: "include" });
-                if (res.ok) rMap[item.gem_auction_id] = await res.text();
-              } catch {}
-            }
-          }
+
+          await Promise.all(
+            items.map(async (item) => {
+              if (item.source_url) {
+                try {
+                  const controller = new AbortController();
+                  const timer = setTimeout(() => controller.abort(), 6000);
+                  const res = await fetch(item.source_url, {
+                    credentials: "include",
+                    signal: controller.signal,
+                  });
+                  clearTimeout(timer);
+                  if (res.ok) nMap[item.gem_auction_id] = await res.text();
+                } catch {}
+              }
+              if (item.rules_url) {
+                try {
+                  const controller = new AbortController();
+                  const timer = setTimeout(() => controller.abort(), 6000);
+                  const res = await fetch(item.rules_url, {
+                    credentials: "include",
+                    signal: controller.signal,
+                  });
+                  clearTimeout(timer);
+                  if (res.ok) rMap[item.gem_auction_id] = await res.text();
+                } catch {}
+              }
+            })
+          );
+
           return { nMap, rMap };
         }, rawListings);
         noticeHtmlMap = fetchedData.nMap;
@@ -830,10 +848,13 @@ async function runScraper() {
           return safeRecord;
         });
 
-        // 3. Perform the main table upsert
+        // 3. Perform the main table upsert with deduplicated items
+        const uniquePayload = Array.from(
+          new Map(payloadToInsert.map((item) => [item.gem_auction_id, item])).values()
+        );
         const { error: upsertError } = await supabase
           .from("gem_auctions")
-          .upsert(payloadToInsert, {
+          .upsert(uniquePayload, {
             onConflict: "gem_auction_id",
             ignoreDuplicates: false, // Update fields if they change
           });
