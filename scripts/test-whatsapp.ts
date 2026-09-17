@@ -39,20 +39,53 @@ async function run() {
 
   if (command === '--zomato') {
     const { generateZomatoCopy, ZOMATO_HOOK_TEMPLATES } = await import('../api/utils/zomatoCopyEngine.js');
-    const styleId = args[2];
+    const { createClient } = await import('@supabase/supabase-js');
+    const styleId = args[2] || 'typo_glitch';
+    const customUrlOrId = args[3];
+
     console.log('🍔 Available Zomato/Swiggy Hooks:');
     ZOMATO_HOOK_TEMPLATES.forEach(t => console.log(`  • ${t.id.padEnd(20)} -> ${t.style}`));
     console.log('');
 
-    const copy = generateZomatoCopy(
-      {
-        id: 'mstc-copper-lot-8819',
-        title: 'MSTC Heavy Grade Copper & Armoured Cable Scrap',
-        price: 280000,
-        location: 'Navi Mumbai, MH',
-      },
-      styleId
-    );
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+    const appBaseUrl = process.env.VITE_APP_URL || 'https://lelam.co';
+
+    let auctionContext = {
+      id: '',
+      title: 'High-Grade Copper Cable Scrap (Lot #42)',
+      price: 350000,
+      location: 'Delhi Warehouse',
+    };
+
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { data } = await supabase
+          .from('auctions')
+          .select('id, title, starting_price, location')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (data) {
+          auctionContext = {
+            id: '', // Keep clean https://lelam.co/auctions instead of raw internal database UUID
+            title: data.title,
+            price: data.starting_price,
+            location: data.location || 'Delhi Warehouse',
+          };
+        }
+      } catch (err) {
+        console.warn('Could not query real auction from database, using fallback');
+      }
+    }
+
+    if (customUrlOrId && !customUrlOrId.startsWith('http')) {
+      auctionContext.id = customUrlOrId;
+    }
+
+    const copy = generateZomatoCopy(auctionContext, styleId, appBaseUrl);
 
     console.log(`\x1b[33m[Generated Copy: ${copy.style}]\x1b[0m\n`);
     console.log(copy.fullMessage);
