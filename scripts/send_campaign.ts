@@ -304,9 +304,9 @@ async function main() {
 
     saveProgress(progress);
 
-    // Rate-limit pause: 200ms pause between sends (max 5/sec as recommended by Resend)
+    // Rate-limit pause: 600ms pause between sends (Resend free tier limit is 2/sec)
     if (i < targetBatch.length - 1) {
-      await sleep(250);
+      await sleep(600);
     }
   }
 
