@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from 'react';
-import { Eye, MapPin, Calendar, Clock, Landmark, Copy, Check, Gavel, Info, Download, RotateCcw } from 'lucide-react';
+import { Eye, MapPin, Calendar, Clock, Landmark, Copy, Check, Gavel, Info, Download, RotateCcw, Building2 } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import type { GemAuction } from '../../services/publicService';
 import clsx from 'clsx';

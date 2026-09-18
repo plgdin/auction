@@ -165,14 +165,6 @@ export function parseGemNoticeContent(rawText = '', title = ''): GemExtractedDat
 
 
 
-  // Extract emails
-  const emailMatches = Array.from(
-    new Set(
-      combined.match(
-        /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g
-      ) || []
-    )
-  );
 
   // Extract explicitly named officers with phone (e.g. "Dilip Gangad - 96199 03684" or "Shri R. K. Sharma: 011-23456789")
   const personPhoneRegex =

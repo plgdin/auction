@@ -149,8 +149,6 @@ export default async function handler(req: any, res: any): Promise<void> {
       }
     }
 
-    let targetUrlString = parsedTarget.toString();
-
     // Prepare upstream request options
     const headers: Record<string, string> = {
       'User-Agent': DEFAULT_USER_AGENT,

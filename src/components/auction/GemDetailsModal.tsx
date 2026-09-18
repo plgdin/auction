@@ -446,8 +446,6 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     return null;
   }, [item.preview_url, item.discovered_api_attachments, item.document_urls]);
 
-  const isRealPreview = Boolean(realGemImage);
-
   // Consolidated schedule of lots / BOQ items from scrape and document OCR
   const displayLots = useMemo(() => {
     if (item.items_schedule && item.items_schedule.length > 0) return item.items_schedule;
