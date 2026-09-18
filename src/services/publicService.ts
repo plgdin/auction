@@ -3514,6 +3514,15 @@ export const BaanknetSearchService = {
   }
 };
 
+export interface GemItemSchedule {
+  item_no: string;
+  item_name: string;
+  quantity: string;
+  purchased_year?: string;
+  brand_name?: string;
+  specs?: string;
+}
+
 export interface GemAuction {
   id: string;
   gem_auction_id: string;
@@ -3528,6 +3537,7 @@ export interface GemAuction {
   department?: string;
   location: string;
   city?: string;
+  district?: string;
   state?: string;
   pincode?: string;
   full_address?: string;
@@ -3539,11 +3549,51 @@ export interface GemAuction {
   source_url: string;
   document_url?: string;
   document_urls?: string[];
+  corrigendum_urls?: string[];
+  documents_archived?: boolean;
+  documents_archived_at?: string;
+  preview_url?: string;
+  extracted_pdf_text?: string;
+  boq_items?: any[];
+  discovered_api_attachments?: Array<{
+    name: string;
+    size?: string;
+    url: string;
+    approval_date?: string;
+    description?: string;
+  }>;
+  inspection_date?: string | null;
+  inspection_location?: string | null;
+  inspection_contact?: string | null;
+  is_reauction?: boolean;
+  original_auction_id?: string | null;
+  bid_increment_amount?: number | null;
+  office_zone?: string;
+  rules_url?: string;
+  doc_page_url?: string;
+  extend_time_last_bid_min?: number | null;
+  extend_time_by_min?: number | null;
+  auto_extension_mode?: string;
   scraped_at?: string;
   created_at?: string;
   updated_at?: string;
   raw_description?: string;
+  detailed_description?: string;
   auction_status?: string;
+  reference_no?: string;
+  seller_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  emd_amount?: number | null;
+  emd_mode?: string;
+  emd_start_date?: string | null;
+  emd_end_date?: string | null;
+  emd_in_favour_of?: string;
+  bidding_access?: string;
+  item_wise_time?: string;
+  auto_extension?: string;
+  bidding_template?: string;
+  items_schedule?: GemItemSchedule[];
 }
 
 export const GemSearchService = {
@@ -3564,6 +3614,7 @@ export const GemSearchService = {
       page?: number;
       limit?: number;
       sortBy?: string;
+      hasAssetDocuments?: boolean;
     }
   ): Promise<{ data: GemAuction[]; count: number }> {
     try {
@@ -3574,6 +3625,11 @@ export const GemSearchService = {
       let q = supabase
         .from('gem_auctions')
         .select('*', { count: 'exact' });
+
+      // Apply documents archived filter
+      if (filters?.hasAssetDocuments) {
+        q = q.or('documents_archived.eq.true,document_url.ilike.%supabase.co%');
+      }
 
       // Apply category filter
       if (filters?.categories && filters.categories.length > 0) {

@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck } from 'lucide-react';
+import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck, Layers, Gavel, RotateCcw } from 'lucide-react';
 import clsx from 'clsx';
 import type { GemAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
-import { getGemItemImage } from '../../utils/gemImageResolver';
 import { cleanCategoryName } from '../../utils/cleanCategory';
-import { parseGemNoticeContent } from '../../utils/gemDocumentParser';
+import { parseGemNoticeContent, isValidIndianPhoneNumber } from '../../utils/gemDocumentParser';
 import type { GemExtractedData } from '../../utils/gemDocumentParser';
 import { BidIntelligencePanel } from './BidIntelligencePanel';
 
@@ -76,6 +75,9 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
 
   // Helper to extract clean description without scraped website noise
   const cleanDescription = useMemo(() => {
+    if (item.detailed_description && item.detailed_description.trim()) {
+      return item.detailed_description.trim();
+    }
     if (!item.raw_description) return null;
     
     let text = item.raw_description;
@@ -97,11 +99,11 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     }
 
     return text;
-  }, [item.raw_description, item.title]);
+  }, [item.detailed_description, item.raw_description, item.title]);
 
   // Helper to extract clean location details if missing
   const locationDetails = useMemo(() => {
-    const city = item.city || '';
+    const city = item.district || item.city || '';
     const state = item.state || (item.location !== 'India' ? item.location : '');
     const pin = item.pincode || '';
 
@@ -163,21 +165,40 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
   const parsedItemDetails = useMemo(() => {
     const rawParsed = parseGemNoticeContent(item.raw_description || '', item.title);
 
-    // Merge doc-level details if present
+    const rawOfficersList = [
+      ...(item.contact_phone || item.contact_email ? [{
+        name: item.seller_name || 'Auctioneer Contact',
+        phone: item.contact_phone || undefined,
+        email: item.contact_email || undefined,
+        role: 'Seller / Auctioneer',
+      }] : []),
+      ...(docExtraDetails.officers || []),
+      ...(rawParsed.officers || []),
+    ].filter((v, i, a) => a.findIndex((t) => t.name === v.name && t.phone === v.phone) === i);
+
+    const officersList = rawOfficersList.filter((o) => {
+      // If a phone is present, it must be a valid Indian phone number
+      if (o.phone && !isValidIndianPhoneNumber(o.phone)) return false;
+      // Strip any synthetic generated numbered names
+      if (/Nodal Officer \/ Helpline \d+/i.test(o.name)) return false;
+      // Strip placeholder officers with no phone, no email, and generic name
+      if (!o.phone && !o.email && (!o.name || o.name === 'Nodal Officer' || o.name === 'Auctioneer Contact')) return false;
+      return true;
+    });
+
     return {
-      sellerAuctioneerName: docExtraDetails.sellerAuctioneerName || rawParsed.sellerAuctioneerName,
+      sellerAuctioneerName: item.seller_name || docExtraDetails.sellerAuctioneerName || rawParsed.sellerAuctioneerName,
       sellerRole: docExtraDetails.sellerRole || rawParsed.sellerRole,
       ministry: item.ministry || docExtraDetails.ministry || rawParsed.ministry,
       organisation: item.organisation || docExtraDetails.organisation || rawParsed.organisation,
       department: item.department || docExtraDetails.department || rawParsed.department,
       division: docExtraDetails.division || rawParsed.division,
-      referenceNo: docExtraDetails.referenceNo || rawParsed.referenceNo,
-      emdAmount: docExtraDetails.emdAmount || rawParsed.emdAmount,
+      referenceNo: item.reference_no || docExtraDetails.referenceNo || rawParsed.referenceNo,
+      emdAmount: item.emd_amount != null
+        ? (typeof item.emd_amount === 'number' ? `₹${item.emd_amount.toLocaleString('en-IN')}` : String(item.emd_amount))
+        : docExtraDetails.emdAmount || rawParsed.emdAmount,
       quantityStr: docExtraDetails.quantityStr || rawParsed.quantityStr,
-      officers: [
-        ...(docExtraDetails.officers || []),
-        ...(rawParsed.officers || []),
-      ].filter((v, i, a) => a.findIndex((t) => t.name === v.name && t.phone === v.phone) === i),
+      officers: officersList,
     };
   }, [item, docExtraDetails]);
 
@@ -186,15 +207,16 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
   // Helper to structure Ministry / Department / Organisation
   const authorityDetails = useMemo(() => {
     return {
-      organisation: parsedItemDetails.organisation || parsedItemDetails.department || parsedItemDetails.ministry || 'Government Authority / PSU',
-      ministry: parsedItemDetails.ministry,
-      department: parsedItemDetails.department,
-      division: parsedItemDetails.division,
-      sellerAuctioneerName: parsedItemDetails.sellerAuctioneerName,
+      organisation: item.organisation || parsedItemDetails.organisation || parsedItemDetails.department || parsedItemDetails.ministry || 'Government Authority / PSU',
+      ministry: item.ministry || parsedItemDetails.ministry,
+      department: item.department || parsedItemDetails.department,
+      division: item.office_zone || parsedItemDetails.division,
+      sellerAuctioneerName: item.seller_name || parsedItemDetails.sellerAuctioneerName,
       sellerRole: parsedItemDetails.sellerRole,
-      referenceNo: parsedItemDetails.referenceNo,
+      referenceNo: item.reference_no || parsedItemDetails.referenceNo,
+      officeZone: item.office_zone,
     };
-  }, [parsedItemDetails]);
+  }, [item, parsedItemDetails]);
 
   // Live bidding countdown timer
   useEffect(() => {
@@ -268,11 +290,14 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
   const isClosed = endD ? now > endD : false;
   const isLive = startD && endD ? (now >= startD && now <= endD) : false;
 
+  const isDirectStorageUrl = Boolean(item.document_url && item.document_url.includes('supabase.co'));
   const targetDocUrl =
     item.document_url ||
     `https://forwardauction.gem.gov.in/eprocure/eauction-download-document/${encodeURIComponent(item.gem_auction_id)}`;
   const defaultFilename = `GeM_Auction_${item.gem_auction_id.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
-  const proxyDownloadUrl = `/api/document-proxy?url=${encodeURIComponent(targetDocUrl)}&filename=${encodeURIComponent(defaultFilename)}&disposition=attachment`;
+  const proxyDownloadUrl = isDirectStorageUrl
+    ? targetDocUrl
+    : `/api/document-proxy?url=${encodeURIComponent(targetDocUrl)}&filename=${encodeURIComponent(defaultFilename)}&disposition=attachment`;
 
   const openInAppViewer = (url: string, title: string, filename: string) => {
     setViewerState({
@@ -289,39 +314,155 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     label: string;
     safeName: string;
     downloadUrl: string;
+    isCloudStored?: boolean;
+    size?: string;
+    approvalDate?: string;
+    description?: string;
   }
 
   const getAvailableDocuments = (): DocumentEntry[] => {
     const entries: DocumentEntry[] = [];
+
+    // 1. Primary Notice Document (if present)
     if (targetDocUrl) {
       entries.push({
         url: targetDocUrl,
-        label: 'e-Auction Notice PDF',
+        label: isDirectStorageUrl ? 'Official e-Auction Notice (Cloud PDF)' : 'e-Auction Notice PDF',
         safeName: defaultFilename,
         downloadUrl: proxyDownloadUrl,
+        isCloudStored: isDirectStorageUrl,
       });
     }
 
+    // 2. Discovered API Attachments (Rich metadata directly from GeM Gateway API)
+    if (Array.isArray(item.discovered_api_attachments) && item.discovered_api_attachments.length > 0) {
+      item.discovered_api_attachments.forEach((att, idx) => {
+        if (att && att.url && !entries.some((e) => e.url === att.url)) {
+          const rawName = att.name || `Attachment_${idx + 1}.pdf`;
+          const safeName = rawName.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const isCloud = att.url.includes('supabase.co');
+          const downloadUrl = isCloud
+            ? att.url
+            : `/api/document-proxy?url=${encodeURIComponent(att.url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
+
+          entries.push({
+            url: att.url,
+            label: att.description || att.name || `Technical Specification #${idx + 1}`,
+            safeName,
+            downloadUrl,
+            isCloudStored: isCloud,
+            size: att.size,
+            approvalDate: att.approval_date,
+            description: att.description,
+          });
+        }
+      });
+    }
+
+    // 3. Corrigenda
+    if (Array.isArray(item.corrigendum_urls)) {
+      item.corrigendum_urls.forEach((url, idx) => {
+        if (url && url !== targetDocUrl && !entries.some((e) => e.url === url)) {
+          const safeName = `GeM_${item.gem_auction_id}_Corrigendum_${idx + 1}.pdf`;
+          const isCloud = url.includes('supabase.co');
+          const downloadUrl = isCloud
+            ? url
+            : `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
+          entries.push({
+            url,
+            label: `Corrigendum Notice #${idx + 1}`,
+            safeName,
+            downloadUrl,
+            isCloudStored: isCloud,
+          });
+        }
+      });
+    }
+
+    // 4. Other Scraped Document URLs
     if (Array.isArray(item.document_urls)) {
       item.document_urls.forEach((url, idx) => {
-        if (url && url !== targetDocUrl && url !== item.source_url) {
+        if (url && url !== targetDocUrl && url !== item.source_url && !entries.some((e) => e.url === url)) {
           const safeName = `GeM_${item.gem_auction_id}_Attachment_${idx + 1}.pdf`;
-          const downloadUrl = `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
+          const isCloud = url.includes('supabase.co');
+          const downloadUrl = isCloud
+            ? url
+            : `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
           entries.push({
             url,
             label: `Notice Attachment #${idx + 1}`,
             safeName,
             downloadUrl,
+            isCloudStored: isCloud,
           });
         }
       });
     }
+
+    // 5. Portal Gateway & Rules URLs
+    if (item.doc_page_url && !entries.some((e) => e.url === item.doc_page_url)) {
+      entries.push({
+        url: item.doc_page_url,
+        label: 'GeM Portal Document Gateway',
+        safeName: `GeM_${item.gem_auction_id}_Portal.html`,
+        downloadUrl: item.doc_page_url,
+        isCloudStored: false,
+      });
+    }
+
+    if (item.rules_url && !entries.some((e) => e.url === item.rules_url)) {
+      entries.push({
+        url: item.rules_url,
+        label: 'Official Business Rules Portal',
+        safeName: `GeM_${item.gem_auction_id}_Rules.html`,
+        downloadUrl: item.rules_url,
+        isCloudStored: false,
+      });
+    }
+
     return entries;
   };
 
   const availableDocs = getAvailableDocuments();
   const primaryDoc = availableDocs[0];
-  const itemImage = getGemItemImage(item.title, item.category_name);
+  // Only genuine images from GeM portal (official PDF first-page thumbnail or authentic image attachments)
+  const realGemImage = useMemo(() => {
+    if (item.preview_url) return item.preview_url;
+
+    if (item.discovered_api_attachments && item.discovered_api_attachments.length > 0) {
+      const imgAtt = item.discovered_api_attachments.find(
+        (a) => a.url && /\.(jpe?g|png|webp)(\?.*)?$/i.test(a.url)
+      );
+      if (imgAtt) return imgAtt.url;
+    }
+
+    if (item.document_urls && item.document_urls.length > 0) {
+      const imgDoc = item.document_urls.find(
+        (u) => u && /\.(jpe?g|png|webp)(\?.*)?$/i.test(u)
+      );
+      if (imgDoc) return imgDoc;
+    }
+
+    return null;
+  }, [item.preview_url, item.discovered_api_attachments, item.document_urls]);
+
+  const isRealPreview = Boolean(realGemImage);
+
+  // Consolidated schedule of lots / BOQ items from scrape and document OCR
+  const displayLots = useMemo(() => {
+    if (item.items_schedule && item.items_schedule.length > 0) return item.items_schedule;
+    if (item.boq_items && Array.isArray(item.boq_items) && item.boq_items.length > 0) {
+      return item.boq_items.map((b: any, idx: number) => ({
+        item_no: b.item_no || b.lot_no || b.sno || idx + 1,
+        item_name: b.item_name || b.description || b.items || b.material_description || 'Lot Item',
+        quantity: b.quantity || b.qty || '',
+        brand_name: b.brand_name || b.make || b.auth || '',
+        purchased_year: b.purchased_year || b.year || '',
+        specs: b.specs || b.specification || b.remarks || '',
+      }));
+    }
+    return [];
+  }, [item.items_schedule, item.boq_items]);
 
   return (
     <div 
@@ -349,6 +490,13 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
             >
               {copiedRef ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
+
+            {item.is_reauction && (
+              <span className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-3xs">
+                <RotateCcw className="w-3 h-3 text-rose-600" />
+                <span>Re-Auction {item.original_auction_id ? `(Prev: ${item.original_auction_id})` : ''}</span>
+              </span>
+            )}
 
             {onInterestedToggle && (
               <button
@@ -428,8 +576,14 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider">
-                  GeM NOTICE BOARD
+                  GeM FORWARD AUCTION • GOVT DISPOSAL
                 </span>
+                {item.is_reauction && (
+                  <span className="bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
+                    <RotateCcw className="w-3 h-3 text-rose-700" />
+                    RE-AUCTION NOTICE {item.original_auction_id ? `• PREV REF: ${item.original_auction_id}` : ''}
+                  </span>
+                )}
                 {item.category_name && (
                   <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2.5 py-0.5 rounded-md uppercase tracking-wider">
                     {cleanCategoryName(item.category_name, item.title)}
@@ -493,6 +647,14 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                     {formattedPrice}
                   </span>
                 </div>
+                {item.bid_increment_amount != null && item.bid_increment_amount > 0 && (
+                  <div className="mt-3 pt-2.5 border-t border-emerald-200/80 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-emerald-700">Min Bid Increment</span>
+                    <span className="text-xs font-black text-emerald-900 bg-white px-2 py-0.5 rounded-md border border-emerald-200">
+                      ₹{item.bid_increment_amount.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Auctioneer & Issuing Authority Overview */}
@@ -517,7 +679,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                   )}
                 </div>
 
-                {(authorityDetails.ministry || authorityDetails.department || authorityDetails.division) && (
+                {(authorityDetails.ministry || authorityDetails.department || authorityDetails.division || authorityDetails.officeZone) && (
                   <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 flex flex-wrap gap-2">
                     {authorityDetails.ministry && (
                       <span className="font-bold text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
@@ -529,7 +691,12 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                         {authorityDetails.department}
                       </span>
                     )}
-                    {authorityDetails.division && (
+                    {authorityDetails.officeZone && (
+                      <span className="font-bold text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                        Zone: {authorityDetails.officeZone}
+                      </span>
+                    )}
+                    {authorityDetails.division && authorityDetails.division !== authorityDetails.officeZone && (
                       <span className="font-bold text-teal-800 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200">
                         {authorityDetails.division}
                       </span>
@@ -611,22 +778,122 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
               </div>
             )}
 
-            {/* Document Extracted Specifications & Commercial Terms Card */}
-            {(docExtraDetails.emdAmount || docExtraDetails.quantityStr) && (
-              <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-blue-50/70 rounded-2xl p-4.5 border border-blue-200/80 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
-                  <span className="text-xs font-black text-blue-950 uppercase tracking-wider flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-blue-700 shrink-0" />
-                    <span>Extracted Document Specifications</span>
+            {/* Pre-Bid Physical Inspection & Depot Venue Card */}
+            {(item.inspection_date || item.inspection_location || item.inspection_contact) && (
+              <div className="bg-gradient-to-r from-teal-50/80 via-emerald-50/40 to-teal-50/70 rounded-2xl p-5 border border-teal-200/80 shadow-2xs space-y-3.5">
+                <div className="flex items-center justify-between border-b border-teal-200/70 pb-2.5">
+                  <span className="text-xs font-black text-teal-950 uppercase tracking-wider flex items-center gap-2">
+                    <Eye className="w-4.5 h-4.5 text-teal-700 shrink-0" />
+                    <span>Pre-Bid Physical Inspection & Depot Venue</span>
                   </span>
-                  <span className="text-[10px] bg-blue-100 text-blue-900 font-black px-2 py-0.5 rounded">
-                    DOCUMENT DATA
+                  <span className="text-[10px] bg-teal-200 text-teal-950 font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+                    DEPOT VISIT
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {docExtraDetails.quantityStr && (
-                    <div className="bg-white rounded-xl p-3 border border-blue-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                  {item.inspection_date && (
+                    <div className="bg-white rounded-xl p-3.5 border border-teal-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-teal-600" /> Inspection Window / Dates
+                      </span>
+                      <span className="text-xs font-extrabold text-teal-950 mt-1 block">
+                        {item.inspection_date}
+                      </span>
+                    </div>
+                  )}
+
+                  {item.inspection_location && (
+                    <div className={clsx(
+                      "bg-white rounded-xl p-3.5 border border-teal-150",
+                      item.inspection_contact ? "sm:col-span-1 lg:col-span-2" : "sm:col-span-2"
+                    )}>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-rose-500" /> Site / Depot Venue Address
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 mt-1 block leading-relaxed">
+                        {item.inspection_location}
+                      </span>
+                    </div>
+                  )}
+
+                  {item.inspection_contact && (
+                    <div className="bg-white rounded-xl p-3.5 border border-teal-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block flex items-center gap-1">
+                        <Phone className="w-3 h-3 text-teal-600" /> Site Inspection Contact
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 mt-1 block font-mono">
+                        {item.inspection_contact}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* EMD Deposit & Commercial Terms Card */}
+            {(item.emd_amount != null || item.emd_mode || docExtraDetails.emdAmount || docExtraDetails.quantityStr || item.emd_in_favour_of) && (
+              <div className="bg-gradient-to-r from-emerald-50/70 via-teal-50/50 to-emerald-50/70 rounded-2xl p-4.5 border border-emerald-200/80 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
+                  <span className="text-xs font-black text-emerald-950 uppercase tracking-wider flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span>Earnest Money Deposit (EMD) & Commercial Terms</span>
+                  </span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-900 font-black px-2 py-0.5 rounded">
+                    OFFICIAL TERMS
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="bg-white rounded-xl p-3 border border-emerald-100">
+                    <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
+                      Caution / EMD Amount
+                    </span>
+                    <span className="text-base font-black text-emerald-800 mt-0.5 block">
+                      {item.emd_amount != null
+                        ? (typeof item.emd_amount === 'number'
+                            ? `₹${item.emd_amount.toLocaleString('en-IN')}`
+                            : String(item.emd_amount))
+                        : docExtraDetails.emdAmount || 'Refer Notice Document'}
+                    </span>
+                  </div>
+
+                  {item.emd_mode && (
+                    <div className="bg-white rounded-xl p-3 border border-emerald-100">
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Payment Mode
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 mt-1 block">
+                        {item.emd_mode}
+                      </span>
+                    </div>
+                  )}
+
+                  {(item.emd_start_date || item.emd_end_date) && (
+                    <div className="bg-white rounded-xl p-3 border border-emerald-100">
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
+                        EMD Submission Window
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-700 mt-1 block">
+                        {item.emd_start_date ? safeDateStr(item.emd_start_date) : 'Start'} –{' '}
+                        {item.emd_end_date ? safeDateStr(item.emd_end_date) : 'End'}
+                      </span>
+                    </div>
+                  )}
+
+                  {item.emd_in_favour_of && (
+                    <div className="bg-white rounded-xl p-3 border border-emerald-100 sm:col-span-2">
+                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
+                        EMD In Favour Of
+                      </span>
+                      <span className="text-xs font-extrabold text-emerald-950 mt-1 block truncate" title={item.emd_in_favour_of}>
+                        {item.emd_in_favour_of}
+                      </span>
+                    </div>
+                  )}
+
+                  {docExtraDetails.quantityStr && !item.emd_mode && (
+                    <div className="bg-white rounded-xl p-3 border border-emerald-100">
                       <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
                         Estimated Lot Quantity
                       </span>
@@ -635,17 +902,171 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                       </span>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
 
-                  {docExtraDetails.emdAmount && (
-                    <div className="bg-white rounded-xl p-3 border border-blue-100">
-                      <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-widest block">
-                        Caution / EMD Amount
+            {/* Bidding Rules & Auction Governance */}
+            {(item.bidding_access || item.auto_extension || item.bidding_template || item.item_wise_time || item.bid_increment_amount || item.office_zone || item.extend_time_by_min != null || item.auto_extension_mode) && (
+              <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <span className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <Gavel className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>Bidding Rules & Protocol</span>
+                  </span>
+                  <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded border border-indigo-100">
+                    GOVERNANCE
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {item.bid_increment_amount != null && item.bid_increment_amount > 0 && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Min Bid Increment
                       </span>
-                      <span className="text-sm font-black text-emerald-700 mt-0.5 block">
-                        {docExtraDetails.emdAmount}
+                      <span className="text-xs font-black text-emerald-700 mt-0.5 block">
+                        ₹{item.bid_increment_amount.toLocaleString('en-IN')}
                       </span>
                     </div>
                   )}
+
+                  {item.bidding_access && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Bidding Access
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-900 mt-0.5 block">
+                        {item.bidding_access}
+                      </span>
+                    </div>
+                  )}
+
+                  {item.auto_extension && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Auto Extension
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-900 mt-0.5 block">
+                        {item.auto_extension}
+                      </span>
+                    </div>
+                  )}
+
+                  {item.extend_time_by_min != null && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Extension Window
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-900 mt-0.5 block">
+                        +{item.extend_time_by_min} mins {item.extend_time_last_bid_min ? `(Last ${item.extend_time_last_bid_min}m bid)` : ''}
+                      </span>
+                    </div>
+                  )}
+
+                  {item.auto_extension_mode && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Extension Rule
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-900 mt-0.5 block truncate" title={item.auto_extension_mode}>
+                        {item.auto_extension_mode}
+                      </span>
+                    </div>
+                  )}
+
+                  {item.office_zone && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Office Zone
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-900 mt-0.5 block truncate" title={item.office_zone}>
+                        {item.office_zone}
+                      </span>
+                    </div>
+                  )}
+
+                  {item.bidding_template && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Auction Template
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-900 mt-0.5 block">
+                        {item.bidding_template}
+                      </span>
+                    </div>
+                  )}
+
+                  {item.item_wise_time && (
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-150">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                        Item-wise Time
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-900 mt-0.5 block">
+                        {item.item_wise_time}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Schedule of Lots & Inventory Items Table */}
+            {displayLots.length > 0 && (
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-indigo-600" />
+                    <span>Schedule of Lots & BOQ Items ({displayLots.length})</span>
+                  </h4>
+                  <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded border border-indigo-100">
+                    INVENTORY LOTS
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto -mx-1">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="py-2.5 px-3">Item #</th>
+                        <th className="py-2.5 px-3">Item / Lot Description</th>
+                        <th className="py-2.5 px-3">Quantity</th>
+                        <th className="py-2.5 px-3">Brand / Make</th>
+                        <th className="py-2.5 px-3">Year</th>
+                        <th className="py-2.5 px-3">Specification / Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {displayLots.map((lot, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-3 px-3 font-mono font-bold text-slate-500">
+                            {lot.item_no || idx + 1}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-slate-900 block">{lot.item_name}</span>
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {lot.quantity ? (
+                              <span className="inline-flex items-center gap-1 font-extrabold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
+                                {lot.quantity}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-slate-700">
+                            {lot.brand_name || '—'}
+                          </td>
+                          <td className="py-3 px-3 text-slate-600 font-mono">
+                            {lot.purchased_year || '—'}
+                          </td>
+                          <td className="py-3 px-3 text-slate-600 text-[11px] leading-relaxed max-w-xs">
+                            {lot.specs || 'As per Notice'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
@@ -768,71 +1189,160 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {availableDocs.map((doc, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow-3xs hover:border-indigo-300 transition-all"
-                    >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="p-2.5 rounded-xl bg-indigo-100 text-indigo-700 shrink-0 mt-0.5">
-                          <FileText className="w-5 h-5" />
+                  {availableDocs.map((doc, idx) => {
+                    const isHtml = doc.safeName.endsWith('.html') || doc.url.includes('.html');
+                    return (
+                      <div
+                        key={idx}
+                        className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow-3xs hover:border-indigo-300 transition-all"
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className={clsx(
+                            "p-2.5 rounded-xl shrink-0 mt-0.5",
+                            isHtml ? "bg-amber-100 text-amber-800" : "bg-indigo-100 text-indigo-700"
+                          )}>
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h5 className="text-xs font-bold text-slate-900 truncate" title={doc.label}>
+                              {doc.label}
+                            </h5>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                {doc.isCloudStored
+                                  ? 'Cloud Stored PDF Document'
+                                  : isHtml
+                                  ? 'GeM Portal Gateway'
+                                  : 'GeM Official PDF Notice'}
+                              </span>
+                              {doc.size && (
+                                <span className="text-[9.5px] bg-slate-200/80 text-slate-700 font-bold px-1.5 py-0.5 rounded font-mono">
+                                  {doc.size}
+                                </span>
+                              )}
+                              {doc.approvalDate && (
+                                <span className="text-[9.5px] text-slate-400 font-medium">
+                                  • {doc.approvalDate}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <h5 className="text-xs font-bold text-slate-900 truncate" title={doc.label}>
-                            {doc.label}
-                          </h5>
-                          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
-                            GeM Official PDF Document
-                          </span>
+
+                        {/* Explicit & Simple Action Buttons */}
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          {isHtml ? (
+                            <a
+                              href={doc.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="col-span-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-all cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Open Portal Gateway</span>
+                            </a>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => openInAppViewer(doc.url, `${doc.label}: ${item.title}`, doc.safeName)}
+                                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 hover:text-slate-900 shadow-3xs transition-all cursor-pointer"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-slate-600" />
+                                <span>Preview</span>
+                              </button>
+
+                              <a
+                                href={doc.downloadUrl}
+                                download={doc.safeName}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-2xs transition-all cursor-pointer"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>Download PDF</span>
+                              </a>
+                            </>
+                          )}
                         </div>
                       </div>
-
-                      {/* Explicit & Simple Action Buttons */}
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <button
-                          onClick={() => openInAppViewer(doc.url, `${doc.label}: ${item.title}`, doc.safeName)}
-                          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 hover:text-slate-900 shadow-3xs transition-all cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Preview</span>
-                        </button>
-
-                        <a
-                          href={doc.downloadUrl}
-                          download={doc.safeName}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-2xs transition-all cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Download PDF</span>
-                        </a>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
 
           </div>
 
-          {/* Right Panel: Clean Document Download Card (No Iframe Preview) */}
-          {(itemImage || availableDocs.length > 0) && (
+          {/* Right Panel: Clean Document Download Card & Dossier Hub */}
+          {(realGemImage || availableDocs.length > 0) && (
             <div className="w-full lg:w-[420px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50 p-5 overflow-visible lg:overflow-y-auto flex flex-col space-y-5">
               
-              {/* GeM Item Preview Image */}
-              {itemImage && (
+              {/* GeM Item Preview Image OR Specialized Dossier Header */}
+              {realGemImage ? (
                 <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2">
-                    <span>Category Reference Image</span>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
+                    <span>Official Notice Preview (Page 1)</span>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Check className="w-2.5 h-2.5" />
+                      Official PDF
+                    </span>
                   </h4>
-                  <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-video border border-slate-200 shadow-2xs">
+                  <div
+                    className={clsx(
+                      "relative rounded-2xl overflow-hidden bg-slate-900 aspect-video border border-slate-200 shadow-2xs group",
+                      primaryDoc && "cursor-pointer"
+                    )}
+                    onClick={() => {
+                      if (primaryDoc) {
+                        openInAppViewer(primaryDoc.url, `${primaryDoc.label}: ${item.title}`, primaryDoc.safeName);
+                      }
+                    }}
+                  >
                     <img
-                      src={itemImage}
+                      src={realGemImage}
                       alt={item.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       loading="lazy"
                     />
+                    {primaryDoc && (
+                      <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-bold text-xs">
+                        <Eye className="w-4 h-4" />
+                        <span>Click to View Full Notice</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Specialized GeM Government Dossier Header (No Fake Images) */
+                <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4.5 border border-slate-800 shadow-sm relative overflow-hidden space-y-3">
+                  <div className="absolute -right-2 -bottom-2 text-white/5 pointer-events-none select-none">
+                    <Gavel className="w-28 h-28 rotate-12" />
+                  </div>
+                  <div className="flex items-center justify-between relative z-10">
+                    <span className="text-[9.5px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2.5 py-1 rounded-md">
+                      GeM Official Dossier
+                    </span>
+                    <span className="text-[11px] font-mono text-slate-300 font-bold">
+                      ID: {item.gem_auction_id}
+                    </span>
+                  </div>
+                  <div className="relative z-10">
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Procuring Entity</span>
+                    <span className="text-xs sm:text-sm font-black text-indigo-200 block truncate" title={authorityDetails.organisation}>
+                      {authorityDetails.organisation}
+                    </span>
+                  </div>
+                  <div className="relative z-10 pt-2 border-t border-white/10 flex items-baseline justify-between">
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider block">Reserve Price</span>
+                      <span className="text-base sm:text-lg font-black text-emerald-400 tracking-tight">{formattedPrice}</span>
+                    </div>
+                    {item.bid_increment_amount && (
+                      <div className="text-right">
+                        <span className="text-[9px] uppercase text-slate-400 block">Min Inc</span>
+                        <span className="text-xs font-bold text-amber-300 font-mono">+₹{item.bid_increment_amount.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -854,7 +1364,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                       </div>
                       <span className="text-[10px] font-black tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase flex items-center gap-1 shrink-0">
                         <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                        Verified PDF Notice
+                        {isDirectStorageUrl || item.documents_archived ? 'Verified Cloud Document' : 'Official PDF Notice'}
                       </span>
                     </div>
 

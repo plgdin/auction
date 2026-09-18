@@ -12,6 +12,7 @@ let baanknetProcess: any = null;
 let baanknetWorkerProcess: any = null;
 let baanknetRefreshProcess: any = null;
 let gemProcess: any = null;
+let gemWorkerProcess: any = null;
 let gemBidsProcess: any = null;
 
 let scraperLogs: string[] = [];
@@ -21,6 +22,7 @@ let backfillLogs: string[] = [];
 let baanknetLogs: string[] = [];
 let baanknetWorkerLogs: string[] = [];
 let gemLogs: string[] = [];
+let gemWorkerLogs: string[] = [];
 let gemBidsLogs: string[] = [];
 
 const appendLog = (type: string, data: any) => {
@@ -33,6 +35,7 @@ const appendLog = (type: string, data: any) => {
   else if (type === 'baanknet') target = baanknetLogs;
   else if (type === 'baanknet-worker') target = baanknetWorkerLogs;
   else if (type === 'gem') target = gemLogs;
+  else if (type === 'gem-worker') target = gemWorkerLogs;
   else if (type === 'gem-bids') target = gemBidsLogs;
   else return;
 
@@ -124,6 +127,7 @@ const localApiPlugin = () => ({
             baanknetRunning: baanknetProcess !== null,
             baanknetWorkerRunning: baanknetWorkerProcess !== null || baanknetRefreshProcess !== null,
             gemRunning: gemProcess !== null,
+            gemWorkerRunning: gemWorkerProcess !== null,
             gemBidsRunning: gemBidsProcess !== null,
             scraperLogs,
             workerLogs,
@@ -132,6 +136,7 @@ const localApiPlugin = () => ({
             baanknetLogs,
             baanknetWorkerLogs,
             gemLogs,
+            gemWorkerLogs,
             gemBidsLogs
           }));
           return;
@@ -283,6 +288,36 @@ const localApiPlugin = () => ({
               gemProcess.kill('SIGINT');
               gemProcess = null;
               appendLog('gem', 'GeM Scraper process stopped by user request.');
+            }
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/gem/worker/start') {
+            if (gemWorkerProcess) {
+              res.end(JSON.stringify({ success: false, message: 'GeM Document Asset Worker already running' }));
+              return;
+            }
+            gemWorkerLogs = [];
+            appendLog('gem-worker', 'Starting GeM Document Asset Worker (npx tsx scraper/gemAssetWorker.ts --daemon)...');
+            gemWorkerProcess = spawn('npx', ['tsx', 'scraper/gemAssetWorker.ts', '--daemon'], { shell: true });
+            
+            gemWorkerProcess.stdout.on('data', (data: any) => appendLog('gem-worker', data));
+            gemWorkerProcess.stderr.on('data', (data: any) => appendLog('gem-worker', data));
+            gemWorkerProcess.on('close', (code: any) => {
+              appendLog('gem-worker', `GeM Document Asset Worker terminated with exit code ${code}`);
+              gemWorkerProcess = null;
+            });
+            
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/gem/worker/stop') {
+            if (gemWorkerProcess) {
+              gemWorkerProcess.kill('SIGINT');
+              gemWorkerProcess = null;
+              appendLog('gem-worker', 'GeM Document Asset Worker stopped by user request.');
             }
             res.end(JSON.stringify({ success: true }));
             return;

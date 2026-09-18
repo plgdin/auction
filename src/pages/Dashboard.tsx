@@ -434,7 +434,7 @@ export function Dashboard() {
                       <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center">
                         <span className="text-[10px] font-mono text-slate-400">REF: {auc.reference_number || 'N/A'}</span>
                         <Link 
-                          to={`/auctions?tab=${auc.is_mstc ? 'mstc' : 'commercial'}${auc.is_mstc ? `&preview=${auc.id}` : ''}`} 
+                          to={`/auctions?tab=mstc&preview=${auc.id}`} 
                           className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5"
                         >
                           Analyze
@@ -485,7 +485,7 @@ export function Dashboard() {
                         }`}>
                           {item.isRecommended ? 'Suggested' : 'Watchlist'}
                         </span>
-                        <Link to={`/auctions?tab=${item.isMstc ? 'mstc' : 'commercial'}${item.isMstc ? `&preview=${item.id}` : ''}`}>
+                        <Link to={`/auctions?tab=mstc&preview=${item.id}`}>
                           <h4 className="text-xs font-bold text-slate-800 hover:text-blue-600 line-clamp-1 mt-1 leading-tight cursor-pointer">
                             {getCleanAuctionTitle(item.title)}
                           </h4>

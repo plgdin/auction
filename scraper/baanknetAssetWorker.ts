@@ -1,11 +1,18 @@
 /**
  * BaankNet Document Asset Worker
- * 
- * Fetches and mirrors external bank auction notice PDFs from baanknet.com / CDN
- * to Supabase Storage (`baanknet-documents/{baanknet_auction_id}/`), making document access
- * permanent, lightning fast, and immune to upstream server link rot.
- * 
- * Follows zero-trust validation: checks HTTP status, verifies %PDF magic bytes,
+ *
+ * Full intelligence pipeline for BaankNet auction documents:
+ *
+ * 1. Download & mirror documents to Supabase Storage (CDN)
+ * 2. Validate format via magic byte detection (%PDF, JPEG, PNG, WebP)
+ * 3. Extract text via pdf-parse
+ * 4. OCR fallback for scanned/image-based PDFs (Tesseract)
+ * 5. Generate preview thumbnail (page 1 → JPEG)
+ * 6. Document classification (sale notice, valuation report, etc.)
+ * 7. Property intelligence extraction (area, SARFAESI, valuation, contacts)
+ * 8. Persist all intelligence to database
+ *
+ * Follows zero-trust validation: checks HTTP status, verifies magic bytes,
  * utilizes exponential backoff retries, and maintains strict idempotency.
  */
 
@@ -24,6 +31,11 @@ import {
 import { supabase, uploadToStorage, checkFileExistsInStorage, assertSupabaseCredentials } from "./utils/common/storage.js";
 import { logger } from "./utils/common/logger.js";
 import { sendPipelineFailureAlert } from "./utils/common/alertingService.js";
+import { renderPdfFirstPage } from "./utils/pdfUtils.js";
+import { performOcrWithDetails } from "./utils/ocrUtils.js";
+import { classifyBaanknetDocument, classifyBaanknetDocuments } from "./parsers/baanknet/documentClassifier.js";
+import { parseBaanknetPropertyText } from "./parsers/baanknet/baanknetPropertyParser.js";
+import type { ParsedPropertyIntelligence } from "./parsers/baanknet/baanknetPropertyParser.js";
 
 const require = createRequire(import.meta.url);
 const pdfParse = require("pdf-parse");
@@ -32,6 +44,12 @@ dotenv.config({ path: ".env.local" });
 dotenv.config();
 
 const log = logger.child({ module: "baanknetAssetWorker" });
+
+/** Minimum text length to consider a PDF as having selectable text (not scanned). */
+const MIN_SELECTABLE_TEXT_LENGTH = 100;
+
+/** Maximum number of PDF pages to OCR for scanned documents. */
+const MAX_OCR_PAGES = 3;
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -251,7 +269,13 @@ export async function mirrorDocumentToStorage(
   docUrl: string,
   docIndex: number,
   timeoutMs: number = ATTACHMENT_DOWNLOAD_TIMEOUT_MS
-): Promise<{ publicUrl: string; wasCached: boolean; text?: string }> {
+): Promise<{
+  publicUrl: string;
+  wasCached: boolean;
+  text?: string;
+  previewUrl?: string;
+  classification?: { type: string; confidence: number; matchedKeywords: string[] };
+}> {
   const docLog = log.child({ auctionId, docUrl });
   const storagePath = getBaanknetStoragePath(auctionId, docUrl, docIndex);
 
@@ -332,13 +356,67 @@ export async function mirrorDocumentToStorage(
     } catch (err: any) {
       docLog.warn({ error: err.message }, "Non-critical: pdf-parse failed to extract text from PDF");
     }
+
+    // 4b. OCR fallback for scanned/image-based PDFs
+    if (extractedText.length < MIN_SELECTABLE_TEXT_LENGTH) {
+      docLog.info(
+        { textLength: extractedText.length },
+        "PDF appears to be scanned (insufficient selectable text). Running OCR fallback..."
+      );
+      try {
+        // Render first few pages to images and OCR them
+        const previewBuf = await renderPdfFirstPage(fileBuffer);
+        if (previewBuf) {
+          const ocrResult = await performOcrWithDetails(previewBuf);
+          if (ocrResult && ocrResult.text && ocrResult.text.length > extractedText.length) {
+            docLog.info(
+              { ocrTextLength: ocrResult.text.length, confidence: ocrResult.confidence },
+              "OCR extracted additional text from scanned PDF"
+            );
+            extractedText = ocrResult.text;
+          }
+        }
+      } catch (ocrErr: any) {
+        docLog.warn({ error: ocrErr.message }, "Non-critical: OCR fallback failed for scanned PDF");
+      }
+    }
   }
 
   // 5. Upload to Supabase Storage with dynamic content-type
   const publicUrl = await uploadToStorage(storagePath, fileBuffer, format.contentType);
   docLog.info({ publicUrl, storagePath, sizeBytes: fileBuffer.length, contentType: format.contentType }, "Document successfully mirrored to storage");
 
-  return { publicUrl, wasCached: false, text: extractedText || undefined };
+  // 6. Generate preview thumbnail (first page → JPEG)
+  let previewUrl: string | undefined;
+  if (format.contentType === "application/pdf" && docIndex === 0) {
+    try {
+      const previewBuffer = await renderPdfFirstPage(fileBuffer);
+      if (previewBuffer && previewBuffer.length > 1000) {
+        const previewPath = `baanknet-previews/${auctionId.replace(/[^a-zA-Z0-9_-]/g, "_")}.jpg`;
+        previewUrl = await uploadToStorage(previewPath, previewBuffer, "image/jpeg");
+        docLog.info({ previewUrl }, "Preview thumbnail generated and uploaded");
+      }
+    } catch (prevErr: any) {
+      docLog.warn({ error: prevErr.message }, "Non-critical: preview generation failed");
+    }
+  }
+
+  // 7. Document classification
+  const classification = classifyBaanknetDocument(extractedText);
+  if (classification.type !== "unknown") {
+    docLog.info(
+      { docType: classification.type, confidence: classification.confidence.toFixed(2) },
+      "Document classified"
+    );
+  }
+
+  return {
+    publicUrl,
+    wasCached: false,
+    text: extractedText || undefined,
+    previewUrl,
+    classification,
+  };
 }
 
 /**
@@ -382,6 +460,8 @@ export async function processBaanknetRecord(
   const mirroredUrls: string[] = [];
   const failures: FailedDocumentReport[] = [];
   const extractedTexts: string[] = [];
+  const docClassifications: { url: string; type: string; confidence: number }[] = [];
+  let firstPreviewUrl: string | undefined;
   let docsUploaded = 0;
   let docsCached = 0;
 
@@ -396,6 +476,16 @@ export async function processBaanknetRecord(
       mirroredUrls.push(result.publicUrl);
       if (result.text) {
         extractedTexts.push(result.text);
+      }
+      if (result.previewUrl && !firstPreviewUrl) {
+        firstPreviewUrl = result.previewUrl;
+      }
+      if (result.classification && result.classification.type !== "unknown") {
+        docClassifications.push({
+          url: result.publicUrl,
+          type: result.classification.type,
+          confidence: result.classification.confidence,
+        });
       }
       if (result.wasCached) {
         docsCached++;
@@ -418,14 +508,81 @@ export async function processBaanknetRecord(
   const allSucceeded = failures.length === 0 && mirroredUrls.length === docUrls.length;
   const combinedText = extractedTexts.join("\n\n---\n\n").trim();
 
-  // Persist storage public URLs, archive state, and extracted PDF text
+  // ── Deep Intelligence Extraction ──────────────────────────────────────────
+  let propertyIntelligence: ParsedPropertyIntelligence | null = null;
+  if (combinedText.length > 50) {
+    try {
+      propertyIntelligence = parseBaanknetPropertyText(combinedText);
+      const extractedFields = Object.entries(propertyIntelligence)
+        .filter(([, v]) => v !== null)
+        .map(([k]) => k);
+      if (extractedFields.length > 0) {
+        auctionLog.info(
+          { extractedFieldCount: extractedFields.length, fields: extractedFields },
+          "Property intelligence extracted from PDF text"
+        );
+      }
+    } catch (parseErr: any) {
+      auctionLog.warn({ error: parseErr.message }, "Non-critical: property intelligence parsing failed");
+    }
+  }
+
+  // Persist storage public URLs, archive state, extracted PDF text, and intelligence
   const updatePayload: Record<string, any> = {
     stored_document_urls: mirroredUrls,
     documents_archived: allSucceeded,
+    documents_archived_at: allSucceeded ? new Date().toISOString() : null,
   };
 
   if (combinedText) {
-    updatePayload.extracted_pdf_text = combinedText.substring(0, 100000); // 100KB cap for database row
+    updatePayload.extracted_pdf_text = combinedText.substring(0, 100000); // 100KB cap
+  }
+  if (firstPreviewUrl) {
+    updatePayload.preview_url = firstPreviewUrl;
+  }
+  if (docClassifications.length > 0) {
+    updatePayload.document_classification = docClassifications;
+  }
+
+  // Merge property intelligence fields (only set non-null values)
+  if (propertyIntelligence) {
+    if (propertyIntelligence.propertyClassification) {
+      updatePayload.property_classification = propertyIntelligence.propertyClassification;
+    }
+    if (propertyIntelligence.carpetAreaSqft) {
+      updatePayload.carpet_area_sqft = propertyIntelligence.carpetAreaSqft;
+    }
+    if (propertyIntelligence.landAreaSqft) {
+      updatePayload.land_area_sqft = propertyIntelligence.landAreaSqft;
+    }
+    if (propertyIntelligence.valuationAmount) {
+      updatePayload.valuation_amount = propertyIntelligence.valuationAmount;
+    }
+    if (propertyIntelligence.distressValue) {
+      updatePayload.distress_value = propertyIntelligence.distressValue;
+    }
+    if (propertyIntelligence.valuerName) {
+      updatePayload.valuer_name = propertyIntelligence.valuerName;
+    }
+    if (propertyIntelligence.sarfaesiSection) {
+      updatePayload.sarfaesi_section = propertyIntelligence.sarfaesiSection;
+    }
+    if (propertyIntelligence.possessionType) {
+      updatePayload.possession_type = propertyIntelligence.possessionType;
+    }
+    if (propertyIntelligence.surveyNumber) {
+      updatePayload.survey_number = propertyIntelligence.surveyNumber;
+    }
+    if (propertyIntelligence.encumbranceSummary) {
+      updatePayload.encumbrance_summary = propertyIntelligence.encumbranceSummary;
+    }
+    // Merge contacts only if not already set on the record
+    if (propertyIntelligence.contactPhone) {
+      updatePayload.contact_phone = propertyIntelligence.contactPhone;
+    }
+    if (propertyIntelligence.contactEmail) {
+      updatePayload.officer_email = propertyIntelligence.contactEmail;
+    }
   }
 
   const { error: updateError } = await supabase
@@ -434,11 +591,21 @@ export async function processBaanknetRecord(
     .eq("baanknet_auction_id", record.baanknet_auction_id);
 
   if (updateError) {
-    auctionLog.error({ errorMessage: updateError.message }, "Failed to update auction row with stored document URLs and PDF text");
+    auctionLog.error({ errorMessage: updateError.message }, "Failed to update auction row with stored document URLs and intelligence");
   } else {
     auctionLog.info(
-      { allSucceeded, storedCount: mirroredUrls.length, failures: failures.length, hasPdfText: !!combinedText },
-      "Updated auction document archive and PDF intelligence status"
+      {
+        allSucceeded,
+        storedCount: mirroredUrls.length,
+        failures: failures.length,
+        hasPdfText: !!combinedText,
+        hasPreview: !!firstPreviewUrl,
+        classifiedDocs: docClassifications.length,
+        propertyFieldsExtracted: propertyIntelligence
+          ? Object.values(propertyIntelligence).filter((v) => v !== null).length
+          : 0,
+      },
+      "Updated auction document archive, classification, and property intelligence"
     );
   }
 

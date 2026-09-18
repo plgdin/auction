@@ -2,6 +2,7 @@ import https from 'https';
 import http from 'http';
 import { URL } from 'url';
 import { isAllowedOrigin } from './_utils/cors.js';
+import { checkFileExistsInStorage, supabase } from '../scraper/utils/common/storage.js';
 
 // Allowlist of trusted auction sources to protect against SSRF (OWASP A10 Compliance)
 const ALLOWED_HOSTNAMES = [
@@ -79,6 +80,63 @@ export default async function handler(req: any, res: any): Promise<void> {
     return;
   }
 
+  // 0-Latency Supabase Storage Cache Check for GeM Auctions
+  if (parsedTarget.hostname.includes('forwardauction.gem.gov.in') || rawUrl.includes('gem')) {
+    const gemIdMatch =
+      rawUrl.match(/(?:view-auction-notice|eauction-download-document)\/(\d+)/i) ||
+      customFilename.match(/GeM_(?:Auction_)?(\d+)/i);
+    if (gemIdMatch) {
+      const auctionId = gemIdMatch[1];
+      try {
+        // 1. Check direct database document_url first for instant resolution
+        const { data: aucRecord } = await supabase
+          .from('gem_auctions')
+          .select('document_url, document_urls')
+          .eq('gem_auction_id', auctionId)
+          .maybeSingle();
+
+        const cloudUrl = (aucRecord?.document_url && aucRecord.document_url.includes('supabase.co'))
+          ? aucRecord.document_url
+          : (aucRecord?.document_urls?.find((u: string) => u.includes('supabase.co')));
+
+        if (cloudUrl) {
+          const origin = req.headers.origin || req.headers.Origin || '';
+          const corsOrigin = isAllowedOrigin(origin) ? origin : (process.env.NODE_ENV === 'production' ? 'https://lelam.co' : '*');
+          res.writeHead(302, {
+            Location: cloudUrl,
+            'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+            'Access-Control-Allow-Origin': corsOrigin,
+          });
+          res.end();
+          return;
+        }
+
+        // 2. Fallback check common storage paths
+        const storagePaths = [
+          `gem-documents/${auctionId}/document_1.pdf`,
+          `gem-documents/GeM_Notice_${auctionId}.pdf`,
+        ];
+
+        for (const storagePath of storagePaths) {
+          const { exists, publicUrl } = await checkFileExistsInStorage(storagePath);
+          if (exists && publicUrl) {
+            const origin = req.headers.origin || req.headers.Origin || '';
+            const corsOrigin = isAllowedOrigin(origin) ? origin : (process.env.NODE_ENV === 'production' ? 'https://lelam.co' : '*');
+            res.writeHead(302, {
+              Location: publicUrl,
+              'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+              'Access-Control-Allow-Origin': corsOrigin,
+            });
+            res.end();
+            return;
+          }
+        }
+      } catch {
+        // Fallback to upstream fetch
+      }
+    }
+  }
+
   try {
     let sessionCookies = '';
 
@@ -90,6 +148,8 @@ export default async function handler(req: any, res: any): Promise<void> {
         // Fallback: proceed without cookies
       }
     }
+
+    let targetUrlString = parsedTarget.toString();
 
     // Prepare upstream request options
     const headers: Record<string, string> = {
