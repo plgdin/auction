@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck, Layers, Gavel, RotateCcw } from 'lucide-react';
+import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Info, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck, Layers, Gavel, RotateCcw, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 import type { GemAuction } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
@@ -427,18 +427,33 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
   const primaryDoc = availableDocs[0];
   // Only genuine images from GeM portal (official PDF first-page thumbnail or authentic image attachments)
   const realGemImage = useMemo(() => {
-    if (item.preview_url) return item.preview_url;
+    const isAuthentic = (url?: string | null): boolean => {
+      if (!url || typeof url !== 'string') return false;
+      if (
+        url.includes('unsplash.com') ||
+        url.includes('pexels.com') ||
+        url.includes('pixabay.com') ||
+        url.includes('freepik.com') ||
+        url.includes('stock') ||
+        url.includes('placeholder')
+      ) {
+        return false;
+      }
+      return url.includes('supabase.co') || url.includes('gem.gov.in') || url.startsWith('data:image/');
+    };
+
+    if (item.preview_url && isAuthentic(item.preview_url)) return item.preview_url;
 
     if (item.discovered_api_attachments && item.discovered_api_attachments.length > 0) {
       const imgAtt = item.discovered_api_attachments.find(
-        (a) => a.url && /\.(jpe?g|png|webp)(\?.*)?$/i.test(a.url)
+        (a) => a.url && /\.(jpe?g|png|webp)(\?.*)?$/i.test(a.url) && isAuthentic(a.url)
       );
       if (imgAtt) return imgAtt.url;
     }
 
     if (item.document_urls && item.document_urls.length > 0) {
       const imgDoc = item.document_urls.find(
-        (u) => u && /\.(jpe?g|png|webp)(\?.*)?$/i.test(u)
+        (u) => u && /\.(jpe?g|png|webp)(\?.*)?$/i.test(u) && isAuthentic(u)
       );
       if (imgDoc) return imgDoc;
     }
@@ -477,25 +492,52 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
       <div className="relative bg-white rounded-3xl w-full max-w-6xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200 text-left">
         
         {/* Top Header Bar */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
-          <div className="flex items-center gap-3">
-            <span id="gem-modal-title" className="text-base font-bold text-slate-500">Ref: {item.gem_auction_id}</span>
-            <button
-              onClick={handleCopyRef}
-              className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-400 hover:text-slate-700 cursor-pointer flex items-center justify-center"
-              title="Copy Reference ID"
-              aria-label="Copy Reference ID"
-            >
-              {copiedRef ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
+        <div className="px-5 sm:px-6 py-3.5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-50 via-white to-slate-50 shrink-0">
+          <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+            {/* Auction ID Pill */}
+            <div className="flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-xl shadow-2xs">
+              <span id="gem-modal-title" className="text-[11px] font-bold font-mono tracking-tight text-white" title={item.gem_auction_id}>
+                {item.gem_auction_id}
+              </span>
+              <button
+                onClick={handleCopyRef}
+                className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Copy Reference ID"
+                aria-label="Copy Reference ID"
+              >
+                {copiedRef ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            </div>
 
-            {item.is_reauction && (
-              <span className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-3xs">
-                <RotateCcw className="w-3 h-3 text-rose-600" />
-                <span>Re-Auction {item.original_auction_id ? `(Prev: ${item.original_auction_id})` : ''}</span>
+            <span className="inline-flex items-center gap-1 bg-purple-500/10 border border-purple-500/25 text-purple-800 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+              <Sparkles className="w-2.5 h-2.5 text-purple-600" />
+              GeM Forward Auction
+            </span>
+
+            {isClosed ? (
+              <span className="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Closed
+              </span>
+            ) : isLive ? (
+              <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow-3xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Live Auction
+              </span>
+            ) : (
+              <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Upcoming
               </span>
             )}
 
+            {item.is_reauction && (
+              <span className="bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md flex items-center gap-1 shadow-3xs uppercase tracking-wider">
+                <RotateCcw className="w-3 h-3 text-rose-600" />
+                <span>Re-Auction</span>
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
             {onInterestedToggle && (
               <button
                 onClick={onInterestedToggle}
@@ -507,19 +549,19 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
                 )}
               >
                 <Heart className={clsx("w-3.5 h-3.5", isInterested ? "fill-rose-500 text-rose-500" : "text-slate-400")} />
-                <span>{isInterested ? "Interested" : "I'm Interested"}</span>
+                <span className="hidden sm:inline">{isInterested ? "Bookmarked" : "Bookmark"}</span>
               </button>
             )}
-          </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
-            title="Close"
-            aria-label="Close dialog"
-          >
-            <X className="w-5 h-5" />
-          </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
+              title="Close"
+              aria-label="Close dialog"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab Navigation */}
@@ -1450,6 +1492,8 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
         title={viewerState.title}
         documentUrl={viewerState.url}
         filename={viewerState.filename}
+        badge="Official GeM Notice"
+        subtitle={item.gem_auction_id || item.id}
       />
     </div>
   );
