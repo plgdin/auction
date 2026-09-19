@@ -90,6 +90,7 @@ export function ScraperDashboard() {
   const [gemRunning, setGemRunning] = useState(false);
   const [gemWorkerRunning, setGemWorkerRunning] = useState(false);
   const [gemBidsRunning, setGemBidsRunning] = useState(false);
+  const [gemBidsWorkerRunning, setGemBidsWorkerRunning] = useState(false);
   const [liveScraperLogs, setLiveScraperLogs] = useState<string[]>([]);
   const [liveWorkerLogs, setLiveWorkerLogs] = useState<string[]>([]);
   const [liveClearDbLogs, setLiveClearDbLogs] = useState<string[]>([]);
@@ -99,6 +100,7 @@ export function ScraperDashboard() {
   const [liveGemLogs, setLiveGemLogs] = useState<string[]>([]);
   const [liveGemWorkerLogs, setLiveGemWorkerLogs] = useState<string[]>([]);
   const [liveGemBidsLogs, setLiveGemBidsLogs] = useState<string[]>([]);
+  const [liveGemBidsWorkerLogs, setLiveGemBidsWorkerLogs] = useState<string[]>([]);
   const [isLocalApiAvailable, setIsLocalApiAvailable] = useState(false);
   const [isServerless, setIsServerless] = useState(false);
   const [generateVectorsRunning, setGenerateVectorsRunning] = useState(false);
@@ -112,6 +114,7 @@ export function ScraperDashboard() {
   const gemTerminalRef = useRef<HTMLDivElement>(null);
   const gemWorkerTerminalRef = useRef<HTMLDivElement>(null);
   const gemBidsTerminalRef = useRef<HTMLDivElement>(null);
+  const gemBidsWorkerTerminalRef = useRef<HTMLDivElement>(null);
 
   const loadDashboardData = async (silent = false, tab?: string) => {
     if (!silent) setIsLoading(true);
@@ -210,6 +213,7 @@ export function ScraperDashboard() {
         setGemRunning(data.gemRunning || false);
         setGemWorkerRunning(data.gemWorkerRunning || false);
         setGemBidsRunning(data.gemBidsRunning || false);
+        setGemBidsWorkerRunning(data.gemBidsWorkerRunning || false);
         setLiveScraperLogs(data.scraperLogs || []);
         setLiveWorkerLogs(data.workerLogs || []);
         setLiveClearDbLogs(data.clearDbLogs || []);
@@ -219,6 +223,7 @@ export function ScraperDashboard() {
         setLiveGemLogs(data.gemLogs || []);
         setLiveGemWorkerLogs(data.gemWorkerLogs || []);
         setLiveGemBidsLogs(data.gemBidsLogs || []);
+        setLiveGemBidsWorkerLogs(data.gemBidsWorkerLogs || []);
         setIsLocalApiAvailable(true);
         setIsServerless(!!data.isServerless);
       } catch (err) {
@@ -287,6 +292,12 @@ export function ScraperDashboard() {
       gemBidsTerminalRef.current.scrollTop = gemBidsTerminalRef.current.scrollHeight;
     }
   }, [liveGemBidsLogs]);
+
+  useEffect(() => {
+    if (gemBidsWorkerTerminalRef.current) {
+      gemBidsWorkerTerminalRef.current.scrollTop = gemBidsWorkerTerminalRef.current.scrollHeight;
+    }
+  }, [liveGemBidsWorkerLogs]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -537,6 +548,43 @@ export function ScraperDashboard() {
       });
       toast.success('GeM Bids scraper stop signal sent.');
       setGemBidsRunning(false);
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const startGemBidsWorker = async () => {
+    try {
+      const token = await getAuthToken();
+      const res = await fetch('/api/scraper/gem-bids/worker/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('GeM Bids Document Archiver started!');
+        setGemBidsWorkerRunning(true);
+      } else {
+        toast.error(data.message || 'Failed to start archiver.');
+      }
+    } catch (err) {
+      toast.error('Could not connect to local API plugin.');
+    }
+  };
+
+  const stopGemBidsWorker = async () => {
+    try {
+      const token = await getAuthToken();
+      await fetch('/api/scraper/gem-bids/worker/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      toast.success('GeM Bids Document Archiver stopped.');
+      setGemBidsWorkerRunning(false);
     } catch (err) {
       toast.error('Could not connect to local API plugin.');
     }
@@ -2735,6 +2783,59 @@ export function ScraperDashboard() {
                       <p className="text-slate-500 italic">No output logs. Click "Start Scraper" to initiate the process.</p>
                     ) : (
                       liveGemBidsLogs.map((line, idx) => (
+                        <p key={idx} className="leading-relaxed whitespace-pre-wrap">
+                          <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
+                          {line}
+                        </p>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* GeM Bids Document Archiver Panel */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col xl:col-span-2">
+                  <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-5 h-5 text-slate-600" />
+                      <div>
+                        <h3 className="font-bold text-slate-900 leading-tight">GeM Bids Document Archiver</h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Automated background sync for Bid PDFs, RA Documents, and Corrigendums</p>
+                      </div>
+                    </div>
+                    {gemBidsWorkerRunning ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-ping" /> Archiver Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                        <span className="w-2 h-2 rounded-full bg-slate-400 mr-1.5" /> Archiver Stopped
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2">
+                    <button
+                      onClick={startGemBidsWorker}
+                      disabled={!isLocalApiAvailable || gemBidsWorkerRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-700 text-white rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5 mr-1.5 fill-white" /> Start Archiver
+                    </button>
+                    <button
+                      onClick={stopGemBidsWorker}
+                      disabled={!isLocalApiAvailable || !gemBidsWorkerRunning}
+                      className="flex items-center px-4 py-2 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Square className="w-3.5 h-3.5 mr-1.5 fill-rose-600 text-rose-600" /> Stop Archiver
+                    </button>
+                  </div>
+                  <div 
+                    ref={gemBidsWorkerTerminalRef}
+                    className="bg-slate-950 p-4 font-mono text-xs text-slate-300 h-64 overflow-y-auto space-y-1 select-text scroll-smooth"
+                  >
+                    {liveGemBidsWorkerLogs.length === 0 ? (
+                      <p className="text-slate-500 italic">No output logs. Click "Start Archiver" to initiate the process.</p>
+                    ) : (
+                      liveGemBidsWorkerLogs.map((line, idx) => (
                         <p key={idx} className="leading-relaxed whitespace-pre-wrap">
                           <span className="text-slate-500 select-none mr-2">&gt;&gt;</span>
                           {line}

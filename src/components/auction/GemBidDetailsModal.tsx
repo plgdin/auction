@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck, ExternalLink, Clock } from 'lucide-react';
+import { X, Copy, Check, Landmark, Download, MapPin, AlignLeft, Eye, Heart, Calendar, FileText, Phone, UserCheck, ShieldCheck, Clock } from 'lucide-react';
 import clsx from 'clsx';
 import type { GemBid } from '../../services/publicService';
 import { DocumentViewerModal } from '../common/DocumentViewerModal';
@@ -52,44 +52,52 @@ interface DocumentEntry {
 function buildDocumentEntries(item: GemBid): DocumentEntry[] {
   const entries: DocumentEntry[] = [];
   const bidSafe = item.bid_number.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const processedUrls = new Set<string>();
+
+  const addEntry = (url: string, baseLabel: string, filenamePrefix: string) => {
+    if (!url || processedUrls.has(url)) return;
+    processedUrls.add(url);
+
+    const cached = isCdnUrl(url);
+    const safeName = `${filenamePrefix}.pdf`;
+    
+    const viewUrl = cached
+      ? url
+      : `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=inline`;
+    
+    const downloadUrl = cached
+      ? url
+      : `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
+
+    entries.push({
+      url: viewUrl,
+      label: cached ? `${baseLabel} (Verified PDF)` : `${baseLabel} (PDF)`,
+      safeName,
+      downloadUrl,
+      isCached: cached,
+    });
+  };
 
   // Primary bid document
   const rawUrl = item.document_url || gemPortalUrl(item.bid_number);
-  const cached = isCdnUrl(item.document_url);
-  const viewUrl = cached
-    ? item.document_url!
-    : `/api/document-proxy?url=${encodeURIComponent(rawUrl)}&filename=GeM_Bid_${bidSafe}.pdf&disposition=inline`;
-  const downloadUrl = cached
-    ? item.document_url!
-    : `/api/document-proxy?url=${encodeURIComponent(rawUrl)}&filename=GeM_Bid_${bidSafe}.pdf&disposition=attachment`;
+  addEntry(rawUrl, 'Official GeM Bid Document', `GeM_Bid_${bidSafe}`);
 
-  entries.push({
-    url: viewUrl,
-    label: cached ? 'Official GeM Bid Document (Verified PDF)' : 'Official GeM Bid Document (PDF)',
-    safeName: `GeM_Bid_${bidSafe}.pdf`,
-    downloadUrl,
-    isCached: cached,
-  });
+  // Reverse Auction Document
+  if (item.ra_document_url) {
+    addEntry(item.ra_document_url, `Reverse Auction: ${item.ra_number || 'Document'}`, `GeM_RA_${bidSafe}`);
+  }
 
-  // Additional attachments
+  // Corrigendums
+  if (Array.isArray(item.corrigendum_urls)) {
+    item.corrigendum_urls.forEach((cUrl, idx) => {
+      addEntry(cUrl, `Corrigendum #${idx + 1}`, `GeM_Corr_${idx + 1}_${bidSafe}`);
+    });
+  }
+
+  // Fallback for any other document_urls not caught above
   if (Array.isArray(item.document_urls)) {
     item.document_urls.forEach((url, idx) => {
-      if (!url || url === rawUrl || (cached && url === item.document_url)) return;
-      const docCached = isCdnUrl(url);
-      const safeName = `GeM_Bid_${bidSafe}_Attachment_${idx + 1}.pdf`;
-      const attViewUrl = docCached
-        ? url
-        : `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=inline`;
-      const attDownloadUrl = docCached
-        ? url
-        : `/api/document-proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeName)}&disposition=attachment`;
-      entries.push({
-        url: attViewUrl,
-        label: `Bid Attachment #${idx + 1}`,
-        safeName,
-        downloadUrl: attDownloadUrl,
-        isCached: docCached,
-      });
+      addEntry(url, `Bid Attachment #${idx + 1}`, `GeM_Attachment_${idx + 1}_${bidSafe}`);
     });
   }
 

@@ -130,7 +130,8 @@ export const GemBidCard = memo(function GemBidCard({
     return 'See Official Tender Document';
   }, [startDate, endDate]);
 
-  const deptName = item.department_name || 'Government Department / PSU';
+  const deptHierarchy = [item.ministry, item.organisation || item.department_name].filter(Boolean).join(' • ') || 'Government Department / PSU';
+  const fullOrgDetails = [item.ministry, item.department_name, item.organisation, item.full_address].filter(Boolean).join('\n');
   const mainCategory = cleanCategoryName(item.category_name, item.items);
   const docUrl = getDocUrl(item);
   const hasCachedDoc = isCdnUrl(item.document_url);
@@ -203,9 +204,9 @@ export const GemBidCard = memo(function GemBidCard({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 text-xs">
                 <div className="space-y-1.5">
-                  <div className="flex items-center text-slate-600" title={deptName}>
+                  <div className="flex items-center text-slate-600" title={fullOrgDetails}>
                     <Landmark className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
-                    <span className="font-semibold text-slate-700 truncate">{deptName}</span>
+                    <span className="font-semibold text-slate-700 truncate">{deptHierarchy}</span>
                   </div>
                   <div className="flex items-center text-slate-600">
                     <Building2 className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
@@ -293,9 +294,9 @@ export const GemBidCard = memo(function GemBidCard({
           {/* Meta Grid */}
           <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-3.5 grid grid-cols-2 gap-x-3 gap-y-2.5 text-xs">
             <div className="flex flex-col min-w-0">
-              <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Department</span>
-              <span className="font-semibold text-slate-700 truncate text-[11px]" title={deptName}>
-                {deptName}
+              <span className="text-slate-400 font-mono text-[9px] uppercase tracking-wider mb-0.5">Organisation</span>
+              <span className="font-semibold text-slate-700 truncate text-[11px]" title={fullOrgDetails}>
+                {deptHierarchy}
               </span>
             </div>
 

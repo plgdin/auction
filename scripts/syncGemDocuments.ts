@@ -117,7 +117,7 @@ async function syncGemBids(limit: number) {
   console.log(`\n=== Archiving GeM Bids Documents (Target: ${limit}) ===`);
   const { data: bids, error } = await supabase
     .from("gem_bids")
-    .select("id, bid_number, items, document_url, processing_status")
+    .select("id, bid_number, items, document_url, ra_document_url, document_urls, corrigendum_urls, processing_status")
     .not("document_url", "ilike", "%supabase.co%")
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -135,37 +135,89 @@ async function syncGemBids(limit: number) {
     const bid = bids[i];
     const bidNo = bid.bid_number;
     const sanitizedBidNo = bidNo.replace(/[^a-zA-Z0-9_-]/g, "_");
-    const rawUrl = bid.document_url || `https://bidplus.gem.gov.in/showbidDocument/${encodeURIComponent(bidNo)}`;
+    
+    // Arrays to collect updated CDN URLs
+    const newDocUrls: string[] = [];
+    const newCorrUrls: string[] = [];
+    let newRaUrl: string | null = null;
+    let mainDocCdn: string | null = null;
 
+    const rawUrl = bid.document_url || `https://bidplus.gem.gov.in/showbidDocument/${encodeURIComponent(bidNo)}`;
     process.stdout.write(`[${i + 1}/${bids.length}] ${bidNo}... `);
 
+    // 1. Primary Bid Document
     const pdfBuffer = await fetchPdfDirectHttp(rawUrl, "https://bidplus.gem.gov.in/all-bids");
-    if (!pdfBuffer) {
-      console.log("FAILED (download failed or not PDF)");
+    if (pdfBuffer) {
+      const storagePath = `gem-bids/${sanitizedBidNo}/official_bid_document.pdf`;
+      mainDocCdn = await uploadToStorage(storagePath, pdfBuffer);
+      if (mainDocCdn) newDocUrls.push(mainDocCdn);
+    }
+
+    if (!mainDocCdn) {
+      console.log("FAILED (primary document download/upload failed)");
       failed++;
       continue;
     }
 
-    const storagePath = `gem-bids/${sanitizedBidNo}/official_bid_document.pdf`;
-    const cdnUrl = await uploadToStorage(storagePath, pdfBuffer);
-
-    if (cdnUrl) {
-      await supabase
-        .from("gem_bids")
-        .update({
-          document_url: cdnUrl,
-          document_urls: [cdnUrl],
-          processing_status: "completed",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", bid.id);
-
-      console.log(`SUCCESS! (${(pdfBuffer.length / 1024).toFixed(1)} KB -> CDN)`);
-      success++;
-    } else {
-      console.log("FAILED (storage upload failed)");
-      failed++;
+    // 2. Reverse Auction Document
+    if (bid.ra_document_url && !bid.ra_document_url.includes("supabase.co")) {
+      const raBuffer = await fetchPdfDirectHttp(bid.ra_document_url, "https://bidplus.gem.gov.in/all-bids");
+      if (raBuffer) {
+        const raPath = `gem-bids/${sanitizedBidNo}/ra_document.pdf`;
+        newRaUrl = await uploadToStorage(raPath, raBuffer);
+        if (newRaUrl) newDocUrls.push(newRaUrl);
+      } else {
+        newRaUrl = bid.ra_document_url; // fallback to original
+        newDocUrls.push(newRaUrl);
+      }
+    } else if (bid.ra_document_url) {
+      newRaUrl = bid.ra_document_url;
+      newDocUrls.push(newRaUrl);
     }
+
+    // 3. Corrigendums
+    if (Array.isArray(bid.corrigendum_urls)) {
+      for (let j = 0; j < bid.corrigendum_urls.length; j++) {
+        const cUrl = bid.corrigendum_urls[j];
+        if (typeof cUrl === 'string' && cUrl.includes("supabase.co")) {
+          newCorrUrls.push(cUrl);
+          newDocUrls.push(cUrl);
+          continue;
+        }
+        if (typeof cUrl === 'string') {
+          const cBuf = await fetchPdfDirectHttp(cUrl, "https://bidplus.gem.gov.in/all-bids");
+          if (cBuf) {
+            const cPath = `gem-bids/${sanitizedBidNo}/corrigendum_${j + 1}.pdf`;
+            const cdn = await uploadToStorage(cPath, cBuf);
+            if (cdn) {
+              newCorrUrls.push(cdn);
+              newDocUrls.push(cdn);
+            } else {
+              newCorrUrls.push(cUrl);
+              newDocUrls.push(cUrl);
+            }
+          } else {
+            newCorrUrls.push(cUrl);
+            newDocUrls.push(cUrl);
+          }
+        }
+      }
+    }
+
+    await supabase
+      .from("gem_bids")
+      .update({
+        document_url: mainDocCdn,
+        document_urls: newDocUrls.length > 0 ? newDocUrls : [mainDocCdn],
+        ra_document_url: newRaUrl || bid.ra_document_url,
+        corrigendum_urls: newCorrUrls.length > 0 ? newCorrUrls : bid.corrigendum_urls,
+        processing_status: "completed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", bid.id);
+
+    console.log(`SUCCESS! (${(pdfBuffer.length / 1024).toFixed(1)} KB -> CDN, ${newCorrUrls.length} corrigendums synced)`);
+    success++;
   }
 
   console.log(`Bids finished: ${success} archived, ${failed} failed.`);

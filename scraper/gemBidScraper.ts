@@ -137,11 +137,16 @@ function extractGeMBidsFromDOM(): any[] {
     
     const cardText = (card as HTMLElement).innerText || "";
     
-    // Extract Items
+    // Extract Items (Try to get full untruncated text from popover if available)
     let itemsText = "";
-    const itemsMatch = cardText.match(/Items\s*:\s*([^\n]+)/i);
-    if (itemsMatch) {
-      itemsText = itemsMatch[1].trim();
+    const itemsAnchor = card.querySelector('a[data-content]');
+    if (itemsAnchor && itemsAnchor.closest('.row')?.textContent?.includes('Items:')) {
+      itemsText = itemsAnchor.getAttribute('data-content') || "";
+    } else {
+      const itemsMatch = cardText.match(/Items\s*:\s*([^\n]+)/i);
+      if (itemsMatch) {
+        itemsText = itemsMatch[1].trim();
+      }
     }
     
     // Extract Quantity
@@ -151,15 +156,26 @@ function extractGeMBidsFromDOM(): any[] {
       quantity = qtyMatch[1].trim();
     }
     
-    // Extract Department
+    // Extract Department & Address block
+    let ministry = "";
     let department = "";
-    const deptMatch = cardText.match(/Department\s*Name\s*(?:And\s*Address)?\s*:\s*([^\n]+)/i) || 
-                      cardText.match(/Department\s*:\s*([^\n]+)/i);
-    if (deptMatch) {
-      department = deptMatch[1].trim();
-      const index = department.toLowerCase().indexOf("start date");
-      if (index !== -1) {
-        department = department.substring(0, index).trim();
+    let organisation = "";
+    let fullAddress = "";
+
+    const deptBlockMatch = cardText.match(/Department\s*Name\s*(?:And\s*Address)?\s*:([\s\S]*?)Start\s*Date\s*:/i) ||
+                           cardText.match(/Department\s*:([\s\S]*?)Start\s*Date\s*:/i);
+    
+    if (deptBlockMatch) {
+      const block = deptBlockMatch[1].trim();
+      const lines = block.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      
+      if (lines.length >= 1) ministry = lines[0];
+      if (lines.length >= 2) department = lines[1];
+      if (lines.length >= 3) {
+        organisation = lines[2];
+        if (lines.length > 3) {
+          fullAddress = lines.slice(3).join(", ");
+        }
       }
     }
     
@@ -195,7 +211,10 @@ function extractGeMBidsFromDOM(): any[] {
       ra_number: raNumber || null,
       items: itemsText,
       quantity: quantity || null,
-      department_name: department || null,
+      ministry: ministry || null,
+      department_name: department || ministry || null,
+      organisation: organisation || null,
+      full_address: fullAddress || null,
       startDateStr: startMatch ? startMatch[1].trim() : "",
       endDateStr: endMatch ? endMatch[1].trim() : "",
       document_url: bidHref || `/showbidDocument/${encodeURIComponent(bidNumber)}`,
@@ -313,7 +332,10 @@ async function runScraper() {
           ra_number: item.ra_number || undefined,
           items: item.items,
           quantity: item.quantity || undefined,
+          ministry: item.ministry || undefined,
           department_name: item.department_name || undefined,
+          organisation: item.organisation || undefined,
+          full_address: item.full_address || undefined,
           start_date: startDate,
           end_date: endDate,
           status: calculatedStatus,
