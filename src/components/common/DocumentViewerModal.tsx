@@ -19,6 +19,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Format in-app URLs (handling direct data URIs, storage links, and remote proxy)
@@ -39,17 +40,30 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
     }
   };
 
-  // Lock body scroll when open
+  // Lock body scroll and set safety timeout
   useEffect(() => {
+    let timer: any;
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       setIsLoading(true);
       setHasError(false);
+      setLoadTimedOut(false);
+
+      // Safety timeout: if iframe doesn't finish loading in 12s, show friendly fallback
+      timer = setTimeout(() => {
+        setIsLoading((loading) => {
+          if (loading) {
+            setLoadTimedOut(true);
+          }
+          return loading;
+        });
+      }, 12000);
     } else {
       document.body.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
+      if (timer) clearTimeout(timer);
     };
   }, [isOpen, documentUrl]);
 
@@ -130,10 +144,41 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 
         {/* Content Viewer Body */}
         <div className="relative flex-1 bg-slate-950 w-full h-full overflow-hidden flex items-center justify-center">
-          {isLoading && !hasError && (
+          {isLoading && !hasError && !loadTimedOut && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950 z-10 text-slate-400">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
-              <span className="text-xs font-medium">Loading document securely from portal...</span>
+              <span className="text-xs font-medium">Loading official document...</span>
+            </div>
+          )}
+
+          {loadTimedOut && isLoading && !hasError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-950/95 z-20 text-slate-300 p-6 text-center max-w-lg mx-auto">
+              <div className="w-12 h-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">Document Preview Taking Longer Than Expected</h4>
+                <p className="text-xs text-slate-400 mt-1">
+                  The portal document may be protected or large. You can open it in a new window or download it directly.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <a
+                  href={proxyDownloadUrl}
+                  download={filename}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover shadow-xs transition-colors"
+                >
+                  <Download className="w-4 h-4" /> Download Official PDF
+                </a>
+                <a
+                  href={proxyViewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 border border-slate-700 shadow-xs transition-colors"
+                >
+                  Open in New Window
+                </a>
+              </div>
             </div>
           )}
 
@@ -148,13 +193,23 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                   The document can still be downloaded directly to your device.
                 </p>
               </div>
-              <a
-                href={proxyDownloadUrl}
-                download={filename}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover shadow-xs transition-colors"
-              >
-                <Download className="w-4 h-4" /> Download Notice File Directly
-              </a>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <a
+                  href={proxyDownloadUrl}
+                  download={filename}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover shadow-xs transition-colors"
+                >
+                  <Download className="w-4 h-4" /> Download Notice File Directly
+                </a>
+                <a
+                  href={proxyViewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 border border-slate-700 transition-colors"
+                >
+                  Open in New Tab
+                </a>
+              </div>
             </div>
           ) : (
             <iframe

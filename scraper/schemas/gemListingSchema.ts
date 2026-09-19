@@ -62,8 +62,8 @@ export const gemListingSchema = z
     documents_archived_at: z.string().nullable().optional(),
     preview_url: z.string().nullable().optional(),
     extracted_pdf_text: z.string().optional(),
-    boq_items: z.array(z.record(z.any())).optional(),
-    discovered_api_attachments: z.array(z.record(z.any())).optional(),
+    boq_items: z.array(z.record(z.string(), z.any())).optional(),
+    discovered_api_attachments: z.array(z.record(z.string(), z.any())).optional(),
 
     inspection_date: z.string().nullable().optional(),
     inspection_location: z.string().nullable().optional(),
@@ -96,7 +96,7 @@ export const gemListingSchema = z
     item_wise_time: z.string().optional(),
     auto_extension: z.string().optional(),
     bidding_template: z.string().optional(),
-    items_schedule: z.array(z.record(z.any())).optional(),
+    items_schedule: z.array(z.record(z.string(), z.any())).optional(),
   })
   .refine(
     (data) => {

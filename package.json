@@ -20,6 +20,7 @@
     "worker:baanknet": "tsx scraper/baanknetAssetWorker.ts",
     "send:campaign": "tsx scripts/send_campaign.ts",
     "worker:gem": "tsx scraper/gemAssetWorker.ts",
+    "worker:gem-bids": "tsx scraper/gemBidAssetWorker.ts",
     "gem:clear": "tsx scraper/clearGemAuctions.ts",
     "gem:clear-db": "tsx scraper/clearGemAuctions.ts",
     "gem:clear:expired": "tsx scraper/clearGemAuctions.ts --expired",

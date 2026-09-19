@@ -50,6 +50,7 @@ interface CliArgs {
   headful: boolean;
   maxPages: number;
   startPage: number;
+  downloadDocs: boolean;
 }
 
 function parseCliArgs(): CliArgs {
@@ -57,9 +58,11 @@ function parseCliArgs(): CliArgs {
   let headful = false;
   let maxPages = 150; // Default limit (covers 1500 bids)
   let startPage = 1;
+  let downloadDocs = false;
 
   for (const arg of args) {
     if (arg === "--headful") headful = true;
+    if (arg === "--download-docs") downloadDocs = true;
     if (arg.startsWith("--max-pages=")) {
       maxPages = parseInt(arg.replace("--max-pages=", ""), 10);
     }
@@ -68,7 +71,7 @@ function parseCliArgs(): CliArgs {
     }
   }
 
-  return { headful, maxPages, startPage };
+  return { headful, maxPages, startPage, downloadDocs };
 }
 
 // ─── Delay Utility ───────────────────────────────────────────────────────────
@@ -81,47 +84,27 @@ function delay(ms: number): Promise<void> {
 // ─── Expired Bids Cleanup ────────────────────────────────────────────────────
 
 async function cleanupExpiredBids(): Promise<void> {
-  log.info("Checking for expired GeM bids...");
+  log.info("Updating status of expired GeM bids...");
 
-  const oneDayAgo = new Date();
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+  const nowIso = new Date().toISOString();
 
-  const { data: expired, error: fetchError } = await supabase
+  // Mark all live bids whose end_date is in the past as closed
+  const { data: updated, error: updateError } = await supabase
     .from("gem_bids")
-    .select("id, bid_number, end_date")
-    .lt("end_date", oneDayAgo.toISOString());
+    .update({ status: "closed", updated_at: nowIso })
+    .eq("status", "live")
+    .lt("end_date", nowIso)
+    .select("id, bid_number");
 
-  if (fetchError) {
-    log.error({ error: fetchError.message }, "Failed to fetch expired GeM bids");
+  if (updateError) {
+    log.error({ error: updateError.message }, "Failed to update expired GeM bids status");
     return;
   }
 
-  if (!expired || expired.length === 0) {
-    log.info("No expired GeM bids found to purge.");
-    return;
-  }
-
-  log.info({ count: expired.length }, `Purging expired GeM bids...`);
-
-  // Write audit entries
-  const auditLogs = expired.map(item => ({
-    action: "gem_bid_deleted",
-    entity_type: "gem_bid",
-    details: { bid_number: item.bid_number, expired_at: item.end_date }
-  }));
-
-  const { error: logError } = await supabase.from("audit_logs").insert(auditLogs);
-  if (logError) {
-    log.error({ error: logError.message }, "Failed to write expired bids audit logs");
-  }
-
-  const ids = expired.map(item => item.id);
-  const { error: deleteError } = await supabase.from("gem_bids").delete().in("id", ids);
-
-  if (deleteError) {
-    log.error({ error: deleteError.message }, "Failed to delete expired bids records");
+  if (updated && updated.length > 0) {
+    log.info({ count: updated.length }, "Updated expired GeM bids to closed status.");
   } else {
-    log.info({ count: expired.length }, "Expired GeM bids purged successfully.");
+    log.info("No expired GeM bids found to update.");
   }
 }
 
@@ -314,6 +297,17 @@ async function runScraper() {
           ? item.document_urls.map((u: string) => u.startsWith("http") ? u : `https://bidplus.gem.gov.in/${u.replace(/^\/+/, '')}`)
           : [absoluteSourceUrl];
           
+        // Compute dynamic status based on start & end dates
+        const nowMs = Date.now();
+        const startMs = startDate ? new Date(startDate).getTime() : 0;
+        const endMs = endDate ? new Date(endDate).getTime() : 0;
+        let calculatedStatus = "live";
+        if (endMs > 0 && nowMs > endMs) {
+          calculatedStatus = "closed";
+        } else if (startMs > 0 && nowMs < startMs) {
+          calculatedStatus = "upcoming";
+        }
+
         return {
           bid_number: item.bid_number,
           ra_number: item.ra_number || undefined,
@@ -322,13 +316,14 @@ async function runScraper() {
           department_name: item.department_name || undefined,
           start_date: startDate,
           end_date: endDate,
-          status: "live",
+          status: calculatedStatus,
           document_url: absoluteSourceUrl || undefined,
           ra_document_url: absoluteRaUrl || undefined,
           document_urls: absoluteDocUrls.length > 0 ? absoluteDocUrls : undefined,
           corrigendum_urls: absoluteCorrigendumUrls.length > 0 ? absoluteCorrigendumUrls : undefined,
           category_name,
           raw_description: item.raw_description || undefined,
+          processing_status: "pending",
         };
       });
       

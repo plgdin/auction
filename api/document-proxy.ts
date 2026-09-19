@@ -2,7 +2,7 @@ import https from 'https';
 import http from 'http';
 import { URL } from 'url';
 import { isAllowedOrigin } from './_utils/cors.js';
-import { checkFileExistsInStorage, supabase } from '../scraper/utils/common/storage.js';
+import { checkFileExistsInStorage, uploadToStorage, supabase } from '../scraper/utils/common/storage.js';
 
 // Allowlist of trusted auction sources to protect against SSRF (OWASP A10 Compliance)
 const ALLOWED_HOSTNAMES = [
@@ -137,6 +137,65 @@ export default async function handler(req: any, res: any): Promise<void> {
     }
   }
 
+  // 0-Latency Supabase Storage Cache Check for GeM Bids
+  if (parsedTarget.hostname.includes('bidplus.gem.gov.in') || customFilename.includes('GeM_Bid_') || rawUrl.includes('showbidDocument')) {
+    const bidNumberMatch =
+      customFilename.match(/GeM_Bid_([a-zA-Z0-9_-]+?)(?:_Attachment|_Notice|\.pdf|$)/i) ||
+      rawUrl.match(/showbidDocument\/([a-zA-Z0-9_%-]+)/i);
+    
+    if (bidNumberMatch) {
+      const rawCaptured = decodeURIComponent(bidNumberMatch[1]);
+      const bidRawId = rawCaptured.replace(/_/g, '/');
+      const sanitizedBidNo = rawCaptured.replace(/[^a-zA-Z0-9_-]/g, '_');
+      try {
+        const { data: bidRecord } = await supabase
+          .from('gem_bids')
+          .select('document_url, document_urls')
+          .or(`bid_number.eq.${bidRawId},bid_number.eq.${rawCaptured},document_url.eq.${rawUrl}`)
+          .maybeSingle();
+
+        const cloudUrl = (bidRecord?.document_url && bidRecord.document_url.includes('supabase.co'))
+          ? bidRecord.document_url
+          : (bidRecord?.document_urls?.find((u: string) => u.includes('supabase.co')));
+
+        if (cloudUrl) {
+          const origin = req.headers.origin || req.headers.Origin || '';
+          const corsOrigin = isAllowedOrigin(origin) ? origin : (process.env.NODE_ENV === 'production' ? 'https://lelam.co' : '*');
+          res.writeHead(302, {
+            Location: cloudUrl,
+            'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+            'Access-Control-Allow-Origin': corsOrigin,
+          });
+          res.end();
+          return;
+        }
+
+        // Storage paths check
+        const storagePaths = [
+          `gem-bids/${sanitizedBidNo}/official_bid_document.pdf`,
+          `gem-bids/${sanitizedBidNo}/document_1.pdf`,
+        ];
+
+        for (const storagePath of storagePaths) {
+          const { exists, publicUrl } = await checkFileExistsInStorage(storagePath);
+          if (exists && publicUrl) {
+            const origin = req.headers.origin || req.headers.Origin || '';
+            const corsOrigin = isAllowedOrigin(origin) ? origin : (process.env.NODE_ENV === 'production' ? 'https://lelam.co' : '*');
+            res.writeHead(302, {
+              Location: publicUrl,
+              'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+              'Access-Control-Allow-Origin': corsOrigin,
+            });
+            res.end();
+            return;
+          }
+        }
+      } catch {
+        // Fallback to upstream fetch
+      }
+    }
+  }
+
   try {
     let sessionCookies = '';
 
@@ -149,12 +208,19 @@ export default async function handler(req: any, res: any): Promise<void> {
       }
     }
 
+    // Determine correct Referer header (bidplus requires /all-bids to avoid hang/timeout)
+    const referer = parsedTarget.hostname.includes('bidplus.gem.gov.in')
+      ? 'https://bidplus.gem.gov.in/all-bids'
+      : `${parsedTarget.protocol}//${parsedTarget.hostname}/`;
+
+    const isGemDomain = parsedTarget.hostname.includes('gem.gov.in');
+
     // Prepare upstream request options
     const headers: Record<string, string> = {
       'User-Agent': DEFAULT_USER_AGENT,
       Accept: 'application/pdf,application/octet-stream,text/html,*/*',
       'Accept-Language': 'en-US,en;q=0.9',
-      Referer: `${parsedTarget.protocol}//${parsedTarget.hostname}/`,
+      Referer: referer,
     };
 
     if (sessionCookies) {
@@ -162,8 +228,17 @@ export default async function handler(req: any, res: any): Promise<void> {
     }
 
     const client = parsedTarget.protocol === 'https:' ? https : http;
+    const requestOptions: https.RequestOptions = {
+      hostname: parsedTarget.hostname,
+      port: parsedTarget.port || (parsedTarget.protocol === 'https:' ? 443 : 80),
+      path: parsedTarget.pathname + parsedTarget.search,
+      method: 'GET',
+      headers,
+      ...(isGemDomain ? { family: 4 } : {}),
+      timeout: 20000,
+    };
 
-    const proxyReq = client.get(parsedTarget.toString(), { headers }, (proxyRes: any) => {
+    const proxyReq = client.request(requestOptions, (proxyRes: any) => {
       // Handle redirect (e.g. 301, 302)
       if (
         proxyRes.statusCode &&
@@ -184,16 +259,71 @@ export default async function handler(req: any, res: any): Promise<void> {
       const origin = req.headers.origin || req.headers.Origin || '';
       const corsOrigin = isAllowedOrigin(origin) ? origin : (process.env.NODE_ENV === 'production' ? 'https://lelam.co' : '*');
 
-      // If it's a binary PDF, pipe it directly
+      // If it's a binary PDF, collect and stream with exact Content-Length + upload to Supabase Storage
       if (contentType.includes('pdf') || contentType.includes('octet-stream')) {
-        res.writeHead(200, {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `${disposition}; filename="${sanitizedFilename}"`,
-          'Cache-Control': 'public, max-age=86400, s-maxage=86400',
-          'Access-Control-Allow-Origin': corsOrigin,
-          Vary: 'Origin',
+        const chunks: Buffer[] = [];
+        proxyRes.on('data', (chunk: any) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+        proxyRes.on('end', async () => {
+          const buffer = Buffer.concat(chunks);
+          if (!res.headersSent) {
+            res.writeHead(200, {
+              'Content-Type': 'application/pdf',
+              'Content-Disposition': `${disposition}; filename="${sanitizedFilename}"`,
+              'Content-Length': buffer.length,
+              'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+              'Access-Control-Allow-Origin': corsOrigin,
+              Vary: 'Origin',
+            });
+            res.end(buffer);
+          }
+
+          // Asynchronous upload to Supabase Storage for 0-latency future visits
+          try {
+            if (buffer.length > 1000 && buffer.subarray(0, 4).toString('utf-8') === '%PDF') {
+              if (parsedTarget.hostname.includes('bidplus.gem.gov.in') || customFilename.includes('GeM_Bid_')) {
+                const bidNumberMatch =
+                  customFilename.match(/GeM_Bid_([a-zA-Z0-9_-]+?)(?:_Attachment|_Notice|\.pdf|$)/i) ||
+                  rawUrl.match(/showbidDocument\/([a-zA-Z0-9_%-]+)/i);
+                if (bidNumberMatch) {
+                  const rawCaptured = decodeURIComponent(bidNumberMatch[1]);
+                  const bidRawId = rawCaptured.replace(/_/g, '/');
+                  const sanitizedBidNo = rawCaptured.replace(/[^a-zA-Z0-9_-]/g, '_');
+                  const storagePath = `gem-bids/${sanitizedBidNo}/official_bid_document.pdf`;
+                  const publicUrl = await uploadToStorage(storagePath, buffer, 'application/pdf');
+                  await supabase
+                    .from('gem_bids')
+                    .update({
+                      document_url: publicUrl,
+                      document_urls: [publicUrl],
+                      processing_status: 'completed',
+                      updated_at: new Date().toISOString(),
+                    })
+                    .or(`bid_number.eq.${bidRawId},bid_number.eq.${rawCaptured},document_url.eq.${rawUrl}`);
+                }
+              } else if (parsedTarget.hostname.includes('forwardauction.gem.gov.in') || customFilename.includes('GeM_Auction_')) {
+                const gemIdMatch =
+                  rawUrl.match(/(?:view-auction-notice|eauction-download-document)\/(\d+)/i) ||
+                  customFilename.match(/GeM_(?:Auction_)?(\d+)/i);
+                if (gemIdMatch) {
+                  const auctionId = gemIdMatch[1];
+                  const storagePath = `gem-documents/${auctionId}/official_notice.pdf`;
+                  const publicUrl = await uploadToStorage(storagePath, buffer, 'application/pdf');
+                  await supabase
+                    .from('gem_auctions')
+                    .update({
+                      document_url: publicUrl,
+                      document_urls: [publicUrl],
+                      documents_archived: true,
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq('gem_auction_id', auctionId);
+                }
+              }
+            }
+          } catch (storageErr) {
+            console.warn('Background Supabase storage upload warning:', storageErr);
+          }
         });
-        proxyRes.pipe(res);
         return;
       }
 
@@ -235,13 +365,14 @@ export default async function handler(req: any, res: any): Promise<void> {
       }
     });
 
-    proxyReq.setTimeout(30000, () => {
+    proxyReq.setTimeout(25000, () => {
       proxyReq.destroy();
       if (!res.headersSent) {
         res.writeHead(504, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Gateway timeout fetching document' }));
       }
     });
+    proxyReq.end();
   } catch (err: any) {
     console.error('Unhandled document proxy error:', err);
     if (!res.headersSent) {
@@ -259,6 +390,7 @@ function getGeMSessionCookies(): Promise<string> {
     const homeReq = https.get(
       'https://forwardauction.gem.gov.in/eprocure/home',
       {
+        family: 4,
         headers: {
           'User-Agent': DEFAULT_USER_AGENT,
           Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
