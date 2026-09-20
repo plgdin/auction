@@ -468,60 +468,154 @@ export const GemCard = memo(function GemCard({
     );
   }
 
-  // Renders authentic printed government document catalogue preview (matching MSTC document catalogue sheet from Image 2)
-  const renderDocumentSheetPreview = () => (
-    <div 
-      onClick={() => onPreview(item)}
-      className="w-full h-full bg-white p-2 border border-slate-300 rounded-xl overflow-hidden flex flex-col justify-start select-none group/doc shadow-2xs hover:border-primary transition-all duration-200 cursor-pointer"
-      title="Click to view full official catalogue"
-    >
-      {/* Outer border of printed catalogue sheet */}
-      <div className="w-full h-full border border-slate-800 bg-white p-2 flex flex-col justify-between">
-        {/* Top Header Stamps */}
-        <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
-          {/* Left: EK KAAM DESH KE NAAM Badge */}
-          <div className="border border-amber-600/90 bg-amber-50/70 px-1.5 py-0.5 rounded-[2px] shadow-3xs flex flex-col items-center justify-center leading-none">
-            <span className="text-[6.5px] font-black tracking-tight text-slate-800">EK KAAM</span>
-            <span className="text-[7px] font-black tracking-tight text-emerald-800">DESH KE NAAM</span>
+  const formatGovDate = (dStr?: string | null): string => {
+    if (!dStr) return '17-08-2026 15:00:00';
+    const d = new Date(dStr);
+    if (isNaN(d.getTime())) return dStr;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+
+  const formatSimpleDate = (dStr?: string | null): string => {
+    if (!dStr) return '06-08-2026';
+    const d = new Date(dStr);
+    if (isNaN(d.getTime())) return dStr;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
+  };
+
+  // Renders authentic official GeM Auction Document preview (matching official GeM portal document)
+  const renderDocumentSheetPreview = () => {
+    const datedStr = formatSimpleDate(item.created_at || item.scraped_at || item.auction_start_date);
+    const endDateTimeStr = formatGovDate(item.auction_end_date);
+    const startDateTimeStr = formatGovDate(item.auction_start_date);
+    const ministryName = item.ministry || (item.state ? `Govt of ${item.state}` : 'Government of India');
+    const departmentName = item.department || 'Government Department';
+    const organisationName = item.organisation || orgName;
+
+    return (
+      <div 
+        onClick={() => onPreview(item)}
+        className="w-full h-full bg-slate-100 p-2 overflow-hidden flex flex-col justify-start select-none group/doc shadow-2xs hover:border-primary transition-all duration-200 cursor-pointer"
+        title="Click to view official GeM Auction Document"
+      >
+        {/* Official A4 Document Sheet with border */}
+        <div className="w-full h-full border border-slate-900 bg-white p-2 flex flex-col justify-between overflow-hidden">
+          {/* Top Header */}
+          <div className="flex items-start justify-between border-b border-slate-300 pb-1">
+            {/* Left: GeM Logo + 75 Azadi Ka Amrit Mahotsav */}
+            <div className="flex items-center">
+              {/* GeM Multi-color Star Logo */}
+              <div className="flex items-center gap-1">
+                <svg viewBox="0 0 40 40" className="w-5 h-5 shrink-0">
+                  <polygon points="20,4 25,16 16,13" fill="#E65100" />
+                  <polygon points="20,4 32,10 25,16" fill="#FBC02D" />
+                  <polygon points="32,10 36,22 25,16" fill="#4CAF50" />
+                  <polygon points="36,22 28,30 25,16" fill="#00ACC1" />
+                  <polygon points="28,30 20,36 21,23" fill="#1E88E5" />
+                  <polygon points="20,36 12,30 21,23" fill="#5E35B1" />
+                  <polygon points="12,30 4,22 16,19" fill="#8E24AA" />
+                  <polygon points="4,22 8,10 16,13" fill="#D81B60" />
+                </svg>
+                <div className="flex flex-col leading-none">
+                  <span className="text-[10px] font-black tracking-tight text-slate-800 font-sans">GeM</span>
+                  <span className="text-[4.5px] font-semibold text-slate-500 tracking-tighter">Government<br/>e Marketplace</span>
+                </div>
+              </div>
+
+              {/* 75 Azadi Ka Amrit Mahotsav Logo */}
+              <div className="flex items-center gap-0.5 border-l border-slate-300 pl-1.5 ml-1.5">
+                <div className="flex flex-col leading-none">
+                  <span className="text-[7.5px] font-black text-slate-800 italic">75<span className="text-amber-600 text-[5.5px]">th</span></span>
+                  <div className="flex h-[2px] w-5 rounded-[0.5px] overflow-hidden my-0.5">
+                    <span className="bg-[#FF9933] w-1/3 h-full"></span>
+                    <span className="bg-white w-1/3 h-full border-x border-slate-300"></span>
+                    <span className="bg-[#138808] w-1/3 h-full"></span>
+                  </div>
+                  <span className="text-[4px] font-bold text-slate-600 tracking-tighter leading-tight">Azadi Ka<br/>Amrit Mahotsav</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: नीलामी संख्या/Auction Number & दिनांक /Dated */}
+            <div className="text-right leading-tight font-sans">
+              <div className="text-[6.5px] font-semibold text-slate-800">
+                <span className="text-slate-600">नीलामी संख्या/Auction No: </span>
+                <span className="font-mono font-bold text-slate-950">{shortId}</span>
+              </div>
+              <div className="text-[6.5px] text-slate-600 mt-0.5">
+                <span>दिनांक /Dated: </span>
+                <span className="font-semibold text-slate-800">{datedStr}</span>
+              </div>
+            </div>
           </div>
 
-          {/* Center Logo/Emblem */}
-          <div className="w-6 h-6 rounded border border-blue-900 bg-blue-950 flex items-center justify-center text-white shadow-3xs">
-            <Landmark className="w-3.5 h-3.5 text-white" />
+          {/* Document Title */}
+          <div className="text-center font-bold text-[8px] text-slate-950 font-sans py-0.5 tracking-wide">
+            नीलामी दस्तावेज़ / Auction Document
           </div>
 
-          {/* Right: e-assuring INDIA Stamp */}
-          <div className="border border-slate-700 bg-slate-50 px-1.5 py-0.5 rounded-[2px] shadow-3xs flex flex-col items-end justify-center leading-none">
-            <span className="text-[6.5px] font-bold text-blue-900 tracking-tight">e-assuring</span>
-            <span className="text-[7.5px] font-black text-emerald-700 tracking-tight">INDIA</span>
-          </div>
-        </div>
+          {/* Official Document Details Table */}
+          <div className="border border-slate-800 text-[6.5px] font-sans bg-white divide-y divide-slate-800">
+            {/* Header row */}
+            <div className="bg-white py-0.5 text-center font-bold text-[7px] text-slate-900 border-b border-slate-800">
+              नीलामी विवरण/Auction Details
+            </div>
 
-        {/* Gray Band Title */}
-        <div className="bg-slate-200 border-y border-slate-800 py-1 text-center text-[9.5px] font-bold font-serif text-slate-900 uppercase tracking-wide">
-          Detailed Auction Catalogue
-        </div>
+            {/* Row 1: End Date/Time */}
+            <div className="flex divide-x divide-slate-800">
+              <span className="font-bold w-[125px] shrink-0 px-1 py-0.5 text-slate-900 bg-white leading-tight">
+                नीलामी बंद होने की तारीख/समय /End Date/Time
+              </span>
+              <span className="px-1 py-0.5 text-slate-900 font-mono font-semibold truncate leading-tight flex items-center">
+                {endDateTimeStr}
+              </span>
+            </div>
 
-        {/* Structured Grid Table */}
-        <div className="border border-slate-800 text-[8.5px] font-serif divide-y divide-slate-800 bg-white">
-          <div className="flex divide-x divide-slate-800">
-            <span className="font-bold w-24 shrink-0 px-1.5 py-0.5 text-slate-900 bg-slate-100/70">Auction Number:</span>
-            <span className="px-1.5 py-0.5 text-slate-900 font-mono font-medium truncate">{shortId}</span>
-          </div>
-          <div className="flex divide-x divide-slate-800">
-            <span className="font-bold w-24 shrink-0 px-1.5 py-0.5 text-slate-900 bg-slate-100/70">Auction Type:</span>
-            <span className="px-1.5 py-0.5 text-slate-900 truncate">
-              {item.is_reauction ? 'Re-Auction • Forward Auction' : 'O-General Auction'}
-            </span>
-          </div>
-          <div className="flex divide-x divide-slate-800">
-            <span className="font-bold w-24 shrink-0 px-1.5 py-0.5 text-slate-900 bg-slate-100/70">Department:</span>
-            <span className="px-1.5 py-0.5 text-slate-900 truncate">{orgName}</span>
+            {/* Row 2: Opening Date/Time */}
+            <div className="flex divide-x divide-slate-800">
+              <span className="font-bold w-[125px] shrink-0 px-1 py-0.5 text-slate-900 bg-white leading-tight">
+                नीलामी खुलने की तारीख/समय /Opening Date/Time
+              </span>
+              <span className="px-1 py-0.5 text-slate-900 font-mono font-semibold truncate leading-tight flex items-center">
+                {startDateTimeStr}
+              </span>
+            </div>
+
+            {/* Row 3: Ministry Name */}
+            <div className="flex divide-x divide-slate-800">
+              <span className="font-bold w-[125px] shrink-0 px-1 py-0.5 text-slate-900 bg-white leading-tight">
+                मंत्रालय/राज्य का नाम/Ministry/State Name
+              </span>
+              <span className="px-1 py-0.5 text-slate-900 font-medium truncate leading-tight flex items-center">
+                {ministryName}
+              </span>
+            </div>
+
+            {/* Row 4: Department Name */}
+            <div className="flex divide-x divide-slate-800">
+              <span className="font-bold w-[125px] shrink-0 px-1 py-0.5 text-slate-900 bg-white leading-tight">
+                विभाग का नाम/Department Name
+              </span>
+              <span className="px-1 py-0.5 text-slate-900 font-medium truncate leading-tight flex items-center">
+                {departmentName}
+              </span>
+            </div>
+
+            {/* Row 5: Organisation Name */}
+            <div className="flex divide-x divide-slate-800">
+              <span className="font-bold w-[125px] shrink-0 px-1 py-0.5 text-slate-900 bg-white leading-tight">
+                संगठन का नाम/Organisation Name
+              </span>
+              <span className="px-1 py-0.5 text-slate-900 font-medium truncate leading-tight flex items-center">
+                {organisationName}
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ─── GRID VIEW ─────────────────────────────────────────────────────────────
   return (
