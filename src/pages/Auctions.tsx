@@ -148,7 +148,7 @@ export function Auctions() {
   const isBusinessUser = (isAuthenticated && (profile?.subscription_plan === 'pro' || profile?.subscription_plan === 'enterprise')) || profile?.role === 'admin' || profile?.role === 'superadmin';
 
   const rawTab = searchParams.get('tab');
-  const activeTab = rawTab === 'baanknet' ? 'baanknet' : rawTab === 'gem' ? 'gem' : rawTab === 'gem-bids' ? 'gem-bids' : 'mstc';
+  const activeTab = rawTab === 'baanknet' ? 'baanknet' : rawTab === 'gem-bids' ? 'gem-bids' : rawTab === 'gem' ? 'gem' : 'mstc';
 
   const portalSeoMap = {
     mstc: {
@@ -279,11 +279,11 @@ export function Auctions() {
     if (hasAccess('baanknet')) {
       list.push({ id: 'baanknet', label: 'BaankNet Bank Auctions', beta: true });
     }
-    if (hasAccess('gem_auctions')) {
-      list.push({ id: 'gem', label: 'GeM Forward Auctions', beta: true });
-    }
     if (hasAccess('gem_bids') || hasAccess('gem_pbp')) {
       list.push({ id: 'gem-bids', label: 'GeM Procurement Bids', beta: true });
+    }
+    if (hasAccess('gem_auctions')) {
+      list.push({ id: 'gem', label: 'GeM Forward Auctions', beta: true });
     }
     return list;
   }, [hasAccess]);
