@@ -461,7 +461,7 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
     return null;
   }, [item.preview_url, item.discovered_api_attachments, item.document_urls]);
 
-  // Consolidated schedule of lots / BOQ items from scrape and document OCR
+  // Consolidated schedule of lots / BOQ items from scrape, document OCR, and title/description parsing
   const displayLots = useMemo(() => {
     if (item.items_schedule && item.items_schedule.length > 0) return item.items_schedule;
     if (item.boq_items && Array.isArray(item.boq_items) && item.boq_items.length > 0) {
@@ -474,8 +474,42 @@ export const GemDetailsModal: React.FC<GemDetailsModalProps> = ({
         specs: b.specs || b.specification || b.remarks || '',
       }));
     }
+
+    // Fallback: parse item.detailed_description or item.title if it contains comma-separated or numbered items
+    const rawText = item.detailed_description || item.raw_description || item.title;
+    if (rawText) {
+      const numberedSplit = rawText.split(/,\s*(?=\d+[\s.-])/g);
+      if (numberedSplit.length > 1) {
+        return numberedSplit.map((chunk, idx) => {
+          const match = chunk.match(/^(\d+)[\s.-]*(.+)$/);
+          return {
+            item_no: match ? parseInt(match[1], 10) || idx + 1 : idx + 1,
+            item_name: (match ? match[2] : chunk).trim(),
+            quantity: '',
+            brand_name: '',
+            purchased_year: '',
+            specs: 'As per Auction Notice',
+          };
+        });
+      }
+      const commaSplit = rawText.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+      if (commaSplit.length > 1 && commaSplit.length <= 50) {
+        return commaSplit.map((chunk, idx) => {
+          const match = chunk.match(/^(\d+)[\s.-]*(.+)$/);
+          return {
+            item_no: match ? parseInt(match[1], 10) || idx + 1 : idx + 1,
+            item_name: (match ? match[2] : chunk).trim(),
+            quantity: '',
+            brand_name: '',
+            purchased_year: '',
+            specs: 'As per Auction Notice',
+          };
+        });
+      }
+    }
+
     return [];
-  }, [item.items_schedule, item.boq_items]);
+  }, [item.items_schedule, item.boq_items, item.detailed_description, item.raw_description, item.title]);
 
   return (
     <div 

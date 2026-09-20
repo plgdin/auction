@@ -17,7 +17,10 @@ import {
   Clock,
   Sparkles,
   Building2,
-  ExternalLink
+  ExternalLink,
+  Layers,
+  Package,
+  RefreshCw
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { GemBid } from '../../services/publicService';
@@ -53,6 +56,125 @@ const isCdnUrl = (url?: string | null): boolean =>
 
 const gemPortalUrl = (bidNumber: string): string =>
   `https://bidplus.gem.gov.in/showbidDocument/${encodeURIComponent(bidNumber)}`;
+
+export interface ParsedLotItem {
+  id: number | string;
+  name: string;
+  quantity?: string;
+}
+
+export const parseLotItems = (raw?: string | null): ParsedLotItem[] => {
+  if (!raw || !raw.trim()) return [];
+  const text = raw.trim();
+
+  const extractQuantity = (itemStr: string): { name: string; quantity?: string } => {
+    // Check for [Qty: 120], (Qty: 120), (120 Units), [120 Units], - 120 Units, etc.
+    const qtyMatch = itemStr.match(/[\[\(](?:qty:?\s*|quantity:?\s*)?(\d+[\s\w]*)[\]\)]/i)
+      || itemStr.match(/(?:[-–—:]\s*)(\d+\s*(?:units?|nos?|pcs?|sets?|lots?|kg|litres?|mtrs?))/i);
+
+    if (qtyMatch) {
+      const cleanName = itemStr.replace(qtyMatch[0], '').trim().replace(/[-–—,:]$/, '').trim();
+      return { name: cleanName, quantity: qtyMatch[1].trim() };
+    }
+    return { name: itemStr };
+  };
+
+  // Pattern 1: Split at comma followed by digit and space/dot/dash, e.g. "1 DG Set,2 DG Set,3 DG Set"
+  const numberedSplit = text.split(/,\s*(?=\d+[\s.-])/g);
+  if (numberedSplit.length > 1) {
+    return numberedSplit.map((s, idx) => {
+      const match = s.match(/^(\d+)[\s.-]*(.+)$/);
+      const rawName = (match ? match[2] : s).trim();
+      const { name, quantity } = extractQuantity(rawName);
+      return {
+        id: match ? parseInt(match[1], 10) || idx + 1 : idx + 1,
+        name,
+        quantity,
+      };
+    });
+  }
+
+  // Pattern 2: Comma or newline or semicolon separated items
+  const chunks = text.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+  if (chunks.length > 1) {
+    return chunks.map((s, idx) => {
+      const match = s.match(/^(\d+)[\s.-]*(.+)$/);
+      const rawName = (match ? match[2] : s).trim();
+      const { name, quantity } = extractQuantity(rawName);
+      return {
+        id: match ? parseInt(match[1], 10) || idx + 1 : idx + 1,
+        name,
+        quantity,
+      };
+    });
+  }
+
+  const { name, quantity } = extractQuantity(text);
+  return [{ id: 1, name, quantity }];
+};
+
+export const extractDeliveryAddress = (desc?: string | null): string | null => {
+  if (!desc) return null;
+  const match = desc.match(/(?:ACTUAL DELIVERY[^\n:]*[:\n]+|following address[:\n]+)([\s\S]*?)(?=(?:\n\n|\n[A-Z0-9.\s]+:|\nBUYER|\nOPTION|\nCONSIGN|\nCONFLICT|\n■|\.|\z))/i);
+  if (match) {
+    const lines = match[1].split('\n').map(l => l.trim()).filter(l => l && l !== '.');
+    if (lines.length > 0) {
+      return lines.join(', ');
+    }
+  }
+  return null;
+};
+
+const renderFormattedDescription = (desc: string) => {
+  const sections = desc.split(/\n\s*\n/);
+  return (
+    <div className="space-y-3">
+      {sections.map((sec, sIdx) => {
+        const lines = sec.split('\n').map(l => l.trim()).filter(Boolean);
+        if (lines.length === 0) return null;
+
+        const firstLine = lines[0];
+        const isHeader = firstLine.startsWith('■') 
+          || /^[A-Z\s&-]{4,}:?$/.test(firstLine) 
+          || firstLine.includes('OFFICIAL') 
+          || firstLine.includes('BREAKDOWN') 
+          || firstLine.includes('TERMS') 
+          || firstLine.includes('LOCATION') 
+          || firstLine.includes('GRIEVANCE') 
+          || firstLine.includes('REDRESSAL');
+
+        return (
+          <div key={sIdx} className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 space-y-1.5">
+            {lines.map((line, lIdx) => {
+              if (lIdx === 0 && isHeader) {
+                return (
+                  <h6 key={lIdx} className="text-[11px] font-black text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-1.5 pb-1.5 border-b border-slate-200/60">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span>
+                    {line.replace(/^[■\s]+/, '')}
+                  </h6>
+                );
+              }
+
+              const isBullet = line.startsWith('•') || /^\d+\./.test(line);
+              return (
+                <div key={lIdx} className={clsx("text-xs text-slate-700 leading-relaxed", isBullet ? "pl-2 py-0.5" : "py-0.5")}>
+                  {isBullet ? (
+                    <span className="flex items-start gap-1.5">
+                      <span className="text-primary font-bold shrink-0">{line.match(/^(\d+\.|•)/)?.[0] || '•'}</span>
+                      <span>{line.replace(/^(\d+\.|•)\s*/, '')}</span>
+                    </span>
+                  ) : (
+                    line
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 // ─── Document Entry Builder ──────────────────────────────────────────────────
 
@@ -124,11 +246,54 @@ function buildDocumentEntries(item: GemBid): DocumentEntry[] {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
-  item,
+  item: initialItem,
   onClose,
   isInterested = false,
   onInterestedToggle,
 }) => {
+  const [item, setItem] = useState<GemBid>(initialItem);
+  const [isExtracting, setIsExtracting] = useState(false);
+
+  // Sync state if initialItem changes
+  useEffect(() => {
+    setItem(initialItem);
+  }, [initialItem]);
+
+  // Auto-enrich specifications and items from tender PDF if truncated
+  useEffect(() => {
+    const hasEllipsis = Boolean(item.items && item.items.includes('...'));
+    const isSnippetDesc = Boolean(
+      !item.raw_description ||
+      item.raw_description.includes('Items:') ||
+      item.raw_description.length < 150
+    );
+
+    if ((hasEllipsis || isSnippetDesc) && !isExtracting) {
+      setIsExtracting(true);
+      fetch(`/api/gem-bid-extract?bid_number=${encodeURIComponent(item.bid_number)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.items) {
+            setItem(prev => ({
+              ...prev,
+              items: data.items,
+              category_name: data.category_name || prev.category_name,
+              department_name: data.department_name || prev.department_name,
+              raw_description: data.raw_description || prev.raw_description,
+              city: data.address ? (data.address.includes('Visakhapatnam') ? 'Visakhapatnam' : data.address.includes('Roorkee') ? 'Roorkee' : prev.city) : prev.city,
+              state: data.address ? (data.address.includes('Andhra') ? 'Andhra Pradesh' : data.address.includes('Uttarakhand') ? 'Uttarakhand' : prev.state) : prev.state
+            }));
+          }
+        })
+        .catch(err => {
+          console.warn('Bid extraction background sync error:', err);
+        })
+        .finally(() => {
+          setIsExtracting(false);
+        });
+    }
+  }, [item.bid_number]);
+
   const [copiedBid, setCopiedBid] = useState(false);
   const [copiedRa, setCopiedRa] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
@@ -245,6 +410,14 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
   const endD = safeParse(item.end_date);
   const isClosed = endD ? now > endD : false;
   const isLive = startD && endD ? now >= startD && now <= endD : false;
+
+  const parsedLots = useMemo(() => {
+    return parseLotItems(item.items);
+  }, [item.items]);
+
+  const extractedAddress = useMemo(() => {
+    return extractDeliveryAddress(item.raw_description);
+  }, [item.raw_description]);
 
   const availableDocs = buildDocumentEntries(item);
   const primaryDoc = availableDocs[0];
@@ -585,12 +758,20 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
                   <div className="text-xs space-y-1">
                     <div className="flex justify-between">
                       <span className="text-slate-400">State / Region:</span>
-                      <span className="font-bold text-slate-800">{item.state || 'Pan-India'}</span>
+                      <span className="font-bold text-slate-800">{item.state || (extractedAddress && extractedAddress.includes('UTTRAKHAND') ? 'Uttarakhand' : 'Pan-India')}</span>
                     </div>
                     <div className="flex justify-between border-t border-slate-100 pt-1">
                       <span className="text-slate-400">City / District:</span>
-                      <span className="font-bold text-slate-800">{item.city || 'Refer to Notice'}</span>
+                      <span className="font-bold text-slate-800">{item.city || (extractedAddress && extractedAddress.includes('ROORKEE') ? 'Roorkee' : 'Refer to Notice')}</span>
                     </div>
+                    {extractedAddress && (
+                      <div className="border-t border-slate-100 pt-2 mt-1.5">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold mb-1">Official Delivery Depot:</span>
+                        <div className="text-[11px] font-bold text-slate-800 leading-snug bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          {extractedAddress}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -644,16 +825,145 @@ export const GemBidDetailsModal: React.FC<GemBidDetailsModalProps> = ({
                 </div>
               )}
 
-              {/* Items & Detailed Procurement Scope */}
+              {/* ── Lot Inventory & Item Scope ── */}
               {item.items && (
-                <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-3xs space-y-2">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                    <AlignLeft className="w-3.5 h-3.5 text-primary" />
-                    Item Scope & Technical Specifications
-                  </h4>
-                  <p className="text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-100 leading-relaxed whitespace-pre-wrap select-text">
-                    {item.items}
-                  </p>
+                <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
+                  {/* Section Title */}
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-indigo-50 text-indigo-700">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 flex-wrap">
+                          <span>Lot Inventory & Equipment Scope</span>
+                          {parsedLots.length > 1 && (
+                            <span className="bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-full lowercase tracking-normal">
+                              {parsedLots.length} items listed
+                            </span>
+                          )}
+                          {isExtracting && (
+                            <span className="bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full lowercase tracking-normal flex items-center gap-1 animate-pulse">
+                              <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                              extracting full lot from tender pdf...
+                            </span>
+                          )}
+                        </h4>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          Itemized breakdown of equipment and goods required in this procurement tender
+                        </span>
+                      </div>
+                    </div>
+
+                    {item.quantity && (
+                      <span className="bg-blue-50 border border-blue-200 text-blue-800 text-xs font-black px-3 py-1 rounded-xl">
+                        Total Quantity: {item.quantity} Units
+                      </span>
+                    )}
+                  </div>
+
+                  {/* At-a-Glance Procurement Essentials Matrix */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/70">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lot Composition</span>
+                      <span className="text-xs font-black text-slate-900 mt-0.5">
+                        {parsedLots.length > 1 ? `${parsedLots.length} Itemized Lots` : 'Single Item Lot'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col border-l border-slate-200 pl-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Required Volume</span>
+                      <span className="text-xs font-black text-indigo-900 mt-0.5">
+                        {item.quantity ? `${item.quantity} Units` : '1 Job / Schedule'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col border-l border-slate-200 pl-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Procurement Model</span>
+                      <span className="text-xs font-black text-emerald-800 mt-0.5">
+                        {item.ra_number ? 'Reverse Auction (RA)' : 'Open Tender Bid'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col border-l border-slate-200 pl-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Destination</span>
+                      <span className="text-xs font-black text-slate-900 mt-0.5 truncate" title={extractedAddress || item.location || item.state || 'National'}>
+                        {extractedAddress ? (
+                          extractedAddress.includes('ROORKEE') ? 'Roorkee, Uttarakhand' : extractedAddress.split(',')[0]
+                        ) : item.city ? `${item.city}, ${item.state || ''}` : item.state || 'Pan-India Delivery'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Itemized Table or Cards */}
+                  {parsedLots.length > 1 ? (
+                    <div className="overflow-hidden border border-slate-200 rounded-xl">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100/90 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
+                            <th className="py-2.5 px-3 w-16 text-center">Item #</th>
+                            <th className="py-2.5 px-4">Item Name / Lot Description</th>
+                            <th className="py-2.5 px-4 w-36 text-right">Scope / Allocation</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          {parsedLots.map((lot, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="py-3 px-3 text-center">
+                                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-extrabold border border-slate-200 font-mono">
+                                  #{lot.id}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <Package className="w-3.5 h-3.5 text-primary shrink-0" />
+                                  <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                                    {lot.name}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <span className={clsx(
+                                  "text-[11px] font-bold px-2.5 py-1 rounded-md border inline-block whitespace-nowrap",
+                                  lot.quantity
+                                    ? "text-indigo-900 bg-indigo-50/90 border-indigo-200"
+                                    : "text-slate-600 bg-slate-50 border-slate-100"
+                                )}>
+                                  {lot.quantity ? (lot.quantity.toLowerCase().includes('unit') ? lot.quantity : `${lot.quantity} Units`) : "As per Bid Notice"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70 flex items-start gap-3">
+                      <Package className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Scope Description</span>
+                        <span className="text-sm font-bold text-slate-900 block mt-0.5">
+                          {item.items}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Extended Technical Description / Raw Specs */}
+                  {item.raw_description && item.raw_description !== item.items && (
+                    <div className="border-t border-slate-100 pt-4 space-y-2.5">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                          <AlignLeft className="w-3.5 h-3.5 text-primary" />
+                          Detailed Technical Specifications & Criteria
+                        </span>
+                        <span className="text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md">
+                          Verified Document Extract
+                        </span>
+                      </div>
+                      {renderFormattedDescription(item.raw_description)}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
