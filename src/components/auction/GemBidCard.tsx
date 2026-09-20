@@ -1,23 +1,20 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { 
   Eye, 
-  Building2, 
   Calendar, 
   Clock, 
-  Landmark, 
   Copy, 
   Check, 
-  Download, 
-  FileText, 
-  RefreshCw,
-  Sparkles,
-  ShieldCheck,
-  AlertTriangle,
-  FileCheck2
+  Info,
+  Layers,
+  MapPin,
+  FileText,
+  Landmark
 } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import type { GemBid } from '../../services/publicService';
 import clsx from 'clsx';
+import { storageService } from '../../services/storageService';
 import { cleanCategoryName } from '../../utils/cleanCategory';
 
 interface GemBidCardProps {
@@ -34,19 +31,6 @@ const parseSafeDate = (dStr?: string | null): Date | null => {
   if (!dStr) return null;
   const d = new Date(dStr);
   return isNaN(d.getTime()) ? null : d;
-};
-
-const gemPortalUrl = (bidNumber: string): string =>
-  `https://bidplus.gem.gov.in/showbidDocument/${encodeURIComponent(bidNumber)}`;
-
-const isCdnUrl = (url?: string | null): boolean =>
-  Boolean(url && url.includes('supabase.co'));
-
-const getDocUrl = (item: GemBid): string => {
-  if (isCdnUrl(item.document_url)) return item.document_url!;
-  const rawUrl = item.document_url || gemPortalUrl(item.bid_number);
-  const bidSafe = item.bid_number.replace(/[^a-zA-Z0-9_-]/g, '_');
-  return `/api/document-proxy?url=${encodeURIComponent(rawUrl)}&filename=GeM_Bid_${bidSafe}.pdf&disposition=attachment`;
 };
 
 const formatDateOrdinal = (d: Date): string => {
@@ -76,9 +60,13 @@ export const GemBidCard = memo(function GemBidCard({
   onInterestedToggle,
 }: GemBidCardProps) {
   const [copied, setCopied] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [highResLoaded, setHighResLoaded] = useState(false);
+
   const shortId = item.bid_number || item.id?.substring(0, 8) || 'N/A';
   const cleanBidId = item.bid_number.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const hasDocument = Boolean(item.document_url || item.ra_document_url || (item.document_urls && item.document_urls.length > 0));
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -87,26 +75,57 @@ export const GemBidCard = memo(function GemBidCard({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Only use authentic uploaded images/scans from Supabase Storage — never generic stock photos
-  const authenticImage = useMemo(() => {
-    const rawUrl = (item as any).preview_url || (item as any).image_url;
-    if (!rawUrl || typeof rawUrl !== 'string') return null;
-    if (
-      rawUrl.includes('unsplash.com') ||
-      rawUrl.includes('pexels.com') ||
-      rawUrl.includes('pixabay.com') ||
-      rawUrl.includes('freepik.com') ||
-      rawUrl.includes('stock') ||
-      rawUrl.includes('placeholder')
-    ) {
-      return null;
+  // Preview image resolution
+  const rawDisplayImage = useMemo(() => {
+    const raw = (item as any).preview_url || (item as any).image_url;
+    if (raw && typeof raw === 'string') {
+      if (
+        !raw.includes('unsplash.com') &&
+        !raw.includes('pexels.com') &&
+        !raw.includes('pixabay.com') &&
+        !raw.includes('freepik.com') &&
+        !raw.includes('stock') &&
+        !raw.includes('placeholder')
+      ) {
+        return raw;
+      }
     }
-    // Only allow verified Supabase Storage assets, government portal media, or data URIs
-    if (!rawUrl.includes('supabase.co') && !rawUrl.includes('gem.gov.in') && !rawUrl.startsWith('data:image/')) {
-      return null;
+    return (item.document_url || (item.document_urls && item.document_urls.length > 0)) ? `gem-previews/${cleanBidId}_0.jpg` : null;
+  }, [item, cleanBidId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function resolveImage() {
+      setImageLoading(true);
+      setHighResLoaded(false);
+      if (!rawDisplayImage) {
+        setSignedDisplayImage(null);
+        setImageLoading(false);
+        return;
+      }
+      if (rawDisplayImage.startsWith('http') || rawDisplayImage.startsWith('data:')) {
+        setSignedDisplayImage(rawDisplayImage);
+        setImageLoading(false);
+        return;
+      }
+      try {
+        const signed = await storageService.getSignedUrls([rawDisplayImage]);
+        if (!cancelled) {
+          setSignedDisplayImage(signed[0] || null);
+          setImageLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setSignedDisplayImage(null);
+          setImageLoading(false);
+        }
+      }
     }
-    return rawUrl;
-  }, [item]);
+    resolveImage();
+    return () => {
+      cancelled = true;
+    };
+  }, [rawDisplayImage]);
 
   // ── Date & status calculations ─────────────────────────────────────────────
   const startDate = parseSafeDate(item.start_date);
@@ -117,58 +136,40 @@ export const GemBidCard = memo(function GemBidCard({
   const isStarted = !isClosed && ((startDate && now >= startDate && (!endDate || now <= endDate)) || item.status === 'live');
 
   const diffMs = endDate ? endDate.getTime() - now.getTime() : 0;
-  const diffHoursTotal = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const isUrgent = diffDays >= 0 && diffDays < 3;
+  const isWarning = diffDays >= 3 && diffDays < 7;
 
-  const isUrgent = !isClosed && isStarted && diffHoursTotal >= 0 && diffHoursTotal <= 48;
-
-  // Status Badge Component
-  const renderStatusBadge = () => {
-    if (isClosed) {
-      return (
-        <span className="inline-flex items-center gap-1 font-semibold text-[11px] px-2.5 py-0.5 rounded-full border border-slate-200 text-slate-500 bg-slate-50">
-          <Clock className="w-3 h-3 text-slate-400" />
-          Closed
-        </span>
-      );
-    }
-    if (isUrgent) {
-      return (
-        <span className="inline-flex items-center gap-1.5 font-bold text-[11px] px-2.5 py-0.5 rounded-full border border-rose-200 text-rose-700 bg-rose-50/90 shadow-2xs">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
-          </span>
-          Ending in {diffHoursTotal}h
-        </span>
-      );
-    }
-    if (isStarted) {
-      return (
-        <span className="inline-flex items-center gap-1.5 font-bold text-[11px] px-2.5 py-0.5 rounded-full border border-emerald-200 text-emerald-700 bg-emerald-50/90 shadow-2xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          Live Tender
-        </span>
-      );
-    }
-    if (startDate && now < startDate) {
-      const startDiffMs = startDate.getTime() - now.getTime();
-      const startDays = Math.floor(startDiffMs / (1000 * 60 * 60 * 24));
-      return (
-        <span className="inline-flex items-center gap-1 font-semibold text-[11px] px-2.5 py-0.5 rounded-full border border-blue-200 text-blue-700 bg-blue-50/80">
-          <Calendar className="w-3 h-3 text-blue-500" />
-          Starts in {startDays > 0 ? `${startDays}d` : 'today'}
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1 font-semibold text-[11px] px-2.5 py-0.5 rounded-full border border-slate-200 text-slate-600 bg-slate-50">
-        GeM Bid
+  const timeLeftBadge = isClosed ? (
+    <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-slate-200 text-slate-500 bg-slate-50">
+      Bid Closed
+    </span>
+  ) : isStarted ? (
+    <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-rose-200 text-rose-700 bg-rose-50 animate-pulse flex items-center gap-1.5">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
       </span>
-    );
-  };
+      Bidding Started
+    </span>
+  ) : startDate ? (
+    <span className={clsx(
+      "font-bold text-xs px-2.5 py-1 rounded-md border flex items-center gap-1",
+      isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
+        isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
+          "text-emerald-700 bg-emerald-50 border-emerald-200"
+    )}>
+      <Clock className="w-3.5 h-3.5" />
+      Starts in {diffDays}d {diffHours}h
+    </span>
+  ) : (
+    <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-slate-200 text-slate-600 bg-slate-50">
+      Scheduled
+    </span>
+  );
 
   const biddingPeriodStr = useMemo(() => {
-    if (!startDate && !endDate) return 'See Official Tender Document';
     if (startDate && endDate) {
       const startDay = formatDateOrdinal(startDate);
       const endDay = formatDateOrdinal(endDate);
@@ -182,192 +183,270 @@ export const GemBidCard = memo(function GemBidCard({
     return 'See Official Tender Document';
   }, [startDate, endDate]);
 
-  const mainCategory = cleanCategoryName(item.category_name, item.items);
-  const deptHierarchy = [item.ministry, item.department || item.department_name, item.organisation].filter(Boolean).join(' › ') || 'Govt of India';
-  const fullOrgDetails = [item.ministry, item.department || item.department_name, item.organisation, (item as any).office].filter(Boolean).join(' / ');
-  const docUrl = getDocUrl(item);
-  const hasCachedDoc = isCdnUrl(item.document_url);
+  const mainCategory = cleanCategoryName(item.items || 'Procurement Tender', item.items);
+  const deptHierarchy = [item.ministry, item.department, item.organisation].filter(Boolean).join(' • ') || 'Government of India Entity';
+  const orgName = item.organisation || item.department || item.ministry || 'Government Department';
+  const locationDisplay = (item as any).location || 'National (Pan-India)';
 
-  // Shared Card Header
-  const renderCardHeader = () => (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-          {/* Bid Number Pill */}
-          <div className="flex items-center gap-1 bg-slate-900 text-slate-100 px-2.5 py-1 rounded-lg shrink-0 shadow-2xs">
-            <span className="text-[11px] font-bold font-mono tracking-tight text-white select-all">
-              {shortId}
-            </span>
-            <button
-              onClick={handleCopy}
-              className="text-slate-400 hover:text-white transition-colors p-0.5 rounded cursor-pointer"
-              title="Copy GeM Bid Number"
-            >
-              {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-            </button>
+  // Renders authentic printed government document catalogue preview (matching MSTC document catalogue sheet from Image 2)
+  const renderDocumentSheetPreview = () => (
+    <div 
+      onClick={() => onPreview(item)}
+      className="w-full h-full bg-white p-2 border border-slate-300 rounded-xl overflow-hidden flex flex-col justify-start select-none group/doc shadow-2xs hover:border-primary transition-all duration-200 cursor-pointer"
+      title="Click to view full official tender catalogue"
+    >
+      {/* Outer border of printed catalogue sheet */}
+      <div className="w-full h-full border border-slate-800 bg-white p-2 flex flex-col justify-between">
+        {/* Top Header Stamps */}
+        <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
+          {/* Left: EK KAAM DESH KE NAAM Badge */}
+          <div className="border border-amber-600/90 bg-amber-50/70 px-1.5 py-0.5 rounded-[2px] shadow-3xs flex flex-col items-center justify-center leading-none">
+            <span className="text-[6.5px] font-black tracking-tight text-slate-800">EK KAAM</span>
+            <span className="text-[7px] font-black tracking-tight text-emerald-800">DESH KE NAAM</span>
           </div>
 
-          <span className="inline-flex items-center gap-1 bg-blue-500/10 border border-blue-500/25 text-blue-800 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
-            <Sparkles className="w-2.5 h-2.5 text-blue-600" />
-            Procurement
-          </span>
+          {/* Center Logo/Emblem */}
+          <div className="w-6 h-6 rounded border border-blue-900 bg-blue-950 flex items-center justify-center text-white shadow-3xs">
+            <Landmark className="w-3.5 h-3.5 text-white" />
+          </div>
 
-          {item.ra_number && (
-            <span className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
-              <RefreshCw className="w-2.5 h-2.5" /> RA Active
+          {/* Right: e-assuring INDIA Stamp */}
+          <div className="border border-slate-700 bg-slate-50 px-1.5 py-0.5 rounded-[2px] shadow-3xs flex flex-col items-end justify-center leading-none">
+            <span className="text-[6.5px] font-bold text-blue-900 tracking-tight">e-assuring</span>
+            <span className="text-[7.5px] font-black text-emerald-700 tracking-tight">INDIA</span>
+          </div>
+        </div>
+
+        {/* Gray Band Title */}
+        <div className="bg-slate-200 border-y border-slate-800 py-1 text-center text-[9.5px] font-bold font-serif text-slate-900 uppercase tracking-wide">
+          Detailed Auction Catalogue
+        </div>
+
+        {/* Structured Grid Table */}
+        <div className="border border-slate-800 text-[8.5px] font-serif divide-y divide-slate-800 bg-white">
+          <div className="flex divide-x divide-slate-800">
+            <span className="font-bold w-24 shrink-0 px-1.5 py-0.5 text-slate-900 bg-slate-100/70">Auction Number:</span>
+            <span className="px-1.5 py-0.5 text-slate-900 font-mono font-medium truncate">{shortId}</span>
+          </div>
+          <div className="flex divide-x divide-slate-800">
+            <span className="font-bold w-24 shrink-0 px-1.5 py-0.5 text-slate-900 bg-slate-100/70">Auction Type:</span>
+            <span className="px-1.5 py-0.5 text-slate-900 truncate">
+              {item.ra_number ? 'Reverse Auction (RA)' : 'O-General Bid'}
             </span>
-          )}
+          </div>
+          <div className="flex divide-x divide-slate-800">
+            <span className="font-bold w-24 shrink-0 px-1.5 py-0.5 text-slate-900 bg-slate-100/70">Department:</span>
+            <span className="px-1.5 py-0.5 text-slate-900 truncate">{orgName}</span>
+          </div>
         </div>
-
-        <div>
-          {renderStatusBadge()}
-        </div>
-      </div>
-
-      {/* Feature Badges */}
-      <div className="flex flex-wrap gap-1.5 items-center">
-        {hasCachedDoc ? (
-          <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-3xs">
-            <ShieldCheck className="w-3 h-3 text-emerald-600" />
-            Verified Tender PDF
-          </span>
-        ) : item.document_url ? (
-          <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-700 text-[10px] font-medium px-2 py-0.5 rounded-md shadow-3xs">
-            <FileText className="w-3 h-3 text-slate-500" />
-            Portal Notice
-          </span>
-        ) : null}
-
-        {item.quantity && (
-          <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-800 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-3xs">
-            <Building2 className="w-2.5 h-2.5 text-blue-600" />
-            {item.quantity} Units
-          </span>
-        )}
-
-        {item.corrigendum_urls && item.corrigendum_urls.length > 0 && (
-          <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-3xs">
-            <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
-            {item.corrigendum_urls.length} Corrigendum
-          </span>
-        )}
       </div>
     </div>
   );
 
+  const renderCardHeader = () => {
+    if (isGrid) {
+      return (
+        <div className="flex flex-col gap-2 mb-3">
+          <div className="flex items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+                <span className="text-xs font-semibold text-slate-500 font-mono">
+                  Ref ID: {shortId}
+                </span>
+                <button
+                  onClick={handleCopy}
+                  className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+                  title="Copy reference number to clipboard"
+                  aria-label="Copy reference number"
+                >
+                  {copied ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {item.ra_number && (
+              <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                RA Active
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 justify-start">
+            {hasDocument && (
+              <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+                Tender Online
+              </span>
+            )}
+            {item.quantity && (
+              <span className="bg-blue-50 border border-blue-200/60 text-blue-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+                Qty: {item.quantity} Units
+              </span>
+            )}
+            {signedDisplayImage && (
+              <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+                Images Available
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex justify-between items-start gap-4 mb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+            <span className="text-xs font-semibold text-slate-500 font-mono">
+              Ref ID: {shortId}
+            </span>
+            <button
+              onClick={handleCopy}
+              className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+              title="Copy reference number to clipboard"
+              aria-label="Copy reference number"
+            >
+              {copied ? (
+                <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+
+          {item.ra_number && (
+            <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+              RA Active
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col items-end gap-1.5">
+          {hasDocument && (
+            <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+              Tender Online
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // ─── LIST VIEW ─────────────────────────────────────────────────────────────
   if (!isGrid) {
     return (
-      <div className="group relative bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden flex flex-col md:flex-row justify-between">
-        {/* Scanned authentic preview only if genuine asset exists in storage */}
-        {authenticImage && (
-          <div 
-            onClick={() => onPreview(item)}
-            className="relative w-full md:w-56 lg:w-64 h-44 md:h-auto shrink-0 overflow-hidden bg-slate-900 cursor-pointer select-none border-b md:border-b-0 md:border-r border-slate-200/80"
-          >
-            <img
-              src={authenticImage}
-              alt={item.items}
-              loading="lazy"
-              onLoad={() => setImgLoaded(true)}
-              className={clsx(
-                "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out",
-                imgLoaded ? "opacity-100" : "opacity-0"
-              )}
-            />
-          </div>
-        )}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/50 transition-all group relative">
+        <div className="p-5 flex flex-col sm:flex-row gap-5 justify-between">
+          {imageLoading ? (
+            <div className="w-[120px] h-[120px] rounded-xl border border-slate-100 overflow-hidden shrink-0 bg-slate-100 animate-pulse hidden sm:block"></div>
+          ) : signedDisplayImage ? (
+            <div className="w-[120px] h-[120px] rounded-xl border border-slate-100 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
+              <img
+                src={signedDisplayImage}
+                alt={item.items}
+                loading="lazy"
+                decoding="async"
+                onError={() => setSignedDisplayImage(null)}
+                onLoad={() => setHighResLoaded(true)}
+                className={clsx(
+                  "w-full h-full object-cover object-top transition-all duration-500 ease-out",
+                  !highResLoaded ? "blur-md scale-105" : "blur-0 scale-100",
+                  "group-hover:scale-[1.03]"
+                )}
+              />
+            </div>
+          ) : hasDocument ? (
+            <div className="w-[120px] h-[120px] shrink-0 hidden sm:block">
+              {renderDocumentSheetPreview()}
+            </div>
+          ) : (
+            <div className="w-[120px] h-[120px] rounded-xl border border-slate-200 shrink-0 bg-slate-50 flex flex-col items-center justify-center text-slate-400 select-none hidden sm:flex gap-1.5">
+              <FileText className="w-6 h-6 text-slate-400" />
+              <span className="text-[9px] font-medium tracking-wide text-slate-500 text-center px-1.5 leading-tight">Refer the document</span>
+            </div>
+          )}
 
-        <div className="p-5 flex-1 flex flex-col lg:flex-row gap-5 justify-between">
-          <div className="flex-1 flex flex-col justify-between space-y-3 min-w-0">
+          <div className="flex-1 flex flex-col justify-between">
             <div>
               {renderCardHeader()}
 
-              <div className="mt-2.5">
-                <div className="text-[10px] font-bold text-primary uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  {mainCategory}
-                </div>
+              <div className="mb-3">
+                <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCategory}</div>
                 <h3 
                   onClick={() => onPreview(item)}
-                  className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-primary transition-colors line-clamp-2 leading-snug cursor-pointer" 
+                  className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2 cursor-pointer" 
                   title={item.items}
                 >
                   {item.items}
                 </h3>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center text-slate-600" title={deptHierarchy}>
+                    <span className="font-semibold text-slate-700 truncate text-base">
+                      Office: {orgName}
+                    </span>
+                  </div>
+                  <div className="flex items-center text-slate-600 gap-1.5 flex-wrap" title={locationDisplay}>
+                    <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="font-semibold text-slate-700 truncate text-base">{locationDisplay}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
+                  <div className="flex items-center text-slate-700">
+                    <Layers className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                    <span>Quantity: <strong className="text-slate-700 font-semibold">{item.quantity ? `${item.quantity} Units` : '1 Lot / Job'}</strong></span>
+                  </div>
+                  <div className="flex items-center text-slate-700">
+                    <span className="flex items-center gap-1">
+                      <span>Model: <strong className="text-slate-700 font-semibold">{item.ra_number ? `RA: ${item.ra_number}` : 'Direct Bid'}</strong></span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
+                  <div className="flex items-center text-slate-700">
+                    <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                    <span>Bidding Window: <strong className="text-slate-700 font-semibold">{biddingPeriodStr}</strong></span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50/80 border border-slate-100 rounded-xl p-3">
-              <div className="space-y-0.5 min-w-0">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                  <Landmark className="w-3 h-3 text-slate-500" />
-                  Procuring Entity
-                </span>
-                <p className="font-bold text-slate-800 truncate text-[11px]" title={fullOrgDetails}>
-                  {deptHierarchy}
-                </p>
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 mt-auto">
+              <div>
+                {timeLeftBadge}
               </div>
 
-              <div className="space-y-0.5 min-w-0 sm:border-l sm:border-slate-200/60 sm:pl-3">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                  <Building2 className="w-3 h-3 text-slate-500" />
-                  Lot Quantity
-                </span>
-                <p className="font-bold text-slate-800 truncate text-[11px]">
-                  {item.quantity ? `${item.quantity} Units` : '1 Lot / Job'}
-                </p>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => onPreview(item)}
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View Details
+                </button>
+
+                {onInterestedToggle && (
+                  <ButtonWithIconDemo
+                    isInterested={isInterested}
+                    onInterestedToggle={onInterestedToggle}
+                  />
+                )}
               </div>
-
-              <div className="space-y-0.5 min-w-0 sm:border-l sm:border-slate-200/60 sm:pl-3">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3 text-slate-500" />
-                  Procurement Model
-                </span>
-                <p className="font-bold text-slate-900 truncate text-xs">
-                  {item.ra_number ? `RA: ${item.ra_number}` : 'Direct Portal Bid'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Action Dock */}
-          <div className="lg:w-48 shrink-0 flex flex-row lg:flex-col justify-between lg:justify-center items-center lg:items-end gap-2.5 border-t lg:border-t-0 lg:border-l border-slate-100 pt-3 lg:pt-0 lg:pl-5">
-            <div className="hidden lg:block text-right w-full">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block">Timeline</span>
-              <span className="text-xs font-bold text-slate-800 block truncate" title={biddingPeriodStr}>
-                {biddingPeriodStr}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 w-full justify-end">
-              <a
-                href={docUrl}
-                download={`GeM_Bid_${cleanBidId}.pdf`}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex justify-center items-center h-9 px-3 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-all border border-slate-200 shrink-0 cursor-pointer shadow-3xs"
-                title="Download Official Government Tender PDF"
-              >
-                <Download className="w-3.5 h-3.5 text-slate-600" />
-              </a>
-
-              <button
-                onClick={() => onPreview(item)}
-                className="flex-1 lg:w-full inline-flex justify-center items-center h-9 px-4 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/95 shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
-              >
-                <Eye className="w-3.5 h-3.5 mr-1.5" />
-                Inspect Bid
-              </button>
-
-              {onInterestedToggle && (
-                <ButtonWithIconDemo
-                  isInterested={isInterested}
-                  onInterestedToggle={onInterestedToggle}
-                />
-              )}
             </div>
           </div>
         </div>
@@ -377,150 +456,132 @@ export const GemBidCard = memo(function GemBidCard({
 
   // ─── GRID VIEW ─────────────────────────────────────────────────────────────
   return (
-    <div className="group relative bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-xl hover:border-primary/50 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden">
-      {/* Top Accent Line (Color-coded by Bid State) */}
-      <div 
-        className={clsx(
-          "h-1.5 w-full shrink-0 transition-colors",
-          isUrgent ? "bg-rose-500" : isStarted ? "bg-emerald-500" : isClosed ? "bg-slate-300" : "bg-blue-600"
-        )} 
-      />
-
-      {/* Scanned authentic preview only if genuine asset exists in storage */}
-      {authenticImage && (
-        <div 
-          onClick={() => onPreview(item)}
-          className="relative h-40 w-full shrink-0 overflow-hidden bg-slate-900 cursor-pointer select-none border-b border-slate-100"
-        >
-          <img
-            src={authenticImage}
-            alt={item.items}
-            loading="lazy"
-            onLoad={() => setImgLoaded(true)}
-            className={clsx(
-              "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out",
-              imgLoaded ? "opacity-100" : "opacity-0"
-            )}
-          />
-        </div>
-      )}
-
-      {/* Card Body */}
-      <div className="flex flex-col flex-1 p-4 justify-between">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full relative">
+      <div className="flex flex-col h-full p-5 justify-between">
         <div>
+          {/* Card Document Preview / Image Header (Exact MSTC Catalogue Preview Style) */}
+          <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
+            {imageLoading ? (
+              <div className="w-full h-full bg-slate-100 animate-pulse"></div>
+            ) : signedDisplayImage ? (
+              <img
+                src={signedDisplayImage}
+                alt={item.items}
+                loading="lazy"
+                decoding="async"
+                onError={() => setSignedDisplayImage(null)}
+                onLoad={() => setHighResLoaded(true)}
+                className={clsx(
+                  "w-full h-full object-cover object-top transition-all duration-500 ease-out",
+                  !highResLoaded ? "blur-md scale-105" : "blur-0 scale-100",
+                  "group-hover:scale-[1.02]"
+                )}
+              />
+            ) : hasDocument ? (
+              renderDocumentSheetPreview()
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
+                <FileText className="w-8 h-8 text-slate-300" />
+                <span className="text-[11px] font-medium tracking-wide text-slate-500">Refer the document</span>
+              </div>
+            )}
+          </div>
+
           {renderCardHeader()}
 
-          {/* Category & Title */}
-          <div className="mt-3 mb-2.5">
-            <div className="text-[10px] font-bold text-primary uppercase tracking-wider mb-1 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-              {mainCategory}
-            </div>
+          <div className="mb-3">
+            <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCategory}</div>
             <h3 
               onClick={() => onPreview(item)}
-              className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-primary transition-colors line-clamp-2 leading-snug cursor-pointer" 
+              className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2 cursor-pointer" 
               title={item.items}
             >
               {item.items}
             </h3>
           </div>
 
-          {/* Department & Entity Box */}
-          <div className="bg-gradient-to-br from-slate-50 via-slate-50/80 to-blue-50/30 border border-slate-200/80 rounded-xl p-3 mb-3">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">
-              Procuring Entity & Ministry
-            </span>
-            <div className="text-xs font-bold text-slate-800 line-clamp-1" title={fullOrgDetails}>
-              {deptHierarchy}
-            </div>
-          </div>
-
-          {/* Metadata Grid */}
-          <div className="bg-slate-50/90 border border-slate-100 rounded-xl p-3 mb-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+          {/* Structured Metadata Grid */}
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-3 gap-y-3 text-xs sm:text-sm">
             <div className="flex flex-col min-w-0">
-              <span className="text-slate-400 font-medium text-[9px] uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                <Building2 className="w-2.5 h-2.5 text-slate-400" /> Quantity
+              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Procuring Entity</span>
+              <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={deptHierarchy}>
+                {orgName}
               </span>
-              <span className="font-bold text-slate-800 truncate text-[11px]">
+            </div>
+
+            <div className="flex flex-col min-w-0">
+              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Location</span>
+              <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={locationDisplay}>
+                {locationDisplay}
+              </span>
+            </div>
+
+            <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
+              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Quantity</span>
+              <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm">
                 {item.quantity ? `${item.quantity} Units` : '1 Lot / Job'}
               </span>
             </div>
 
-            <div className="flex flex-col min-w-0">
-              <span className="text-slate-400 font-medium text-[9px] uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                <FileCheck2 className="w-2.5 h-2.5 text-slate-400" /> Notice
-              </span>
-              <span className="font-bold text-emerald-800 truncate text-[11px]">
-                {hasCachedDoc ? 'Verified Tender' : 'Portal Document'}
+            <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
+              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Model</span>
+              <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm">
+                {item.ra_number ? `RA: ${item.ra_number}` : 'Direct Bid'}
               </span>
             </div>
 
-            {item.ra_number && (
-              <div className="flex flex-col min-w-0 border-t border-slate-200/50 pt-1.5 col-span-2 sm:col-span-1">
-                <span className="text-slate-400 font-medium text-[9px] uppercase tracking-wider mb-0.5">
-                  Reverse Auction
-                </span>
-                <span className="font-bold text-indigo-700 text-[10px] truncate">
-                  RA: {item.ra_number}
-                </span>
-              </div>
-            )}
-
-            {item.corrigendum_urls && item.corrigendum_urls.length > 0 && (
-              <div className="flex flex-col min-w-0 border-t border-slate-200/50 pt-1.5 col-span-2 sm:col-span-1">
-                <span className="text-slate-400 font-medium text-[9px] uppercase tracking-wider mb-0.5">
-                  Updates
-                </span>
-                <span className="font-bold text-amber-700 text-[10px]">
-                  {item.corrigendum_urls.length} Corrigendum
-                </span>
-              </div>
-            )}
+            <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5 col-span-2">
+              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+                <span>Portal Scheme</span>
+                <div className="relative group/tooltip inline-block">
+                  <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                  <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-52 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                    Government of India e-Marketplace Custom Procurement Tender.
+                    <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                  </div>
+                </div>
+              </span>
+              <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title="GeM Procurement Tender (Government of India)">
+                GeM Procurement Tender (Government of India)
+              </span>
+            </div>
           </div>
 
-          {/* Timeline Row */}
-          <div className="flex items-center justify-between text-[11px] text-slate-600 border-t border-slate-100 pt-2 mb-1">
-            <span className="text-slate-400 flex items-center gap-1 shrink-0">
-              <Calendar className="w-3 h-3 text-slate-400" /> Window:
-            </span>
-            <span className="font-semibold text-slate-800 truncate text-right pl-2" title={biddingPeriodStr}>
-              {biddingPeriodStr}
-            </span>
+          <div className="space-y-1.5 mb-4 text-sm text-slate-500 border-t border-slate-50 pt-3">
+            <div className="flex justify-between">
+              <span>Bidding Window:</span>
+              <span className="font-semibold text-slate-700">
+                {biddingPeriodStr}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Action Dock */}
-        <div className="pt-3 border-t border-slate-100 flex items-center gap-2 mt-auto">
-          <a
-            href={docUrl}
-            download={`GeM_Bid_${cleanBidId}.pdf`}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex justify-center items-center h-9 px-2.5 rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-all border border-slate-200 shrink-0 cursor-pointer shadow-3xs"
-            title="Download Official Government Tender PDF"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-600" />
-          </a>
+        {/* Card Footer */}
+        <div className="pt-4 border-t border-slate-100 flex flex-col gap-3 mt-auto">
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-slate-400 font-medium">Auction Status</span>
+            {timeLeftBadge}
+          </div>
 
-          <button
-            onClick={() => onPreview(item)}
-            className="flex-1 inline-flex justify-center items-center h-9 px-4 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/95 shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
-          >
-            <Eye className="w-3.5 h-3.5 mr-1.5" />
-            Inspect Bid
-          </button>
+          <div className="flex gap-2 w-full mt-1">
+            <button
+              onClick={() => onPreview(item)}
+              className="flex-grow inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              View Details
+            </button>
 
-          {onInterestedToggle && (
-            <ButtonWithIconDemo
-              isInterested={isInterested}
-              onInterestedToggle={onInterestedToggle}
-            />
-          )}
+            {onInterestedToggle && (
+              <ButtonWithIconDemo
+                isInterested={isInterested}
+                onInterestedToggle={onInterestedToggle}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 });
-
-

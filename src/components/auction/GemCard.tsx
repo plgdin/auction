@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { 
   Eye, 
   MapPin, 
@@ -7,17 +7,13 @@ import {
   Landmark, 
   Copy, 
   Check, 
-  Download, 
-  RotateCcw, 
-  Sparkles, 
-  ShieldCheck, 
-  Coins,
-  Layers,
+  Info,
   FileText
 } from 'lucide-react';
 import { ButtonWithIconDemo } from '../ui/button-with-icon';
 import type { GemAuction } from '../../services/publicService';
 import clsx from 'clsx';
+import { storageService } from '../../services/storageService';
 import { useAppStore } from '../../store/appStore';
 import { formatPrice, formatPriceString } from '../../utils/currency';
 import { cleanCategoryName } from '../../utils/cleanCategory';
@@ -42,10 +38,13 @@ export const GemCard = memo(function GemCard({
   const effectiveDistance = distanceKm ?? (item as any)?._distanceKm;
   const { currency } = useAppStore();
   const [copied, setCopied] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [signedDisplayImage, setSignedDisplayImage] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [highResLoaded, setHighResLoaded] = useState(false);
 
   const shortId = item.gem_auction_id || item.id?.substring(0, 8) || 'N/A';
   const cleanAuctionId = (item.gem_auction_id || item.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const hasDocument = Boolean(item.document_url || (item.document_urls && item.document_urls.length > 0) || item.documents_archived);
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -54,35 +53,57 @@ export const GemCard = memo(function GemCard({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Only use authentic uploaded images/scans from Supabase Storage — never generic stock photos
-  const authenticImage = useMemo(() => {
-    const rawUrl = (item as any).preview_url || (item as any).image_url;
-    if (!rawUrl || typeof rawUrl !== 'string') return null;
-    if (
-      rawUrl.includes('unsplash.com') ||
-      rawUrl.includes('pexels.com') ||
-      rawUrl.includes('pixabay.com') ||
-      rawUrl.includes('freepik.com') ||
-      rawUrl.includes('stock') ||
-      rawUrl.includes('placeholder')
-    ) {
-      return null;
+  // Resolve genuine government scanned catalog image from storage or URL
+  const rawDisplayImage = useMemo(() => {
+    const raw = (item as any).preview_url || (item as any).image_url;
+    if (raw && typeof raw === 'string') {
+      if (
+        !raw.includes('unsplash.com') &&
+        !raw.includes('pexels.com') &&
+        !raw.includes('pixabay.com') &&
+        !raw.includes('freepik.com') &&
+        !raw.includes('stock') &&
+        !raw.includes('placeholder')
+      ) {
+        return raw;
+      }
     }
-    // Only allow verified Supabase Storage assets, government portal media, or data URIs
-    if (!rawUrl.includes('supabase.co') && !rawUrl.includes('gem.gov.in') && !rawUrl.startsWith('data:image/')) {
-      return null;
-    }
-    return rawUrl;
-  }, [item]);
+    return (item.documents_archived || item.document_url) ? `gem-previews/${cleanAuctionId}_0.jpg` : null;
+  }, [item, cleanAuctionId]);
 
-  // Notice document download URL
-  const docDownloadUrl = useMemo(() => {
-    if (!item.document_url) return null;
-    if (item.document_url.includes('supabase.co') || item.document_url.startsWith('data:')) {
-      return item.document_url;
+  useEffect(() => {
+    let cancelled = false;
+    async function resolveImage() {
+      setImageLoading(true);
+      setHighResLoaded(false);
+      if (!rawDisplayImage) {
+        setSignedDisplayImage(null);
+        setImageLoading(false);
+        return;
+      }
+      if (rawDisplayImage.startsWith('http') || rawDisplayImage.startsWith('data:')) {
+        setSignedDisplayImage(rawDisplayImage);
+        setImageLoading(false);
+        return;
+      }
+      try {
+        const signed = await storageService.getSignedUrls([rawDisplayImage]);
+        if (!cancelled) {
+          setSignedDisplayImage(signed[0] || null);
+          setImageLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setSignedDisplayImage(null);
+          setImageLoading(false);
+        }
+      }
     }
-    return `/api/document-proxy?url=${encodeURIComponent(item.document_url)}&filename=GeM_Auction_${cleanAuctionId}.pdf&disposition=attachment`;
-  }, [item.document_url, cleanAuctionId]);
+    resolveImage();
+    return () => {
+      cancelled = true;
+    };
+  }, [rawDisplayImage]);
 
   // Price formatting
   const formattedPrice = useMemo(() => {
@@ -92,7 +113,7 @@ export const GemCard = memo(function GemCard({
     if (item.reserve_price_value) {
       return formatPrice(item.reserve_price_value, currency);
     }
-    return item.reserve_price_text ? formatPriceString(item.reserve_price_text, currency) : 'No Reserve Stated';
+    return item.reserve_price_text ? formatPriceString(item.reserve_price_text, currency) : 'No Reserve Price';
   }, [item, currency]);
 
   // Safe dates parser
@@ -109,54 +130,39 @@ export const GemCard = memo(function GemCard({
   const isClosed = (endDate && now > endDate) || item.auction_status === 'closed';
   const isStarted = !isClosed && ((startDate && now >= startDate && (!endDate || now <= endDate)) || item.auction_status === 'live');
 
-  const diffMs = endDate ? endDate.getTime() - now.getTime() : 0;
-  const diffHoursTotal = Math.floor(diffMs / (1000 * 60 * 60));
-  const isUrgent = !isClosed && isStarted && diffHoursTotal >= 0 && diffHoursTotal <= 48;
+  const diffMs = startDate ? startDate.getTime() - now.getTime() : 0;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const isUrgent = diffDays >= 0 && diffDays < 3;
+  const isWarning = diffDays >= 3 && diffDays < 7;
 
-  const renderStatusBadge = () => {
-    if (isClosed) {
-      return (
-        <span className="inline-flex items-center gap-1 font-semibold text-[11px] px-2.5 py-0.5 rounded-full border border-slate-200 text-slate-500 bg-slate-50">
-          <Clock className="w-3 h-3 text-slate-400" />
-          Auction Closed
-        </span>
-      );
-    }
-    if (isUrgent) {
-      return (
-        <span className="inline-flex items-center gap-1.5 font-bold text-[11px] px-2.5 py-0.5 rounded-full border border-rose-200 text-rose-700 bg-rose-50/90 shadow-2xs">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
-          </span>
-          Ending in {diffHoursTotal}h
-        </span>
-      );
-    }
-    if (isStarted) {
-      return (
-        <span className="inline-flex items-center gap-1.5 font-bold text-[11px] px-2.5 py-0.5 rounded-full border border-emerald-200 text-emerald-700 bg-emerald-50/90 shadow-2xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          Live Auction
-        </span>
-      );
-    }
-    if (startDate && now < startDate) {
-      const startDiffMs = startDate.getTime() - now.getTime();
-      const startDays = Math.floor(startDiffMs / (1000 * 60 * 60 * 24));
-      return (
-        <span className="inline-flex items-center gap-1 font-semibold text-[11px] px-2.5 py-0.5 rounded-full border border-blue-200 text-blue-700 bg-blue-50/80">
-          <Calendar className="w-3 h-3 text-blue-500" />
-          Starts in {startDays > 0 ? `${startDays}d` : 'today'}
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1 font-semibold text-[11px] px-2.5 py-0.5 rounded-full border border-purple-200 text-purple-700 bg-purple-50">
-        Forward Auction
+  const timeLeftBadge = isClosed ? (
+    <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-slate-200 text-slate-500 bg-slate-50">
+      Bid Closed
+    </span>
+  ) : isStarted ? (
+    <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-rose-200 text-rose-700 bg-rose-50 animate-pulse flex items-center gap-1.5">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
       </span>
-    );
-  };
+      Bidding Started
+    </span>
+  ) : startDate ? (
+    <span className={clsx(
+      "font-bold text-xs px-2.5 py-1 rounded-md border flex items-center gap-1",
+      isUrgent ? "text-rose-700 bg-rose-50 border-rose-200 animate-pulse" :
+        isWarning ? "text-amber-700 bg-amber-50 border-amber-200" :
+          "text-emerald-700 bg-emerald-50 border-emerald-200"
+    )}>
+      <Clock className="w-3.5 h-3.5" />
+      Starts in {diffDays}d {diffHours}h
+    </span>
+  ) : (
+    <span className="font-bold text-xs px-2.5 py-1 rounded-md border border-slate-200 text-slate-600 bg-slate-50">
+      Scheduled
+    </span>
+  );
 
   const biddingPeriodStr = useMemo(() => {
     if (!startDate && !endDate) return 'See Official Tender Document';
@@ -181,12 +187,12 @@ export const GemCard = memo(function GemCard({
       const startDay = formatDateOrdinal(startDate);
       const endDay = formatDateOrdinal(endDate);
       if (startDay === endDay) {
-        return `${startDay} • ${formatTimeAmpm(startDate)} - ${formatTimeAmpm(endDate)}`;
+        return `${startDay} ${formatTimeAmpm(startDate)} - ${formatTimeAmpm(endDate)}`;
       }
       return `${startDay} - ${endDay}`;
     }
-    if (endDate) return `Closes ${formatDateOrdinal(endDate)} ${formatTimeAmpm(endDate)}`;
-    if (startDate) return `Opens ${formatDateOrdinal(startDate)}`;
+    if (endDate) return `Ends on ${formatDateOrdinal(endDate)} ${formatTimeAmpm(endDate)}`;
+    if (startDate) return `Starts on ${formatDateOrdinal(startDate)}`;
     return 'See Official Tender Document';
   }, [startDate, endDate]);
 
@@ -194,195 +200,267 @@ export const GemCard = memo(function GemCard({
   const orgName = item.organisation || item.department || 'Government Entity / PSU';
   const mainCategory = cleanCategoryName(item.category_name, item.title);
 
-  // ─── Shared Header Block ───────────────────────────────────────────────────
-  const renderCardHeader = () => (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-          {/* Auction ID */}
-          <div className="flex items-center gap-1 bg-slate-900 text-slate-100 px-2.5 py-1 rounded-lg shrink-0 shadow-2xs">
-            <span className="text-[11px] font-bold font-mono tracking-tight text-white select-all">
-              {shortId}
+  const renderCardHeader = () => {
+    if (isGrid) {
+      return (
+        <div className="flex flex-col gap-2 mb-3">
+          <div className="flex items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+                <span className="text-xs font-semibold text-slate-500 font-mono">
+                  Ref ID: {shortId}
+                </span>
+                <button
+                  onClick={handleCopy}
+                  className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+                  title="Copy reference number to clipboard"
+                  aria-label="Copy reference number"
+                >
+                  {copied ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {item.is_reauction && (
+              <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                Re-auction
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 justify-start">
+            {item.emd_amount != null && item.emd_amount > 0 && (
+              <span className="bg-amber-50 border border-amber-200/60 text-amber-800 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+                EMD: {formatPrice(item.emd_amount, currency)}
+              </span>
+            )}
+            {hasDocument && (
+              <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+                Document Online
+              </span>
+            )}
+            {signedDisplayImage && (
+              <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+                Images Available
+              </span>
+            )}
+            {item.items_schedule && item.items_schedule.length > 0 && (
+              <span className="bg-blue-50 border border-blue-200/60 text-blue-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md shadow-3xs uppercase tracking-wide shrink-0">
+                {item.items_schedule.length} {item.items_schedule.length === 1 ? 'Lot' : 'Lots'} Listed
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex justify-between items-start gap-4 mb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shrink-0">
+            <span className="text-xs font-semibold text-slate-500 font-mono">
+              Ref ID: {shortId}
             </span>
             <button
               onClick={handleCopy}
-              className="text-slate-400 hover:text-white transition-colors p-0.5 rounded cursor-pointer"
-              title="Copy GeM Auction ID"
+              className="text-slate-400 hover:text-primary transition-colors shrink-0 p-0.5 rounded hover:bg-slate-200/60 cursor-pointer flex items-center justify-center"
+              title="Copy reference number to clipboard"
+              aria-label="Copy reference number"
             >
-              {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+              {copied ? (
+                <Check className="w-3.5 h-3.5 text-emerald-600 animate-scaleIn" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
 
-          <span className="inline-flex items-center gap-1 bg-purple-500/10 border border-purple-500/25 text-purple-800 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
-            <Sparkles className="w-2.5 h-2.5 text-purple-600" />
-            GeM Disposal
-          </span>
-
           {item.is_reauction && (
-            <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
-              <RotateCcw className="w-2.5 h-2.5" /> Re-Auction
+            <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+              Re-auction
             </span>
           )}
         </div>
 
-        <div>
-          {renderStatusBadge()}
+        <div className="flex flex-col items-end gap-1.5">
+          {hasDocument && (
+            <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+              Document Online
+            </span>
+          )}
+          {signedDisplayImage && (
+            <span className="bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold px-2.5 py-0.5 rounded-md shadow-3xs uppercase tracking-wide text-right shrink-0">
+              Images Available
+            </span>
+          )}
         </div>
       </div>
-
-      {/* Feature Badges */}
-      <div className="flex flex-wrap gap-1.5 items-center">
-        {item.emd_amount != null && item.emd_amount > 0 && (
-          <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-3xs">
-            <Coins className="w-2.5 h-2.5 text-amber-600" />
-            EMD: ₹{item.emd_amount.toLocaleString('en-IN')}
-          </span>
-        )}
-
-        {(item.documents_archived || (item.document_url && item.document_url.includes('supabase.co'))) ? (
-          <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-3xs">
-            <ShieldCheck className="w-3 h-3 text-emerald-600" />
-            Verified Notice PDF
-          </span>
-        ) : item.document_url ? (
-          <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-700 text-[10px] font-medium px-2 py-0.5 rounded-md shadow-3xs">
-            <FileText className="w-3 h-3 text-slate-500" />
-            Notice Online
-          </span>
-        ) : null}
-
-        {item.items_schedule && item.items_schedule.length > 0 && (
-          <span className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-3xs">
-            <Layers className="w-2.5 h-2.5 text-blue-500" />
-            {item.items_schedule.length} Lot{item.items_schedule.length > 1 ? 's' : ''} Listed
-          </span>
-        )}
-      </div>
-    </div>
-  );
+    );
+  };
 
   // ─── LIST VIEW ─────────────────────────────────────────────────────────────
   if (!isGrid) {
     return (
-      <div className="group relative bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden flex flex-col md:flex-row justify-between">
-        {/* If genuine scanned preview exists in storage, show it */}
-        {authenticImage && (
-          <div 
-            onClick={() => onPreview(item)}
-            className="relative w-full md:w-56 lg:w-64 h-44 md:h-auto shrink-0 overflow-hidden bg-slate-900 cursor-pointer select-none border-b md:border-b-0 md:border-r border-slate-200/80"
-          >
-            <img
-              src={authenticImage}
-              alt={item.title}
-              loading="lazy"
-              onLoad={() => setImgLoaded(true)}
-              className={clsx(
-                "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out",
-                imgLoaded ? "opacity-100" : "opacity-0"
-              )}
-            />
-          </div>
-        )}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/50 transition-all group relative">
+        <div className="p-5 flex flex-col sm:flex-row gap-5 justify-between">
+          {imageLoading ? (
+            <div className="w-[120px] h-[120px] rounded-xl border border-slate-100 overflow-hidden shrink-0 bg-slate-100 animate-pulse hidden sm:block"></div>
+          ) : signedDisplayImage ? (
+            <div className="w-[120px] h-[120px] rounded-xl border border-slate-100 overflow-hidden shrink-0 bg-slate-50 relative hidden sm:block">
+              <img
+                src={signedDisplayImage}
+                alt={item.title}
+                loading="lazy"
+                decoding="async"
+                onError={() => setSignedDisplayImage(null)}
+                onLoad={() => setHighResLoaded(true)}
+                className={clsx(
+                  "w-full h-full object-cover object-top transition-all duration-500 ease-out",
+                  !highResLoaded ? "blur-md scale-105" : "blur-0 scale-100",
+                  "group-hover:scale-[1.03]"
+                )}
+              />
+            </div>
+          ) : hasDocument ? (
+            <div 
+              onClick={() => onPreview(item)}
+              className="w-[120px] h-[120px] rounded-xl border border-slate-300 shrink-0 bg-white p-1.5 cursor-pointer hidden sm:flex flex-col justify-between group/doc select-none shadow-2xs hover:border-primary transition-all duration-200"
+              title="Click to view official document"
+            >
+              <div className="w-full h-full border border-slate-800 p-1 flex flex-col justify-between bg-white overflow-hidden">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-0.5">
+                  <span className="text-[6.5px] font-bold text-amber-900 border border-amber-600/80 px-0.5 leading-none">EK KAAM</span>
+                  <span className="text-[6.5px] font-bold text-emerald-800 border border-slate-700 px-0.5 leading-none">INDIA</span>
+                </div>
+                <div className="bg-slate-200 border-y border-slate-800 py-0.5 text-center text-[7.5px] font-bold font-serif text-slate-900 uppercase">
+                  Catalogue
+                </div>
+                <div className="border border-slate-800 text-[6.5px] font-serif divide-y divide-slate-800">
+                  <div className="flex divide-x divide-slate-800">
+                    <span className="font-bold w-7 shrink-0 px-0.5 bg-slate-100 text-slate-900">No:</span>
+                    <span className="px-0.5 text-slate-900 truncate font-mono">{shortId}</span>
+                  </div>
+                  <div className="flex divide-x divide-slate-800">
+                    <span className="font-bold w-7 shrink-0 px-0.5 bg-slate-100 text-slate-900">Type:</span>
+                    <span className="px-0.5 text-slate-900 truncate">O-General</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="w-[120px] h-[120px] rounded-xl border border-slate-200 shrink-0 bg-slate-50 flex flex-col items-center justify-center text-slate-400 select-none hidden sm:flex gap-1.5">
+              <FileText className="w-6 h-6 text-slate-400" />
+              <span className="text-[9px] font-medium tracking-wide text-slate-500 text-center px-1.5 leading-tight">Refer the document</span>
+            </div>
+          )}
 
-        <div className="p-5 flex-1 flex flex-col lg:flex-row gap-5 justify-between">
-          <div className="flex-1 flex flex-col justify-between space-y-3">
+          <div className="flex-1 flex flex-col justify-between">
             <div>
               {renderCardHeader()}
 
-              <div className="mt-2.5">
-                <div className="text-[10px] font-bold text-primary uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  {mainCategory}
-                </div>
+              <div className="mb-3">
+                <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCategory}</div>
                 <h3 
                   onClick={() => onPreview(item)}
-                  className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-primary transition-colors line-clamp-2 leading-snug cursor-pointer" 
+                  className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2 cursor-pointer" 
                   title={item.title}
                 >
                   {item.title}
                 </h3>
               </div>
-            </div>
 
-            {/* Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50/80 border border-slate-100 rounded-xl p-3">
-              <div className="space-y-0.5 min-w-0">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                  <Landmark className="w-3 h-3 text-slate-500" />
-                  Authority
-                </span>
-                <p className="font-bold text-slate-800 truncate text-[11px]" title={orgName}>
-                  {orgName}
-                </p>
-              </div>
-
-              <div className="space-y-0.5 min-w-0 sm:border-l sm:border-slate-200/60 sm:pl-3">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-slate-500" />
-                  Location
-                </span>
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <p className="font-bold text-slate-800 truncate text-[11px]" title={locationDisplay}>
-                    {locationDisplay}
-                  </p>
-                  {effectiveDistance != null && (
-                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.2 rounded shrink-0">
-                      {Math.round(effectiveDistance)}km
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center text-slate-600" title={orgName}>
+                    <Landmark className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                    <span className="font-semibold text-slate-700 truncate text-base">
+                      Office: {orgName}
                     </span>
-                  )}
+                  </div>
+                  <div className="flex items-center text-slate-600 gap-1.5 flex-wrap" title={locationDisplay}>
+                    <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="font-semibold text-slate-700 truncate text-base">{locationDisplay}</span>
+                    {effectiveDistance !== undefined && effectiveDistance !== null && (
+                      <span className="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0 shadow-2xs">
+                        {Math.round(effectiveDistance)} km away
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
+                  <div className="flex items-center text-slate-700">
+                    <span className="flex items-center gap-1">
+                      <span>Reserve Price: <strong className="text-slate-700 font-semibold">{formattedPrice}</strong></span>
+                      <div className="relative group/tooltip inline-block ml-0.5">
+                        <Info className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                          Official reserve or base price for this auction.
+                          <div className="absolute top-full left-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
+                  </div>
+                  <div className="flex items-center text-slate-700">
+                    <span className="flex items-center gap-1">
+                      <span>Pre-bid EMD: <strong className="text-slate-700 font-semibold">{item.emd_amount != null && item.emd_amount > 0 ? formatPrice(item.emd_amount, currency) : (item.department || 'Not Stated')}</strong></span>
+                      <div className="relative group/tooltip inline-block ml-0.5">
+                        <Info className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                        <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                          Mandatory deposit required prior to auction start.
+                          <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                        </div>
+                      </div>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm border-l border-slate-100 pl-4">
+                  <div className="flex items-center text-slate-700">
+                    <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                    <span>Bidding Window: <strong className="text-slate-700 font-semibold">{biddingPeriodStr}</strong></span>
+                  </div>
+                  <div className="flex items-center text-slate-700">
+                    <Clock className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                    <span>Inspection: <strong className="text-slate-700 font-semibold">{item.inspection_date || 'See Tender Notice'}</strong></span>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="space-y-0.5 min-w-0 sm:border-l sm:border-slate-200/60 sm:pl-3">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                  <Coins className="w-3 h-3 text-slate-500" />
-                  Reserve Price
-                </span>
-                <p className="font-black text-slate-900 truncate text-xs">
-                  {formattedPrice}
-                </p>
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 mt-auto">
+              <div>
+                {timeLeftBadge}
               </div>
-            </div>
-          </div>
 
-          {/* Action Dock */}
-          <div className="lg:w-48 shrink-0 flex flex-row lg:flex-col justify-between lg:justify-center items-center lg:items-end gap-2.5 border-t lg:border-t-0 lg:border-l border-slate-100 pt-3 lg:pt-0 lg:pl-5">
-            <div className="hidden lg:block text-right w-full">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block">Timeline</span>
-              <span className="text-xs font-bold text-slate-800 block truncate" title={biddingPeriodStr}>
-                {biddingPeriodStr}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 w-full justify-end">
-              {docDownloadUrl && (
-                <a
-                  href={docDownloadUrl}
-                  download={`GeM_Auction_${cleanAuctionId}.pdf`}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex justify-center items-center h-9 px-3 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-all border border-slate-200 shrink-0 cursor-pointer shadow-3xs"
-                  title="Download Official Notice PDF"
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => onPreview(item)}
+                  className="flex-grow sm:flex-none inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
                 >
-                  <Download className="w-3.5 h-3.5 text-slate-600" />
-                </a>
-              )}
+                  <Eye className="w-4 h-4 mr-2" />
+                  View Details
+                </button>
 
-              <button
-                onClick={() => onPreview(item)}
-                className="flex-1 lg:w-full inline-flex justify-center items-center h-9 px-4 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/95 shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
-              >
-                <Eye className="w-3.5 h-3.5 mr-1.5" />
-                Inspect Auction
-              </button>
-
-              {onInterestedToggle && (
-                <ButtonWithIconDemo
-                  isInterested={isInterested}
-                  onInterestedToggle={onInterestedToggle}
-                />
-              )}
+                {onInterestedToggle && (
+                  <ButtonWithIconDemo
+                    isInterested={isInterested}
+                    onInterestedToggle={onInterestedToggle}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -390,156 +468,218 @@ export const GemCard = memo(function GemCard({
     );
   }
 
+  // Renders authentic printed government document catalogue preview (matching MSTC document catalogue sheet from Image 2)
+  const renderDocumentSheetPreview = () => (
+    <div 
+      onClick={() => onPreview(item)}
+      className="w-full h-full bg-white p-2 border border-slate-300 rounded-xl overflow-hidden flex flex-col justify-start select-none group/doc shadow-2xs hover:border-primary transition-all duration-200 cursor-pointer"
+      title="Click to view full official catalogue"
+    >
+      {/* Outer border of printed catalogue sheet */}
+      <div className="w-full h-full border border-slate-800 bg-white p-2 flex flex-col justify-between">
+        {/* Top Header Stamps */}
+        <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
+          {/* Left: EK KAAM DESH KE NAAM Badge */}
+          <div className="border border-amber-600/90 bg-amber-50/70 px-1.5 py-0.5 rounded-[2px] shadow-3xs flex flex-col items-center justify-center leading-none">
+            <span className="text-[6.5px] font-black tracking-tight text-slate-800">EK KAAM</span>
+            <span className="text-[7px] font-black tracking-tight text-emerald-800">DESH KE NAAM</span>
+          </div>
+
+          {/* Center Logo/Emblem */}
+          <div className="w-6 h-6 rounded border border-blue-900 bg-blue-950 flex items-center justify-center text-white shadow-3xs">
+            <Landmark className="w-3.5 h-3.5 text-white" />
+          </div>
+
+          {/* Right: e-assuring INDIA Stamp */}
+          <div className="border border-slate-700 bg-slate-50 px-1.5 py-0.5 rounded-[2px] shadow-3xs flex flex-col items-end justify-center leading-none">
+            <span className="text-[6.5px] font-bold text-blue-900 tracking-tight">e-assuring</span>
+            <span className="text-[7.5px] font-black text-emerald-700 tracking-tight">INDIA</span>
+          </div>
+        </div>
+
+        {/* Gray Band Title */}
+        <div className="bg-slate-200 border-y border-slate-800 py-1 text-center text-[9.5px] font-bold font-serif text-slate-900 uppercase tracking-wide">
+          Detailed Auction Catalogue
+        </div>
+
+        {/* Structured Grid Table */}
+        <div className="border border-slate-800 text-[8.5px] font-serif divide-y divide-slate-800 bg-white">
+          <div className="flex divide-x divide-slate-800">
+            <span className="font-bold w-24 shrink-0 px-1.5 py-0.5 text-slate-900 bg-slate-100/70">Auction Number:</span>
+            <span className="px-1.5 py-0.5 text-slate-900 font-mono font-medium truncate">{shortId}</span>
+          </div>
+          <div className="flex divide-x divide-slate-800">
+            <span className="font-bold w-24 shrink-0 px-1.5 py-0.5 text-slate-900 bg-slate-100/70">Auction Type:</span>
+            <span className="px-1.5 py-0.5 text-slate-900 truncate">
+              {item.is_reauction ? 'Re-Auction • Forward Auction' : 'O-General Auction'}
+            </span>
+          </div>
+          <div className="flex divide-x divide-slate-800">
+            <span className="font-bold w-24 shrink-0 px-1.5 py-0.5 text-slate-900 bg-slate-100/70">Department:</span>
+            <span className="px-1.5 py-0.5 text-slate-900 truncate">{orgName}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   // ─── GRID VIEW ─────────────────────────────────────────────────────────────
   return (
-    <div className="group relative bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-xl hover:border-primary/50 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden">
-      {/* Top Accent Line (Color-coded by Auction State) */}
-      <div 
-        className={clsx(
-          "h-1.5 w-full shrink-0 transition-colors",
-          isUrgent ? "bg-rose-500" : isStarted ? "bg-emerald-500" : isClosed ? "bg-slate-300" : "bg-purple-600"
-        )} 
-      />
-
-      {/* Scanned authentic preview only if real asset exists in storage */}
-      {authenticImage && (
-        <div 
-          onClick={() => onPreview(item)}
-          className="relative h-40 w-full shrink-0 overflow-hidden bg-slate-900 cursor-pointer select-none border-b border-slate-100"
-        >
-          <img
-            src={authenticImage}
-            alt={item.title}
-            loading="lazy"
-            onLoad={() => setImgLoaded(true)}
-            className={clsx(
-              "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out",
-              imgLoaded ? "opacity-100" : "opacity-0"
-            )}
-          />
-        </div>
-      )}
-
-      <div className="flex flex-col flex-1 p-4 justify-between">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/50 transition-all group flex flex-col h-full relative">
+      <div className="flex flex-col h-full p-5 justify-between">
         <div>
+          {/* Card Image / Document Catalogue Header (Exact MSTC Catalogue Preview Style) */}
+          <div className="h-[160px] w-full overflow-hidden rounded-xl border border-slate-100 mb-4 bg-slate-50 relative">
+            {imageLoading ? (
+              <div className="w-full h-full bg-slate-100 animate-pulse"></div>
+            ) : signedDisplayImage ? (
+              <img
+                src={signedDisplayImage}
+                alt={item.title}
+                loading="lazy"
+                decoding="async"
+                onError={() => setSignedDisplayImage(null)}
+                onLoad={() => setHighResLoaded(true)}
+                className={clsx(
+                  "w-full h-full object-cover object-top transition-all duration-500 ease-out",
+                  !highResLoaded ? "blur-md scale-105" : "blur-0 scale-100",
+                  "group-hover:scale-[1.02]"
+                )}
+              />
+            ) : hasDocument ? (
+              renderDocumentSheetPreview()
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 select-none bg-slate-50/50">
+                <FileText className="w-8 h-8 text-slate-300" />
+                <span className="text-[11px] font-medium tracking-wide text-slate-500">Refer the document</span>
+              </div>
+            )}
+          </div>
+
           {renderCardHeader()}
 
-          {/* Title & Category */}
-          <div className="mt-3 mb-2.5">
-            <div className="text-[10px] font-black text-primary uppercase tracking-wider mb-1 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-              {mainCategory}
-            </div>
+          <div className="mb-3">
+            <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{mainCategory}</div>
             <h3 
               onClick={() => onPreview(item)}
-              className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-primary transition-colors line-clamp-2 leading-snug cursor-pointer" 
+              className="text-lg font-bold text-slate-950 group-hover:text-primary transition-colors line-clamp-2 cursor-pointer" 
               title={item.title}
             >
               {item.title}
             </h3>
           </div>
 
-          {/* Reserve Price Hero Card */}
-          <div className="bg-gradient-to-br from-slate-50 via-slate-50/80 to-purple-50/30 border border-slate-200/80 rounded-xl p-3 mb-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">
-                Reserve Price (Base Value)
-              </span>
-              {item.bid_increment_amount != null && item.bid_increment_amount > 0 && (
-                <span className="text-[9px] font-semibold text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.2 rounded">
-                  Step: ₹{item.bid_increment_amount.toLocaleString('en-IN')}
-                </span>
-              )}
-            </div>
-            <div className="text-base sm:text-lg font-black text-slate-900 tracking-tight mt-0.5">
-              {formattedPrice}
-            </div>
-          </div>
-
-          {/* Metadata Grid */}
-          <div className="bg-slate-50/90 border border-slate-100 rounded-xl p-3 mb-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+          {/* Structured Metadata Grid */}
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 mb-4 grid grid-cols-2 gap-x-3 gap-y-3 text-xs sm:text-sm">
             <div className="flex flex-col min-w-0">
-              <span className="text-slate-400 font-medium text-[9px] uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                <Landmark className="w-2.5 h-2.5 text-slate-400" /> Authority
-              </span>
-              <span className="font-bold text-slate-800 truncate text-[11px]" title={orgName}>
+              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5">Organisation</span>
+              <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={orgName}>
                 {orgName}
               </span>
             </div>
 
             <div className="flex flex-col min-w-0">
-              <span className="text-slate-400 font-medium text-[9px] uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                <MapPin className="w-2.5 h-2.5 text-slate-400" /> Location
+              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+                <span>Location</span>
+                {effectiveDistance !== undefined && effectiveDistance !== null && (
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                    {Math.round(effectiveDistance)} km
+                  </span>
+                )}
               </span>
-              <span className="font-bold text-slate-800 truncate text-[11px]" title={locationDisplay}>
+              <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={locationDisplay}>
                 {locationDisplay}
               </span>
             </div>
 
-            {effectiveDistance != null && (
-              <div className="flex flex-col min-w-0 border-t border-slate-200/50 pt-1.5 col-span-2 sm:col-span-1">
-                <span className="text-slate-400 font-medium text-[9px] uppercase tracking-wider mb-0.5">
-                  Proximity
-                </span>
-                <span className="font-bold text-primary text-[10px]">
-                  {effectiveDistance.toFixed(1)} km away
-                </span>
-              </div>
-            )}
+            <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
+              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+                <span>Reserve Price</span>
+                <div className="relative group/tooltip inline-block">
+                  <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                  <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                    Official reserve or base price for this auction.
+                    <div className="absolute top-full left-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                  </div>
+                </div>
+              </span>
+              <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={formattedPrice}>
+                {formattedPrice}
+              </span>
+            </div>
 
-            {item.items_schedule && item.items_schedule.length > 0 && (
-              <div className="flex flex-col min-w-0 border-t border-slate-200/50 pt-1.5 col-span-2 sm:col-span-1">
-                <span className="text-slate-400 font-medium text-[9px] uppercase tracking-wider mb-0.5">
-                  Schedule
-                </span>
-                <span className="font-bold text-slate-700 text-[10px]">
-                  {item.items_schedule.length} Itemized Lots
-                </span>
-              </div>
-            )}
+            <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5">
+              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+                <span>Department</span>
+                <div className="relative group/tooltip inline-block">
+                  <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                  <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-48 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                    Department or administrative division hosting the auction.
+                    <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                  </div>
+                </div>
+              </span>
+              <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title={item.department || item.ministry || 'Government of India'}>
+                {item.department || item.ministry || 'Government of India'}
+              </span>
+            </div>
+
+            <div className="flex flex-col min-w-0 border-t border-slate-200/60 pt-2.5 col-span-2">
+              <span className="text-slate-400 font-mono text-[10px] uppercase tracking-wider mb-0.5 flex items-center justify-between">
+                <span>Portal Scheme</span>
+                <div className="relative group/tooltip inline-block">
+                  <Info className="w-3 h-3 text-slate-400 hover:text-blue-500 transition-colors inline-block cursor-help shrink-0" />
+                  <div className="absolute bottom-full right-0 mb-1.5 hidden group-hover/tooltip:block w-52 p-2 bg-slate-900 text-white text-[10px] font-medium normal-case leading-normal rounded-lg shadow-lg z-50 pointer-events-none whitespace-normal">
+                    Government of India e-Marketplace Forward Disposal Auction.
+                    <div className="absolute top-full right-2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                  </div>
+                </div>
+              </span>
+              <span className="font-semibold text-slate-700 truncate text-xs sm:text-sm" title="GeM Forward Auction (Government of India)">
+                GeM Forward Auction (Government of India)
+              </span>
+            </div>
           </div>
 
-          {/* Timeline Row */}
-          <div className="flex items-center justify-between text-[11px] text-slate-600 border-t border-slate-100 pt-2 mb-1">
-            <span className="text-slate-400 flex items-center gap-1 shrink-0">
-              <Calendar className="w-3 h-3 text-slate-400" /> Window:
-            </span>
-            <span className="font-semibold text-slate-800 truncate text-right pl-2" title={biddingPeriodStr}>
-              {biddingPeriodStr}
-            </span>
+          <div className="space-y-1.5 mb-4 text-sm text-slate-500 border-t border-slate-50 pt-3">
+            <div className="flex justify-between">
+              <span>Bidding Window:</span>
+              <span className="font-semibold text-slate-700">
+                {biddingPeriodStr}
+              </span>
+            </div>
+            {item.inspection_date && (
+              <div className="flex justify-between">
+                <span>Inspection Period:</span>
+                <span className="font-semibold text-slate-700">{item.inspection_date}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Action Dock */}
-        <div className="pt-3 border-t border-slate-100 flex items-center gap-2 mt-auto">
-          {docDownloadUrl && (
-            <a
-              href={docDownloadUrl}
-              download={`GeM_Auction_${cleanAuctionId}.pdf`}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex justify-center items-center h-9 px-2.5 rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-all border border-slate-200 shrink-0 cursor-pointer shadow-3xs"
-              title="Download Official Notice PDF"
+        {/* Card Footer */}
+        <div className="pt-4 border-t border-slate-100 flex flex-col gap-3 mt-auto">
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-slate-400 font-medium">Auction Status</span>
+            {timeLeftBadge}
+          </div>
+
+          <div className="flex gap-2 w-full mt-1">
+            <button
+              onClick={() => onPreview(item)}
+              className="flex-grow inline-flex justify-center items-center h-10 px-5 rounded-full text-sm font-semibold text-white bg-primary hover:bg-primary/90 hover:shadow-sm transition-all duration-200 cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5 text-slate-600" />
-            </a>
-          )}
+              <Eye className="w-4 h-4 mr-2" />
+              View Details
+            </button>
 
-          <button
-            onClick={() => onPreview(item)}
-            className="flex-1 inline-flex justify-center items-center h-9 px-4 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/95 shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
-          >
-            <Eye className="w-3.5 h-3.5 mr-1.5" />
-            Inspect Auction
-          </button>
-
-          {onInterestedToggle && (
-            <ButtonWithIconDemo
-              isInterested={isInterested}
-              onInterestedToggle={onInterestedToggle}
-            />
-          )}
+            {onInterestedToggle && (
+              <ButtonWithIconDemo
+                isInterested={isInterested}
+                onInterestedToggle={onInterestedToggle}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
