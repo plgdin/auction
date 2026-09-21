@@ -4,6 +4,8 @@ export interface AuctionCopyContext {
   location?: string;
   category?: string;
   closingTime?: string;
+  price?: number | string;
+  [key: string]: unknown;
 }
 
 /** @deprecated Use AuctionCopyContext instead */
