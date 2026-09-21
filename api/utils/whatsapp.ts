@@ -4,9 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 dotenv.config({ path: '.env.local' });
 dotenv.config();
 
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || '';
-const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
-const WHATSAPP_API_VERSION = process.env.WHATSAPP_API_VERSION || 'v21.0';
+const getWhatsAppToken = () => process.env.WHATSAPP_TOKEN || '';
+const getWhatsAppPhoneId = () => process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+const getWhatsAppApiVersion = () => process.env.WHATSAPP_API_VERSION || 'v21.0';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
@@ -91,11 +91,14 @@ async function logWhatsAppRecord(record: {
  * Send official Meta WhatsApp Cloud API request
  */
 async function callMetaGraphApi(payload: Record<string, any>): Promise<any> {
-  const url = `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  const token = getWhatsAppToken();
+  const phoneId = getWhatsAppPhoneId();
+  const apiVersion = getWhatsAppApiVersion();
+  const url = `https://graph.facebook.com/${apiVersion}/${phoneId}/messages`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
@@ -129,7 +132,7 @@ export async function sendWhatsAppTemplate(
   const contentSummary = `Template: ${templateName} (${components.map(c => c.parameters.map(p => p.text).filter(Boolean).join(', ')).join(' | ')})`;
 
   // Mock / Dev fallback if token or phone number id is missing
-  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+  if (!getWhatsAppToken() || !getWhatsAppPhoneId()) {
     const mockId = `mock_wam_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     console.log(`\x1b[36m[WhatsApp Mock: Template]\x1b[0m To: +${phone} | Template: ${templateName}`);
     console.log(`\x1b[90mPayload: ${JSON.stringify(components)}\x1b[0m`);
@@ -211,7 +214,7 @@ export async function sendWhatsAppText(
     return { success: false, error: 'Invalid phone number provided' };
   }
 
-  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+  if (!getWhatsAppToken() || !getWhatsAppPhoneId()) {
     const mockId = `mock_wam_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     console.log(`\x1b[32m[WhatsApp Mock: Text]\x1b[0m To: +${phone}`);
     console.log(`\x1b[37m${text}\x1b[0m`);
@@ -286,7 +289,7 @@ export async function sendWhatsAppInteractiveButtons(
   const phone = normalizePhoneNumber(to);
   if (!phone) return { success: false, error: 'Invalid phone number' };
 
-  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+  if (!getWhatsAppToken() || !getWhatsAppPhoneId()) {
     const mockId = `mock_wam_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     console.log(`\x1b[35m[WhatsApp Mock: Interactive Buttons]\x1b[0m To: +${phone}`);
     if (headerText) console.log(`Header: ${headerText}`);
@@ -356,7 +359,7 @@ export async function sendWhatsAppInteractiveButtons(
  * Mark an incoming WhatsApp message as read to display double blue ticks
  */
 export async function markWhatsAppMessageAsRead(messageId: string): Promise<boolean> {
-  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID || !messageId || messageId.startsWith('mock_')) {
+  if (!getWhatsAppToken() || !getWhatsAppPhoneId() || !messageId || messageId.startsWith('mock_')) {
     return true;
   }
 

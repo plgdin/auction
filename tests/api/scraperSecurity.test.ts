@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { isAllowedOrigin, setCorsHeaders } from '../utils/cors.js';
+import { isAllowedOrigin, setCorsHeaders } from '../../api/utils/cors.js';
 
 // Mock Supabase client
 const deletedTables: string[] = [];
@@ -83,7 +83,7 @@ describe('API Security & CORS Origin Protection', () => {
     });
 
     it('rejects /api/scraper/clear-db/start when confirmation header is missing', async () => {
-      const { default: handler } = await import('../scraper.js');
+      const { default: handler } = await import('../../api/scraper.js');
 
       let responseStatus = 0;
       let responseBody: any = null;
@@ -117,7 +117,7 @@ describe('API Security & CORS Origin Protection', () => {
     });
 
     it('executes real database purge when admin provides confirmation header', async () => {
-      const { default: handler } = await import('../scraper.js');
+      const { default: handler } = await import('../../api/scraper.js');
 
       let responseStatus = 0;
       let responseBody: any = null;

@@ -9,8 +9,8 @@ beforeAll(async () => {
   process.env.RESEND_API_KEY = 're_test';
 
   // Import dynamically to ensure environment variables are populated beforehand
-  sendSignupEmailHandler = (await import('../send-signup-email')).default;
-  sendTransactionalEmailHandler = (await import('../send-transactional-email')).default;
+  sendSignupEmailHandler = (await import('../../api/send-signup-email')).default;
+  sendTransactionalEmailHandler = (await import('../../api/send-transactional-email')).default;
 });
 
 // Mock Supabase client functions using vi.hoisted

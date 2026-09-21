@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   normalizePhoneNumber,
   sendWhatsAppText,
   sendWhatsAppTemplate,
   sendWhatsAppInteractiveButtons,
-} from '../utils/whatsapp.js';
-import webhookHandler from '../whatsapp-webhook.js';
-import transactionalHandler from '../send-transactional-whatsapp.js';
+} from '../../api/utils/whatsapp.js';
+import webhookHandler from '../../api/whatsapp-webhook.js';
+import transactionalHandler from '../../api/send-transactional-whatsapp.js';
 
 describe('WhatsApp Automation Test Suite', () => {
   describe('Phone Number Normalization', () => {
@@ -28,6 +28,14 @@ describe('WhatsApp Automation Test Suite', () => {
   });
 
   describe('Mock / Development Mode Dispatches', () => {
+    const originalToken = process.env.WHATSAPP_TOKEN;
+    beforeEach(() => {
+      delete process.env.WHATSAPP_TOKEN;
+    });
+    afterEach(() => {
+      if (originalToken) process.env.WHATSAPP_TOKEN = originalToken;
+    });
+
     it('safely mocks text message dispatch without error', async () => {
       const res = await sendWhatsAppText('9876543210', 'Test notification');
       expect(res.success).toBe(true);

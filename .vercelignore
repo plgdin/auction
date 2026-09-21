@@ -1,0 +1,7 @@
+tests/
+scripts/
+scratch/
+**/*.test.ts
+**/*.test.js
+**/*.spec.ts
+**/*.spec.js
