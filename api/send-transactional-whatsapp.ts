@@ -4,7 +4,7 @@ import { isRateLimited, getClientIp } from './_utils/rateLimiter.js';
 import {
   sendWhatsAppTemplate,
   sendWhatsAppText,
-  type TemplateComponent,
+  type WhatsAppSendResult,
 } from './_utils/whatsapp.js';
 
 dotenv.config({ path: '.env.local' });
