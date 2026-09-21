@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useSearchParams } from 'react-router-dom';
-import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, MapPin, Tag, CornerDownLeft, FileText, Phone, Mail, Sparkles, Gift, Zap, Navigation, Loader2 } from 'lucide-react';
+import { Search, LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight, Eye, Download, X, Copy, Check, MapPin, Tag, CornerDownLeft, FileText, Phone, Mail, Sparkles, Gift, Zap, Navigation, Loader2, Gavel } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
 import { toast } from 'react-hot-toast';
 import { AuctionCard } from '../components/auction/AuctionCard';
@@ -148,7 +148,7 @@ export function Auctions() {
   const isBusinessUser = (isAuthenticated && (profile?.subscription_plan === 'pro' || profile?.subscription_plan === 'enterprise')) || profile?.role === 'admin' || profile?.role === 'superadmin';
 
   const rawTab = searchParams.get('tab');
-  const activeTab = rawTab === 'commercial' ? 'commercial' : rawTab === 'baanknet' ? 'baanknet' : rawTab === 'gem' ? 'gem' : rawTab === 'gem-bids' ? 'gem-bids' : 'mstc';
+  const activeTab = rawTab === 'baanknet' ? 'baanknet' : rawTab === 'gem-bids' ? 'gem-bids' : rawTab === 'gem' ? 'gem' : 'mstc';
 
   const portalSeoMap = {
     mstc: {
@@ -162,19 +162,14 @@ export function Auctions() {
       kw: 'BaankNet bank auctions, SARFAESI property auction, bank seized vehicles, IBC liquidation properties, bank NPA auction',
     },
     gem: {
-      title: 'GeM Notice Board & Government eAuctions | Lelam',
-      desc: 'Live Government e-Marketplace (GeM) auction notice board, product auctions, and PSU disposals across India.',
-      kw: 'GeM auctions, GeM notice board, government e-marketplace auction, PSU tender auction',
+      title: 'GeM Forward Auctions (Govt Asset & Scrap Disposal) | Lelam',
+      desc: 'Browse official Government e-Marketplace (GeM) Forward Auctions for condemned vehicles, machinery, plant equipment, e-waste, and scrap disposal across India.',
+      kw: 'GeM forward auctions, GeM scrap auctions, government asset disposal, GeM vehicle auction, PSU surplus',
     },
     'gem-bids': {
       title: 'GeM Procurement Bids & Government Tenders | Lelam',
       desc: 'Search active GeM custom bids, reverse auctions, and government procurement tenders with itemized specification breakdown.',
       kw: 'GeM bids, GeM custom tenders, reverse auctions India, government procurement bids',
-    },
-    commercial: {
-      title: 'Commercial & Industrial Surplus Auctions | Lelam',
-      desc: 'Explore verified commercial auctions, factory surplus machinery, vehicles, and industrial scrap across India.',
-      kw: 'commercial auctions, factory surplus auction, industrial machinery auction',
     }
   };
 
@@ -284,14 +279,11 @@ export function Auctions() {
     if (hasAccess('baanknet')) {
       list.push({ id: 'baanknet', label: 'BaankNet Bank Auctions', beta: true });
     }
-    if (hasAccess('gem_auctions')) {
-      list.push({ id: 'gem', label: 'GeM Notice Board', beta: true });
-    }
     if (hasAccess('gem_bids') || hasAccess('gem_pbp')) {
       list.push({ id: 'gem-bids', label: 'GeM Procurement Bids', beta: true });
     }
-    if (hasAccess('custom')) {
-      list.push({ id: 'commercial', label: 'Commercial Auctions', beta: true });
+    if (hasAccess('gem_auctions')) {
+      list.push({ id: 'gem', label: 'GeM Forward Auctions', beta: true });
     }
     return list;
   }, [hasAccess]);
@@ -1003,7 +995,8 @@ export function Auctions() {
         endDate,
         page,
         limit,
-        sortBy
+        sortBy,
+        hasAssetDocuments: mstcHasAssetDocuments,
       });
 
       setGemAuctions(result.data);
@@ -1022,7 +1015,8 @@ export function Auctions() {
     endDate,
     page,
     limit,
-    sortBy
+    sortBy,
+    mstcHasAssetDocuments
   ]);
 
   const loadGemOptions = useCallback(async () => {
@@ -1511,7 +1505,13 @@ export function Auctions() {
         <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-center">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-3 tracking-tight">Auctions Marketplace</h1>
           <p className="text-slate-400 text-sm sm:text-base md:text-lg mb-8 max-w-2xl font-medium leading-relaxed">
-            Browse official government catalogs, bank properties and MSTC eAuctions.
+            {activeTab === 'gem'
+              ? 'Browse official Government e-Marketplace (GeM) Forward Auctions — surplus vehicles, plant machinery, scrap, and departmental asset disposals across India.'
+              : activeTab === 'gem-bids'
+                ? 'Track active GeM Government Procurement Bids & Tenders — reverse auctions and supply contracts from central & state departments.'
+                : activeTab === 'baanknet'
+                  ? 'Search bank-auctioned residential properties, commercial real estate, vehicles, and IBC/NCLT liquidation assets.'
+                  : 'Browse official government catalogs, bank properties and MSTC eAuctions across India.'}
           </p>
 
           {/* Glassmorphic Tab Switcher - only renders permitted tabs */}
@@ -1563,15 +1563,13 @@ export function Auctions() {
               {!searchQuery && (
                 <div className="absolute inset-y-0 left-6 sm:left-7 right-16 sm:right-28 flex items-center pointer-events-none select-none overflow-hidden z-10">
                   <span className="text-base sm:text-lg text-slate-400 whitespace-nowrap">
-                    {activeTab === 'commercial'
-                      ? "Search by title, reference number, or keywords..."
-                      : activeTab === 'baanknet'
-                        ? "Search bank names, property titles, address, locations..."
-                        : activeTab === 'gem'
-                          ? "Search GeM ministries, organizations, categories, titles..."
-                          : activeTab === 'gem-bids'
-                            ? "Search GeM bid/RA numbers, departments, items..."
-                            : animatedPlaceholder}
+                    {activeTab === 'baanknet'
+                      ? "Search bank names, property titles, address, locations..."
+                      : activeTab === 'gem'
+                        ? "Search GeM forward auctions by ministry, vehicle, scrap, equipment, location..."
+                        : activeTab === 'gem-bids'
+                          ? "Search GeM bid/RA numbers, departments, procurement items..."
+                          : animatedPlaceholder}
                   </span>
                   <span className="inline-block w-0.5 h-6 bg-slate-400 ml-0.5 animate-[blink_1s_step-end_infinite]" />
                 </div>
@@ -1801,7 +1799,7 @@ export function Auctions() {
                     {activeTab === 'baanknet'
                       ? `Showing ${baanknetTotalCount} Bank Auctions`
                       : activeTab === 'gem'
-                        ? `Showing ${gemTotalCount} GeM Auctions`
+                        ? `Showing ${gemTotalCount} GeM Forward Auctions`
                         : activeTab === 'gem-bids'
                           ? `Showing ${gemBidsTotalCount} GeM Procurement Bids`
                           : `Showing ${mstcTotalCount} Government Catalogs`}
@@ -2256,17 +2254,35 @@ export function Auctions() {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-350 flex-grow text-left">
-                      <h3 className="text-xl font-bold text-slate-900 mb-2">No GeM auctions found</h3>
-                      <p className="text-slate-500 mb-6">Try adjusting your search criteria or keywords.</p>
-                      <button
-                        onClick={() => {
-                          setSearchParams({ tab: 'gem' });
-                        }}
-                        className="px-6 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 cursor-pointer"
-                      >
-                        Clear search & filters
-                      </button>
+                    <div className="text-center py-16 px-6 bg-white rounded-2xl border border-dashed border-slate-300 flex-grow shadow-xs max-w-2xl mx-auto my-4">
+                      <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 border border-amber-200 shadow-2xs">
+                        <Gavel className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">
+                        {searchQuery ? 'No GeM Forward Auctions Match Your Query' : 'GeM Forward Auctions Ready for Sync'}
+                      </h3>
+                      <p className="text-slate-500 mb-6 text-sm leading-relaxed max-w-lg mx-auto">
+                        {searchQuery
+                          ? `No forward disposal auctions matched "${searchQuery}". Try broader keywords like "vehicle", "scrap", "iron", or a department name.`
+                          : 'Previous records have been cleared to start fresh from scratch. Run the GeM forward auction scraper to fetch authentic live auctions with verified PDF document extraction.'}
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-3">
+                        {searchQuery ? (
+                          <button
+                            onClick={() => {
+                              setSearchQuery('');
+                              setSearchParams({ tab: 'gem' });
+                            }}
+                            className="px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition cursor-pointer shadow-xs"
+                          >
+                            Clear Search & Filters
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2 bg-slate-900 text-slate-200 px-4 py-2 rounded-xl text-xs font-mono border border-slate-800 shadow-xs">
+                            <span className="text-emerald-400 font-bold">$</span> npm run scrape:gem:auction
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )
                 ) : (

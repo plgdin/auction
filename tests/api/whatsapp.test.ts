@@ -4,7 +4,7 @@ import {
   sendWhatsAppText,
   sendWhatsAppTemplate,
   sendWhatsAppInteractiveButtons,
-} from '../../api/utils/whatsapp.js';
+} from '../../api/_utils/whatsapp.js';
 import webhookHandler from '../../api/whatsapp-webhook.js';
 import transactionalHandler from '../../api/send-transactional-whatsapp.js';
 

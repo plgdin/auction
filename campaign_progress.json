@@ -1,0 +1,2005 @@
+{
+  "sent": {
+    "sales@abnimpex.com": {
+      "company": "ABN IMPEX PVT LTD",
+      "resendId": "01a0afd8-a1c3-765f-b4ca-a4e47c01c282",
+      "sentAt": "2026-09-17T14:50:05.766Z"
+    },
+    "purchase@abnimpex.com": {
+      "company": "ABN IMPEX PVT LTD",
+      "resendId": "01a0afda-f8fa-763a-8023-12657f71d161",
+      "sentAt": "2026-09-17T14:52:39.125Z"
+    },
+    "agneekch@gmail.com": {
+      "company": "AGN EXPORTS & ENTERPRISES",
+      "resendId": "01a0afe3-4c9f-763f-9a22-af1b6fffdaa5",
+      "sentAt": "2026-09-17T15:01:44.847Z"
+    },
+    "chemalfa@yahoo.com": {
+      "company": "ALFA CHEMICALS",
+      "resendId": "01a0afe3-5433-73db-9a24-1b1d2908198a",
+      "sentAt": "2026-09-17T15:01:46.812Z"
+    },
+    "rajiv@alphacmd.com": {
+      "company": "ALPHARUB TRADING AND MANUFACTURING PVT. LTD",
+      "resendId": "01a0afe3-589e-750e-8c68-ce6ab8b83f02",
+      "sentAt": "2026-09-17T15:01:49.503Z"
+    },
+    "alwayeagencies@yahoo.com": {
+      "company": "ALWAYE AGENCIES",
+      "resendId": "01a0afe3-62d8-778d-8534-78470406f8bc",
+      "sentAt": "2026-09-17T15:01:50.665Z"
+    },
+    "alwayerubex@yahoo.com": {
+      "company": "ALWAYE RUBEX PRIVATE LTD.",
+      "resendId": "01a0afe3-6778-71c8-9a8f-d8f3f963fd05",
+      "sentAt": "2026-09-17T15:01:51.707Z"
+    },
+    "atrubbers@rediffmail.com": {
+      "company": "ALWAYE TECHNO RUBBERS PVT LTD",
+      "resendId": "01a0afe3-6b88-72d9-ae62-701fe1eae858",
+      "sentAt": "2026-09-17T15:01:52.773Z"
+    },
+    "anilrub@eth.net": {
+      "company": "ANIL RUBBERS",
+      "resendId": "01a0afe3-6fa5-71e6-a5b1-dd6d6965745d",
+      "sentAt": "2026-09-17T15:01:53.830Z"
+    },
+    "anilrubbers@gmail.com": {
+      "company": "ANIL RUBBERS",
+      "resendId": "01a0afe3-73c5-75a1-91d5-7a392449d759",
+      "sentAt": "2026-09-17T15:01:54.846Z"
+    },
+    "ptn22000@yahoo.co.in": {
+      "company": "A.N.RUBBERS",
+      "resendId": "01a0afe3-77e4-71e7-b4a0-3d39bd346aa5",
+      "sentAt": "2026-09-17T15:01:55.898Z"
+    },
+    "arcngl@sancharnet.in": {
+      "company": "ARASU RUBBER CORPORATION LTD",
+      "resendId": "01a0afe3-7bcd-7383-9bce-32b021836563",
+      "sentAt": "2026-09-17T15:01:56.922Z"
+    },
+    "ashokindiagroup@gmail.com": {
+      "company": "ASHOK TRADE LINKS",
+      "resendId": "01a0afe3-824c-74f3-a2da-5a5b96f1a897",
+      "sentAt": "2026-09-17T15:01:58.584Z"
+    },
+    "ashokkerala1967@gmail.com": {
+      "company": "ASHOK TRADE LINKS",
+      "resendId": "01a0afe3-8891-7571-85b9-e811a57c0a20",
+      "sentAt": "2026-09-17T15:02:00.194Z"
+    },
+    "ashvinrubbers@yahoo.com": {
+      "company": "ASHVIN RUBBERS",
+      "resendId": "01a0afe3-8ca8-720c-a9b6-c9c5bf577b1a",
+      "sentAt": "2026-09-17T15:02:01.223Z"
+    },
+    "avtcok@eth.net": {
+      "company": "A.V.THOMAS & CO. LTD.",
+      "resendId": "01a0afe3-90b4-7520-b03c-448fde9cd5a9",
+      "sentAt": "2026-09-17T15:02:02.253Z"
+    },
+    "brfbasil@yahoo.com": {
+      "company": "BASIL RUBBER FACTORY (P) LTD",
+      "resendId": "01a0afe3-94c4-73f9-81cf-5fc961af0557",
+      "sentAt": "2026-09-17T15:02:03.365Z"
+    },
+    "beetasajeev@yahoo.co.in": {
+      "company": "BEETA RUBBERS",
+      "resendId": "01a0afe3-993e-76c9-ad56-d7d601598129",
+      "sentAt": "2026-09-17T15:02:04.737Z"
+    },
+    "benrosh@eth.net": {
+      "company": "BEN ROSH",
+      "resendId": "01a0afe3-9e89-74f7-85cf-1a3756a5c150",
+      "sentAt": "2026-09-17T15:02:05.839Z"
+    },
+    "blackstar@satyam.net.in": {
+      "company": "BLACK STAR EXPORTS",
+      "resendId": "01a0afe3-a3b3-73bc-ad61-24fbcba744c3",
+      "sentAt": "2026-09-17T15:02:07.169Z"
+    },
+    "blackstar@sify.com": {
+      "company": "BLACK STAR EXPORTS",
+      "resendId": "01a0afe3-a7fb-730a-9600-2c486a2eef92",
+      "sentAt": "2026-09-17T15:02:08.255Z"
+    },
+    "briterubber@gmail.com": {
+      "company": "BRITE RUBBER PROCESSOR PVT LTD",
+      "resendId": "01a0afe3-ac34-7409-aaa3-559267c422e9",
+      "sentAt": "2026-09-17T15:02:09.635Z"
+    },
+    "rubchem@ceyenar.com": {
+      "company": "CEYENAR RUBBERS",
+      "resendId": "01a0afe3-b1d0-727b-9afd-6fc8288005af",
+      "sentAt": "2026-09-17T15:02:10.730Z"
+    },
+    "vtc@ooppoottil.com": {
+      "company": "COMORIN POLYMERS AND PLANTATIONS (P) LTD",
+      "resendId": "01a0afe3-b5da-747e-9425-b7b2e6a2ca97",
+      "sentAt": "2026-09-17T15:02:11.798Z"
+    },
+    "ccplvaly@rediffmail.com": {
+      "company": "CONTINENTAL COMMODITIES PVT LTD",
+      "resendId": "01a0afe3-ba43-718b-bdef-62806cbc6bf8",
+      "sentAt": "2026-09-17T15:02:13.264Z"
+    },
+    "ccpl@valygroup.com": {
+      "company": "CONTINENTAL COMMODITIES PVT LTD",
+      "resendId": "01a0afe3-c056-76e2-aacc-a7f0326703bb",
+      "sentAt": "2026-09-17T15:02:14.467Z"
+    },
+    "h.agarwal@yahoo.com": {
+      "company": "COSMO ELECTRICALS",
+      "resendId": "01a0afe3-c55c-702c-acf9-10d47917654c",
+      "sentAt": "2026-09-17T15:02:15.737Z"
+    },
+    "denny.thomas@boaaz.com": {
+      "company": "DENNY THOMAS   MALETHUSSERIL",
+      "resendId": "01a0afe3-c980-7167-b3d4-017f38abbab2",
+      "sentAt": "2026-09-17T15:02:16.813Z"
+    },
+    "edathala.polymers@gmail.com": {
+      "company": "EDATHALA POLYMERS (P) LTD",
+      "resendId": "01a0afe3-cec0-72c9-afc3-ab5de00880ae",
+      "sentAt": "2026-09-17T15:02:18.175Z"
+    },
+    "eveleather@hotmail.com": {
+      "company": "EVE TANNERS",
+      "resendId": "01a0afe3-d2ff-759e-932b-8243351f5feb",
+      "sentAt": "2026-09-17T15:02:19.287Z"
+    },
+    "bhupesh@flexilis.in": {
+      "company": "FLEXILIS PVT LTD",
+      "resendId": "01a0afe3-d799-768c-a0f5-f2a7785d03d1",
+      "sentAt": "2026-09-17T15:02:20.432Z"
+    },
+    "gayatri.chemical@gmail.com": {
+      "company": "GAYATRI MULTITRADE (P) LTD",
+      "resendId": "01a0afe3-dc0c-766b-8f59-6416519ffc23",
+      "sentAt": "2026-09-17T15:02:21.538Z"
+    },
+    "gktrading2796@gmail.com": {
+      "company": "GEEKAY TRADING SYNDICATE",
+      "resendId": "01a0afe3-e00a-72ed-b1be-89ab304f386f",
+      "sentAt": "2026-09-17T15:02:22.555Z"
+    },
+    "anup@harrisonsmalayalam.com": {
+      "company": "HARISONS MALAYALAM LTD",
+      "resendId": "01a0afe3-e507-7539-85d8-4d526b63d896",
+      "sentAt": "2026-09-17T15:02:23.885Z"
+    },
+    "rubbersales@harisonsmalayalam.com": {
+      "company": "HARISONS MALAYALAM LTD",
+      "resendId": "01a0afe3-eba1-770a-96ed-e3fc1e7b9489",
+      "sentAt": "2026-09-17T15:02:25.565Z"
+    },
+    "hevea@eth.net": {
+      "company": "HEVEA CRUMB RUBBER (P) LTD",
+      "resendId": "01a0afe3-efe4-7262-93d0-56a70b0e9739",
+      "sentAt": "2026-09-17T15:02:26.651Z"
+    },
+    "hevea@heveacrumb.com": {
+      "company": "HEVEA CRUMB RUBBER (P) LTD",
+      "resendId": "01a0afe3-f40c-72ca-bc36-98fe031d4c94",
+      "sentAt": "2026-09-17T15:02:27.714Z"
+    },
+    "hrtccalicut@gmail.com": {
+      "company": "HINDUSTAN RUBBER TRADING CO",
+      "resendId": "01a0afe3-f92f-7459-9e56-468cc43085c9",
+      "sentAt": "2026-09-17T15:02:29.120Z"
+    },
+    "info@idealcrumb.com": {
+      "company": "IDEAL CRUMB RUBBER FACTORY",
+      "resendId": "01a0afe3-fdaa-7524-97c8-23711d9fcece",
+      "sentAt": "2026-09-17T15:02:30.155Z"
+    },
+    "idealcrumb@indiatimes.com": {
+      "company": "IDEAL CRUMB RUBBER FACTORY",
+      "resendId": "01a0afe4-02bd-7485-8aad-209c7de2c87c",
+      "sentAt": "2026-09-17T15:02:31.485Z"
+    },
+    "idukkicenex@sify.com": {
+      "company": "IDUKKI RUBBERS (P) LTD",
+      "resendId": "01a0afe4-06f6-7476-b4cd-7239f784f230",
+      "sentAt": "2026-09-17T15:02:32.543Z"
+    },
+    "indrajelatex@gmail.com": {
+      "company": "INDRAJE LATEX",
+      "resendId": "01a0afe4-0af6-766f-827a-01c3c347a49b",
+      "sentAt": "2026-09-17T15:02:33.535Z"
+    },
+    "malaya@sancharnet.in": {
+      "company": "IND RUBBER TRADERS",
+      "resendId": "01a0afe4-0f07-72df-af9f-ee2923950323",
+      "sentAt": "2026-09-17T15:02:34.620Z"
+    },
+    "jainenterprises77@gmail.com": {
+      "company": "JAIN ENTERPRISES",
+      "resendId": "01a0afe4-1321-7594-9d7f-0f2eb7619950",
+      "sentAt": "2026-09-17T15:02:35.710Z"
+    },
+    "jbrexportskkdistrict@gmail.com": {
+      "company": "J.B.R.EXPORTS",
+      "resendId": "01a0afe4-17a0-727d-a7db-492991adc803",
+      "sentAt": "2026-09-17T15:02:36.832Z"
+    },
+    "joy@jjtradelinks.com": {
+      "company": "J & J TRADE LINKS",
+      "resendId": "01a0afe4-1be7-723b-93c2-63c7c33e3afa",
+      "sentAt": "2026-09-17T15:02:37.940Z"
+    },
+    "ktmjtrade@sancharnet.in": {
+      "company": "J & J TRADE LINKS",
+      "resendId": "01a0afe4-2037-7da2-8b3a-285725ad43f1",
+      "sentAt": "2026-09-17T15:02:39.053Z"
+    },
+    "josephrubbers@gmail.com": {
+      "company": "JOSEPH RUBBERS (INDIA) PVT LTD",
+      "resendId": "01a0afe4-2608-724f-b15a-ca3d00d6c993",
+      "sentAt": "2026-09-17T15:02:40.579Z"
+    },
+    "josephrubbers@yahoo.com": {
+      "company": "JOSEPH RUBBERS (INDIA) PVT LTD",
+      "resendId": "01a0afe4-2a72-71ca-8db6-b1007747e8fd",
+      "sentAt": "2026-09-17T15:02:41.621Z"
+    },
+    "karakkattuagencies@gmail.com": {
+      "company": "KARAKKATTU AGENCIES",
+      "resendId": "01a0afe4-2e7c-72a8-bfc6-c781f376901e",
+      "sentAt": "2026-09-17T15:02:42.660Z"
+    },
+    "kavanar@satyam.net.in": {
+      "company": "KAVANAR LATEX (P) LTD",
+      "resendId": "01a0afe4-32c8-761f-a4dd-7f3965c8cc73",
+      "sentAt": "2026-09-17T15:02:43.764Z"
+    },
+    "info@kavanar.com": {
+      "company": "KAVANAR LATEX (P) LTD",
+      "resendId": "01a0afe4-376b-71b8-a8d0-7c34862d4397",
+      "sentAt": "2026-09-17T15:02:44.970Z"
+    },
+    "kocheert@gmail.com": {
+      "company": "K.E.MOHAMED",
+      "resendId": "01a0afe4-3b7f-7132-a380-747afc5035d6",
+      "sentAt": "2026-09-17T15:02:45.996Z"
+    },
+    "md@marketfed.com": {
+      "company": "KERALA STATE CO-OP MARKETING FEDERATION LTD.",
+      "resendId": "01a0afe4-3f9c-77bc-8699-a20e62af13af",
+      "sentAt": "2026-09-17T15:02:47.051Z"
+    },
+    "kollamkulam@vsnl.com": {
+      "company": "KOLLAMKULAM RUBBERS (P) LTD",
+      "resendId": "01a0afe4-43bc-71c4-91a0-547331fc6bc0",
+      "sentAt": "2026-09-17T15:02:48.448Z"
+    },
+    "info@ooppootil.com": {
+      "company": "KURIAN ABRAHAM (PVT) LTD",
+      "resendId": "01a0afe4-494d-77aa-ae94-a739309b3494",
+      "sentAt": "2026-09-17T15:02:49.549Z"
+    },
+    "info@malanadulatex.com": {
+      "company": "MALANADU LATEX (INDIA) PVT LTD",
+      "resendId": "01a0afe4-4d8c-75af-bb4b-f573329f3582",
+      "sentAt": "2026-09-17T15:02:50.618Z"
+    },
+    "malaya@malayaindia.com": {
+      "company": "MALAYA RUB - TECH INDUSTRIES",
+      "resendId": "01a0afe4-51be-7726-9196-781b081c0622",
+      "sentAt": "2026-09-17T15:02:51.715Z"
+    },
+    "malayaindia@gmail.com": {
+      "company": "MALAYA RUB - TECH INDUSTRIES",
+      "resendId": "01a0afe4-560b-7254-b554-8ec36481a22f",
+      "sentAt": "2026-09-17T15:02:53.647Z"
+    },
+    "jayjaytread@gmail.com": {
+      "company": "MAMPARAMBIL AGENCIES",
+      "resendId": "01a0afe4-5d84-7658-bb65-97d3113ca150",
+      "sentAt": "2026-09-17T15:02:55.021Z"
+    },
+    "ktmjjtrade@sancharnet.in": {
+      "company": "MARIA RUBBER LINKS",
+      "resendId": "01a0afe4-62d8-74a0-91e4-47c1fa881f19",
+      "sentAt": "2026-09-17T15:02:56.045Z"
+    },
+    "bkchopra-maindia@gmail.com": {
+      "company": "MACHINERY AGENCIES (INDIA)",
+      "resendId": "01a0afe4-66e4-751c-a0be-da33c2679f37",
+      "sentAt": "2026-09-17T15:02:57.112Z"
+    },
+    "metro110@md3.vsnl.net.in": {
+      "company": "METRO TRADING SYNDICATE",
+      "resendId": "01a0afe4-6af6-76bb-b48f-f8f6e0977889",
+      "sentAt": "2026-09-17T15:02:58.169Z"
+    },
+    "mezcomtrade@gmail.com": {
+      "company": "MEZ COMTRADE",
+      "resendId": "01a0afe4-6f35-775f-b443-8a3dda66fc9d",
+      "sentAt": "2026-09-17T15:02:59.357Z"
+    },
+    "mountveloor@rediffmail.com": {
+      "company": "MOUNT VELOOR RUBBER WORKS PVT. LTD.",
+      "resendId": "01a0afe4-74bd-748d-9ad1-3eb1b77b1389",
+      "sentAt": "2026-09-17T15:03:00.652Z"
+    },
+    "mountveloor@gmail.com": {
+      "company": "MOUNT VELOOR RUBBER WORKS PVT. LTD.",
+      "resendId": "01a0afe4-78bf-71a9-a7c9-6f27d28d54c1",
+      "sentAt": "2026-09-17T15:03:01.681Z"
+    },
+    "kurianjo@narmada.rubber.com": {
+      "company": "NARMADA VALLEY RUBBERS PVT LTD",
+      "resendId": "01a0afe4-7cfd-77ae-b541-911894009941",
+      "sentAt": "2026-09-17T15:03:02.821Z"
+    },
+    "nafedp@coop.nic": {
+      "company": "NATIONAL AGRICULTURAL CO-OPERATIVE",
+      "resendId": "01a0afe4-814d-74cd-8fd1-694e75994703",
+      "sentAt": "2026-09-17T15:03:03.863Z"
+    },
+    "mail@nechikattu.com": {
+      "company": "NECHIKATTU ENTERPRISES",
+      "resendId": "01a0afe4-855b-754b-8153-d523c112a885",
+      "sentAt": "2026-09-17T15:03:04.894Z"
+    },
+    "njavallil@gmail.com": {
+      "company": "NJAVALLIL LATEX (P) LTD.",
+      "resendId": "01a0afe4-896f-7627-82ec-0b21f2d01fd0",
+      "sentAt": "2026-09-17T15:03:05.975Z"
+    },
+    "indiar@palamarketing.com": {
+      "company": "PALA MARKETING CO-OP SOCIETY LTD. NO 4214",
+      "resendId": "01a0afe4-8dae-77b9-85b6-5d80689dac48",
+      "sentAt": "2026-09-17T15:03:07.036Z"
+    },
+    "ktm_indiar@sancharnet.in": {
+      "company": "PALA MARKETING CO-OP SOCIETY LTD. NO 4214",
+      "resendId": "01a0afe4-91df-743f-8328-142f19b0164f",
+      "sentAt": "2026-09-17T15:03:08.408Z"
+    },
+    "president@palamarketing.com": {
+      "company": "PALA MARKETING CO-OP SOCIETY LTD. NO 4214",
+      "resendId": "01a0afe4-9721-73eb-825c-6f124d8c4dc3",
+      "sentAt": "2026-09-17T15:03:09.448Z"
+    },
+    "palazhylatex@rediffmail.com": {
+      "company": "PALAZHY LATEX PVT. LTD.",
+      "resendId": "01a0afe4-9b2e-7206-9e3f-1a4401bd0c8a",
+      "sentAt": "2026-09-17T15:03:10.486Z"
+    },
+    "periyarlatex@gmail.com": {
+      "company": "PERIYAR LATEX LTD.",
+      "resendId": "01a0afe4-9f5f-7288-919c-f7b7996c9db3",
+      "sentAt": "2026-09-17T15:03:11.570Z"
+    },
+    "periyarlatex@satyam.net.in": {
+      "company": "PERIYAR LATEX LTD.",
+      "resendId": "01a0afe4-a36b-717e-8184-8ce546083b72",
+      "sentAt": "2026-09-17T15:03:12.603Z"
+    },
+    "pioneerlatex@yahoo.com": {
+      "company": "PIONEER LATEX INDUSTRIES",
+      "resendId": "01a0afe4-a782-7759-a837-686141c33d3e",
+      "sentAt": "2026-09-17T15:03:13.624Z"
+    },
+    "shanavazpk@yahoo.co.in": {
+      "company": "PIONEER LATEX INDUSTRIES",
+      "resendId": "01a0afe4-ab88-7755-842d-7342e80c6b12",
+      "sentAt": "2026-09-17T15:03:14.711Z"
+    },
+    "pnrimpex@gmail.com": {
+      "company": "PNR IMPEX",
+      "resendId": "01a0afe4-afcd-725e-9003-487b81bf5c51",
+      "sentAt": "2026-09-17T15:03:15.770Z"
+    },
+    "prasandjacob@yahoo.com": {
+      "company": "PRASAND JACOB ABRAHAM",
+      "resendId": "01a0afe4-b3f2-76dd-b8cc-13184f72cbe2",
+      "sentAt": "2026-09-17T15:03:17.184Z"
+    },
+    "pulimootiljo@rediffmail.com": {
+      "company": "PULIMOOTTIL ENTERPRISES",
+      "resendId": "01a0afe4-b95b-77ef-83cc-b0a844f7d0f7",
+      "sentAt": "2026-09-17T15:03:18.204Z"
+    },
+    "rajkumar@rbgcommodities.com": {
+      "company": "RBG TRADING CORPORATION (P) LTD",
+      "resendId": "01a0afe4-bd61-70bd-bac5-d48853e392fa",
+      "sentAt": "2026-09-17T15:03:19.233Z"
+    },
+    "john@r1international.com": {
+      "company": "R1 INTERNATIONAL (INDIA) PVT LTD",
+      "resendId": "01a0afe4-c187-7640-a36c-a3d42a3122ff",
+      "sentAt": "2026-09-17T15:03:20.370Z"
+    },
+    "vinay@r1international.com": {
+      "company": "R1 INTERNATIONAL (INDIA) PVT LTD",
+      "resendId": "01a0afe4-c5d2-774f-bad6-79c7d3dcb5ee",
+      "sentAt": "2026-09-17T15:03:21.399Z"
+    },
+    "n_rubber@sify.com": {
+      "company": "ROCKEY  C  NEROTH",
+      "resendId": "01a0afe4-c9d9-714e-9a27-f99b8606f866",
+      "sentAt": "2026-09-17T15:03:22.426Z"
+    },
+    "rijo@royallatex.com": {
+      "company": "ROYAL  LATEX  PVT  LTD",
+      "resendId": "01a0afe4-cdf5-7710-937f-efa347b461f8",
+      "sentAt": "2026-09-17T15:03:24.543Z"
+    },
+    "info@royallatex.com": {
+      "company": "ROYAL  LATEX  PVT  LTD",
+      "resendId": "01a0afe4-d637-71aa-9da4-b1d2603c4f91",
+      "sentAt": "2026-09-17T15:03:25.616Z"
+    },
+    "rubberindia2011@gmail.com": {
+      "company": "RUBBER INDIA",
+      "resendId": "01a0afe4-da56-764c-9595-c7f2843501f1",
+      "sentAt": "2026-09-17T15:03:26.743Z"
+    },
+    "info@seasonrubbers.com": {
+      "company": "SEASON RUBBERS (P) LTD",
+      "resendId": "01a0afe4-dfb1-73be-bb7f-6d69aa1936f4",
+      "sentAt": "2026-09-17T15:03:28.015Z"
+    },
+    "seasonrubber@sify.com": {
+      "company": "SEASON RUBBERS (P) LTD",
+      "resendId": "01a0afe4-e3c3-700c-95e6-c3b3992c699b",
+      "sentAt": "2026-09-17T15:03:29.104Z"
+    },
+    "kappan@sify.com": {
+      "company": "SEASON TRADING CO",
+      "resendId": "01a0afe4-e7f9-71cf-88d3-1f13a7275ea3",
+      "sentAt": "2026-09-17T15:03:30.187Z"
+    },
+    "kappan@satyam.net.in": {
+      "company": "SEASON TRADING CO",
+      "resendId": "01a0afe4-ed2c-74ed-afbb-c97c8aefbcb3",
+      "sentAt": "2026-09-17T15:03:31.478Z"
+    },
+    "ssrubbers@silverstonerubber.com": {
+      "company": "SILVERSTONE EXPORTS",
+      "resendId": "01a0afe4-f137-7256-a4e8-4dfd7adbeb60",
+      "sentAt": "2026-09-17T15:03:32.484Z"
+    },
+    "mkp@silverstonerubber.com": {
+      "company": "SILVER STONE MKP POLYMERS PVT LTD",
+      "resendId": "01a0afe4-f523-740a-9546-a448aae482ca",
+      "sentAt": "2026-09-17T15:03:33.559Z"
+    },
+    "ssrubber@silverstonerubber.com": {
+      "company": "SILVER STONE RUBBER INDIA PVT LTD",
+      "resendId": "01a0afe4-f942-74db-90b1-daaccf1d9f4e",
+      "sentAt": "2026-09-17T15:03:34.556Z"
+    },
+    "silverstonerub@eth.net": {
+      "company": "SILVER STONE RUBBER INDIA PVT LTD",
+      "resendId": "01a0afe4-fd55-73a8-9fb7-b7b413f34b13",
+      "sentAt": "2026-09-17T15:03:35.645Z"
+    },
+    "spec_rubber@yahoo.com": {
+      "company": "SPECIFIED RUBBER PVT LTD",
+      "resendId": "01a0afe5-0192-7599-bd76-80c15450c479",
+      "sentAt": "2026-09-17T15:03:37.052Z"
+    },
+    "info@st.marysrubbers.com": {
+      "company": "ST.MARY‘S RUBBERS (P) LTD",
+      "resendId": "01a0afe5-06ff-7041-8676-15b2c6bec5f0",
+      "sentAt": "2026-09-17T15:03:38.082Z"
+    },
+    "suresh@technoexports.com": {
+      "company": "TECHNO EXPORTS",
+      "resendId": "01a0afe5-0aff-7229-9363-9ac5cddbb237",
+      "sentAt": "2026-09-17T15:03:39.091Z"
+    },
+    "technoexports@satyam.net.in": {
+      "company": "TECHNO EXPORTS",
+      "resendId": "01a0afe5-0eef-743e-a098-89e63862a391",
+      "sentAt": "2026-09-17T15:03:40.103Z"
+    },
+    "thir@thaihua.in": {
+      "company": "THAIHUA INTERNATIONAL RUBBER CO. (P) LTD",
+      "resendId": "01a0b4f1-1669-7227-a015-479c4ce5d1e8",
+      "sentAt": "2026-09-18T14:34:55.321Z"
+    },
+    "info@kcpmc.com": {
+      "company": "THE KERALA CARDAMOM PROCESSING AND",
+      "resendId": "01a0b4f1-1ae3-77fa-ae80-2a2d8e20db66",
+      "sentAt": "2026-09-18T14:34:56.472Z"
+    },
+    "plantcorpktm@sancharnet.in": {
+      "company": "THE PLANTATION CORPORATION OF KERALA LTD",
+      "resendId": "01a0b4f1-2163-714a-8841-ee81dda59281",
+      "sentAt": "2026-09-18T14:34:58.138Z"
+    },
+    "rubber@avtgroup.net": {
+      "company": "THE RAJAGIRI RUBBER PRODUCE CO LTD",
+      "resendId": "01a0b4f1-2588-73c9-8cc0-5a26be8015db",
+      "sentAt": "2026-09-18T14:34:59.188Z"
+    },
+    "sfck.pnlr@sancharnet.in": {
+      "company": "THE STATE FARMING CORPORATION OF KERALA LTD",
+      "resendId": "01a0b4f1-29a3-76fb-863e-a05dffcba7d8",
+      "sentAt": "2026-09-18T14:35:00.287Z"
+    },
+    "stckochi@eth.net": {
+      "company": "THE STATE TRADING CORPORATION OF INDIA LTD",
+      "resendId": "01a0b4f1-2efc-7547-8673-e0647a2c8436",
+      "sentAt": "2026-09-18T14:35:01.831Z"
+    },
+    "stckochi@bsnl.in": {
+      "company": "THE STATE TRADING CORPORATION OF INDIA LTD",
+      "resendId": "01a0b4f1-340f-778b-8795-f3d2d0bc430c",
+      "sentAt": "2026-09-18T14:35:03.167Z"
+    },
+    "thomasagencies@rediffmail.com": {
+      "company": "THOMAS AGENCIES",
+      "resendId": "01a0b4f1-3944-724a-ba46-c127c7b4fde7",
+      "sentAt": "2026-09-18T14:35:04.274Z"
+    },
+    "thomasagencies@gmail.com": {
+      "company": "THOMAS AGENCIES",
+      "resendId": "01a0b4f1-3f9d-754e-a8a5-7f637840108e",
+      "sentAt": "2026-09-18T14:35:05.847Z"
+    },
+    "thomson@md3.vsnl.net.in": {
+      "company": "THOMSON RUBBERS (INDIA) PVT LTD",
+      "resendId": "01a0b4f1-43c0-77d3-9951-ee567d23dd1c",
+      "sentAt": "2026-09-18T14:35:06.931Z"
+    },
+    "thomasonlatex@sancharnet.in": {
+      "company": "THOMSON RUBBERS (INDIA) PVT LTD",
+      "resendId": "01a0b4f1-4a20-7cf6-82c7-e6dba5deeeee",
+      "sentAt": "2026-09-18T14:35:08.548Z"
+    },
+    "mohanan.chn@hmlindia.com": {
+      "company": "VERITAS (INDIA) LIMITED",
+      "resendId": "01a0b4f1-4ee2-7129-b1c8-59fb41ab9b8c",
+      "sentAt": "2026-09-18T14:35:09.759Z"
+    },
+    "sachin@vetbiochem.in": {
+      "company": "VETBIOCHEM (INDIA) PVT LTD",
+      "resendId": "01a0b4f1-52f9-76ab-a834-309b155c1985",
+      "sentAt": "2026-09-18T14:35:10.872Z"
+    },
+    "naveen@viaducttraders.com": {
+      "company": "VIADUCT  TRADERS  PVT  LTD",
+      "resendId": "01a0b4f1-5754-758c-98f7-c364e9b468cc",
+      "sentAt": "2026-09-18T14:35:11.970Z"
+    },
+    "amjad@wisteriaholdings.com": {
+      "company": "WISTERIA CORPORATE HOLDINGS",
+      "resendId": "01a0b4f1-5b98-72e4-ae0c-848b24e75808",
+      "sentAt": "2026-09-18T14:35:13.044Z"
+    },
+    "wynadresins@yahoo.com": {
+      "company": "WYNAD RESINS",
+      "resendId": "01a0b4f1-5fcd-73de-8cb5-e0061a4d6e81",
+      "sentAt": "2026-09-18T14:35:14.168Z"
+    },
+    "aaiindia@airtelmail.in": {
+      "company": "AAI (INDIA)",
+      "resendId": "01a0b4f1-6442-702a-a241-69c62a0b3537",
+      "sentAt": "2026-09-18T14:35:15.233Z"
+    },
+    "guptaabhinav127@hotmail.com": {
+      "company": "ABHINAV OVERSEAS",
+      "resendId": "01a0b4f1-6914-7607-9944-19b4ace24113",
+      "sentAt": "2026-09-18T14:35:16.819Z"
+    },
+    "ajay.singh@dsgroup.com": {
+      "company": "ABHISAR BUILDWELL PRIVATE LTD.",
+      "resendId": "01a0b4f1-6f96-740d-bb3b-3f2159085acb",
+      "sentAt": "2026-09-18T14:35:18.146Z"
+    },
+    "laresh.garg@dsgroupindia.com": {
+      "company": "ABHISAR BUILDWELL PRIVATE LTD.",
+      "resendId": "01a0b4f1-73c8-7489-a597-cce62fb26690",
+      "sentAt": "2026-09-18T14:35:19.238Z"
+    },
+    "abyssinia@vsnl.net": {
+      "company": "ABYSSINIA IMPEX",
+      "resendId": "01a0b4f1-7815-7024-a647-45e926a93f13",
+      "sentAt": "2026-09-18T14:35:20.303Z"
+    },
+    "info@aerobok.in": {
+      "company": "AEROBOK SHOE PVT LTD",
+      "resendId": "01a0b4f1-7c45-7060-9665-2567035ab249",
+      "sentAt": "2026-09-18T14:35:21.372Z"
+    },
+    "aeroarc@gmail.com": {
+      "company": "AERO RUBBER CORPORATION",
+      "resendId": "01a0b4f1-806d-779a-b93f-58acd5ca6315",
+      "sentAt": "2026-09-18T14:35:22.500Z"
+    },
+    "aeroarc@vsnl.net": {
+      "company": "AERO RUBBER CORPORATION",
+      "resendId": "01a0b4f1-84d8-7542-8143-7e8eb9c9f87a",
+      "sentAt": "2026-09-18T14:35:23.623Z"
+    },
+    "agarwalreclaim@gmail.com": {
+      "company": "AGARWAL RECLAIM AND RUBBER PRODUCTS",
+      "resendId": "01a0b4f1-890a-73d9-9628-02eed0d62e00",
+      "sentAt": "2026-09-18T14:35:24.665Z"
+    },
+    "info@agarwalrubber.net": {
+      "company": "AGARWAL RUBBER LIMITED",
+      "resendId": "01a0b4f1-8d23-71a9-81a7-9335bc654008",
+      "sentAt": "2026-09-18T14:35:25.707Z"
+    },
+    "agderco@agengineers.net": {
+      "company": "AG DERCO BELTING INDIA PVT LTD",
+      "resendId": "01a0b4f1-9249-74d9-ac71-01794c3ef24f",
+      "sentAt": "2026-09-18T14:35:27.261Z"
+    },
+    "cnn_fibrefoam@yahoo.com": {
+      "company": "AGREENCO FIBRE FOAM PVT LTD",
+      "resendId": "01a0b4f1-9758-779e-bb47-d99246bb8a87",
+      "sentAt": "2026-09-18T14:35:28.338Z"
+    },
+    "acltyres@vsnl.net": {
+      "company": "AHUJA CONTINENTAL LTD/ YOKOSTONE",
+      "resendId": "01a0b4f1-9c9c-7770-843e-134358a6bbc2",
+      "sentAt": "2026-09-18T14:35:29.657Z"
+    },
+    "factory@yokostone.com": {
+      "company": "AHUJA CONTINENTAL LTD/ YOKOSTONE",
+      "resendId": "01a0b4f1-a0ab-711f-8fc7-5698b4dc8999",
+      "sentAt": "2026-09-18T14:35:30.725Z"
+    },
+    "info@ailga.com": {
+      "company": "AILGA EXPORTS",
+      "resendId": "01a0b4f1-a4e0-74ab-bca7-91e7479a0a72",
+      "sentAt": "2026-09-18T14:35:31.799Z"
+    },
+    "contactus@kwalitypolymers.com": {
+      "company": "AJANTA AUTO INDUSTRIES",
+      "resendId": "01a0b4f1-a905-7468-9f6d-a5bca6a4d026",
+      "sentAt": "2026-09-18T14:35:32.869Z"
+    },
+    "ajanta_belts@yahoo.com": {
+      "company": "AJANTA BELTS (P) LTD.",
+      "resendId": "01a0b4f1-ad3f-73bd-b484-8d2baf62742c",
+      "sentAt": "2026-09-18T14:35:33.961Z"
+    },
+    "info@alaskaexportsindia.com": {
+      "company": "ALASKA EXPORTS",
+      "resendId": "01a0b4f1-b1ba-72ca-a9fd-7172d6903a42",
+      "sentAt": "2026-09-18T14:35:35.104Z"
+    },
+    "alaskadelhi@gmail.com": {
+      "company": "ALASKA MULTI POLYMERS PVT. LTD.",
+      "resendId": "01a0b4f1-b604-7150-94d0-810494345324",
+      "sentAt": "2026-09-18T14:35:36.166Z"
+    },
+    "alleppeylatex@gmail.com": {
+      "company": "ALLEPPEY LATEX PRIVATE LIMITED",
+      "resendId": "01a0b4f1-ba32-723c-ad89-e3a20c6274ab",
+      "sentAt": "2026-09-18T14:35:37.254Z"
+    },
+    "ameerubber@hotmail.com": {
+      "company": "AMEE RUBBER INDUSTRIES PVT LTD",
+      "resendId": "01a0b4f1-be5f-7394-8677-23400fe2df59",
+      "sentAt": "2026-09-18T14:35:38.314Z"
+    },
+    "info@amitypolymers.com": {
+      "company": "AMITY POLYMERS",
+      "resendId": "01a0b4f1-c278-7512-b7ce-d3801171b21b",
+      "sentAt": "2026-09-18T14:35:39.382Z"
+    },
+    "amitypolymers@vsnl.net": {
+      "company": "AMITY POLYMERS",
+      "resendId": "01a0b4f1-c6ab-72bc-9cd9-72adcea69722",
+      "sentAt": "2026-09-18T14:35:40.438Z"
+    },
+    "rnsimhan@gmail.com": {
+      "company": "AMPOLLI PVT LTD",
+      "resendId": "01a0b4f1-cbba-751f-b21b-72121856fdec",
+      "sentAt": "2026-09-18T14:35:41.751Z"
+    },
+    "export@anandnvh.com": {
+      "company": "ANAND NVH PRODUCTS (P) LTD",
+      "resendId": "01a0b4f1-cfec-71cd-b8eb-beda17471030",
+      "sentAt": "2026-09-18T14:35:42.829Z"
+    },
+    "anp@vsnl.net": {
+      "company": "ANAND NVH PRODUCTS (P) LTD",
+      "resendId": "01a0b4f1-d427-77c8-a6c1-f54ef440a0f6",
+      "sentAt": "2026-09-18T14:35:43.909Z"
+    },
+    "sbaserjee@uneudnvh.com": {
+      "company": "ANAND NVH PRODUCTS (P) LTD",
+      "resendId": "01a0b4f1-d863-7419-a3a4-a837eeef097a",
+      "sentAt": "2026-09-18T14:35:44.961Z"
+    },
+    "admin@applind.com": {
+      "company": "ANDHRA POLYMERS PVT LTD",
+      "resendId": "01a0b4f1-dc6c-76f9-af16-a2789f1f1dcf",
+      "sentAt": "2026-09-18T14:35:46.020Z"
+    },
+    "kp@applind.com": {
+      "company": "ANDHRA POLYMERS PVT LTD",
+      "resendId": "01a0b4f1-e129-7286-bf08-f7e074c34f7a",
+      "sentAt": "2026-09-18T14:35:47.197Z"
+    },
+    "armak@nda.vsnl.net.in": {
+      "company": "ANIL RUBBER MILLS PVT LTD",
+      "resendId": "01a0b4f1-e629-7794-9273-cd0e13dc24fb",
+      "sentAt": "2026-09-18T14:35:48.502Z"
+    },
+    "armakindia@airtelmail.com": {
+      "company": "ANIL RUBBER MILLS PVT LTD",
+      "resendId": "01a0b4f1-ea54-7781-b886-4d557795e838",
+      "sentAt": "2026-09-18T14:35:49.556Z"
+    },
+    "ckmore@apcotex.com": {
+      "company": "APCOTEX INDUSTRIES LTD.",
+      "resendId": "01a0b4f1-ee69-7308-a342-6622fa61605c",
+      "sentAt": "2026-09-18T14:35:50.602Z"
+    },
+    "nsreekumara@apollotyres.com": {
+      "company": "APOLLO TYRES LTD",
+      "resendId": "01a0b4f1-f27b-740e-a67a-c41b76952f86",
+      "sentAt": "2026-09-18T14:35:51.666Z"
+    },
+    "sales@apollotyres.com": {
+      "company": "APOLLO TYRES LTD",
+      "resendId": "01a0b4f1-f6b2-754b-8372-350f94e9a6ca",
+      "sentAt": "2026-09-18T14:35:52.730Z"
+    },
+    "dijo@aramats.com": {
+      "company": "ARA MATS INTERNATIONAL",
+      "resendId": "01a0b4f1-fac7-769f-8664-3fd8f1308a26",
+      "sentAt": "2026-09-18T14:35:53.800Z"
+    },
+    "arackathara@gmail.com": {
+      "company": "ARACKATHARA RECLAMATIONS,",
+      "resendId": "01a0b4f1-fff6-73ae-9be3-2fd558c8a191",
+      "sentAt": "2026-09-18T14:35:55.125Z"
+    },
+    "arackathara@satyam.net.in": {
+      "company": "ARACKATHARA RECLAMATIONS,",
+      "resendId": "01a0b4f2-0439-7256-8f1c-c5e0dd44b7cb",
+      "sentAt": "2026-09-18T14:35:56.181Z"
+    },
+    "roli.mathur@armacell.com": {
+      "company": "ARMACELL INDIA PVT LTD",
+      "resendId": "01a0b4f2-084c-702c-ae64-582419eea09c",
+      "sentAt": "2026-09-18T14:35:57.236Z"
+    },
+    "hemant.asharubber@gmail.com": {
+      "company": "ASHA RUBBER INDUSTRIES",
+      "resendId": "01a0b4f2-0c58-752c-9ff2-dac73ec49bd4",
+      "sentAt": "2026-09-18T14:35:58.257Z"
+    },
+    "asmaglove@eth.net": {
+      "company": "ASMA RUBBER PRODUCTS PVT LTD",
+      "resendId": "01a0b4f2-1064-7668-9fc0-45115f8be4c5",
+      "sentAt": "2026-09-18T14:35:59.317Z"
+    },
+    "asmaglove@gmail.com": {
+      "company": "ASMA RUBBER PRODUCTS PVT LTD",
+      "resendId": "01a0b4f2-167c-73aa-aa26-bb9c6f8fb515",
+      "sentAt": "2026-09-18T14:36:00.879Z"
+    },
+    "ashokrub@vsnl.net": {
+      "company": "ASHOK RUBBER INDUSTRIES",
+      "resendId": "01a0b4f2-1aa1-72da-9c2a-9ff6e9f2e244",
+      "sentAt": "2026-09-18T14:36:01.963Z"
+    },
+    "shpng@ashton-india.com": {
+      "company": "ASHTON INTERNATIONAL PVT LTD",
+      "resendId": "01a0b4f2-1ee4-70d6-82c8-889eaf52bbbd",
+      "sentAt": "2026-09-18T14:36:03.057Z"
+    },
+    "info@ashutoshrubber.com": {
+      "company": "ASHUTOSH RUBBER PVT LTD",
+      "resendId": "01a0b4f2-232a-758a-9bc2-2b00ce9131e2",
+      "sentAt": "2026-09-18T14:36:04.132Z"
+    },
+    "asp@aspseals.com": {
+      "company": "ASP SEALING PRODUCTS LTD",
+      "resendId": "01a0b4f2-274f-73da-8900-90a316056d2b",
+      "sentAt": "2026-09-18T14:36:05.202Z"
+    },
+    "aspseal@del2.vsnl.net.in": {
+      "company": "ASP SEALING PRODUCTS LTD",
+      "resendId": "01a0b4f2-2ba7-743e-a378-b0e3b0e82e61",
+      "sentAt": "2026-09-18T14:36:06.307Z"
+    },
+    "swanirubber@sify.com": {
+      "company": "ASTRA CORPORATION",
+      "resendId": "01a0b4f2-2fdb-7629-b5a2-5b312d80b1f6",
+      "sentAt": "2026-09-18T14:36:07.374Z"
+    },
+    "hopurchase@atgtire.com": {
+      "company": "ATC TYRES PVT LTD",
+      "resendId": "01a0b4f2-33ff-748e-913a-c70853293f23",
+      "sentAt": "2026-09-18T14:36:08.431Z"
+    },
+    "info@atgtire.com": {
+      "company": "ATC TYRES PVT LTD",
+      "resendId": "01a0b4f2-382d-71dd-9cf6-505ac91f5e13",
+      "sentAt": "2026-09-18T14:36:09.516Z"
+    },
+    "aturrubbers@yahoo.com": {
+      "company": "ATUR RUBBER PRODUCTS",
+      "resendId": "01a0b4f2-3c50-75d7-81a3-924ebcdd8af5",
+      "sentAt": "2026-09-18T14:36:10.575Z"
+    },
+    "aturrubber@vsnl.net": {
+      "company": "ATUR RUBBER PRODUCTS",
+      "resendId": "01a0b4f2-4073-70dc-b267-e46e7addf1f3",
+      "sentAt": "2026-09-18T14:36:11.628Z"
+    },
+    "auberonprn@yahoo.com": {
+      "company": "AUBERON",
+      "resendId": "01a0b4f2-44e4-7701-904e-85abf514aba3",
+      "sentAt": "2026-09-18T14:36:12.789Z"
+    },
+    "autoflex@vsnl.com": {
+      "company": "AUTOFLEX PVT LTD",
+      "resendId": "01a0b4f2-4936-7787-aa6e-3b241bf452cc",
+      "sentAt": "2026-09-18T14:36:13.974Z"
+    },
+    "dtkeswani@hotmail.com": {
+      "company": "AUTO STEEL AND RUBBER INDUSTRIES PVT LTD",
+      "resendId": "01a0b4f2-4dca-750b-b8f6-ac9a0684cea7",
+      "sentAt": "2026-09-18T14:36:15.065Z"
+    },
+    "arllko@satyam.net.in": {
+      "company": "AVADH RUBBER LIMITED",
+      "resendId": "01a0b4f2-5204-75c2-a58e-0f9eabb91e48",
+      "sentAt": "2026-09-18T14:36:16.234Z"
+    },
+    "info@avadhrubbers.com": {
+      "company": "AVADH RUBBER LIMITED",
+      "resendId": "01a0b4f2-56b7-7308-b30e-0e379b9f5cb6",
+      "sentAt": "2026-09-18T14:36:17.336Z"
+    },
+    "shylapai@gmail.com": {
+      "company": "AVIGIRI URETHANE & RUBBER INDUSTRIES PVT LTD",
+      "resendId": "01a0b4f2-5b0d-748a-89be-2ea7da65f235",
+      "sentAt": "2026-09-18T14:36:18.883Z"
+    },
+    "maheshd@avigri.com": {
+      "company": "AVIGIRI URETHANE & RUBBER INDUSTRIES PVT LTD",
+      "resendId": "01a0b4f2-60f5-761e-a8b9-56ede3659dad",
+      "sentAt": "2026-09-18T14:36:19.926Z"
+    },
+    "avind@vsnl.net": {
+      "company": "A V INDUSTRIES",
+      "resendId": "01a0b4f2-653e-729e-868f-2fef1557e772",
+      "sentAt": "2026-09-18T14:36:21.075Z"
+    },
+    "arun@avindustries.in": {
+      "company": "AVI WORLDWIDE PVT LTD",
+      "resendId": "01a0b4f2-6985-74d1-8db1-3e0e25de670c",
+      "sentAt": "2026-09-18T14:36:22.134Z"
+    },
+    "info@viworldwide.in": {
+      "company": "AVI WORLDWIDE PVT LTD",
+      "resendId": "01a0b4f2-6ddf-7299-ab2a-8867a084bdbe",
+      "sentAt": "2026-09-18T14:36:23.263Z"
+    },
+    "saurabhbairathi@yahoo.com": {
+      "company": "BAIRATHI SHOE CO (P) LTD",
+      "resendId": "01a0b4f2-7208-7558-beb6-4c4107767277",
+      "sentAt": "2026-09-18T14:36:24.292Z"
+    },
+    "info@balajicork.com": {
+      "company": "BALAJI CORK & RUBBER INC",
+      "resendId": "01a0b4f2-760e-750b-93e2-e561fa34d487",
+      "sentAt": "2026-09-18T14:36:25.340Z"
+    },
+    "balajicork@yahoo.co.in": {
+      "company": "BALAJI CORK & RUBBER INC",
+      "resendId": "01a0b4f2-7a21-72b0-9fae-d6aada3f7ead",
+      "sentAt": "2026-09-18T14:36:26.364Z"
+    },
+    "slm-reclaims@eth.net": {
+      "company": "BALAJI RUBBER AND RECLAIMS PVT LTD",
+      "resendId": "01a0b4f2-7e2c-71dd-914f-19e33cbf3298",
+      "sentAt": "2026-09-18T14:36:27.446Z"
+    },
+    "info@rubberreclaim.com": {
+      "company": "BALAJI RUBBER AND RECLAIMS PVT LTD",
+      "resendId": "01a0b4f2-825d-718f-87c9-2acd5edb86a9",
+      "sentAt": "2026-09-18T14:36:28.494Z"
+    },
+    "purchase@bkt-tries.com": {
+      "company": "BALAKRISHNA INDUSTRIES LTD",
+      "resendId": "01a0b4f2-8680-765f-9259-b8b5995d66b3",
+      "sentAt": "2026-09-18T14:36:29.570Z"
+    },
+    "europe@bkt-tries.com": {
+      "company": "BALAKRISHNA INDUSTRIES LTD",
+      "resendId": "01a0b4f2-8ab2-74fd-a9a2-32ea8e2562f5",
+      "sentAt": "2026-09-18T14:36:30.604Z"
+    },
+    "domestic@bkt-tries.com": {
+      "company": "BALAKRISHNA INDUSTRIES LTD",
+      "resendId": "01a0b4f2-8eb4-7098-b3a1-6be6fa90590f",
+      "sentAt": "2026-09-18T14:36:31.682Z"
+    },
+    "bri@cal3vsnl.net.in": {
+      "company": "BANIK RUBBER INDUSTRIES",
+      "resendId": "01a0b4f2-92f1-754f-a1b9-0cba2ca337cc",
+      "sentAt": "2026-09-18T14:36:32.742Z"
+    },
+    "rubber@vsnl.com": {
+      "company": "BASANT RUBBER FACTORY LTD",
+      "resendId": "01a0b4f2-9723-7079-a968-75dad3f19aca",
+      "sentAt": "2026-09-18T14:36:33.840Z"
+    },
+    "uniseal@vsnl.net": {
+      "company": "BASRUR UNISEAL PVT LTD",
+      "resendId": "01a0b4f2-9b63-7569-8d13-0600b33fa47a",
+      "sentAt": "2026-09-18T14:36:34.891Z"
+    },
+    "info@belmontrubber.in": {
+      "company": "BELMONT RUBBER INDUSTRIES",
+      "resendId": "01a0b4f2-a075-7387-b756-5f30f1ba9ad0",
+      "sentAt": "2026-09-18T14:36:36.189Z"
+    },
+    "belmontrubin@airtelbrand.in": {
+      "company": "BELMONT RUBBER INDUSTRIES",
+      "resendId": "01a0b4f2-a47c-7372-b35b-54c179045625",
+      "sentAt": "2026-09-18T14:36:37.212Z"
+    },
+    "betahealthcare@gmail.com": {
+      "company": "BETA HEALTHCARE PRODUCTS PVT LTD",
+      "resendId": "01a0b4f2-a884-76ec-ba06-4efd6b1e0107",
+      "sentAt": "2026-09-18T14:36:38.286Z"
+    },
+    "worksbeta@gmail.com": {
+      "company": "BETA HEALTHCARE PRODUCTS PVT LTD",
+      "resendId": "01a0b4f2-acb6-71f5-88bd-58aaa75e3da2",
+      "sentAt": "2026-09-18T14:36:39.313Z"
+    },
+    "betaindia@vsnl.com": {
+      "company": "BETA  INDUSTRIAL PRODUCTS",
+      "resendId": "01a0b4f2-b1bf-74d9-bf98-1d6db9de916f",
+      "sentAt": "2026-09-18T14:36:40.606Z"
+    },
+    "beta@del3.vsnl.net.in": {
+      "company": "BETA  INDUSTRIAL PRODUCTS",
+      "resendId": "01a0b4f2-b6e6-70d4-96d7-b0a008f30275",
+      "sentAt": "2026-09-18T14:36:41.971Z"
+    },
+    "admin@veegripbelts.com": {
+      "company": "BHARATH RUBBER (INDIA) LTD",
+      "resendId": "01a0b4f2-bb1d-711a-b94e-8baf70f255d7",
+      "sentAt": "2026-09-18T14:36:43.105Z"
+    },
+    "sales@veegripbelfs.com": {
+      "company": "BHARATH RUBBER (INDIA) LTD",
+      "resendId": "01a0b4f2-bf90-71d1-81ea-0270b281a93c",
+      "sentAt": "2026-09-18T14:36:44.235Z"
+    },
+    "bharatb@bom8.vsnl.net.in": {
+      "company": "BHARAT RUBBER WORKS PVT LTD",
+      "resendId": "01a0b4f2-c3f2-718b-8d2f-087ac458c50f",
+      "sentAt": "2026-09-18T14:36:45.281Z"
+    },
+    "ho@birlatyre.com": {
+      "company": "BIRLA TYRES",
+      "resendId": "01a0b4f2-c80a-72b8-9a9c-17d92194ba8a",
+      "sentAt": "2026-09-18T14:36:46.350Z"
+    },
+    "exports@birlatyres.com": {
+      "company": "BIRLA TYRES",
+      "resendId": "01a0b4f2-cc46-7528-b229-00df69d13237",
+      "sentAt": "2026-09-18T14:36:47.419Z"
+    },
+    "sales@bohra.com": {
+      "company": "BOHRA RUBBER PVT LTD",
+      "resendId": "01a0b4f2-d064-7548-b7e0-0eeeacb75a4a",
+      "sentAt": "2026-09-18T14:36:48.469Z"
+    },
+    "accounts2@bohra.com": {
+      "company": "BOHRA RUBBER PVT LTD",
+      "resendId": "01a0b82c-b94b-73ac-abc0-d9eb7caef364",
+      "sentAt": "2026-09-19T05:38:54.954Z"
+    },
+    "admin@bohra.com": {
+      "company": "BOHRA RUBBER PVT LTD",
+      "resendId": "01a0b82c-c076-7217-ba84-6f9d213c4521",
+      "sentAt": "2026-09-19T05:38:56.684Z"
+    },
+    "bony@bonypolymers.com": {
+      "company": "BONY POLYMERS (P) LTD",
+      "resendId": "01a0b82c-c4b8-755c-a46e-ff885b2d31e6",
+      "sentAt": "2026-09-19T05:38:57.775Z"
+    },
+    "borivli@bom3.vsnl.net.in": {
+      "company": "BORIVLI RUBBER WORKS",
+      "resendId": "01a0b82c-c94c-71fb-a451-1ad9ff69dfcb",
+      "sentAt": "2026-09-19T05:38:58.947Z"
+    },
+    "info@brahanspolymers.com": {
+      "company": "BRAHANS POLYMERS PVT LTD",
+      "resendId": "01a0b82c-cdea-7662-aeef-283f95d25734",
+      "sentAt": "2026-09-19T05:39:00.129Z"
+    },
+    "brpitd@vsnl.com": {
+      "company": "BRAHANS POLYMERS PVT LTD",
+      "resendId": "01a0b82c-d432-73c2-ac51-ea3634d07e25",
+      "sentAt": "2026-09-19T05:39:01.832Z"
+    },
+    "exports@bremelsrubbers.com": {
+      "company": "BREMELS RUBBER INDUSTRIES (P) LTD",
+      "resendId": "01a0b82c-daa7-763e-b7a7-3c9898a94a94",
+      "sentAt": "2026-09-19T05:39:03.382Z"
+    },
+    "bremels@vsnl.com": {
+      "company": "BREMELS RUBBER INDUSTRIES (P) LTD",
+      "resendId": "01a0b82c-df5f-7338-9d2f-6fcf82965b08",
+      "sentAt": "2026-09-19T05:39:04.590Z"
+    },
+    "bermels@rediffmail.com": {
+      "company": "BREMELS RUBBER INDUSTRIES (P) LTD",
+      "resendId": "01a0b82c-e393-75dd-9cbf-e2632e920e8c",
+      "sentAt": "2026-09-19T05:39:05.673Z"
+    },
+    "care@bridgestone.co.in": {
+      "company": "BRIDGESTONE INDIA PRIVATE LIMITED",
+      "resendId": "01a0b82c-e8ad-7779-ba49-cb1db5492556",
+      "sentAt": "2026-09-19T05:39:06.979Z"
+    },
+    "customercare-tbr@bridgestone.co.in": {
+      "company": "BRIDGESTONE INDIA PRIVATE LIMITED",
+      "resendId": "01a0b82c-ed81-77c3-920d-e4bf6e4b601d",
+      "sentAt": "2026-09-19T05:39:08.232Z"
+    },
+    "sundarpk@tvstyres.com": {
+      "company": "BRIDGESTONE TVS INDIA PVT LTD",
+      "resendId": "01a0b82c-f1ce-7760-93ca-484a2685e99b",
+      "sentAt": "2026-09-19T05:39:09.304Z"
+    },
+    "buyersdngineers@dataone.in": {
+      "company": "BUYER’S ENGINEERS PVT LTD",
+      "resendId": "01a0b82c-f613-708a-a942-b8d1471f6a23",
+      "sentAt": "2026-09-19T05:39:10.401Z"
+    },
+    "buyer@eth.net": {
+      "company": "BUYER’S ENGINEERS PVT LTD",
+      "resendId": "01a0b82c-fa64-72bd-a35f-570f80130858",
+      "sentAt": "2026-09-19T05:39:11.599Z"
+    },
+    "sales@bymer.com": {
+      "company": "BYMER ELASTOMERS",
+      "resendId": "01a0b82c-fef8-729e-a511-37bc01576099",
+      "sentAt": "2026-09-19T05:39:12.675Z"
+    },
+    "sales@capitalautorubbers.com": {
+      "company": "CAPITAL AUTO RUBBER PRODUCTS PVT LTD",
+      "resendId": "01a0b82d-0363-7669-ba2f-a09fe075a165",
+      "sentAt": "2026-09-19T05:39:13.833Z"
+    },
+    "export@capitalautorubber.com": {
+      "company": "CAPITAL AUTO RUBBER PRODUCTS PVT LTD",
+      "resendId": "01a0b82d-07cb-72e8-9e51-dc113900c885",
+      "sentAt": "2026-09-19T05:39:14.959Z"
+    },
+    "ceakayindustries@yahoo.com": {
+      "company": "CEAKAY INDUSTRIES",
+      "resendId": "01a0b82d-0c41-770a-a758-6a345c3ca018",
+      "sentAt": "2026-09-19T05:39:16.084Z"
+    },
+    "bharatsharma@ceatltd.com": {
+      "company": "CEAT LTD",
+      "resendId": "01a0b82d-1085-728b-af4d-fe8e7c616e80",
+      "sentAt": "2026-09-19T05:39:17.174Z"
+    },
+    "marketing@ceatltd.com": {
+      "company": "CEAT LTD",
+      "resendId": "01a0b82d-14c3-74ea-86c0-92aa9aaa3920",
+      "sentAt": "2026-09-19T05:39:18.314Z"
+    },
+    "jimmy@ceatltd.com": {
+      "company": "CEAT LTD",
+      "resendId": "01a0b82d-1946-736f-9d75-f2f69c15e395",
+      "sentAt": "2026-09-19T05:39:19.433Z"
+    },
+    "finance1.manesar@rooppolymers.com": {
+      "company": "CELLURUBB PRODUCTS PRIVATE LIMITED",
+      "resendId": "01a0b82d-1d86-76f4-9873-43375afcdca4",
+      "sentAt": "2026-09-19T05:39:20.553Z"
+    },
+    "projects_cfpl@centuaryindia.com": {
+      "company": "CENTURY FIBRE PLATES (P) LTD",
+      "resendId": "01a0b82d-21fd-75eb-b119-99b5ebde3617",
+      "sentAt": "2026-09-19T05:39:21.673Z"
+    },
+    "b2bsales_cfpl@centuaryindia.com": {
+      "company": "CENTURY FIBRE PLATES (P) LTD",
+      "resendId": "01a0b82d-264d-72cd-83c3-5eb19c76528d",
+      "sentAt": "2026-09-19T05:39:22.752Z"
+    },
+    "centuryrubber09@gmail.com": {
+      "company": "CENTURY INDUSTRIAL PRODUCTS PVT LTD",
+      "resendId": "01a0b82d-2a7b-756d-a0e7-97025f8fe29e",
+      "sentAt": "2026-09-19T05:39:23.831Z"
+    },
+    "centrubb@vsnl.com": {
+      "company": "CENTURY INDUSTRIAL PRODUCTS PVT LTD",
+      "resendId": "01a0b82d-2eb7-731c-9486-566188b96299",
+      "sentAt": "2026-09-19T05:39:24.957Z"
+    },
+    "cfi@sancharnet.in": {
+      "company": "CHHATARIYA FIRETECH INDUSTRIES",
+      "resendId": "01a0b82d-3323-75a2-97ac-960a1cc0c928",
+      "sentAt": "2026-09-19T05:39:26.023Z"
+    },
+    "contact@chokseychem.com": {
+      "company": "CHOKSEY CHEMICALS PVT LTD",
+      "resendId": "01a0b82d-373d-762d-b699-f10855800c64",
+      "sentAt": "2026-09-19T05:39:27.083Z"
+    },
+    "chopraretec@gmail.com": {
+      "company": "CHOPRA RETEC RUBBER PRODUCTS LTD",
+      "resendId": "01a0b82d-3b6a-757d-ab97-7aa5f9cd41c9",
+      "sentAt": "2026-09-19T05:39:28.153Z"
+    },
+    "chopraretec@hotmail.com": {
+      "company": "CHOPRA RETEC RUBBER PRODUCTS LTD",
+      "resendId": "01a0b82d-3f93-7258-a21a-e71f384dc326",
+      "sentAt": "2026-09-19T05:39:29.242Z"
+    },
+    "exim@crcc.in": {
+      "company": "CHOWDHRY INDUSTRIES",
+      "resendId": "01a0b82d-43d5-743c-bdd9-e564b001350e",
+      "sentAt": "2026-09-19T05:39:30.334Z"
+    },
+    "info@classiccoir.com": {
+      "company": "CLASSIC COIR FACTORY",
+      "resendId": "01a0b82d-4811-7276-a3df-957284ef5b8b",
+      "sentAt": "2026-09-19T05:39:31.390Z"
+    },
+    "coirmatesindia@gmail.com": {
+      "company": "COIRMATES INDIA",
+      "resendId": "01a0b82d-4c3a-7326-86d4-93f419254805",
+      "sentAt": "2026-09-19T05:39:32.553Z"
+    },
+    "concord_conveyor2000@yahoo.com": {
+      "company": "CONCORD CONVEYORS",
+      "resendId": "01a0b82d-50bb-732e-8ec2-91038cc8e728",
+      "sentAt": "2026-09-19T05:39:33.617Z"
+    },
+    "concord_conveyor2000@rediffmail.com": {
+      "company": "CONCORD CONVEYORS",
+      "resendId": "01a0b82d-54f1-7630-991c-fb7e4282469a",
+      "sentAt": "2026-09-19T05:39:34.688Z"
+    },
+    "manav@vsnl.com": {
+      "company": "CONVEX LATEX PVT LTD",
+      "resendId": "01a0b82d-591b-70bc-bbc5-8caa19e45da4",
+      "sentAt": "2026-09-19T05:39:35.753Z"
+    },
+    "cipl2027@gmail.com": {
+      "company": "CONVEX LATEX PVT LTD",
+      "resendId": "01a0b82d-5d5a-7612-9b5e-f43420697420",
+      "sentAt": "2026-09-19T05:39:36.843Z"
+    },
+    "ccplindia@yahoo.com": {
+      "company": "CONTINENTAL CONVEYORS PVT LTD",
+      "resendId": "01a0b82d-6175-703c-a281-d79838c97a19",
+      "sentAt": "2026-09-19T05:39:37.907Z"
+    },
+    "info@contitech.in": {
+      "company": "CONTITECH INDIA PVT LTD",
+      "resendId": "01a0b82d-65bc-771c-b111-c72afdcba4c2",
+      "sentAt": "2026-09-19T05:39:38.994Z"
+    },
+    "igp@md3.vsnl.net.in": {
+      "company": "CORI ENGINEERS PVT LTD",
+      "resendId": "01a0b82d-6a2f-73fa-8580-a19af3d6ab39",
+      "sentAt": "2026-09-19T05:39:40.235Z"
+    },
+    "igp@vsnl.com": {
+      "company": "CORI ENGINEERS PVT LTD",
+      "resendId": "01a0b82d-6f08-734c-805b-816b286cda15",
+      "sentAt": "2026-09-19T05:39:41.373Z"
+    },
+    "natcork@airtelmail.in": {
+      "company": "CORRUB INDUSTRIES",
+      "resendId": "01a0b82d-735c-7338-8fea-6be5edf2cfc3",
+      "sentAt": "2026-09-19T05:39:42.476Z"
+    },
+    "notcork@vsnl.net": {
+      "company": "CORRUB INDUSTRIES",
+      "resendId": "01a0b82d-77ba-762c-b468-10dc7e9b0222",
+      "sentAt": "2026-09-19T05:39:43.586Z"
+    },
+    "gurgaon@coseo.in": {
+      "company": "COSCO (INDIA) LIMITED",
+      "resendId": "01a0b82d-7beb-733b-b147-34a5b17791da",
+      "sentAt": "2026-09-19T05:39:44.660Z"
+    },
+    "mail@cosco.in": {
+      "company": "COSCO (INDIA) LIMITED",
+      "resendId": "01a0b82d-8021-716c-a812-9d7fe6cc9318",
+      "sentAt": "2026-09-19T05:39:45.740Z"
+    },
+    "cosmoexp@hotmail.com": {
+      "company": "COSMO EXPORTS",
+      "resendId": "01a0b82d-8510-7368-aedb-f13c4fcb50c4",
+      "sentAt": "2026-09-19T05:39:47.024Z"
+    },
+    "cosmoexp@satyam.net.in": {
+      "company": "COSMO EXPORTS",
+      "resendId": "01a0b82d-89b8-7764-bc01-9597d30896bf",
+      "sentAt": "2026-09-19T05:39:48.185Z"
+    },
+    "cupid_bom@yahoo.co.in": {
+      "company": "CUPID LTD",
+      "resendId": "01a0b82d-8de3-716a-adab-69d56102fc0e",
+      "sentAt": "2026-09-19T05:39:49.273Z"
+    },
+    "rubber@applind.com": {
+      "company": "DELTA RUBBER PRODUCTS PVT LTD",
+      "resendId": "01a0b82d-9255-721e-9efc-828d42a3eaaa",
+      "sentAt": "2026-09-19T05:39:50.404Z"
+    },
+    "floraflooring@applind.com": {
+      "company": "DELTA RUBBER PRODUCTS PVT LTD",
+      "resendId": "01a0b82d-96a6-717a-90f4-f8c49e90f8cf",
+      "sentAt": "2026-09-19T05:39:51.524Z"
+    },
+    "ckmody@devashishpolymers.com": {
+      "company": "DEVASHISH POLYMERS PVT LTD",
+      "resendId": "01a0b82d-9af4-77bc-8f3f-b21f927bdd1b",
+      "sentAt": "2026-09-19T05:39:52.627Z"
+    },
+    "nandi@nanditube.com": {
+      "company": "DINDI RUBBER PVT LTD",
+      "resendId": "01a0b82d-a118-760a-9a5b-705e0c558fa9",
+      "sentAt": "2026-09-19T05:39:54.241Z"
+    },
+    "dmequest@vsnl.com": {
+      "company": "D.M. EXPORTS PVT LTD",
+      "resendId": "01a0b82d-a5b3-7619-a61c-69190fc621fd",
+      "sentAt": "2026-09-19T05:39:55.385Z"
+    },
+    "dolphin12345@sify.com": {
+      "company": "DOLPHIN RUBBER INDUSTRIES",
+      "resendId": "01a0b82d-a9ec-7010-b6ff-e5a6272cf2f0",
+      "sentAt": "2026-09-19T05:39:56.443Z"
+    },
+    "sales@dolphinrubbermat.com": {
+      "company": "DOLPHIN RUBBER INDUSTRIES",
+      "resendId": "01a0b82d-ae36-7414-b435-72db3fea1e33",
+      "sentAt": "2026-09-19T05:39:57.673Z"
+    },
+    "info@doveint.com": {
+      "company": "DOVE INTERNATIONAL",
+      "resendId": "01a0b82d-b2e3-770b-a19f-c68248840196",
+      "sentAt": "2026-09-19T05:39:58.751Z"
+    },
+    "gopal.digaskar@dowcorning.com": {
+      "company": "DOW CORNING INDIA PVT LTD",
+      "resendId": "01a0b82d-bab7-778d-babb-089c226c49c1",
+      "sentAt": "2026-09-19T05:40:00.744Z"
+    },
+    "dptrading_401@rediffmail.com": {
+      "company": "D P TRADING CO (I)",
+      "resendId": "01a0b82d-bee3-77df-a523-a14f625ad396",
+      "sentAt": "2026-09-19T05:40:01.969Z"
+    },
+    "sdhanania@rediffamil.com": {
+      "company": "D S ENGINEERS & CONSULTANTS",
+      "resendId": "01a0b82d-c3b2-722e-bdf8-0e465eb5b98e",
+      "sentAt": "2026-09-19T05:40:03.057Z"
+    },
+    "feedback@dunlop.co.in": {
+      "company": "DUNLOP INDIA LTD",
+      "resendId": "01a0b82d-c822-71bd-a7ed-7a6fbb438da6",
+      "sentAt": "2026-09-19T05:40:04.226Z"
+    },
+    "info@duratufproduct.com": {
+      "company": "DURATUF PRODUKT",
+      "resendId": "01a0b82d-cc74-736e-b9e3-2078d5dd0da0",
+      "sentAt": "2026-09-19T05:40:05.289Z"
+    },
+    "aayush@duratufproduct.com": {
+      "company": "DURATUF PRODUKT",
+      "resendId": "01a0b82d-d0d4-74e8-b0e8-b82d7d0e1188",
+      "sentAt": "2026-09-19T05:40:06.508Z"
+    },
+    "duroflexalpy@gmail.com": {
+      "company": "DUROFLEX PRIVATE LTD/EOCO LATEX EXPORTS (P) LTD",
+      "resendId": "01a0b82d-d5f3-70cc-9ccc-9bd9af4d6cc2",
+      "sentAt": "2026-09-19T05:40:07.717Z"
+    },
+    "cocolatexexport@gmail.com": {
+      "company": "DUROFLEX PRIVATE LTD/EOCO LATEX EXPORTS (P) LTD",
+      "resendId": "01a0b82d-da18-75ac-80d8-9e9f38b64933",
+      "sentAt": "2026-09-19T05:40:08.885Z"
+    },
+    "accounts@dynamicrubbers.com": {
+      "company": "DYNAMIC RUBBERS PVT LTD",
+      "resendId": "01a0b82d-df76-7092-85e1-4dc9b088b004",
+      "sentAt": "2026-09-19T05:40:10.158Z"
+    },
+    "info@dynamicrubbers.com": {
+      "company": "DYNAMIC RUBBERS PVT LTD",
+      "resendId": "01a0b82d-e3b9-710e-a96f-75c0e7182d77",
+      "sentAt": "2026-09-19T05:40:11.237Z"
+    },
+    "pradeep_srivastaa@rediffmail.com": {
+      "company": "EAGLE MINING PRODUCTS PVT LTD",
+      "resendId": "01a0b82d-e94a-727d-a4d1-cb9f69e4d291",
+      "sentAt": "2026-09-19T05:40:12.666Z"
+    },
+    "ibapamb@dataone.in": {
+      "company": "EASONS POLYMERS",
+      "resendId": "01a0b82d-ed89-730d-8570-2eb587c75f5f",
+      "sentAt": "2026-09-19T05:40:13.754Z"
+    },
+    "sunidramktg@eastern.in": {
+      "company": "EASTERN MATTRESSES PVT LTD",
+      "resendId": "01a0b82d-f212-707d-903e-6622cce83ece",
+      "sentAt": "2026-09-19T05:40:14.954Z"
+    },
+    "sunidrafactory@eastern.in": {
+      "company": "EASTERN MATTRESSES PVT LTD",
+      "resendId": "01a0b82d-f7fe-76cb-acd7-f232cc7cea49",
+      "sentAt": "2026-09-19T05:40:16.429Z"
+    },
+    "treads@eastern.in": {
+      "company": "EASTERN TREADS LTD.",
+      "resendId": "01a0b82d-fc40-77af-9f64-663ef4e03405",
+      "sentAt": "2026-09-19T05:40:17.525Z"
+    },
+    "addoindia@eastmanglobal.com": {
+      "company": "EASTMAN INDUSTRIES",
+      "resendId": "01a0b82e-0080-7206-ae15-0ee400d07451",
+      "sentAt": "2026-09-19T05:40:18.621Z"
+    },
+    "nipur@kohinooronline.com": {
+      "company": "EASTMAN RECLAMATIONS",
+      "resendId": "01a0b82e-065b-776a-8a88-2a2f569cd0f5",
+      "sentAt": "2026-09-19T05:40:20.102Z"
+    },
+    "ashish_kalani@hotmail.com": {
+      "company": "ECO GREEN RUBBERS PVT LTD",
+      "resendId": "01a0b82e-0a94-7709-9976-c59f2962f9b7",
+      "sentAt": "2026-09-19T05:40:21.221Z"
+    },
+    "info@elasto-tech.com": {
+      "company": "ELASTO TECH INDUSTRIES",
+      "resendId": "01a0b82e-0f0c-770c-ab7e-1796d8d7ad60",
+      "sentAt": "2026-09-19T05:40:22.346Z"
+    },
+    "info@elgirubber.com": {
+      "company": "ELGI  RUBBER COMPANY LIMITED",
+      "resendId": "01a0b82e-133d-77fd-a5bb-4efc26c05ed2",
+      "sentAt": "2026-09-19T05:40:23.396Z"
+    },
+    "info@in.elgirubber.com": {
+      "company": "ELGI  RUBBER COMPANY LIMITED",
+      "resendId": "01a0b82e-19ec-771d-9db6-b397e8fe757b",
+      "sentAt": "2026-09-19T05:40:25.117Z"
+    },
+    "polytexmktg@elgiultra.com": {
+      "company": "ELGI ULTRA INDUSTRIES LTD",
+      "resendId": "01a0b82e-1e16-7389-9754-1f89cc73e420",
+      "sentAt": "2026-09-19T05:40:26.193Z"
+    },
+    "elitenbr@yahoo.com": {
+      "company": "ELITE INDIA RUBBER PRODUCTS PVT LTD",
+      "resendId": "01a0b82e-2256-71e7-bf57-642642af385d",
+      "sentAt": "2026-09-19T05:40:27.265Z"
+    },
+    "info@eliteindiarubberproducts.com": {
+      "company": "ELITE INDIA RUBBER PRODUCTS PVT LTD",
+      "resendId": "01a0b82e-2833-74a8-ad03-3507671d835f",
+      "sentAt": "2026-09-19T05:40:28.877Z"
+    },
+    "info@emdetjsr.com": {
+      "company": "EMDET JAMSHEDPUR (P) LTD",
+      "resendId": "01a0b82e-2cd3-7415-99e8-9df8205c9c1b",
+      "sentAt": "2026-09-19T05:40:29.999Z"
+    },
+    "ceo@emdetjsr.com": {
+      "company": "EMDET JAMSHEDPUR (P) LTD",
+      "resendId": "01a0b82e-3196-766d-981b-12955feeeeaf",
+      "sentAt": "2026-09-19T05:40:31.276Z"
+    },
+    "ssg@emraldtyres.com": {
+      "company": "EMRALD RESILIENT TYRE MANUFACTURERS (P) LTD",
+      "resendId": "01a0b82e-3637-707e-8b1e-0486d73a77aa",
+      "sentAt": "2026-09-19T05:40:32.361Z"
+    },
+    "aksingh@enkayrub.com": {
+      "company": "ENKAY (INDIA) RUBBER CO PVT LTD",
+      "resendId": "01a0b82e-3a5d-731a-9194-2cfe0256d6ce",
+      "sentAt": "2026-09-19T05:40:33.515Z"
+    },
+    "contact@enkayrub.com": {
+      "company": "ENKAY (INDIA) RUBBER CO PVT LTD",
+      "resendId": "01a0b82e-3eee-705f-9ab9-0e95fea5ffde",
+      "sentAt": "2026-09-19T05:40:34.604Z"
+    },
+    "mdbalajirubber@gmail.com": {
+      "company": "ESKEGIE RECLAIMS PRIVATE LTD.",
+      "resendId": "01a0b82e-4311-70da-930a-821e96657930",
+      "sentAt": "2026-09-19T05:40:35.655Z"
+    },
+    "eurekabeltings@hotmail.com": {
+      "company": "EUREKA CONVEYOR BELTINGS PVT LTD",
+      "resendId": "01a0b82e-4741-741e-aa0c-16ae75d03c22",
+      "sentAt": "2026-09-19T05:40:36.719Z"
+    },
+    "info@evershinerubbers.com": {
+      "company": "EVERHINE RUBBERS (PVT) LTD",
+      "resendId": "01a0b82e-4bb9-76dd-9f43-5d6f5879c340",
+      "sentAt": "2026-09-19T05:40:37.866Z"
+    },
+    "evershinerubbers@rediffmail.com": {
+      "company": "EVERHINE RUBBERS (PVT) LTD",
+      "resendId": "01a0b82e-4feb-76d0-a17a-d1f351512805",
+      "sentAt": "2026-09-19T05:40:38.936Z"
+    },
+    "ag@technotrades.com": {
+      "company": "EXCEL CONTROLINKAGE PVT LTD",
+      "resendId": "01a0b82e-5412-77a8-9698-44c5a38e5bf2",
+      "sentAt": "2026-09-19T05:40:40.006Z"
+    },
+    "feedback@falcontyres.com": {
+      "company": "FALCON TYRES LTD",
+      "resendId": "01a0b82e-5843-77dd-a1b1-674af8d981e0",
+      "sentAt": "2026-09-19T05:40:41.202Z"
+    },
+    "rd@falcontyres.com": {
+      "company": "FALCON TYRES LTD",
+      "resendId": "01a0b82e-5cde-710a-96fc-02728f879e8e",
+      "sentAt": "2026-09-19T05:40:42.320Z"
+    },
+    "22famcom@del2.vsnl.net.in": {
+      "company": "FAMCOM GLOBAL EXPORTS",
+      "resendId": "01a0b82e-6150-77d9-9d48-00ba180b35ca",
+      "sentAt": "2026-09-19T05:40:43.387Z"
+    },
+    "famcomindia@sify.com": {
+      "company": "FAMCOM GLOBAL EXPORTS",
+      "resendId": "01a0b82e-65e5-70fc-9bed-099a7f6a7d1e",
+      "sentAt": "2026-09-19T05:40:44.562Z"
+    },
+    "info@famcom.in": {
+      "company": "FAMCOM GLOBAL EXPORTS",
+      "resendId": "01a0b82e-6a5e-7728-aa74-602c3018490a",
+      "sentAt": "2026-09-19T05:40:45.721Z"
+    },
+    "sales@felixconsortium.com": {
+      "company": "FELIX CONSORTIUM",
+      "resendId": "01a0b82e-6ecb-7258-ac3b-94b546481592",
+      "sentAt": "2026-09-19T05:40:46.879Z"
+    },
+    "info@felixrubbers.com": {
+      "company": "FELIX RUBBERS PVT LTD",
+      "resendId": "01a0b82e-73b5-727e-a214-7003eaf21a86",
+      "sentAt": "2026-09-19T05:40:48.208Z"
+    },
+    "info@filatex.in": {
+      "company": "FILATEX-VCT PVT LTD",
+      "resendId": "01a0b82e-786a-759d-9e76-cd309d50d377",
+      "sentAt": "2026-09-19T05:40:49.329Z"
+    },
+    "filatex@md3.vsnl.net.in": {
+      "company": "FILATEX-VCT PVT LTD",
+      "resendId": "01a0b82e-7cd2-737b-bbca-65d68c1123fb",
+      "sentAt": "2026-09-19T05:40:50.478Z"
+    },
+    "albert@fvpl.co.in": {
+      "company": "FILATEX VECHUKUNNEL PVT LTD",
+      "resendId": "01a0b82e-8132-729c-8008-fb56bf4b2639",
+      "sentAt": "2026-09-19T05:40:51.568Z"
+    },
+    "filcomps@gmail.com": {
+      "company": "FILCOMPS",
+      "resendId": "01a0c242-d1b3-717e-ba7c-168371ca4f25",
+      "sentAt": "2026-09-21T04:39:14.717Z"
+    },
+    "info@fishfarubbers.com": {
+      "company": "FISHFA RUBBERS LTD",
+      "resendId": "01a0c242-e0b1-770c-a64b-15a97f69fb0f",
+      "sentAt": "2026-09-21T04:39:18.588Z"
+    },
+    "exports@flooratexrubber.com": {
+      "company": "FISHFA RUBBERS LTD",
+      "resendId": "01a0c242-eb44-71ec-9de2-1a091d4b330d",
+      "sentAt": "2026-09-21T04:39:21.296Z"
+    },
+    "floora@sancharnet.in": {
+      "company": "FISHFA RUBBERS LTD",
+      "resendId": "01a0c242-f0fb-777d-9e12-e509ea8fa31e",
+      "sentAt": "2026-09-21T04:39:22.911Z"
+    },
+    "ashish.ranjan@forbo.com": {
+      "company": "FORBO SIEGLING MOVEMENT SYSTEMS INDIA PVT LTD",
+      "resendId": "01a0c242-fb4c-762c-abe2-11df1d3128ab",
+      "sentAt": "2026-09-21T04:39:25.424Z"
+    },
+    "forbes1@vsnl.com": {
+      "company": "FORBES EWART & FIGGIS (P) LTD",
+      "resendId": "01a0c243-090d-7170-8686-af564a18b954",
+      "sentAt": "2026-09-21T04:39:28.909Z"
+    },
+    "info@forech.com": {
+      "company": "FORECH INDIA LTD",
+      "resendId": "01a0c243-1368-7309-8508-b5a987552812",
+      "sentAt": "2026-09-21T04:39:31.542Z"
+    },
+    "forech@mdb.vsnl.net.in": {
+      "company": "FORECH INDIA LTD",
+      "resendId": "01a0c243-1a1e-768d-821a-3303e7b5ba8d",
+      "sentAt": "2026-09-21T04:39:33.271Z"
+    },
+    "customercare@4fresh.in": {
+      "company": "FOUR FRESH RETAILS PVT LTD",
+      "resendId": "01a0c243-1fad-72d4-b1ca-4d68ae4fef45",
+      "sentAt": "2026-09-21T04:39:35.448Z"
+    },
+    "bhatiaks@yahoo.com": {
+      "company": "FREEDOM RUBBER LTD",
+      "resendId": "01a0c243-2c0d-70bc-9acb-45f7884eaf3f",
+      "sentAt": "2026-09-21T04:39:37.876Z"
+    },
+    "slm-reclaims@sancharnet.in": {
+      "company": "GANESA RUBBER RECLAIMERS",
+      "resendId": "01a0c243-316e-705e-9d43-7fcf40afb2db",
+      "sentAt": "2026-09-21T04:39:39.231Z"
+    },
+    "gangamani2001@yahoo.com": {
+      "company": "GANGAMANI ENTERPRISE PVT LTD",
+      "resendId": "01a0c243-36e2-7421-bd7f-0e7a957751ef",
+      "sentAt": "2026-09-21T04:39:40.633Z"
+    },
+    "info@garwarebeil.com": {
+      "company": "GARWARE BESTRETCH LTD",
+      "resendId": "01a0c243-3c21-766d-be13-7279963df875",
+      "sentAt": "2026-09-21T04:39:43.169Z"
+    },
+    "a.dyahadroy@garwarebeil.com": {
+      "company": "GARWARE BESTRETCH LTD",
+      "resendId": "01a0c243-4a9d-7389-b0ae-91f1b531b9a8",
+      "sentAt": "2026-09-21T04:39:45.677Z"
+    },
+    "customercare@gates.com": {
+      "company": "GATES  INDIA PVT LTD",
+      "resendId": "01a0c243-5252-7594-a5d7-177eb109345d",
+      "sentAt": "2026-09-21T04:39:47.707Z"
+    },
+    "gatesind@satyam.net.in": {
+      "company": "GATES  INDIA PVT LTD",
+      "resendId": "01a0c243-59bb-770d-bfa3-90569645b51c",
+      "sentAt": "2026-09-21T04:39:49.590Z"
+    },
+    "adityagupta@gbrubberproduct.com": {
+      "company": "G.B. RUBBER PRODUCTS",
+      "resendId": "01a0c243-60c7-77f9-a97d-168ed0166bb1",
+      "sentAt": "2026-09-21T04:39:51.440Z"
+    },
+    "gbrubber@vsnl.net": {
+      "company": "G.B. RUBBER PRODUCTS",
+      "resendId": "01a0c243-6731-7474-a60d-b5b739347b6d",
+      "sentAt": "2026-09-21T04:39:53.010Z"
+    },
+    "generalrubber@gmail.com": {
+      "company": "GENERAL RUBBER PRODUCTS",
+      "resendId": "01a0c243-6dec-737c-b3d8-b5ee2696fde6",
+      "sentAt": "2026-09-21T04:39:54.788Z"
+    },
+    "strpcigrp@dataone.in": {
+      "company": "GENERAL RUBBER PRODUCTS",
+      "resendId": "01a0c243-76d1-77de-b99d-09268b6963d5",
+      "sentAt": "2026-09-21T04:39:56.996Z"
+    },
+    "midas@vsnl.com": {
+      "company": "GENERAL RUBBERS",
+      "resendId": "01a0c243-8310-752b-a4de-4e9cd20b60c2",
+      "sentAt": "2026-09-21T04:40:00.135Z"
+    },
+    "glenrock@sancharnet.in": {
+      "company": "GLENROCK RUBBER PRODUCTS PVT LTD",
+      "resendId": "01a0c243-93f2-70e8-89ea-b65b8294abe2",
+      "sentAt": "2026-09-21T04:40:04.613Z"
+    },
+    "sales@goldenrolls.com": {
+      "company": "GOLDEN ROLLS PVT LTD",
+      "resendId": "01a0c243-a065-71fa-aa19-451d32595cd4",
+      "sentAt": "2026-09-21T04:40:07.661Z"
+    },
+    "colmjs@yahoo.com": {
+      "company": "GOLDFLEX AUTO PARTS PVT LTD",
+      "resendId": "01a0c243-aa0d-70dd-aefa-a7472170e5cc",
+      "sentAt": "2026-09-21T04:40:10.116Z"
+    },
+    "cyrus@goldseal.in": {
+      "company": "GOLD SEAL AVON POLYMERS PVT LTD",
+      "resendId": "01a0c243-b50e-7385-897c-6e36c7551ce4",
+      "sentAt": "2026-09-21T04:40:12.942Z"
+    },
+    "sales@goldseal.in": {
+      "company": "GOLD SEAL AVON POLYMERS PVT LTD",
+      "resendId": "01a0c243-bdee-709c-9383-e172b529dbf8",
+      "sentAt": "2026-09-21T04:40:15.188Z"
+    },
+    "mavis@goldseal.in": {
+      "company": "GOLDSEAL SAARGUMMI INDIA (P) LTD",
+      "resendId": "01a0c243-c903-7149-a5ae-0f82df54076a",
+      "sentAt": "2026-09-21T04:40:18.061Z"
+    },
+    "eximclub89@yahoo.com": {
+      "company": "GOLDY INTERNATIONAL INC",
+      "resendId": "01a0c243-d2de-716a-afea-56bc1a688110",
+      "sentAt": "2026-09-21T04:40:20.612Z"
+    },
+    "garhwal@goodyear.com": {
+      "company": "GOODYEAR INDIA LTD/GOOD YEAR SOUTHASIA PVT LTD",
+      "resendId": "01a0c243-e1f0-74da-915a-8bab3a5b4c61",
+      "sentAt": "2026-09-21T04:40:24.466Z"
+    },
+    "export@goodyear.com": {
+      "company": "GOODYEAR INDIA LTD/GOOD YEAR SOUTHASIA PVT LTD",
+      "resendId": "01a0c243-e906-74d4-918c-1e93a35dde4d",
+      "sentAt": "2026-09-21T04:40:26.309Z"
+    },
+    "ludhiana@grltires.com": {
+      "company": "GOVIND RUBBER LTD",
+      "resendId": "01a0c243-f227-71ba-952d-e098e6ef9bbf",
+      "sentAt": "2026-09-21T04:40:28.572Z"
+    },
+    "ludhiana@govindrubber.com": {
+      "company": "GOVIND RUBBER LTD",
+      "resendId": "01a0c243-fa41-74cb-aaa5-e3391bc03097",
+      "sentAt": "2026-09-21T04:40:30.695Z"
+    },
+    "darak@govindrubber.com": {
+      "company": "GOVIND RUBBER LTD",
+      "resendId": "01a0c244-02a1-7615-aecf-ce6c9c8593d5",
+      "sentAt": "2026-09-21T04:40:32.789Z"
+    },
+    "info@grltyres.com": {
+      "company": "GOVIND RUBBER LTD",
+      "resendId": "01a0c244-0a28-71a9-9915-1132fd737797",
+      "sentAt": "2026-09-21T04:40:34.712Z"
+    },
+    "akmund@gmail.com": {
+      "company": "GREEN ENERGY RESOURCES",
+      "resendId": "01a0c244-0f17-7197-813f-f594506fe3a0",
+      "sentAt": "2026-09-21T04:40:36.033Z"
+    },
+    "sales.ip@grpweb.com": {
+      "company": "GRP LTD (F’LY, GUJARAT RECLAIM & RUBBER)",
+      "resendId": "01a0c244-1415-77a7-8ec7-31415f539466",
+      "sentAt": "2026-09-21T04:40:37.307Z"
+    },
+    "ajay.gandhi@grpweb.com": {
+      "company": "GRP LTD (F’LY, GUJARAT RECLAIM & RUBBER)",
+      "resendId": "01a0c244-1922-738e-b578-e2e05880e752",
+      "sentAt": "2026-09-21T04:40:38.548Z"
+    },
+    "p.karunakaran@habasit.com": {
+      "company": "HABASIT IAKOKA PVT LTD",
+      "resendId": "01a0c244-1e52-7629-a7e2-9525800d1c0c",
+      "sentAt": "2026-09-21T04:40:39.938Z"
+    },
+    "hlpl.marketing@gmail.com": {
+      "company": "HANKOOK LATEX PVT LTD",
+      "resendId": "01a0c244-235a-74bf-9659-961b6d7fcb68",
+      "sentAt": "2026-09-21T04:40:41.218Z"
+    },
+    "hllp@sify.com": {
+      "company": "HANKOOK LATEX PVT LTD",
+      "resendId": "01a0c244-28a0-745c-b5a5-8ef10adc91c0",
+      "sentAt": "2026-09-21T04:40:42.517Z"
+    },
+    "sales@hankooklatex.in": {
+      "company": "HANKOOK LATEX PVT LTD",
+      "resendId": "01a0c244-2e9f-7704-b270-860763d3b989",
+      "sentAt": "2026-09-21T04:40:44.051Z"
+    },
+    "darshan.shah@harkeshrubber.com": {
+      "company": "HARKESH RUBBER INDUSTRIES",
+      "resendId": "01a0c244-3602-703e-bb13-612756882f99",
+      "sentAt": "2026-09-21T04:40:45.947Z"
+    },
+    "info@harkeshrubber.com": {
+      "company": "HARKESH RUBBER INDUSTRIES",
+      "resendId": "01a0c244-4183-76da-a178-1542bc546b08",
+      "sentAt": "2026-09-21T04:40:48.963Z"
+    },
+    "exports@hartex.in": {
+      "company": "HARTEX RUBBER PVT LTD",
+      "resendId": "01a0c244-96db-722a-b07c-690d28661eb2",
+      "sentAt": "2026-09-21T04:41:10.739Z"
+    },
+    "s.bagta@hartex.in": {
+      "company": "HARTEX RUBBER PVT LTD",
+      "resendId": "01a0c244-b6db-763b-a1e3-dd7481b0be75",
+      "sentAt": "2026-09-21T04:41:18.919Z"
+    },
+    "info@haryanarubberudyog.com": {
+      "company": "HARYANA RUBBER UDYOG",
+      "resendId": "01a0c244-c64e-702a-ab5d-3166d603e38c",
+      "sentAt": "2026-09-21T04:41:22.936Z"
+    },
+    "sales@helicord.in": {
+      "company": "HELICORD TRANSMISSIONS PRIVATE LIMITED",
+      "resendId": "01a0c244-d3c0-77eb-8e7e-5530354a54bc",
+      "sentAt": "2026-09-21T04:41:26.394Z"
+    },
+    "hevea@sancharnet.in": {
+      "company": "HEVEA RUBBER TECHNOLOGIES (P) LTD",
+      "resendId": "01a0c244-db98-7288-838d-4ad537392512",
+      "sentAt": "2026-09-21T04:41:28.387Z"
+    },
+    "laila.kurien@hevea.co.in": {
+      "company": "HEVEA RUBBER TECHNOLOGIES (P) LTD",
+      "resendId": "01a0c244-e51b-760c-b5d9-01531b9ae003",
+      "sentAt": "2026-09-21T04:41:30.776Z"
+    },
+    "kurian-kurian@hevea.co.in": {
+      "company": "HEVEA RUBBER TECHNOLOGIES (P) LTD",
+      "resendId": "01a0c244-ef91-760c-9f88-05b6d1967125",
+      "sentAt": "2026-09-21T04:41:33.525Z"
+    },
+    "hicarekklm@yahoo.co.in": {
+      "company": "HI-CARE POLYMERS PVT LTD",
+      "resendId": "01a0c245-04af-70fd-98b1-7ecb2209e273",
+      "sentAt": "2026-09-21T04:41:38.856Z"
+    },
+    "marketing@hicarepolymers.com": {
+      "company": "HI-CARE POLYMERS PVT LTD",
+      "resendId": "01a0c245-14c4-70fc-a60a-3a9fb34ac6e3",
+      "sentAt": "2026-09-21T04:41:43.014Z"
+    },
+    "belts@universaldelhi.org": {
+      "company": "H I C INTERNATIONAL CO INC",
+      "resendId": "01a0c245-20b3-762d-8bb3-e2c0d83c0a65",
+      "sentAt": "2026-09-21T04:41:46.078Z"
+    },
+    "universal@hic-india.com": {
+      "company": "H I C INTERNATIONAL CO INC",
+      "resendId": "01a0c245-2f23-778d-902c-f194d97da712",
+      "sentAt": "2026-09-21T04:41:49.737Z"
+    },
+    "highrange@satyam.net.in": {
+      "company": "HIGHRANGE RUBBER & COIR PRODUCTS PRIVATE LTD",
+      "resendId": "01a0c245-3c19-712f-ae23-bffa305a2dce",
+      "sentAt": "2026-09-21T04:41:53.495Z"
+    },
+    "export@hightechreclaim.com": {
+      "company": "HIGH TECH RECLAIM PVT LTD",
+      "resendId": "01a0c245-498c-709d-a3df-517b8eabfc47",
+      "sentAt": "2026-09-21T04:41:56.539Z"
+    },
+    "info@hightechreclaim.com": {
+      "company": "HIGH TECH RECLAIM PVT LTD",
+      "resendId": "01a0c245-63f1-776a-b02b-484232099668",
+      "sentAt": "2026-09-21T04:42:03.305Z"
+    },
+    "info@himanshuorganics.com": {
+      "company": "HIMANSHU ORGANICS (P) LTD",
+      "resendId": "01a0c245-707e-778f-939d-8f9c3e870d0d",
+      "sentAt": "2026-09-21T04:42:06.456Z"
+    },
+    "export@himanshuorganics.com": {
+      "company": "HIMANSHU ORGANICS (P) LTD",
+      "resendId": "01a0c245-79b7-7282-a058-4d43c0f16b30",
+      "sentAt": "2026-09-21T04:42:08.828Z"
+    },
+    "info@hicindia.com": {
+      "company": "HINDUSTAN INDUSTRIAL CORPORATION",
+      "resendId": "01a0c245-7e6b-71c2-871d-390b24ec1ca8",
+      "sentAt": "2026-09-21T04:42:10.015Z"
+    },
+    "mkt@ravasco.com": {
+      "company": "HINDUSTAN RUBBERS (SILVASSA)",
+      "resendId": "01a0c245-8387-752e-8b87-1e87f82c4341",
+      "sentAt": "2026-09-21T04:42:11.384Z"
+    },
+    "ravasco@vsnl.net": {
+      "company": "HINDUSTAN RUBBERS (SILVASSA)",
+      "resendId": "01a0c245-8ebf-72ff-bf72-dd412e595faa",
+      "sentAt": "2026-09-21T04:42:14.195Z"
+    },
+    "exports@hindustantyres.com": {
+      "company": "HINDUSTAN WHEELS PVT LTD",
+      "resendId": "01a0c245-a137-7384-a952-3bff99669310",
+      "sentAt": "2026-09-21T04:42:18.938Z"
+    },
+    "mainimunish@hindustantyres.com": {
+      "company": "HINDUSTAN WHEELS PVT LTD",
+      "resendId": "01a0c245-aa30-77e2-859e-da4bb12c3465",
+      "sentAt": "2026-09-21T04:42:21.260Z"
+    },
+    "exports@hindlatex.com": {
+      "company": "HLL LIFECARE LTD",
+      "resendId": "01a0c245-b35a-72cb-bc36-50423429e72a",
+      "sentAt": "2026-09-21T04:42:24.404Z"
+    },
+    "horizonreclaim@in.com": {
+      "company": "HORIZON RECLAIM (INDIA) PVT LTD",
+      "resendId": "01a0c245-c0a1-74f8-9e1c-4f3dc43d38a8",
+      "sentAt": "2026-09-21T04:42:27.036Z"
+    },
+    "info@hemcmedical.com": {
+      "company": "HOSPITAL EQUIPMENT MFG CO",
+      "resendId": "01a0c245-c614-7548-a52c-b2d1137a3ac8",
+      "sentAt": "2026-09-21T04:42:28.376Z"
+    },
+    "marketing@hosurcoir.com": {
+      "company": "HOSUR COIR FOAMS (P) LTD",
+      "resendId": "01a0c245-cb3b-75f4-a30e-cb816c2e0213",
+      "sentAt": "2026-09-21T04:42:29.735Z"
+    },
+    "accounts@hosurcoir.com": {
+      "company": "HOSUR COIR FOAMS (P) LTD",
+      "resendId": "01a0c245-d212-7766-9353-90fdf1139d5e",
+      "sentAt": "2026-09-21T04:42:31.443Z"
+    },
+    "hsiitd@hsiauto.com": {
+      "company": "HSI AUTOMOTIVES LTD",
+      "resendId": "01a0c245-db33-749a-a999-eb5e96ed25bb",
+      "sentAt": "2026-09-21T04:42:33.843Z"
+    },
+    "hsiauto@vsnl.com": {
+      "company": "HSI AUTOMOTIVES LTD",
+      "resendId": "01a0c245-efb2-77ef-a0a5-b719ce36ab22",
+      "sentAt": "2026-09-21T04:42:39.033Z"
+    },
+    "rajyanush@gmail.com": {
+      "company": "IDEAL POLYMERS (INDIA) PVT LTD",
+      "resendId": "01a0c245-f9c9-7399-9549-5fc8429dcb7b",
+      "sentAt": "2026-09-21T04:42:41.636Z"
+    },
+    "ilpea@satyam.net": {
+      "company": "ILPEA  PARAMOUNT LIMITED",
+      "resendId": "01a0c246-05d1-70a8-99dc-13b3b19e775b",
+      "sentAt": "2026-09-21T04:42:44.680Z"
+    },
+    "gvaras@inarco.com": {
+      "company": "INARCO LIMITED",
+      "resendId": "01a0c246-13f5-735b-aaf9-691794baf992",
+      "sentAt": "2026-09-21T04:42:48.301Z"
+    },
+    "support@indagrubber.com": {
+      "company": "INDAG RUBBER LTD",
+      "resendId": "01a0c246-3620-7751-bcaa-e75bd80b9a25",
+      "sentAt": "2026-09-21T04:42:57.057Z"
+    },
+    "info@indagrubber.com": {
+      "company": "INDAG RUBBER LTD",
+      "resendId": "01a0c246-4884-712e-87ba-9f2de1e4fc5e",
+      "sentAt": "2026-09-21T04:43:01.777Z"
+    },
+    "22irp1@vsnl.com": {
+      "company": "INDIAN RUBBER PRODUCTS",
+      "resendId": "01a0c246-5759-7450-b016-2346a8e876d5",
+      "sentAt": "2026-09-21T04:43:05.669Z"
+    },
+    "harish.narula@isrl.co.in": {
+      "company": "INDIAN SYNTHETIC RUBBER LIMITED",
+      "resendId": "01a0c246-5d49-7219-aa43-32ae72e20578",
+      "sentAt": "2026-09-21T04:43:07.085Z"
+    },
+    "info@isrl.co.in": {
+      "company": "INDIAN SYNTHETIC RUBBER LIMITED",
+      "resendId": "01a0c246-64a7-748f-b99b-75ee8aa3fd95",
+      "sentAt": "2026-09-21T04:43:08.959Z"
+    },
+    "unimech08@yahoo.com": {
+      "company": "INDIMECH",
+      "resendId": "01a0c246-6a2f-70bc-9d32-7f184c3fa12c",
+      "sentAt": "2026-09-21T04:43:10.427Z"
+    },
+    "indirarubber@vsnl.net": {
+      "company": "INDIRA RUBBER & PLASTICS PVT LTD",
+      "resendId": "01a0c246-6f9a-7660-9c56-7c7f9ed91ad7",
+      "sentAt": "2026-09-21T04:43:11.777Z"
+    },
+    "indirarubber@yahoo.com": {
+      "company": "INDIRA RUBBER & PLASTICS PVT LTD",
+      "resendId": "01a0c246-7628-737c-8391-eec66b52f365",
+      "sentAt": "2026-09-21T04:43:13.513Z"
+    },
+    "vickysports@yahoo.co.in": {
+      "company": "INDO RUBBER & PLASTIC WORKS",
+      "resendId": "01a0c246-8088-7564-831a-fd78049d72d3",
+      "sentAt": "2026-09-21T04:43:17.756Z"
+    },
+    "info@vickysports.com": {
+      "company": "INDO RUBBER & PLASTIC WORKS",
+      "resendId": "01a0c246-8c04-71ac-a3fd-cb675dfef9fe",
+      "sentAt": "2026-09-21T04:43:19.037Z"
+    },
+    "rohit@indorerubber.com": {
+      "company": "INDORE RUBBER PRIVATE LIMITED",
+      "resendId": "01a0c246-90e8-74cd-8a13-89dab7faf7b4",
+      "sentAt": "2026-09-21T04:43:20.286Z"
+    },
+    "iml@satyam.net.in": {
+      "company": "INDUS MEDICARE LTD",
+      "resendId": "01a0c246-95ef-712e-a325-bad20a54badd",
+      "sentAt": "2026-09-21T04:43:22.021Z"
+    },
+    "info@indusmedicare.com": {
+      "company": "INDUS MEDICARE LTD",
+      "resendId": "01a0c246-9d42-730a-a6b7-e22a37a2bd29",
+      "sentAt": "2026-09-21T04:43:23.511Z"
+    },
+    "accounts@irmome.com": {
+      "company": "INDUSTRIAL RUBBER MOULDERS",
+      "resendId": "01a0c246-a3a6-7313-a2f7-ab4822e7841c",
+      "sentAt": "2026-09-21T04:43:25.097Z"
+    },
+    "sales@lathia.in": {
+      "company": "INDUSTRIAL ROLLER CORPORATION",
+      "resendId": "01a0c246-ab27-7038-86e7-2a9c656e8e41",
+      "sentAt": "2026-09-21T04:43:27.017Z"
+    },
+    "bhargava_saket@rediffmail.com": {
+      "company": "INK & PRINT",
+      "resendId": "01a0c246-b54f-77a9-a8f7-645fd69731c7",
+      "sentAt": "2026-09-21T04:43:29.664Z"
+    },
+    "innovarpl@sify.com": {
+      "company": "INNOVA RUBBERS PVT LTD",
+      "resendId": "01a0c246-c4f1-77ed-8257-972b88932625",
+      "sentAt": "2026-09-21T04:43:34.593Z"
+    },
+    "sales@innovarubbers.com": {
+      "company": "INNOVA RUBBERS PVT LTD",
+      "resendId": "01a0c246-cdba-7149-9671-47201daf8aa1",
+      "sentAt": "2026-09-21T04:43:35.880Z"
+    },
+    "innovativetyre@gmail.com": {
+      "company": "INNOVATIVE TYRES & TUBES LTD",
+      "resendId": "01a0c246-d281-7676-a103-8fee1444a5d5",
+      "sentAt": "2026-09-21T04:43:37.475Z"
+    },
+    "info@innovativetyres.com": {
+      "company": "INNOVATIVE TYRES & TUBES LTD",
+      "resendId": "01a0c246-d8a7-767b-80f7-cb368c2ae328",
+      "sentAt": "2026-09-21T04:43:38.718Z"
+    },
+    "intcorp@ndf.vsnl.net.in": {
+      "company": "INTERMARK CORPORATION",
+      "resendId": "01a0c246-dd7b-756e-810c-2c5b92decfbf",
+      "sentAt": "2026-09-21T04:43:39.942Z"
+    },
+    "info@irtindia.com": {
+      "company": "INTERNATIONAL RUBBER TECH PRIVATE LIMITED",
+      "resendId": "01a0c246-e202-71b6-af98-82f0c0d6da7c",
+      "sentAt": "2026-09-21T04:43:41.057Z"
+    },
+    "nkvedi@impauto.com": {
+      "company": "IMPERIAL AUTO INDUSTRIES LTD",
+      "resendId": "01a0c246-e708-736f-b92d-cdb99a9bd665",
+      "sentAt": "2026-09-21T04:43:42.341Z"
+    },
+    "info@impauto.com": {
+      "company": "IMPERIAL AUTO INDUSTRIES LTD",
+      "resendId": "01a0c246-eb9e-77e7-896e-0166fe8297de",
+      "sentAt": "2026-09-21T04:43:43.524Z"
+    },
+    "admin@rubaloy.com": {
+      "company": "IMPERIAL WATER PROOFING INDUSTRIES PVT LTD",
+      "resendId": "01a0c246-f082-74ee-80e0-701ae76bfc61",
+      "sentAt": "2026-09-21T04:43:44.821Z"
+    },
+    "iwi@vsnl.com": {
+      "company": "IMPERIAL WATER PROOFING INDUSTRIES PVT LTD",
+      "resendId": "01a0c246-f531-730f-b71d-4ff99c4fe6ca",
+      "sentAt": "2026-09-21T04:43:45.967Z"
+    }
+  },
+  "failed": {}
+}

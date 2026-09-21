@@ -5,7 +5,7 @@ import {
   sendWhatsAppInteractiveButtons,
   markWhatsAppMessageAsRead,
   normalizePhoneNumber,
-} from './utils/whatsapp.js';
+} from './_utils/whatsapp.js';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();

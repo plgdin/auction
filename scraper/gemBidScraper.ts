@@ -50,6 +50,7 @@ interface CliArgs {
   headful: boolean;
   maxPages: number;
   startPage: number;
+  downloadDocs: boolean;
 }
 
 function parseCliArgs(): CliArgs {
@@ -57,9 +58,11 @@ function parseCliArgs(): CliArgs {
   let headful = false;
   let maxPages = 150; // Default limit (covers 1500 bids)
   let startPage = 1;
+  let downloadDocs = false;
 
   for (const arg of args) {
     if (arg === "--headful") headful = true;
+    if (arg === "--download-docs") downloadDocs = true;
     if (arg.startsWith("--max-pages=")) {
       maxPages = parseInt(arg.replace("--max-pages=", ""), 10);
     }
@@ -68,7 +71,7 @@ function parseCliArgs(): CliArgs {
     }
   }
 
-  return { headful, maxPages, startPage };
+  return { headful, maxPages, startPage, downloadDocs };
 }
 
 // ─── Delay Utility ───────────────────────────────────────────────────────────
@@ -81,47 +84,27 @@ function delay(ms: number): Promise<void> {
 // ─── Expired Bids Cleanup ────────────────────────────────────────────────────
 
 async function cleanupExpiredBids(): Promise<void> {
-  log.info("Checking for expired GeM bids...");
+  log.info("Updating status of expired GeM bids...");
 
-  const oneDayAgo = new Date();
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+  const nowIso = new Date().toISOString();
 
-  const { data: expired, error: fetchError } = await supabase
+  // Mark all live bids whose end_date is in the past as closed
+  const { data: updated, error: updateError } = await supabase
     .from("gem_bids")
-    .select("id, bid_number, end_date")
-    .lt("end_date", oneDayAgo.toISOString());
+    .update({ status: "closed", updated_at: nowIso })
+    .eq("status", "live")
+    .lt("end_date", nowIso)
+    .select("id, bid_number");
 
-  if (fetchError) {
-    log.error({ error: fetchError.message }, "Failed to fetch expired GeM bids");
+  if (updateError) {
+    log.error({ error: updateError.message }, "Failed to update expired GeM bids status");
     return;
   }
 
-  if (!expired || expired.length === 0) {
-    log.info("No expired GeM bids found to purge.");
-    return;
-  }
-
-  log.info({ count: expired.length }, `Purging expired GeM bids...`);
-
-  // Write audit entries
-  const auditLogs = expired.map(item => ({
-    action: "gem_bid_deleted",
-    entity_type: "gem_bid",
-    details: { bid_number: item.bid_number, expired_at: item.end_date }
-  }));
-
-  const { error: logError } = await supabase.from("audit_logs").insert(auditLogs);
-  if (logError) {
-    log.error({ error: logError.message }, "Failed to write expired bids audit logs");
-  }
-
-  const ids = expired.map(item => item.id);
-  const { error: deleteError } = await supabase.from("gem_bids").delete().in("id", ids);
-
-  if (deleteError) {
-    log.error({ error: deleteError.message }, "Failed to delete expired bids records");
+  if (updated && updated.length > 0) {
+    log.info({ count: updated.length }, "Updated expired GeM bids to closed status.");
   } else {
-    log.info({ count: expired.length }, "Expired GeM bids purged successfully.");
+    log.info("No expired GeM bids found to update.");
   }
 }
 
@@ -154,11 +137,16 @@ function extractGeMBidsFromDOM(): any[] {
     
     const cardText = (card as HTMLElement).innerText || "";
     
-    // Extract Items
+    // Extract Items (Try to get full untruncated text from popover if available)
     let itemsText = "";
-    const itemsMatch = cardText.match(/Items\s*:\s*([^\n]+)/i);
-    if (itemsMatch) {
-      itemsText = itemsMatch[1].trim();
+    const itemsAnchor = card.querySelector('a[data-content]');
+    if (itemsAnchor && itemsAnchor.closest('.row')?.textContent?.includes('Items:')) {
+      itemsText = itemsAnchor.getAttribute('data-content') || "";
+    } else {
+      const itemsMatch = cardText.match(/Items\s*:\s*([^\n]+)/i);
+      if (itemsMatch) {
+        itemsText = itemsMatch[1].trim();
+      }
     }
     
     // Extract Quantity
@@ -168,15 +156,26 @@ function extractGeMBidsFromDOM(): any[] {
       quantity = qtyMatch[1].trim();
     }
     
-    // Extract Department
+    // Extract Department & Address block
+    let ministry = "";
     let department = "";
-    const deptMatch = cardText.match(/Department\s*Name\s*(?:And\s*Address)?\s*:\s*([^\n]+)/i) || 
-                      cardText.match(/Department\s*:\s*([^\n]+)/i);
-    if (deptMatch) {
-      department = deptMatch[1].trim();
-      const index = department.toLowerCase().indexOf("start date");
-      if (index !== -1) {
-        department = department.substring(0, index).trim();
+    let organisation = "";
+    let fullAddress = "";
+
+    const deptBlockMatch = cardText.match(/Department\s*Name\s*(?:And\s*Address)?\s*:([\s\S]*?)Start\s*Date\s*:/i) ||
+                           cardText.match(/Department\s*:([\s\S]*?)Start\s*Date\s*:/i);
+    
+    if (deptBlockMatch) {
+      const block = deptBlockMatch[1].trim();
+      const lines = block.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      
+      if (lines.length >= 1) ministry = lines[0];
+      if (lines.length >= 2) department = lines[1];
+      if (lines.length >= 3) {
+        organisation = lines[2];
+        if (lines.length > 3) {
+          fullAddress = lines.slice(3).join(", ");
+        }
       }
     }
     
@@ -212,7 +211,10 @@ function extractGeMBidsFromDOM(): any[] {
       ra_number: raNumber || null,
       items: itemsText,
       quantity: quantity || null,
-      department_name: department || null,
+      ministry: ministry || null,
+      department_name: department || ministry || null,
+      organisation: organisation || null,
+      full_address: fullAddress || null,
       startDateStr: startMatch ? startMatch[1].trim() : "",
       endDateStr: endMatch ? endMatch[1].trim() : "",
       document_url: bidHref || `/showbidDocument/${encodeURIComponent(bidNumber)}`,
@@ -314,21 +316,36 @@ async function runScraper() {
           ? item.document_urls.map((u: string) => u.startsWith("http") ? u : `https://bidplus.gem.gov.in/${u.replace(/^\/+/, '')}`)
           : [absoluteSourceUrl];
           
+        // Compute dynamic status based on start & end dates
+        const nowMs = Date.now();
+        const startMs = startDate ? new Date(startDate).getTime() : 0;
+        const endMs = endDate ? new Date(endDate).getTime() : 0;
+        let calculatedStatus = "live";
+        if (endMs > 0 && nowMs > endMs) {
+          calculatedStatus = "closed";
+        } else if (startMs > 0 && nowMs < startMs) {
+          calculatedStatus = "upcoming";
+        }
+
         return {
           bid_number: item.bid_number,
           ra_number: item.ra_number || undefined,
           items: item.items,
           quantity: item.quantity || undefined,
+          ministry: item.ministry || undefined,
           department_name: item.department_name || undefined,
+          organisation: item.organisation || undefined,
+          full_address: item.full_address || undefined,
           start_date: startDate,
           end_date: endDate,
-          status: "live",
+          status: calculatedStatus,
           document_url: absoluteSourceUrl || undefined,
           ra_document_url: absoluteRaUrl || undefined,
           document_urls: absoluteDocUrls.length > 0 ? absoluteDocUrls : undefined,
           corrigendum_urls: absoluteCorrigendumUrls.length > 0 ? absoluteCorrigendumUrls : undefined,
           category_name,
           raw_description: item.raw_description || undefined,
+          processing_status: "pending",
         };
       });
       

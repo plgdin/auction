@@ -12,6 +12,8 @@ let baanknetProcess: any = null;
 let baanknetWorkerProcess: any = null;
 let baanknetRefreshProcess: any = null;
 let gemProcess: any = null;
+let gemWorkerProcess: any = null;
+let gemBidsWorkerProcess: any = null;
 let gemBidsProcess: any = null;
 
 let scraperLogs: string[] = [];
@@ -21,6 +23,8 @@ let backfillLogs: string[] = [];
 let baanknetLogs: string[] = [];
 let baanknetWorkerLogs: string[] = [];
 let gemLogs: string[] = [];
+let gemWorkerLogs: string[] = [];
+let gemBidsWorkerLogs: string[] = [];
 let gemBidsLogs: string[] = [];
 
 const appendLog = (type: string, data: any) => {
@@ -33,6 +37,8 @@ const appendLog = (type: string, data: any) => {
   else if (type === 'baanknet') target = baanknetLogs;
   else if (type === 'baanknet-worker') target = baanknetWorkerLogs;
   else if (type === 'gem') target = gemLogs;
+  else if (type === 'gem-worker') target = gemWorkerLogs;
+  else if (type === 'gem-bids-worker') target = gemBidsWorkerLogs;
   else if (type === 'gem-bids') target = gemBidsLogs;
   else return;
 
@@ -56,6 +62,7 @@ const localApiPlugin = () => ({
         if (
           pathname === '/api/users' || 
           pathname === '/api/document-proxy' ||
+          pathname === '/api/gem-bid-extract' ||
           pathname === '/api/scraper/reset-failed' || 
           pathname === '/api/scraper/reset-single' ||
           pathname === '/api/scraper/unlock-processing' ||
@@ -84,7 +91,10 @@ const localApiPlugin = () => ({
             return res;
           };
 
-          if (pathname === '/api/document-proxy') {
+          if (pathname === '/api/gem-bid-extract') {
+            import('./api/gem-bid-extract.ts').then((m) => m.default(req, res)).catch(next);
+            return;
+          } else if (pathname === '/api/document-proxy') {
             import('./api/document-proxy.ts').then((m) => m.default(req, res)).catch(next);
             return;
           } else if (pathname === '/api/users') {
@@ -140,6 +150,8 @@ const localApiPlugin = () => ({
             baanknetRunning: baanknetProcess !== null,
             baanknetWorkerRunning: baanknetWorkerProcess !== null || baanknetRefreshProcess !== null,
             gemRunning: gemProcess !== null,
+            gemWorkerRunning: gemWorkerProcess !== null,
+            gemBidsWorkerRunning: gemBidsWorkerProcess !== null,
             gemBidsRunning: gemBidsProcess !== null,
             scraperLogs,
             workerLogs,
@@ -148,6 +160,8 @@ const localApiPlugin = () => ({
             baanknetLogs,
             baanknetWorkerLogs,
             gemLogs,
+            gemWorkerLogs,
+            gemBidsWorkerLogs,
             gemBidsLogs
           }));
           return;
@@ -304,6 +318,36 @@ const localApiPlugin = () => ({
             return;
           }
 
+          if (req.url === '/api/scraper/gem/worker/start') {
+            if (gemWorkerProcess) {
+              res.end(JSON.stringify({ success: false, message: 'GeM Document Asset Worker already running' }));
+              return;
+            }
+            gemWorkerLogs = [];
+            appendLog('gem-worker', 'Starting GeM Document Asset Worker (npx tsx scraper/gemAssetWorker.ts --daemon)...');
+            gemWorkerProcess = spawn('npx', ['tsx', 'scraper/gemAssetWorker.ts', '--daemon'], { shell: true });
+            
+            gemWorkerProcess.stdout.on('data', (data: any) => appendLog('gem-worker', data));
+            gemWorkerProcess.stderr.on('data', (data: any) => appendLog('gem-worker', data));
+            gemWorkerProcess.on('close', (code: any) => {
+              appendLog('gem-worker', `GeM Document Asset Worker terminated with exit code ${code}`);
+              gemWorkerProcess = null;
+            });
+            
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/gem/worker/stop') {
+            if (gemWorkerProcess) {
+              gemWorkerProcess.kill('SIGINT');
+              gemWorkerProcess = null;
+              appendLog('gem-worker', 'GeM Document Asset Worker stopped by user request.');
+            }
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
           if (req.url === '/api/scraper/gem-bids/start') {
             if (gemBidsProcess) {
               res.end(JSON.stringify({ success: false, message: 'GeM Bids Scraper already running' }));
@@ -329,6 +373,36 @@ const localApiPlugin = () => ({
               gemBidsProcess.kill('SIGINT');
               gemBidsProcess = null;
               appendLog('gem-bids', 'GeM Bids Scraper process stopped by user request.');
+            }
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/gem-bids/worker/start') {
+            if (gemBidsWorkerProcess) {
+              res.end(JSON.stringify({ success: false, message: 'GeM Bids Document Archiver already running' }));
+              return;
+            }
+            gemBidsWorkerLogs = [];
+            appendLog('gem-bids-worker', 'Starting GeM Bids Document Archiver (npx tsx scripts/syncGemDocuments.ts)...');
+            gemBidsWorkerProcess = spawn('npx', ['tsx', 'scripts/syncGemDocuments.ts'], { shell: true });
+            
+            gemBidsWorkerProcess.stdout.on('data', (data: any) => appendLog('gem-bids-worker', data));
+            gemBidsWorkerProcess.stderr.on('data', (data: any) => appendLog('gem-bids-worker', data));
+            gemBidsWorkerProcess.on('close', (code: any) => {
+              appendLog('gem-bids-worker', `GeM Bids Archiver process terminated with exit code ${code}`);
+              gemBidsWorkerProcess = null;
+            });
+            
+            res.end(JSON.stringify({ success: true }));
+            return;
+          }
+
+          if (req.url === '/api/scraper/gem-bids/worker/stop') {
+            if (gemBidsWorkerProcess) {
+              gemBidsWorkerProcess.kill('SIGINT');
+              gemBidsWorkerProcess = null;
+              appendLog('gem-bids-worker', 'GeM Bids Archiver stopped by user request.');
             }
             res.end(JSON.stringify({ success: true }));
             return;

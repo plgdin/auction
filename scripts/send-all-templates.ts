@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
-import { sendWhatsAppText } from '../api/utils/whatsapp.ts';
-import { ZOMATO_HOOK_TEMPLATES, generateZomatoCopy } from '../api/utils/zomatoCopyEngine.ts';
+import { sendWhatsAppText } from '../api/_utils/whatsapp.ts';
+import { ZOMATO_HOOK_TEMPLATES, generateZomatoCopy } from '../api/_utils/zomatoCopyEngine.ts';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();

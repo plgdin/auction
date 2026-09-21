@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { isRateLimited, getClientIp } from './utils/rateLimiter.js';
+import { isRateLimited, getClientIp } from './_utils/rateLimiter.js';
 import {
   sendWhatsAppTemplate,
   sendWhatsAppText,
   type TemplateComponent,
-} from './utils/whatsapp.js';
+} from './_utils/whatsapp.js';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();

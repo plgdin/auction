@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { isRateLimited, getClientIp } from './utils/rateLimiter.js';
-import { sendWhatsAppText } from './utils/whatsapp.js';
-import { generateZomatoCopy, ZOMATO_HOOK_TEMPLATES } from './utils/zomatoCopyEngine.js';
+import { isRateLimited, getClientIp } from './_utils/rateLimiter.js';
+import { sendWhatsAppText } from './_utils/whatsapp.js';
+import { generateZomatoCopy, ZOMATO_HOOK_TEMPLATES } from './_utils/zomatoCopyEngine.js';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();

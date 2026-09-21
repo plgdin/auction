@@ -1,7 +1,15 @@
+# Exclude tests, scripts and scratch from Vercel Serverless Function discovery
 tests/
 scripts/
 scratch/
+api/__tests__
 **/*.test.ts
 **/*.test.js
 **/*.spec.ts
 **/*.spec.js
+
+# Exclude local scratch files and heavy artifacts
+campaign_progress.json
+exporters_companies_and_emails.csv
+debug_page.html
+build.log

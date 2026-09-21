@@ -33,9 +33,9 @@ export function parseGeMBidDate(dateStr: string): string | null {
 
   const cleaned = dateStr.trim();
 
-  // Pattern: DD-MM-YYYY hh:mm AM/PM or DD/MM/YYYY hh:mm AM/PM
+  // Pattern 1: DD-MM-YYYY hh:mm[:ss] AM/PM or DD/MM/YYYY hh:mm[:ss] AM/PM
   const ampmMatch = cleaned.match(
-    /(\d{2})[-/](\d{2})[-/](\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i
+    /(\d{2})[-/](\d{2})[-/](\d{4})\s+(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)/i
   );
   if (ampmMatch) {
     const [, day, month, year, hoursStr, minutes, meridian] = ampmMatch;
@@ -50,6 +50,16 @@ export function parseGeMBidDate(dateStr: string): string | null {
 
     const formattedHours = hours.toString().padStart(2, "0");
     return `${year}-${month}-${day}T${formattedHours}:${minutes}:00+05:30`;
+  }
+
+  // Pattern 2: DD-MM-YYYY HH:mm[:ss] (24-hour format standard in GeM PDFs)
+  const twentyFourMatch = cleaned.match(
+    /(\d{2})[-/](\d{2})[-/](\d{4})\s+(\d{1,2}):(\d{2})(?::\d{2})?/
+  );
+  if (twentyFourMatch) {
+    const [, day, month, year, hoursStr, minutes] = twentyFourMatch;
+    const hours = parseInt(hoursStr, 10).toString().padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}:00+05:30`;
   }
 
   // Fallback: Check if it's already ISO or native Date parses it
