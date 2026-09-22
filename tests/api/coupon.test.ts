@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import validateCouponHandler from '../../api/validate-coupon';
-import createOrderHandler from '../../api/create-order';
+import createOrderHandler, { validateCouponHandler } from '../../api/create-order';
 
 // Mock Supabase client functions using vi.hoisted so they are available inside hoisted mocks
 const { mockFrom, mockSelect, mockEq, mockMaybeSingle } = vi.hoisted(() => {

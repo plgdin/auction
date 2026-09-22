@@ -6,6 +6,22 @@
       "destination": "/api/scraper.ts"
     },
     {
+      "source": "/api/whatsapp-campaign",
+      "destination": "/api/whatsapp-broadcast.ts"
+    },
+    {
+      "source": "/api/send-signup-email",
+      "destination": "/api/send-transactional-email.ts"
+    },
+    {
+      "source": "/api/unsubscribe",
+      "destination": "/api/resend-webhook.ts"
+    },
+    {
+      "source": "/api/validate-coupon",
+      "destination": "/api/create-order.ts"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
