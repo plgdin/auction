@@ -28,15 +28,15 @@ const INDIA_LOCATIONS: Record<string, string[]> = {
   'kerala': ['kerala', 'kerela', 'kl', 'kochi', 'cochin', 'thiruvananthapuram', 'trivandrum', 'tvm', 'kozhikode', 'calicut', 'thrissur', 'kollam', 'alappuzha', 'ernakulam', 'kannur', 'kasaragod', 'wayanad', 'idukki', 'palakkad', 'malappuram', 'pathanamthitta', 'kottayam'],
   'tamil nadu': ['tamil nadu', 'tamilnadu', 'tn', 'chennai', 'madras', 'coimbatore', 'cbe', 'madurai', 'trichy', 'salem', 'tiruppur', 'erode', 'vellore', 'tirunelveli', 'thoothukudi', 'dindigul', 'nagercoil', 'thanjavur', 'kanchipuram'],
   'karnataka': ['karnataka', 'ka', 'bengaluru', 'bangalore', 'blr', 'mysore', 'mysuru', 'mangaluru', 'mangalore', 'hubli', 'dharwad', 'belagavi', 'belgaum', 'gulbarga', 'kalaburagi', 'ballari', 'bellary', 'davanagere', 'shimoga', 'tumkur', 'udupi'],
-  'andhra pradesh': ['andhra pradesh', 'andhra', 'ap', 'visakhapatnam', 'vizag', 'vijayawada', 'guntur', 'nellore', 'kurnool', 'rajahmundry', 'kakinada', 'tirupati', 'kadapa', 'anantapur', 'eluru'],
+  'andhra pradesh': ['andhra pradesh', 'andhra', 'ap', 'a.p.', 'a.p', 'a p', 'visakhapatnam', 'vizag', 'vijayawada', 'guntur', 'nellore', 'kurnool', 'rajahmundry', 'kakinada', 'tirupati', 'kadapa', 'anantapur', 'eluru'],
   'telangana': ['telangana', 'ts', 'hyderabad', 'hyd', 'secunderabad', 'warangal', 'nizamabad', 'karimnagar', 'khammam'],
   'maharashtra': ['maharashtra', 'mh', 'mumbai', 'bombay', 'pune', 'poona', 'nagpur', 'nashik', 'aurangabad', 'solapur', 'kolhapur', 'thane', 'navi mumbai', 'amravati'],
   'gujarat': ['gujarat', 'gj', 'ahmedabad', 'amd', 'surat', 'vadodara', 'baroda', 'rajkot', 'gandhinagar', 'bhavnagar', 'jamnagar', 'junagadh'],
   'rajasthan': ['rajasthan', 'rj', 'jaipur', 'jodhpur', 'kota', 'bikaner', 'udaipur', 'ajmer', 'bhilwara', 'alwar', 'sikar'],
-  'madhya pradesh': ['madhya pradesh', 'mp', 'bhopal', 'indore', 'jabalpur', 'gwalior', 'ujjain', 'sagar', 'rewa', 'satna'],
-  'uttar pradesh': ['uttar pradesh', 'up', 'lucknow', 'kanpur', 'agra', 'varanasi', 'prayagraj', 'allahabad', 'meerut', 'ghaziabad', 'noida', 'mathura', 'aligarh', 'bareilly', 'moradabad', 'saharanpur', 'gorakhpur', 'firozabad'],
-  'delhi': ['delhi', 'new delhi', 'ncr'],
-  'west bengal': ['west bengal', 'wb', 'bengal', 'kolkata', 'calcutta', 'howrah', 'durgapur', 'asansol', 'siliguri'],
+  'madhya pradesh': ['madhya pradesh', 'madhya', 'mp', 'm.p.', 'm.p', 'm p', 'bhopal', 'indore', 'jabalpur', 'gwalior', 'ujjain', 'sagar', 'rewa', 'satna'],
+  'uttar pradesh': ['uttar pradesh', 'uttar', 'up', 'u.p.', 'u.p', 'u p', 'lucknow', 'kanpur', 'agra', 'varanasi', 'prayagraj', 'allahabad', 'meerut', 'ghaziabad', 'noida', 'mathura', 'aligarh', 'bareilly', 'moradabad', 'saharanpur', 'gorakhpur', 'firozabad', 'jhansi'],
+  'delhi': ['delhi', 'new delhi', 'ncr', 'dl'],
+  'west bengal': ['west bengal', 'wb', 'w.b.', 'w.b', 'w b', 'bengal', 'kolkata', 'calcutta', 'howrah', 'durgapur', 'asansol', 'siliguri'],
   'odisha': ['odisha', 'orissa', 'or', 'bhubaneswar', 'cuttack', 'rourkela', 'sambalpur', 'puri', 'balasore'],
   'jharkhand': ['jharkhand', 'jh', 'ranchi', 'jamshedpur', 'dhanbad', 'bokaro', 'hazaribagh'],
   'bihar': ['bihar', 'br', 'patna', 'gaya', 'bhagalpur', 'muzaffarpur', 'darbhanga', 'purnia'],
@@ -44,8 +44,8 @@ const INDIA_LOCATIONS: Record<string, string[]> = {
   'punjab': ['punjab', 'pb', 'ludhiana', 'amritsar', 'jalandhar', 'patiala', 'bathinda', 'mohali'],
   'haryana': ['haryana', 'hr', 'faridabad', 'gurugram', 'gurgaon', 'hisar', 'rohtak', 'panipat', 'karnal', 'ambala', 'sonipat'],
   'chandigarh': ['chandigarh'],
-  'uttarakhand': ['uttarakhand', 'uk', 'dehradun', 'haridwar', 'roorkee', 'rishikesh', 'haldwani', 'nainital'],
-  'himachal pradesh': ['himachal pradesh', 'hp', 'shimla', 'dharamsala', 'mandi', 'solan'],
+  'uttarakhand': ['uttarakhand', 'uk', 'u.k.', 'u.k', 'u k', 'uttaranchal', 'dehradun', 'haridwar', 'roorkee', 'rishikesh', 'haldwani', 'nainital'],
+  'himachal pradesh': ['himachal pradesh', 'himachal', 'hp', 'h.p.', 'h.p', 'h p', 'shimla', 'dharamsala', 'mandi', 'solan'],
   'assam': ['assam', 'as', 'guwahati', 'dibrugarh', 'silchar', 'jorhat'],
   'goa': ['goa', 'panaji', 'margao', 'vasco'],
   'manipur': ['manipur', 'mn', 'imphal'],
@@ -163,20 +163,27 @@ function findRegionMatch(candidate: string, hasPreposition: boolean = false): Re
  * Extract a location or regional zone mentioned in the query (e.g. "in North India", "in Kerala", "at Mumbai", "from UP").
  * Returns the canonical key, mapped locations/states, and the query with the location phrase stripped.
  */
-function findLocationMatch(candidate: string): string | null {
+function findLocationMatch(candidate: string, hasPreposition: boolean = false): string | null {
   const c = candidate.trim().toLowerCase();
   if (!c || c.length <= 1) return null;
-  if (STOP_WORDS.has(c)) return null;
 
-  // Exact check first
+  // Exact check first - allows 'up', 'uk', 'mp' etc. before any stop word filtering
   for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
     if (canonical.toLowerCase() === c) return canonical;
     for (const alias of aliases) {
-      if (alias.toLowerCase() === c) return canonical;
+      if (alias.toLowerCase() === c) {
+        // Conjunction stop words 'as' and 'or' require a preposition so "iron or steel" doesn't match Odisha
+        if (['as', 'or'].includes(alias.toLowerCase()) && !hasPreposition) {
+          continue;
+        }
+        return canonical;
+      }
     }
   }
 
-  // Fuzzy check - only for candidates with length >= 4 to avoid short-word collisions (e.g. "me" matching "mh")
+  // Reject stop words from fuzzy matching
+  if (STOP_WORDS.has(c)) return null;
+  // Short-word collisions
   if (c.length <= 3) return null;
 
   let bestCanonical: string | null = null;
@@ -185,24 +192,45 @@ function findLocationMatch(candidate: string): string | null {
   const isAllowedFuzzy = (dist: number, target: string) => {
     if (dist === 0) return true;
     if (dist === 1 && target.length >= 3) return true;
-    if (dist === 2 && target.length >= 7 && c.length >= 7) return true;
+    if (dist === 2 && target.length >= 6 && c.length >= 6) return true;
+    if (dist === 3 && target.length >= 10 && c.length >= 9) return true;
+    if (dist === 4 && target.length >= 12 && c.length >= 11) return true;
     return false;
   };
 
-  for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
-    // Check canonical
-    const distCanonical = getLevenshteinDistance(c, canonical.toLowerCase());
-    if (isAllowedFuzzy(distCanonical, canonical) && distCanonical < minDistance) {
-      minDistance = distCanonical;
-      bestCanonical = canonical;
-    }
+  const cWords = c.split(/\s+/);
 
-    // Check aliases
-    for (const alias of aliases) {
-      const distAlias = getLevenshteinDistance(c, alias.toLowerCase());
-      if (isAllowedFuzzy(distAlias, alias) && distAlias < minDistance) {
-        minDistance = distAlias;
+  for (const [canonical, aliases] of Object.entries(INDIA_LOCATIONS)) {
+    const targets = [canonical, ...aliases];
+    for (const target of targets) {
+      const tLower = target.toLowerCase();
+      // Direct Levenshtein
+      const dist = getLevenshteinDistance(c, tLower);
+      if (isAllowedFuzzy(dist, tLower) && dist < minDistance) {
+        minDistance = dist;
         bestCanonical = canonical;
+      }
+
+      // Word-by-word fuzzy match for multi-word targets (e.g. "uttap gadesh" vs "uttar pradesh")
+      const tWords = tLower.split(/\s+/);
+      if (cWords.length > 1 && cWords.length === tWords.length) {
+        let allWordsMatch = true;
+        let wordTotalDist = 0;
+        for (let i = 0; i < cWords.length; i++) {
+          const wDist = getLevenshteinDistance(cWords[i], tWords[i]);
+          const wAllowed = (wDist === 0) ||
+            (wDist === 1 && tWords[i].length >= 3) ||
+            (wDist === 2 && tWords[i].length >= 5 && cWords[i].length >= 5);
+          if (!wAllowed) {
+            allWordsMatch = false;
+            break;
+          }
+          wordTotalDist += wDist;
+        }
+        if (allWordsMatch && wordTotalDist < minDistance) {
+          minDistance = wordTotalDist;
+          bestCanonical = canonical;
+        }
       }
     }
   }
@@ -261,7 +289,7 @@ export function extractLocationFromQuery(query: string): {
           }
 
           // Check city/state match
-          const matched = findLocationMatch(candidate);
+          const matched = findLocationMatch(candidate, true);
           if (matched) {
             const remainingWords = [...words];
             remainingWords.splice(prepIndex, prepWords.length + len);
@@ -296,7 +324,7 @@ export function extractLocationFromQuery(query: string): {
       }
 
       // Check city/state match
-      const matched = findLocationMatch(candidate);
+      const matched = findLocationMatch(candidate, false);
       if (matched) {
         const remainingWords = [...words];
         remainingWords.splice(i, len);
@@ -347,7 +375,13 @@ function dbLocationMatchesCanonical(itemOrDbLocation: string | any, canonical: s
   const aliases = INDIA_LOCATIONS[canonical] || [];
   for (const alias of aliases) {
     const aLower = alias.toLowerCase();
-    if (loc.includes(aLower) || extraText.includes(aLower)) return true;
+    if (aLower.length <= 3) {
+      // Use word-boundary regex for short aliases to avoid false substring matches like "group" or "super" for "up"
+      const wordRegex = new RegExp(`\\b${aLower.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`, 'i');
+      if (wordRegex.test(loc) || wordRegex.test(extraText)) return true;
+    } else {
+      if (loc.includes(aLower) || extraText.includes(aLower)) return true;
+    }
   }
   return false;
 }
@@ -2357,8 +2391,22 @@ export const MstcSearchService = {
         p_min_pre_bid = undefined;
         p_max_pre_bid = 0;
       }
-      
-      const rpcQuery = removeStopWords(workingQuery);
+      // Correct typos on individual tokens of remaining workingQuery using known keywords
+      const knownKeywords = new Set<string>();
+      Object.keys(INVERTED_SYNONYM_MAP).forEach(k => knownKeywords.add(k.toLowerCase()));
+      ALL_MSTC_SUBCATEGORIES.forEach(sc => {
+        sc.toLowerCase().split(/[\s\/\-]+/).filter(Boolean).forEach(t => knownKeywords.add(t));
+      });
+      ['vehicles', 'vehicle', 'car', 'cars', 'truck', 'trucks', 'bus', 'buses', 'motorcycle', 'scrap', 'iron', 'steel', 'copper', 'aluminium', 'aluminum'].forEach(k => knownKeywords.add(k));
+
+      const workingTokens = workingQuery.split(/\s+/).filter(Boolean);
+      const correctedTokens = workingTokens.map(tok => {
+        if (STOP_WORDS.has(tok)) return tok;
+        const closest = findClosestKeyword(tok, knownKeywords);
+        return closest || tok;
+      });
+      const cleanWorkingQuery = correctedTokens.join(' ');
+      const rpcQuery = removeStopWords(cleanWorkingQuery);
 
       let embeddingStr: string | null = null;
       if (rpcQuery && rpcQuery.length > 0) {
@@ -2528,7 +2576,7 @@ export const MstcSearchService = {
           });
 
           if (locationCanonical && mapped.length > 0) {
-            mapped = mapped.filter(item => dbLocationMatchesCanonical(item.location || '', locationCanonical));
+            mapped = mapped.filter(item => dbLocationMatchesCanonical(item, locationCanonical));
           }
 
           return {
@@ -2565,7 +2613,34 @@ export const MstcSearchService = {
       searchData = rpcResult.data;
       error = rpcResult.error;
 
-      // If heuristic precisionSubcategory filter yielded 0 results, relax the subcategory filter to search by keywords & location
+      // 1. If primary search yielded 0 results and a precision subcategory was detected (e.g. 'cars' -> subcategory 'Car'/'End of Life Vehicles'),
+      // try subcategory-first search with the location filter and p_search_query: null
+      if ((!searchData || searchData.length === 0) && precisionSubcategory && !filters?.subcategories?.length && !filters?.subcategory) {
+        const subcatResult = await supabase.rpc('hybrid_search_mstc_catalog', {
+          p_search_query: null,
+          p_embedding: embeddingStr as any,
+          p_categories: finalCategories,
+          p_subcategories: finalSubcategories,
+          p_locations: finalLocations,
+          p_sellers: filters?.sellers?.length ? filters.sellers : (filters?.seller ? [filters.seller] : null),
+          p_regional_offices: filters?.regionalOffices?.length ? filters.regionalOffices : (filters?.regionalOffice ? [filters.regionalOffice] : null),
+          p_start_date: finalStartDate,
+          p_end_date: finalEndDate,
+          p_has_images: filters?.hasImages || null,
+          p_has_docs: filters?.hasAssetDocuments || null,
+          p_min_pre_bid: p_min_pre_bid ?? null,
+          p_max_pre_bid: p_max_pre_bid ?? null,
+          p_is_reauction: isReauctionSearch ?? null,
+          p_page: rpcPage,
+          p_limit: rpcLimit
+        });
+        if (!subcatResult.error && subcatResult.data && subcatResult.data.length > 0) {
+          searchData = subcatResult.data;
+          error = null;
+        }
+      }
+
+      // 2. If subcategory search yielded 0 results, relax the subcategory filter to search by keywords & location
       if ((!searchData || searchData.length === 0) && precisionSubcategory && !filters?.subcategories?.length && !filters?.subcategory) {
         const relaxedResult = await supabase.rpc('hybrid_search_mstc_catalog', {
           p_search_query: rpcQuery || null,
@@ -2647,8 +2722,8 @@ export const MstcSearchService = {
       }
 
       const isPureFilterQuery = !rpcQuery || rpcQuery.trim() === '';
-      const hasDirectMatches = isPureFilterQuery 
-        ? true 
+      const hasDirectMatches = (isPureFilterQuery || !!precisionSubcategory || !!locationCanonical)
+        ? !!(searchData && searchData.length > 0)
         : !!(searchData && searchData.length > 0 && searchData.some((r: any) => r.search_rank > 0));
 
       // Map Categories (is_reauction is returned natively by RPC)
@@ -2670,7 +2745,7 @@ export const MstcSearchService = {
 
       // Strict post-filter: If a specific location/region was requested in the search, ensure zero leakage
       if (locationCanonical && mapped.length > 0) {
-        mapped = mapped.filter(item => dbLocationMatchesCanonical(item.location || '', locationCanonical));
+        mapped = mapped.filter(item => dbLocationMatchesCanonical(item, locationCanonical));
         totalCount = mapped.length;
       }
 
