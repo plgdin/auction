@@ -25,8 +25,10 @@ export const SYNONYM_MAP: Record<string, string[]> = {
   scrap: ['salvage', 'unserviceable', 'condemned', 'waste', 'disposal'],
   car: ['cars', 'automobile', 'automobiles', 'vehicle', 'vehicles', 'four-wheeler', 'four-wheelers', 'bus', 'buses', 'truck', 'trucks', 'lorry', 'lorries', 'dumper', 'tipper'],
   cars: ['car', 'automobile', 'automobiles', 'vehicle', 'vehicles', 'four-wheeler', 'four-wheelers', 'bus', 'buses', 'truck', 'trucks', 'lorry', 'lorries', 'dumper', 'tipper'],
-  bus: ['buses', 'omnibus', 'coach', 'coaches'],
-  buses: ['bus', 'omnibus', 'coach', 'coaches'],
+  vehicle: ['vehicles', 'vechicle', 'vechicles', 'vechile', 'vechiles', 'vehical', 'vehicals', 'car', 'cars', 'bus', 'buses', 'truck', 'trucks', 'automobile', 'automobiles', 'four-wheeler', 'four-wheelers', 'two-wheeler', 'two-wheelers', 'elv', 'end of life vehicles'],
+  vehicles: ['vehicle', 'vechicle', 'vechicles', 'vechile', 'vechiles', 'vehical', 'vehicals', 'car', 'cars', 'bus', 'buses', 'truck', 'trucks', 'automobile', 'automobiles', 'four-wheeler', 'four-wheelers', 'two-wheeler', 'two-wheelers', 'elv', 'end of life vehicles'],
+  bus: ['buses', 'bues', 'buss', 'busses', 'omnibus', 'coach', 'coaches'],
+  buses: ['bus', 'bues', 'buss', 'busses', 'omnibus', 'coach', 'coaches'],
   truck: ['trucks', 'lorry', 'lorries', 'dumper', 'tipper'],
   trucks: ['truck', 'lorry', 'lorries', 'dumper', 'tipper'],
   wire: ['cable', 'conductor', 'winding', 'electrical', 'wires'],
@@ -227,6 +229,15 @@ export function cleanQueryPriceTypos(query: string): string {
   // Domain specific normalizations
   q = q.replace(/\bcustom\b/g, 'customs');
   q = q.replace(/\bcfs\b/g, 'customs cfs');
+
+  // Common vehicle / bus / scrap typo normalizations
+  q = q.replace(/\b(vechicle|vechile|vehical|vehecle)\b/g, 'vehicle');
+  q = q.replace(/\b(vechicles|vechiles|vehicals|vehecles)\b/g, 'vehicles');
+  q = q.replace(/\b(bues|buss|busses)\b/g, 'buses');
+  q = q.replace(/\bcras\b/g, 'cars');
+  q = q.replace(/\btruks\b/g, 'trucks');
+  q = q.replace(/\bend\s*of\s*life\s*(?:vechicle|vechile|vehical)\b/g, 'end of life vehicle');
+  q = q.replace(/\bend\s*of\s*life\s*(?:vechicles|vechiles|vehicals)\b/g, 'end of life vehicles');
 
   return q;
 }

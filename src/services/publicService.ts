@@ -432,17 +432,19 @@ export const SUBCATEGORY_EXACT_MAP: Array<{ phrase: string; subcategory: string 
   // Vehicle subcategories
   { phrase: 'car', subcategory: 'Car' },
   { phrase: 'cars', subcategory: 'Car' },
-  { phrase: 'automobile', subcategory: 'Car' },
-  { phrase: 'automobiles', subcategory: 'Car' },
-  { phrase: 'automotive', subcategory: 'Car' },
+  { phrase: 'cras', subcategory: 'Car' },
   { phrase: 'jeep', subcategory: 'Car' },
   { phrase: 'jeeps', subcategory: 'Car' },
   { phrase: 'truck', subcategory: 'Truck' },
   { phrase: 'trucks', subcategory: 'Truck' },
+  { phrase: 'truks', subcategory: 'Truck' },
   { phrase: 'lorry', subcategory: 'Truck' },
   { phrase: 'lorries', subcategory: 'Truck' },
   { phrase: 'bus', subcategory: 'Bus' },
   { phrase: 'buses', subcategory: 'Bus' },
+  { phrase: 'bues', subcategory: 'Bus' },
+  { phrase: 'buss', subcategory: 'Bus' },
+  { phrase: 'busses', subcategory: 'Bus' },
   { phrase: 'scooter', subcategory: 'Two-wheeler' },
   { phrase: 'scooters', subcategory: 'Two-wheeler' },
   { phrase: 'bike', subcategory: 'Two-wheeler' },
@@ -461,6 +463,16 @@ export const SUBCATEGORY_EXACT_MAP: Array<{ phrase: string; subcategory: string 
   { phrase: 'elvs', subcategory: 'End of Life Vehicles' },
   { phrase: 'end of life vehicle', subcategory: 'End of Life Vehicles' },
   { phrase: 'end of life vehicles', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end of life vechicle', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end of life vechicles', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end of life vechile', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end of life vechiles', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end-of-life vehicle', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end-of-life vehicles', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end-of-life vechicles', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end life vehicle', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end life vehicles', subcategory: 'End of Life Vehicles' },
+  { phrase: 'end life vechicles', subcategory: 'End of Life Vehicles' },
   { phrase: 'dumper', subcategory: 'Special Purpose Vehicle' },
   { phrase: 'dumpers', subcategory: 'Special Purpose Vehicle' },
   { phrase: 'tipper', subcategory: 'Special Purpose Vehicle' },
@@ -616,8 +628,11 @@ export function matchSubcategory(itemSub: string, targetSub: string): boolean {
   if (wordRegex.test(item)) return true;
 
   // Equivalences / Synonyms
-  if (targetNorm === 'car' || targetNorm === 'endoflifevehicles') {
+  if (targetNorm === 'car') {
     return itemNorm === 'car' || itemNorm === 'endoflifevehicles';
+  }
+  if (targetNorm === 'endoflifevehicles') {
+    return itemNorm === 'endoflifevehicles';
   }
 
   return false;
@@ -641,48 +656,136 @@ export function expandSubcategories(subcategories?: string[] | null): string[] |
   return Array.from(result);
 }
 
-export function detectPrecisionSubcategory(query: string): string | null {
-  if (!query) return null;
-  const lower = query.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-  const words = lower.split(' ');
+export const CATEGORY_EXACT_MAP: Array<{ phrase: string; category: string }> = [
+  { phrase: 'transport vehicles', category: 'Transport Vehicles' },
+  { phrase: 'transport vehicle', category: 'Transport Vehicles' },
+  { phrase: 'transports', category: 'Transport Vehicles' },
+  { phrase: 'transport', category: 'Transport Vehicles' },
+  { phrase: 'vehicles', category: 'Transport Vehicles' },
+  { phrase: 'vehicle', category: 'Transport Vehicles' },
+  { phrase: 'vechicles', category: 'Transport Vehicles' },
+  { phrase: 'vechicle', category: 'Transport Vehicles' },
+  { phrase: 'vechiles', category: 'Transport Vehicles' },
+  { phrase: 'vechile', category: 'Transport Vehicles' },
+  { phrase: 'vehicals', category: 'Transport Vehicles' },
+  { phrase: 'vehical', category: 'Transport Vehicles' },
+  { phrase: 'vehecles', category: 'Transport Vehicles' },
+  { phrase: 'vehecle', category: 'Transport Vehicles' },
+  { phrase: 'all vehicles', category: 'Transport Vehicles' },
+  { phrase: 'all vechicles', category: 'Transport Vehicles' },
+  { phrase: 'automobiles', category: 'Transport Vehicles' },
+  { phrase: 'automobile', category: 'Transport Vehicles' },
+  { phrase: 'automotive', category: 'Transport Vehicles' },
+  { phrase: 'four wheeler', category: 'Transport Vehicles' },
+  { phrase: 'four wheelers', category: 'Transport Vehicles' },
+  { phrase: 'four-wheeler', category: 'Transport Vehicles' },
+  { phrase: 'four-wheelers', category: 'Transport Vehicles' },
+  { phrase: 'two wheeler', category: 'Transport Vehicles' },
+  { phrase: 'two wheelers', category: 'Transport Vehicles' },
+  { phrase: 'two-wheeler', category: 'Transport Vehicles' },
+  { phrase: 'two-wheelers', category: 'Transport Vehicles' },
+  { phrase: 'metals', category: 'Metal' },
+  { phrase: 'metal', category: 'Metal' },
+  { phrase: 'scrap metal', category: 'Metal' },
+  { phrase: 'scrap metals', category: 'Metal' },
+  { phrase: 'electrical items', category: 'Electrical Items' },
+  { phrase: 'electrical', category: 'Electrical Items' },
+  { phrase: 'electricals', category: 'Electrical Items' },
+  { phrase: 'electronics items', category: 'Electronics Items' },
+  { phrase: 'electronics', category: 'Electronics Items' },
+  { phrase: 'electronic', category: 'Electronics Items' },
+  { phrase: 'minerals', category: 'Minerals' },
+  { phrase: 'mineral', category: 'Minerals' },
+  { phrase: 'immovable property', category: 'Immovable Property' },
+  { phrase: 'property', category: 'Immovable Property' },
+  { phrase: 'properties', category: 'Immovable Property' },
+  { phrase: 'real estate', category: 'Immovable Property' },
+  { phrase: 'forest produce', category: 'Forest Produce' },
+  { phrase: 'petroleum products', category: 'Petroleum Products' },
+];
 
-  const sortedMap = [...SUBCATEGORY_EXACT_MAP].sort((a, b) => b.phrase.length - a.phrase.length);
+export interface ExtractedTaxonomy {
+  categories: string[];
+  subcategories: string[];
+  remainingQuery: string;
+}
 
-  // Try exact match first
-  for (const { phrase, subcategory } of sortedMap) {
+export function extractTaxonomyEntitiesFromQuery(query: string): ExtractedTaxonomy {
+  if (!query) return { categories: [], subcategories: [], remainingQuery: '' };
+
+  let working = query.toLowerCase().replace(/[^a-z0-9\s\-]/g, ' ').replace(/\s+/g, ' ').trim();
+  const detectedSubcats: string[] = [];
+  const detectedCats: string[] = [];
+
+  // 1. Match all subcategories, sorting by phrase length descending
+  const sortedSubcats = [...SUBCATEGORY_EXACT_MAP].sort((a, b) => b.phrase.length - a.phrase.length);
+
+  for (const { phrase, subcategory } of sortedSubcats) {
     const pLower = phrase.toLowerCase();
-    const phraseRegex = new RegExp(`(^|\\s)${pLower.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}($|\\s)`);
-    if (phraseRegex.test(lower)) return subcategory;
+    const pRegex = new RegExp(`(^|\\s)${pLower.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}($|\\s)`, 'i');
+    if (pRegex.test(working)) {
+      if (!detectedSubcats.includes(subcategory)) {
+        detectedSubcats.push(subcategory);
+      }
+      working = working.replace(pRegex, ' ').replace(/\s+/g, ' ').trim();
+    }
   }
 
-  // Try fuzzy matching of word sequences
-  for (const { phrase, subcategory } of sortedMap) {
-    const phraseWords = phrase.split(' ');
-    for (let i = 0; i <= words.length - phraseWords.length; i++) {
-      const candidate = words.slice(i, i + phraseWords.length).join(' ');
-      
-      if (STOP_WORDS.has(candidate)) {
-        continue;
-      }
-      
-      const dist = getLevenshteinDistance(candidate, phrase);
-      
-      let allowed = false;
-      if (dist === 0) {
-        allowed = true;
-      } else if (dist === 1 && phrase.length >= 4) {
-        allowed = true;
-      } else if (dist === 2 && phrase.length >= 7 && candidate.length >= 7) {
-        allowed = true;
-      }
-
-      if (allowed) {
-        return subcategory;
+  // 2. Fuzzy match word sequences for subcategories if words remain
+  if (working) {
+    const words = working.split(' ').filter(Boolean);
+    for (const { phrase, subcategory } of sortedSubcats) {
+      const phraseWords = phrase.split(' ');
+      for (let i = 0; i <= words.length - phraseWords.length; i++) {
+        const candidate = words.slice(i, i + phraseWords.length).join(' ');
+        if (STOP_WORDS.has(candidate)) continue;
+        const dist = getLevenshteinDistance(candidate, phrase);
+        const allowed = (dist === 0) ||
+          (dist === 1 && phrase.length >= 4) ||
+          (dist === 2 && phrase.length >= 7 && candidate.length >= 7);
+        if (allowed) {
+          if (!detectedSubcats.includes(subcategory)) {
+            detectedSubcats.push(subcategory);
+          }
+          words.splice(i, phraseWords.length);
+          working = words.join(' ');
+          break;
+        }
       }
     }
   }
 
-  return null;
+  // 3. Match categories on remaining words
+  const sortedCats = [...CATEGORY_EXACT_MAP].sort((a, b) => b.phrase.length - a.phrase.length);
+  for (const { phrase, category } of sortedCats) {
+    const pLower = phrase.toLowerCase();
+    const pRegex = new RegExp(`(^|\\s)${pLower.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}($|\\s)`, 'i');
+    if (pRegex.test(working)) {
+      if (!detectedCats.includes(category)) {
+        detectedCats.push(category);
+      }
+      working = working.replace(pRegex, ' ').replace(/\s+/g, ' ').trim();
+    }
+  }
+
+  // Strip stop words from remainingQuery
+  const remWords = working.split(' ').filter(w => w && !STOP_WORDS.has(w));
+  const remainingQuery = remWords.join(' ').trim();
+
+  return {
+    categories: detectedCats,
+    subcategories: detectedSubcats,
+    remainingQuery
+  };
+}
+
+export function detectPrecisionSubcategories(query: string): string[] {
+  return extractTaxonomyEntitiesFromQuery(query).subcategories;
+}
+
+export function detectPrecisionSubcategory(query: string): string | null {
+  const subcats = detectPrecisionSubcategories(query);
+  return subcats.length > 0 ? subcats[0] : null;
 }
 
 
@@ -1969,18 +2072,31 @@ export const MstcSearchService = {
         if (mapped.length === 0) return [];
       }
 
-      // ── HARD FILTER 2: Subcategory precision ─────────────────────────────
-      // If user typed "iron and steel", "computer", "fly ash" etc.,
-      // ONLY that specific subcategory is returned.
-      const precisionSubcategory = detectPrecisionSubcategory(workingQuery);
-      if (precisionSubcategory) {
+      // ── HARD FILTER 2: Taxonomy precision (subcategories and categories) ────────
+      const {
+        categories: detectedCategories,
+        subcategories: detectedSubcategories,
+        remainingQuery: afterTaxonomyQuery
+      } = extractTaxonomyEntitiesFromQuery(workingQuery);
+
+      if (detectedSubcategories.length > 0) {
         const precisionFiltered = mapped.filter(item => {
           const sub = (item.category_name || '').split(' | ')[1] || '';
-          return matchSubcategory(sub, precisionSubcategory);
+          return detectedSubcategories.some(ds => matchSubcategory(sub, ds));
         });
         if (precisionFiltered.length > 0) {
           mapped = precisionFiltered;
         }
+        workingQuery = afterTaxonomyQuery;
+      } else if (detectedCategories.length > 0) {
+        const catFiltered = mapped.filter(item => {
+          const cat = (item.category_name || '').split(' | ')[0] || '';
+          return detectedCategories.includes(cat);
+        });
+        if (catFiltered.length > 0) {
+          mapped = catFiltered;
+        }
+        workingQuery = afterTaxonomyQuery;
       }
 
       // ── Tokenize remaining query terms
@@ -2307,10 +2423,21 @@ export const MstcSearchService = {
         workingQuery = workingQuery.replace(reauctionRegex, '').trim();
       }
 
-      const { canonical: locationCanonical, locations: extractedLocations, remainingQuery } = extractLocationFromQuery(workingQuery);
-      workingQuery = remainingQuery;
+      const { canonical: locationCanonical, locations: extractedLocations, remainingQuery: afterLocQuery } = extractLocationFromQuery(workingQuery);
+      workingQuery = afterLocQuery;
       
-      const precisionSubcategory = detectPrecisionSubcategory(workingQuery);
+      const {
+        categories: detectedCategories,
+        subcategories: detectedSubcategories,
+        remainingQuery: afterTaxonomyQuery
+      } = extractTaxonomyEntitiesFromQuery(workingQuery);
+
+      // If categories or subcategories were found in the query, strip them from workingQuery so rpcQuery
+      // does not enforce full-text search on taxonomy names (which breaks multi-terms and typos).
+      if (detectedCategories.length > 0 || detectedSubcategories.length > 0) {
+        workingQuery = afterTaxonomyQuery;
+      }
+      const precisionSubcategory = detectedSubcategories.length > 0 ? detectedSubcategories[0] : null;
 
       // ── AUCTION NUMBER DIRECT LOOKUP ─────────────────────────────────────────
       // If the query looks like an auction number (e.g. "MSTC/ZG/POSTMASTER/1/...")
@@ -2450,15 +2577,26 @@ export const MstcSearchService = {
         finalLocations = Array.from(new Set(finalLocations));
       }
 
-      let finalSubcategories = filters?.subcategories?.length ? filters.subcategories : (filters?.subcategory ? [filters.subcategory] : null);
-      if (precisionSubcategory) {
-        finalSubcategories = finalSubcategories ? [...finalSubcategories, precisionSubcategory] : [precisionSubcategory];
+      let finalSubcategories = filters?.subcategories?.length ? [...filters.subcategories] : (filters?.subcategory ? [filters.subcategory] : []);
+      if (detectedSubcategories && detectedSubcategories.length > 0) {
+        finalSubcategories = Array.from(new Set([...finalSubcategories, ...detectedSubcategories]));
       }
-      if (finalSubcategories && finalSubcategories.length > 0) {
+      if (finalSubcategories.length > 0) {
         finalSubcategories = expandSubcategories(finalSubcategories) || finalSubcategories;
+        finalSubcategories = Array.from(new Set(finalSubcategories));
+      } else {
+        finalSubcategories = null as any;
       }
 
-      let finalCategories = filters?.categories?.length ? filters.categories : (filters?.category ? [filters.category] : null);
+      let finalCategories = filters?.categories?.length ? [...filters.categories] : (filters?.category ? [filters.category] : []);
+      if (detectedCategories && detectedCategories.length > 0 && (!finalSubcategories || finalSubcategories.length === 0)) {
+        finalCategories = Array.from(new Set([...finalCategories, ...detectedCategories]));
+      }
+      if (finalCategories.length > 0) {
+        finalCategories = Array.from(new Set(finalCategories));
+      } else {
+        finalCategories = null as any;
+      }
 
       // If the query is just a price constraint (like "above 50k"), the RPC will do a full table scan 
       // on JSONB fields which causes a statement timeout on production databases.
@@ -2745,8 +2883,13 @@ export const MstcSearchService = {
 
       // Strict post-filter: If a specific location/region was requested in the search, ensure zero leakage
       if (locationCanonical && mapped.length > 0) {
+        const prevLen = mapped.length;
         mapped = mapped.filter(item => dbLocationMatchesCanonical(item, locationCanonical));
-        totalCount = mapped.length;
+        if (mapped.length < prevLen && totalCount <= prevLen) {
+          totalCount = mapped.length;
+        } else if (mapped.length < prevLen) {
+          totalCount = Math.max(mapped.length, totalCount - (prevLen - mapped.length));
+        }
       }
 
       return { data: mapped, count: totalCount, correctedQuery: returnedCorrectedQuery, hasDirectMatches };
