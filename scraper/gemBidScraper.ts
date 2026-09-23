@@ -228,6 +228,85 @@ function extractGeMBidsFromDOM(): any[] {
   return items;
 }
 
+// ─── Schema Cache & Dynamic Column Filter ────────────────────────────────────
+
+let cachedDbColumns: Set<string> | null = null;
+const warnedMissingCols = new Set<string>();
+
+async function getAvailableDbColumns(): Promise<Set<string>> {
+  if (cachedDbColumns) return cachedDbColumns;
+  try {
+    const { data, error } = await supabase
+      .from("gem_bids")
+      .select("*")
+      .limit(1);
+
+    if (!error && data && data.length > 0) {
+      cachedDbColumns = new Set(Object.keys(data[0]));
+      log.info(
+        { columnCount: cachedDbColumns.size },
+        "Discovered remote gem_bids table schema columns"
+      );
+      return cachedDbColumns;
+    }
+
+    // Fallback: If table is empty, probe candidates using limit(0)
+    const candidates = [
+      "id",
+      "bid_number",
+      "ra_number",
+      "items",
+      "quantity",
+      "department_name",
+      "ministry",
+      "department",
+      "organisation",
+      "full_address",
+      "location",
+      "city",
+      "state",
+      "pincode",
+      "start_date",
+      "end_date",
+      "status",
+      "document_url",
+      "ra_document_url",
+      "document_urls",
+      "corrigendum_urls",
+      "category_name",
+      "raw_description",
+      "processing_status",
+      "created_at",
+      "updated_at",
+    ];
+
+    const validCols = new Set<string>();
+    await Promise.all(
+      candidates.map(async (col) => {
+        const { error: colErr } = await supabase
+          .from("gem_bids")
+          .select(col)
+          .limit(0);
+        if (!colErr) {
+          validCols.add(col);
+        }
+      })
+    );
+
+    if (validCols.size > 0) {
+      cachedDbColumns = validCols;
+      log.info(
+        { columnCount: cachedDbColumns.size },
+        "Probed remote gem_bids schema columns"
+      );
+      return cachedDbColumns;
+    }
+  } catch (err: any) {
+    log.warn({ error: err.message }, "Failed to auto-detect gem_bids columns");
+  }
+  return new Set();
+}
+
 // ─── Scraper Execution ───────────────────────────────────────────────────────
 
 async function runScraper() {
@@ -284,12 +363,20 @@ async function runScraper() {
     while (currentPage <= maxPages) {
       log.info({ page: currentPage }, "Scraping page listings...");
       
-      const rawListings = await page.evaluate(extractGeMBidsFromDOM);
+      let rawListings = await page.evaluate(extractGeMBidsFromDOM);
       log.info({ count: rawListings.length }, "Extracted raw bids from DOM");
       
       if (rawListings.length === 0) {
-        log.warn({ page: currentPage }, "No listings extracted. Ending crawl.");
-        break;
+        // Wait up to 3 more seconds in case dynamic cards are still rendering
+        await delay(3000);
+        const retryListings = await page.evaluate(extractGeMBidsFromDOM);
+        if (retryListings.length > 0) {
+          rawListings = retryListings;
+          log.info({ count: rawListings.length }, "Recovered listings on retry");
+        } else {
+          log.warn({ page: currentPage }, "No listings extracted. Ending crawl.");
+          break;
+        }
       }
       
       // Parse, classify, and format listings for Supabase
@@ -349,20 +436,80 @@ async function runScraper() {
         };
       });
       
-      // Insert into Supabase
+      // Filter payload against currently available columns in database schema
       if (finalListings.length > 0) {
         log.info({ count: finalListings.length }, "Upserting batch to Supabase...");
-        
-        const { error: upsertError } = await supabase
-          .from("gem_bids")
-          .upsert(finalListings, {
-            onConflict: "bid_number",
-            ignoreDuplicates: false,
-          });
-          
-        if (upsertError) {
-          log.error({ error: upsertError.message }, "Database ingestion error");
-        } else {
+
+        const availableCols = await getAvailableDbColumns();
+        const payloadToInsert: Record<string, any>[] = finalListings.map((listing) => {
+          if (availableCols.size === 0) return { ...listing };
+          const safeRecord: Record<string, any> = {};
+          for (const [key, value] of Object.entries(listing)) {
+            if (availableCols.has(key)) {
+              safeRecord[key] = value;
+            } else if (!warnedMissingCols.has(key)) {
+              warnedMissingCols.add(key);
+              log.warn(
+                { column: key },
+                `Column '${key}' does not yet exist in remote gem_bids table. Run migration 20260923140000_add_gem_bids_details.sql to enable persistence for this field.`
+              );
+            }
+          }
+          return safeRecord;
+        });
+
+        // Deduplicate within the batch by bid_number
+        const uniquePayload = Array.from(
+          new Map(payloadToInsert.map((item) => [item.bid_number, item])).values()
+        );
+
+        let currentBatch = uniquePayload;
+        let upsertSuccess = false;
+        let lastError: any = null;
+
+        // Try upsert with reactive fallback if schema cache rejects any column
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const { error: upsertError } = await supabase
+            .from("gem_bids")
+            .upsert(currentBatch, {
+              onConflict: "bid_number",
+              ignoreDuplicates: false,
+            });
+
+          if (!upsertError) {
+            upsertSuccess = true;
+            break;
+          }
+
+          lastError = upsertError;
+
+          // Check if error is due to a missing column in PostgREST schema cache
+          const missingColMatch =
+            upsertError.message.match(/Could not find the '([^']+)' column of 'gem_bids' in the schema cache/i) ||
+            upsertError.message.match(/column "([^"]+)" of relation "gem_bids" does not exist/i);
+
+          if (missingColMatch) {
+            const badCol = missingColMatch[1];
+            log.warn(
+              { column: badCol },
+              `PostgREST rejected unmigrated column '${badCol}'. Stripping and retrying batch...`
+            );
+            if (cachedDbColumns) cachedDbColumns.delete(badCol);
+            currentBatch = currentBatch.map((row) => {
+              const copy = { ...row };
+              delete copy[badCol];
+              return copy;
+            });
+            continue;
+          }
+
+          // Non-schema error, abort retry
+          break;
+        }
+
+        if (!upsertSuccess && lastError) {
+          log.error({ error: lastError.message }, "Database ingestion error");
+        } else if (upsertSuccess) {
           // Write audit logs for successful scrape
           const auditLogs = finalListings.map((item) => ({
             action: "gem_bid_scraped",
@@ -377,7 +524,7 @@ async function runScraper() {
           if (auditError) {
             log.error({ error: auditError.message }, "Failed to write scrape audit logs");
           }
-          
+
           scrapedCount += finalListings.length;
           log.info({ count: finalListings.length }, "Ingested batch successfully");
         }

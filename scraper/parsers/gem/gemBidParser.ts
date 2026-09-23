@@ -14,6 +14,14 @@ export interface GeMBid {
   items: string;
   quantity?: string | null;
   department_name?: string | null;
+  ministry?: string | null;
+  department?: string | null;
+  organisation?: string | null;
+  full_address?: string | null;
+  location?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
   start_date: string;
   end_date: string;
   status: string;
@@ -23,6 +31,7 @@ export interface GeMBid {
   corrigendum_urls?: string[] | null;
   category_name: string;
   raw_description?: string | null;
+  processing_status?: string;
 }
 
 /**
