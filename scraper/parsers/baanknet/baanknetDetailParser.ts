@@ -65,6 +65,12 @@ export interface DetailPageData {
     east?: string;
     west?: string;
   };
+  borrowerAddress?: string;
+  ownershipRole?: string;
+  emdStartDate?: string;
+  facing?: string;
+  nearestStation?: string;
+  propertySummary?: string;
   corporateDebtorName?: string;
   corporateDebtorCin?: string;
   liquidatorRegNo?: string;
@@ -177,13 +183,41 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
   });
 
   const borrowerNames: string[] = [];
-  const borrowerRe = /(?:Borrower|Co-Borrower|Guarantor|Defaulter)\s*(?:Name)?\s*:?\s*([^\n]{3,80})/gi;
+  const explicitBorrowerMatch = bodyText.match(
+    /(?:Borrower(?:\'s)?\s*Name|Defaulter(?:\'s)?\s*Name)\s*[:\n]\s*([^\n]{3,120})/i
+  );
+  if (explicitBorrowerMatch) {
+    const bName = explicitBorrowerMatch[1].trim();
+    if (bName && !borrowerNames.includes(bName) && !/^(address|guarantor|freehold|property|commercial)/i.test(bName)) {
+      borrowerNames.push(bName);
+    }
+  }
+
+  const borrowerRe = /(?:Borrower|Co-Borrower|Defaulter)\s*(?:Name)?\s*[:\n]\s*([^\n]{3,80})/gi;
   let borrowerMatchIter: RegExpExecArray | null;
   while ((borrowerMatchIter = borrowerRe.exec(bodyText)) !== null) {
     const name = borrowerMatchIter[1].trim();
-    if (name && !borrowerNames.includes(name)) borrowerNames.push(name);
+    if (name && !borrowerNames.includes(name) && !/^(address|guarantor|freehold|property|commercial)/i.test(name)) {
+      borrowerNames.push(name);
+    }
   }
   const borrowerName = borrowerNames[0] || "";
+
+  let ownershipRole = "";
+  const ownRoleMatch = bodyText.match(
+    /(?:Ownership\s*of\s*Property|Property\s*Ownership|Owner\s*Capacity|Owner\s*Role)\s*[:\n]\s*([^\n]{3,60})/i
+  );
+  if (ownRoleMatch) {
+    ownershipRole = ownRoleMatch[1].trim();
+  }
+
+  let borrowerAddress = "";
+  const bAddrMatch = bodyText.match(
+    /(?:Registered\s*Address\s*(?:of\s*Borrower)?|Borrower(?:\'s)?\s*(?:Registered\s*)?Address)\s*[:\n]\s*([\s\S]{5,250}?)(?=\n\s*\n|\n\s*(?:Bank|Auction|Property|Ownership|Reserve|State|District|$))/i
+  );
+  if (bAddrMatch) {
+    borrowerAddress = bAddrMatch[1].replace(/\s+/g, " ").trim();
+  }
 
   let description = "";
   const descMatch = bodyText.match(
@@ -446,6 +480,38 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
     emdEndDate = emdMatch[1].trim();
   }
 
+  let emdStartDate = "";
+  const emdStartMatch = bodyText.match(
+    /EMD\s*Start\s*(?:Date\s*(?:&\s*Time)?)?\s*[:\n]\s*([\d\-/]+\s+[\d:]+)/i
+  );
+  if (emdStartMatch) {
+    emdStartDate = emdStartMatch[1].trim();
+  }
+
+  let facing = "";
+  const facingMatch = bodyText.match(
+    /(?:Facing|Direction)\s*[:\n]\s*(East|West|North|South|North[\s-]*East|North[\s-]*West|South[\s-]*East|South[\s-]*West)\b/i
+  );
+  if (facingMatch) {
+    facing = facingMatch[1].trim();
+  }
+
+  let nearestStation = "";
+  const stationMatch = bodyText.match(
+    /(?:Nearest\s*(?:Airport\s*\/\s*Railway\s*Station\s*\/\s*Bus\s*Stand\s*\/\s*Metro\s*Station|Airport|Railway\s*Station|Bus\s*Stand|Metro\s*Station|Station|Transit))\s*[:\n]\s*([^\n]{2,80})/i
+  );
+  if (stationMatch) {
+    nearestStation = stationMatch[1].trim();
+  }
+
+  let propertySummary = "";
+  const summaryMatch = bodyText.match(
+    /(?:Property\s*Summary|Property\s*Classification\s*Summary|Property\s*Overview)\s*[:\n]\s*([^\n]{3,100})/i
+  );
+  if (summaryMatch) {
+    propertySummary = summaryMatch[1].trim();
+  }
+
   let emdAmountText = "";
   // Pattern 1: "EMD Amount : ₹11,88,000.00" or "EMD ⓘ ₹11,88,000.00" (sidebar + Business Rule tab)
   const emdAmountMatch = bodyText.match(
@@ -647,7 +713,7 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
   // "Property Address: Residential House bearing Plot No. A-3(3)...PIN 492001, Area: 4000 Sq.Ft."
   let propertyAddress = "";
   const propAddrMatch = bodyText.match(
-    /Property\s*Address\s*:?\s*([\s\S]{10,600}?)(?=\n\s*\n|Is\s*this\s*property|Loan\s*offer|Inspection\s*Detail|Business\s*Rule|$)/i
+    /Property\s*Address\s*[:\n]\s*([\s\S]{10,600}?)(?=\n\s*\n|\n\s*(?:State|District|City|Pin\s*Code|Property\s*Summary|Facing|Is\s*this\s*property|Loan\s*offer|Inspection\s*Detail|Business\s*Rule|$))/i
   );
   if (propAddrMatch) {
     propertyAddress = propAddrMatch[1].replace(/\s+/g, " ").trim();
@@ -695,6 +761,12 @@ export function extractEAuctionDetail(knownLenders: string[] = []): DetailPageDa
     contactPhone,
     lenderName,
     propertyAddress,
+    borrowerAddress,
+    ownershipRole,
+    emdStartDate,
+    facing,
+    nearestStation,
+    propertySummary,
     latitude,
     longitude,
     mapUrl,
@@ -1447,6 +1519,12 @@ export function mergeDetailData(
     longitude?: number | null;
     mapUrl?: string;
     boundaries?: { north?: string; south?: string; east?: string; west?: string };
+    borrowerAddress?: string;
+    ownershipRole?: string;
+    emdStartDate?: string;
+    facing?: string;
+    nearestStation?: string;
+    propertySummary?: string;
     corporateDebtorName?: string;
     corporateDebtorCin?: string;
     liquidatorRegNo?: string;
@@ -1467,6 +1545,24 @@ export function mergeDetailData(
     const existingBorrowers = new Set(item.borrowerNames || []);
     for (const name of detail.borrowerNames) existingBorrowers.add(name);
     item.borrowerNames = Array.from(existingBorrowers);
+  }
+  if (!item.borrowerAddress && detail.borrowerAddress) {
+    item.borrowerAddress = detail.borrowerAddress;
+  }
+  if (!item.ownershipRole && detail.ownershipRole) {
+    item.ownershipRole = detail.ownershipRole;
+  }
+  if (!item.emdStartDate && detail.emdStartDate) {
+    item.emdStartDate = detail.emdStartDate;
+  }
+  if (!item.facing && detail.facing) {
+    item.facing = detail.facing;
+  }
+  if (!item.nearestStation && detail.nearestStation) {
+    item.nearestStation = detail.nearestStation;
+  }
+  if (!item.propertySummary && detail.propertySummary) {
+    item.propertySummary = detail.propertySummary;
   }
   if (!item.description && detail.description) {
     item.description = detail.description;

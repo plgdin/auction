@@ -350,6 +350,12 @@ export interface RawBaankNetItem {
   emdEndDate?: string;
   borrowerName?: string;
   borrowerNames?: string[];
+  borrowerAddress?: string;
+  ownershipRole?: string;
+  emdStartDate?: string;
+  facing?: string;
+  nearestStation?: string;
+  propertySummary?: string;
   description?: string;
   thumbnailUrl?: string;
   photoUrls?: string[];
@@ -427,6 +433,7 @@ export function parseListings(
 
     const inspStart = item.inspectionStartDate ? parseBaanknetDate(item.inspectionStartDate) : null;
     const inspEnd = item.inspectionEndDate ? parseBaanknetDate(item.inspectionEndDate) : null;
+    const emdStart = item.emdStartDate ? parseBaanknetDate(item.emdStartDate) : null;
     const emdEnd = item.emdEndDate ? parseBaanknetDate(item.emdEndDate) : null;
 
     let cleanTitle = (item.title || "").trim();
@@ -494,9 +501,15 @@ export function parseListings(
       district: item.district || undefined,
       inspection_start_date: inspStart,
       inspection_end_date: inspEnd,
+      emd_start_date: emdStart,
       emd_end_date: emdEnd,
       borrower_name: item.borrowerName,
       borrower_names: item.borrowerNames,
+      borrower_address: item.borrowerAddress,
+      ownership_role: item.ownershipRole,
+      facing: item.facing,
+      nearest_station: item.nearestStation,
+      property_summary: item.propertySummary,
       property_description: item.description,
       photo_count: item.photoUrls?.length || 0,
       thumbnail_url: item.thumbnailUrl || (item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls[0] : undefined),

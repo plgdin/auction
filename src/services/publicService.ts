@@ -3448,8 +3448,14 @@ export interface BaanknetAuction {
   inspection_start_date?: string;
   inspection_end_date?: string;
   emd_end_date?: string;
+  emd_start_date?: string;
   borrower_name?: string;
   borrower_names?: string[];
+  borrower_address?: string;
+  ownership_role?: string;
+  facing?: string;
+  nearest_station?: string;
+  property_summary?: string;
   property_description?: string;
   raw_description?: string;
   photo_count?: number;
@@ -3496,7 +3502,7 @@ export interface BaanknetAuction {
  * Returns the exact, direct URL to this specific auction on the official BaankNet portal.
  */
 export function getBaanknetDirectUrl(item: BaanknetAuction): string {
-  if (item.source_url && (item.source_url.includes('/view-detail/') || item.source_url.includes('/asset-detail/') || item.source_url.includes('/property-detail/'))) {
+  if (item.source_url && (item.source_url.includes('/view-detail/') || item.source_url.includes('/asset-detail/') || item.source_url.includes('/property-detail/') || item.source_url.includes('/property/'))) {
     return item.source_url;
   }
   const rawId = item.baanknet_auction_id?.replace(/[^\d]/g, '') || item.bank_property_id?.replace(/[^\d]/g, '');

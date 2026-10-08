@@ -3,7 +3,8 @@ import {
   X, Copy, Check, Calendar, Landmark, Heart, Download, Eye, Image, Ruler,
   ChevronLeft, ChevronRight, Shield, User, FileText, Scale, Building,
   MapPin, Tag, Award,
-  Layers, Car, Gauge, Fuel, Wrench, ZoomIn, ExternalLink
+  Layers, Car, Gauge, Fuel, Wrench, ZoomIn, ExternalLink,
+  Compass, Train, Navigation, UserCheck
 } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
@@ -29,6 +30,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
   const [copiedRef, setCopiedRef] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [copiedCersai, setCopiedCersai] = useState(false);
+  const [copiedBorrowerAddress, setCopiedBorrowerAddress] = useState(false);
   const [countdownStr, setCountdownStr] = useState<string>('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
@@ -322,6 +324,32 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
     setCopiedAddress(true);
     setTimeout(() => setCopiedAddress(false), 2000);
   };
+
+  const handleCopyBorrowerAddress = () => {
+    if (item.borrower_address) {
+      navigator.clipboard.writeText(item.borrower_address);
+      setCopiedBorrowerAddress(true);
+      setTimeout(() => setCopiedBorrowerAddress(false), 2000);
+    }
+  };
+
+  const mapSearchQuery = useMemo(() => {
+    const parts = [
+      item.city || cleanCity,
+      item.district,
+      item.state || cleanState,
+      item.pincode,
+      'India'
+    ].filter(Boolean);
+    return parts.join(', ');
+  }, [item.city, cleanCity, item.district, item.state, cleanState, item.pincode]);
+
+  const googleMapsUrl = useMemo(() => {
+    const query = item.full_address && item.full_address.length > 5 && !item.full_address.includes('Asset Classification')
+      ? `${item.full_address}, ${mapSearchQuery}`
+      : mapSearchQuery;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  }, [item.full_address, mapSearchQuery]);
 
   const displayContactPerson = item.contact_person || ibcIpName || undefined;
 
@@ -801,6 +829,33 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                     </div>
                   )}
 
+                  {!isVehicle && item.property_summary && (
+                    <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                      <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Property Category</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5 truncate block" title={item.property_summary}>{item.property_summary}</span>
+                    </div>
+                  )}
+
+                  {!isVehicle && item.facing && (
+                    <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                      <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Facing / Orientation</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                        <Compass className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        {item.facing}
+                      </span>
+                    </div>
+                  )}
+
+                  {!isVehicle && item.nearest_station && (
+                    <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                      <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Transit Hub / Station</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5 flex items-center gap-1">
+                        <Train className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span className="truncate" title={item.nearest_station}>{item.nearest_station}</span>
+                      </span>
+                    </div>
+                  )}
+
                   {!isVehicle && item.furnishing && (
                     <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
                       <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Furnishing</span>
@@ -822,6 +877,13 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                       <span className="text-xs font-bold text-slate-900 mt-0.5 truncate">{cleanState}</span>
                     </div>
                   )}
+
+                  {item.pincode && (
+                    <div className="bg-slate-50 rounded-xl p-2.5 sm:p-3 border border-slate-100">
+                      <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Postal PIN Code</span>
+                      <span className="text-xs font-bold text-slate-900 mt-0.5 truncate">{item.pincode}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -831,13 +893,25 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-slate-400" /> Asset Location & Address
                   </h3>
-                  <button
-                    onClick={handleCopyAddress}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    {copiedAddress ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedAddress ? 'Copied' : 'Copy Address'}</span>
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold text-slate-600 hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Open location on Google Maps"
+                    >
+                      <Navigation className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Directions</span>
+                    </a>
+                    <button
+                      onClick={handleCopyAddress}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedAddress ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedAddress ? 'Copied' : 'Copy Address'}</span>
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 sm:p-3.5">
@@ -845,6 +919,17 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                     {displayFullAddress}
                   </p>
                 </div>
+
+                {mapSearchQuery && (
+                  <div className="rounded-xl overflow-hidden border border-slate-200 shadow-2xs mt-2 relative bg-slate-100">
+                    <iframe
+                      title="Geographic Location Map"
+                      src={`https://maps.google.com/maps?q=${encodeURIComponent(mapSearchQuery)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+                      className="w-full h-40 border-0 bg-slate-100"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Live Bidding & Official Participation Protocol */}
@@ -894,6 +979,60 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   <strong className="text-slate-800">Bidding Protocol:</strong> Live bids are placed securely inside the bank's designated e-Auction room. Ensure you have submitted your KYC, EMD deposit, and received approved bidder credentials before bidding closes.
                 </p>
               </div>
+
+              {/* Borrower, Mortgagor & Property Ownership Details */}
+              {(item.borrower_name || (Array.isArray(item.borrower_names) && item.borrower_names.length > 0) || item.borrower_address || item.ownership_role) && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                    <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <UserCheck className="w-3.5 h-3.5 text-slate-400" /> Borrower & Guarantor Information
+                    </h3>
+                    {item.ownership_role && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        Owner Role: {item.ownership_role}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 sm:p-3.5 space-y-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Borrower / Mortgagor Name</span>
+                        <span className="text-xs font-bold text-slate-900 block mt-0.5">
+                          {item.borrower_name || (Array.isArray(item.borrower_names) && item.borrower_names.length > 0 ? item.borrower_names.join(', ') : 'Not Disclosed')}
+                        </span>
+                      </div>
+
+                      {item.ownership_role && (
+                        <div>
+                          <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Ownership Classification</span>
+                          <span className="text-xs font-semibold text-slate-800 block mt-0.5">
+                            {item.ownership_role} {item.title_type ? `(${item.title_type})` : ''}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {item.borrower_address && (
+                      <div className="border-t border-slate-200/70 pt-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Registered Borrower Address</span>
+                          <button
+                            onClick={handleCopyBorrowerAddress}
+                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 cursor-pointer"
+                          >
+                            {copiedBorrowerAddress ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedBorrowerAddress ? 'Copied' : 'Copy'}</span>
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-700 font-mono leading-relaxed bg-white p-2.5 rounded-lg border border-slate-200">
+                          {item.borrower_address}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Legal Due Diligence, CERSAI & Encumbrances */}
               {(item.cersai_id || item.encumbrances_text || item.title_type) && (
@@ -976,7 +1115,7 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
               )}
 
               {/* Auction Timing & Schedule Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 sm:p-3.5 space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Auction Start Time</span>
                   <span className="text-xs sm:text-sm font-bold text-slate-900 block">{safeDateStr(item.auction_start_date)}</span>
@@ -986,6 +1125,13 @@ export const BaanknetDetailsModal: React.FC<BaanknetDetailsModalProps> = ({
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Auction End Time</span>
                   <span className="text-xs sm:text-sm font-bold text-slate-900 block">{safeDateStr(item.auction_end_date)}</span>
                 </div>
+
+                {item.emd_start_date && (
+                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 sm:p-3.5 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">EMD Submission Opens</span>
+                    <span className="text-xs sm:text-sm font-bold text-indigo-700 block">{safeDateStr(item.emd_start_date)}</span>
+                  </div>
+                )}
 
                 {item.emd_end_date && (
                   <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 sm:p-3.5 space-y-1">
