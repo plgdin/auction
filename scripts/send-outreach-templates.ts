@@ -6,7 +6,7 @@ dotenv.config({ path: '.env.local' });
 dotenv.config();
 
 const PHONE = process.env.TARGET_PHONE || process.argv[2] || '918590889282';
-const DELAY_MS = 3000;
+const DELAY_MS = 1500;
 
 const outreachCtx = {
   recipientName: 'Rahul',
