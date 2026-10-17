@@ -165,6 +165,106 @@ export const TEMPLATES_TO_REGISTER = [
       },
     ],
   },
+  {
+    name: 'bid_confirmation',
+    category: 'UTILITY',
+    language: 'en_US',
+    components: [
+      {
+        type: 'HEADER',
+        format: 'TEXT',
+        text: 'Bid Placed Successfully',
+      },
+      {
+        type: 'BODY',
+        text: 'Hello {{1}},\n\nYour bid of {{2}} has been confirmed for the lot:\n"{{3}}"\n\nTrack your auction and live bids here:\n👉 {{4}}\n\nThank you for bidding on Lelam.co.',
+        example: {
+          body_text: [
+            ['Rajesh', '₹2,50,000', 'Heavy Copper Scrap Lot #4910', 'https://lelam.co/auctions/sample'],
+          ],
+        },
+      },
+      {
+        type: 'FOOTER',
+        text: 'Lelam.co • Live Bidding Desk',
+      },
+    ],
+  },
+  {
+    name: 'outbid_alert',
+    category: 'UTILITY',
+    language: 'en_US',
+    components: [
+      {
+        type: 'HEADER',
+        format: 'TEXT',
+        text: 'You Have Been Outbid',
+      },
+      {
+        type: 'BODY',
+        text: 'Hello {{1}},\n\nAnother bidder has placed a higher bid on:\n"{{2}}"\n\nDon\'t let it slip away! Place your counter-bid now:\n👉 {{3}}\n\nThank you for participating on Lelam.co.',
+        example: {
+          body_text: [
+            ['Rajesh', 'Heavy Copper Scrap Lot #4910', 'https://lelam.co/auctions/sample'],
+          ],
+        },
+      },
+      {
+        type: 'FOOTER',
+        text: 'Lelam.co • Live Bidding Desk',
+      },
+    ],
+  },
+  {
+    name: 'auction_ending_soon',
+    category: 'UTILITY',
+    language: 'en_US',
+    components: [
+      {
+        type: 'HEADER',
+        format: 'TEXT',
+        text: 'Auction Ending Soon',
+      },
+      {
+        type: 'BODY',
+        text: 'Hello {{1}},\n\nThe auction for "{{2}}" is closing in {{3}}!\n\nCheck final bidding and submit your bid here:\n👉 {{4}}\n\nGood luck with your bidding.',
+        example: {
+          body_text: [
+            ['Rajesh', 'Heavy Copper Scrap Lot #4910', '1 hour', 'https://lelam.co/auctions/sample'],
+          ],
+        },
+      },
+      {
+        type: 'FOOTER',
+        text: 'Lelam.co • Live Bidding Desk',
+      },
+    ],
+  },
+  {
+    name: 'emd_receipt',
+    category: 'UTILITY',
+    language: 'en_US',
+    components: [
+      {
+        type: 'HEADER',
+        format: 'TEXT',
+        text: 'EMD Deposit Confirmed',
+      },
+      {
+        type: 'BODY',
+        text: 'Hello {{1}},\n\nWe have received your Earnest Money Deposit of {{2}}.\nReference ID: {{3}}\n\nYou are now eligible to place live bids on Lelam.co:\n👉 View Lot: {{4}}\n\nThank you for choosing Lelam.co.',
+        example: {
+          body_text: [
+            ['Rajesh', '₹50,000', 'EMD-94820-2026', 'https://lelam.co/auctions/sample'],
+          ],
+        },
+      },
+      {
+        type: 'FOOTER',
+        text: 'Lelam.co • Payments & EMD',
+      },
+    ],
+  },
 ];
 
 async function listTemplates() {

@@ -60,6 +60,10 @@ export const META_TEMPLATES = [
   { id: 'lelam_scrap_machinery', name: 'Industrial Scrap & Machinery', category: 'MARKETING', description: 'Copper, steel, and plant surplus machinery lots' },
   { id: 'lelam_bank_properties', name: 'Bank Properties & Land', category: 'MARKETING', description: 'SARFAESI bank property & commercial real estate' },
   { id: 'lelam_kyc_verification', name: 'KYC & Account Verification', category: 'UTILITY', description: 'Bidder account GST/KYC compliance notice' },
+  { id: 'bid_confirmation', name: 'Bid Confirmation', category: 'UTILITY', description: 'Instant confirmation when bidder places a bid' },
+  { id: 'outbid_alert', name: 'Outbid Alert', category: 'UTILITY', description: 'Urgent notification when another bidder outbids the user' },
+  { id: 'auction_ending_soon', name: 'Auction Ending Soon', category: 'UTILITY', description: 'Reminder when an auction enters its final hours' },
+  { id: 'emd_receipt', name: 'EMD Receipt Confirmation', category: 'UTILITY', description: 'Payment receipt confirmation for Earnest Money Deposit' },
 ] as const;
 
 /**

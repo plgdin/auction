@@ -267,7 +267,7 @@ _Lelam Auction Platform_`;
   const templateResult = await sendWhatsAppTemplate(
     user.phone,
     'bid_confirmation',
-    'en',
+    'en_US',
     [
       {
         type: 'body',
@@ -313,7 +313,7 @@ _Lelam Auction Platform_`;
   const templateResult = await sendWhatsAppTemplate(
     user.phone,
     'outbid_alert',
-    'en',
+    'en_US',
     [
       {
         type: 'body',
@@ -354,7 +354,29 @@ ${auctionUrl}
 
 _Lelam Auction Platform_`;
 
-  return sendWhatsAppText(user.phone, textMessage, true, payload.user_id);
+  const templateResult = await sendWhatsAppTemplate(
+    user.phone,
+    'auction_ending_soon',
+    'en_US',
+    [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: user.firstName },
+          { type: 'text', text: auctionTitle },
+          { type: 'text', text: timeLeft },
+          { type: 'text', text: auctionUrl },
+        ],
+      },
+    ],
+    payload.user_id
+  );
+
+  if (!templateResult.success && templateResult.error?.includes('Meta API error')) {
+    return sendWhatsAppText(user.phone, textMessage, true, payload.user_id);
+  }
+
+  return templateResult;
 }
 
 async function handleEmdReceipt(payload: EmdReceiptPayload): Promise<WhatsAppSendResult> {
@@ -373,7 +395,29 @@ You are now eligible to place bids on this lot.
 
 _Lelam Auction Platform_`;
 
-  return sendWhatsAppText(user.phone, textMessage, false, payload.user_id);
+  const templateResult = await sendWhatsAppTemplate(
+    user.phone,
+    'emd_receipt',
+    'en_US',
+    [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: user.firstName },
+          { type: 'text', text: `₹${formattedAmount}` },
+          { type: 'text', text: payload.reference_id },
+          { type: 'text', text: `${APP_BASE_URL}/dashboard` },
+        ],
+      },
+    ],
+    payload.user_id
+  );
+
+  if (!templateResult.success && templateResult.error?.includes('Meta API error')) {
+    return sendWhatsAppText(user.phone, textMessage, false, payload.user_id);
+  }
+
+  return templateResult;
 }
 
 async function handleNewAuctionAlert(payload: NewAuctionAlertPayload): Promise<WhatsAppSendResult> {
