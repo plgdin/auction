@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { AuditLog, Notification, Announcement, FaqItem, NewsUpdate, ContactMessage, PromoCode } from '../types/database.types';
+import type { AuditLog, Notification, Announcement, FaqItem, NewsUpdate, ContactMessage, PromoCode, WhatsAppMessage } from '../types/database.types';
 
 export const adminService = {
   async getAuditLogs(limit: number = 25): Promise<AuditLog[]> {
@@ -1553,5 +1553,196 @@ export const adminService = {
       return false;
     }
     return true;
+  },
+
+  // ── WhatsApp Administration ───────────────────────────────────────────
+  async getWhatsAppLogs(limit: number = 100): Promise<WhatsAppMessage[]> {
+    try {
+      const { data, error } = await supabase
+        .from('whatsapp_messages')
+        .select(`
+          id,
+          user_id,
+          phone,
+          direction,
+          type,
+          template_name,
+          content,
+          payload,
+          status,
+          whatsapp_message_id,
+          error_message,
+          created_at,
+          updated_at,
+          profiles:user_id (
+            first_name,
+            last_name,
+            role
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching WhatsApp logs:', error);
+        return [];
+      }
+      return (data || []) as unknown as WhatsAppMessage[];
+    } catch (err) {
+      console.error('Error in getWhatsAppLogs:', err);
+      return [];
+    }
+  },
+
+  async getWhatsAppStats(): Promise<{
+    total: number;
+    outbound: number;
+    inbound: number;
+    delivered: number;
+    read: number;
+    failed: number;
+  }> {
+    try {
+      const logs = await this.getWhatsAppLogs(500);
+      return {
+        total: logs.length,
+        outbound: logs.filter(l => l.direction === 'outbound').length,
+        inbound: logs.filter(l => l.direction === 'inbound').length,
+        delivered: logs.filter(l => l.status === 'delivered' || l.status === 'read').length,
+        read: logs.filter(l => l.status === 'read').length,
+        failed: logs.filter(l => l.status === 'failed').length,
+      };
+    } catch {
+      return { total: 0, outbound: 0, inbound: 0, delivered: 0, read: 0, failed: 0 };
+    }
+  },
+
+  async getWhatsAppCampaignStyles(): Promise<{
+    availableStyles: Array<{ id: string; style: string; group: string }>;
+    sampleGeneratedNotification: any;
+  }> {
+    try {
+      const res = await fetch('/api/whatsapp-broadcast');
+      if (!res.ok) throw new Error('Failed to fetch campaign styles');
+      const data = await res.json();
+      return {
+        availableStyles: data.availableStyles || [],
+        sampleGeneratedNotification: data.sampleGeneratedNotification || null,
+      };
+    } catch (err) {
+      console.error('Error fetching campaign styles:', err);
+      return { availableStyles: [], sampleGeneratedNotification: null };
+    }
+  },
+
+  async previewWhatsAppStyle(params: {
+    styleId?: string;
+    recipientName?: string;
+    title?: string;
+    location?: string;
+    price?: number;
+  }): Promise<any> {
+    try {
+      const query = new URLSearchParams();
+      if (params.styleId) query.set('styleId', params.styleId);
+      if (params.recipientName) query.set('recipientName', params.recipientName);
+      if (params.title) query.set('title', params.title);
+      if (params.location) query.set('location', params.location);
+      if (params.price) query.set('price', params.price.toString());
+
+      const res = await fetch(`/api/whatsapp-broadcast?${query.toString()}`);
+      if (!res.ok) throw new Error('Failed to preview copy');
+      const data = await res.json();
+      return data.sampleGeneratedNotification;
+    } catch (err) {
+      console.error('Error previewing copy:', err);
+      return null;
+    }
+  },
+
+  async sendDirectWhatsApp(params: {
+    phone: string;
+    message?: string;
+    styleId?: string;
+    userId?: string;
+    recipientName?: string;
+    auctionId?: string;
+  }): Promise<{ success: boolean; error?: string; messageId?: string; copyStyle?: string; message?: string }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
+
+      const res = await fetch('/api/whatsapp-broadcast', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          testPhone: params.phone,
+          customMessage: params.message,
+          styleId: params.styleId,
+          userId: params.userId,
+          recipientName: params.recipientName,
+          auctionId: params.auctionId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Failed to dispatch WhatsApp message' };
+      }
+      return {
+        success: true,
+        messageId: data.deliveryResult?.messageId,
+        copyStyle: data.copyStyle,
+        message: data.message,
+      };
+    } catch (err: any) {
+      console.error('Error in sendDirectWhatsApp:', err);
+      return { success: false, error: err.message || 'Network error while dispatching message' };
+    }
+  },
+
+  async broadcastWhatsApp(params: {
+    styleId?: string;
+    customMessage?: string;
+    dryRun?: boolean;
+    categoryFilter?: string;
+    stateFilter?: string;
+    auctionId?: string;
+  }): Promise<{
+    success: boolean;
+    dryRun?: boolean;
+    totalRecipients?: number;
+    eligibleRecipientsCount?: number;
+    sent?: number;
+    failed?: number;
+    error?: string;
+    preview?: string;
+  }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
+
+      const res = await fetch('/api/whatsapp-broadcast', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(params),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Broadcast failed' };
+      }
+      return data;
+    } catch (err: any) {
+      console.error('Error in broadcastWhatsApp:', err);
+      return { success: false, error: err.message || 'Network error while broadcasting' };
+    }
   }
 };
+

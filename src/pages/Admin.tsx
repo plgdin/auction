@@ -14,6 +14,7 @@ const MarketPriceManagement = lazy(() => import('../components/admin/MarketPrice
 const FaqManagement = lazy(() => import('../components/admin/FaqManagement').then(m => ({ default: m.FaqManagement })));
 const BlogManagement = lazy(() => import('../components/admin/BlogManagement').then(m => ({ default: m.BlogManagement })));
 const CouponManagement = lazy(() => import('../components/admin/CouponManagement').then(m => ({ default: m.CouponManagement })));
+const WhatsAppManagement = lazy(() => import('../components/admin/WhatsAppManagement').then(m => ({ default: m.WhatsAppManagement })));
 
 function TabLoadingFallback() {
   return (
@@ -52,6 +53,8 @@ export function Admin() {
         return <ContactMessages />;
       case 'coupons':
         return <CouponManagement />;
+      case 'whatsapp':
+        return <WhatsAppManagement />;
       default:
         return <AdminOverview />;
     }

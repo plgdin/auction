@@ -2,7 +2,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Gavel, Heart, Bell, 
   Settings, Building2, LogOut, FolderLock, Users, Calendar, ClipboardCheck,
-  ArrowLeft, FileText, Cpu, Megaphone, BarChart3, Mail, TrendingUp, HelpCircle, ShieldAlert, Truck, Tag
+  ArrowLeft, FileText, Cpu, Megaphone, BarChart3, Mail, TrendingUp, HelpCircle, ShieldAlert, Truck, Tag,
+  MessageSquare
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
@@ -53,6 +54,7 @@ export function Sidebar() {
     { name: 'Advanced Reports', id: 'reports', icon: BarChart3 },
     { name: 'Blog Manager', id: 'blogs', icon: FileText },
     { name: 'User Management', id: 'users', icon: Users },
+    { name: 'WhatsApp Hub', id: 'whatsapp', icon: MessageSquare },
     { name: 'System Announcements', id: 'system', icon: Megaphone },
     { name: 'Customer Support', id: 'messages', icon: Mail },
   ];

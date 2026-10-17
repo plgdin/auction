@@ -3,11 +3,13 @@ import { useEffect, useState, useMemo } from 'react';
 import {
   Users, CheckCircle2, ShieldAlert, Shield, Globe, Clock, X,
   Activity, Search, Filter, ChevronDown, Save, Ban, UserCheck,
-  Crown, CreditCard, Calendar, AlertTriangle, ExternalLink, ShieldCheck, Lock
+  Crown, CreditCard, Calendar, AlertTriangle, ExternalLink, ShieldCheck, Lock,
+  MessageSquare
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { ALL_AUCTION_TYPES } from '../../hooks/useAuctionAccess';
 import { AuctionPermissionsModal } from './AuctionPermissionsModal';
+import { QuickWhatsAppModal } from './QuickWhatsAppModal';
 import clsx from 'clsx';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -77,6 +79,9 @@ export function UserManagement() {
   // Auction Permissions Modal state
   const [permissionsUser, setPermissionsUser] = useState<any | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+
+  // WhatsApp quick action state
+  const [whatsAppRecipient, setWhatsAppRecipient] = useState<any | null>(null);
 
   // Activity log state
   const [userLogs, setUserLogs] = useState<any[]>([]);
@@ -413,7 +418,25 @@ export function UserManagement() {
                     {/* Contact */}
                     <td className="px-6 py-4">
                       <p className="text-sm text-slate-600">{user.email}</p>
-                      <p className="text-xs text-slate-500">{user.phone_number || 'N/A'}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-slate-500 font-mono">
+                          {user.phone || user.phone_number || 'N/A'}
+                        </p>
+                        {(user.phone || user.phone_number) && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setWhatsAppRecipient(user);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
+                            title={`Send WhatsApp message to ${user.first_name || 'User'}`}
+                          >
+                            <MessageSquare className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            <span>WhatsApp</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
 
                     {/* Status */}
@@ -562,12 +585,25 @@ export function UserManagement() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={closeDrawer}
-                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all cursor-pointer shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {(selectedUser.phone || selectedUser.phone_number) && (
+                  <button
+                    type="button"
+                    onClick={() => setWhatsAppRecipient(selectedUser)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all cursor-pointer shadow-xs"
+                    title={`Send WhatsApp message to ${selectedUser.first_name || 'User'}`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>WhatsApp</span>
+                  </button>
+                )}
+                <button
+                  onClick={closeDrawer}
+                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Drawer Tabs */}
@@ -672,6 +708,15 @@ export function UserManagement() {
           isOpen={!!permissionsUser}
           onClose={() => setPermissionsUser(null)}
           onUpdated={handlePermissionsUpdated}
+        />
+      )}
+
+      {/* Quick WhatsApp Send Modal */}
+      {whatsAppRecipient && (
+        <QuickWhatsAppModal
+          isOpen={!!whatsAppRecipient}
+          recipient={whatsAppRecipient}
+          onClose={() => setWhatsAppRecipient(null)}
         />
       )}
     </div>

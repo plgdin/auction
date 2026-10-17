@@ -6,7 +6,12 @@ import {
   sendWhatsAppText,
   type TemplateComponent,
 } from './_utils/whatsapp.js';
-import { generateZomatoCopy, ZOMATO_HOOK_TEMPLATES } from './_utils/zomatoCopyEngine.js';
+import {
+  generateZomatoCopy,
+  ZOMATO_HOOK_TEMPLATES,
+  generateOutreachCopy,
+  OUTREACH_TEMPLATES,
+} from './_utils/zomatoCopyEngine.js';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -34,6 +39,8 @@ export interface BroadcastRequestBody {
   styleId?: string;
   auctionId?: string;
   testPhone?: string;
+  userId?: string;
+  recipientName?: string;
 }
 
 export default async function handler(req: any, res: any) {
@@ -45,21 +52,39 @@ export default async function handler(req: any, res: any) {
 
   // GET: Preview available campaign styles and sample generated copy
   if (req.method === 'GET') {
-    const sampleCopy = generateZomatoCopy(
-      {
-        id: 'sample-101',
-        title: 'MSTC Heavy Copper Scrap & Transformer Lot',
-        price: 350000,
-        location: 'Mumbai, Maharashtra',
-      },
-      undefined,
-      APP_BASE_URL
-    );
+    const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+    const requestedStyle = url.searchParams.get('styleId') || undefined;
+    const recipientName = url.searchParams.get('recipientName') || 'Valued Partner';
+    const auctionTitle = url.searchParams.get('title') || 'MSTC Heavy Copper Scrap & Transformer Lot';
+    const location = url.searchParams.get('location') || 'Mumbai, Maharashtra';
+    const price = Number(url.searchParams.get('price')) || 350000;
+
+    const isOutreach = OUTREACH_TEMPLATES.some(t => t.id === requestedStyle);
+    let sampleCopy;
+    if (isOutreach) {
+      sampleCopy = generateOutreachCopy({ recipientName, region: location }, requestedStyle, APP_BASE_URL);
+    } else {
+      sampleCopy = generateZomatoCopy(
+        {
+          id: 'sample-101',
+          title: auctionTitle,
+          price,
+          location,
+        },
+        requestedStyle,
+        APP_BASE_URL
+      );
+    }
+
+    const allStyles = [
+      ...ZOMATO_HOOK_TEMPLATES.map(t => ({ id: t.id, style: t.style, group: 'Promotional Hooks (30)' })),
+      ...OUTREACH_TEMPLATES.map(t => ({ id: t.id, style: t.style, group: `B2B Cold Outreach (${t.vertical})` })),
+    ];
 
     res.status(200).json({
       success: true,
       message: 'WhatsApp Broadcast & Campaign Engine Ready',
-      availableStyles: ZOMATO_HOOK_TEMPLATES.map(t => ({ id: t.id, style: t.style })),
+      availableStyles: allStyles,
       sampleGeneratedNotification: sampleCopy,
     });
     return;
@@ -181,17 +206,27 @@ async function handleCampaignDispatch(body: BroadcastRequestBody, res: any) {
       location: auctionData?.location || 'State Industrial Zone',
     };
 
-    const generatedCopy = generateZomatoCopy(context, styleId, APP_BASE_URL);
+    const isOutreach = OUTREACH_TEMPLATES.some(t => t.id === styleId);
+    let generatedCopy: any;
+    if (isOutreach) {
+      generatedCopy = generateOutreachCopy({ recipientName: body.recipientName || 'Valued Buyer', region: 'India' }, styleId, APP_BASE_URL);
+    } else {
+      generatedCopy = generateZomatoCopy(context, styleId, APP_BASE_URL);
+    }
+
+    const messageToSend = body.customMessage || generatedCopy.fullMessage;
+    const finalStyle = body.customMessage ? 'Custom Direct Message' : generatedCopy.style;
 
     if (testPhone) {
-      const sendResult = await sendWhatsAppText(testPhone, generatedCopy.fullMessage, true);
-      res.status(200).json({
-        success: true,
+      const sendResult = await sendWhatsAppText(testPhone, messageToSend, true, body.userId);
+      res.status(sendResult.success ? 200 : 400).json({
+        success: sendResult.success,
         mode: 'test_phone',
         targetPhone: testPhone,
-        copyStyle: generatedCopy.style,
-        message: generatedCopy.fullMessage,
+        copyStyle: finalStyle,
+        message: messageToSend,
         deliveryResult: sendResult,
+        error: sendResult.error,
       });
       return;
     }

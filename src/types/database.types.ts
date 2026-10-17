@@ -296,3 +296,24 @@ export interface PromoCode {
   created_at: string;
 }
 
+export interface WhatsAppMessage {
+  id: string;
+  user_id?: string | null;
+  phone: string;
+  direction: 'inbound' | 'outbound';
+  type: string;
+  template_name?: string | null;
+  content: string;
+  payload?: any;
+  status: 'queued' | 'sent' | 'delivered' | 'read' | 'failed';
+  whatsapp_message_id?: string | null;
+  error_message?: string | null;
+  created_at: string;
+  updated_at: string;
+  profiles?: {
+    first_name?: string;
+    last_name?: string;
+    role?: string;
+  } | null;
+}
+
