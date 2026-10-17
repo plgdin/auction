@@ -4,7 +4,7 @@ import {
   sendWhatsAppText,
   sendWhatsAppTemplate,
   sendWhatsAppInteractiveButtons,
-} from '../api/utils/whatsapp.js';
+} from '../api/_utils/whatsapp.js';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -38,7 +38,7 @@ async function run() {
   }
 
   if (command === '--zomato') {
-    const { generateZomatoCopy, ZOMATO_HOOK_TEMPLATES } = await import('../api/utils/zomatoCopyEngine.js');
+    const { generateZomatoCopy, ZOMATO_HOOK_TEMPLATES } = await import('../api/_utils/zomatoCopyEngine.js');
     const { createClient } = await import('@supabase/supabase-js');
     const styleId = args[2] || 'typo_glitch';
     const customUrlOrId = args[3];
