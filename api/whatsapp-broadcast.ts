@@ -6,6 +6,7 @@ import {
   sendWhatsAppText,
   checkWhatsAppBudget,
   ESTIMATED_COST_PER_MSG_INR,
+  META_TEMPLATES,
   type TemplateComponent,
 } from './_utils/whatsapp.js';
 import {
@@ -89,6 +90,7 @@ export default async function handler(req: any, res: any) {
       success: true,
       message: 'WhatsApp Broadcast & Campaign Engine Ready',
       availableStyles: allStyles,
+      metaTemplates: META_TEMPLATES,
       sampleGeneratedNotification: sampleCopy,
       budget,
     });
@@ -223,7 +225,42 @@ async function handleCampaignDispatch(body: BroadcastRequestBody, res: any) {
     const finalStyle = body.customMessage ? 'Custom Direct Message' : generatedCopy.style;
 
     if (testPhone) {
-      const sendResult = await sendWhatsAppText(testPhone, messageToSend, true, body.userId);
+      let sendResult = await sendWhatsAppText(testPhone, messageToSend, true, body.userId);
+
+      // If text fails because user hasn't messaged in 24h (Meta error 131047), fall back to registered Meta Template
+      if (!sendResult.success && (sendResult.error?.includes('131047') || sendResult.error?.includes('24 hours') || body.templateName)) {
+        const fallbackTemplate = body.templateName || (isOutreach ? 'lelam_b2b_outreach' : 'lelam_auction_alert');
+        const templateComponents: TemplateComponent[] = [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: body.recipientName || 'Valued Buyer' },
+              { type: 'text', text: messageToSend.slice(0, 250) },
+              { type: 'text', text: `${APP_BASE_URL}/auctions` },
+            ],
+          },
+        ];
+
+        const templateResult = await sendWhatsAppTemplate(
+          testPhone,
+          fallbackTemplate,
+          'en_US',
+          templateComponents,
+          body.userId
+        );
+
+        if (templateResult.success) {
+          sendResult = templateResult;
+        } else if (templateResult.error?.includes('132001') || templateResult.error?.includes('does not exist in the translation')) {
+          sendResult = {
+            success: false,
+            error: `Message requires an approved Meta template for numbers outside 24h window. Template '${fallbackTemplate}' is currently PENDING review by Meta. Once approved, sending will succeed automatically.`,
+          };
+        } else {
+          sendResult = templateResult;
+        }
+      }
+
       res.status(sendResult.success ? 200 : 400).json({
         success: sendResult.success,
         mode: 'test_phone',
@@ -297,7 +334,29 @@ async function handleCampaignDispatch(body: BroadcastRequestBody, res: any) {
 
     for (const recipient of eligible) {
       try {
-        const result = await sendWhatsAppText(recipient.phone, generatedCopy.fullMessage, true, recipient.id);
+        let result = await sendWhatsAppText(recipient.phone, generatedCopy.fullMessage, true, recipient.id);
+
+        // Fallback to approved template if recipient is outside 24h window
+        if (!result.success && (result.error?.includes('131047') || result.error?.includes('24 hours'))) {
+          const fallbackTemplate = isOutreach ? 'lelam_b2b_outreach' : 'lelam_auction_alert';
+          result = await sendWhatsAppTemplate(
+            recipient.phone,
+            fallbackTemplate,
+            'en_US',
+            [
+              {
+                type: 'body',
+                parameters: [
+                  { type: 'text', text: recipient.first_name || 'Valued Buyer' },
+                  { type: 'text', text: generatedCopy.fullMessage.slice(0, 250) },
+                  { type: 'text', text: `${APP_BASE_URL}/auctions` },
+                ],
+              },
+            ],
+            recipient.id
+          );
+        }
+
         if (result.success) sent++;
         else failed++;
         await sleep(50);
@@ -323,7 +382,7 @@ async function handleCampaignDispatch(body: BroadcastRequestBody, res: any) {
 async function handleStandardBroadcast(body: BroadcastRequestBody, res: any) {
   const {
     templateName,
-    languageCode = 'en',
+    languageCode = 'en_US',
     components = [],
     customMessage,
     dryRun = false,

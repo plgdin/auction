@@ -53,6 +53,15 @@ export interface TemplateComponent {
   }>;
 }
 
+export const META_TEMPLATES = [
+  { id: 'lelam_auction_alert', name: 'Auction Update & Alert', category: 'MARKETING', description: 'General auction announcement & lot inspection link' },
+  { id: 'lelam_b2b_outreach', name: 'B2B Industrial Outreach', category: 'MARKETING', description: 'Surplus machinery & industrial equipment catalogue outreach' },
+  { id: 'lelam_vehicle_auctions', name: 'Vehicle & Fleet Auctions', category: 'MARKETING', description: 'Government fleet & seized vehicle auction alerts' },
+  { id: 'lelam_scrap_machinery', name: 'Industrial Scrap & Machinery', category: 'MARKETING', description: 'Copper, steel, and plant surplus machinery lots' },
+  { id: 'lelam_bank_properties', name: 'Bank Properties & Land', category: 'MARKETING', description: 'SARFAESI bank property & commercial real estate' },
+  { id: 'lelam_kyc_verification', name: 'KYC & Account Verification', category: 'UTILITY', description: 'Bidder account GST/KYC compliance notice' },
+] as const;
+
 /**
  * Log message event into whatsapp_messages database table for auditing
  */
@@ -187,7 +196,7 @@ async function callMetaGraphApi(payload: Record<string, any>): Promise<any> {
 export async function sendWhatsAppTemplate(
   to: string,
   templateName: string,
-  languageCode: string = 'en',
+  languageCode: string = 'en_US',
   components: TemplateComponent[] = [],
   userId?: string
 ): Promise<WhatsAppSendResult> {
