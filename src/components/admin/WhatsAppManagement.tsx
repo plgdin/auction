@@ -29,6 +29,21 @@ export function WhatsAppManagement() {
   // Available campaign styles
   const [availableStyles, setAvailableStyles] = useState<Array<{ id: string; style: string; group: string }>>([]);
 
+  // Spending Cap & Budget Guard
+  const [budget, setBudget] = useState<{
+    allowed: boolean;
+    currentSpend: number;
+    budgetCap: number;
+    remainingBudget: number;
+    messageCountThisMonth: number;
+  }>({
+    allowed: true,
+    currentSpend: 0,
+    budgetCap: 2000,
+    remainingBudget: 2000,
+    messageCountThisMonth: 0,
+  });
+
   // Direct Send state
   const [directPhone, setDirectPhone] = useState('');
   const [directRecipientName, setDirectRecipientName] = useState('Valued Partner');
@@ -72,6 +87,9 @@ export function WhatsAppManagement() {
       ]);
       setStats(statsData);
       setAvailableStyles(stylesData.availableStyles || []);
+      if (stylesData.budget) {
+        setBudget(stylesData.budget);
+      }
       if (stylesData.sampleGeneratedNotification?.fullMessage) {
         setPreviewContent(stylesData.sampleGeneratedNotification.fullMessage);
       }
@@ -345,6 +363,54 @@ export function WhatsAppManagement() {
             <p className={`text-xl font-bold mt-1 ${stats.failed > 0 ? 'text-red-500' : 'text-slate-400'}`}>
               {stats.failed}
             </p>
+          </div>
+        </div>
+
+        {/* ── Monthly Spending Cap Guard (₹2,000 Cap) ── */}
+        <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-emerald-500/5 via-emerald-500/10 to-transparent border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Monthly Spending Guard: ₹{budget.budgetCap.toLocaleString()} Cap
+              </span>
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300">
+                Active Safeguard
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Total monthly outbound spend is automatically tracked. Server stops all dispatches if spend reaches ₹{budget.budgetCap.toLocaleString()}.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 min-w-[280px]">
+            <div>
+              <p className="text-[10px] uppercase font-bold text-slate-400">Current Month Spend</p>
+              <p className="text-sm font-extrabold text-slate-900 dark:text-white font-mono">
+                ₹{budget.currentSpend.toFixed(2)}
+                <span className="text-xs font-normal text-slate-400"> / ₹{budget.budgetCap.toLocaleString()}</span>
+              </p>
+            </div>
+
+            <div className="flex-1 w-full sm:w-36">
+              <div className="flex justify-between text-[10px] text-slate-400 font-medium mb-1">
+                <span>{Math.round((budget.currentSpend / budget.budgetCap) * 100)}% Used</span>
+                <span>₹{budget.remainingBudget.toFixed(2)} Left</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                <div
+                  className={clsx(
+                    'h-full transition-all duration-500 rounded-full',
+                    budget.currentSpend / budget.budgetCap > 0.9
+                      ? 'bg-red-500'
+                      : budget.currentSpend / budget.budgetCap > 0.7
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500'
+                  )}
+                  style={{ width: `${Math.min(100, Math.max(3, Math.round((budget.currentSpend / budget.budgetCap) * 100)))}%` }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -794,18 +860,28 @@ export function WhatsAppManagement() {
 
           {/* Dry Run Outcome Banner */}
           {dryRunResult && (
-            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <div>
                   <p className="text-sm font-bold">
-                    Eligible Audience: {dryRunResult.eligibleCount} Verified Users
+                    Eligible Audience: {dryRunResult.eligibleCount || 0} Verified Users
                   </p>
                   <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                    Subscribers with valid E.164 phone numbers and active WhatsApp preferences.
+                    Estimated broadcast cost: <strong>~₹{((dryRunResult.eligibleCount || 0) * 0.85).toFixed(2)}</strong> (Remaining monthly budget: ₹{budget.remainingBudget.toFixed(2)})
                   </p>
                 </div>
               </div>
+
+              {((dryRunResult.eligibleCount || 0) * 0.85) > budget.remainingBudget ? (
+                <span className="text-xs font-bold text-red-600 bg-red-100 dark:bg-red-950/60 px-2.5 py-1 rounded-lg">
+                  Exceeds ₹{budget.budgetCap} Cap
+                </span>
+              ) : (
+                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2.5 py-1 rounded-lg">
+                  Within Budget
+                </span>
+              )}
             </div>
           )}
 

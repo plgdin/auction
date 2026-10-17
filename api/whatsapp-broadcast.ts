@@ -4,6 +4,8 @@ import { isRateLimited, getClientIp } from './_utils/rateLimiter.js';
 import {
   sendWhatsAppTemplate,
   sendWhatsAppText,
+  checkWhatsAppBudget,
+  ESTIMATED_COST_PER_MSG_INR,
   type TemplateComponent,
 } from './_utils/whatsapp.js';
 import {
@@ -81,11 +83,14 @@ export default async function handler(req: any, res: any) {
       ...OUTREACH_TEMPLATES.map(t => ({ id: t.id, style: t.style, group: `B2B Cold Outreach (${t.vertical})` })),
     ];
 
+    const budget = await checkWhatsAppBudget();
+
     res.status(200).json({
       success: true,
       message: 'WhatsApp Broadcast & Campaign Engine Ready',
       availableStyles: allStyles,
       sampleGeneratedNotification: sampleCopy,
+      budget,
     });
     return;
   }
@@ -262,12 +267,27 @@ async function handleCampaignDispatch(body: BroadcastRequestBody, res: any) {
       return true;
     });
 
+    const budget = await checkWhatsAppBudget();
+    const estimatedBroadcastCost = Math.round(eligible.length * ESTIMATED_COST_PER_MSG_INR * 100) / 100;
+
     if (dryRun) {
       res.status(200).json({
         success: true,
         dryRun: true,
         eligibleRecipientsCount: eligible.length,
+        estimatedCost: estimatedBroadcastCost,
+        budget,
         generatedCopy,
+      });
+      return;
+    }
+
+    if (!budget.allowed || (budget.currentSpend + estimatedBroadcastCost > budget.budgetCap)) {
+      res.status(403).json({
+        success: false,
+        error: `Monthly WhatsApp spending cap of ₹${budget.budgetCap.toLocaleString()} would be exceeded (Current Spend: ₹${budget.currentSpend.toFixed(2)}, Broadcast Cost: ₹${estimatedBroadcastCost.toFixed(2)}). Broadcast paused.`,
+        budget,
+        estimatedBroadcastCost,
       });
       return;
     }
@@ -354,6 +374,19 @@ async function handleStandardBroadcast(body: BroadcastRequestBody, res: any) {
           name: r.first_name,
           phone: r.phone.replace(/(\d{3})\d+(\d{4})/, '$1****$2'),
         })),
+      });
+      return;
+    }
+
+    const budget = await checkWhatsAppBudget();
+    const estimatedBroadcastCost = Math.round(eligibleRecipients.length * ESTIMATED_COST_PER_MSG_INR * 100) / 100;
+
+    if (!budget.allowed || (budget.currentSpend + estimatedBroadcastCost > budget.budgetCap)) {
+      res.status(403).json({
+        success: false,
+        error: `Monthly WhatsApp spending cap of ₹${budget.budgetCap.toLocaleString()} would be exceeded (Current Spend: ₹${budget.currentSpend.toFixed(2)}, Broadcast Cost: ₹${estimatedBroadcastCost.toFixed(2)}). Broadcast paused.`,
+        budget,
+        estimatedBroadcastCost,
       });
       return;
     }

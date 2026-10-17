@@ -87,6 +87,74 @@ async function logWhatsAppRecord(record: {
   }
 }
 
+// ── Monthly WhatsApp Budget Guard (Hard Spending Cap in INR) ─────────────
+export const MONTHLY_WHATSAPP_BUDGET_CAP_INR = 2000;
+export const ESTIMATED_COST_PER_MSG_INR = 0.85;
+
+export async function checkWhatsAppBudget(): Promise<{
+  allowed: boolean;
+  currentSpend: number;
+  budgetCap: number;
+  remainingBudget: number;
+  messageCountThisMonth: number;
+}> {
+  if (!supabase || !getWhatsAppToken()) {
+    return {
+      allowed: true,
+      currentSpend: 0,
+      budgetCap: MONTHLY_WHATSAPP_BUDGET_CAP_INR,
+      remainingBudget: MONTHLY_WHATSAPP_BUDGET_CAP_INR,
+      messageCountThisMonth: 0,
+    };
+  }
+
+  try {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const { data: messages, error } = await supabase
+      .from('whatsapp_messages')
+      .select('type, status')
+      .eq('direction', 'outbound')
+      .neq('status', 'failed')
+      .gte('created_at', startOfMonth.toISOString());
+
+    if (error) {
+      console.warn('[WhatsApp Budget] Failed to query monthly messages:', error.message);
+      return {
+        allowed: true,
+        currentSpend: 0,
+        budgetCap: MONTHLY_WHATSAPP_BUDGET_CAP_INR,
+        remainingBudget: MONTHLY_WHATSAPP_BUDGET_CAP_INR,
+        messageCountThisMonth: 0,
+      };
+    }
+
+    const messageCount = messages?.length || 0;
+    const currentSpend = Math.round(messageCount * ESTIMATED_COST_PER_MSG_INR * 100) / 100;
+    const remainingBudget = Math.max(0, Math.round((MONTHLY_WHATSAPP_BUDGET_CAP_INR - currentSpend) * 100) / 100);
+    const allowed = currentSpend < MONTHLY_WHATSAPP_BUDGET_CAP_INR;
+
+    return {
+      allowed,
+      currentSpend,
+      budgetCap: MONTHLY_WHATSAPP_BUDGET_CAP_INR,
+      remainingBudget,
+      messageCountThisMonth: messageCount,
+    };
+  } catch (err: any) {
+    console.warn('[WhatsApp Budget] Error calculating spend:', err.message);
+    return {
+      allowed: true,
+      currentSpend: 0,
+      budgetCap: MONTHLY_WHATSAPP_BUDGET_CAP_INR,
+      remainingBudget: MONTHLY_WHATSAPP_BUDGET_CAP_INR,
+      messageCountThisMonth: 0,
+    };
+  }
+}
+
 /**
  * Send official Meta WhatsApp Cloud API request
  */
@@ -126,6 +194,13 @@ export async function sendWhatsAppTemplate(
   const phone = normalizePhoneNumber(to);
   if (!phone) {
     return { success: false, error: 'Invalid phone number provided' };
+  }
+
+  // Hard Spending Cap Check
+  const budget = await checkWhatsAppBudget();
+  if (!budget.allowed) {
+    const errorMsg = `Monthly WhatsApp budget cap of ₹${budget.budgetCap.toLocaleString()} reached (Current Spend: ₹${budget.currentSpend.toFixed(2)}). Dispatches paused to prevent overspending.`;
+    return { success: false, error: errorMsg };
   }
 
   // Summary content description for auditing
@@ -212,6 +287,13 @@ export async function sendWhatsAppText(
   const phone = normalizePhoneNumber(to);
   if (!phone) {
     return { success: false, error: 'Invalid phone number provided' };
+  }
+
+  // Hard Spending Cap Check
+  const budget = await checkWhatsAppBudget();
+  if (!budget.allowed) {
+    const errorMsg = `Monthly WhatsApp budget cap of ₹${budget.budgetCap.toLocaleString()} reached (Current Spend: ₹${budget.currentSpend.toFixed(2)}). Dispatches paused to prevent overspending.`;
+    return { success: false, error: errorMsg };
   }
 
   if (!getWhatsAppToken() || !getWhatsAppPhoneId()) {

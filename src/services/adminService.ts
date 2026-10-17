@@ -1620,6 +1620,13 @@ export const adminService = {
   async getWhatsAppCampaignStyles(): Promise<{
     availableStyles: Array<{ id: string; style: string; group: string }>;
     sampleGeneratedNotification: any;
+    budget?: {
+      allowed: boolean;
+      currentSpend: number;
+      budgetCap: number;
+      remainingBudget: number;
+      messageCountThisMonth: number;
+    };
   }> {
     try {
       const res = await fetch('/api/whatsapp-broadcast');
@@ -1628,6 +1635,7 @@ export const adminService = {
       return {
         availableStyles: data.availableStyles || [],
         sampleGeneratedNotification: data.sampleGeneratedNotification || null,
+        budget: data.budget,
       };
     } catch (err) {
       console.error('Error fetching campaign styles:', err);
