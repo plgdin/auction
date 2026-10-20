@@ -166,10 +166,32 @@ function extractDocUrlsFromJson(obj: any, collected: string[]): void {
   if (!obj) return;
   if (typeof obj === "string") {
     const lower = obj.toLowerCase();
+    const isExcluded =
+      lower.endsWith(".svg") ||
+      lower.endsWith(".css") ||
+      lower.endsWith(".js") ||
+      lower.endsWith(".ico") ||
+      lower.endsWith(".png") ||
+      lower.endsWith(".jpg") ||
+      lower.endsWith(".jpeg") ||
+      lower.includes("/guidance") ||
+      lower.includes("/sample") ||
+      lower.includes("/template") ||
+      lower.includes("/user-manual");
+
+    const isDocumentTarget =
+      lower.includes(".pdf") ||
+      lower.includes(".doc") ||
+      lower.includes(".docx") ||
+      lower.includes("/client-document/") ||
+      lower.includes("/view-document/") ||
+      lower.includes("/download-document/") ||
+      lower.includes("/auction-notice/");
+
     if (
-      (lower.includes(".pdf") || lower.includes("cloudfront.net") || lower.includes("/uploads/") || lower.includes("/document") || lower.includes("/notice") || lower.includes("/client-document") || lower.includes("/asset/")) &&
-      (obj.startsWith("http://") || obj.startsWith("https://") || obj.startsWith("/")) &&
-      !lower.endsWith(".svg") && !lower.endsWith(".css") && !lower.endsWith(".js") && !lower.endsWith(".ico")
+      !isExcluded &&
+      isDocumentTarget &&
+      (obj.startsWith("http://") || obj.startsWith("https://") || obj.startsWith("/"))
     ) {
       const fullUrl = obj.startsWith("http") ? obj : `https://baanknet.com${obj.startsWith("/") ? "" : "/"}${obj}`;
       if (!collected.includes(fullUrl)) collected.push(fullUrl);
@@ -193,8 +215,7 @@ function extractDocUrlsFromJson(obj: any, collected: string[]): void {
  */
 async function expandDetailPageInteractiveContent(page: any): Promise<void> {
   try {
-    // Phase 1: Click all named detail tabs sequentially with delays.
-    // BaankNet uses Angular mat-tabs that lazy-render content only on click:
+    // Phase 1: Click named detail tabs that are not already active
     await page.evaluate(async () => {
       const targetKeywords = [
         "general detail", "property detail", "inspection detail", "business rule",
@@ -202,19 +223,21 @@ async function expandDetailPageInteractiveContent(page: any): Promise<void> {
         "auction notice", "tender document", "tender documents", "event document",
         "client document", "client documents", "file detail", "file details", "downloads", "download"
       ];
-      const tabElements = Array.from(document.querySelectorAll("button, div, span, a, [role='tab'], .nav-link, mat-tab-header .mdc-tab"));
+      const tabElements = Array.from(document.querySelectorAll('[role="tab"], mat-tab-header .mdc-tab, .nav-tabs .nav-link, button.nav-link'));
       for (const el of tabElements) {
+        const isSelected = el.getAttribute("aria-selected") === "true" || el.classList.contains("active");
+        if (isSelected) continue;
         const text = el.textContent?.toLowerCase().trim() || "";
         if (targetKeywords.some((kw) => text.includes(kw))) {
           try {
             (el as HTMLElement).click();
-            await new Promise((res) => setTimeout(res, 600));
+            await new Promise((res) => setTimeout(res, 120));
           } catch {}
         }
       }
     });
 
-    await randomDelay(800);
+    await randomDelay(150);
 
     // Phase 2: Open all accordions and <details> elements
     await page.evaluate(() => {
@@ -237,7 +260,7 @@ async function expandDetailPageInteractiveContent(page: any): Promise<void> {
       });
     });
 
-    await randomDelay(600);
+    await randomDelay(150);
 
     // Phase 3: Exhaust "Load More" / "View All" / "Show More" buttons
     for (let cycle = 0; cycle < 5; cycle++) {
@@ -650,7 +673,7 @@ function extractEAuctionListingsFromDOM(knownLenders: string[] = []): RawBaankNe
         bankPropertyId: bankPropIdMatch ? bankPropIdMatch[1] : "",
         title: title || "Bank Auction Property",
         reservePrice: reservePriceMatch ? reservePriceMatch[1].trim() : "",
-        bankName: bankName || "Unknown Bank",
+        bankName: bankName || "",
         location: locationStr,
         address: address,
         startDate: startMatch ? startMatch[1] : "",
@@ -1692,26 +1715,30 @@ export async function upsertListings(listings: ReturnType<typeof parseListings>)
       statsMap[cat] = (statsMap[cat] || 0) + 1;
     });
 
-    for (const [category, count] of Object.entries(statsMap)) {
-      const { data: existingStat } = await supabase
-        .from("category_daily_stats")
-        .select("id, items_added")
-        .eq("date", today)
-        .eq("category_name", category)
-        .maybeSingle();
+    const categoryNames = Object.keys(statsMap);
+    const { data: existingStats } = await supabase
+      .from("category_daily_stats")
+      .select("id, category_name, items_added")
+      .eq("date", today)
+      .in("category_name", categoryNames);
 
-      if (existingStat) {
+    const existingStatsMap = new Map((existingStats || []).map((s: any) => [s.category_name, s]));
+    const catStatsToInsert: { date: string; category_name: string; items_added: number }[] = [];
+
+    for (const [category, count] of Object.entries(statsMap)) {
+      const existing = existingStatsMap.get(category);
+      if (existing) {
         await supabase
           .from("category_daily_stats")
-          .update({ items_added: existingStat.items_added + count })
-          .eq("id", existingStat.id);
+          .update({ items_added: existing.items_added + count })
+          .eq("id", existing.id);
       } else {
-        await supabase.from("category_daily_stats").insert({
-          date: today,
-          category_name: category,
-          items_added: count,
-        });
+        catStatsToInsert.push({ date: today, category_name: category, items_added: count });
       }
+    }
+
+    if (catStatsToInsert.length > 0) {
+      await supabase.from("category_daily_stats").insert(catStatsToInsert);
     }
 
     log.info({ categories: Object.keys(statsMap).length }, "Daily stats recorded");
@@ -1725,29 +1752,35 @@ export async function upsertListings(listings: ReturnType<typeof parseListings>)
       locStats[locKey] = (locStats[locKey] || 0) + 1;
     });
 
-    for (const [compoundKey, count] of Object.entries(locStats)) {
-      const [loc, cat] = compoundKey.split("|||");
-      const { data: existingLocStat } = await supabase
-        .from("location_daily_stats")
-        .select("id, items_added")
-        .eq("date", today)
-        .eq("location", loc)
-        .eq("category_name", cat)
-        .maybeSingle();
+    const locTuples = Object.keys(locStats).map((k) => {
+      const [loc, cat] = k.split("|||");
+      return { loc, cat, count: locStats[k] };
+    });
 
-      if (existingLocStat) {
+    const uniqueLocations = Array.from(new Set(locTuples.map((t) => t.loc)));
+    const { data: existingLocStats } = await supabase
+      .from("location_daily_stats")
+      .select("id, location, category_name, items_added")
+      .eq("date", today)
+      .in("location", uniqueLocations);
+
+    const existingLocMap = new Map((existingLocStats || []).map((s: any) => [`${s.location}|||${s.category_name}`, s]));
+    const locStatsToInsert: { date: string; location: string; category_name: string; items_added: number }[] = [];
+
+    for (const { loc, cat, count } of locTuples) {
+      const existing = existingLocMap.get(`${loc}|||${cat}`);
+      if (existing) {
         await supabase
           .from("location_daily_stats")
-          .update({ items_added: existingLocStat.items_added + count })
-          .eq("id", existingLocStat.id);
+          .update({ items_added: existing.items_added + count })
+          .eq("id", existing.id);
       } else {
-        await supabase.from("location_daily_stats").insert({
-          date: today,
-          location: loc,
-          category_name: cat,
-          items_added: count,
-        });
+        locStatsToInsert.push({ date: today, location: loc, category_name: cat, items_added: count });
       }
+    }
+
+    if (locStatsToInsert.length > 0) {
+      await supabase.from("location_daily_stats").insert(locStatsToInsert);
     }
 
     log.info({ locations: Object.keys(locStats).length }, "Location daily stats recorded");

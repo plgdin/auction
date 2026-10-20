@@ -5,7 +5,6 @@ import { roiEngine } from './valuation/roiEngine';
 
 import type { ValuationCosts, ValuationOutput } from './valuation/roiEngine';
 
-// Simple base price helper for realistic fallback valuation
 export interface CommodityDef {
   name: string;
   keywords: string[];
@@ -15,6 +14,7 @@ export interface CommodityDef {
   maxPrice: number;
   queryKeyword: string;
   unit?: string;
+  isUnmatched?: boolean;
 }
 
 export const COMMODITIES: CommodityDef[] = [
@@ -245,36 +245,64 @@ function hasWord(text: string, kw: string): boolean {
 }
 
 export function matchCommodity(description: string): CommodityDef {
-  const normalized = description.toLowerCase();
+  const normalized = (description || '').toLowerCase();
   
-  // First, check dynamic commodities from marketPriceService
+  interface MatchCandidate {
+    def: CommodityDef;
+    score: number;
+    matchedKeyword: string;
+  }
+
+  const candidates: MatchCandidate[] = [];
+
+  // 1. Check dynamic commodities from marketPriceService
   const dynamicPrices = marketPriceService.getCommodityPrices();
   for (const c of dynamicPrices) {
     const keywords = c.keywords || [c.name.toLowerCase(), c.id.toLowerCase()];
     for (const kw of keywords) {
-      if (hasWord(normalized, kw)) {
+      const lowerKw = kw.toLowerCase().trim();
+      if (hasWord(normalized, lowerKw)) {
         const isPerKg = c.unit.toLowerCase() === 'kg' || c.unit.toLowerCase() === 'kgs';
-        return {
-          name: c.id,
-          keywords: keywords,
-          basePricePerKg: isPerKg ? c.currentPrice : undefined,
-          basePricePerUnit: !isPerKg ? c.currentPrice : undefined,
-          minPrice: c.currentPrice * 0.5,
-          maxPrice: c.currentPrice * 2.0,
-          queryKeyword: `${c.name} price India`,
-          unit: c.unit
-        };
+        const score = lowerKw.length * 2 + (lowerKw.includes(' ') ? 10 : 0);
+        candidates.push({
+          score,
+          matchedKeyword: lowerKw,
+          def: {
+            name: c.id,
+            keywords: keywords,
+            basePricePerKg: isPerKg ? c.currentPrice : undefined,
+            basePricePerUnit: !isPerKg ? c.currentPrice : undefined,
+            minPrice: c.currentPrice * 0.5,
+            maxPrice: c.currentPrice * 2.0,
+            queryKeyword: `${c.name} price India`,
+            unit: c.unit,
+            isUnmatched: false
+          }
+        });
       }
     }
   }
 
-  // Fallback to static COMMODITIES list
+  // 2. Check static COMMODITIES list
   for (const comm of COMMODITIES) {
     for (const kw of comm.keywords) {
-      if (hasWord(normalized, kw)) {
-        return comm;
+      const lowerKw = kw.toLowerCase().trim();
+      if (hasWord(normalized, lowerKw)) {
+        // Multi-word matches get significant priority over single broad words
+        const score = lowerKw.length * 2 + (lowerKw.includes(' ') ? 10 : 0);
+        candidates.push({
+          score,
+          matchedKeyword: lowerKw,
+          def: { ...comm, isUnmatched: false }
+        });
       }
     }
+  }
+
+  if (candidates.length > 0) {
+    // Pick the highest scoring (most specific) match
+    candidates.sort((a, b) => b.score - a.score);
+    return candidates[0].def;
   }
   
   const defPrice = marketPriceService.getCommodityPrice('default') || 2500;
@@ -284,7 +312,8 @@ export function matchCommodity(description: string): CommodityDef {
     basePricePerUnit: defPrice,
     minPrice: 500,
     maxPrice: 10000,
-    queryKeyword: 'scrap metal price India'
+    queryKeyword: 'scrap metal price India',
+    isUnmatched: true
   };
 }
 

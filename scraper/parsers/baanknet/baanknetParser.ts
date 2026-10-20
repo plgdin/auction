@@ -454,7 +454,7 @@ export function parseListings(
       property_type: propertyType,
       reserve_price_text: item.reservePrice || "",
       reserve_price_value: priceValue,
-      bank_name: item.bankName || "Unknown Bank",
+      bank_name: item.bankName?.trim() || "",
       state,
       city,
       pincode,

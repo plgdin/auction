@@ -111,8 +111,21 @@ process.on("uncaughtException", (err: Error) => {
 
 // ─── LRU Cache ───────────────────────────────────────────────────────────────
 
+interface OcrCacheEntry {
+  text: string;
+  confidence: number;
+}
+
 const OCR_CACHE_MAX_SIZE = 100;
-const ocrCache = new Map<string, string>();
+const ocrCache = new Map<string, OcrCacheEntry>();
+
+function computeTextConfidence(text: string): number {
+  if (!text || text.trim().length === 0) return 0;
+  const clean = text.trim();
+  const validChars = (clean.match(/[a-zA-Z0-9\s.,:;/%()\-]/g) || []).length;
+  const ratio = validChars / clean.length;
+  return Math.max(15, Math.min(95, Math.round(ratio * 90)));
+}
 
 /**
  * Compute a fast hash key for a buffer (for cache lookups).
@@ -124,7 +137,7 @@ function hashBuffer(buffer: Buffer): string {
 /**
  * Add an entry to the LRU cache, evicting oldest if at capacity.
  */
-function cacheSet(key: string, value: string): void {
+function cacheSet(key: string, value: OcrCacheEntry): void {
   if (ocrCache.size >= OCR_CACHE_MAX_SIZE) {
     // Evict the oldest entry (first inserted)
     const firstKey = ocrCache.keys().next().value;
@@ -206,7 +219,7 @@ export async function performOcrWithDetails(imageBuffer: Buffer): Promise<OcrRes
   const cached = ocrCache.get(cacheKey);
   if (cached !== undefined) {
     log.debug({ cacheKey }, "OCR in-memory cache hit — returning cached result");
-    return { text: cached, confidence: 85 }; // Default cached confidence
+    return { text: cached.text, confidence: cached.confidence };
   }
 
   // 2. Check database persistent cache (slow path)
@@ -220,8 +233,9 @@ export async function performOcrWithDetails(imageBuffer: Buffer): Promise<OcrRes
     if (!error && data && data.ocr_text) {
       log.info({ cacheKey }, "OCR database cache hit — saving to memory and returning");
       const dbResult = data.ocr_text;
-      cacheSet(cacheKey, dbResult);
-      return { text: dbResult, confidence: 85 };
+      const computedConf = computeTextConfidence(dbResult);
+      cacheSet(cacheKey, { text: dbResult, confidence: computedConf });
+      return { text: dbResult, confidence: computedConf };
     }
   } catch (dbErr: any) {
     log.warn({ errorMessage: dbErr.message, cacheKey }, "Error reading database OCR cache");
@@ -243,10 +257,10 @@ export async function performOcrWithDetails(imageBuffer: Buffer): Promise<OcrRes
       data: { text, confidence },
     } = await worker.recognize(imageBuffer);
     const resultText = text || "";
-    const resultConfidence = typeof confidence === 'number' ? Math.round(confidence) : 80;
+    const resultConfidence = typeof confidence === 'number' ? Math.round(confidence) : computeTextConfidence(resultText);
 
-    // Cache the result in memory
-    cacheSet(cacheKey, resultText);
+    // Cache the result in memory with real confidence
+    cacheSet(cacheKey, { text: resultText, confidence: resultConfidence });
 
     // Save to database cache asynchronously so it does not block processing
     (async () => {

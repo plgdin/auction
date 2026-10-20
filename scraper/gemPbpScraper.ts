@@ -283,11 +283,11 @@ export async function runGemPbpScraper(cliArgs?: CliArgs) {
 
           results.push({
             pbpNumber: pbpNumber.startsWith("GEM/") ? pbpNumber : `GEM/PBP/${pbpNumber}`,
-            items: items || "Push Button Procurement Item",
-            quantity: quantity || "1",
-            ministry,
-            organization,
-            department,
+            items: items || null,
+            quantity: quantity || null,
+            ministry: ministry || null,
+            organization: organization || null,
+            department: department || null,
             createDate,
             endDate,
           });
@@ -307,16 +307,12 @@ export async function runGemPbpScraper(cliArgs?: CliArgs) {
       const now = new Date();
 
       for (const card of rawCards) {
-        const startDateIso = parseGeMBidDate(card.createDate) || new Date().toISOString();
-        const endDateIso =
-          parseGeMBidDate(card.endDate) ||
-          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const startDateIso = parseGeMBidDate(card.createDate);
+        const endDateIso = parseGeMBidDate(card.endDate);
 
-        const endDateObj = new Date(endDateIso);
-        const isLive = now <= endDateObj;
-
+        const isLive = endDateIso ? now <= new Date(endDateIso) : false;
         const deptParts = [card.ministry, card.organization, card.department].filter(Boolean);
-        const fullDepartment = deptParts.length > 0 ? deptParts.join(" • ") : "Government of India";
+        const fullDepartment = deptParts.length > 0 ? deptParts.join(" • ") : null;
 
         processedNotices.push({
           bid_number: card.pbpNumber,
@@ -325,9 +321,9 @@ export async function runGemPbpScraper(cliArgs?: CliArgs) {
           ministry: card.ministry,
           organization: card.organization,
           department_name: fullDepartment,
-          start_date: startDateIso,
-          end_date: endDateIso,
-          status: isLive ? "live" : "ended",
+          start_date: startDateIso || null as any,
+          end_date: endDateIso || null as any,
+          status: !endDateIso ? "unverified" : (isLive ? "live" : "ended"),
           document_url: `https://bestprice.gem.gov.in/?page=${pageNum}&tab=Product%20PBP%20Notice`,
           category_name: "GeM | Product PBP Notice",
           raw_description: JSON.stringify({

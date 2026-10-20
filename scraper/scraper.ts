@@ -473,52 +473,73 @@ async function executeDiscoveryScraper() {
       };
     });
 
-    console.log("Analyzing batch for potential re-auctions...");
+    console.log("Analyzing batch for potential re-auctions with in-memory grouping...");
+    // Group batch rows by compound key: seller_name + location + category_name
+    const batchGroupMap = new Map<string, typeof finalRows>();
     for (const row of finalRows) {
-      // 1. Query DB for potential older matching parent auction
-      const { data: dbMatches, error: dbError } = await supabase
-        .from('mstc_auctions')
-        .select('id, mstc_auction_number, opening_date')
-        .eq('seller_name', row.seller_name)
-        .eq('location', row.location)
-        .eq('category_name', row.category_name)
-        .neq('mstc_auction_number', row.mstc_auction_number)
-        .lt('opening_date', row.opening_date)
-        .order('opening_date', { ascending: false });
+      const key = `${row.seller_name || ''}|||${row.location || ''}|||${row.category_name || ''}`;
+      const list = batchGroupMap.get(key) || [];
+      list.push(row);
+      batchGroupMap.set(key, list);
+    }
 
-      if (dbError) {
-        console.error(`[Re-auction Check] Error querying DB for parent of ${row.mstc_auction_number}:`, dbError.message);
-        continue;
-      }
-
-      let parent = dbMatches && dbMatches.length > 0 ? dbMatches[0] : null;
-
-      // 2. Query within current batch for potential older matching parent auction
-      for (const otherRow of finalRows) {
+    // 1. In-batch re-auction detection (O(N) within each group)
+    for (const [, groupRows] of batchGroupMap.entries()) {
+      groupRows.sort((a, b) => new Date(a.opening_date).getTime() - new Date(b.opening_date).getTime());
+      for (let i = 1; i < groupRows.length; i++) {
+        const current = groupRows[i];
+        const prev = groupRows[i - 1];
         if (
-          otherRow.mstc_auction_number !== row.mstc_auction_number &&
-          otherRow.seller_name === row.seller_name &&
-          otherRow.location === row.location &&
-          otherRow.category_name === row.category_name &&
-          otherRow.opening_date < row.opening_date
+          current.mstc_auction_number !== prev.mstc_auction_number &&
+          new Date(prev.opening_date).getTime() < new Date(current.opening_date).getTime()
         ) {
-          if (!parent || new Date(otherRow.opening_date).getTime() > new Date(parent.opening_date).getTime()) {
-            parent = {
-              id: null as any,
-              mstc_auction_number: otherRow.mstc_auction_number,
-              opening_date: otherRow.opening_date
-            };
+          current.is_reauction = true;
+          current.original_auction_number = prev.mstc_auction_number;
+          if (prev.id) {
+            current.parent_auction_id = prev.id;
           }
         }
       }
+    }
 
-      if (parent) {
-        row.is_reauction = true;
-        row.original_auction_number = parent.mstc_auction_number;
-        if (parent.id) {
-          row.parent_auction_id = parent.id;
+    // 2. Query DB once per unique (seller_name, location, category_name) in controlled batches
+    const candidateKeys = Array.from(batchGroupMap.entries()).filter(([, rows]) =>
+      rows.some(r => !r.is_reauction && r.seller_name && r.location && r.category_name)
+    );
+
+    const REAUC_CHUNK_SIZE = 10;
+    for (let i = 0; i < candidateKeys.length; i += REAUC_CHUNK_SIZE) {
+      const chunk = candidateKeys.slice(i, i + REAUC_CHUNK_SIZE);
+      await Promise.all(chunk.map(async ([, rows]) => {
+        const sample = rows[0];
+        try {
+          const { data: dbMatches, error: dbError } = await supabase
+            .from('mstc_auctions')
+            .select('id, mstc_auction_number, opening_date')
+            .eq('seller_name', sample.seller_name)
+            .eq('location', sample.location)
+            .eq('category_name', sample.category_name)
+            .order('opening_date', { ascending: false })
+            .limit(10);
+
+          if (!dbError && dbMatches && dbMatches.length > 0) {
+            for (const row of rows) {
+              if (row.is_reauction) continue;
+              const parent = dbMatches.find(m =>
+                m.mstc_auction_number !== row.mstc_auction_number &&
+                new Date(m.opening_date).getTime() < new Date(row.opening_date).getTime()
+              );
+              if (parent) {
+                row.is_reauction = true;
+                row.original_auction_number = parent.mstc_auction_number;
+                if (parent.id) row.parent_auction_id = parent.id;
+              }
+            }
+          }
+        } catch (err: any) {
+          console.warn(`[Re-auction Check] Skipped DB check for ${sample.seller_name}:`, err?.message || err);
         }
-      }
+      }));
     }
 
     const newNumbers = finalRows.map(r => r.mstc_auction_number);
@@ -538,34 +559,35 @@ async function executeDiscoveryScraper() {
       });
       
       const today = new Date().toISOString().split('T')[0];
-      
-      // Upsert into the new daily stats table
+      const categoryNames = Object.keys(statsMap);
+
+      // Batch query existing category stats for today
+      const { data: existingStats } = await supabase
+        .from('category_daily_stats')
+        .select('id, category_name, items_added')
+        .eq('date', today)
+        .in('category_name', categoryNames);
+
+      const existingStatsMap = new Map((existingStats || []).map(s => [s.category_name, s]));
+      const statsToInsert: { date: string; category_name: string; items_added: number }[] = [];
+
       for (const [category, count] of Object.entries(statsMap)) {
-        // First try to select existing row
-        const { data: existingStat } = await supabase
-          .from('category_daily_stats')
-          .select('id, items_added')
-          .eq('date', today)
-          .eq('category_name', category)
-          .maybeSingle();
-          
-        if (existingStat) {
+        const existing = existingStatsMap.get(category);
+        if (existing) {
           await supabase
             .from('category_daily_stats')
-            .update({ items_added: existingStat.items_added + count })
-            .eq('id', existingStat.id);
+            .update({ items_added: existing.items_added + count })
+            .eq('id', existing.id);
         } else {
-          await supabase
-            .from('category_daily_stats')
-            .insert({
-              date: today,
-              category_name: category,
-              items_added: count
-            });
+          statsToInsert.push({ date: today, category_name: category, items_added: count });
         }
       }
 
-      // Upsert into location_daily_stats for region-centric analytics
+      if (statsToInsert.length > 0) {
+        await supabase.from('category_daily_stats').insert(statsToInsert);
+      }
+
+      // Location daily stats batching
       console.log(`[Analytics] Recording location-centric stats...`);
       const locationStatsMap: Record<string, number> = {};
       actuallyNewRows.forEach(row => {
@@ -573,31 +595,35 @@ async function executeDiscoveryScraper() {
         locationStatsMap[key] = (locationStatsMap[key] || 0) + 1;
       });
 
-      for (const [compoundKey, count] of Object.entries(locationStatsMap)) {
-        const [loc, cat] = compoundKey.split('|||');
-        const { data: existingLocStat } = await supabase
-          .from('location_daily_stats')
-          .select('id, items_added')
-          .eq('date', today)
-          .eq('location', loc)
-          .eq('category_name', cat)
-          .maybeSingle();
+      const locTuples = Object.keys(locationStatsMap).map(k => {
+        const [loc, cat] = k.split('|||');
+        return { loc, cat, count: locationStatsMap[k] };
+      });
 
-        if (existingLocStat) {
+      const uniqueLocations = Array.from(new Set(locTuples.map(t => t.loc)));
+      const { data: existingLocStats } = await supabase
+        .from('location_daily_stats')
+        .select('id, location, category_name, items_added')
+        .eq('date', today)
+        .in('location', uniqueLocations);
+
+      const existingLocMap = new Map((existingLocStats || []).map(s => [`${s.location}|||${s.category_name}`, s]));
+      const locToInsert: { date: string; location: string; category_name: string; items_added: number }[] = [];
+
+      for (const { loc, cat, count } of locTuples) {
+        const existing = existingLocMap.get(`${loc}|||${cat}`);
+        if (existing) {
           await supabase
             .from('location_daily_stats')
-            .update({ items_added: existingLocStat.items_added + count })
-            .eq('id', existingLocStat.id);
+            .update({ items_added: existing.items_added + count })
+            .eq('id', existing.id);
         } else {
-          await supabase
-            .from('location_daily_stats')
-            .insert({
-              date: today,
-              location: loc,
-              category_name: cat,
-              items_added: count
-            });
+          locToInsert.push({ date: today, location: loc, category_name: cat, items_added: count });
         }
+      }
+
+      if (locToInsert.length > 0) {
+        await supabase.from('location_daily_stats').insert(locToInsert);
       }
     }
 

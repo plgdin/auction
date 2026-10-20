@@ -47,13 +47,14 @@ export const marketEngine = {
     const nowIso = new Date().toISOString();
     const sources: PriceSourceDetails[] = [];
 
-    // Source 1: Admin / Database Index Baseline (Always present)
+    // Source 1: Baseline (Marked as unverified if commodity was unmatched)
+    const isUnmatched = comm.isUnmatched || comm.name === 'default';
     sources.push({
-      source: 'Admin Commodity Baseline',
+      source: isUnmatched ? 'Unmatched / Manual Review Baseline' : 'Admin Commodity Baseline',
       price: dbPrice,
-      weight: 0.40,
-      confidence: 70,
-      freshness: 0.85,
+      weight: isUnmatched ? 0.10 : 0.40,
+      confidence: isUnmatched ? 20 : 70,
+      freshness: isUnmatched ? 0.10 : 0.85,
       timestamp: nowIso,
       region: 'India'
     });

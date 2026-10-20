@@ -8,21 +8,30 @@ export interface ValuationSimulation {
   worstRoi: number;
   bestRoi: number;
   chanceOfProfit: number; // 0 to 100
+  p10Roi?: number;
+  p50Roi?: number;
+  p90Roi?: number;
+  p10Profit?: number;
+  p50Profit?: number;
+  p90Profit?: number;
 }
 
 export const simulationEngine = {
   /**
    * Runs a Monte Carlo simulation to predict ROI distribution under variance.
-   * Varies lot valuation (weight + price), transport, refurbishment, loading, unloading, and labour.
+   * Varies lot valuation (weight + price with downside skew), transport, refurbishment, loading, unloading, and labour.
+   * Calculates P10, P50, and P90 percentiles for both profit and ROI.
    * All arithmetic is NaN-safe — never produces NaN/Infinity in output.
    */
   runSimulation(
     totalLotValue: number,
-    costs: ValuationCosts
+    costs: ValuationCosts,
+    itemVolatilityMultiplier: number = 1.0
   ): ValuationSimulation {
     const iterations = SIMULATION_CONFIG.iterations || 1000;
     
     const simulatedRois: number[] = [];
+    const simulatedProfits: number[] = [];
     let profitCount = 0;
 
     const baseCostsInfo = costEngine.calculateCosts(costs);
@@ -52,27 +61,35 @@ export const simulationEngine = {
     const ROI_CAP = 500;
     const ROI_FLOOR = -100;
 
-    for (let i = 0; i < iterations; i++) {
-      // 1. Vary Item/Lot Valuation (Weight variance and Commodity price volatility)
-      const weightFactor = 1 + (Math.random() - 0.5) * (SIMULATION_CONFIG.weightVariancePercent * 2);
-      const priceFactor = 1 + (Math.random() - 0.5) * (SIMULATION_CONFIG.marketPriceVolatilityPercent * 2);
-      const simulatedLotValue = totalLotValue * weightFactor * priceFactor;
+    const weightVar = (SIMULATION_CONFIG.weightVariancePercent || 0.05) * itemVolatilityMultiplier;
+    const priceVol = (SIMULATION_CONFIG.marketPriceVolatilityPercent || 0.10) * itemVolatilityMultiplier;
 
-      // 2. Vary Costs — each variable component gets its own variance
-      const transportFactor = 1 - 0.05 + Math.random() * (SIMULATION_CONFIG.transportCostVariancePercent);
+    for (let i = 0; i < iterations; i++) {
+      // 1. Vary Item/Lot Valuation with realistic downside skew for scrap lots
+      // Scrap downside is typically wider (e.g., dirt, moisture, impurities)
+      const rawWeightRand = Math.random();
+      const weightFactor = 1 + (rawWeightRand < 0.6 ? -1 : 1) * Math.pow(Math.random(), 1.2) * (weightVar * (rawWeightRand < 0.6 ? 1.3 : 0.9));
+
+      const rawPriceRand = Math.random();
+      const priceFactor = 1 + (rawPriceRand < 0.55 ? -1 : 1) * Math.pow(Math.random(), 1.1) * (priceVol * (rawPriceRand < 0.55 ? 1.25 : 0.85));
+
+      const simulatedLotValue = Math.max(0, totalLotValue * weightFactor * priceFactor);
+
+      // 2. Vary Costs — each variable component gets its own variance with slight upward cost drift
+      const transportFactor = 1 - 0.03 + Math.random() * (SIMULATION_CONFIG.transportCostVariancePercent || 0.15);
       const simulatedTransport = transport * transportFactor;
 
-      const refurbFactor = 1 + (Math.random() - 0.5) * (SIMULATION_CONFIG.recoveryRateVariancePercent * 2);
+      const refurbFactor = 1 + (Math.random() - 0.45) * ((SIMULATION_CONFIG.recoveryRateVariancePercent || 0.10) * 2);
       const simulatedRefurb = refurbishment * refurbFactor;
 
-      // Loading/unloading/labour vary by ±10%
-      const loadingFactor = 1 + (Math.random() - 0.5) * 0.20;
+      // Loading/unloading/labour vary by -5% to +15% (costs rarely go down)
+      const loadingFactor = 1 + (Math.random() - 0.35) * 0.20;
       const simulatedLoading = loading * loadingFactor;
 
-      const unloadingFactor = 1 + (Math.random() - 0.5) * 0.20;
+      const unloadingFactor = 1 + (Math.random() - 0.35) * 0.20;
       const simulatedUnloading = unloading * unloadingFactor;
 
-      const labourFactor = 1 + (Math.random() - 0.5) * 0.20;
+      const labourFactor = 1 + (Math.random() - 0.35) * 0.20;
       const simulatedLabour = labour * labourFactor;
 
       const simulatedTotalCost = safeRound(
@@ -85,13 +102,14 @@ export const simulationEngine = {
         simulatedLabour
       );
 
-      const simulatedProfit = simulatedLotValue - simulatedTotalCost;
+      const simulatedProfit = safeRound(simulatedLotValue - simulatedTotalCost);
       let simulatedRoi = safeDivide(simulatedProfit, simulatedTotalCost, 0) * 100;
 
       // Cap extreme outliers
       simulatedRoi = Math.max(ROI_FLOOR, Math.min(ROI_CAP, simulatedRoi));
 
       simulatedRois.push(simulatedRoi);
+      simulatedProfits.push(simulatedProfit);
       if (simulatedProfit > 0) {
         profitCount++;
       }
@@ -99,16 +117,27 @@ export const simulationEngine = {
 
     // Sort to calculate percentiles
     simulatedRois.sort((a, b) => a - b);
+    simulatedProfits.sort((a, b) => a - b);
 
     const sum = simulatedRois.reduce((acc, r) => acc + r, 0);
     const expectedRoi = safeRound(safeDivide(sum, iterations, 0));
 
-    // 5th percentile as worst case, 95th percentile as best case
+    // Percentiles
     const worstIdx = Math.floor(iterations * 0.05);
+    const p10Idx = Math.floor(iterations * 0.10);
+    const p50Idx = Math.floor(iterations * 0.50);
+    const p90Idx = Math.floor(iterations * 0.90);
     const bestIdx = Math.min(Math.floor(iterations * 0.95), iterations - 1);
 
     const worstRoi = safeRound(simulatedRois[worstIdx] ?? 0);
     const bestRoi = safeRound(simulatedRois[bestIdx] ?? 0);
+    const p10Roi = safeRound(simulatedRois[p10Idx] ?? 0);
+    const p50Roi = safeRound(simulatedRois[p50Idx] ?? 0);
+    const p90Roi = safeRound(simulatedRois[p90Idx] ?? 0);
+
+    const p10Profit = safeRound(simulatedProfits[p10Idx] ?? 0);
+    const p50Profit = safeRound(simulatedProfits[p50Idx] ?? 0);
+    const p90Profit = safeRound(simulatedProfits[p90Idx] ?? 0);
 
     const chanceOfProfit = safeRound(safeDivide(profitCount, iterations, 0) * 100);
 
@@ -117,6 +146,12 @@ export const simulationEngine = {
       worstRoi,
       bestRoi,
       chanceOfProfit,
+      p10Roi,
+      p50Roi,
+      p90Roi,
+      p10Profit,
+      p50Profit,
+      p90Profit,
     };
   }
 };

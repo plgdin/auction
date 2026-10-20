@@ -224,9 +224,9 @@ export async function runGemBidNextScraper(cliArgs?: CliArgs) {
             results.push({
               bidNumber,
               raNumber,
-              items: card.querySelector(".item-title, .bid-title, h4, h5, .title")?.textContent?.trim() || "Procurement Item",
-              quantity: card.querySelector(".quantity, .qty")?.textContent?.replace(/Quantity:?/i, "")?.trim() || "1",
-              department: card.querySelector(".department, .dept, .org")?.textContent?.trim() || "Government of India",
+              items: card.querySelector(".item-title, .bid-title, h4, h5, .title")?.textContent?.trim() || null as any,
+              quantity: card.querySelector(".quantity, .qty")?.textContent?.replace(/Quantity:?/i, "")?.trim() || null as any,
+              department: card.querySelector(".department, .dept, .org")?.textContent?.trim() || null as any,
               startDate: "",
               endDate: "",
               docUrl,
@@ -257,9 +257,9 @@ export async function runGemBidNextScraper(cliArgs?: CliArgs) {
 
             results.push({
               bidNumber,
-              items: itemsMatch ? itemsMatch[1].trim() : lines[1] || "GeM Procurement Tender",
-              quantity: qtyMatch ? qtyMatch[1].trim() : "1",
-              department: deptMatch ? deptMatch[1].trim() : "Government of India",
+              items: itemsMatch ? itemsMatch[1].trim() : lines[1] || null as any,
+              quantity: qtyMatch ? qtyMatch[1].trim() : null as any,
+              department: deptMatch ? deptMatch[1].trim() : null as any,
               startDate: startMatch ? startMatch[1].trim() : "",
               endDate: endMatch ? endMatch[1].trim() : "",
             });
@@ -280,13 +280,11 @@ export async function runGemBidNextScraper(cliArgs?: CliArgs) {
       const now = new Date();
 
       for (const item of rawItems) {
-        const startIso = parseGeMBidDate(item.startDate) || new Date().toISOString();
-        const endIso =
-          parseGeMBidDate(item.endDate) ||
-          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const startIso = parseGeMBidDate(item.startDate);
+        const endIso = parseGeMBidDate(item.endDate);
 
-        const isLive = now <= new Date(endIso);
-        const classifiedCategory = classifyGeMBid(item.items);
+        const isLive = endIso ? now <= new Date(endIso) : false;
+        const classifiedCategory = item.items ? classifyGeMBid(item.items) : "Uncategorized";
 
         processedItems.push({
           bid_number: item.bidNumber,
@@ -294,9 +292,9 @@ export async function runGemBidNextScraper(cliArgs?: CliArgs) {
           items: item.items,
           quantity: item.quantity,
           department_name: item.department,
-          start_date: startIso,
-          end_date: endIso,
-          status: isLive ? "live" : "ended",
+          start_date: startIso || null as any,
+          end_date: endIso || null as any,
+          status: !endIso ? "unverified" : (isLive ? "live" : "ended"),
           document_url: item.docUrl?.startsWith("http")
             ? item.docUrl
             : item.docUrl
