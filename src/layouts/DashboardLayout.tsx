@@ -2,10 +2,12 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/common/Sidebar';
 import { TopBar } from '../components/common/TopBar';
 import { AnnouncementBanner } from '../components/common/AnnouncementBanner';
+import { DevBanner } from '../components/common/DevBanner';
 
 export function DashboardLayout() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
+      <DevBanner />
       <AnnouncementBanner />
       <div className="flex-1 flex bg-background overflow-hidden relative">
         <Sidebar />
@@ -19,3 +21,4 @@ export function DashboardLayout() {
     </div>
   );
 }
+

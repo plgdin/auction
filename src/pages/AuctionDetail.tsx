@@ -2,13 +2,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
-  Heart, Share2, Tag, MapPin, FileText, CheckCircle2, ChevronRight 
+  Heart, Share2, Tag, MapPin, FileText, CheckCircle2, ChevronRight, Radio 
 } from 'lucide-react';
 import { auctionService } from '../services/auctionService';
 import { useAuthStore } from '../store/authStore';
 import { ImageGallery } from '../components/auction/ImageGallery';
 import { BiddingPanel } from '../components/auction/BiddingPanel';
+import { LiveAuctionRoomModal } from '../components/auction/LiveAuctionRoomModal';
 import { useAuctionRealtime } from '../hooks/useAuctionRealtime';
+
 import type { Auction, AuctionImage, AuctionDocument } from '../types/database.types';
 import clsx from 'clsx';
 
@@ -131,6 +133,7 @@ function AuctionDetailInner({
 }: any) {
   const { auction, bids, currentMaxBid } = useAuctionRealtime(initialAuction);
   const [activeTab, setActiveTab] = useState<'details' | 'terms' | 'documents'>('details');
+  const [isLiveFloorOpen, setIsLiveFloorOpen] = useState(false);
 
   const isActive = auction.status === 'active';
 
@@ -173,7 +176,14 @@ function AuctionDetailInner({
             </div>
           </div>
           
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            <button
+              onClick={() => setIsLiveFloorOpen(true)}
+              className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-amber-500/20 transition-all hover:scale-105"
+            >
+              <Radio className="w-4 h-4 animate-pulse text-slate-950" />
+              <span>Live Floor (Beta)</span>
+            </button>
             <button
               onClick={handleShare}
               className="flex items-center justify-center w-12 h-12 bg-white border border-slate-200 rounded-full shadow-sm text-slate-600 hover:text-primary hover:border-primary/50 transition-colors"
@@ -191,6 +201,7 @@ function AuctionDetailInner({
             </button>
           </div>
         </div>
+
 
         {/* Main Split Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
@@ -316,6 +327,15 @@ function AuctionDetailInner({
           </div>
         )}
       </div>
+
+      <LiveAuctionRoomModal
+        isOpen={isLiveFloorOpen}
+        onClose={() => setIsLiveFloorOpen(false)}
+        auctionTitle={auction.title}
+        referenceNumber={auction.reference_number}
+        currentPrice={currentMaxBid || auction.starting_price}
+      />
     </div>
   );
 }
+

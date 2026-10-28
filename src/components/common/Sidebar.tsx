@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Gavel, Heart, Wallet, Bell, 
-  Settings, Building2, LogOut, FileText, FolderLock
+  Settings, Building2, LogOut, FileText, FolderLock,
+  Radio, BarChart3, Lock
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import clsx from 'clsx';
@@ -13,6 +14,9 @@ export function Sidebar() {
   const navItems = [
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { name: 'My Bids', path: '/dashboard/bids', icon: Gavel },
+    { name: 'Live Floor', path: '/dashboard/live-auction', icon: Radio, badge: 'Beta', badgeColor: 'bg-amber-500/20 text-amber-300' },
+    { name: 'Analytics', path: '/dashboard/analytics', icon: BarChart3, badge: 'WIP', badgeColor: 'bg-indigo-500/20 text-indigo-300' },
+    { name: 'Escrow Ledger', path: '/dashboard/escrow', icon: Lock, badge: 'Beta', badgeColor: 'bg-purple-500/20 text-purple-300' },
     { name: 'My Tenders', path: '/dashboard/tenders', icon: FileText },
     { name: 'Watchlist', path: '/dashboard/watchlist', icon: Heart },
     { name: 'Wallet & EMD', path: '/dashboard/wallet', icon: Wallet },
@@ -64,20 +68,31 @@ export function Sidebar() {
               key={item.name}
               to={item.path}
               className={clsx(
-                "flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
+                "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
                 isActive 
                   ? "bg-primary text-white shadow-md shadow-primary/20" 
                   : "hover:bg-slate-800 hover:text-white"
               )}
             >
-              <Icon className={clsx(
-                "w-5 h-5 mr-3 shrink-0 transition-colors",
-                isActive ? "text-white" : "text-slate-500 group-hover:text-primary-400"
-              )} />
-              {item.name}
+              <div className="flex items-center min-w-0">
+                <Icon className={clsx(
+                  "w-5 h-5 mr-3 shrink-0 transition-colors",
+                  isActive ? "text-white" : "text-slate-500 group-hover:text-primary-400"
+                )} />
+                <span className="truncate">{item.name}</span>
+              </div>
+              {item.badge && (
+                <span className={clsx(
+                  "px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider font-mono shrink-0",
+                  item.badgeColor || "bg-slate-800 text-slate-400"
+                )}>
+                  {item.badge}
+                </span>
+              )}
             </Link>
           );
         })}
+
 
         {profile?.role === 'admin' || profile?.role === 'superadmin' ? (
           <>

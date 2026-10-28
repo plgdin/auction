@@ -39,6 +39,9 @@ import { Wallet } from '../pages/dashboard/Wallet';
 import { Notifications } from '../pages/dashboard/Notifications';
 import { ProfileSettings } from '../pages/dashboard/ProfileSettings';
 import { DocumentVault } from '../pages/dashboard/DocumentVault';
+import { LiveAuctionFloor } from '../pages/dashboard/LiveAuctionFloor';
+import { MarketAnalytics } from '../pages/dashboard/MarketAnalytics';
+import { EscrowSettlement } from '../pages/dashboard/EscrowSettlement';
 
 export const router = createBrowserRouter([
   {
@@ -79,6 +82,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       { path: 'bids', element: <MyBids /> },
+      { path: 'live-auction', element: <LiveAuctionFloor /> },
+      { path: 'analytics', element: <MarketAnalytics /> },
+      { path: 'escrow', element: <EscrowSettlement /> },
       { path: 'tenders', element: <MyTenders /> },
       { path: 'watchlist', element: <Watchlist /> },
       { path: 'wallet', element: <Wallet /> },
@@ -87,6 +93,7 @@ export const router = createBrowserRouter([
       { path: 'profile', element: <ProfileSettings /> },
     ],
   },
+
   {
     path: '/admin',
     element: (

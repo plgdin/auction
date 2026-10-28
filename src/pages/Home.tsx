@@ -4,6 +4,7 @@ import { FeaturedAuctionsSection } from '../components/home/FeaturedAuctionsSect
 import { FeaturedTendersSection } from '../components/home/FeaturedTendersSection';
 import { HowItWorksSection } from '../components/home/HowItWorksSection';
 import { StatisticsSection } from '../components/home/StatisticsSection';
+import { BetaRoadmapSection } from '../components/home/BetaRoadmapSection';
 import { AnnouncementsSection } from '../components/home/AnnouncementsSection';
 import { FaqSection } from '../components/home/FaqSection';
 
@@ -16,8 +17,10 @@ export function Home() {
       <FeaturedTendersSection />
       <HowItWorksSection />
       <StatisticsSection />
+      <BetaRoadmapSection />
       <AnnouncementsSection />
       <FaqSection />
     </div>
   );
 }
+
