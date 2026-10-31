@@ -18,7 +18,6 @@
  * - Scalability: Replaced local cookies.txt file with database-driven session sharing pattern
  *   via Supabase ocr_cache lookup to eliminate single point of failure.
  */
-import fetch from "node-fetch";
 import { createRequire } from "module";
 import { randomUUID } from "crypto";
 
@@ -1330,8 +1329,8 @@ export async function processRecord(record: QueueRecord): Promise<void> {
           method: "POST",
           body: formData,
           headers,
-          timeout: CATALOG_DOWNLOAD_TIMEOUT_MS,
-        } as any);
+          signal: AbortSignal.timeout(CATALOG_DOWNLOAD_TIMEOUT_MS),
+        });
         lastFetchError = null;
         break;
       } catch (fetchErr: any) {

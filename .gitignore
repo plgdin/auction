@@ -34,6 +34,8 @@ scratch_pdf_*.txt
 scratch_pdf_text.txt
 *.cookie
 *.session
+*.traineddata
+lighthouse-report*.json
 
 # CI and Alerting files
 .github/workflows/ci.yml
