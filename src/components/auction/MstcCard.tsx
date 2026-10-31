@@ -144,7 +144,8 @@ export const MstcCard = memo(function MstcCard({ item, isGrid = true, onPreview,
   const now = new Date();
   const diffMs = auctionDate.getTime() - now.getTime();
   const isStarted = diffMs <= 0;
-  const isClosed = parsedCloseDate ? (now.getTime() > parsedCloseDate.getTime()) : false;
+  const effectiveEndDate = parsedCloseDate || (item?.closing_date ? new Date(item.closing_date) : null);
+  const isClosed = effectiveEndDate ? (now.getTime() > effectiveEndDate.getTime()) : false;
 
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));

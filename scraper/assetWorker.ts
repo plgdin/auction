@@ -1728,95 +1728,110 @@ async function runAssetPipelineQueue(): Promise<void> {
     "Processing claimed queue batch",
   );
 
-  for (const record of claimedRecords as QueueRecord[]) {
-    try {
-      await processRecord(record);
-    } catch (jobError: any) {
-      if (jobError.message && (
-        jobError.message.includes("Session expired") || 
-        jobError.message.includes("expired or invalid")
-      )) {
-        log.error(
-          {
-            auctionNumber: record.mstc_auction_number,
-            errorMessage: jobError.message,
-          },
-          "Session expired or invalid. Halting queue processing and resetting claimed batch to pending."
-        );
+  let sessionExpired = false;
+  const workerConcurrency = Math.min((claimedRecords as QueueRecord[]).length, 3);
 
-        // Reset the current record to pending without incrementing retry_count
-        await supabase
-          .from("mstc_auctions")
-          .update({
-            asset_status: "pending",
-            error_log: `[Session Expired] ${jobError.message}`,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", record.id);
+  await limitConcurrency(
+    (claimedRecords as QueueRecord[]).map((record) => async () => {
+      if (sessionExpired) return;
 
-        // Reset all other claimed records in this batch to pending
-        const otherRecords = (claimedRecords as QueueRecord[]).filter(r => r.id !== record.id);
-        if (otherRecords.length > 0) {
+      try {
+        await processRecord(record);
+      } catch (jobError: any) {
+        if (
+          jobError.message &&
+          (jobError.message.includes("Session expired") ||
+            jobError.message.includes("expired or invalid"))
+        ) {
+          sessionExpired = true;
+          log.error(
+            {
+              auctionNumber: record.mstc_auction_number,
+              errorMessage: jobError.message,
+            },
+            "Session expired or invalid. Halting queue processing and resetting claimed batch to pending.",
+          );
+
+          // Reset the current record to pending without incrementing retry_count
           await supabase
             .from("mstc_auctions")
             .update({
               asset_status: "pending",
+              error_log: `[Session Expired] ${jobError.message}`,
               updated_at: new Date().toISOString(),
             })
-            .in("id", otherRecords.map(r => r.id));
+            .eq("id", record.id);
+
+          // Reset all other claimed records in this batch to pending
+          const otherRecords = (claimedRecords as QueueRecord[]).filter(
+            (r) => r.id !== record.id,
+          );
+          if (otherRecords.length > 0) {
+            await supabase
+              .from("mstc_auctions")
+              .update({
+                asset_status: "pending",
+                updated_at: new Date().toISOString(),
+              })
+              .in(
+                "id",
+                otherRecords.map((r) => r.id),
+              );
+          }
+
+          // Insert audit log
+          await supabase.from("audit_logs").insert({
+            action: "mstc_worker_session_expired",
+            entity_type: "mstc_auction",
+            entity_id: record.id,
+            details: {
+              message:
+                "Worker session expired or invalid. Please re-run scraper to update cookies.",
+              error: jobError.message,
+            },
+          });
+
+          return;
         }
 
-        // Insert audit log
+        const nextRetryCount = record.retry_count + 1;
+        const reachedMaxRetries = nextRetryCount >= MAX_RETRY_COUNT;
+
+        log.error(
+          {
+            auctionNumber: record.mstc_auction_number,
+            retryCount: nextRetryCount,
+            reachedMaxRetries,
+            errorMessage: jobError.message,
+          },
+          "Record processing failed",
+        );
+
+        await supabase
+          .from("mstc_auctions")
+          .update({
+            asset_status: reachedMaxRetries ? "failed" : "pending",
+            retry_count: nextRetryCount,
+            error_log: `[Retry ${nextRetryCount}] ${jobError.message}`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", record.id);
+
         await supabase.from("audit_logs").insert({
-          action: "mstc_worker_session_expired",
+          action: "mstc_auction_failed",
           entity_type: "mstc_auction",
           entity_id: record.id,
           details: {
-            message: "Worker session expired or invalid. Please re-run scraper to update cookies.",
-            error: jobError.message
-          }
+            mstc_auction_number: record.mstc_auction_number,
+            retry_count: nextRetryCount,
+            reached_max_limit: reachedMaxRetries,
+            error: jobError.message,
+          },
         });
-
-        // Exit queue batch loop immediately
-        return;
       }
-
-      const nextRetryCount = record.retry_count + 1;
-      const reachedMaxRetries = nextRetryCount >= MAX_RETRY_COUNT;
-
-      log.error(
-        {
-          auctionNumber: record.mstc_auction_number,
-          retryCount: nextRetryCount,
-          reachedMaxRetries,
-          errorMessage: jobError.message,
-        },
-        "Record processing failed",
-      );
-
-      await supabase
-        .from("mstc_auctions")
-        .update({
-          asset_status: reachedMaxRetries ? "failed" : "pending",
-          retry_count: nextRetryCount,
-          error_log: `[Retry ${nextRetryCount}] ${jobError.message}`,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", record.id);
-
-      await supabase.from("audit_logs").insert({
-        action: "mstc_auction_failed",
-        entity_type: "mstc_auction",
-        entity_id: record.id,
-        details: {
-          mstc_auction_number: record.mstc_auction_number,
-          retry_count: nextRetryCount,
-          reached_max_limit: reachedMaxRetries,
-          error: jobError.message,
-        },
-      });
-    }
-  }
+    }),
+    workerConcurrency,
+  );
 }
 
 // ─── Worker Entry Point ──────────────────────────────────────────────────────

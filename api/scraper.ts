@@ -1,4 +1,5 @@
 import { runAssetPipelineQueue } from '../scraper/assetWorker.js';
+import { executeDiscoveryScraper } from '../scraper/scraper.js';
 import { setCorsHeaders, handleCorsPreflightIfNeeded } from './_utils/cors.js';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
@@ -296,12 +297,18 @@ export default async function handler(req: any, res: any) {
 
       // Scraper
       if (cleanUrl === '/api/scraper/start') {
-        res.status(400).json({
-          success: false,
-          error: {
-            code: 'BAD_REQUEST',
-            message: 'The interactive MSTC Portal Scraper requires a browser GUI to solve CAPTCHAs, which is not supported in Vercel Serverless Functions. Please run this scraper locally using "npm run dev".'
-          }
+        scraperLogs.push(`[${new Date().toLocaleTimeString()}] Starting automated MSTC catalogue discovery...`);
+        executeDiscoveryScraper()
+          .then(() => {
+            scraperLogs.push(`[${new Date().toLocaleTimeString()}] MSTC catalogue discovery completed successfully.`);
+          })
+          .catch((err: any) => {
+            scraperLogs.push(`[${new Date().toLocaleTimeString()}] Error in scraper: ${err.message}`);
+          });
+
+        res.status(200).json({
+          success: true,
+          message: 'Automated MSTC catalogue discovery started.'
         });
         return;
       }

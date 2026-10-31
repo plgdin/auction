@@ -2465,7 +2465,7 @@ export const MstcSearchService = {
         let { data: exactData, error: exactError, count: exactCount } = await supabase
           .from('mstc_auctions')
           .select('*', { count: 'exact' })
-          .eq('asset_status', 'completed')
+          .neq('asset_status', 'failed')
           .ilike('mstc_auction_number', searchPattern)
           .order('scraped_at', { ascending: false })
           .range((page - 1) * limit, page * limit - 1);
@@ -2475,7 +2475,7 @@ export const MstcSearchService = {
           const fallback = await supabase
             .from('mstc_auctions')
             .select('*', { count: 'exact' })
-            .eq('asset_status', 'completed')
+            .neq('asset_status', 'failed')
             .ilike('mstc_auction_number', `%${refId}%`)
             .order('scraped_at', { ascending: false })
             .range((page - 1) * limit, page * limit - 1);
@@ -2616,7 +2616,7 @@ export const MstcSearchService = {
         const nowIso = new Date().toISOString();
 
         const buildFilteredQuery = (qb: any) => {
-          qb = qb.eq('asset_status', 'completed');
+          qb = qb.neq('asset_status', 'failed');
           if (finalLocations && finalLocations.length > 0) {
             qb = qb.in('location', finalLocations);
           }
