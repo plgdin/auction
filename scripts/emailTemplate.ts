@@ -2,11 +2,13 @@
  * Generates personalized, responsive HTML email for B2B procurement campaign.
  */
 export function generateCampaignEmailHtml(params: {
-  companyName: string;
+  companyName?: string;
   recipientEmail: string;
   unsubscribeUrl?: string;
 }): string {
-  const company = params.companyName?.trim() || 'Valued Team';
+  const companyGreeting = params.companyName?.trim()
+    ? `Hi Team at ${params.companyName},`
+    : 'Hi Team,';
   const encodedEmail = encodeURIComponent(params.recipientEmail);
   const unsubUrl = params.unsubscribeUrl || `https://lelam.co/api/unsubscribe?email=${encodedEmail}`;
 
@@ -15,7 +17,7 @@ export function generateCampaignEmailHtml(params: {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>What if Rubber Industry Auctions Were All in One Place? | Lelam.co</title>
+  <title>Track MSTC, GeM &amp; Bank Auctions in One Place | Lelam.co</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 24px 12px;">
@@ -27,7 +29,7 @@ export function generateCampaignEmailHtml(params: {
           <tr>
             <td align="center" style="background-color: #ffffff; line-height: 0;">
               <a href="https://lelam.co" target="_blank" style="display: block; text-decoration: none;">
-                <img src="https://lelam.co/email-banner.jpg" alt="Lelam Rubber Auctions" width="600" style="display: block; width: 100%; max-width: 600px; height: auto; border: 0;" />
+                <img src="https://lelam.co/email-banner.jpg" alt="Lelam Auctions" width="600" style="display: block; width: 100%; max-width: 600px; height: auto; border: 0;" />
               </a>
             </td>
           </tr>
@@ -36,7 +38,7 @@ export function generateCampaignEmailHtml(params: {
           <tr>
             <td style="padding: 32px 32px 24px 32px;">
               <p style="font-size: 16px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 16px;">
-                Hi Team at ${company},
+                ${companyGreeting}
               </p>
 
               <p style="font-size: 15px; color: #334155; margin-bottom: 14px;">
@@ -44,15 +46,15 @@ export function generateCampaignEmailHtml(params: {
               </p>
 
               <p style="font-size: 15px; color: #334155; margin-bottom: 14px;">
-                As a company operating in India&rsquo;s rubber industry, you may regularly come across opportunities to source rubber-related materials, processing equipment, machinery, vehicles, and other industrial assets.
+                If your business regularly participates in auctions or sources scrap, industrial machinery, plant assets, metals, and vehicles across India, finding the right lots on time is critical.
               </p>
 
               <p style="font-size: 15px; font-weight: 700; color: #0284c7; margin-bottom: 14px;">
-                Lelam.co is built to make discovering these opportunities easier.
+                Lelam.co brings all major Indian auction portals together in one place.
               </p>
 
               <p style="font-size: 15px; color: #334155; margin-bottom: 24px;">
-                We aggregate auction listings from official Government platforms such as MSTC and GeM, bank auctions, and industrial liquidation sales across India into one searchable platform &mdash; so businesses can discover relevant auction opportunities without having to search across multiple portals.
+                Instead of checking dozens of different websites daily, you can discover live and upcoming auctions from official Government platforms like <strong>MSTC</strong> and <strong>GeM</strong>, bank e-auctions, PSUs, and industrial liquidation sales on one clean, searchable dashboard.
               </p>
 
               <!-- How Lelam Can Help Section -->
@@ -60,42 +62,42 @@ export function generateCampaignEmailHtml(params: {
                 <tr>
                   <td>
                     <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 16px;">
-                      How Lelam can help ${company}:
+                      How Lelam helps your bidding team:
                     </div>
 
                     <div style="margin-bottom: 14px;">
                       <div style="font-size: 14px; font-weight: 700; color: #0369a1; margin-bottom: 3px;">
-                        &bull; Rubber Industry Opportunities
+                        &bull; All Major Auction Sources in One Place
                       </div>
                       <div style="font-size: 14px; color: #475569; padding-left: 12px;">
-                        Discover auctions involving rubber-related materials, machinery, processing equipment, plant assets, vehicles, and other industrial lots.
-                      </div>
-                    </div>
-
-                    <div style="margin-bottom: 14px;">
-                      <div style="font-size: 14px; font-weight: 700; color: #0369a1; margin-bottom: 3px;">
-                        &bull; One Platform, Multiple Auction Sources
-                      </div>
-                      <div style="font-size: 14px; color: #475569; padding-left: 12px;">
-                        Explore relevant listings from MSTC, GeM, bank auctions, and industrial liquidation auctions in one place.
+                        Explore verified listings from MSTC, GeM, DRT, nationalized banks, and private industrial liquidations without portal hopping.
                       </div>
                     </div>
 
                     <div style="margin-bottom: 14px;">
                       <div style="font-size: 14px; font-weight: 700; color: #0369a1; margin-bottom: 3px;">
-                        &bull; Detailed Auction Information
+                        &bull; Filter by Category &amp; Location
                       </div>
                       <div style="font-size: 14px; color: #475569; padding-left: 12px;">
-                        Quickly view lot descriptions, specifications, auction dates, locations, and other available details before deciding whether an opportunity is relevant to your business.
+                        Quickly find scrap materials, industrial machinery, manufacturing plant equipment, vehicles, and commercial assets near your region.
+                      </div>
+                    </div>
+
+                    <div style="margin-bottom: 14px;">
+                      <div style="font-size: 14px; font-weight: 700; color: #0369a1; margin-bottom: 3px;">
+                        &bull; Complete Lot Details &amp; Deadlines
+                      </div>
+                      <div style="font-size: 14px; color: #475569; padding-left: 12px;">
+                        Instantly see lot descriptions, EMD amounts, inspection schedules, auction dates, and contact information before bidding.
                       </div>
                     </div>
 
                     <div>
                       <div style="font-size: 14px; font-weight: 700; color: #0369a1; margin-bottom: 3px;">
-                        &bull; Discover New Sourcing Opportunities
+                        &bull; Discover Undervalued &amp; Surplus Lots
                       </div>
                       <div style="font-size: 14px; color: #475569; padding-left: 12px;">
-                        Find surplus, used, and liquidation assets that may be relevant to your procurement and operational requirements.
+                        Identify profitable procurement opportunities and liquidation lots that competitors often miss.
                       </div>
                     </div>
                   </td>
@@ -107,14 +109,14 @@ export function generateCampaignEmailHtml(params: {
                 <tr>
                   <td align="center">
                     <a href="https://lelam.co" target="_blank" style="display: inline-block; background-color: #0284c7; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 8px; box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25);">
-                      Explore Rubber Industry Auctions on Lelam.co &rarr;
+                      Explore Live Auctions on Lelam.co &rarr;
                     </a>
                   </td>
                 </tr>
               </table>
 
               <p style="font-size: 14px; color: #475569; line-height: 1.5; margin-bottom: 24px;">
-                If your procurement team is looking for a particular type of machinery, material, or industrial asset, our team can also help you explore relevant listings available on the platform.
+                Looking for specific lots or need help setting up custom alerts for your procurement category? Our team is glad to assist you.
               </p>
 
               <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />

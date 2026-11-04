@@ -17,8 +17,8 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   : null;
 
 const PROGRESS_FILE = path.resolve('campaign_progress.json');
-const CSV_FILE = path.resolve('exporters_companies_and_emails.csv');
-const SUBJECT = 'What if Rubber Industry Auctions Were All in One Place? | Lelam.co';
+const DEFAULT_CSV_FILE = path.resolve('mail.csv');
+const DEFAULT_SUBJECT = 'Track MSTC, GeM & Bank Auctions in One Place | Lelam.co';
 
 interface Recipient {
   company: string;
@@ -65,40 +65,52 @@ function parseCsvLine(text: string): string[] {
   return result;
 }
 
-function loadRecipients(allAliases = false): Recipient[] {
-  if (!fs.existsSync(CSV_FILE)) {
-    throw new Error(`CSV file not found: ${CSV_FILE}`);
+function loadRecipients(csvFilePath: string, allAliases = false): Recipient[] {
+  if (!fs.existsSync(csvFilePath)) {
+    throw new Error(`CSV file not found: ${csvFilePath}`);
   }
 
-  const content = fs.readFileSync(CSV_FILE, 'utf8');
+  const content = fs.readFileSync(csvFilePath, 'utf8');
   const lines = content.split(/\r?\n/).filter(l => l.trim());
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   const recipients: Recipient[] = [];
   const seenEmails = new Set<string>();
 
-  for (let i = 1; i < lines.length; i++) {
-    const cols = parseCsvLine(lines[i]);
-    const company = cols[1] || '';
-    const rawEmail = cols[2] || '';
-    const category = cols[3] || '';
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
 
-    if (!rawEmail || rawEmail === 'N/A') continue;
+    // Check if line contains comma-separated columns or just single email / trailing comma
+    const cols = parseCsvLine(line);
 
-    const emails = rawEmail.split(/[,;\/]/).map(e => e.trim().toLowerCase()).filter(Boolean);
+    // If header line on line 0 (e.g. "Company,Email,..."), skip
+    if (i === 0 && (cols[0]?.toLowerCase().includes('company') || cols[1]?.toLowerCase().includes('email'))) {
+      continue;
+    }
 
-    if (allAliases) {
+    if (cols.length >= 3 && cols[1] && cols[2].includes('@')) {
+      // Format: ID, Company, Email, Category
+      const company = cols[1] || '';
+      const rawEmail = cols[2] || '';
+      const category = cols[3] || 'Industrial Auction Buyers';
+      const emails = rawEmail.split(/[,;\/]/).map(e => e.trim().toLowerCase()).filter(Boolean);
+
       for (const email of emails) {
         if (emailRegex.test(email) && !seenEmails.has(email)) {
           seenEmails.add(email);
           recipients.push({ company, email, category });
+          if (!allAliases) break;
         }
       }
     } else {
-      // Primary email only (1 email per company)
-      const firstValid = emails.find(e => emailRegex.test(e));
-      if (firstValid && !seenEmails.has(firstValid)) {
-        seenEmails.add(firstValid);
-        recipients.push({ company, email: firstValid, category });
+      // Plain list of emails (e.g. mail.csv)
+      const extracted = line.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
+      for (const email of extracted) {
+        const lower = email.toLowerCase();
+        if (!seenEmails.has(lower)) {
+          seenEmails.add(lower);
+          recipients.push({ company: '', email: lower, category: 'Auction Buyers' });
+        }
       }
     }
   }
@@ -119,7 +131,7 @@ async function getUnsubscribedEmails(): Promise<Set<string>> {
   return set;
 }
 
-async function sendSingleEmail(recipient: Recipient): Promise<{ success: boolean; id?: string; error?: string }> {
+async function sendSingleEmail(recipient: Recipient, subject: string): Promise<{ success: boolean; id?: string; error?: string }> {
   const html = generateCampaignEmailHtml({
     companyName: recipient.company,
     recipientEmail: recipient.email,
@@ -136,7 +148,7 @@ async function sendSingleEmail(recipient: Recipient): Promise<{ success: boolean
         from: FROM_ADDRESS,
         to: recipient.email,
         reply_to: 'business@lelam.co',
-        subject: SUBJECT,
+        subject: subject,
         html,
       }),
     });
@@ -169,11 +181,18 @@ async function main() {
   const limitIndex = args.indexOf('--limit');
   const limit = limitIndex !== -1 ? parseInt(args[limitIndex + 1], 10) : Infinity;
 
+  const csvIndex = args.indexOf('--csv');
+  const csvPath = csvIndex !== -1 && args[csvIndex + 1] ? path.resolve(args[csvIndex + 1]) : DEFAULT_CSV_FILE;
+
+  const subjectIndex = args.indexOf('--subject');
+  const subject = subjectIndex !== -1 && args[subjectIndex + 1] ? args[subjectIndex + 1] : DEFAULT_SUBJECT;
+
   console.log('====================================================');
   console.log('  LELAM B2B EMAIL CAMPAIGN RUNNER');
   console.log('====================================================');
+  console.log(`CSV File     : ${csvPath}`);
   console.log(`From Address : ${FROM_ADDRESS}`);
-  console.log(`Subject      : ${SUBJECT}`);
+  console.log(`Subject      : ${subject}`);
   console.log(`API Key      : ${RESEND_API_KEY ? `${RESEND_API_KEY.substring(0, 7)}...` : 'MISSING'}`);
 
   if (!RESEND_API_KEY) {
@@ -189,11 +208,11 @@ async function main() {
     }
     console.log(`\n[TEST MODE] Sending test email to: ${testEmail}`);
     const testRecipient: Recipient = {
-      company: 'Sample Rubber Exporter Ltd',
+      company: '',
       email: testEmail,
-      category: 'Rubber Products Exporters',
+      category: 'Auction Buyers',
     };
-    const result = await sendSingleEmail(testRecipient);
+    const result = await sendSingleEmail(testRecipient, subject);
     if (result.success) {
       console.log(`\n[SUCCESS] Test email sent! Resend ID: ${result.id}`);
       console.log('Please check your inbox (and spam folder) to review formatting.');
@@ -204,7 +223,7 @@ async function main() {
   }
 
   // 2. LOAD RECIPIENTS
-  const allRecipients = loadRecipients(isAllAliases);
+  const allRecipients = loadRecipients(csvPath, isAllAliases);
   const unsubscribed = await getUnsubscribedEmails();
   const progress = loadProgress();
 
@@ -224,12 +243,12 @@ async function main() {
     console.log('\n[DRY RUN MODE] No emails were sent.');
     console.log('First 5 pending recipients:');
     toSend.slice(0, 5).forEach((r, idx) => {
-      console.log(`  ${idx + 1}. ${r.company} <${r.email}>`);
+      console.log(`  ${idx + 1}. ${r.company ? `${r.company} ` : ''}<${r.email}>`);
     });
     console.log('\nCommands:');
-    console.log('  Send test email   : tsx scripts/send_campaign.ts --test your-email@gmail.com');
-    console.log('  Send first 10     : tsx scripts/send_campaign.ts --send --limit 10');
-    console.log('  Send all pending  : tsx scripts/send_campaign.ts --send');
+    console.log('  Send test email   : npx tsx scripts/send_campaign.ts --test your-email@gmail.com');
+    console.log('  Send first 100    : npx tsx scripts/send_campaign.ts --send --limit 100');
+    console.log('  Send all pending  : npx tsx scripts/send_campaign.ts --send');
     return;
   }
 
@@ -242,9 +261,9 @@ async function main() {
 
   for (let i = 0; i < targetBatch.length; i++) {
     const r = targetBatch[i];
-    process.stdout.write(`[${i + 1}/${targetBatch.length}] ${r.company} (${r.email})... `);
+    process.stdout.write(`[${i + 1}/${targetBatch.length}] ${r.company ? `${r.company} ` : ''}(${r.email})... `);
 
-    const result = await sendSingleEmail(r);
+    const result = await sendSingleEmail(r, subject);
     const nowIso = new Date().toISOString();
 
     if (result.success) {
@@ -261,12 +280,12 @@ async function main() {
       if (supabase) {
         try {
           await supabase.from('email_campaign_queue').upsert({
-            campaign_name: 'rubber_exporters_intro',
+            campaign_name: 'auction_buyers_intro',
             recipient_email: r.email.toLowerCase(),
             company_name: r.company,
             category: r.category,
-            subject: SUBJECT,
-            html_body: 'template_rubber_intro',
+            subject: subject,
+            html_body: 'template_auction_intro',
             status: 'sent',
             resend_id: result.id,
             sent_at: nowIso,
@@ -287,12 +306,12 @@ async function main() {
       if (supabase) {
         try {
           await supabase.from('email_campaign_queue').upsert({
-            campaign_name: 'rubber_exporters_intro',
+            campaign_name: 'auction_buyers_intro',
             recipient_email: r.email.toLowerCase(),
             company_name: r.company,
             category: r.category,
-            subject: SUBJECT,
-            html_body: 'template_rubber_intro',
+            subject: subject,
+            html_body: 'template_auction_intro',
             status: 'failed',
             last_error: result.error,
           }, { onConflict: 'campaign_name,recipient_email' });
