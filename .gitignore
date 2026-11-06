@@ -1,40 +1,11 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Scratch & Temporary files
+.opencode/
 scratch/
-cookies.txt
-debug_page.html
-lint_report.txt
-scratch_pdf_*.txt
-scratch_pdf_text.txt
-*.cookie
-*.session
 
-# CI and Alerting files
-.github/workflows/ci.yml
-.github/workflows/scraper-cron.yml

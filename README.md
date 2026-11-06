@@ -1,154 +1,55 @@
-# Lelam - Enterprise Lelam & Procurement Platform
+# lelam.co thrift auctions
 
-![Lelam Logo](/vite.svg)
+A focused apparel-auction marketplace built with React, TypeScript, and Vite. It helps people browse one-of-one pre-owned clothing listings and gives thrift stores a clear path to publish auction inventory.
 
-Lelam is a comprehensive, scalable, and highly secure B2B/B2C marketplace platform explicitly designed for enterprise asset disposal, forward auctions, and e-tendering. Built with a modern React + TypeScript frontend and powered by a Serverless Postgres database via Supabase.
+## Run locally
 
-## Core Architecture
-
-- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4
-- **State Management**: Zustand (Client Session & UI State)
-- **Database & Auth**: Supabase (PostgreSQL, Row Level Security, Realtime)
-- **Routing**: React Router v7
-- **Deployment**: Configured for Vercel (Edge-ready)
-
-## Production Deployment Guide (Vercel)
-
-This application is configured as a Single Page Application (SPA) and is fully optimized for Vercel deployment. 
-
-### 1. Pre-Deployment Configuration
-Ensure you have the following Environment Variables ready:
-- `VITE_SUPABASE_URL`: Your Supabase project REST URL
-- `VITE_SUPABASE_ANON_KEY`: Your Supabase anonymous API key
-
-### 2. Vercel Deployment Steps
-1. Connect your GitHub repository to Vercel.
-2. In the Vercel project configuration, set the **Framework Preset** to `Vite`.
-3. Vercel will automatically detect the build command (`npm run build`) and output directory (`dist`).
-4. In the **Environment Variables** section, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` matching your production Supabase instance.
-5. Click **Deploy**. Vercel will process the `vercel.json` file automatically to ensure React Router URLs function correctly on refresh.
-
----
-
-## Supabase Production Checklist
-
-Before going live, your Supabase backend must have the following configured:
-
-### Database Schema
-1. Run the `00001_initial_schema.sql` migration to create tables (`profiles`, `categories`, `auctions`, `bids`, `tenders`, `watchlists`, `audit_logs`, `announcements`, `notifications`).
-2. Ensure triggers for timestamp updates (`updated_at`) are active.
-
-### Storage Buckets
-1. Create a **public** storage bucket named precisely `auction_documents`.
-2. Apply Storage RLS policies allowing authenticated users to `INSERT` into the bucket, and allowing public access to `SELECT`.
-
-### Security (Row Level Security - RLS)
-1. Verify that RLS is **ENABLED** on all tables.
-2. Verify `00003_bidding_logic.sql` is executed to establish the `place_bid` RPC function. This guarantees atomic, transactional integrity during high-frequency bidding, preventing race conditions and bypassing client-side validation tampering.
-
----
-
-## Post-Deployment Verification Checklist
-
-Once the Vercel deployment is live, manually verify the following critical user flows:
-
-- [ ] **Authentication**: Create a new buyer account, log out, and log back in.
-- [ ] **SPA Routing**: Navigate to `/dashboard`, then hard-refresh (F5) the browser. The page should reload successfully without a 404 error (proving `vercel.json` is working).
-- [ ] **Storage Upload**: Log in as a Seller or Admin, navigate to the Document Vault (`/dashboard/documents`), and upload a test file. Ensure it renders correctly.
-- [ ] **Realtime Bidding**: Open the same active auction in two different incognito windows. Place a bid in Window A and verify Window B updates the current bid price instantly without a page refresh.
-- [ ] **Global Broadcast**: As an Admin, publish an urgent system announcement. Verify the red banner instantly appears across the application.
-
-## Directory Structure
-```text
-src/
-├── components/     # Modular React components (auction, admin, common)
-├── hooks/          # Custom React hooks (useAuctionRealtime)
-├── layouts/        # Application shell layouts (Main, Dashboard, Auth)
-├── pages/          # Full page views (Home, Dashboard, Seller, Admin)
-├── services/       # Supabase database interaction layer & valuation models
-├── store/          # Zustand global state management
-└── types/          # TypeScript interfaces (database schema)
-
-scraper/
-├── parsers/        # Modular HTML/JSON parsers (BaankNet, GeM, MSTC)
-├── utils/          # Shared utilities (CORS, storage, logger, regexes, alerting)
-├── schemas/        # Zod validation schemas for zero-trust ingestion
-├── baanknetScraper.ts       # Puppeteer multi-module scraper (SARFAESI, Property, Vehicle, IBC)
-├── baanknetAssetWorker.ts   # Document mirroring daemon & PDF archiver
-├── gemScraper.ts            # GeM forward auction crawler
-└── mstcScraper.ts           # MSTC industrial lot scraper
+```sh
+npm install
+npm run dev
 ```
 
----
+Open the localhost URL printed by Vite (usually http://localhost:5173).
 
-## Scraper & Asset Pipeline Architecture
-
-```text
- ┌────────────────────────────────────────────────────────────────────────┐
- │                      1. OFFICIAL DATA SOURCES                          │
- │  • BaankNet (PSB Alliance SARFAESI Foreclosures)                       │
- │  • IBBI / IBC (Corporate Insolvency & Liquidation Assets)              │
- │  • GeM (Government e-Marketplace Forward Auctions & Bids)              │
- │  • MSTC (PSU & Heavy Industry Asset Disposals)                         │
- └───────────────────────────────────┬────────────────────────────────────┘
-                                     │
-                                     ▼
- ┌────────────────────────────────────────────────────────────────────────┐
- │                  2. HEADLESS EXTRACTION & PARSING                      │
- │  • Puppeteer Stealth Engine + Multi-Module DOM Parsers                 │
- │  • Canonical IBC Extractors (CIN, NCLT Bench, Case No, Liquidator Reg) │
- │  • Zod Schema Validation & Data Deduplication                          │
- └───────────────────────────────────┬────────────────────────────────────┘
-                                     │
-                                     ▼
- ┌────────────────────────────────────────────────────────────────────────┐
- │                  3. SYMMETRIC SUPABASE DATABASE UPSERT                 │
- │  • Upserts records to `baanknet_auctions`, `gem_auctions`, etc.        │
- │  • Symmetrically updates titles, categories, addresses, and boundaries │
- │  • Sets `documents_archived = false` for newly discovered notices      │
- └───────────────────────────────────┬────────────────────────────────────┘
-                                     │
-                                     ▼
- ┌────────────────────────────────────────────────────────────────────────┐
- │              4. ASSET WORKER & DOCUMENT STORAGE MIRRORING              │
- │  • Polls unarchived records (`documents_archived = false`)             │
- │  • Fetches PDF notice, validates `%PDF` magic bytes & content-type     │
- │  • Uploads to private Supabase Storage (`baanknet-documents/...`)      │
- │  • Updates record: `documents_archived = true`, `document_storage_path`│
- │  • Dispatches automated email alerts on unhandled errors via Resend    │
- └────────────────────────────────────────────────────────────────────────┘
+```sh
+npm run build  # Type check and production build
+npm run preview
+npm test       # Playwright browser checks
 ```
 
-### Required Environment Variables
+For a fresh machine, install the test browser with `npx playwright install chromium` before running tests.
 
-| Variable | Description | Required In |
-| :--- | :--- | :--- |
-| `SUPABASE_URL` | Supabase API REST URL | Scraper / API / Client |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase elevated admin secret key | Scraper / API |
-| `ALLOWED_ORIGINS` | Comma-delimited list of permitted CORS origins (e.g. `https://lelam.co`) | API |
-| `INTERNAL_API_SECRET` | Machine-to-machine trigger token for cron/webhooks | API / Worker |
-| `RESEND_API_KEY` | API key for transactional email and pipeline failure alerting | API / Worker |
-| `ADMIN_ALERT_EMAIL` | Destination inbox for scraping and pipeline error notifications | Worker |
+## Included
 
-### CLI Commands & Automation
+- Responsive marketplace landing page for buyers and thrift-store sellers
+- Live-auction cards with current bids, bid counts, sellers, conditions, and closing times
+- Category filtering, expanded inventory, and auction search
+- Product detail dialogs with watchlist and bid-list actions
+- Watchlist and bid list persisted in local storage for the preview
+- Clear auction policies, seller onboarding CTA, and auction-alert signup
+- Keyboard-accessible native dialogs and responsive mobile navigation
 
-```bash
-# Run BaankNet Scraper across all 4 modules (SARFAESI, Property, Vehicle, IBC)
-npm run scrape:baanknet
+## UI component setup
 
-# Run BaankNet Asset Worker in single batch pass
-npm run worker:baanknet -- --once
+This Vite app uses TypeScript, Tailwind CSS, and a shadcn-compatible `components.json` configuration. The default component import path is `@/components/ui`; keeping reusable primitives there lets shadcn CLI-generated components and application components share the same alias. Global styles live in `src/styles.css`.
 
-# Run BaankNet Asset Worker as a continuous polling daemon
-npm run worker:baanknet
+To create the same setup in a fresh project:
 
-# Retroactively clean and re-parse all existing records
-npx tsx scraper/backfillBaanknetListings.ts --apply
-
-# Run the complete test suite
-npm test
+```sh
+npx shadcn@latest init
+npm install -D tailwindcss @tailwindcss/vite
 ```
 
-### Security & Destructive Operation Guardrails
-- **CORS Protection**: Origin headers are strictly matched against `ALLOWED_ORIGINS` using `api/utils/cors.ts`. Wildcard CORS is disabled on mutating endpoints.
-- **Destructive Purge Guard**: Wiping scraped catalogs via `/api/scraper/clear-db/start` requires verified admin authentication AND an explicit header: `x-destructive-confirm: CONFIRM_PURGE_ALL_SCRAPED_DATA`.
+The reusable UI experiments in `components/ui` are kept in the project for future use, while the homepage stays focused on the buyer and seller auction flow.
+
+## Make it your store
+
+Edit inventory, current bid values (USD), descriptions, and image paths in `src/data.ts`. Auction metadata used by the preview lives in `src/App.tsx`; marketplace layout and responsive styles live in `src/styles.css`. Photography is stored in `public/images`, so browsing does not require third-party image requests.
+
+This is a frontend concept. Product records, auction metadata, condition descriptions, policies, and seller information are illustrative. Live bidding, auction closing, seller verification, payments, order fulfillment, inventory, customer support, and mailing-list delivery need real services before launch. The bid-list preview explicitly does not submit a bid or place an order.
+
+## Visual inspiration & photography
+
+Original design informed by the editorial curation and slow-fashion approach of [Rogue + Runway](https://www.databending.ca/work/rogue-runway/), [Born Again Thrift SF](https://dianabenavides.dev/projects/born-again-thrift-sf), and [La Fair Art](https://www.lunarinnovate.com/en/portfolio/la-fair-art).
+
+Demonstration photography: [Unsplash](https://unsplash.com). Image identifiers: `photo-1539109136881-3be0616acf4b`, `photo-1483985988355-763728e1935b`, `photo-1543076447-215ad9ba6923`, `photo-1434389677669-e08b4cac3105`, `photo-1548036328-c9fa89d128fa`, `photo-1542272604-787c3835535d`, `photo-1551028719-00167b16eac5`, `photo-1521572163474-6864f9cf17ab`, and `photo-1445205170230-053b83016050`. Replace demonstration photos with your actual inventory before launch.
