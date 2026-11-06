@@ -462,7 +462,7 @@ export default function HalftoneWordmarkFooter({
   }, [key])
 
   const toTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    window.scrollTo({ top: 0 })
   }
 
   return (

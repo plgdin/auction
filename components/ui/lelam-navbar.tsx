@@ -1,49 +1,89 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import {
+  Bell,
+  Heart,
+  LayoutDashboard,
+  LogOut,
+  Search,
+  Shield,
+  ShoppingBag,
+  Store,
+  UserRound,
+} from "lucide-react";
 import { LiquidNavbar, NimbusIcons, type LiquidNavItem } from "@/components/ui/liquid-glass-navbar";
-import { Gavel, Heart, Search } from "lucide-react";
-import type { Category } from "@/src/data";
+import { navigate } from "@/src/components/Link";
+import { useRoute } from "@/src/lib/router";
+import { useStore } from "@/src/lib/store";
 
 export interface LelamNavbarProps {
   favoritesCount: number;
-  bagCount: number;
+  cartCount: number;
+  unreadCount: number;
   onOpenSearch: () => void;
-  onOpenWatchlist: () => void;
-  onOpenBag: () => void;
-  onSelectCategory?: (category: Category) => void;
+  onOpenSaved: () => void;
 }
 
 export function LelamNavbar({
   favoritesCount,
-  bagCount,
+  cartCount,
+  unreadCount,
   onOpenSearch,
-  onOpenWatchlist,
-  onOpenBag,
+  onOpenSaved,
 }: LelamNavbarProps) {
+  const { user, logout, switchAccount, db } = useStore();
+  const route = useRoute();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [accountOpen]);
+
   const navItems: LiquidNavItem[] = [
-    { label: "Live Auctions", icon: NimbusIcons.home, fx: "glow", href: "#shop" },
-    { label: "How It Works", icon: NimbusIcons.plane, fx: "plane", href: "#how-it-works" },
-    { label: "Sell on lelam", icon: NimbusIcons.drop, fx: "drop", href: "#sell" },
+    { label: "Shop", icon: NimbusIcons.globe, fx: "spin", href: "#/products" },
+    { label: "Auctions", icon: NimbusIcons.home, fx: "glow", href: "#/auctions" },
+    { label: "Sell", icon: NimbusIcons.drop, fx: "drop", href: "#/sell" },
+    { label: "How it works", icon: NimbusIcons.plane, fx: "plane", href: "#how-it-works" },
   ];
+
+  const activeIndex =
+    route.path.startsWith("/auctions")
+      ? 1
+      : route.path.startsWith("/sell")
+        ? 2
+        : route.path.startsWith("/products") || route.path.startsWith("/product/")
+          ? 0
+          : 0;
 
   const handleNavChange = (_: number, item: LiquidNavItem) => {
     if (item.href) {
-      document.querySelector(item.href)?.scrollIntoView({ behavior: "smooth" });
+      setAccountOpen(false);
+      navigate(item.href);
     }
   };
 
+  const demoUsers = db.users.filter((candidate) => ["u-buyer", "u-seller", "u-admin"].includes(candidate.id));
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none">
-      {/* Top ambient contrast scrim for crystal-clear readability across all images */}
       <div className="lelam-header-scrim" />
 
-      {/* Main navigation row */}
-      <div className="relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-auto z-30">
-        {/* Left: lelam.co Brand Logo */}
+      <div className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-auto z-30">
         <a
           href="#top"
           className="flex items-center text-white brand-logo no-underline shrink-0"
           aria-label="lelam.co home"
+          onClick={(event) => {
+            event.preventDefault();
+            navigate("#/");
+          }}
         >
           <span
             style={{
@@ -61,75 +101,194 @@ export function LelamNavbar({
           </span>
         </a>
 
-        {/* Center: Fluid Liquid Glass Water Pill Navbar (Desktop) */}
         <div className="absolute left-1/2 top-3 hidden -translate-x-1/2 lg:block">
           <LiquidNavbar
             tone="dark"
             sound={true}
-            defaultActive={0}
+            active={activeIndex}
             items={navItems}
             onChange={handleNavChange}
           />
         </div>
 
-        {/* Right: High-Contrast Premium Actions */}
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          {/* Mobile Liquid Pill (Compact icons) */}
-          <div className="flex lg:hidden mr-1">
+          <div className="lelam-mobile-nav flex lg:hidden mr-1">
             <LiquidNavbar
               tone="dark"
               compact={true}
               sound={true}
-              items={navItems}
+              items={navItems.slice(0, 3)}
               onChange={handleNavChange}
             />
           </div>
 
-          {/* Search Button */}
           <button
             type="button"
             onClick={onOpenSearch}
-            className="lelam-action-btn"
-            aria-label="Search archive"
-            title="Search archive"
+            className="lelam-action-btn lelam-search-toggle"
+            aria-label="Search listings"
+            title="Search"
           >
             <Search size={18} strokeWidth={2.2} />
           </button>
 
-          {/* Watchlist / Saved Button */}
           <button
             type="button"
-            onClick={onOpenWatchlist}
-            className="lelam-action-btn"
+            onClick={onOpenSaved}
+            className="lelam-action-btn lelam-save-toggle"
             aria-label={`Saved finds, ${favoritesCount} items`}
             title="Watchlist"
           >
-            <Heart
-              size={18}
-              strokeWidth={2.2}
-              fill={favoritesCount > 0 ? "currentColor" : "none"}
-            />
-            {favoritesCount > 0 && (
-              <span className="lelam-heart-badge">
-                {favoritesCount}
-              </span>
-            )}
+            <Heart size={18} strokeWidth={2.2} fill={favoritesCount > 0 ? "currentColor" : "none"} />
+            {favoritesCount > 0 && <span className="lelam-heart-badge">{favoritesCount}</span>}
           </button>
 
-          {/* Bid List Pill Button */}
           <button
             type="button"
-            onClick={onOpenBag}
+            onClick={() => navigate("#/cart")}
             className="lelam-bid-btn"
-            aria-label={`Open bid list, ${bagCount} items`}
-            title="Bid list"
+            aria-label={`Open cart, ${cartCount} items`}
+            title="Cart"
           >
-            <Gavel size={16} strokeWidth={2.3} />
-            <span className="hidden xs:inline sm:inline">Bid list</span>
-            <span className="lelam-bid-count">
-              {bagCount}
-            </span>
+            <ShoppingBag size={16} strokeWidth={2.3} />
+            <span className="hidden xs:inline sm:inline">Cart</span>
+            <span className="lelam-bid-count">{cartCount}</span>
           </button>
+
+          <div className="relative" ref={accountRef}>
+            <button
+              type="button"
+              onClick={() => setAccountOpen((open) => !open)}
+              className="lelam-action-btn lelam-account-btn"
+              aria-label={user ? `Account menu for ${user.name}` : "Sign in"}
+              aria-expanded={accountOpen}
+              title={user ? "Account" : "Sign in"}
+            >
+              <UserRound size={18} strokeWidth={2.2} />
+              {unreadCount > 0 && <span className="lelam-unread-dot">{unreadCount}</span>}
+            </button>
+
+            {accountOpen && (
+              <div className="account-menu" role="menu">
+                {user ? (
+                  <>
+                    <div className="account-menu-head">
+                      <span className="account-avatar">{user.name.slice(0, 1)}</span>
+                      <div>
+                        <strong>{user.name}</strong>
+                        <span>{user.email}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAccountOpen(false);
+                        navigate("#/account");
+                      }}
+                    >
+                      <LayoutDashboard size={16} /> My account
+                    </button>
+                    {user.isSeller && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setAccountOpen(false);
+                          navigate("#/seller");
+                        }}
+                      >
+                        <Store size={16} /> Seller dashboard
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAccountOpen(false);
+                        navigate("#/account?tab=notifications");
+                      }}
+                    >
+                      <Bell size={16} /> Notifications
+                      {unreadCount > 0 && <em>{unreadCount}</em>}
+                    </button>
+                    {user.role === "admin" && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setAccountOpen(false);
+                          navigate("#/admin");
+                        }}
+                      >
+                        <Shield size={16} /> Admin panel
+                      </button>
+                    )}
+                    <div className="account-menu-sep" />
+                    <span className="account-menu-label">Demo accounts</span>
+                    {demoUsers.map((demo) => (
+                      <button
+                        key={demo.id}
+                        type="button"
+                        role="menuitem"
+                        className={demo.id === user.id ? "is-active" : ""}
+                        onClick={() => {
+                          switchAccount(demo.id);
+                          setAccountOpen(false);
+                          navigate("#/");
+                        }}
+                      >
+                        <span className="demo-dot" /> {demo.name}
+                        <em>{demo.role}</em>
+                      </button>
+                    ))}
+                    <div className="account-menu-sep" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        logout();
+                        setAccountOpen(false);
+                        navigate("#/login");
+                      }}
+                    >
+                      <LogOut size={16} /> Sign out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="account-menu-head">
+                      <span className="account-avatar">?</span>
+                      <div>
+                        <strong>Not signed in</strong>
+                        <span>Sign in to buy, bid, and sell.</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAccountOpen(false);
+                        navigate("#/login");
+                      }}
+                    >
+                      <UserRound size={16} /> Sign in
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAccountOpen(false);
+                        navigate("#/register");
+                      }}
+                    >
+                      <Store size={16} /> Create account
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

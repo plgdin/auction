@@ -594,8 +594,8 @@ export function LiquidNavbar({
     if (c && kind === "plane") ripple(c.x, c.y, 0.9)
     if (i !== current) {
       if (active === undefined) setInner(i)
-      onChange?.(i, items[i])
     }
+    onChange?.(i, items[i])
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {

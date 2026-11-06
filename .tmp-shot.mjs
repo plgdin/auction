@@ -1,0 +1,10 @@
+import { chromium } from "@playwright/test";
+const browser = await chromium.launch({ channel: "chrome" });
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+await page.goto("http://localhost:5174/#/");
+await page.waitForTimeout(1500);
+await page.screenshot({ path: "C:/Users/acer/AppData/Local/Temp/opencode/lelam-shots/now-home.png", fullPage: true });
+await page.goto("http://localhost:5174/#/sell");
+await page.waitForTimeout(1200);
+await page.screenshot({ path: "C:/Users/acer/AppData/Local/Temp/opencode/lelam-shots/now-sell.png", fullPage: true });
+await browser.close();
