@@ -11,10 +11,10 @@ import { ProductCard } from "../components/ProductCard";
 import { useStore } from "../lib/store";
 
 const categoryTiles = [
-  { name: "Outerwear", image: "/images/leather.jpg", label: "Jackets & layers" },
-  { name: "Tops & knits", image: "/images/knit.jpg", label: "Easy everyday" },
-  { name: "Denim", image: "/images/jeans.jpg", label: "Built to last" },
-  { name: "Accessories", image: "/images/bag.jpg", label: "The finishing piece" },
+  { name: "Women", image: "/images/denim.jpg", label: "Clothing & more" },
+  { name: "Men", image: "/images/knit.jpg", label: "Outerwear to basics" },
+  { name: "Electronics", image: "/images/jeans.jpg", label: "Tech, tested" },
+  { name: "Sports", image: "/images/bag.jpg", label: "Gear up" },
 ];
 
 export function HomePage() {

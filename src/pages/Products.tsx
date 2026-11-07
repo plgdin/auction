@@ -10,7 +10,7 @@ import {
 import { PageHeader } from "../components/Ui";
 import { ProductCard } from "../components/ProductCard";
 import { Link } from "../components/Link";
-import { CATEGORIES } from "../lib/categories";
+import { CATEGORIES, VINTED_CATALOG, groupsFor, subsFor } from "../lib/categories";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { formatMoney } from "../lib/format";
@@ -32,6 +32,9 @@ export function ProductsPage() {
   const [offersOnly, setOffersOnly] = useState(false);
   const [maxPrice, setMaxPrice] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [catTop, setCatTop] = useState("");
+  const [catGroup, setCatGroup] = useState("All");
+  const [catMenuOpen, setCatMenuOpen] = useState(false);
   const closeTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -69,7 +72,7 @@ export function ProductsPage() {
       if (offersOnly && !product.allowOffers) return false;
       if (product.askingPrice > maxPrice) return false;
       if (search) {
-        const haystack = `${product.title} ${product.description} ${product.brand ?? ""} ${product.category} ${product.sellerName}`.toLowerCase();
+        const haystack = `${product.title} ${product.description} ${product.brand ?? ""} ${product.category} ${product.subcategory ?? ""} ${product.sellerName}`.toLowerCase();
         if (!haystack.includes(search)) return false;
       }
       return true;
@@ -134,7 +137,25 @@ export function ProductsPage() {
             ) : undefined
           }
         />
-
+        <div className="cat-wrap" onMouseLeave={() => setCatMenuOpen(false)}>
+          <nav className="cat-bar" aria-label="Categories">
+            {VINTED_CATALOG.map((c) => {
+              const active = catTop === c.top || category === c.top;
+              return <button key={c.top} type="button" className={active ? "is-active" : ""} aria-pressed={active} onClick={() => { setCatTop(c.top); setCatGroup("All"); setCategory(c.top as Category); setQuery(""); setCatMenuOpen(true); }} onMouseEnter={() => { setCatTop(c.top); setCatMenuOpen(true); }}>{c.top}</button>;
+            })}
+          </nav>
+          {catMenuOpen && catTop && (
+            <div className="cat-menu">
+              <div className="cat-menu-groups">
+                <button type="button" className={catGroup === "All" ? "is-active" : ""} onClick={() => { setCatGroup("All"); setCategory(catTop as Category); setQuery(""); }}>All</button>
+                {groupsFor(catTop).map((g) => <button key={g.name} type="button" className={catGroup === g.name ? "is-active" : ""} onClick={() => { setCatGroup(g.name); setCategory(catTop as Category); setQuery(""); }}>{g.name}</button>)}
+              </div>
+              <div className="cat-menu-subs">
+                {(catGroup === "All" ? ["All"] : subsFor(catTop, catGroup)).map((s) => <button key={s} type="button" onClick={() => { setCategory(catTop as Category); setQuery(s === "All" ? "" : s); setCatMenuOpen(false); }}>{s}</button>)}
+              </div>
+            </div>
+          )}
+        </div>
         <div className="catalog-toolbar">
           <div
             className={`category-dropdown ${menuOpen ? "is-open" : ""}`}

@@ -417,6 +417,7 @@ export type ListingInput = {
   brand?: string;
   condition: Product["condition"];
   category: Product["category"];
+  subcategory?: string;
   askingPrice: number;
   images: string[];
   size?: string;
@@ -1277,6 +1278,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         brand: input.brand?.trim() || undefined,
         condition: input.condition,
         category: input.category,
+        subcategory: input.subcategory,
         askingPrice: input.askingPrice,
         images: input.images,
         size: input.size?.trim() || undefined,
@@ -1339,6 +1341,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (patch.brand !== undefined) target.brand = patch.brand.trim() || undefined;
       if (patch.condition !== undefined) target.condition = patch.condition;
       if (patch.category !== undefined) target.category = patch.category;
+      if (patch.subcategory !== undefined) target.subcategory = patch.subcategory;
       if (patch.askingPrice !== undefined) target.askingPrice = patch.askingPrice;
       if (patch.images !== undefined) target.images = patch.images;
       if (patch.size !== undefined) target.size = patch.size.trim() || undefined;

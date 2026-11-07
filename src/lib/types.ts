@@ -7,23 +7,7 @@ export type ProductStatus =
   | "sold"
   | "removed"
   | "rejected";
-export type Category =
-  | "Clothing"
-  | "Footwear"
-  | "Bags & accessories"
-  | "Electronics"
-  | "Mobile & tablets"
-  | "Computers & gaming"
-  | "Home & living"
-  | "Furniture"
-  | "Kitchen & dining"
-  | "Books & media"
-  | "Sports & outdoors"
-  | "Toys & games"
-  | "Beauty & care"
-  | "Art & collectibles"
-  | "Music & instruments"
-  | "Other";
+export type Category = string;
 
 export interface User {
   id: string;
@@ -64,6 +48,7 @@ export interface Product {
   brand?: string;
   condition: Condition;
   category: Category;
+  subcategory?: string;
   askingPrice: number;
   images: string[];
   size?: string;

@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Banknote,
+  Check,
   Clock3,
   Gavel,
   Package,
@@ -20,7 +21,7 @@ import { formatDate, formatMoney, timeAgo } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
-import type { Order } from "../lib/types";
+import type { Order, Product } from "../lib/types";
 
 const shipmentOptions: { value: NonNullable<Order["shipment"]>["status"]; label: string }[] = [
   { value: "pickup_scheduled", label: "Pickup scheduled" },
@@ -31,6 +32,26 @@ const shipmentOptions: { value: NonNullable<Order["shipment"]>["status"]; label:
   { value: "failed", label: "Delivery failed" },
   { value: "returned", label: "Returned" },
 ];
+
+const shipmentPath = shipmentOptions.filter((option) => !["failed", "returned"].includes(option.value));
+
+function listingStatusNote(status: Product["status"]) {
+  switch (status) {
+    case "pending":
+      return "Waiting on review. Nobody can see it yet.";
+    case "active":
+      return "Live in the shop. Buyers can buy it or send an offer.";
+    case "draft":
+      return "Paused by you. Turn it back on any time.";
+    case "removed":
+      return "Off the shop for good.";
+    case "sold":
+    case "reserved":
+      return "Sold — the piece has found its buyer.";
+    default:
+      return "Rejected in review. See the listing for the reason.";
+  }
+}
 
 export function SellerDashboardPage() {
   const {
@@ -106,6 +127,62 @@ export function SellerDashboardPage() {
     .filter((settlement) => settlement.status !== "paid")
     .reduce((total, settlement) => total + settlement.sellerPayout, 0);
   const liveAuctions = myAuctions.filter((auction) => auction.status === "live");
+  const activeListings = myProducts.filter((product) => product.status === "active");
+  const pendingListings = myProducts.filter((product) => product.status === "pending");
+  const deliveredCount = myOrders.filter((order) => order.status === "delivered").length;
+
+  const journeySteps = [
+    {
+      key: "listed",
+      title: "List it",
+      done: myProducts.length > 0,
+      line:
+        myProducts.length > 0
+          ? `${myProducts.length} listing${myProducts.length === 1 ? "" : "s"} saved`
+          : "Add your first piece from the button above",
+    },
+    {
+      key: "live",
+      title: "Live in the shop",
+      done: activeListings.length > 0,
+      line:
+        activeListings.length > 0
+          ? `${activeListings.length} visible to buyers${pendingListings.length ? ` · ${pendingListings.length} waiting on review` : ""}`
+          : pendingListings.length > 0
+            ? `${pendingListings.length} waiting on review — gone over before it goes live`
+            : "Nothing visible to buyers yet",
+    },
+    {
+      key: "sold",
+      title: "Sold",
+      done: paidOrders.length > 0,
+      line:
+        paidOrders.length > 0
+          ? `${paidOrders.length} paid order${paidOrders.length === 1 ? "" : "s"} to hand over`
+          : "A sale happens when a buyer pays",
+    },
+    {
+      key: "delivered",
+      title: "Delivered",
+      done: deliveredCount > 0,
+      line:
+        deliveredCount > 0
+          ? `${deliveredCount} piece${deliveredCount === 1 ? "" : "s"} in their hands`
+          : "We pick up, pack and deliver for you",
+    },
+    {
+      key: "paid",
+      title: "Paid out",
+      done: revenue > 0,
+      line:
+        revenue > 0
+          ? `${formatMoney(revenue)} marked paid`
+          : pendingPayout > 0
+            ? `${formatMoney(pendingPayout)} queued — admin approves payouts`
+            : "Money lands here once a sale is settled",
+    },
+  ];
+  const firstTodo = journeySteps.findIndex((step) => !step.done);
 
   const setTabAndHash = (next: string) => {
     setTab(next);
@@ -130,20 +207,45 @@ export function SellerDashboardPage() {
           </Link>
         </div>
 
+        <section className="journey-panel">
+          <div className="panel-head">
+            <h2>Selling, end to end</h2>
+            <span>Every listing follows this path</span>
+          </div>
+          <ol className="seller-journey">
+            {journeySteps.map((step, index) => (
+              <li
+                key={step.key}
+                className={`journey-step ${step.done ? "is-done" : index === firstTodo ? "is-current" : "is-todo"}`}
+              >
+                <span className="journey-dot">{step.done ? <Check size={13} /> : index + 1}</span>
+                <div className="journey-copy">
+                  <strong>{step.title}</strong>
+                  <span>{step.line}</span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <div className="stat-grid">
           <div className="stat-card">
             <span>
               <Package size={15} /> Active listings
             </span>
             <strong>{myProducts.filter((product) => product.status === "active").length}</strong>
-            <em>{myProducts.filter((product) => product.status === "pending").length} in review</em>
+            <em>
+              {pendingListings.length > 0
+                ? `${pendingListings.length} waiting on review`
+                : "Nothing waiting on review"}
+            </em>
           </div>
           <div className="stat-card">
             <span>
               <Tag size={15} /> Pending offers
             </span>
             <strong>{pendingOffers.length}</strong>
-            <em>Private, buyer-only prices</em>
+            <em>Accept and the buyer pays right away</em>
           </div>
           <div className="stat-card">
             <span>
@@ -152,14 +254,18 @@ export function SellerDashboardPage() {
             <strong>
               {paidOrders.filter((order) => !["delivered", "returned"].includes(order.status)).length}
             </strong>
-            <em>Delivery is manually updated</em>
+            <em>Your part: schedule the pickup</em>
           </div>
           <div className="stat-card">
             <span>
               <Wallet size={15} /> Paid out
             </span>
             <strong>{formatMoney(revenue)}</strong>
-            <em>{formatMoney(pendingPayout)} pending</em>
+            <em>
+              {pendingPayout > 0
+                ? `${formatMoney(pendingPayout)} waiting for approval`
+                : "Nothing pending right now"}
+            </em>
           </div>
         </div>
 
@@ -196,7 +302,10 @@ export function SellerDashboardPage() {
                           <Tag size={15} />
                           <div>
                             <strong>{formatMoney(offer.amount)} offer</strong>
-                            <span>{product?.title} · {timeAgo(offer.createdAt)}</span>
+                            <span>
+                              {product?.title} · asking {product ? formatMoney(product.askingPrice) : "—"} ·
+                              leave it unanswered and it expires {formatDate(offer.expiresAt)}
+                            </span>
                           </div>
                           <button type="button" className="text-link" onClick={() => setTabAndHash("offers")}>
                             Review
@@ -211,8 +320,8 @@ export function SellerDashboardPage() {
                         <li key={order.id}>
                           <Truck size={15} />
                           <div>
-                            <strong>Order {order.number}</strong>
-                            <span>Paid · arrange pickup</span>
+                            <strong>Order {order.number} is paid</strong>
+                            <span>The buyer is waiting — your part is scheduling the pickup</span>
                           </div>
                           <button type="button" className="text-link" onClick={() => setTabAndHash("orders")}>
                             Open
@@ -293,6 +402,14 @@ export function SellerDashboardPage() {
                 <Plus size={14} /> Add listing
               </Link>
             </div>
+            <div className="seller-explain">
+              <p>
+                Every listing is in exactly one of these states: <strong>in review</strong> (we check it
+                before it goes live), <strong>live</strong> (buyers see and buy it), <strong>paused</strong>{" "}
+                (hidden by you, back on any time), or <strong>removed</strong> (off the shop for good). The
+                Status column on each row tells you where that piece stands.
+              </p>
+            </div>
             {myProducts.length ? (
               <div className="listing-table">
                 <div className="table-head">
@@ -314,7 +431,10 @@ export function SellerDashboardPage() {
                       </div>
                     </div>
                     <strong>{formatMoney(product.askingPrice)}</strong>
-                    <StatusPill status={product.status} />
+                    <div className="table-status">
+                      <StatusPill status={product.status} />
+                      <span>{listingStatusNote(product.status)}</span>
+                    </div>
                     <span>{product.views}</span>
                     <div className="table-actions">
                       <Link href={`#/product/${product.id}`} className="text-link">
@@ -369,7 +489,7 @@ export function SellerDashboardPage() {
           <div className="dashboard-section">
             <div className="panel-head">
               <h2>Offers received</h2>
-              <span>Private to each buyer</span>
+              <span>Accept and the buyer pays right away · unanswered offers expire</span>
             </div>
             {myOffers.length ? (
               <div className="offer-table">
@@ -383,8 +503,11 @@ export function SellerDashboardPage() {
                         <div>
                           <strong>{product?.title ?? "Listing"}</strong>
                           <span>
-                            Asking {product ? formatMoney(product.askingPrice) : "—"} · from{" "}
-                            {buyer?.name ?? "a buyer"}
+                            Asking {product ? formatMoney(product.askingPrice) : "—"} ·{" "}
+                            {offer.amount < (product?.askingPrice ?? offer.amount)
+                              ? "below"
+                              : "above"}{" "}
+                            asking · from {buyer?.name ?? "a buyer"}
                           </span>
                         </div>
                       </div>
@@ -453,13 +576,18 @@ export function SellerDashboardPage() {
           <div className="dashboard-section">
             <div className="panel-head">
               <h2>Orders</h2>
-              <span>Delivery updates are manual in this demo</span>
+              <span>Paid orders land here with the delivery address</span>
             </div>
             {myOrders.length ? (
               <div className="seller-order-list">
                 {myOrders.map((order) => {
                   const buyer = db.users.find((item) => item.id === order.buyerId);
                   const nextStatus = shipmentDraft[order.id] || "";
+                  const shippedIndex = shipmentPath.findIndex(
+                    (step) => step.value === order.shipment?.status,
+                  );
+                  const failedShipment =
+                    order.shipment && ["failed", "returned"].includes(order.shipment.status);
                   return (
                     <article key={order.id} className="seller-order">
                       <div className="seller-order-head">
@@ -474,6 +602,36 @@ export function SellerDashboardPage() {
                         <Link href={`#/orders/${order.id}`} className="text-link">
                           Details
                         </Link>
+                      </div>
+                      <div className="seller-order-track">
+                        {order.paymentStatus !== "paid" ? (
+                          <p className="track-waiting">
+                            Waiting on the buyer's payment. Delivery starts once it is paid.
+                          </p>
+                        ) : failedShipment ? (
+                          <p className="track-waiting is-warm">
+                            Delivery hit a snag. Set the right status below so the buyer knows.
+                          </p>
+                        ) : (
+                          <>
+                            <ol className="shipment-track">
+                              {shipmentPath.map((step, index) => {
+                                const reached = shippedIndex >= 0 && index <= shippedIndex;
+                                return (
+                                  <li key={step.value} className={reached ? "is-reached" : ""}>
+                                    <span className="track-dot" />
+                                    <span>{step.label}</span>
+                                  </li>
+                                );
+                              })}
+                            </ol>
+                            {!order.shipment && (
+                              <p className="track-waiting">
+                                Your part now: schedule a pickup with the courier below.
+                              </p>
+                            )}
+                          </>
+                        )}
                       </div>
                       <div className="seller-order-body">
                         <div className="seller-order-items">
@@ -516,7 +674,16 @@ export function SellerDashboardPage() {
                         !["cancelled", "expired", "returned"].includes(order.status) && (
                           <div className="shipment-update">
                             <label>
-                              <span>Update delivery</span>
+                              <span>
+                                Update delivery
+                                {!failedShipment &&
+                                shippedIndex >= 0 &&
+                                shippedIndex < shipmentPath.length - 1
+                                  ? ` · suggested next: ${shipmentPath[shippedIndex + 1].label}`
+                                  : !order.shipment
+                                    ? " · suggested next: Pickup scheduled"
+                                    : ""}
+                              </span>
                               <select
                                 value={nextStatus}
                                 onChange={(event) =>
@@ -553,7 +720,10 @@ export function SellerDashboardPage() {
                             >
                               Save update
                             </button>
-                            <p>Courier integration is not connected. This updates the timeline only.</p>
+                            <p>
+                              Delivery updates are manual in this demo. The money from this order is
+                              already queued under Earnings — an admin marks the payout paid.
+                            </p>
                           </div>
                         )}
                     </article>
@@ -579,11 +749,22 @@ export function SellerDashboardPage() {
               <span>Optional live lots</span>
             </div>
 
+            <div className="seller-explain">
+              <p>
+                How an auction pays you: bidding opens at {db.settings.auctionStartPct}% of your asking
+                price, so buyers have room to win. If the winning bid comes in under your asking price,{" "}
+                <strong>the platform tops up the difference</strong> and you still receive your asking
+                price. If it goes above, you receive the winning bid and a small commission comes off the
+                surplus.
+              </p>
+            </div>
+
             <section className="panel auction-schedule-panel">
               <h3>Schedule an auction</h3>
               <p>
-                Pick one of your active listings. The starting price is set from the platform
-                percentage. You are guaranteed at least your asking price.
+                Pick one of your active listings and a start time. Bidding opens at{" "}
+                {db.settings.auctionStartPct}% of the asking price, and no matter where bids land, you
+                never receive less than your asking price.
               </p>
               <div className="auction-schedule-form">
                 <label>
@@ -648,6 +829,20 @@ export function SellerDashboardPage() {
                             Asking {formatMoney(auction.askingPrice)} · start{" "}
                             {formatMoney(auction.startingPrice)}
                           </span>
+                          {auction.status === "scheduled" && (
+                            <span className="auction-state">Your price is protected while bids run.</span>
+                          )}
+                          {auction.status === "live" && (
+                            <span className="auction-state">
+                              Highest bid wins. Your payout will be at least your asking price.
+                            </span>
+                          )}
+                          {auction.status === "completed" && (
+                            <span className="auction-state">Settled below — the numbers are final.</span>
+                          )}
+                          {auction.status === "cancelled" && (
+                            <span className="auction-state">Cancelled — the listing is back on the shelf.</span>
+                          )}
                         </div>
                         <div className="seller-auction-stats">
                           <span>{formatMoney(auction.currentBid ?? auction.startingPrice)}</span>
@@ -736,6 +931,30 @@ export function SellerDashboardPage() {
 
         {tab === "earnings" && (
           <div className="dashboard-section">
+            <ol className="payout-flow">
+              <li>
+                <span className="payout-dot" />
+                <div>
+                  <strong>A sale settles</strong>
+                  <span>A paid order or an ended auction moves here from Orders</span>
+                </div>
+              </li>
+              <li>
+                <span className="payout-dot" />
+                <div>
+                  <strong>Pending payout</strong>
+                  <span>Sits below until an admin approves it — nothing for you to do</span>
+                </div>
+              </li>
+              <li>
+                <span className="payout-dot" />
+                <div>
+                  <strong>Paid</strong>
+                  <span>The approved amount on the dark card, yours</span>
+                </div>
+              </li>
+            </ol>
+
             <div className="earning-cards">
               <div className="stat-card is-dark">
                 <span>
@@ -760,7 +979,7 @@ export function SellerDashboardPage() {
                     mySettlements.reduce((total, item) => total + item.platformSubsidy, 0),
                   )}
                 </strong>
-                <em>Covered by lelam</em>
+                <em>Platform tops up auction shortfalls</em>
               </div>
             </div>
 
