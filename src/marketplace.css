@@ -2046,3 +2046,33 @@ html { scroll-behavior: smooth; }
   .product-actions .button-olive { grid-column: 1 / -1; }
   .product-facts { gap: 14px; }
 }
+
+/* Supabase-backed app states */
+.boot-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #f4f1ea;
+  color: #2f3626;
+}
+
+.boot-mark {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 44px;
+  letter-spacing: -0.04em;
+}
+
+.boot-copy {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7b7f6d;
+}
+
+.payment-option.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -65,13 +65,13 @@ export function AuctionDetailPage() {
   const participating = Boolean(user && bids.some((bid) => bid.bidderId === user.id));
   const leading = Boolean(user && auction.highestBidderId === user.id);
 
-  const submitBid = () => {
+  const submitBid = async () => {
     const amount = Math.round(Number(bidRupees) * 100);
     if (!bidRupees.trim() || Number.isNaN(amount)) {
       toast("Enter a bid amount.", "error");
       return;
     }
-    const result = placeBid(auction.id, amount);
+    const result = await placeBid(auction.id, amount);
     if (!result.ok) {
       toast(result.error, "error");
       return;

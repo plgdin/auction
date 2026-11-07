@@ -13,22 +13,12 @@ import {
 } from "lucide-react";
 import { Link, navigate } from "../components/Link";
 import { Field, PageHeader } from "../components/Ui";
+import { CATEGORIES } from "../lib/categories";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
 import type { Category, Condition } from "../lib/types";
-
-const categories: Category[] = [
-  "Outerwear",
-  "Tops & knits",
-  "Denim",
-  "Accessories",
-  "Footwear",
-  "Home & living",
-  "Electronics",
-  "Books & media",
-];
 
 const conditions: Condition[] = ["New", "Like new", "Good", "Fair"];
 
@@ -48,7 +38,7 @@ const emptyForm = {
   description: "",
   brand: "",
   condition: "Good" as Condition,
-  category: "Outerwear" as Category,
+  category: "Clothing" as Category,
   price: "",
   size: "",
   quantity: "1",
@@ -59,7 +49,7 @@ const emptyForm = {
 };
 
 export function SellPage() {
-  const { user, db, createListing, updateListing, removeListing } = useStore();
+  const { user, db, createListing, updateListing, removeListing, becomeSeller } = useStore();
   const route = useRoute();
   const editId = route.query.get("edit") || "";
   const editing = editId ? db.products.find((product) => product.id === editId) : undefined;
@@ -112,6 +102,34 @@ export function SellPage() {
     );
   }
 
+  if (user && !user.isSeller && user.role !== "admin") {
+    return (
+      <main className="page-shell">
+        <div className="section-wrap empty-state page-empty">
+          <Store size={38} />
+          <h2>Open your seller account.</h2>
+          <p>
+            Listings are tied to a seller profile so buyers know who they are buying from. It
+            takes one click to open yours.
+          </p>
+          <div className="modal-actions center">
+            <button
+              type="button"
+              className="button button-olive"
+              onClick={async () => {
+                const result = await becomeSeller(user.name);
+                if (result.ok) toast("Seller account ready. Add your first listing.", "success");
+                else toast(result.error, "error");
+              }}
+            >
+              Start selling
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (editing && editing.sellerId !== user.id) {
     return (
       <main className="page-shell">
@@ -148,13 +166,13 @@ export function SellPage() {
     Promise.all(readers)
       .then((results) => {
         setImages((previous) => [...previous, ...results].slice(0, 6));
-        toast("Photos added. They stay in this browser.", "success");
+        toast("Photos added. They upload when you publish.", "success");
       })
       .catch(() => toast("Could not read that photo.", "error"))
       .finally(() => setFileBusy(false));
   };
 
-  const submit = () => {
+  const submit = async () => {
     const input = {
       title: form.title,
       description: form.description,
@@ -172,7 +190,7 @@ export function SellPage() {
     };
 
     if (editing) {
-      const result = updateListing(editing.id, input);
+      const result = await updateListing(editing.id, input);
       if (result.ok) {
         toast("Listing updated.", "success");
         navigate(`#/product/${editing.id}`);
@@ -182,7 +200,7 @@ export function SellPage() {
       return;
     }
 
-    const result = createListing(input);
+    const result = await createListing(input);
     if (result.ok) {
       toast("Listing created.", "success");
       navigate(`#/product/${result.productId}`);
@@ -213,9 +231,9 @@ export function SellPage() {
               <button
                 type="button"
                 className="text-link remove-link"
-                onClick={() => {
+                onClick={async () => {
                   if (!window.confirm("Remove this listing from the rail?")) return;
-                  const result = removeListing(editing.id);
+                  const result = await removeListing(editing.id);
                   if (result.ok) {
                     toast("Listing removed.");
                     navigate("#/seller?tab=listings");
@@ -263,7 +281,7 @@ export function SellPage() {
                     value={form.category}
                     onChange={(event) => update("category", event.target.value)}
                   >
-                    {categories.map((category) => (
+                    {CATEGORIES.map((category) => (
                       <option key={category} value={category}>
                         {category}
                       </option>

@@ -5,12 +5,6 @@ import { Field } from "../components/Ui";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
 
-const demoAccounts = [
-  { label: "Buyer demo", email: "buyer@lelam.co", password: "demo1234", note: "Shop, offers, bids" },
-  { label: "Seller demo", email: "seller@lelam.co", password: "demo1234", note: "Listings, offers, payouts" },
-  { label: "Admin demo", email: "admin@lelam.co", password: "admin1234", note: "Reviews, settings, finance" },
-];
-
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const { login, register, user } = useStore();
   const [email, setEmail] = useState("");
@@ -22,9 +16,9 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
     if (user) navigate("#/account");
   }, [user]);
 
-  const submit = () => {
+  const submit = async () => {
     if (mode === "login") {
-      const result = login(email, password);
+      const result = await login(email, password);
       if (result.ok) {
         toast("Welcome back.", "success");
         navigate("#/account");
@@ -33,8 +27,13 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
       }
       return;
     }
-    const result = register({ name, email, password, asSeller });
+    const result = await register({ name, email, password, asSeller });
     if (result.ok) {
+      if (result.needsConfirmation) {
+        toast("Check your email to confirm the account, then sign in.", "success");
+        navigate("#/login");
+        return;
+      }
       toast(asSeller ? "Seller account created." : "Account created.", "success");
       navigate(asSeller ? "#/seller" : "#/account");
     } else {
@@ -60,7 +59,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
           </h1>
           <p>
             {mode === "login"
-              ? "Sign in to buy, make private offers, bid in live auctions, and follow your deliveries."
+              ? "Sign in to buy, make private offers, sell, and follow your deliveries."
               : "Create an account to shop the archive, or open a seller account to list the pieces you no longer wear."}
           </p>
 
@@ -75,28 +74,6 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               <LockKeyhole size={16} /> Delivery only within Trivandrum 695xxx
             </li>
           </ul>
-
-          <div className="auth-demo">
-            <span className="auth-demo-label">TRY A DEMO ACCOUNT</span>
-            {demoAccounts.map((account) => (
-              <button
-                key={account.email}
-                type="button"
-                onClick={() => {
-                  setEmail(account.email);
-                  setPassword(account.password);
-                  if (mode === "register") navigate("#/login");
-                }}
-              >
-                <div>
-                  <strong>{account.label}</strong>
-                  <em>{account.note}</em>
-                </div>
-                <span>{account.email}</span>
-              </button>
-            ))}
-            <p>Click a demo account to fill the form. No real account is created.</p>
-          </div>
         </section>
 
         <section className="auth-card">
@@ -109,7 +86,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
             className="auth-form"
             onSubmit={(event) => {
               event.preventDefault();
-              submit();
+              void submit();
             }}
           >
             {mode === "register" && (

@@ -287,8 +287,8 @@ export function OrderDetailPage() {
                     type="button"
                     className="button button-olive"
                     disabled={!shipmentStatus}
-                    onClick={() => {
-                      const result = advanceShipment(
+                    onClick={async () => {
+                      const result = await advanceShipment(
                         order.id,
                         shipmentStatus as NonNullable<Order["shipment"]>["status"],
                       );
@@ -336,8 +336,8 @@ export function OrderDetailPage() {
                 <button
                   type="button"
                   className="button button-olive"
-                  onClick={() => {
-                    const result = addReview(order.id, rating, comment);
+                  onClick={async () => {
+                    const result = await addReview(order.id, rating, comment);
                     if (result.ok) toast("Review posted. Thank you.", "success");
                     else toast(result.error, "error");
                   }}
@@ -381,9 +381,9 @@ export function OrderDetailPage() {
                 <button
                   type="button"
                   className="button button-olive summary-cta"
-                  onClick={() => {
-                    const result = payOrders([order.id]);
-                    if (result.ok) toast("Payment confirmed in demo mode.", "success");
+                  onClick={async () => {
+                    const result = await payOrders([order.id]);
+                    if (result.ok) toast("Payment confirmed.", "success");
                     else toast(result.error, "error");
                   }}
                 >
@@ -395,8 +395,8 @@ export function OrderDetailPage() {
                 <button
                   type="button"
                   className="button button-ghost summary-cta"
-                  onClick={() => {
-                    const result = requestReturn(order.id);
+                  onClick={async () => {
+                    const result = await requestReturn(order.id);
                     if (result.ok) toast("Return requested.");
                     else toast(result.error, "error");
                   }}
@@ -409,9 +409,9 @@ export function OrderDetailPage() {
                 <button
                   type="button"
                   className="button button-ghost summary-cta"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!window.confirm("Cancel this order?")) return;
-                    const result = cancelOrder(order.id);
+                    const result = await cancelOrder(order.id);
                     if (result.ok) toast("Order cancelled.");
                     else toast(result.error, "error");
                   }}
@@ -421,8 +421,11 @@ export function OrderDetailPage() {
               )}
 
               <p className="payment-demo-note">
-                Payment is simulated in this frontend demo. No money moves and no card details are
-                collected.
+                {order.paymentStatus === "paid"
+                  ? "Payment received. The seller will arrange pickup."
+                  : order.status === "delivered"
+                    ? "Cash on delivery is collected at the doorstep."
+                    : "Payment is due on delivery."}
               </p>
             </div>
 

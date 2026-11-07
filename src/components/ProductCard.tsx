@@ -50,12 +50,12 @@ export function ProductCard({ product, compact = false }: { product: Product; co
           <button
             type="button"
             className="quick-add"
-            onClick={() => {
+            onClick={async () => {
               if (inCart) {
                 navigate("#/cart");
                 return;
               }
-              const result = addToCart(product.id);
+              const result = await addToCart(product.id);
               if (result.ok) {
                 toast("Added to cart.", "success");
               } else {

@@ -7,14 +7,8 @@ import { ParallaxComponent } from "@/components/ui/parallax-scrolling";
 import { ClothingRailHero } from "@/components/ui/product-rail-gallery";
 import { Link } from "../components/Link";
 import { ProductCard } from "../components/ProductCard";
+import { CATEGORY_TILES } from "../lib/categories";
 import { useStore } from "../lib/store";
-
-const categoryTiles = [
-  { name: "Outerwear", image: "/images/leather.jpg", label: "Jackets & layers" },
-  { name: "Tops & knits", image: "/images/knit.jpg", label: "Easy everyday" },
-  { name: "Denim", image: "/images/jeans.jpg", label: "Built to last" },
-  { name: "Accessories", image: "/images/bag.jpg", label: "The finishing piece" },
-];
 
 export function HomePage() {
   const { db } = useStore();
@@ -113,7 +107,7 @@ export function HomePage() {
           <span className="section-aside">Shortcuts into the pieces people are browsing now.</span>
         </div>
         <div className="collection-grid collection-grid-four">
-          {categoryTiles.map((tile, index) => (
+          {CATEGORY_TILES.map((tile, index) => (
             <Link
               key={tile.name}
               href={`#/products?category=${encodeURIComponent(tile.name)}`}
