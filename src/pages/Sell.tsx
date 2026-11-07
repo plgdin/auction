@@ -377,7 +377,7 @@ export function SellPage() {
                 <Upload size={18} />
                 <span>
                   <strong>{fileBusy ? "Reading photos…" : "Upload photos"}</strong>
-                  <em>From this device. Demo only, they stay in the browser.</em>
+                  <em>Photos upload securely to the marketplace.</em>
                 </span>
               </label>
 
@@ -402,7 +402,7 @@ export function SellPage() {
               </div>
 
               <div className="sell-presets">
-                <span>Or use a demo photo</span>
+                <span>Or choose a sample photo</span>
                 <div>
                   {presetImages.map((image) => (
                     <button
@@ -507,7 +507,7 @@ export function SellPage() {
               </div>
               <p className="sell-aside-note">
                 {db.settings.sellerAutoApprove
-                  ? "Listings go live immediately in this demo. Admins can still review reports."
+                  ? "Your listing is published to the live marketplace. Admins can still review reports."
                   : "New listings wait for an admin review before going live."}
               </p>
               <button type="button" className="button button-olive summary-cta" onClick={submit}>

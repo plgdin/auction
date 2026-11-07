@@ -170,7 +170,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
 
           <div className="auth-demo-note">
             <UserRound size={14} />
-            This is a frontend demo. Accounts and passwords live in your browser only.
+            Your account is securely managed by Supabase. We never store your password in the browser.
           </div>
         </section>
       </div>

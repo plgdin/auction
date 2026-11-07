@@ -47,6 +47,7 @@ export function OrderDetailPage() {
     requestReturn,
     addReview,
     advanceShipment,
+    confirmCodPayment,
   } = useStore();
   const orderId = route.path.split("/")[2] || "";
   const order = db.orders.find((item) => item.id === orderId);
@@ -104,6 +105,11 @@ export function OrderDetailPage() {
   const existingReview = db.reviews.find((review) => review.orderId === order.id);
   const activeIndex = order.shipment ? shipmentSteps.indexOf(order.shipment.status) : -1;
   const canPay = isBuyer && order.status === "pending_payment";
+  const canUpdateDelivery =
+    (isSeller || isAdmin) &&
+    (order.paymentStatus === "paid" ||
+      (order.paymentMethod === "cod" && order.paymentStatus === "pending")) &&
+    !["delivered", "cancelled", "expired", "returned"].includes(order.status);
   const canCancel =
     (isBuyer || isSeller || isAdmin) &&
     ["pending_payment", "paid", "processing", "awaiting_pickup"].includes(order.status);
@@ -263,7 +269,7 @@ export function OrderDetailPage() {
               )}
             </section>
 
-            {isSeller && order.paymentStatus === "paid" && !["delivered", "cancelled", "expired", "returned"].includes(order.status) && (
+            {canUpdateDelivery && (
               <section className="panel">
                 <div className="panel-head">
                   <h2>Update delivery</h2>
@@ -390,6 +396,23 @@ export function OrderDetailPage() {
                   <CreditCard size={15} /> Pay {formatMoney(order.total)}
                 </button>
               )}
+
+              {(isSeller || isAdmin) &&
+                order.paymentMethod === "cod" &&
+                order.status === "delivered" &&
+                order.paymentStatus === "pending" && (
+                  <button
+                    type="button"
+                    className="button button-olive summary-cta"
+                    onClick={async () => {
+                      const result = await confirmCodPayment(order.id);
+                      if (result.ok) toast("Cash received and recorded.", "success");
+                      else toast(result.error, "error");
+                    }}
+                  >
+                    Confirm cash received
+                  </button>
+                )}
 
               {canReturn && (
                 <button

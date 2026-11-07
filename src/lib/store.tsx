@@ -194,6 +194,7 @@ interface StoreValue {
     status: NonNullable<Order["shipment"]>["status"],
     detail?: { provider?: string; awb?: string; trackingUrl?: string; note?: string },
   ) => Promise<ActionResult>;
+  confirmCodPayment: (orderId: string) => Promise<ActionResult>;
   createListing: (
     input: ListingInput,
   ) => Promise<{ ok: true; productId: string } | { ok: false; error: string }>;
@@ -361,6 +362,7 @@ function mapOrder(row: Row, sellerNames: Map<string, string>): Order {
     total: row.total_paise,
     status: row.status,
     paymentStatus: row.payment_status,
+    paymentMethod: row.payment_method ?? undefined,
     source: row.source,
     offerId: row.offer_id ?? undefined,
     auctionId: row.auction_id ?? undefined,
@@ -1188,6 +1190,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const confirmCodPayment = useCallback(
+    async (orderId: string): Promise<ActionResult> => {
+      try {
+        const { error } = await supabase.rpc("confirm_cod_payment", {
+          p_order_id: orderId,
+        });
+        if (error) return { ok: false, error: messageOf(error) };
+        await refresh();
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: messageOf(error) };
+      }
+    },
+    [refresh],
+  );
+
   const createListing = useCallback(
     async (
       input: ListingInput,
@@ -1636,6 +1654,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     requestReturn,
     addReview,
     advanceShipment,
+    confirmCodPayment,
     createListing,
     updateListing,
     removeListing,
