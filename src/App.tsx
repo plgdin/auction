@@ -311,7 +311,7 @@ function Shell() {
         { label: "Shop all", href: "#/products" },
         { label: "Live auctions", href: "#/auctions" },
         { label: "Sell a piece", href: "#/sell" },
-        { label: "How it works", href: "#how-it-works" },
+        { label: "Categories", href: "#/products" },
       ],
     },
     {

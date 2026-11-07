@@ -1879,3 +1879,170 @@ html { scroll-behavior: smooth; }
 /* Keep the dark hero buttons legible after the marketplace button reset. */
 .parallax .button-olive { background: #ffffff !important; color: #111111 !important; }
 .parallax .button-olive:hover { background: #e9e4da !important; }
+
+/* Shared visual rhythm: readable type, restrained surfaces, and predictable spacing. */
+:root {
+  --mkt-page-width: 1240px;
+  --mkt-page-gutter: clamp(20px, 5vw, 64px);
+  --mkt-space-section: clamp(44px, 6vw, 76px);
+  --mkt-text: 14px;
+  --mkt-small: 12px;
+}
+
+.section-wrap { width: min(var(--mkt-page-width), calc(100% - (var(--mkt-page-gutter) * 2))); }
+.site-shell { font-size: var(--mkt-text); line-height: 1.5; }
+.page-shell { padding-top: 104px; padding-bottom: 72px; }
+.page-shell .section-wrap { max-width: var(--mkt-page-width); }
+.page-header { gap: 24px; padding-bottom: 22px; margin-bottom: 26px; }
+.page-header h1 { font-size: clamp(36px, 4.5vw, 56px); line-height: 1.04; }
+.page-header p,
+.section-intro,
+.prose p { font-size: var(--mkt-text); line-height: 1.65; }
+.eyebrow { font-size: 11px; letter-spacing: 0.12em; }
+.button,
+.button-ghost-light { min-height: 46px; font-size: 13px; }
+.text-link { font-size: 13px; letter-spacing: 0; }
+.field-label { font-size: 11px; letter-spacing: 0.08em; }
+.field-hint,
+.fineprint { font-size: 12px; }
+.field input,
+.field select,
+.field textarea,
+.address-form input,
+.address-form select,
+.address-form textarea { font-size: 14px; }
+.segmented-tabs button { min-height: 40px; font-size: 13px; }
+.status-pill { font-size: 10px; }
+.panel { padding: 24px; border-radius: 12px; }
+.panel-head h2 { font-size: 22px; }
+
+/* Home: keep the rail component intact; simplify the surrounding page. */
+.marketplace-home .parallax__header { height: min(76svh, 720px); min-height: 480px; }
+.marketplace-home .parallax__title { max-width: 900px; font-size: clamp(48px, 8.5vw, 112px); }
+.marketplace-home .parallax__subtitle { color: rgba(255,255,255,.86); }
+.marketplace-home .rail-section { padding-top: 0; padding-bottom: 18px; }
+.marketplace-home .shop-section { padding-top: 54px; padding-bottom: 24px; }
+.marketplace-home .section-heading { margin-bottom: 24px; }
+.marketplace-home .section-heading h2 { font-size: clamp(30px, 3.6vw, 42px); }
+.marketplace-home .product-grid { column-gap: 20px; row-gap: 30px; }
+.marketplace-home .product-eyebrow { font-size: 11px; margin: 12px 0 6px; }
+.marketplace-home .product-name-row,
+.marketplace-home .product-name-row > span { font-size: 14px; }
+.marketplace-home .product-tag { font-size: 10px; }
+.home-auction-link,
+.home-sell-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-block: 22px;
+  border-top: 1px solid var(--mkt-line);
+}
+.home-auction-link p { color: var(--mkt-muted); font-size: 14px; }
+.home-sell-link { margin-top: 12px; margin-bottom: 54px; padding-block: 28px; }
+.home-sell-link h2 { margin-top: 6px; font-family: var(--serif); font-size: clamp(24px, 3vw, 34px); }
+.home-sell-link .eyebrow { color: var(--mkt-muted); }
+.collections-section { padding-top: 24px; padding-bottom: 40px; }
+.collection-grid-four { gap: 16px !important; }
+.collection-grid-four .collection-card { height: 250px; border-radius: 8px; }
+.collection-grid-four .collection-copy h3 { font-size: 23px; }
+
+/* Product page: emphasize the item and primary purchase action. */
+.product-detail-layout { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(28px, 4vw, 48px); }
+.product-gallery-main { border-radius: 8px; }
+.product-detail-info h1 { font-size: clamp(34px, 3.8vw, 48px); line-height: 1.05; }
+.product-detail-price strong { font-size: 30px; }
+.product-detail-topline { font-size: 11px; letter-spacing: .08em; }
+.product-actions { gap: 8px; }
+.product-actions .button { min-width: 0; font-size: 12px; }
+.product-actions .button-olive { flex-basis: 100%; }
+.product-facts span,
+.product-seller-card span:first-child { font-size: 10px; letter-spacing: .08em; }
+.product-facts strong,
+.product-delivery strong,
+.product-seller-card strong { font-size: 13px; }
+.product-delivery p,
+.product-seller-card p { font-size: 12px; }
+.product-trust span { font-size: 11px; }
+
+/* Seller and admin tools: more breathing room and less visual noise. */
+.stat-grid { gap: 14px; margin-bottom: 24px; }
+.stat-card { padding: 20px; border-radius: 10px; }
+.stat-card > span { font-size: 11px; letter-spacing: .05em; }
+.stat-card > em { font-size: 12px; }
+.table-head { font-size: 10px; }
+.table-row { font-size: 13px; padding-block: 14px; }
+.table-product strong { font-size: 13px; }
+.table-product span { font-size: 11px; }
+.table-actions { gap: 12px; }
+.table-actions .text-link { font-size: 12px; }
+.attention-list li,
+.activity-list strong,
+.mini-auction strong { font-size: 13px; }
+.attention-list li span,
+.activity-list span,
+.mini-auction span { font-size: 11px; }
+.offer-product strong,
+.seller-order-head strong,
+.seller-auction-info strong { font-size: 13px; }
+.offer-product span,
+.seller-order-head span,
+.seller-auction-info span { font-size: 11px; }
+.offer-amount span,
+.offer-status span,
+.seller-order-address > span,
+.seller-order-total > span { font-size: 10px; }
+.offer-message,
+.seller-order-address p { font-size: 12px; }
+.dashboard-footnote { font-size: 12px; }
+.dashboard-section { gap: 20px; }
+
+/* Consistent secondary-page text and surfaces. */
+.breadcrumbs { font-size: 12px; margin-bottom: 22px; }
+.catalog-search input,
+.catalog-select { font-size: 14px; }
+.catalog-checks > label,
+.catalog-foot,
+.account-identity p,
+.account-section-head > span { font-size: 12px; }
+.account-order-item span,
+.account-order-item em,
+.notification-list div > span { font-size: 11px; }
+.sell-block,
+.checkout-block { border-radius: 10px; }
+.sell-block-head p,
+.checkout-block-head p { font-size: 12px; }
+.sell-upload em,
+.sell-options em,
+.sell-tips ul { font-size: 12px; }
+
+@media (max-width: 850px) {
+  .page-shell { padding-top: 92px; padding-bottom: 56px; }
+  .marketplace-home .parallax__header { height: 64svh; min-height: 430px; }
+  .product-detail-layout { grid-template-columns: 1fr; gap: 26px; }
+  .marketplace-home .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 14px; }
+  .home-sell-link { margin-bottom: 36px; }
+}
+
+@media (max-width: 640px) {
+  .page-shell { padding-top: 86px; padding-bottom: 44px; }
+  .page-header h1 { font-size: clamp(34px, 9vw, 44px); }
+  .page-header p,
+  .section-intro { font-size: 14px; }
+  .panel { padding: 18px; }
+  .marketplace-home .parallax__header { height: 58svh; min-height: 390px; }
+  .marketplace-home .parallax__title { font-size: clamp(46px, 13vw, 72px); }
+  .marketplace-home .parallax__eyebrow { font-size: 10px; letter-spacing: .16em; }
+  .marketplace-home .product-grid { gap: 22px 12px; }
+  .marketplace-home .product-eyebrow { font-size: 10px; }
+  .marketplace-home .product-name-row,
+  .marketplace-home .product-name-row > span { font-size: 12px; }
+  .home-auction-link,
+  .home-sell-link { align-items: flex-start; flex-direction: column; }
+  .home-sell-link .button { width: 100%; }
+  .collection-grid-four { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .collection-grid-four .collection-card { height: 200px; }
+  .product-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .product-actions .button-olive { grid-column: 1 / -1; }
+  .product-facts { gap: 14px; }
+}

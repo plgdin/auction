@@ -50,7 +50,7 @@ export function LelamNavbar({
     { label: "Shop", icon: NimbusIcons.globe, fx: "spin", href: "#/products" },
     { label: "Auctions", icon: NimbusIcons.home, fx: "glow", href: "#/auctions" },
     { label: "Sell", icon: NimbusIcons.drop, fx: "drop", href: "#/sell" },
-    { label: "How it works", icon: NimbusIcons.plane, fx: "plane", href: "#how-it-works" },
+    { label: "Categories", icon: NimbusIcons.plane, fx: "plane", href: "#/products" },
   ];
 
   const activeIndex =
