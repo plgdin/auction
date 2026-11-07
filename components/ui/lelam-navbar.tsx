@@ -50,7 +50,6 @@ export function LelamNavbar({
     { label: "Shop", icon: NimbusIcons.globe, fx: "spin", href: "#/products" },
     { label: "Auctions", icon: NimbusIcons.home, fx: "glow", href: "#/auctions" },
     { label: "Sell", icon: NimbusIcons.drop, fx: "drop", href: "#/sell" },
-    { label: "Categories", icon: NimbusIcons.plane, fx: "plane", href: "#/products" },
   ];
 
   const activeIndex =
@@ -117,7 +116,7 @@ export function LelamNavbar({
               tone="dark"
               compact={true}
               sound={true}
-              items={navItems.slice(0, 3)}
+              items={navItems}
               onChange={handleNavChange}
             />
           </div>

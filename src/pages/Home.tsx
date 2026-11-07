@@ -3,7 +3,8 @@ import {
   ArrowUpRight,
   ShoppingBag,
 } from "lucide-react";
-import { ParallaxComponent } from "@/components/ui/parallax-scrolling";
+import { motion } from "framer-motion";
+import { Hero } from "@/components/ui/animated-hero";
 import { ClothingRailHero } from "@/components/ui/product-rail-gallery";
 import { Link } from "../components/Link";
 import { ProductCard } from "../components/ProductCard";
@@ -33,14 +34,16 @@ export function HomePage() {
 
   return (
     <main id="top" className="marketplace-home">
-      <ParallaxComponent
-        eyebrow="A LOCAL MARKETPLACE FOR PRE-LOVED FINDS"
-        title="Good pieces. New stories."
-        subtitle="Discover one-of-a-kind pieces from local closets."
-        showContent={false}
-      />
+      <Hero />
 
-      <section className="rail-section" id="rack">
+      <motion.section
+        className="rail-section"
+        id="rack"
+        initial={{ opacity: 0, y: 35 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+      >
         {railItems.length > 0 ? (
           <ClothingRailHero
             items={railItems}
@@ -64,9 +67,16 @@ export function HomePage() {
             </Link>
           </div>
         )}
-      </section>
+      </motion.section>
 
-      <section className="shop-section section-wrap" aria-labelledby="recent-title">
+      <motion.section
+        className="shop-section section-wrap"
+        aria-labelledby="recent-title"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="section-heading">
           <div>
             <div className="eyebrow">RECENTLY LISTED</div>
@@ -81,8 +91,20 @@ export function HomePage() {
         </div>
         {recent.length ? (
           <div className="product-grid">
-            {recent.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {recent.map((product, idx) => (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{
+                  duration: 0.6,
+                  delay: idx * 0.08,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                <ProductCard product={product} />
+              </motion.div>
             ))}
           </div>
         ) : (
@@ -95,16 +117,30 @@ export function HomePage() {
             </Link>
           </div>
         )}
-      </section>
+      </motion.section>
 
-      <section className="home-auction-link section-wrap" aria-label="Auctions">
+      <motion.section
+        className="home-auction-link section-wrap"
+        aria-label="Auctions"
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-70px" }}
+        transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+      >
         <p>Looking for a little excitement?</p>
         <Link href="#/auctions" className="text-link">
           Explore live auctions <ArrowUpRight size={16} />
         </Link>
-      </section>
+      </motion.section>
 
-      <section className="collections-section section-wrap" id="collections">
+      <motion.section
+        className="collections-section section-wrap"
+        id="collections"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="section-heading">
           <div>
             <div className="eyebrow">BROWSE QUICKLY</div>
@@ -114,29 +150,47 @@ export function HomePage() {
         </div>
         <div className="collection-grid collection-grid-four">
           {categoryTiles.map((tile, index) => (
-            <Link
+            <motion.div
               key={tile.name}
-              href={`#/products?category=${encodeURIComponent(tile.name)}`}
-              className={`collection-card ${index % 2 === 0 ? "collection-denim" : "collection-everyday"}`}
+              initial={{ opacity: 0, y: 35, scale: 0.98 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{
+                duration: 0.65,
+                delay: index * 0.09,
+                ease: [0.22, 1, 0.36, 1],
+              }}
             >
-              <img src={tile.image} alt={`${tile.name} listings`} />
-              <span className="collection-number">CATEGORY / {String(index + 1).padStart(2, "0")}</span>
-              <div className="collection-copy">
-                <span>{tile.name.toUpperCase()}</span>
-                <h3>{tile.label}</h3>
-                <span className="collection-link">
-                  Explore {tile.name.toLowerCase()} <ArrowUpRight size={18} />
+              <Link
+                href={`#/products?category=${encodeURIComponent(tile.name)}`}
+                className={`collection-card ${index % 2 === 0 ? "collection-denim" : "collection-everyday"}`}
+              >
+                <img src={tile.image} alt={`${tile.name} listings`} />
+                <span className="collection-number">CATEGORY / {String(index + 1).padStart(2, "0")}</span>
+                <div className="collection-copy">
+                  <span>{tile.name.toUpperCase()}</span>
+                  <h3>{tile.label}</h3>
+                  <span className="collection-link">
+                    Explore {tile.name.toLowerCase()} <ArrowUpRight size={18} />
+                  </span>
+                </div>
+                <span className="collection-arrow">
+                  <ArrowUpRight />
                 </span>
-              </div>
-              <span className="collection-arrow">
-                <ArrowUpRight />
-              </span>
-            </Link>
+              </Link>
+            </motion.div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
-      <section className="home-sell-link section-wrap" id="sell">
+      <motion.section
+        className="home-sell-link section-wrap"
+        id="sell"
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-60px" }}
+        transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div>
           <div className="eyebrow">SELL ON LELAM</div>
           <h2>Ready to pass a piece along?</h2>
@@ -144,7 +198,7 @@ export function HomePage() {
         <Link href="#/sell" className="button button-olive">
           Start selling <ArrowUpRight size={16} />
         </Link>
-      </section>
+      </motion.section>
     </main>
   );
 }

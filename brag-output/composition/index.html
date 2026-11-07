@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0">
+  <title>Lelam — India's eAuction Intelligence Showreel</title>
+
+  <!-- Google Fonts: Outfit, Plus Jakarta Sans, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-space: #030712;
+      --bg-card: rgba(15, 23, 42, 0.78);
+      --border-card: rgba(148, 163, 184, 0.22);
+      --border-glow: rgba(56, 189, 248, 0.45);
+      --cyan-bright: #38bdf8;
+      --blue-accent: #2563eb;
+      --gold-bright: #fbbf24;
+      --gold-dark: #b45309;
+      --emerald-bright: #34d399;
+      --emerald-glow: rgba(52, 211, 153, 0.35);
+      --rose-bright: #f87171;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-sub: #cbd5e1;
+    }
+
+    body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: var(--bg-space);
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      color: var(--text-main);
+      position: relative;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+    }
+
+    /* Ambient Canvas Particle Field */
+    #particle-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1920px;
+      height: 1080px;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.65;
+    }
+
+    /* Scene Wrapper */
+    .scene {
+      position: absolute;
+      inset: 0;
+      width: 1920px;
+      height: 1080px;
+      opacity: 0;
+      visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+
+    /* Common Background Layer */
+    .scene-backdrop {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      z-index: -2;
+      filter: brightness(0.82) contrast(1.08);
+      transform: scale(1.04);
+    }
+
+    .scene-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(3, 7, 18, 0.45) 0%, rgba(3, 7, 18, 0.88) 100%);
+      z-index: -1;
+    }
+
+    /* Top Global HUD Bar */
+    .top-hud {
+      position: absolute;
+      top: 36px;
+      left: 60px;
+      right: 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .brand-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 22px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 999px;
+      backdrop-filter: blur(12px);
+    }
+
+    .brand-pill .logo-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    .brand-pill .brand-name {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 19px;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+
+    .brand-pill .brand-tagline {
+      font-size: 13px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-left: 1px solid rgba(148, 163, 184, 0.3);
+      padding-left: 12px;
+    }
+
+    .hud-stats {
+      display: flex;
+      gap: 20px;
+    }
+
+    .hud-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    .hud-badge strong {
+      color: #38bdf8;
+    }
+
+    /* ----------------------------------------------------
+       SCENE 1: THE CHAOTIC MAZE
+       ---------------------------------------------------- */
+    #scene1 {
+      text-align: center;
+    }
+
+    .s1-container {
+      position: relative;
+      width: 1400px;
+      height: 700px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .s1-kicker {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold-bright);
+      margin-bottom: 18px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 6px 20px;
+      border-radius: 999px;
+    }
+
+    .s1-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 88px;
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      margin-bottom: 24px;
+      color: #ffffff;
+      text-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    }
+
+    .s1-title span.glow-blue {
+      background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
+
+    .s1-subtitle {
+      font-size: 22px;
+      font-weight: 500;
+      color: #94a3b8;
+      max-width: 880px;
+      line-height: 1.5;
+    }
+
+    /* Scattered Portal Floating Cards */
+    .s1-node {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 24px;
+      background: rgba(15, 23, 42, 0.82);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(14px);
+    }
+
+    .s1-node .node-icon {
+      font-size: 20px;
+    }
+
+    .s1-node .node-text {
+      text-align: left;
+    }
+
+    .s1-node .node-text h4 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 2px;
+    }
+
+    .s1-node .node-text p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .s1-node.node-mstc {
+      top: 60px;
+      left: 40px;
+      border-left: 4px solid #f59e0b;
+    }
+
+    .s1-node.node-baanknet {
+      top: 40px;
+      right: 40px;
+      border-left: 4px solid #10b981;
+    }
+
+    .s1-node.node-gem {
+      bottom: 80px;
+      left: 60px;
+      border-left: 4px solid #a855f7;
+    }
+
+    .s1-node.node-drt {
+      bottom: 70px;
+      right: 80px;
+      border-left: 4px solid #ef4444;
+    }
+
+    /* Radar Ping rings */
+    .radar-ring {
+      position: absolute;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.2);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ----------------------------------------------------
+       SCENE 2: THE 3D MULTI-PORTAL STREAM (3 CARDS)
+       ---------------------------------------------------- */
+    #scene2 {
+      perspective: 1400px;
+    }
+
+    .s2-header {
+      text-align: center;
+      margin-bottom: 40px;
+      z-index: 10;
+    }
+
+    .s2-kicker {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--cyan-bright);
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+
+    .s2-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 56px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.03em;
+    }
+
+    .s2-deck {
+      display: flex;
+      gap: 36px;
+      width: 1680px;
+      justify-content: center;
+      transform-style: preserve-3d;
+      transform: rotateX(6deg) translateY(0);
+    }
+
+    .auction-glass-card {
+      flex: 1;
+      max-width: 520px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(20px);
+      position: relative;
+      overflow: hidden;
+      transform-origin: center bottom;
+    }
+
+    .auction-glass-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--card-accent, #38bdf8), transparent);
+    }
+
+    .card-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .portal-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .chip-mstc {
+      background: rgba(245, 158, 11, 0.16);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+
+    .chip-baanknet {
+      background: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .chip-gem {
+      background: rgba(168, 85, 247, 0.16);
+      color: #c084fc;
+      border: 1px solid rgba(168, 85, 247, 0.35);
+    }
+
+    .live-pulse-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+
+    .live-pulse-badge span.dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 6px #10b981;
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.25;
+      margin-bottom: 12px;
+      min-height: 60px;
+    }
+
+    .card-location {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: #94a3b8;
+      margin-bottom: 24px;
+    }
+
+    .card-divider {
+      height: 1px;
+      background: rgba(148, 163, 184, 0.15);
+      margin-bottom: 24px;
+    }
+
+    .card-pricing-block {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .price-group h5 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    .price-group .price-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 32px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.03em;
+    }
+
+    .metric-pill {
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .pill-green {
+      background: rgba(16, 185, 129, 0.18);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .pill-cyan {
+      background: rgba(56, 189, 248, 0.18);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .pill-gold {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+
+    /* ----------------------------------------------------
+       SCENE 3: THE TRUE LANDED COST ENGINE & MARGIN GAUGE
+       ---------------------------------------------------- */
+    #scene3 {
+      padding: 0 100px;
+    }
+
+    .s3-wrapper {
+      width: 1680px;
+      display: flex;
+      gap: 50px;
+      align-items: center;
+    }
+
+    .s3-left-panel {
+      flex: 1.1;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(24px);
+    }
+
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      margin-bottom: 28px;
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 8px;
+    }
+
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .terminal-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+
+    .cost-calc-lines {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .calc-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 18px;
+      background: rgba(30, 41, 59, 0.45);
+      border-radius: 10px;
+      font-size: 16px;
+      color: #cbd5e1;
+    }
+
+    .calc-row.row-base {
+      border-left: 3px solid #38bdf8;
+    }
+
+    .calc-row.row-tax {
+      border-left: 3px solid #f59e0b;
+    }
+
+    .calc-row.row-total {
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-left: 4px solid #38bdf8;
+      padding: 16px 20px;
+      font-weight: 700;
+      font-size: 18px;
+      color: #ffffff;
+      margin-top: 8px;
+    }
+
+    .calc-row .num-val {
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .calc-row .num-val.tax-val {
+      color: #fbbf24;
+    }
+
+    .calc-row .num-val.total-val {
+      color: #38bdf8;
+      font-size: 22px;
+    }
+
+    /* Right Margin Gauge & Metrics */
+    .s3-right-panel {
+      flex: 0.9;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .margin-hero-box {
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 24px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(24px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .margin-hero-box::before {
+      content: '';
+      position: absolute;
+      inset: -50%;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+      z-index: 0;
+    }
+
+    .margin-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .margin-kicker {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #34d399;
+      margin-bottom: 12px;
+    }
+
+    .margin-big-stat {
+      font-family: 'Outfit', sans-serif;
+      font-size: 78px;
+      font-weight: 900;
+      color: #34d399;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      margin-bottom: 12px;
+      text-shadow: 0 0 40px rgba(52, 211, 153, 0.45);
+    }
+
+    .margin-sub-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      color: #cbd5e1;
+      margin-bottom: 24px;
+    }
+
+    .bidding-cap-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .cap-box {
+      background: rgba(30, 41, 59, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 14px;
+      padding: 16px 20px;
+      text-align: left;
+    }
+
+    .cap-box h6 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    .cap-box p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    /* ----------------------------------------------------
+       SCENE 4: THE BIDDING CLIMAX & GOLDEN GAVEL STRIKE
+       ---------------------------------------------------- */
+    #scene4 {
+      text-align: center;
+      position: relative;
+    }
+
+    .s4-container {
+      width: 1500px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gavel-shockwave {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.1);
+      width: 800px;
+      height: 800px;
+      border: 3px solid rgba(251, 191, 36, 0.8);
+      border-radius: 50%;
+      box-shadow: 0 0 80px rgba(251, 191, 36, 0.6), inset 0 0 80px rgba(251, 191, 36, 0.4);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .s4-status-banner {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 30px;
+      background: rgba(245, 158, 11, 0.16);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 800;
+      color: #fbbf24;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 24px;
+      box-shadow: 0 0 30px rgba(245, 158, 11, 0.25);
+    }
+
+    .s4-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 76px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 30px;
+    }
+
+    .s4-title span.gold-highlight {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .s4-guarantee-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      width: 1360px;
+      margin-top: 30px;
+    }
+
+    .guarantee-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 16px;
+      padding: 24px 20px;
+      text-align: center;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+    }
+
+    .guarantee-card .icon-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin: 0 auto 16px;
+    }
+
+    .guarantee-card h4 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .guarantee-card p {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+
+    /* ----------------------------------------------------
+       SCENE 5: THE GRAND FINALE HORIZON
+       ---------------------------------------------------- */
+    #scene5 {
+      text-align: center;
+    }
+
+    .s5-container {
+      width: 1400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .s5-eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: #38bdf8;
+      margin-bottom: 20px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 6px 22px;
+      border-radius: 999px;
+    }
+
+    .s5-brand {
+      font-family: 'Outfit', sans-serif;
+      font-size: 116px;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 10px 50px rgba(56, 189, 248, 0.3);
+    }
+
+    .s5-brand span.dot-co {
+      color: #38bdf8;
+      -webkit-text-fill-color: #38bdf8;
+    }
+
+    .s5-tagline {
+      font-size: 32px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 40px;
+      letter-spacing: -0.02em;
+    }
+
+    .s5-cta-group {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 44px;
+    }
+
+    .cta-btn-primary {
+      padding: 18px 42px;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 999px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 19px;
+      font-weight: 700;
+      color: #ffffff;
+      box-shadow: 0 12px 35px rgba(37, 99, 235, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+
+    .cta-btn-secondary {
+      padding: 18px 42px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 19px;
+      font-weight: 700;
+      color: #f8fafc;
+      backdrop-filter: blur(12px);
+    }
+
+    .s5-live-ticker {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+
+    .s5-live-ticker .ticker-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    .s5-live-ticker strong {
+      color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="root" data-composition-id="root" data-width="1920" data-height="1080">
+    <!-- Background Telemetry Particles Canvas -->
+    <canvas id="particle-canvas" width="1920" height="1080" data-layout-allow-overflow></canvas>
+
+    <!-- Global Persistent HUD Header -->
+    <header class="top-hud">
+      <div class="brand-pill">
+        <div class="logo-dot"></div>
+        <span class="brand-name">LELAM</span>
+        <span class="brand-tagline">AUCTION INTELLIGENCE TERMINAL</span>
+      </div>
+      <div class="hud-stats">
+        <div class="hud-badge">LOTS INDEXED: <strong id="hud-lots-counter">14,892</strong></div>
+        <div class="hud-badge">ACTIVE PORTALS: <strong>MSTC · SARFAESI · GeM · DRT</strong></div>
+      </div>
+    </header>
+
+    <!-- Audio Managed Layer (HyperFrames owns start/duration/volume) -->
+    <audio id="voiceover" src="assets/voiceover_v2.wav" data-start="0.0" data-duration="22.91" data-volume="1.0" preload="auto"></audio>
+    <audio id="bgm" src="assets/music/bgm.mp3" data-start="0.0" data-duration="24.5" data-volume="0.32" preload="auto"></audio>
+
+    <!-- SFX Managed Layer -->
+    <audio id="sfx-switch" src="assets/sfx/switch10.ogg" data-start="0.9" data-volume="0.5" preload="auto"></audio>
+    <audio id="sfx-switch2" src="assets/sfx/switch21.ogg" data-start="4.7" data-volume="0.5" preload="auto"></audio>
+    <audio id="sfx-click" src="assets/sfx/mouseclick1.ogg" data-start="9.5" data-volume="0.5" preload="auto"></audio>
+    <audio id="sfx-bell" src="assets/sfx/impact/impactSoft_medium_000.ogg" data-start="10.5" data-volume="0.5" preload="auto"></audio>
+    <audio id="sfx-slam" src="assets/sfx/impact/impactBell_heavy_000.ogg" data-start="15.2" data-volume="0.75" preload="auto"></audio>
+    <audio id="sfx-switch3" src="assets/sfx/switch10.ogg" data-start="19.9" data-volume="0.5" preload="auto"></audio>
+
+    <!-- ====================================================
+         SCENE 1: THE OPAQUE MAZE & PORTAL CHAOS (0.0s - 4.2s)
+         ==================================================== -->
+    <section id="scene1" class="scene">
+      <div class="scene-backdrop" style="background-image: url('assets/fintech_grid.jpg');"></div>
+      <div class="scene-overlay"></div>
+
+      <div class="radar-ring" id="s1-radar1"></div>
+      <div class="radar-ring" id="s1-radar2"></div>
+
+      <div class="s1-container">
+        <div class="s1-kicker" id="s1-kicker">FRAGMENTED PUBLIC DATA</div>
+        <h1 class="s1-title" id="s1-title">
+          Too many portals.<br>
+          <span class="glow-blue">Zero institutional clarity.</span>
+        </h1>
+        <p class="s1-subtitle" id="s1-sub">
+          Scattered tender PDFs. Unreadable newspaper notices. Hidden scrap taxes and 10% EMD forfeiture risk.
+        </p>
+
+        <!-- Floating Portal Cards -->
+        <div class="s1-node node-mstc" id="s1-n1">
+          <div class="node-icon">📦</div>
+          <div class="node-text">
+            <h4>MSTC Limited</h4>
+            <p>PSU Scrap & Metal Liquidations</p>
+          </div>
+        </div>
+
+        <div class="s1-node node-baanknet" id="s1-n2">
+          <div class="node-icon">🏛️</div>
+          <div class="node-text">
+            <h4>BaankNet SARFAESI</h4>
+            <p>Bank Seized Real Estate</p>
+          </div>
+        </div>
+
+        <div class="s1-node node-gem" id="s1-n3">
+          <div class="node-icon">⚡</div>
+          <div class="node-text">
+            <h4>GeM Government</h4>
+            <p>Ministry Procurement Tenders</p>
+          </div>
+        </div>
+
+        <div class="s1-node node-drt" id="s1-n4">
+          <div class="node-icon">⚖️</div>
+          <div class="node-text">
+            <h4>DRT & IBC NCLT</h4>
+            <p>Corporate Debt Recoveries</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================
+         SCENE 2: THE UNIFIED MULTI-PORTAL STREAM (4.2s - 9.2s)
+         ==================================================== -->
+    <section id="scene2" class="scene">
+      <div class="scene-backdrop" style="background-image: url('assets/fintech_grid.jpg');"></div>
+      <div class="scene-overlay"></div>
+
+      <div class="s2-header">
+        <div class="s2-kicker" id="s2-kicker">INSTITUTIONAL AGGREGATION</div>
+        <h2 class="s2-title" id="s2-title">One Stream. Every Verified Auction in India.</h2>
+      </div>
+
+      <div class="s2-deck" id="s2-deck">
+        <!-- Card 1: MSTC -->
+        <div class="auction-glass-card" style="--card-accent: #f59e0b;" id="s2-card1">
+          <div class="card-meta-row">
+            <span class="portal-chip chip-mstc">MSTC LIMITED</span>
+            <span class="live-pulse-badge"><span class="dot"></span> 18 Bids Active</span>
+          </div>
+          <h3 class="card-title">Heavy Melting Steel Scrap (HMS-1) · 450 MT</h3>
+          <div class="card-location">📍 Mumbai Port Trust · Central Yard</div>
+          <div class="card-divider"></div>
+          <div class="card-pricing-block">
+            <div class="price-group">
+              <h5>RESERVE PRICE</h5>
+              <div class="price-val" id="s2-price1">₹28,50,000</div>
+            </div>
+            <span class="metric-pill pill-gold">EMD TRACKED</span>
+          </div>
+        </div>
+
+        <!-- Card 2: BaankNet -->
+        <div class="auction-glass-card" style="--card-accent: #10b981;" id="s2-card2">
+          <div class="card-meta-row">
+            <span class="portal-chip chip-baanknet">BAANKNET SARFAESI</span>
+            <span class="live-pulse-badge"><span class="dot"></span> Verified Clear Title</span>
+          </div>
+          <h3 class="card-title">3BHK Seized Luxury Duplex Penthouse</h3>
+          <div class="card-location">📍 Indiranagar, Bengaluru · 2,850 Sq.Ft</div>
+          <div class="card-divider"></div>
+          <div class="card-pricing-block">
+            <div class="price-group">
+              <h5>RESERVE PRICE</h5>
+              <div class="price-val" id="s2-price2">₹84,00,000</div>
+            </div>
+            <span class="metric-pill pill-green">-34% BELOW MARKET</span>
+          </div>
+        </div>
+
+        <!-- Card 3: GeM -->
+        <div class="auction-glass-card" style="--card-accent: #a855f7;" id="s2-card3">
+          <div class="card-meta-row">
+            <span class="portal-chip chip-gem">GeM CENTRAL TENDER</span>
+            <span class="live-pulse-badge"><span class="dot"></span> Closes in 48h</span>
+          </div>
+          <h3 class="card-title">500kW Solar Photovoltaic EPC Hardware</h3>
+          <div class="card-location">📍 Ministry of Power · New Delhi</div>
+          <div class="card-divider"></div>
+          <div class="card-pricing-block">
+            <div class="price-group">
+              <h5>TENDER VALUE</h5>
+              <div class="price-val" id="s2-price3">₹1,42,00,000</div>
+            </div>
+            <span class="metric-pill pill-cyan">100% ESCROW</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================
+         SCENE 3: PROPRIETARY LANDED COST ENGINE (9.2s - 14.8s)
+         ==================================================== -->
+    <section id="scene3" class="scene">
+      <div class="scene-backdrop" style="background-image: url('assets/forest_landscape.jpg');"></div>
+      <div class="scene-overlay"></div>
+
+      <div class="s3-wrapper">
+        <!-- Left: Real Calculation Terminal -->
+        <div class="s3-left-panel" id="s3-terminal">
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <span class="terminal-dot dot-red"></span>
+              <span class="terminal-dot dot-yellow"></span>
+              <span class="terminal-dot dot-green"></span>
+            </div>
+            <span class="terminal-title">lelam_landed_cost_engine.py</span>
+            <span class="metric-pill pill-cyan">REAL-TIME TAX AUDIT</span>
+          </div>
+
+          <div class="cost-calc-lines">
+            <div class="calc-row row-base" id="s3-row1">
+              <span>Base Auction Reserve</span>
+              <span class="num-val">₹45,00,000</span>
+            </div>
+            <div class="calc-row row-tax" id="s3-row2">
+              <span>+ GST @ 18.0% (Input Credit Eligible)</span>
+              <span class="num-val tax-val">+₹8,10,000</span>
+            </div>
+            <div class="calc-row row-tax" id="s3-row3">
+              <span>+ Scrap TCS Sec 206C @ 1.0%</span>
+              <span class="num-val tax-val">+₹45,000</span>
+            </div>
+            <div class="calc-row row-tax" id="s3-row4">
+              <span>+ Logistics, Yard Crane & Transport</span>
+              <span class="num-val tax-val">+₹80,000</span>
+            </div>
+            <div class="calc-row row-total" id="s3-row5">
+              <span>TRUE ALL-IN LANDED ACQUISITION COST</span>
+              <span class="num-val total-val" id="s3-total-val">₹54,35,000</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: AI Bidding Caps & Profit Forecast -->
+        <div class="s3-right-panel" id="s3-right">
+          <div class="margin-hero-box">
+            <div class="margin-content">
+              <div class="margin-kicker">AUTOMATED MARGIN PROJECTION</div>
+              <div class="margin-big-stat" id="s3-margin-stat">+24.8%</div>
+              <div class="margin-sub-text">₹13,45,000 Net Profit Cleared</div>
+            </div>
+          </div>
+
+          <div class="bidding-cap-cards">
+            <div class="cap-box" id="s3-cap1">
+              <h6>CONSERVATIVE CAP</h6>
+              <p>₹51,00,000</p>
+            </div>
+            <div class="cap-box" id="s3-cap2">
+              <h6>AGGRESSIVE CAP</h6>
+              <p>₹56,50,000</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================
+         SCENE 4: THE BIDDING CLIMAX & GOLDEN GAVEL (14.8s - 19.5s)
+         ==================================================== -->
+    <section id="scene4" class="scene">
+      <div class="scene-backdrop" style="background-image: url('assets/gold_gavel.jpg');"></div>
+      <div class="scene-overlay"></div>
+
+      <div class="gavel-shockwave" id="s4-shockwave"></div>
+
+      <div class="s4-container">
+        <div class="s4-status-banner" id="s4-banner">
+          <span>⚡ LELAM VALUATION DOSSIER CERTIFIED</span>
+        </div>
+
+        <h2 class="s4-title" id="s4-title">
+          Never Bid Blind Again.<br>
+          <span class="gold-highlight">Institutional Precision. Every Lot.</span>
+        </h2>
+
+        <div class="s4-guarantee-grid" id="s4-grid">
+          <div class="guarantee-card">
+            <div class="icon-circle">🛡️</div>
+            <h4>100% EMD Escrow Safe</h4>
+            <p>Instant tracking & refund recovery assurance</p>
+          </div>
+          <div class="guarantee-card">
+            <div class="icon-circle">📜</div>
+            <h4>SARFAESI Title Audits</h4>
+            <p>Verified bank encumbrance & legal clearance</p>
+          </div>
+          <div class="guarantee-card">
+            <div class="icon-circle">⚡</div>
+            <h4>Zero Hidden Costs</h4>
+            <p>GST, TCS, and logistics pre-calculated</p>
+          </div>
+          <div class="guarantee-card">
+            <div class="icon-circle">📊</div>
+            <h4>Bid Ceiling Protection</h4>
+            <p>Algorithmic safety caps to protect margins</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================
+         SCENE 5: THE GRAND FINALE HORIZON (19.5s - 24.5s)
+         ==================================================== -->
+    <section id="scene5" class="scene">
+      <div class="scene-backdrop" style="background-image: url('assets/luxury_horizon.jpg');"></div>
+      <div class="scene-overlay"></div>
+
+      <div class="s5-container">
+        <div class="s5-eyebrow" id="s5-eyebrow">THE FUTURE OF LIQUIDATION ASSETS</div>
+        
+        <h1 class="s5-brand" id="s5-brand">
+          lelam<span class="dot-co">.co</span>
+        </h1>
+
+        <p class="s5-tagline" id="s5-tagline">
+          Where Indian Auctions Become Mainstream.
+        </p>
+
+        <div class="s5-cta-group" id="s5-cta">
+          <div class="cta-btn-primary">Launch Auction Terminal →</div>
+          <div class="cta-btn-secondary">Explore 14,800+ Lots</div>
+        </div>
+
+        <div class="s5-live-ticker" id="s5-ticker">
+          <span class="ticker-dot"></span>
+          <span>LIVE INTELLIGENCE STREAM · <strong>₹45,000 CR ASSETS INDEXED</strong></span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Master Animation Controller Script -->
+  <script>
+    // --------------------------------------------------------
+    // Deterministic Seeded PRNG
+    // --------------------------------------------------------
+    function mulberry32(a) {
+      return function() {
+        var t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+    const rng = mulberry32(1337);
+
+    // Dynamic Particle Background (Canvas)
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    const particles = [];
+    const NUM_PARTICLES = 65;
+
+    for (let i = 0; i < NUM_PARTICLES; i++) {
+      particles.push({
+        baseX: rng() * 1920,
+        baseY: rng() * 1080,
+        vx: (rng() - 0.5) * 28,
+        vy: (rng() - 0.5) * 28,
+        radius: rng() * 2.2 + 0.8,
+        color: rng() > 0.3 ? 'rgba(56, 189, 248,' : 'rgba(251, 191, 36,'
+      });
+    }
+
+    function renderParticlesAtTime(t) {
+      ctx.clearRect(0, 0, 1920, 1080);
+      for (let i = 0; i < NUM_PARTICLES; i++) {
+        const p = particles[i];
+        let x = (p.baseX + p.vx * t) % 1920;
+        let y = (p.baseY + p.vy * t) % 1080;
+        if (x < 0) x += 1920;
+        if (y < 0) y += 1080;
+
+        ctx.beginPath();
+        ctx.arc(x, y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color + '0.7)';
+        ctx.fill();
+      }
+    }
+
+    // --------------------------------------------------------
+    // Hyperframes Master Timeline Registration
+    // --------------------------------------------------------
+    const masterTimeline = gsap.timeline({ paused: true });
+    window.__timelines = window.__timelines || {};
+    window.__timelines["root"] = masterTimeline;
+
+    // Canvas particle synchronization with timeline
+    masterTimeline.to({}, {
+      duration: 24.5,
+      ease: 'none',
+      onUpdate: function() {
+        renderParticlesAtTime(masterTimeline.time());
+      }
+    }, 0);
+
+    // ========================================================
+    // SCENE 1: 0.0s - 4.2s (Duration: 4.2s)
+    // ========================================================
+    masterTimeline
+      .set('#scene1', { autoAlpha: 1 }, 0)
+      .fromTo('#s1-kicker', { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, 0.2)
+      .fromTo('#s1-title', { y: 30, opacity: 0, scale: 0.96 }, { y: 0, opacity: 1, scale: 1, duration: 0.8, ease: 'power4.out' }, 0.3)
+      .fromTo('#s1-sub', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: 'power3.out' }, 0.6)
+      // Sonar Radar Rings
+      .fromTo('#s1-radar1', { scale: 0.2, opacity: 0.8 }, { scale: 2.2, opacity: 0, duration: 2.2, ease: 'power2.out' }, 0.4)
+      .fromTo('#s1-radar2', { scale: 0.2, opacity: 0.8 }, { scale: 2.2, opacity: 0, duration: 2.2, ease: 'power2.out' }, 1.2)
+      // Scattered Nodes with 3D Pop
+      .fromTo(['#s1-n1', '#s1-n2', '#s1-n3', '#s1-n4'], 
+        { scale: 0.7, opacity: 0, y: 30 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.7, stagger: 0.16, ease: 'back.out(1.8)' }, 0.8
+      )
+      // Scene 1 Exit Transition
+      .to('#scene1', { autoAlpha: 0, scale: 0.97, duration: 0.45, ease: 'power2.inOut' }, 3.9);
+
+    // ========================================================
+    // SCENE 2: 4.2s - 9.2s (Duration: 5.0s)
+    // ========================================================
+    masterTimeline
+      .set('#scene2', { autoAlpha: 1 }, 4.2)
+      .fromTo('#s2-kicker', { y: -15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }, 4.3)
+      .fromTo('#s2-title', { y: 25, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: 'power4.out' }, 4.4)
+      // Snappy 3-Card Deck Arrival
+      .fromTo(['#s2-card1', '#s2-card2', '#s2-card3'],
+        { y: 80, opacity: 0, rotateX: -14, scale: 0.9 },
+        { y: 0, opacity: 1, rotateX: 0, scale: 1, duration: 0.8, stagger: 0.18, ease: 'back.out(1.5)' }, 4.6
+      )
+      // Numeric Bid Counter Animations
+      .to({}, {
+        duration: 2.5,
+        onUpdate: function() {
+          const progress = this.progress();
+          const p1 = Math.round(2850000 + progress * 270000);
+          const p2 = Math.round(8400000);
+          const p3 = Math.round(14200000);
+          document.getElementById('s2-price1').textContent = '₹' + p1.toLocaleString('en-IN');
+          document.getElementById('s2-price2').textContent = '₹' + p2.toLocaleString('en-IN');
+          document.getElementById('s2-price3').textContent = '₹' + p3.toLocaleString('en-IN');
+        }
+      }, 5.0)
+      // Scene 2 Exit
+      .to('#scene2', { autoAlpha: 0, y: -30, duration: 0.45, ease: 'power2.inOut' }, 8.9);
+
+    // ========================================================
+    // SCENE 3: 9.2s - 14.8s (Duration: 5.6s)
+    // ========================================================
+    masterTimeline
+      .set('#scene3', { autoAlpha: 1 }, 9.2)
+      .fromTo('#s3-terminal', { x: -60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.7, ease: 'power4.out' }, 9.3)
+      .fromTo('#s3-right', { x: 60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.7, ease: 'power4.out' }, 9.4)
+      // Line by line tax & logistics rows
+      .fromTo(['#s3-row1', '#s3-row2', '#s3-row3', '#s3-row4', '#s3-row5'],
+        { x: -20, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.45, stagger: 0.16, ease: 'power3.out' }, 9.7
+      )
+      // Big Margin Callout Pop
+      .fromTo('#s3-margin-stat', { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.7, ease: 'back.out(2)' }, 10.4)
+      .fromTo(['#s3-cap1', '#s3-cap2'],
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.15, ease: 'power3.out' }, 10.8
+      )
+      // Scene 3 Exit
+      .to('#scene3', { autoAlpha: 0, scale: 0.97, duration: 0.45, ease: 'power2.inOut' }, 14.5);
+
+    // ========================================================
+    // SCENE 4: 14.8s - 19.5s (Duration: 4.7s)
+    // ========================================================
+    masterTimeline
+      .set('#scene4', { autoAlpha: 1 }, 14.8)
+      .fromTo('#s4-banner', { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }, 14.9)
+      .fromTo('#s4-title', { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: 'power4.out' }, 15.0)
+      // The Gavel Strike Shockwave
+      .fromTo('#s4-shockwave',
+        { scale: 0.1, opacity: 1 },
+        { scale: 2.8, opacity: 0, duration: 1.4, ease: 'power2.out' }, 15.2
+      )
+      // 4 Institutional Guarantees Slam In
+      .fromTo('.guarantee-card',
+        { y: 40, opacity: 0, scale: 0.9 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.6, stagger: 0.12, ease: 'back.out(1.6)' }, 15.5
+      )
+      // Scene 4 Exit
+      .to('#scene4', { autoAlpha: 0, duration: 0.45, ease: 'power2.inOut' }, 19.2);
+
+    // ========================================================
+    // SCENE 5: 19.5s - 24.5s (Duration: 5.0s)
+    // ========================================================
+    masterTimeline
+      .set('#scene5', { autoAlpha: 1 }, 19.5)
+      .fromTo('#s5-eyebrow', { y: -15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }, 19.6)
+      .fromTo('#s5-brand', { scale: 0.85, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8, ease: 'power4.out' }, 19.8)
+      .fromTo('#s5-tagline', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: 'power3.out' }, 20.2)
+      .fromTo('#s5-cta', { y: 25, opacity: 0, scale: 0.95 }, { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(1.7)' }, 20.6)
+      .fromTo('#s5-ticker', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 21.0);
+  </script>
+</body>
+</html>

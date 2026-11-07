@@ -1,4 +1,23 @@
 @import "tailwindcss";
+@source "../components";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
 
 @font-face {
   font-family: "Gumela Arabic";
@@ -17,18 +36,30 @@
   --paper: #ffffff;
   --ink: #000000;
   --olive: #000000;
-  --muted: #71717a;
   --line: #e4e4e7;
   --serif: "DM Serif Display", Georgia, serif;
   --background: #ffffff;
-  --foreground: #000000;
+  --foreground: #09090b;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #18181b;
 }
 * {
   box-sizing: border-box;
 }
 html {
-  scroll-behavior: auto;
-  scroll-padding-top: 35px;
+  scroll-behavior: smooth;
+  scroll-padding-top: 90px;
 }
 body {
   margin: 0;
