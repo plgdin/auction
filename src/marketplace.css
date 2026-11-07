@@ -2046,3 +2046,305 @@ html { scroll-behavior: smooth; }
   .product-actions .button-olive { grid-column: 1 / -1; }
   .product-facts { gap: 14px; }
 }
+
+/* ============================================================
+   LANDING PAGE SYSTEM (Based on landing-page-design skill)
+   ============================================================ */
+
+.landing-section {
+  padding-top: 64px;
+  padding-bottom: 64px;
+}
+
+@media (min-width: 768px) {
+  .landing-section {
+    padding-top: 96px;
+    padding-bottom: 96px;
+  }
+}
+
+.landing-section-head {
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.landing-section-head h2 {
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  color: var(--mkt-ink);
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.landing-section-head p {
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--mkt-muted);
+  text-wrap: pretty;
+}
+
+/* Benefits Grid */
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 24px;
+}
+
+@media (min-width: 640px) {
+  .benefits-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .benefits-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.benefit-card {
+  background: #ffffff;
+  border: 1px solid var(--mkt-line);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1), border-color 300ms ease;
+}
+
+.benefit-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--mkt-olive);
+}
+
+.benefit-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--mkt-olive-soft);
+  color: var(--mkt-olive);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.benefit-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--mkt-ink);
+  margin-bottom: 8px;
+  line-height: 24px;
+}
+
+.benefit-card p {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mkt-muted);
+}
+
+/* How It Works Steps */
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  .how-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.how-card {
+  background: #ffffff;
+  border: 1px solid var(--mkt-line);
+  border-radius: 16px;
+  padding: 32px 24px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.how-step-num {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--mkt-olive);
+  margin-bottom: 16px;
+}
+
+.how-card h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--mkt-ink);
+  margin-bottom: 8px;
+}
+
+.how-card p {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mkt-muted);
+}
+
+/* FAQ Accordion */
+.faq-list {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.faq-item {
+  border: 1px solid var(--mkt-line);
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+  transition: border-color 200ms ease;
+}
+
+.faq-item:hover {
+  border-color: #c5bfb3;
+}
+
+.faq-trigger {
+  width: 100%;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  text-align: left;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--mkt-ink);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.faq-answer {
+  padding: 0 24px 20px 24px;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--mkt-muted);
+}
+
+/* Testimonials Grid */
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  .testimonials-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.testimonial-card {
+  background: #ffffff;
+  border: 1px solid var(--mkt-line);
+  border-radius: 16px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.testimonial-quote {
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--mkt-ink);
+  font-style: normal;
+}
+
+.testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.testimonial-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--mkt-olive-soft);
+  color: var(--mkt-olive);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.testimonial-info strong {
+  display: block;
+  font-size: 14px;
+  color: var(--mkt-ink);
+}
+
+.testimonial-info span {
+  display: block;
+  font-size: 12px;
+  color: var(--mkt-muted);
+}
+
+/* Final Risk Reversal CTA */
+.final-cta-section {
+  background: #131209;
+  color: #ffffff;
+  border-radius: 24px;
+  padding: 64px 24px;
+  text-align: center;
+  margin-top: 48px;
+  margin-bottom: 64px;
+  position: relative;
+  overflow: hidden;
+}
+
+.final-cta-content {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.final-cta-content h2 {
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin-bottom: 16px;
+  text-wrap: balance;
+}
+
+.final-cta-content p {
+  font-size: 16px;
+  line-height: 24px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 32px;
+  text-wrap: pretty;
+}
+
+.final-cta-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+@media (min-width: 640px) {
+  .final-cta-actions {
+    flex-direction: row;
+  }
+}

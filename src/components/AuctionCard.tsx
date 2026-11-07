@@ -1,4 +1,5 @@
 import { ArrowUpRight, Gavel } from "lucide-react";
+import NumberTicker from "@/components/ui/number-ticker-02";
 import { formatMoney } from "../lib/format";
 import type { Auction, Product } from "../lib/types";
 import { Countdown } from "./Countdown";
@@ -43,11 +44,16 @@ export function AuctionCard({ auction, product }: { auction: Auction; product: P
           <div>
             <span>{isLive ? "Current bid" : isCompleted ? "Winning bid" : "Starting at"}</span>
             <strong>
-              {formatMoney(
-                isLive || isCompleted
-                  ? auction.currentBid ?? auction.startingPrice
-                  : auction.startingPrice,
-              )}
+              <NumberTicker
+                value={Math.round(
+                  (isLive || isCompleted
+                    ? auction.currentBid ?? auction.startingPrice
+                    : auction.startingPrice) / 100
+                )}
+                currency="INR"
+                decimals={0}
+                className="font-bold text-base text-inherit"
+              />
             </strong>
           </div>
           <div>
