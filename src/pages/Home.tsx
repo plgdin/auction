@@ -472,15 +472,18 @@ export function HomePage() {
       />
 
       {/* 7. 21st.dev Component: BentoGrid & BentoCard Value Propositions */}
-      <section className="section-wrap py-6 sm:py-8" aria-labelledby="bento-title">
-        <div className="landing-section-head mb-6">
-          <span className="eyebrow text-sm sm:text-base font-bold uppercase tracking-[0.22em] text-[#c89b3c]">
-            WHY COLLECTORS CHOOSE LELAM
+      <section className="section-wrap py-16 sm:py-20" aria-labelledby="bento-title">
+        <div className="landing-section-head mb-10 text-center max-w-2xl mx-auto">
+          <span className="eyebrow text-sm sm:text-base font-bold uppercase tracking-[0.24em] text-[#c89b3c]">
+            WHY CHOOSE LELAM
           </span>
           <h2 id="bento-title" className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mt-2">
             Built for mindful fashion collectors
           </h2>
-          <p className="text-stone-300 text-base sm:text-lg max-w-xl mt-2 leading-relaxed">
+          <p
+            className="text-stone-300 text-base sm:text-lg max-w-xl mx-auto mt-3 leading-relaxed"
+            style={{ textWrap: "balance" }}
+          >
             No fast fashion landfill. Every garment is selected for longevity, honest condition, and unique provenance.
           </p>
         </div>

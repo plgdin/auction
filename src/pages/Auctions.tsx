@@ -52,17 +52,23 @@ export function AuctionsPage() {
 
         <div className="auction-explain">
           <div>
-            <Gavel size={18} />
+            <div className="auction-explain-icon">
+              <Gavel size={18} />
+            </div>
             <strong>Auctions are optional</strong>
             <p>Sellers opt in. Everything else stays buy-now or make-an-offer.</p>
           </div>
           <div>
-            <ShieldCheck size={18} />
+            <div className="auction-explain-icon">
+              <ShieldCheck size={18} />
+            </div>
             <strong>Bidders stay anonymous</strong>
             <p>Only aliases appear in the bid feed. Never names or emails.</p>
           </div>
           <div>
-            <Clock3 size={18} />
+            <div className="auction-explain-icon">
+              <Clock3 size={18} />
+            </div>
             <strong>Last-second bids extend</strong>
             <p>A bid inside the final seconds adds time so nobody wins by luck.</p>
           </div>

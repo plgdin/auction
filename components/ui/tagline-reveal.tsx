@@ -79,44 +79,63 @@ export function TaglineReveal({
   return (
     <section
       ref={containerRef}
-      className={`w-full py-8 sm:py-10 px-5 sm:px-8 max-w-4xl mx-auto flex flex-col items-center text-center select-none ${className}`}
+      className={`relative w-full bg-[#11130d] border-y border-white/10 py-16 sm:py-24 px-6 sm:px-8 overflow-hidden select-none ${className}`}
       aria-label="Core manifesto"
     >
-      {eyebrow && (
-        <span className="text-sm sm:text-base uppercase tracking-[0.24em] font-bold text-[#c89b3c] mb-3 inline-block">
-          {eyebrow}
-        </span>
-      )}
+      {/* Ambient warm radial glow */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 opacity-60"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(200, 155, 60, 0.12), transparent 70%)",
+        }}
+        aria-hidden="true"
+      />
 
-      <div className="max-w-[680px] mx-auto space-y-3">
-        {lines.map((line, lineIndex) => {
-          const lineWords = line.split(/\s+/);
-          return (
-            <p
-              key={lineIndex}
-              className="text-2xl sm:text-3xl md:text-4xl font-bold leading-[1.25] tracking-tight text-white"
-              style={{ textWrap: "balance" }}
-            >
-              {lineWords.map((word, wIdx) => {
-                const currentIdx = wordIndexCounter++;
-                const isActive = prefersReducedMotion || currentIdx < activeWordCount;
+      <div className="max-w-4xl mx-auto flex flex-col items-center text-center">
+        {eyebrow && (
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-[0.24em] text-[#c89b3c] bg-white/[0.04] border border-[#c89b3c]/30 mb-6 shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c]" />
+            <span>{eyebrow}</span>
+          </div>
+        )}
 
-                return (
-                  <span
-                    key={wIdx}
-                    className="inline-block mr-[0.28em] transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]"
-                    style={{
-                      color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.42)",
-                      transform: isActive ? "translateY(0)" : "translateY(1px)",
-                    }}
-                  >
-                    {word}
-                  </span>
-                );
-              })}
-            </p>
-          );
-        })}
+        <div className="max-w-[760px] mx-auto space-y-3 sm:space-y-4">
+          {lines.map((line, lineIndex) => {
+            const lineWords = line.split(/\s+/);
+            return (
+              <p
+                key={lineIndex}
+                className="text-2xl sm:text-4xl lg:text-[40px] font-semibold leading-[1.3] tracking-tight text-white"
+                style={{ textWrap: "balance" }}
+              >
+                {lineWords.map((word, wIdx) => {
+                  const currentIdx = wordIndexCounter++;
+                  const isActive = prefersReducedMotion || currentIdx < activeWordCount;
+
+                  return (
+                    <span
+                      key={wIdx}
+                      className="inline-block mr-[0.28em] transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                      style={{
+                        color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.32)",
+                        transform: isActive ? "translateY(0)" : "translateY(2px)",
+                      }}
+                    >
+                      {word}
+                    </span>
+                  );
+                })}
+              </p>
+            );
+          })}
+        </div>
+
+        <div className="mt-8 flex items-center justify-center gap-4 text-[11px] font-mono uppercase tracking-[0.22em] text-white/40">
+          <span className="h-px w-8 bg-white/20" />
+          <span>EST. 2028 · TRIVANDRUM</span>
+          <span className="h-px w-8 bg-white/20" />
+        </div>
       </div>
     </section>
   );
