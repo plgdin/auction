@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowDown, CheckCircle2, MoveRight, ShoppingBag, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowDown, MoveRight, ShoppingBag, Sparkles } from "lucide-react";
 import { navigate, smoothScrollTo } from "@/src/components/Link";
 import Velaris from "@/components/ui/velaris";
 
@@ -57,7 +57,7 @@ function Hero({
       } else {
         setTitleNumber(titleNumber + 1);
       }
-    }, 2400);
+    }, 2800);
     return () => clearTimeout(timeoutId);
   }, [titleNumber, titles]);
 
@@ -84,12 +84,26 @@ function Hero({
           >
             {/* Heading 1 per B5: Left to right text gradient #FFFFFF -> #9B9B9B */}
             <h1
-              className="text-4xl sm:text-5xl md:text-6xl font-semibold leading-[1.05] tracking-tight bg-gradient-to-r from-white via-stone-100 to-[#9B9B9B] bg-clip-text text-transparent px-2"
+              className="text-4xl sm:text-5xl md:text-6xl font-semibold leading-[1.1] tracking-tight bg-gradient-to-r from-white via-stone-100 to-[#9B9B9B] bg-clip-text text-transparent px-2"
               style={{ textWrap: "balance" }}
             >
-              <span>{prefix}</span>
-              <span className="block mt-1 sm:mt-2 text-[#c89b3c]">
-                {titles[titleNumber]}
+              <span className="block">{prefix}</span>
+              <span className="relative block mt-2 h-[1.3em] overflow-hidden text-[#c89b3c]">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={titleNumber}
+                    initial={{ opacity: 0, y: 32, filter: "blur(8px)" }}
+                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, y: -32, filter: "blur(8px)" }}
+                    transition={{
+                      duration: 0.55,
+                      ease: [0.16, 1, 0.3, 1],
+                    }}
+                    className="inline-block text-[#c89b3c]"
+                  >
+                    {titles[titleNumber]}
+                  </motion.span>
+                </AnimatePresence>
               </span>
             </h1>
 
@@ -134,19 +148,6 @@ function Hero({
                 <Sparkles className="w-4 h-4 text-[#c89b3c]" strokeWidth={2.2} />
                 <span>{secondaryCtaText}</span>
               </button>
-            </div>
-
-            {/* Proof signals strip directly under CTAs per A2 */}
-            <div className="flex flex-wrap items-center justify-center gap-y-2 gap-x-5 text-xs text-white/60 pt-2 font-medium">
-              <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 size={13} className="text-[#c89b3c]" /> 340+ verified pieces
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 size={13} className="text-[#c89b3c]" /> Fabric condition graded
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 size={13} className="text-[#c89b3c]" /> Trivandrum courier 695xxx
-              </span>
             </div>
           </motion.div>
         </div>

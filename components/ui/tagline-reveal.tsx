@@ -79,22 +79,22 @@ export function TaglineReveal({
   return (
     <section
       ref={containerRef}
-      className={`w-full py-20 sm:py-28 px-5 sm:px-8 max-w-5xl mx-auto flex flex-col items-center text-center select-none ${className}`}
+      className={`w-full py-8 sm:py-10 px-5 sm:px-8 max-w-4xl mx-auto flex flex-col items-center text-center select-none ${className}`}
       aria-label="Core manifesto"
     >
       {eyebrow && (
-        <span className="text-xs uppercase tracking-[0.24em] font-medium text-[#c89b3c] mb-6 inline-block">
+        <span className="text-sm sm:text-base uppercase tracking-[0.24em] font-bold text-[#c89b3c] mb-3 inline-block">
           {eyebrow}
         </span>
       )}
 
-      <div className="max-w-[680px] mx-auto space-y-4">
+      <div className="max-w-[680px] mx-auto space-y-3">
         {lines.map((line, lineIndex) => {
           const lineWords = line.split(/\s+/);
           return (
             <p
               key={lineIndex}
-              className="text-3xl sm:text-4xl md:text-5xl font-semibold leading-[1.18] tracking-tight"
+              className="text-2xl sm:text-3xl md:text-4xl font-bold leading-[1.25] tracking-tight text-white"
               style={{ textWrap: "balance" }}
             >
               {lineWords.map((word, wIdx) => {
@@ -104,11 +104,10 @@ export function TaglineReveal({
                 return (
                   <span
                     key={wIdx}
-                    className="inline-block mr-[0.28em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                    className="inline-block mr-[0.28em] transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]"
                     style={{
-                      color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.28)",
-                      transform: isActive ? "translateY(0)" : "translateY(2px)",
-                      filter: isActive ? "none" : "blur(0.4px)",
+                      color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.42)",
+                      transform: isActive ? "translateY(0)" : "translateY(1px)",
                     }}
                   >
                     {word}

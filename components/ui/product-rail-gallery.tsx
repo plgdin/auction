@@ -252,8 +252,8 @@ function silhouetteMask(kind: GarmentKind, side: "front" | "back") {
   const key = `${kind}:${side}`;
   const cached = maskCache.get(key) as string | undefined;
   if (cached) return cached;
-  const paths = silhouettePaths(artFor(kind, side)).map((d) => `<path d='${d}'/>`).join("");
-  const url = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${VB_W} ${VB_H}' preserveAspectRatio='xMidYMin meet'>${paths}</svg>`)}")`;
+  const paths = silhouettePaths(artFor(kind, side)).map((d) => `<path d='${d}' fill='white'/>`).join("");
+  const url = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${VB_W} ${VB_H}' preserveAspectRatio='xMidYMin meet'><g fill='white'>${paths}</g></svg>`)}")`;
   maskCache.set(key, url);
   return url;
 }
@@ -500,8 +500,33 @@ function SideArt({ uid, kind, color, trim }: { uid: string; kind: GarmentKind; c
   );
 }
 
-function Photo({ src, alt, full }: { src: string; alt: string; full: boolean }) {
-  return <img src={src} alt={alt} draggable={false} className={`pointer-events-none absolute inset-x-0 bottom-0 size-auto w-full select-none object-contain object-top ${full ? "top-0 h-full" : "top-[8%] h-[92%]"}`} />;
+function Photo({ src, alt, mask }: { src: string; alt: string; full?: boolean; mask?: string }) {
+  const maskStyle: React.CSSProperties = mask
+    ? {
+        WebkitMaskImage: mask,
+        maskImage: mask,
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "top center",
+        maskPosition: "top center",
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+      }
+    : {};
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 size-full select-none"
+      style={maskStyle}
+    >
+      <img
+        src={src}
+        alt={alt}
+        draggable={false}
+        className="w-full h-full object-cover object-center"
+      />
+    </div>
+  );
 }
 
 type Sim = {
@@ -933,9 +958,17 @@ export function ClothingRailHero({
       <Defs uid={uid} />
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10" style={{ background: "radial-gradient(120% 70% at 50% 0%, rgba(255, 255, 255, 0.06), transparent 65%), linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.8))" }} />
       {(eyebrow || heading) && (
-        <header className="relative z-10 flex flex-col items-center gap-2 px-6 pt-8 text-center">
-          {eyebrow && <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-zinc-400">{eyebrow}</p>}
-          {heading && <h2 className="text-balance text-2xl font-bold tracking-tight sm:text-3xl text-white">{heading}</h2>}
+        <header className="relative z-10 flex flex-col items-center gap-3 px-6 pt-12 pb-4 text-center max-w-4xl mx-auto">
+          {eyebrow && (
+            <p className="text-sm sm:text-base font-extrabold uppercase tracking-[0.26em] text-[#c89b3c]">
+              {eyebrow}
+            </p>
+          )}
+          {heading && (
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
+              {heading}
+            </h2>
+          )}
         </header>
       )}
 
@@ -970,8 +1003,7 @@ export function ClothingRailHero({
           const color = item.color ?? "#ffffff";
           const trim = item.trim ?? mix(color, -0.12);
           const turned = active === i;
-          const mask = item.image ? `url("${item.image}")` : silhouetteMask(kind, "front");
-          const photoBox = hanger === "none" ? "inset-0" : "inset-x-0 bottom-0 top-[8%]";
+          const mask = silhouetteMask(kind, "front");
           return (
             <button
               key={item.id}
@@ -990,23 +1022,55 @@ export function ClothingRailHero({
             >
               <span ref={(node) => { swings.current[i] = node; }} className="absolute inset-0" style={{ transformOrigin: `50% ${(HOOK_TOP / VB_H) * 100}%` }}>
                 <span aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ filter: `blur(${Math.max(3, h * 0.022).toFixed(1)}px)` }}>
-                  <span ref={(node) => { shadows.current[i] = node; }} className={`absolute block bg-black opacity-[0.35] dark:opacity-75 ${item.image ? photoBox : "inset-0"}`} style={{ WebkitMask: `${mask} top center / contain no-repeat`, mask: `${mask} top center / contain no-repeat` }} />
+                  <span
+                    ref={(node) => { shadows.current[i] = node; }}
+                    className="absolute inset-0 block bg-black opacity-[0.35] dark:opacity-75"
+                    style={{
+                      WebkitMaskImage: mask,
+                      maskImage: mask,
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                      WebkitMaskPosition: "top center",
+                      maskPosition: "top center",
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                    }}
+                  />
                 </span>
                 {(item.sideImage || !item.image) && (
                   <span ref={(node) => { sides.current[i] = node; }} data-face="side" className="absolute inset-0" style={{ transform: `perspective(${PERSPECTIVE}px) rotateY(0deg)` }}>
                     <SideHanger uid={uid} material={hanger} />
-                    {item.sideImage ? <Photo src={item.sideImage} alt="" full={hanger === "none"} /> : <SideArt uid={uid} kind={kind} color={color} trim={trim} />}
+                    {item.sideImage ? <Photo src={item.sideImage} alt="" full mask={silhouetteMask(kind, "front")} /> : <SideArt uid={uid} kind={kind} color={color} trim={trim} />}
                   </span>
                 )}
                 <span ref={(node) => { turns.current[i] = node; }} data-turn className="absolute inset-0 rounded-lg [transform-style:preserve-3d]" style={{ transform: `perspective(${PERSPECTIVE}px) rotateY(${REST}deg)`, opacity: item.image && !item.sideImage ? 1 : 0 }}>
                   {(["front", "back"] as const).map((side) => (
                     <span key={side} data-face={side} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: side === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
-                      <Hanger uid={uid} side={side} kind={item.image ? null : kind} material={hanger} />
+                      <Hanger uid={uid} side={side} kind={kind} material={hanger} />
                       <span ref={side === "front" ? (node) => { drapes.current[i] = node; } : undefined} data-drape className="absolute inset-0 origin-top [transform:skewX(var(--drape,0deg))]" style={side === "back" ? { transform: "skewX(calc(var(--drape, 0deg) * -1))" } : undefined}>
-                        {item.image
-                          ? <Photo src={(side === "back" ? item.backImage : undefined) ?? item.image} alt="" full={hanger === "none"} />
-                          : <Fabric uid={uid} kind={kind} side={side} color={color} trim={trim} />}
-                        <span ref={side === "front" ? (node) => { shades.current[i] = node; } : undefined} className={`pointer-events-none absolute bg-black ${item.image ? photoBox : "inset-0"}`} style={{ opacity: "var(--shade, 0.2)", WebkitMask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat`, mask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat` }} />
+                        {item.image ? (
+                          <>
+                            <Fabric uid={uid} kind={kind} side={side} color={color} trim={trim} />
+                            <Photo src={(side === "back" ? item.backImage : undefined) ?? item.image} alt="" full mask={silhouetteMask(kind, side)} />
+                          </>
+                        ) : (
+                          <Fabric uid={uid} kind={kind} side={side} color={color} trim={trim} />
+                        )}
+                        <span
+                          ref={side === "front" ? (node) => { shades.current[i] = node; } : undefined}
+                          className="pointer-events-none absolute inset-0 bg-black"
+                          style={{
+                            opacity: "var(--shade, 0.2)",
+                            WebkitMaskImage: silhouetteMask(kind, side),
+                            maskImage: silhouetteMask(kind, side),
+                            WebkitMaskSize: "contain",
+                            maskSize: "contain",
+                            WebkitMaskPosition: "top center",
+                            maskPosition: "top center",
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                          }}
+                        />
                       </span>
                     </span>
                   ))}
@@ -1036,8 +1100,8 @@ export function ClothingRailHero({
 
       <div className="relative z-10 flex flex-col items-center gap-4 px-6 pb-8 pt-4 text-center">
         <div id={`${uid}-caption`} aria-live="polite" className="min-h-[3.25rem]">
-          <p key={current?.id ?? "caption"} className="animate-in fade-in text-base font-semibold text-white [animation-duration:300ms] motion-reduce:animate-none">{current ? current.name : caption}</p>
-          {current?.description && <p key={`${current.id}-d`} className="mx-auto mt-1 max-w-[42ch] text-[13px] leading-relaxed text-zinc-400">{current.description}</p>}
+          <p key={current?.id ?? "caption"} className="animate-in fade-in text-lg sm:text-xl font-bold text-white [animation-duration:300ms] motion-reduce:animate-none">{current ? current.name : caption}</p>
+          {current?.description && <p key={`${current.id}-d`} className="mx-auto mt-1 max-w-[50ch] text-sm sm:text-base leading-relaxed text-zinc-300">{current.description}</p>}
         </div>
         {action}
       </div>
@@ -1192,10 +1256,15 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
         <div ref={spinRef} className="absolute inset-0 [transform-style:preserve-3d]">
           {(["front", "back"] as const).map((face) => (
             <div key={face} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: face === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
-              <Hanger uid={uid} side={face} kind={item.image ? null : kind} material={hanger} />
-              {item.image
-                ? <Photo src={(face === "back" ? item.backImage : undefined) ?? item.image} alt={face === "front" ? item.name : ""} full={hanger === "none"} />
-                : <Fabric uid={uid} kind={kind} side={face} color={color} trim={trim} />}
+              <Hanger uid={uid} side={face} kind={kind} material={hanger} />
+              {item.image ? (
+                <>
+                  <Fabric uid={uid} kind={kind} side={face} color={color} trim={trim} />
+                  <Photo src={(face === "back" ? item.backImage : undefined) ?? item.image} alt={face === "front" ? item.name : ""} full mask={silhouetteMask(kind, face)} />
+                </>
+              ) : (
+                <Fabric uid={uid} kind={kind} side={face} color={color} trim={trim} />
+              )}
             </div>
           ))}
         </div>

@@ -17,6 +17,7 @@ import {
 } from "@radix-ui/react-icons";
 import { motion } from "framer-motion";
 import { Hero } from "@/components/ui/animated-hero";
+import { ClothingRailHero } from "@/components/ui/product-rail-gallery";
 import { Marquee } from "@/components/ui/marquee";
 import { GlareCard } from "@/components/ui/glare-card";
 import NumberTicker from "@/components/ui/number-ticker-02";
@@ -159,8 +160,59 @@ export function HomePage() {
     [db.auctions]
   );
 
+  const railItems = useMemo(() => {
+    // Strictly filter to clothing only (exclude bags, accessories, pants/jeans, homeware)
+    const clothingOnly = db.products.filter((product) => {
+      if (product.status !== "active" && product.status !== "pending") return false;
+      const cat = (product.category || "").toLowerCase();
+      const title = (product.title || "").toLowerCase();
+      if (cat.includes("bag") || cat.includes("accessories") || cat.includes("homeware")) return false;
+      if (
+        title.includes("bag") ||
+        title.includes("jeans") ||
+        title.includes("501") ||
+        title.includes("pant") ||
+        title.includes("wallet") ||
+        title.includes("tote")
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+    const getGarmentKind = (title: string, desc: string): "jacket" | "hoodie" | "knit" | "shirt" | "tee" | "coat" => {
+      const text = `${title} ${desc}`.toLowerCase();
+      if (text.includes("hoodie")) return "hoodie";
+      if (text.includes("leather") || text.includes("jacket") || text.includes("bomber")) return "jacket";
+      if (text.includes("coat") || text.includes("trench")) return "coat";
+      if (text.includes("knit") || text.includes("cardigan") || text.includes("sweater") || text.includes("sweatshirt") || text.includes("breton")) return "knit";
+      if (text.includes("shirt") || text.includes("polo") || text.includes("oxford") || text.includes("henley")) return "shirt";
+      return "tee";
+    };
+
+    return clothingOnly.slice(0, 8).map((product) => {
+      const kind = getGarmentKind(product.title, product.description);
+      return {
+        id: product.id,
+        name: product.title,
+        description: product.description,
+        kind,
+        image: product.images[0],
+        color: product.color || "#dfded9",
+        tag: `₹${Math.round(product.askingPrice / 100)}`,
+        details: [
+          `Condition: ${product.condition}`,
+          `Size: ${product.size || "M"}`,
+          `Brand: ${product.brand}`,
+          `Seller: ${product.sellerName}`,
+          `Location: ${product.location}`,
+        ],
+      };
+    });
+  }, [db.products]);
+
   return (
-    <main id="top" className="marketplace-home">
+    <main id="top" className="marketplace-home bg-[#0c0e09] text-white">
       {/* 1. Hero Section - B5 rules: 680px capped, left-to-right text gradient, single primary CTA */}
       <Hero />
 
@@ -189,6 +241,27 @@ export function HomePage() {
             </div>
           ))}
         </Marquee>
+      </section>
+
+      {/* 3. The Signature Interactive Clothing Rail (Brass Pipe & Real Hangers) */}
+      <section className="rail-section w-full bg-[#0c0e09] border-b border-white/10" id="rack">
+        {railItems.length > 0 && (
+          <ClothingRailHero
+            items={railItems}
+            hanger="wood"
+            autoplay={true}
+            interval={3200}
+            eyebrow="ON THE RAIL · LIVE CLOSET ARCHIVES"
+            heading="Handle the garments directly on the rail"
+            caption="Slide hangers along the brass pipe, brush across to swing, or click any piece to inspect details."
+            action={
+              <Link href="#/products" className="button button-olive inline-flex items-center gap-2">
+                <span>Shop full wardrobe</span>
+                <ArrowUpRight size={16} />
+              </Link>
+            }
+          />
+        )}
       </section>
 
       {/* 3. 21st.dev Component: Realtime Animated NumberTicker Metrics Bar */}
@@ -226,14 +299,16 @@ export function HomePage() {
       </section>
 
       {/* 4. 21st.dev Component: 3D Holographic GlareCard Showcase */}
-      <section className="section-wrap py-12" id="grails">
+      <section className="section-wrap py-8 sm:py-10" id="grails">
         <div className="section-heading flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8">
           <div>
-            <div className="eyebrow">HOLOGRAPHIC SPOTLIGHT</div>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white mt-1">
+            <div className="eyebrow text-sm sm:text-base font-bold uppercase tracking-[0.22em] text-[#c89b3c]">
+              HOLOGRAPHIC SPOTLIGHT
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mt-2">
               Archival grails of the week
             </h2>
-            <p className="text-stone-400 text-sm max-w-xl mt-1.5 leading-relaxed">
+            <p className="text-stone-300 text-base sm:text-lg max-w-xl mt-2 leading-relaxed">
               Hover and tilt to inspect holographic glare physics and fabric sheen. One of a kind collector pieces.
             </p>
           </div>
@@ -312,20 +387,22 @@ export function HomePage() {
       </section>
 
       {/* 5. Fresh Drops on the Rail - Real B2C Product Showcase */}
-      <section className="shop-section section-wrap" id="rail">
-        <div className="section-heading flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-6">
+      <section className="shop-section section-wrap py-8 sm:py-10" id="rail">
+        <div className="section-heading flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8">
           <div>
-            <div className="eyebrow">CURATED COLLECTION</div>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white mt-1">
+            <div className="eyebrow text-sm sm:text-base font-bold uppercase tracking-[0.22em] text-[#c89b3c]">
+              CURATED COLLECTION
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mt-2">
               Fresh drops on the rail
             </h2>
-            <p className="text-stone-400 text-sm max-w-xl mt-1.5 leading-relaxed">
+            <p className="text-stone-300 text-base sm:text-lg max-w-xl mt-2 leading-relaxed">
               One of a kind vintage garments inspected for authenticity and fabric condition. Ready for instant purchase or private offer.
             </p>
           </div>
-          <Link href="#/products" className="text-link text-sm font-medium inline-flex items-center gap-1.5 text-[#c89b3c] hover:underline shrink-0">
+          <Link href="#/products" className="text-link text-sm font-semibold inline-flex items-center gap-1.5 text-[#c89b3c] hover:underline shrink-0">
             <span>View all {active.length} listings</span>
-            <ArrowUpRight size={16} />
+            <ArrowUpRight size={18} />
           </Link>
         </div>
 
@@ -395,13 +472,15 @@ export function HomePage() {
       />
 
       {/* 7. 21st.dev Component: BentoGrid & BentoCard Value Propositions */}
-      <section className="landing-section section-wrap" aria-labelledby="bento-title">
-        <div className="landing-section-head mb-8">
-          <span className="eyebrow">WHY COLLECTORS CHOOSE LELAM</span>
-          <h2 id="bento-title" className="text-3xl sm:text-4xl font-semibold tracking-tight text-white mt-1">
+      <section className="section-wrap py-6 sm:py-8" aria-labelledby="bento-title">
+        <div className="landing-section-head mb-6">
+          <span className="eyebrow text-sm sm:text-base font-bold uppercase tracking-[0.22em] text-[#c89b3c]">
+            WHY COLLECTORS CHOOSE LELAM
+          </span>
+          <h2 id="bento-title" className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mt-2">
             Built for mindful fashion collectors
           </h2>
-          <p className="text-stone-400 text-sm max-w-xl mt-1.5 leading-relaxed">
+          <p className="text-stone-300 text-base sm:text-lg max-w-xl mt-2 leading-relaxed">
             No fast fashion landfill. Every garment is selected for longevity, honest condition, and unique provenance.
           </p>
         </div>
@@ -471,20 +550,22 @@ export function HomePage() {
 
       {/* 8. Live Auctions Section with 21st.dev NumberTicker Live Bids */}
       {activeAuctions.length > 0 && (
-        <section className="landing-section section-wrap" aria-labelledby="live-auctions-title">
+        <section className="section-wrap py-8 sm:py-10" aria-labelledby="live-auctions-title">
           <div className="section-heading flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-6">
             <div>
-              <div className="eyebrow">LIVE BIDDING ARENA</div>
-              <h2 id="live-auctions-title" className="text-3xl sm:text-4xl font-semibold tracking-tight text-white mt-1">
+              <div className="eyebrow text-sm sm:text-base font-bold uppercase tracking-[0.22em] text-[#c89b3c]">
+                LIVE BIDDING ARENA
+              </div>
+              <h2 id="live-auctions-title" className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mt-2">
                 Active auction drops
               </h2>
-              <p className="text-stone-400 text-sm max-w-xl mt-1.5 leading-relaxed">
+              <p className="text-stone-300 text-base sm:text-lg max-w-xl mt-2 leading-relaxed">
                 Timed public lots with active countdown clocks, dynamic NumberTicker bid updates, and transparent reserve thresholds.
               </p>
             </div>
-            <Link href="#/auctions" className="text-link text-sm font-medium inline-flex items-center gap-1.5 text-[#c89b3c] hover:underline shrink-0">
+            <Link href="#/auctions" className="text-link text-sm font-semibold inline-flex items-center gap-1.5 text-[#c89b3c] hover:underline shrink-0">
               <span>View all auctions</span>
-              <ArrowUpRight size={16} />
+              <ArrowUpRight size={18} />
             </Link>
           </div>
 
@@ -499,15 +580,17 @@ export function HomePage() {
       )}
 
       {/* 9. Curated Categories - Real Photography Tiles */}
-      <section className="collections-section section-wrap" id="collections">
+      <section className="collections-section section-wrap py-8 sm:py-10" id="collections">
         <div className="section-heading flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-6">
           <div>
-            <div className="eyebrow">CURATED DIRECTORIES</div>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white mt-1">
+            <div className="eyebrow text-sm sm:text-base font-bold uppercase tracking-[0.22em] text-[#c89b3c]">
+              CURATED DIRECTORIES
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mt-2">
               Browse by category
             </h2>
           </div>
-          <span className="text-xs uppercase tracking-widest text-stone-400 font-medium">
+          <span className="text-xs uppercase tracking-widest text-[#c89b3c] font-semibold">
             Direct shortcuts into the most active wardrobe rails
           </span>
         </div>
@@ -548,13 +631,15 @@ export function HomePage() {
       </section>
 
       {/* 10. How It Works - 3 Clear Steps per A2 */}
-      <section className="landing-section section-wrap" aria-labelledby="how-it-works-title">
-        <div className="landing-section-head mb-8">
-          <span className="eyebrow">THE SIMPLE PROCESS</span>
-          <h2 id="how-it-works-title" className="text-3xl sm:text-4xl font-semibold tracking-tight text-white mt-1">
+      <section className="section-wrap py-8 sm:py-10" aria-labelledby="how-it-works-title">
+        <div className="landing-section-head mb-6">
+          <span className="eyebrow text-sm sm:text-base font-bold uppercase tracking-[0.22em] text-[#c89b3c]">
+            THE SIMPLE PROCESS
+          </span>
+          <h2 id="how-it-works-title" className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mt-2">
             How lelam works
           </h2>
-          <p className="text-stone-400 text-sm max-w-xl mt-1.5 leading-relaxed">
+          <p className="text-stone-300 text-base sm:text-lg max-w-xl mt-2 leading-relaxed">
             Three straightforward steps from discovery to doorstep delivery.
           </p>
         </div>
@@ -571,13 +656,15 @@ export function HomePage() {
       </section>
 
       {/* 11. Social Proof & Customer Reviews - B8 Real Content */}
-      <section className="landing-section section-wrap" aria-labelledby="testimonials-title">
-        <div className="landing-section-head mb-8">
-          <span className="eyebrow">COMMUNITY REVIEWS</span>
-          <h2 id="testimonials-title" className="text-3xl sm:text-4xl font-semibold tracking-tight text-white mt-1">
+      <section className="section-wrap py-8 sm:py-10" aria-labelledby="testimonials-title">
+        <div className="landing-section-head mb-6">
+          <span className="eyebrow text-sm sm:text-base font-bold uppercase tracking-[0.22em] text-[#c89b3c]">
+            COMMUNITY REVIEWS
+          </span>
+          <h2 id="testimonials-title" className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mt-2">
             Trusted by collectors across Kerala
           </h2>
-          <p className="text-stone-400 text-sm max-w-xl mt-1.5 leading-relaxed">
+          <p className="text-stone-300 text-base sm:text-lg max-w-xl mt-2 leading-relaxed">
             Real feedback from verified buyers and mindful closet owners.
           </p>
         </div>
@@ -604,13 +691,15 @@ export function HomePage() {
       </section>
 
       {/* 12. Objection Handling FAQ Section - A2 / A4 */}
-      <section className="landing-section section-wrap" aria-labelledby="faq-title">
-        <div className="landing-section-head mb-8">
-          <span className="eyebrow">FREQUENTLY ASKED</span>
-          <h2 id="faq-title" className="text-3xl sm:text-4xl font-semibold tracking-tight text-white mt-1">
+      <section className="section-wrap py-8 sm:py-10" aria-labelledby="faq-title">
+        <div className="landing-section-head mb-6">
+          <span className="eyebrow text-sm sm:text-base font-bold uppercase tracking-[0.22em] text-[#c89b3c]">
+            FREQUENTLY ASKED
+          </span>
+          <h2 id="faq-title" className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mt-2">
             Everything you need to know
           </h2>
-          <p className="text-stone-400 text-sm max-w-xl mt-1.5 leading-relaxed">
+          <p className="text-stone-300 text-base sm:text-lg max-w-xl mt-2 leading-relaxed">
             Clear answers about authenticity, private offers, delivery, and seller payouts.
           </p>
         </div>
@@ -642,7 +731,7 @@ export function HomePage() {
       </section>
 
       {/* 13. Final Risk Reversal Call to Action - A2 & A4 */}
-      <section className="section-wrap pb-16">
+      <section className="section-wrap pt-4 pb-12">
         <motion.div
           className="final-cta-section"
           initial={{ opacity: 0, y: 32 }}
@@ -651,7 +740,7 @@ export function HomePage() {
           transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="final-cta-content">
-            <span className="text-xs uppercase tracking-[0.24em] font-semibold text-[#c89b3c] mb-3 inline-block">
+            <span className="text-sm sm:text-base uppercase tracking-[0.22em] font-bold text-[#c89b3c] mb-3 inline-block">
               100% MONEY BACK AUTHENTICITY GUARANTEE
             </span>
             <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white mb-4">

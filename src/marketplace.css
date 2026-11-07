@@ -23,7 +23,8 @@ html { scroll-behavior: smooth; }
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: #0c0e09;
+  color: #ffffff;
 }
 
 .site-content { flex: 1; }
@@ -31,8 +32,8 @@ html { scroll-behavior: smooth; }
 .page-shell {
   padding-top: 116px;
   padding-bottom: 96px;
-  background: #fff;
-  color: var(--mkt-ink);
+  background: #0c0e09;
+  color: #ffffff;
 }
 
 .sr-only {
@@ -483,7 +484,7 @@ html { scroll-behavior: smooth; }
 
 /* ---------- Home additions ---------- */
 
-.marketplace-home { background: #fff; }
+.marketplace-home { background: #0c0e09; color: #ffffff; }
 
 .home-search-strip {
   padding: 40px 0;
@@ -2052,14 +2053,14 @@ html { scroll-behavior: smooth; }
    ============================================================ */
 
 .landing-section {
-  padding-top: 64px;
-  padding-bottom: 64px;
+  padding-top: 32px;
+  padding-bottom: 32px;
 }
 
 @media (min-width: 768px) {
   .landing-section {
-    padding-top: 96px;
-    padding-bottom: 96px;
+    padding-top: 40px;
+    padding-bottom: 40px;
   }
 }
 
@@ -2068,7 +2069,7 @@ html { scroll-behavior: smooth; }
   margin-left: auto;
   margin-right: auto;
   text-align: center;
-  margin-bottom: 48px;
+  margin-bottom: 28px;
 }
 
 .landing-section-head h2 {
@@ -2163,10 +2164,10 @@ html { scroll-behavior: smooth; }
 }
 
 .how-card {
-  background: #ffffff;
-  border: 1px solid var(--mkt-line);
+  background: #14160f;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  padding: 32px 24px;
+  padding: 24px 20px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -2176,21 +2177,21 @@ html { scroll-behavior: smooth; }
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.16em;
-  color: var(--mkt-olive);
-  margin-bottom: 16px;
+  color: #c89b3c;
+  margin-bottom: 12px;
 }
 
 .how-card h3 {
   font-size: 20px;
   font-weight: 600;
-  color: var(--mkt-ink);
+  color: #ffffff;
   margin-bottom: 8px;
 }
 
 .how-card p {
   font-size: 14px;
   line-height: 20px;
-  color: var(--mkt-muted);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 /* FAQ Accordion */
@@ -2203,20 +2204,20 @@ html { scroll-behavior: smooth; }
 }
 
 .faq-item {
-  border: 1px solid var(--mkt-line);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  background: #ffffff;
+  background: #14160f;
   overflow: hidden;
   transition: border-color 200ms ease;
 }
 
 .faq-item:hover {
-  border-color: #c5bfb3;
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 .faq-trigger {
   width: 100%;
-  padding: 20px 24px;
+  padding: 18px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2224,24 +2225,24 @@ html { scroll-behavior: smooth; }
   text-align: left;
   font-size: 16px;
   font-weight: 600;
-  color: var(--mkt-ink);
+  color: #ffffff;
   background: transparent;
   border: none;
   cursor: pointer;
 }
 
 .faq-answer {
-  padding: 0 24px 20px 24px;
+  padding: 0 20px 18px 20px;
   font-size: 14px;
   line-height: 22px;
-  color: var(--mkt-muted);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 /* Testimonials Grid */
 .testimonials-grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 24px;
+  gap: 20px;
 }
 
 @media (min-width: 768px) {
@@ -2251,20 +2252,20 @@ html { scroll-behavior: smooth; }
 }
 
 .testimonial-card {
-  background: #ffffff;
-  border: 1px solid var(--mkt-line);
+  background: #14160f;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  padding: 28px 24px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
 }
 
 .testimonial-quote {
   font-size: 15px;
   line-height: 24px;
-  color: var(--mkt-ink);
+  color: rgba(255, 255, 255, 0.88);
   font-style: normal;
 }
 
@@ -2348,3 +2349,265 @@ html { scroll-behavior: smooth; }
     flex-direction: row;
   }
 }
+
+/* ==========================================================================
+   High-Contrast Bold Professional Marketplace Typography Hierarchy
+   ========================================================================== */
+.eyebrow,
+.landing-section-head .eyebrow,
+.section-heading .eyebrow,
+.auction-hero-topline .eyebrow,
+.story-copy .eyebrow {
+  display: inline-block !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.24em !important;
+  text-transform: uppercase !important;
+  color: #c89b3c !important;
+  margin-bottom: 10px !important;
+}
+
+.marketplace-home .section-heading h2,
+.landing-section-head h2,
+.section-heading h2,
+.collections-section .section-heading h2,
+.shop-section .section-heading h2 {
+  font-size: clamp(32px, 4.5vw, 54px) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.12 !important;
+  color: #ffffff !important;
+}
+
+.marketplace-home .section-heading p,
+.landing-section-head p,
+.section-heading p,
+.section-intro {
+  font-size: 16px !important;
+  line-height: 1.65 !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  max-width: 680px !important;
+}
+
+.rail-section [data-slot="clothing-rail-hero"] > header p {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.28em !important;
+  text-transform: uppercase !important;
+  color: #c89b3c !important;
+}
+
+.rail-section [data-slot="clothing-rail-hero"] > header h2 {
+  font-size: clamp(36px, 5vw, 60px) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.1 !important;
+  color: #ffffff !important;
+}
+
+.product-eyebrow,
+.product-card-meta {
+  font-size: 12px !important;
+  letter-spacing: 0.06em !important;
+  font-weight: 600 !important;
+}
+
+.product-name-row,
+.product-name-row > span,
+.product-card-title {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+}
+
+/* ==========================================================================
+   Luxury Dark Mode Product & Auction Card Styles Across Entire Site
+   ========================================================================== */
+
+/* Frosted Gold Tag Pill Badge - Eliminates ugly solid white rectangle */
+.product-tag {
+  background: rgba(12, 14, 9, 0.88) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(200, 155, 60, 0.5) !important;
+  color: #c89b3c !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Frosted Glass Favorite Button */
+.favorite-button {
+  background: rgba(12, 14, 9, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+
+.favorite-button:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Bold, High-Contrast Visible Price - Eliminates black-on-black invisibility */
+.product-price,
+.product-name-row > span,
+.product-name-row span.product-price {
+  color: #ffffff !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+  display: inline-block !important;
+}
+
+.product-name-row a,
+.product-name-row > a {
+  color: #ffffff !important;
+}
+
+/* Condition & Size Eyebrow */
+.product-eyebrow,
+.product-eyebrow > span.condition-line {
+  color: #c89b3c !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+}
+
+/* Card Meta (Seller & Location) */
+.card-meta,
+.card-meta span {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+/* Make an Offer Link */
+.offer-hint {
+  color: #c89b3c !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+/* Auction Cards - Full Dark Theme */
+.auction-card {
+  background: #14160f !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  color: #ffffff !important;
+}
+
+.auction-card-body {
+  background: #14160f !important;
+}
+
+.auction-card-topline {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.auction-card-title {
+  color: #ffffff !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+}
+
+.auction-card-prices span {
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+}
+
+.auction-card-prices strong {
+  color: #ffffff !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+}
+
+.auction-card-prices em {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.auction-card-meta {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 12px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding-top: 8px !important;
+}
+
+.auction-enter {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.auction-enter:hover {
+  background: #ffffff !important;
+  color: #0c0e09 !important;
+}
+
+/* Page Headers for subpages */
+.page-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.page-header h1 {
+  color: #ffffff !important;
+}
+
+.page-header h1 em {
+  color: #c89b3c !important;
+}
+
+.page-header p {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+/* Catalog & Toolbar on subpages */
+.catalog-search,
+.catalog-select,
+.category-dropdown-trigger {
+  background: #14160f !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+.catalog-search input {
+  color: #ffffff !important;
+}
+
+.catalog-search input::placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.catalog-checks > label {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.catalog-subbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Ensure no media query drops font size below legibility */
+@media (max-width: 900px) {
+  .eyebrow,
+  .landing-section-head .eyebrow,
+  .section-heading .eyebrow {
+    font-size: 13px !important;
+  }
+
+  .marketplace-home .section-heading h2,
+  .landing-section-head h2,
+  .section-heading h2 {
+    font-size: 28px !important;
+  }
+}
+
