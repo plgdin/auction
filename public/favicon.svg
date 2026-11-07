@@ -1,1 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="#657044"/><text x="32" y="46" text-anchor="middle" font-family="Georgia,serif" font-size="48" font-style="italic" fill="#f7f5ec">s</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <circle cx="32" cy="32" r="30" stroke="#357cb8" stroke-width="3" fill="#ffffff" />
+  <!-- Gavel 1 (angled 45 deg right) -->
+  <g transform="translate(32, 32)">
+    <g transform="rotate(-45)">
+      <rect x="-3" y="-2" width="6" height="24" rx="2" fill="#357cb8" />
+      <rect x="-10" y="-12" width="20" height="10" rx="2" fill="#357cb8" />
+      <circle cx="0" cy="22" r="2.5" fill="#357cb8" />
+    </g>
+    <!-- Gavel 2 (angled 45 deg left) -->
+    <g transform="rotate(45)">
+      <rect x="-3" y="-2" width="6" height="24" rx="2" fill="#357cb8" />
+      <rect x="-10" y="-12" width="20" height="10" rx="2" fill="#357cb8" />
+      <circle cx="0" cy="22" r="2.5" fill="#357cb8" />
+    </g>
+  </g>
+</svg>

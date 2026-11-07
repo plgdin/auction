@@ -77,7 +77,7 @@ export function LelamNavbar({
       <div className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-auto z-30">
         <a
           href="#top"
-          className="flex items-center text-white brand-logo no-underline shrink-0"
+          className="flex items-center text-white brand-logo no-underline shrink-0 group"
           aria-label="lelam.co home"
           onClick={(event) => {
             event.preventDefault();
@@ -87,7 +87,7 @@ export function LelamNavbar({
           <span
             style={{
               fontFamily: '"Gumela Arabic", serif',
-              fontSize: "clamp(30px, 2.5vw, 42px)",
+              fontSize: "clamp(28px, 2.3vw, 38px)",
               fontWeight: 800,
               letterSpacing: "-0.03em",
               lineHeight: 1,

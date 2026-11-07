@@ -8,6 +8,10 @@ export type ProductStatus =
   | "removed"
   | "rejected";
 export type Category =
+  | "Outerwear"
+  | "Tops & knits"
+  | "Denim"
+  | "Accessories"
   | "Clothing"
   | "Footwear"
   | "Bags & accessories"

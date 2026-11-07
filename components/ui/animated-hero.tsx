@@ -19,7 +19,7 @@ export interface HeroProps {
   className?: string;
 }
 
-const DEFAULT_HERO_COLORS = ["#86efac", "#4ade80", "#059669", "#000000"];
+const DEFAULT_HERO_COLORS = ["#788656", "#c89b3c", "#3f6b46", "#181b12"];
 
 function Hero({
   prefix = "Every piece is",
@@ -29,7 +29,7 @@ function Hero({
   primaryCtaHref = "#/products",
   secondaryCtaText = "Sell your closet",
   secondaryCtaHref = "#/sell",
-  bg = "#000000",
+  bg = "#0c0e09",
   colors = DEFAULT_HERO_COLORS,
   speed = 1.8,
   grain = 0.28,
@@ -74,7 +74,12 @@ function Hero({
 
         {/* Main Hero Content - vertically centered in the viewport */}
         <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col items-center justify-center py-6 sm:py-10 z-10">
-          <div className="flex gap-6 sm:gap-8 lg:gap-10 items-center justify-center flex-col w-full max-w-5xl">
+          <motion.div
+            className="flex gap-6 sm:gap-8 lg:gap-10 items-center justify-center flex-col w-full max-w-5xl"
+            initial={{ opacity: 0, y: 28, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+          >
             {/* Heading with animated titles */}
             <div className="flex gap-4 sm:gap-6 flex-col items-center w-full">
               <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-[5.75rem] xl:text-[6.5rem] tracking-tight text-center font-serif font-normal text-white leading-[1.08] px-2 drop-shadow-sm">
@@ -84,7 +89,7 @@ function Hero({
                   {titles.map((title, index) => (
                     <motion.span
                       key={index}
-                      className="absolute font-serif italic text-white underline decoration-emerald-400/70 decoration-wavy decoration-1 underline-offset-8 whitespace-nowrap px-3 drop-shadow"
+                      className="absolute font-serif italic text-white underline decoration-[#c89b3c]/85 decoration-wavy decoration-1 underline-offset-8 whitespace-nowrap px-3 drop-shadow"
                       initial={{ opacity: 0, y: "-100%" }}
                       transition={{ type: "spring", stiffness: 50, damping: 15 }}
                       animate={
@@ -150,11 +155,11 @@ function Hero({
                 }}
                 onClick={() => navigate(secondaryCtaHref)}
               >
-                <Sparkles className="w-5 h-5 text-emerald-300 group-hover:text-emerald-200 transition-colors" strokeWidth={2.2} />
+                <Sparkles className="w-5 h-5 text-[#e2a84b] group-hover:text-[#f3c978] transition-colors" strokeWidth={2.2} />
                 <span className="font-semibold">{secondaryCtaText}</span>
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Bottom fold cue */}
@@ -169,7 +174,7 @@ function Hero({
             aria-label="Scroll to clothing rail"
           >
             <span>Explore the rail</span>
-            <ArrowDown className="w-4 h-4 animate-bounce text-emerald-300/80 group-hover:text-emerald-200 transition-colors" />
+            <ArrowDown className="w-4 h-4 animate-bounce text-[#c89b3c]/90 group-hover:text-[#e2a84b] transition-colors" />
           </a>
         </div>
       </div>

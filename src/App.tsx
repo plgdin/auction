@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Heart, LogIn, Search, ShoppingBag, UserPlus, X } from "lucide-react";
 import { LelamNavbar } from "@/components/ui/lelam-navbar";
 import HalftoneWordmarkFooter from "@/components/ui/halftone-wordmark-footer";
@@ -22,6 +22,8 @@ import { SellerDashboardPage } from "./pages/SellerDashboard";
 import { AccountPage } from "./pages/Account";
 import { AdminPage } from "./pages/Admin";
 import { OrderDetailPage } from "./pages/OrderDetail";
+import { LoadingPage } from "./pages/LoadingPage";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 
 type ToastItem = { id: number; message: string; tone: string };
 
@@ -279,6 +281,7 @@ function Routes() {
   if (path === "/account") return <AccountPage />;
   if (path === "/admin") return <AdminPage />;
   if (path.startsWith("/orders/")) return <OrderDetailPage />;
+  if (path === "/loading") return <LoadingPage />;
   return <NotFound />;
 }
 
@@ -289,6 +292,11 @@ function Shell() {
   const [savedOpen, setSavedOpen] = useState(false);
   const [authPrompt, setAuthPrompt] = useState<AuthPromptDetail | null>(null);
   const [lastPath, setLastPath] = useState(route.path);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  if (route.path === "/loading") {
+    return <Routes />;
+  }
 
   useEffect(() => onAuthPrompt(setAuthPrompt), []);
 
@@ -360,6 +368,13 @@ function Shell() {
       {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
       {savedOpen && <SavedOverlay onClose={() => setSavedOpen(false)} />}
       {authPrompt && <AuthPrompt detail={authPrompt} onClose={() => setAuthPrompt(null)} />}
+      {initialLoading && (
+        <LoadingScreen
+          onComplete={() => {
+            setInitialLoading(false);
+          }}
+        />
+      )}
       <ToastHost />
     </div>
   );
