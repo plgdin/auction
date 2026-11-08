@@ -67,23 +67,24 @@ function futureIso(hours: number) {
 export function computeAuctionSettlement(
   askingPrice: number,
   winningBid: number,
-  commissionPct: number,
+  _commissionPct: number,
 ): Pick<AuctionFinancial, "sellerPayout" | "platformSubsidy" | "platformCommission"> {
+  const platformCharge = 1_000;
   if (winningBid < askingPrice) {
     return {
-      sellerPayout: askingPrice,
+      sellerPayout: Math.max(0, askingPrice - platformCharge),
       platformSubsidy: askingPrice - winningBid,
-      platformCommission: 0,
+      platformCommission: platformCharge,
     };
   }
-  if (winningBid === askingPrice) {
-    return { sellerPayout: askingPrice, platformSubsidy: 0, platformCommission: 0 };
-  }
-  const commission = Math.floor(((winningBid - askingPrice) * commissionPct) / 100);
+  const commission = winningBid > askingPrice * 1.3
+    ? Math.floor((winningBid - askingPrice) * 0.1)
+    : 0;
+  const totalCharge = commission + platformCharge;
   return {
-    sellerPayout: winningBid - commission,
+    sellerPayout: Math.max(0, winningBid - totalCharge),
     platformSubsidy: 0,
-    platformCommission: commission,
+    platformCommission: totalCharge,
   };
 }
 
@@ -1051,15 +1052,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             });
           }
         } else {
+          const platformCharge = target.items.length * 1_000;
           next.settlements.unshift({
             id: uid("s"),
             sellerId: target.sellerId,
             orderId: target.id,
             source: target.source === "offer" ? "offer" : "marketplace",
             askingPrice: target.subtotal,
-            sellerPayout: target.subtotal,
+            sellerPayout: Math.max(0, target.subtotal - platformCharge),
             platformSubsidy: 0,
-            platformCommission: 0,
+            platformCommission: platformCharge,
             paymentFee: 0,
             status: "pending",
             createdAt: nowIso(),
@@ -1726,7 +1728,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const endsAt = startsAt + next.settings.auctionDurationMinutes * 60_000;
       const startingPrice = Math.max(
         100,
-        Math.round((product.askingPrice * next.settings.auctionStartPct) / 100 / 100) * 100,
+        Math.round((product.askingPrice * 50) / 100 / 100) * 100,
       );
       const auction: Auction = {
         id: uid("a"),
@@ -1784,7 +1786,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         status: start <= Date.now() ? "live" : "scheduled",
         startingPrice: Math.max(
           100,
-          Math.round((product.askingPrice * next.settings.auctionStartPct) / 100 / 100) * 100,
+          Math.round((product.askingPrice * 50) / 100 / 100) * 100,
         ),
         askingPrice: product.askingPrice,
         bidCount: 0,

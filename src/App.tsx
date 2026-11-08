@@ -18,6 +18,7 @@ import { AuctionsPage } from "./pages/Auctions";
 import { AuctionDetailPage } from "./pages/AuctionDetail";
 import { AuthPage } from "./pages/Auth";
 import { SellPage } from "./pages/Sell";
+import { SellFormPage } from "./pages/SellForm";
 import { SellerDashboardPage } from "./pages/SellerDashboard";
 import { AccountPage } from "./pages/Account";
 import { AdminPage } from "./pages/Admin";
@@ -275,6 +276,7 @@ function Routes() {
   if (path === "/login") return <AuthPage mode="login" />;
   if (path === "/register") return <AuthPage mode="register" />;
   if (path === "/sell") return <SellPage />;
+  if (path === "/sell/new") return <SellFormPage />;
   if (path === "/seller") return <SellerDashboardPage />;
   if (path === "/account") return <AccountPage />;
   if (path === "/admin") return <AdminPage />;

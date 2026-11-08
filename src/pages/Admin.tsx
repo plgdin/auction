@@ -672,18 +672,13 @@ export function AdminPage() {
                     }
                   />
                 </Field>
-                <Field label="Starting price (% of asking)" hint="Rounded to the nearest rupee.">
+                <Field label="Starting price (% of base)" hint="Fixed at 50%; rounded to the nearest rupee.">
                   <input
                     type="number"
                     min={1}
                     max={100}
-                    value={settings.auctionStartPct}
-                    onChange={(event) =>
-                      setSettings((previous) => ({
-                        ...previous,
-                        auctionStartPct: Number(event.target.value),
-                      }))
-                    }
+                    value={50}
+                    readOnly
                   />
                 </Field>
                 <Field label="Auction duration (minutes)">
@@ -791,18 +786,11 @@ export function AdminPage() {
                     }
                   />
                 </Field>
-                <Field label="Commission above asking (%)">
+                <Field label="Commission on extra (past 130% of base)" hint="Fixed at 10% of the amount above base.">
                   <input
                     type="number"
-                    min={0}
-                    max={100}
-                    value={settings.platformCommissionPct}
-                    onChange={(event) =>
-                      setSettings((previous) => ({
-                        ...previous,
-                        platformCommissionPct: Number(event.target.value),
-                      }))
-                    }
+                    value={10}
+                    readOnly
                   />
                 </Field>
                 <Field label="Bid rate limit (per minute)">

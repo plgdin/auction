@@ -1,522 +1,446 @@
-import { useEffect, useState } from "react";
-import {
-  ArrowUpRight,
-  Check,
-  ImagePlus,
-  Info,
-  LockKeyhole,
-  Plus,
-  ShieldCheck,
-  Store,
-  Upload,
-  X,
-} from "lucide-react";
-import { Link, navigate } from "../components/Link";
-import { Field, PageHeader } from "../components/Ui";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowRight, ArrowUpRight, Clock3, Plus, ShieldCheck, Tag, Truck } from "lucide-react";
+import { navigate, smoothScrollTo } from "../components/Link";
 import { formatMoney } from "../lib/format";
-import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
-import { toast } from "../lib/toast";
-import type { Category, Condition } from "../lib/types";
+import { auctionStartingPrice } from "../lib/sellerMath";
 
-const categories: Category[] = [
-  "Outerwear",
-  "Tops & knits",
-  "Denim",
-  "Accessories",
-  "Footwear",
-  "Home & living",
-  "Electronics",
-  "Books & media",
-];
+/** Chosen in the payout preview, handed to the listing form page. */
+export const SESSION_PRICE_KEY = "lelam-sell-price";
 
-const conditions: Condition[] = ["New", "Like new", "Good", "Fair"];
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const presetImages = [
-  "/images/denim.jpg",
-  "/images/knit.jpg",
-  "/images/leather.jpg",
-  "/images/jeans.jpg",
-  "/images/bag.jpg",
-  "/images/tee.jpg",
-  "/images/editorial.jpg",
-  "/images/detail.jpg",
-];
-
-const emptyForm = {
-  title: "",
-  description: "",
-  brand: "",
-  condition: "Good" as Condition,
-  category: "Outerwear" as Category,
-  price: "",
-  size: "",
-  quantity: "1",
-  location: "Trivandrum, Kerala",
-  shipping: "49",
-  allowOffers: true,
-  auctionConsent: false,
-};
-
-export function SellPage() {
-  const { user, db, createListing, updateListing, removeListing } = useStore();
-  const route = useRoute();
-  const editId = route.query.get("edit") || "";
-  const editing = editId ? db.products.find((product) => product.id === editId) : undefined;
-
-  const [form, setForm] = useState(emptyForm);
-  const [images, setImages] = useState<string[]>([]);
-  const [imageUrl, setImageUrl] = useState("");
-  const [fileBusy, setFileBusy] = useState(false);
-
+/** Count a figure up once the section scrolls in. Skipped under reduced motion. */
+function useInView<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [inView, setInView] = useState(false);
   useEffect(() => {
-    if (editing) {
-      setForm({
-        title: editing.title,
-        description: editing.description,
-        brand: editing.brand || "",
-        condition: editing.condition,
-        category: editing.category,
-        price: String(editing.askingPrice / 100),
-        size: editing.size || "",
-        quantity: String(editing.quantity),
-        location: editing.location,
-        shipping: String(editing.shippingFee / 100),
-        allowOffers: editing.allowOffers,
-        auctionConsent: editing.auctionConsent,
-      });
-      setImages(editing.images);
-    } else {
-      setForm(emptyForm);
-      setImages([]);
-    }
-  }, [editId, editing]);
-
-  if (!user) {
-    return (
-      <main className="page-shell">
-        <div className="section-wrap empty-state page-empty">
-          <Store size={38} />
-          <h2>Sign in to sell.</h2>
-          <p>You need an account before a listing can go on the rail.</p>
-          <div className="modal-actions center">
-            <Link href="#/login" className="button button-olive">
-              Sign in
-            </Link>
-            <Link href="#/register" className="button button-ghost">
-              Create account
-            </Link>
-          </div>
-        </div>
-      </main>
+    const node = ref.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.35 },
     );
-  }
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  return { ref, inView };
+}
 
-  if (editing && editing.sellerId !== user.id) {
-    return (
-      <main className="page-shell">
-        <div className="section-wrap empty-state page-empty">
-          <LockKeyhole size={38} />
-          <h2>That listing is not yours.</h2>
-          <Link href="#/seller" className="button button-olive">
-            My listings
-          </Link>
-        </div>
-      </main>
-    );
-  }
-
-  const update = (key: keyof typeof form, value: string | boolean) =>
-    setForm((previous) => ({ ...previous, [key]: value }));
-
-  const addImage = (image: string) => {
-    setImages((previous) => (previous.includes(image) ? previous : [...previous, image]));
-  };
-
-  const onFiles = (files: FileList | null) => {
-    if (!files?.length) return;
-    setFileBusy(true);
-    const readers = Array.from(files).slice(0, 4).map(
-      (file) =>
-        new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result));
-          reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(file);
-        }),
-    );
-    Promise.all(readers)
-      .then((results) => {
-        setImages((previous) => [...previous, ...results].slice(0, 6));
-        toast("Photos added. They stay in this browser.", "success");
-      })
-      .catch(() => toast("Could not read that photo.", "error"))
-      .finally(() => setFileBusy(false));
-  };
-
-  const submit = () => {
-    const input = {
-      title: form.title,
-      description: form.description,
-      brand: form.brand,
-      condition: form.condition,
-      category: form.category,
-      askingPrice: Math.round(Number(form.price) * 100),
-      images,
-      size: form.size,
-      quantity: Math.max(1, Number(form.quantity) || 1),
-      location: form.location,
-      shippingFee: Math.round(Number(form.shipping) * 100),
-      allowOffers: form.allowOffers,
-      auctionConsent: form.auctionConsent,
-    };
-
-    if (editing) {
-      const result = updateListing(editing.id, input);
-      if (result.ok) {
-        toast("Listing updated.", "success");
-        navigate(`#/product/${editing.id}`);
-      } else {
-        toast(result.error, "error");
-      }
+function useCountUp(target: number, run: boolean, duration = 1100) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!run) return;
+    if (prefersReducedMotion()) {
+      setValue(target);
       return;
     }
+    let frame = 0;
+    const started = performance.now();
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - started) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(target * eased));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [run, target, duration]);
+  return value;
+}
 
-    const result = createListing(input);
-    if (result.ok) {
-      toast("Listing created.", "success");
-      navigate(`#/product/${result.productId}`);
-    } else {
-      toast(result.error, "error");
-    }
+/* ------------------------------------------------------------------ hero -- */
+
+function SellHero({ onStart, onPeek }: { onStart: () => void; onPeek: () => void }) {
+  const { db } = useStore();
+  const deck = db.products
+    .filter((product) => ["active", "sold"].includes(product.status) && product.images.length)
+    .slice(0, 3);
+  // Ticker mixes freshly sold with live pieces so the line always has variety.
+  const seen = new Set<string>();
+  const tickerLine: { label: string; price: number; verb: string }[] = [];
+  for (const product of [
+    ...db.products.filter((item) => item.status === "sold").slice(-3),
+    ...db.products.filter((item) => item.status === "active").slice(0, 5),
+  ]) {
+    if (seen.has(product.id)) continue;
+    seen.add(product.id);
+    tickerLine.push({
+      label: product.title,
+      price: product.askingPrice,
+      verb: product.status === "sold" ? "re-homed" : "on the rail",
+    });
+    if (tickerLine.length === 7) break;
+  }
+  const tickerSource = tickerLine.length
+    ? tickerLine
+    : [{ label: "Your piece fits here", price: 0, verb: "list yours" }];
+
+  return (
+    <header className="sell-hero">
+      <div className="sell-hero-inner">
+        <div className="sell-hero-copy">
+          <h1>
+            Your closet is a <em>shop.</em> You just haven't opened it.
+          </h1>
+          <p>
+            Photograph it, price it, done. A rider collects from your door and goes. Your asking price
+            is guaranteed — and any piece can be picked at random for a live feature. It only adds upside.
+          </p>
+          <div className="sell-hero-actions">
+            <button type="button" className="button button-olive sell-hero-cta" onClick={onStart}>
+              Start selling <ArrowUpRight size={18} />
+            </button>
+            <button type="button" className="text-link sell-hero-peek" onClick={onPeek}>
+              See how it works <ArrowDown size={15} />
+            </button>
+          </div>
+          <ul className="sell-hero-proof">
+            <li>
+              <Truck size={15} /> Rider doorstep, both ways
+            </li>
+            <li>
+              <ShieldCheck size={15} /> Your price locked
+            </li>
+            <li>
+              <Plus size={15} /> Free to list
+            </li>
+          </ul>
+        </div>
+
+        <div className="sell-hero-deck">
+          {deck.map((product, index) => (
+            <div key={product.id} className={`sell-deck-card deck-${index + 1}`}>
+              <img src={product.images[0]} alt="" />
+              <span className="sell-deck-tag">{formatMoney(product.askingPrice)}</span>
+            </div>
+          ))}
+          {deck[0] && <em className="sell-deck-note sell-note-1" aria-hidden>on the rail now</em>}
+          {deck[2] && <em className="sell-deck-note is-low sell-note-3" aria-hidden>might be picked at random</em>}
+          {deck.length === 0 && <div className="sell-deck-empty">The rail is waiting for its first piece.</div>}
+        </div>
+      </div>
+
+      <div className="sell-ticker" aria-hidden>
+        <div className="sell-ticker-track">
+          {[...tickerSource, ...tickerSource, ...tickerSource, ...tickerSource].map((item, index) => (
+            <span key={index}>
+              <strong>{item.label}</strong>
+              {item.price ? ` · ${formatMoney(item.price)} — ${item.verb}` : ` — ${item.verb}`}
+            </span>
+          ))}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/* -------------------------------------------------------------- proof band -- */
+
+function ProofBand() {
+  const { db } = useStore();
+  const moneyMoved = db.settlements
+    .filter((settlement) => settlement.status === "paid")
+    .reduce((total, settlement) => total + settlement.sellerPayout, 0);
+  const rehomed = db.products.filter((product) => product.status === "sold").length;
+  const sellers = new Set(db.products.map((product) => product.sellerId)).size;
+
+  const band = useInView<HTMLDivElement>();
+  const money = useCountUp(moneyMoved, band.inView);
+  const pieces = useCountUp(rehomed, band.inView);
+  const people = useCountUp(sellers, band.inView);
+
+  return (
+    <section className="sell-proof" ref={band.ref}>
+      <div className="sell-proof-fig">
+        <strong>{formatMoney(money)}</strong>
+        <span>changed hands outside of closets</span>
+      </div>
+      <div className="sell-proof-fig">
+        <strong>{pieces}</strong>
+        <span>piece{pieces === 1 ? "" : "s"} given a second life</span>
+      </div>
+      <div className="sell-proof-fig">
+        <strong>{people}</strong>
+        <span>neighbor{people === 1 ? "" : "s"} selling here</span>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- benefits -- */
+
+const BENEFITS = [
+  {
+    icon: <Truck size={20} />,
+    title: "We handle delivery",
+    body: "A rider comes to your door, takes the parcel, and goes. Hand it over — that is genuinely the last you do.",
+    note: "you never meet anybody. ever.",
+  },
+  {
+    icon: <ShieldCheck size={20} />,
+    title: "Your price, protected",
+    body: "Name your price. If bidding stops short, lelam covers the gap. The flat ₹10 sale charge still applies.",
+    note: "your floor is a promise",
+  },
+  {
+    icon: <Clock3 size={20} />,
+    title: "Two minutes to list",
+    body: "Photos, a title, a price. Listing is free — a flat ₹10 platform charge applies only when a product sells.",
+    note: "that's the whole job",
+  },
+  {
+    icon: <Tag size={20} />,
+    title: "Offers come to you",
+    body: "Buyers send private offers to your dashboard, on a 48-hour clock. You accept or pass.",
+    note: "no haggling out loud",
+  },
+];
+
+function Benefits() {
+  return (
+    <section className="sell-benefits">
+      <h2 className="sell-section-title">
+        Selling here means <em>less</em>, not more.
+      </h2>
+      <div className="sell-benefit-panel">
+        {BENEFITS.map((benefit) => (
+          <div key={benefit.title} className="sell-benefit">
+            <span className="sell-benefit-icon">{benefit.icon}</span>
+            <h3>{benefit.title}</h3>
+            <p>{benefit.body}</p>
+            <em>{benefit.note}</em>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------- twist -- */
+
+function TwistBand() {
+  return (
+    <section id="sell-twist" className="sell-twist">
+      <div className="sell-twist-head">
+        <h2 className="sell-section-title">
+          The <em>twist.</em> Sometimes we pull your piece for a live auction.
+        </h2>
+        <p>
+          Any listing can be picked at random and run live for half an hour. Nothing changes for the
+          impatient — buyers can still tap Buy now at your price, like any shop they know. But if
+          yours is picked, three things turn in your favour:
+        </p>
+      </div>
+      <div className="sell-twist-grid">
+        <div className="sell-twist-card">
+          <span>01</span>
+          <h3>It sells faster</h3>
+          <p>Bidding wraps in under half an hour. Your piece moves off the rail in days, not weeks.</p>
+        </div>
+        <div className="sell-twist-card">
+          <span>02</span>
+          <h3>Never under your price</h3>
+          <p>If bidding ends below base, lelam covers the gap. The flat ₹10 charge still applies to the sale.</p>
+        </div>
+        <div className="sell-twist-card">
+          <span>03</span>
+          <h3>You keep the upside</h3>
+          <p>If bidding clears 130% of your base price, lelam takes 10% of the amount above base. You keep the rest.</p>
+        </div>
+      </div>
+      <em className="sell-twist-note">the feature only adds upside · flat ₹10 platform charge per product sold</em>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------- how it works -- */
+
+function PayoutWidget({ onLockIn }: { onLockIn: (rupees: number) => void }) {
+  const [price, setPrice] = useState(1450);
+  const startPct = 50;
+  const startingBid = auctionStartingPrice(price * 100, startPct);
+
+  return (
+    <div className="payout-widget">
+      <div className="payout-widget-controls">
+        <label>
+          <span>How much is it worth?</span>
+          <input
+            type="range"
+            min={200}
+            max={8000}
+            step={50}
+            value={price}
+            onChange={(event) => setPrice(Number(event.target.value))}
+            aria-label="Asking price to preview"
+          />
+        </label>
+        <output className="payout-widget-price">{formatMoney(price * 100)}</output>
+      </div>
+      <dl className="payout-receipt">
+        <div>
+          <dt>Asking price</dt>
+          <dd>{formatMoney(price * 100)}</dd>
+        </div>
+        <div>
+          <dt>Delivery, arranged for you</dt>
+          <dd>rider pickup + drop</dd>
+        </div>
+        <div>
+          <dt>Platform charge</dt>
+          <dd>flat ₹10 · per product</dd>
+        </div>
+        <div className="is-total">
+          <dt>You pocket</dt>
+          <dd>{formatMoney(Math.max(0, price * 100 - 1_000))}</dd>
+        </div>
+        <div>
+          <dt>If it runs live instead</dt>
+          <dd>
+          starts at 50% of base ({formatMoney(startingBid)}) · your {formatMoney(price * 100)} is still guaranteed
+          </dd>
+        </div>
+      </dl>
+      <button type="button" className="button button-olive payout-widget-cta" onClick={() => onLockIn(price)}>
+        Lock that in — it pre-fills the price
+      </button>
+    </div>
+  );
+}
+
+function HowItWorks({ onStart }: { onStart: (rupees?: number) => void }) {
+  return (
+    <section id="sell-how" className="sell-how">
+      <h2 className="sell-section-title">
+        Three steps. Then <em>we</em> work.
+      </h2>
+      <ol className="sell-steps">
+        <li>
+          <span className="sell-step-no">01</span>
+          <h3>Photograph it</h3>
+          <p>Natural light, three snaps, up to six. Steady shots help buyers trust what arrives.</p>
+          <em>flaws are features — say them</em>
+        </li>
+        <li>
+          <span className="sell-step-no">02</span>
+          <h3>Price it</h3>
+          <p>Your number goes on the rail. Offers arrive privately; you never answer anyone in person.</p>
+          <em>drag the number, watch it print</em>
+        </li>
+        <li>
+          <span className="sell-step-no">03</span>
+          <h3>We take it from here</h3>
+          <p>
+            Buyer pays. A rider swings by, takes the parcel, and is gone. Payout lands within 5
+            business days of the buyer confirming arrival.
+          </p>
+          <em>you stay home</em>
+        </li>
+      </ol>
+
+      <div className="sell-how-widget">
+        <PayoutWidget onLockIn={onStart} />
+      </div>
+
+      <div className="sell-how-end">
+        <button type="button" className="text-link" onClick={() => onStart()}>
+          That's honestly it — open the listing form <ArrowRight size={14} />
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ voices -- */
+
+function Voices() {
+  const { db } = useStore();
+  const quotes = useMemo(
+    () =>
+      db.reviews.slice(0, 2).map((review) => ({
+        comment: review.comment ?? "",
+        rating: review.rating,
+        product: db.products.find((item) => item.id === review.productId),
+      })),
+    [db.reviews, db.products],
+  );
+  const usable = quotes.filter((quote) => quote.comment);
+  if (!usable.length) return null;
+
+  return (
+    <section className="sell-voices">
+      <h2 className="sell-section-title">Things buyers wrote back.</h2>
+      <div className="sell-voice-row">
+        {usable.map((quote, index) => (
+          <figure key={index} className="sell-voice">
+            “{quote.comment}”
+            <figcaption>
+              {quote.product && <img src={quote.product.images[0]} alt="" aria-hidden />}
+              <span>
+                bought · {quote.product?.title ?? "piece"}
+                <em>{"★".repeat(Math.max(1, Math.min(5, quote.rating)))}</em>
+              </span>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ----------------------------------------------------------------- closing -- */
+
+function SellClosing({ onStart }: { onStart: () => void }) {
+  return (
+    <section className="sell-final">
+      <div>
+        <h2>
+          Still waving it <em>away?</em>
+        </h2>
+        <p>List it. Somehow it always works out — and you never had to meet anyone.</p>
+      </div>
+      <button type="button" className="button button-olive" onClick={onStart}>
+        Open the shop today <ArrowUpRight size={16} />
+      </button>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------- sell -- */
+
+export function SellPage() {
+  const { user } = useStore();
+
+  const startSelling = () => {
+    if (user) navigate("#/sell/new");
+    else navigate("#/register?next=%2Fsell%2Fnew");
+  };
+
+  const scrollToHow = () => {
+    smoothScrollTo(document.getElementById("sell-how"));
+  };
+
+  const lockInPrice = (rupees?: number) => {
+    if (rupees) sessionStorage.setItem(SESSION_PRICE_KEY, String(rupees));
+    startSelling();
   };
 
   return (
     <main className="page-shell sell-page">
-      <div className="section-wrap">
-        <PageHeader
-          eyebrow={editing ? "EDIT LISTING" : "SELL ON LELAM"}
-          title={
-            editing ? (
-              <>
-                Tidy up the <em>details.</em>
-              </>
-            ) : (
-              <>
-                Put it back <em>in circulation.</em>
-              </>
-            )
-          }
-          description="Set your own asking price. Buyers can buy instantly or send a private offer. Opt into auctions only if you want the piece to run live."
-          action={
-            editing ? (
-              <button
-                type="button"
-                className="text-link remove-link"
-                onClick={() => {
-                  if (!window.confirm("Remove this listing from the rail?")) return;
-                  const result = removeListing(editing.id);
-                  if (result.ok) {
-                    toast("Listing removed.");
-                    navigate("#/seller?tab=listings");
-                  } else {
-                    toast(result.error, "error");
-                  }
-                }}
-              >
-                Remove listing
-              </button>
-            ) : undefined
-          }
-        />
-
-        <div className="sell-layout">
-          <div className="sell-main">
-            <section className="sell-block">
-              <div className="sell-block-head">
-                <span className="step-number">01</span>
-                <div>
-                  <h2>The piece</h2>
-                  <p>Be specific. Buyers want to know exactly what arrives.</p>
-                </div>
-              </div>
-
-              <Field label="Title">
-                <input
-                  value={form.title}
-                  onChange={(event) => update("title", event.target.value)}
-                  placeholder="Worn-in denim jacket"
-                  maxLength={80}
-                />
-              </Field>
-
-              <div className="field-row three">
-                <Field label="Brand" hint="Optional">
-                  <input
-                    value={form.brand}
-                    onChange={(event) => update("brand", event.target.value)}
-                    placeholder="Levi's"
-                  />
-                </Field>
-                <Field label="Category">
-                  <select
-                    value={form.category}
-                    onChange={(event) => update("category", event.target.value)}
-                  >
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Condition">
-                  <select
-                    value={form.condition}
-                    onChange={(event) => update("condition", event.target.value)}
-                  >
-                    {conditions.map((condition) => (
-                      <option key={condition} value={condition}>
-                        {condition}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-
-              <Field
-                label="Description"
-                hint="Mention fit, flaws, measurements, and anything a buyer should know."
-              >
-                <textarea
-                  rows={5}
-                  value={form.description}
-                  onChange={(event) => update("description", event.target.value)}
-                  placeholder="A beautifully faded denim jacket with an easy, boxy fit…"
-                />
-              </Field>
-
-              <div className="field-row three">
-                <Field label="Size" hint="Optional">
-                  <input
-                    value={form.size}
-                    onChange={(event) => update("size", event.target.value)}
-                    placeholder="M / L"
-                  />
-                </Field>
-                <Field label="Quantity">
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.quantity}
-                    onChange={(event) => update("quantity", event.target.value)}
-                    inputMode="numeric"
-                  />
-                </Field>
-                <Field label="Location">
-                  <input
-                    value={form.location}
-                    onChange={(event) => update("location", event.target.value)}
-                  />
-                </Field>
-              </div>
-            </section>
-
-            <section className="sell-block">
-              <div className="sell-block-head">
-                <span className="step-number">02</span>
-                <div>
-                  <h2>Photos</h2>
-                  <p>Add up to six. The first photo is the cover.</p>
-                </div>
-              </div>
-
-              {images.length > 0 && (
-                <div className="sell-photo-grid">
-                  {images.map((image, index) => (
-                    <div key={`${image}-${index}`} className="sell-photo">
-                      <img src={image} alt={`Listing photo ${index + 1}`} />
-                      {index === 0 && <span>COVER</span>}
-                      <button
-                        type="button"
-                        aria-label="Remove photo"
-                        onClick={() => setImages((previous) => previous.filter((item) => item !== image))}
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <label className="sell-upload">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(event) => onFiles(event.target.files)}
-                />
-                <Upload size={18} />
-                <span>
-                  <strong>{fileBusy ? "Reading photos…" : "Upload photos"}</strong>
-                  <em>From this device. Demo only, they stay in the browser.</em>
-                </span>
-              </label>
-
-              <div className="sell-url-row">
-                <input
-                  value={imageUrl}
-                  onChange={(event) => setImageUrl(event.target.value)}
-                  placeholder="Or paste an image URL"
-                  aria-label="Image URL"
-                />
-                <button
-                  type="button"
-                  className="button button-ghost"
-                  onClick={() => {
-                    if (!imageUrl.trim()) return;
-                    addImage(imageUrl.trim());
-                    setImageUrl("");
-                  }}
-                >
-                  <Plus size={14} /> Add
-                </button>
-              </div>
-
-              <div className="sell-presets">
-                <span>Or use a demo photo</span>
-                <div>
-                  {presetImages.map((image) => (
-                    <button
-                      key={image}
-                      type="button"
-                      className={images.includes(image) ? "is-selected" : ""}
-                      onClick={() => addImage(image)}
-                    >
-                      <img src={image} alt="" />
-                      {images.includes(image) && <Check size={12} />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <section className="sell-block">
-              <div className="sell-block-head">
-                <span className="step-number">03</span>
-                <div>
-                  <h2>Price & options</h2>
-                  <p>Set the asking price. This is what buyers pay with Buy now.</p>
-                </div>
-              </div>
-
-              <div className="field-row three">
-                <Field label="Asking price (₹)">
-                  <input
-                    type="number"
-                    min={1}
-                    inputMode="numeric"
-                    value={form.price}
-                    onChange={(event) => update("price", event.target.value)}
-                    placeholder="1450"
-                  />
-                </Field>
-                <Field label="Shipping fee (₹)" hint="Free over ₹1,999 by default.">
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={form.shipping}
-                    onChange={(event) => update("shipping", event.target.value)}
-                  />
-                </Field>
-                <Field label="You receive" hint="Before any auction adjustment.">
-                  <div className="sell-payout">
-                    {formatMoney(Math.round((Number(form.price) || 0) * 100))}
-                  </div>
-                </Field>
-              </div>
-
-              <div className="sell-options">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={form.allowOffers}
-                    onChange={(event) => update("allowOffers", event.target.checked)}
-                  />
-                  <span>
-                    <strong>Allow private offers</strong>
-                    <em>Buyers can send a price privately. You choose whether to accept.</em>
-                  </span>
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={form.auctionConsent}
-                    onChange={(event) => update("auctionConsent", event.target.checked)}
-                  />
-                  <span>
-                    <strong>Opt in to random live auctions</strong>
-                    <em>
-                      Your listing may be picked for a short live auction. Sellers are guaranteed the
-                      asking price; the platform covers any shortfall.
-                    </em>
-                  </span>
-                </label>
-              </div>
-            </section>
-          </div>
-
-          <aside className="sell-aside">
-            <div className="summary-card">
-              <h2>Listing preview</h2>
-              <div className="sell-preview">
-                <div className="sell-preview-image">
-                  {images[0] ? (
-                    <img src={images[0]} alt="" />
-                  ) : (
-                    <div>
-                      <ImagePlus size={22} />
-                      <span>No photo yet</span>
-                    </div>
-                  )}
-                </div>
-                <div className="sell-preview-copy">
-                  <span>{form.condition} · {form.category}</span>
-                  <strong>{form.title || "Untitled listing"}</strong>
-                  <em>{form.price ? formatMoney(Math.round(Number(form.price) * 100)) : "₹—"}</em>
-                </div>
-              </div>
-              <p className="sell-aside-note">
-                {db.settings.sellerAutoApprove
-                  ? "Listings go live immediately in this demo. Admins can still review reports."
-                  : "New listings wait for an admin review before going live."}
-              </p>
-              <button type="button" className="button button-olive summary-cta" onClick={submit}>
-                {editing ? "Save changes" : "Publish listing"} <ArrowUpRight size={15} />
-              </button>
-              <Link href="#/seller" className="button button-ghost summary-cta">
-                Seller dashboard
-              </Link>
-            </div>
-
-            <div className="sell-tips">
-              <h3>
-                <Info size={14} /> Good to know
-              </h3>
-              <ul>
-                <li>Every piece is one seller&apos;s own item.</li>
-                <li>Delivery is limited to Trivandrum pincodes starting with 695.</li>
-                <li>Auctions are optional and only run if you opt in.</li>
-                <li>Offers are private. No public bidding on normal listings.</li>
-              </ul>
-              <div className="sell-trust">
-                <ShieldCheck size={15} /> Asking price protected in auctions
-              </div>
-            </div>
-          </aside>
-        </div>
-      </div>
+      <SellHero onStart={startSelling} onPeek={scrollToHow} />
+      <ProofBand />
+      <Benefits />
+      <TwistBand />
+      <HowItWorks onStart={lockInPrice} />
+      <Voices />
+      <SellClosing onStart={startSelling} />
     </main>
   );
 }
