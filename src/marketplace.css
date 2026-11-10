@@ -3555,3 +3555,408 @@ html { scroll-behavior: smooth; }
   }
 }
 
+/* ==========================================================================
+   Tactile Collage / Flea Market Auction House Styles (Lelam Revamp)
+   ========================================================================== */
+
+/* Masking Tape Decorator */
+.masking-tape {
+  position: absolute;
+  background: #EDE4C8;
+  height: 20px;
+  width: 76px;
+  opacity: 0.92;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  border-left: 2px dashed rgba(160, 140, 110, 0.5);
+  border-right: 2px dashed rgba(160, 140, 110, 0.5);
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Stamp Badge */
+.stamp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1.5px dashed #E4472B;
+  color: #E4472B;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  transform: rotate(-2.5deg);
+  border-radius: 3px;
+  background: rgba(228, 71, 43, 0.08);
+}
+
+.stamp-badge.mustard {
+  border-color: #C6972B;
+  color: #161412;
+  background: #E9B949;
+  border-style: solid;
+  transform: rotate(2deg);
+}
+
+/* Torn Top Edge */
+.torn-top-edge {
+  clip-path: polygon(
+    0% 12px, 3% 4px, 7% 14px, 11% 3px, 15% 15px, 19% 5px, 24% 14px, 
+    28% 2px, 33% 16px, 38% 6px, 42% 14px, 47% 3px, 52% 15px, 57% 5px, 
+    62% 16px, 67% 4px, 71% 15px, 76% 5px, 81% 14px, 85% 3px, 90% 15px, 
+    95% 4px, 100% 12px, 100% 100%, 0% 100%
+  );
+}
+
+/* Hero Collage Items */
+.collage-item {
+  position: absolute;
+  pointer-events: auto;
+  transition: transform 0.25s ease-out;
+  cursor: pointer;
+  filter: drop-shadow(4px 8px 14px rgba(0, 0, 0, 0.4));
+}
+
+.collage-item:hover {
+  z-index: 50 !important;
+  transform: scale(1.08) rotate(0deg) !important;
+  filter: drop-shadow(8px 16px 24px rgba(0, 0, 0, 0.6));
+}
+
+.hang-tag {
+  position: absolute;
+  background: #FBF8F2;
+  color: #161412;
+  border: 1.5px solid #161412;
+  box-shadow: 2px 2px 0 #161412;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transform-origin: top left;
+  white-space: nowrap;
+  z-index: 12;
+}
+
+.hang-tag .tag-string {
+  position: absolute;
+  top: -12px;
+  left: 6px;
+  width: 1.5px;
+  height: 14px;
+  background: #8b7355;
+}
+
+.hang-tag .tag-bid {
+  color: #E4472B;
+  font-weight: 700;
+}
+
+.hang-tag .tag-timer {
+  color: #5C564E;
+  font-size: 9.5px;
+}
+
+/* Buttons */
+.btn-stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #E4472B;
+  color: #fff !important;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 13px 26px;
+  border: 2px solid #161412;
+  border-radius: 4px;
+  box-shadow: 3px 4px 0px rgba(0,0,0,0.85);
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.15s ease;
+}
+
+.btn-stamp:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 6px 0px rgba(0,0,0,0.95);
+  background-color: #ef4e32;
+}
+
+.btn-stamp:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px rgba(0,0,0,0.95);
+}
+
+.btn-tape-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff !important;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 13px 26px;
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  box-shadow: 3px 4px 0px rgba(0,0,0,0.6);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-tape-outline:hover {
+  background: #E9B949;
+  color: #161412 !important;
+  border-style: solid;
+  border-color: #161412;
+  transform: rotate(-1.5deg) scale(1.02);
+  box-shadow: 5px 6px 0px rgba(0,0,0,0.9);
+}
+
+/* Clothesline Peg Swings */
+.clothespin-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: #ffffff;
+  cursor: pointer;
+  transform-origin: top center;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.clothespin-card:hover {
+  animation: swing-peg 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes swing-peg {
+  0% { transform: rotate(-5deg); }
+  100% { transform: rotate(5deg); }
+}
+
+.wooden-peg {
+  width: 14px;
+  height: 28px;
+  background: linear-gradient(to right, #D8BA8A, #B59363);
+  border: 1.5px solid #161412;
+  border-radius: 2px 2px 4px 4px;
+  position: relative;
+  z-index: 15;
+  margin-bottom: -10px;
+  box-shadow: 1px 2px 0 rgba(0,0,0,0.3);
+}
+
+.wooden-peg::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #735431;
+}
+
+.clothespin-card-body {
+  width: 100%;
+  background: #14160f;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  border-radius: 6px;
+  padding: 16px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+/* Stamped "YOU'RE WINNING" Banner */
+.winning-stamp-banner {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-12deg) scale(0);
+  background: #E9B949;
+  color: #161412;
+  font-size: 15px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 6px 14px;
+  border: 3px solid #161412;
+  box-shadow: 4px 4px 0 #161412;
+  z-index: 30;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  white-space: nowrap;
+}
+
+.winning-stamp-banner.is-stamped {
+  transform: translate(-50%, -50%) rotate(-12deg) scale(1);
+}
+
+/* Floating "+₹100" Badge */
+.floating-plus-bid {
+  position: absolute;
+  font-family: var(--font-mono, monospace);
+  font-size: 18px;
+  font-weight: 800;
+  color: #E4472B;
+  pointer-events: none;
+  z-index: 40;
+  animation: float-up-fade 0.8s ease-out forwards;
+}
+
+@keyframes float-up-fade {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-40px) scale(1.3); }
+}
+
+/* Tear-Off Coupon Container */
+.tear-off-coupon-container {
+  background: #161412;
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 6px 8px 0 #E9B949;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: 1fr;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .tear-off-coupon-container {
+    grid-template-columns: 1fr 280px;
+  }
+}
+
+.coupon-stub-side {
+  background: #E9B949;
+  color: #161412;
+  border-top: 3px dashed #161412;
+  padding: 30px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  .coupon-stub-side {
+    border-top: none;
+    border-left: 3px dashed #161412;
+  }
+}
+
+.scissors-icon-tag {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #F3EBDD;
+  color: #161412;
+  border: 1px solid #161412;
+  padding: 2px 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  .scissors-icon-tag {
+    top: 50%;
+    left: -18px;
+    transform: translateY(-50%) rotate(-90deg);
+  }
+}
+
+/* ==========================================================================
+   High-Contrast Form Inputs & Preview Cards (Fix for Sell & Auctions)
+   ========================================================================== */
+
+.field input,
+.field select,
+.field textarea,
+.address-form input,
+.address-form select,
+.address-form textarea {
+  background: #181b13 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 9px !important;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.address-form input:focus,
+.address-form select:focus,
+.address-form textarea:focus {
+  border-color: #E9B949 !important;
+  box-shadow: 0 0 0 3px rgba(233, 185, 73, 0.25) !important;
+  outline: none !important;
+}
+
+.sell-aside .summary-card,
+.summary-card,
+.sell-tips {
+  background: #14160f !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+.summary-card h2,
+.summary-card strong,
+.sell-preview-copy strong {
+  color: #ffffff !important;
+}
+
+.sell-aside-note,
+.sell-preview-copy span,
+.sell-tips ul,
+.sell-tips li {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.sell-preview {
+  background: #1a1d15 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+}
+
+.sell-preview-image {
+  background: #22251c !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+/* Pulse urgency animation for ending soon auction cards */
+@keyframes pulse-gentle {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(228, 71, 43, 0);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(228, 71, 43, 0.35);
+  }
+}
+
+.animate-pulse-gentle {
+  animation: pulse-gentle 2s ease-in-out infinite;
+}
+
+
+
