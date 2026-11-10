@@ -21,7 +21,7 @@ export interface HeroProps {
   className?: string;
 }
 
-const DEFAULT_HERO_COLORS = ["#788656", "#c89b3c", "#3f6b46", "#181b12"];
+const DEFAULT_HERO_COLORS = ["#1e1b15", "#2a2214", "#141510", "#0a0a08"];
 
 function Hero({
   prefix = "Curated vintage thrift and live auctions",
@@ -31,7 +31,7 @@ function Hero({
   primaryCtaHref = "#/products",
   secondaryCtaText = "Sell your closet",
   secondaryCtaHref = "#/sell",
-  bg = "#0c0e09",
+  bg = "#080907",
   colors = DEFAULT_HERO_COLORS,
   speed = 1.6,
   grain = 0.24,
@@ -88,7 +88,7 @@ function Hero({
               style={{ textWrap: "balance" }}
             >
               <span className="block">{prefix}</span>
-              <span className="relative block mt-2 h-[1.3em] overflow-hidden text-[#c89b3c]">
+              <span className="relative block mt-2 h-[1.3em] overflow-hidden text-[#F5D061]">
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={titleNumber}
@@ -99,7 +99,7 @@ function Hero({
                       duration: 0.55,
                       ease: [0.16, 1, 0.3, 1],
                     }}
-                    className="inline-block text-[#c89b3c]"
+                    className="inline-block bg-gradient-to-r from-[#FFF0C2] via-[#F5D061] to-[#E5AC3A] bg-clip-text text-transparent font-bold drop-shadow-[0_2px_20px_rgba(245,208,97,0.35)]"
                   >
                     {titles[titleNumber]}
                   </motion.span>

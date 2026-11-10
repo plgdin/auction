@@ -3269,6 +3269,277 @@ html { scroll-behavior: smooth; }
   border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 
+/* ==========================================================================
+   Full Dark Theme Overrides for Core Experience (Auctions, Sell, Cards)
+   ========================================================================== */
+
+/* Product Cards & Catalog Grid */
+.product-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+  gap: 24px !important;
+}
+
+@media (max-width: 640px) {
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+}
+
+.product-card {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+.product-card .product-image {
+  background: #14160f !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+.product-card .product-tag {
+  background: rgba(12, 14, 9, 0.9) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(200, 155, 60, 0.5) !important;
+  color: #c89b3c !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+}
+
+.product-card .favorite-button {
+  background: rgba(12, 14, 9, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+
+.product-card .favorite-button:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.product-card .favorite-button.is-saved {
+  color: #f43f5e !important;
+}
+
+.product-card .product-name-row {
+  display: flex !important;
+  align-items: baseline !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin-top: 6px !important;
+}
+
+.product-card .product-name-row a,
+.product-card .product-name-row > button {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.product-card .product-name-row a:hover {
+  color: #c89b3c !important;
+}
+
+.product-card .product-name-row .product-price,
+.product-card .product-name-row > span {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+.product-card .product-eyebrow {
+  color: #c89b3c !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+}
+
+.product-card .card-meta,
+.product-card .card-meta span {
+  color: rgba(255, 255, 255, 0.65) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+.product-card .offer-hint {
+  color: #c89b3c !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+/* Auctions Page Explainer Cards */
+.auction-explain {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  margin-bottom: 34px !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+@media (max-width: 850px) {
+  .auction-explain {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.auction-explain > div {
+  display: grid !important;
+  gap: 8px !important;
+  padding: 24px 22px !important;
+  background: #14160f !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+.auction-explain strong {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.01em !important;
+}
+
+.auction-explain p {
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Auctions Page Finance Banner */
+.auction-finance {
+  display: grid !important;
+  grid-template-columns: 1.35fr 1fr !important;
+  gap: 40px !important;
+  align-items: center !important;
+  margin-top: 54px !important;
+  padding: 44px 40px !important;
+  border-radius: 20px !important;
+  background: #11130d !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45) !important;
+}
+
+@media (max-width: 850px) {
+  .auction-finance {
+    grid-template-columns: 1fr !important;
+    padding: 28px !important;
+    gap: 24px !important;
+  }
+}
+
+.auction-finance h2 {
+  font-family: var(--serif) !important;
+  font-size: clamp(28px, 3.2vw, 42px) !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.025em !important;
+  color: #ffffff !important;
+}
+
+.auction-finance p {
+  color: rgba(255, 255, 255, 0.72) !important;
+  font-size: 14px !important;
+  line-height: 1.68 !important;
+}
+
+.auction-finance-example {
+  background: #14160f !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 14px !important;
+  padding: 24px !important;
+  display: grid !important;
+  gap: 12px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35) !important;
+}
+
+.auction-finance-example > div span {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.auction-finance-example > div strong {
+  color: #ffffff !important;
+}
+
+.auction-finance-example > div.is-highlight strong {
+  color: #c89b3c !important;
+}
+
+.auction-finance-example p {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Sell Page Form & Sidecards */
+.sell-block {
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  padding: 28px !important;
+  background: #11130d !important;
+}
+
+.sell-block-head h2 {
+  color: #ffffff !important;
+}
+
+.sell-block-head p {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.sell-aside .summary-card,
+.summary-card {
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  background: #11130d !important;
+  color: #ffffff !important;
+}
+
+.summary-card h2 {
+  color: #ffffff !important;
+}
+
+.sell-tips {
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  padding: 22px !important;
+  background: #11130d !important;
+  color: #ffffff !important;
+}
+
+.sell-tips h3 {
+  color: #c89b3c !important;
+}
+
+.sell-tips ul,
+.sell-tips li {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.sell-trust {
+  color: #c89b3c !important;
+  border-top-color: rgba(255, 255, 255, 0.1) !important;
+}
+
 /* Ensure no media query drops font size below legibility */
 @media (max-width: 900px) {
   .eyebrow,
