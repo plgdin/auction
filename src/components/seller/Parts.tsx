@@ -68,6 +68,8 @@ export function OfferDecision({
       )}
     </article>
   );
+}
+
 /* ------------------------------------------------------ Shipment stepper -- */
 
 const SHIPMENT_STEPS = [

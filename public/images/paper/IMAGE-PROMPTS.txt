@@ -1,0 +1,126 @@
+LELAM.CO — PAPER HOME IMAGE ASSETS
+=================================
+
+Plan: 8 core images + 3 optional paper-cut PNGs.
+Shared look: warm editorial photo, soft window light, muted sepia + 1970s
+earth tones, cream paper backdrop, slight film grain, generous margin,
+centered. No text, logos, or watermarks.
+
+Save files to:
+public/images/paper/
+
+ASSET LIST
+----------
+#   File                 Ratio   Used for
+1   hero-jacket.png      4:5     Hero left polaroid
+2   hero-knit.png        4:5     Hero top-right polaroid
+3   hero-bag.png         4:3     Hero bottom-right polaroid
+4   step-list.png        3:2     Step 1 "List Your Item"
+5   step-discover.png    3:2     Step 2 "Get Discovered"
+6   step-ship.png        3:2     Step 3 "Sell & Ship"
+7   step-paid.png        3:2     Step 4 "Get Paid"
+8   wardrobe-rail.png    4:3     "Why Sell" photo
+9   cut-jacket.png       4:5     Optional paper-cut layer
+10  cut-knit.png         4:5     Optional paper-cut layer
+11  cut-bag.png          4:3     Optional paper-cut layer
+
+Priority if generating fewer: 1, 2, 3, 8, then 4-7.
+
+
+PROMPTS
+-------
+
+1. HERO JACKET — hero-jacket.png (4:5 portrait)
+Warm editorial top-down photograph of a vintage dark brown leather biker
+jacket laid flat on a cream paper background, collar and sleeves neatly
+arranged, soft natural window light, muted sepia 1970s palette, subtle film
+grain, gentle shadow, full jacket visible with generous margin, high detail,
+secondhand fashion collage mood. No person, no hanger, no text, no logos, no
+watermark. 4:5 portrait.
+
+
+2. HERO KNIT — hero-knit.png (4:5 portrait)
+Warm editorial photograph of a cream cable-knit sweater hanging on a simple
+wooden hanger against a warm off-white plaster wall, soft window light, muted
+sepia 1970s palette, subtle film grain, gentle shadow, full sweater visible
+with generous margin, high detail, secondhand fashion collage mood. No person,
+no text, no logos, no watermark. 4:5 portrait.
+
+
+3. HERO BAG — hero-bag.png (4:3 landscape)
+Warm editorial still-life photograph of a black quilted leather shoulder bag
+with a gold chain strap, standing on a cream paper surface, three-quarter view,
+soft natural window light, muted sepia palette, subtle film grain, gentle
+shadow, full bag visible with generous margin, high detail, secondhand luxury
+mood. No person, no text, no logos, no watermark. 4:3 landscape.
+
+
+4. STEP 1 — LIST YOUR ITEM — step-list.png (3:2 landscape)
+Warm editorial top-down photograph of hands neatly folding an oatmeal knit
+sweater on a cream linen surface, a smartphone with a blank softly glowing
+screen beside it, soft natural window light, muted sepia 1970s palette, subtle
+film grain, high detail, calm secondhand resale mood, hands only, no face. No
+text, no logos, no watermark. 3:2 landscape.
+
+
+5. STEP 2 — GET DISCOVERED — step-discover.png (3:2 landscape)
+Warm editorial photograph of an open laptop on a wooden desk, screen showing a
+clean minimal grid of clothing product thumbnails on a cream background with no
+readable text, a small ceramic cup and fabric swatches beside it, soft natural
+window light, muted sepia palette, subtle film grain, high detail, secondhand
+marketplace mood. No logos, no watermark. 3:2 landscape.
+
+
+6. STEP 3 — SELL & SHIP — step-ship.png (3:2 landscape)
+Warm editorial top-down photograph of a neatly wrapped kraft paper parcel tied
+with natural twine, a small blank cream shipping label, and a dried eucalyptus
+sprig on a cream linen surface, soft natural window light, muted sepia palette,
+subtle film grain, gentle shadow, high detail, slow handmade packing mood. No
+readable text, no logos, no watermark. 3:2 landscape.
+
+
+7. STEP 4 — GET PAID — step-paid.png (3:2 landscape)
+Warm editorial photograph of a hand holding a smartphone with a simple green
+check mark and a minimal payment success screen, no readable text, soft warm
+cream background, natural window light, muted sepia palette, subtle film grain,
+shallow depth of field, high detail, relieved celebratory mood, hand only, no
+face. No logos, no watermark. 3:2 landscape.
+
+
+8. WARDROBE RAIL — wardrobe-rail.png (4:3 landscape)
+Warm editorial photograph of a curated rail of vintage and secondhand clothes
+on wooden hangers, earth tones and cream fabrics, warm afternoon sunlight
+raking across a cream plaster wall, subtle film grain, shallow depth of field,
+high detail, quiet thrift-store poetry mood. No people, no text, no logos, no
+watermark. 4:3 landscape.
+
+
+OPTIONAL PAPER-CUT CUTOUTS
+--------------------------
+Only if you want real cut-paper shapes in the collage. Transparent PNG.
+
+9. PAPER JACKET — cut-jacket.png (4:5 portrait)
+Hand-cut paper collage illustration of a vintage leather jacket, layered brown
+and tan construction paper with visible scissor-cut edges, subtle paper grain
+and soft drop shadow, flat lighting, centered on a transparent background, no
+outline, no text. 4:5 portrait.
+
+
+10. PAPER KNIT — cut-knit.png (4:5 portrait)
+Hand-cut paper collage illustration of a cream cable-knit sweater, layered
+ivory and oatmeal paper with scissor-cut edges, subtle paper grain and soft
+shadow, flat lighting, centered on transparent background, no text. 4:5
+portrait.
+
+
+11. PAPER BAG — cut-bag.png (4:3 landscape)
+Hand-cut paper collage illustration of a black quilted shoulder bag with a tan
+paper chain strap, layered paper shapes with scissor-cut edges, subtle grain,
+soft shadow, centered on transparent background, no text. 4:3 landscape.
+
+
+HANDOFF
+-------
+Save to public/images/paper/ with the exact names above, or send the files here.
+Once they are in, the image sources are swapped and crop/filter is tuned. No
+layout rewrite needed.

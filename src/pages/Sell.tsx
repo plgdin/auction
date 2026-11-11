@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowRight, ArrowUpRight, Clock3, Plus, ShieldCheck, Tag, Truck } from "lucide-react";
-import { navigate, smoothScrollTo } from "../components/Link";
+import { ArrowRight, ArrowUpRight, Clock3, Leaf, Recycle, ShieldCheck, Sparkles, Tag, Truck, Zap } from "lucide-react";
+import { navigate } from "../components/Link";
 import { formatMoney } from "../lib/format";
 import { useStore } from "../lib/store";
 import { auctionStartingPrice } from "../lib/sellerMath";
@@ -57,59 +57,36 @@ function useCountUp(target: number, run: boolean, duration = 1100) {
 
 /* ------------------------------------------------------------------ hero -- */
 
-function SellHero({ onStart, onPeek }: { onStart: () => void; onPeek: () => void }) {
+function SellHero({ onStart }: { onStart: () => void }) {
   const { db } = useStore();
   const deck = db.products
     .filter((product) => ["active", "sold"].includes(product.status) && product.images.length)
     .slice(0, 3);
-  // Ticker mixes freshly sold with live pieces so the line always has variety.
-  const seen = new Set<string>();
-  const tickerLine: { label: string; price: number; verb: string }[] = [];
-  for (const product of [
-    ...db.products.filter((item) => item.status === "sold").slice(-3),
-    ...db.products.filter((item) => item.status === "active").slice(0, 5),
-  ]) {
-    if (seen.has(product.id)) continue;
-    seen.add(product.id);
-    tickerLine.push({
-      label: product.title,
-      price: product.askingPrice,
-      verb: product.status === "sold" ? "re-homed" : "on the rail",
-    });
-    if (tickerLine.length === 7) break;
-  }
-  const tickerSource = tickerLine.length
-    ? tickerLine
-    : [{ label: "Your piece fits here", price: 0, verb: "list yours" }];
 
   return (
     <header className="sell-hero">
       <div className="sell-hero-inner">
         <div className="sell-hero-copy">
           <h1>
-            Your closet is a <em>shop.</em> You just haven't opened it.
+            Give Your<br />Closet a<br /><span className="sell-hero-highlight">Second Life.</span>
           </h1>
           <p>
-            Photograph it, price it, done. A rider collects from your door and goes. Your asking price
-            is guaranteed — and any piece can be picked at random for a live feature. It only adds upside.
+            Turn your pre-loved clothes, accessories and more into cash — easily, safely, and sustainably with lelam.co.
           </p>
           <div className="sell-hero-actions">
             <button type="button" className="button button-olive sell-hero-cta" onClick={onStart}>
-              Start selling <ArrowUpRight size={18} />
-            </button>
-            <button type="button" className="text-link sell-hero-peek" onClick={onPeek}>
-              See how it works <ArrowDown size={15} />
+              Start Selling Now <ArrowRight size={20} />
             </button>
           </div>
           <ul className="sell-hero-proof">
             <li>
-              <Truck size={15} /> Rider doorstep, both ways
+              <Zap size={16} /> List in 2 minutes
             </li>
             <li>
-              <ShieldCheck size={15} /> Your price locked
+              <ShieldCheck size={16} /> Safe &amp; trusted
             </li>
             <li>
-              <Plus size={15} /> Free to list
+              <Recycle size={16} /> Sustainable
             </li>
           </ul>
         </div>
@@ -121,20 +98,19 @@ function SellHero({ onStart, onPeek }: { onStart: () => void; onPeek: () => void
               <span className="sell-deck-tag">{formatMoney(product.askingPrice)}</span>
             </div>
           ))}
-          {deck[0] && <em className="sell-deck-note sell-note-1" aria-hidden>on the rail now</em>}
-          {deck[2] && <em className="sell-deck-note is-low sell-note-3" aria-hidden>might be picked at random</em>}
+          {deck[0] && <em className="sell-deck-note sell-note-1" aria-hidden>SELL<br />WEAR<br />REPEAT</em>}
+          <span className="sell-hero-stamp" aria-hidden><Leaf size={28} /><span>good finds<br />live again</span></span>
+          {deck[2] && <Sparkles className="sell-hero-flower" aria-hidden="true" />}
           {deck.length === 0 && <div className="sell-deck-empty">The rail is waiting for its first piece.</div>}
         </div>
       </div>
 
       <div className="sell-ticker" aria-hidden>
         <div className="sell-ticker-track">
-          {[...tickerSource, ...tickerSource, ...tickerSource, ...tickerSource].map((item, index) => (
-            <span key={index}>
-              <strong>{item.label}</strong>
-              {item.price ? ` · ${formatMoney(item.price)} — ${item.verb}` : ` — ${item.verb}`}
-            </span>
-          ))}
+          <span><Leaf size={31} /><span>Declutter<br />your space</span></span>
+          <span><strong className="sell-ticker-rupee">₹</strong><span>Earn<br />extra cash</span></span>
+          <span><Recycle size={32} /><span>Give items<br />a longer life</span></span>
+          <span><Sparkles /><span>Support<br />sustainable fashion</span></span>
         </div>
       </div>
     </header>
@@ -423,10 +399,6 @@ export function SellPage() {
     else navigate("#/register?next=%2Fsell%2Fnew");
   };
 
-  const scrollToHow = () => {
-    smoothScrollTo(document.getElementById("sell-how"));
-  };
-
   const lockInPrice = (rupees?: number) => {
     if (rupees) sessionStorage.setItem(SESSION_PRICE_KEY, String(rupees));
     startSelling();
@@ -434,7 +406,7 @@ export function SellPage() {
 
   return (
     <main className="page-shell sell-page">
-      <SellHero onStart={startSelling} onPeek={scrollToHow} />
+      <SellHero onStart={startSelling} />
       <ProofBand />
       <Benefits />
       <TwistBand />

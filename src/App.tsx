@@ -350,14 +350,16 @@ function Shell() {
         <Routes />
       </div>
 
-      <HalftoneWordmarkFooter
-        wordmark="lelam"
-        label="lelam.co"
-        meta="©2026 · Trivandrum, Kerala"
-        preset="night"
-        columns={footerColumns}
-        height="540px"
-      />
+      {route.path === "/" ? null : (
+        <HalftoneWordmarkFooter
+          wordmark="lelam"
+          label="lelam.co"
+          meta="©2026 · Trivandrum, Kerala"
+          preset="night"
+          columns={footerColumns}
+          height="540px"
+        />
+      )}
 
       {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
       {savedOpen && <SavedOverlay onClose={() => setSavedOpen(false)} />}
