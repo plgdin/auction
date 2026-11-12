@@ -102,6 +102,8 @@ export function LelamNavbar({
               lineHeight: 1,
               textTransform: "lowercase",
               color: "#493022",
+              WebkitTextStroke: "1px #493022",
+              paintOrder: "stroke fill",
             }}
           >
             lelam.co
