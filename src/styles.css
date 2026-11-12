@@ -4855,6 +4855,28 @@ body {
   z-index: 20;
 }
 
+/* Liquid Glass Navbar Text - Dark Black & Bold */
+.nimbus-nav {
+  --n-fg: #000000 !important;
+  --n-fg-soft: #000000 !important;
+}
+
+.nimbus-nav .nimbus-item:not([aria-current="page"]) {
+  color: #000000 !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+}
+
+.nimbus-nav .nimbus-item:not([aria-current="page"]) svg {
+  stroke: #000000 !important;
+  color: #000000 !important;
+}
+
+.nimbus-nav .nimbus-item:not([aria-current="page"]):hover {
+  color: #000000 !important;
+  opacity: 1 !important;
+}
+
 .lelam-action-btn {
   display: inline-flex !important;
   align-items: center !important;
