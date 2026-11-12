@@ -1,285 +1,391 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Check,
   ChevronDown,
-  Gavel,
-  Search,
-  SlidersHorizontal,
-  X,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Grid2X2,
+  Heart,
+  List,
+  ShoppingBag,
 } from "lucide-react";
-import { PageHeader } from "../components/Ui";
-import { ProductCard } from "../components/ProductCard";
-import { Link } from "../components/Link";
-import { CATEGORIES } from "../lib/categories";
+import { Link, navigate } from "../components/Link";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { formatMoney } from "../lib/format";
-import type { Category, Condition, Product } from "../lib/types";
+import { toast } from "../lib/toast";
+import type { Condition, Product } from "../lib/types";
 
-const categoryNames: Array<Category | "All finds"> = ["All finds", ...CATEGORIES];
+type FilterKey = "all" | "clothes" | "accessories" | "bags" | "shoes" | "others";
 
-type Sort = "newest" | "price-asc" | "price-desc" | "offers";
+const shopCategories: Array<{ key: FilterKey; label: string }> = [
+  { key: "all", label: "All items" },
+  { key: "clothes", label: "Clothes" },
+  { key: "accessories", label: "Accessories" },
+  { key: "bags", label: "Bags" },
+  { key: "shoes", label: "Shoes" },
+  { key: "others", label: "Others" },
+];
+
+const conditionOptions: Array<{ value: Condition; label: string }> = [
+  { value: "Like new", label: "Like New" },
+  { value: "Good", label: "Gently Used" },
+  { value: "Fair", label: "Well Used" },
+];
+
+const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
+const coreCategories = ["Clothing", "Footwear", "Bags & accessories"];
+
+type Sort = "newest" | "price-asc" | "price-desc";
+type View = "grid" | "list";
+
+function keyForQuery(category: string | null): FilterKey {
+  if (!category) return "all";
+  if (category === "Clothing") return "clothes";
+  if (category === "Footwear") return "shoes";
+  if (category === "Bags & accessories") return "accessories";
+  return "others";
+}
+
+function matchesCategory(product: Product, key: FilterKey) {
+  if (key === "all") return true;
+  if (key === "clothes") return product.category === "Clothing";
+  if (key === "accessories" || key === "bags") return product.category === "Bags & accessories";
+  if (key === "shoes") return product.category === "Footwear";
+  return !coreCategories.includes(product.category);
+}
+
+function pageItems(current: number, total: number): Array<number | "…"> {
+  if (total <= 6) return Array.from({ length: total }, (_, index) => index + 1);
+  const items: Array<number | "…"> = [1];
+  if (current > 3) items.push("…");
+  for (let page = Math.max(2, current - 1); page <= Math.min(total - 1, current + 1); page += 1) {
+    items.push(page);
+  }
+  if (current < total - 2) items.push("…");
+  items.push(total);
+  return items;
+}
+
+function ShopCard({ product }: { product: Product }) {
+  const { favorites, toggleFavorite, addToCart, cart } = useStore();
+  const saved = favorites.includes(product.id);
+  const inCart = cart.some((entry) => entry.product.id === product.id);
+  const condition =
+    product.condition === "Good"
+      ? "Gently Used"
+      : product.condition === "Fair"
+        ? "Well Used"
+        : product.condition === "Like new"
+          ? "Like New"
+          : product.condition;
+
+  return (
+    <article className="shop-card">
+      <div className="shop-card-media">
+        <Link href={`#/product/${product.id}`} aria-label={`View ${product.title}`}>
+          <img src={product.images[0]} alt={product.title} loading="lazy" />
+        </Link>
+        <span className="shop-card-tape" aria-hidden="true" />
+        <button
+          type="button"
+          className={`shop-heart ${saved ? "is-saved" : ""}`}
+          aria-label={`${saved ? "Unsave" : "Save"} ${product.title}`}
+          aria-pressed={saved}
+          onClick={() => {
+            toggleFavorite(product.id);
+            toast(saved ? "Removed from saved." : "Saved to your watchlist.", "success");
+          }}
+        >
+          <Heart size={13} strokeWidth={1.8} fill={saved ? "currentColor" : "none"} />
+        </button>
+      </div>
+
+      <div className="shop-card-info">
+        <Link href={`#/product/${product.id}`} className="shop-card-title">
+          {product.title}
+        </Link>
+        <p className="shop-card-meta">
+          Size: {product.size || "One size"} <span>·</span> {condition}
+        </p>
+        <div className="shop-card-buy">
+          <strong className="shop-card-price">{formatMoney(product.askingPrice)}</strong>
+          <button
+            type="button"
+            className={`shop-cart ${inCart ? "is-in-cart" : ""}`}
+            aria-label={inCart ? `View cart with ${product.title}` : `Add ${product.title} to cart`}
+            onClick={() => {
+              if (inCart) {
+                navigate("#/cart");
+                return;
+              }
+              const result = addToCart(product.id);
+              if (result.ok) toast("Added to cart.", "success");
+              else toast(result.error, "error");
+            }}
+          >
+            <ShoppingBag size={14} strokeWidth={1.7} />
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export function ProductsPage() {
   const { db } = useStore();
   const route = useRoute();
-  const [category, setCategory] = useState<Category | "All finds">(
-    (route.query.get("category") as Category | null) || "All finds",
-  );
+  const [category, setCategory] = useState<FilterKey>(keyForQuery(route.query.get("category")));
   const [query, setQuery] = useState(route.query.get("q") || "");
   const [condition, setCondition] = useState<Condition | "All">("All");
   const [sort, setSort] = useState<Sort>("newest");
-  const [offersOnly, setOffersOnly] = useState(false);
-  const [maxPrice, setMaxPrice] = useState(0);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const closeTimer = useRef<number | null>(null);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [maxPrice, setMaxPrice] = useState(100000);
+  const [view, setView] = useState<View>("grid");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
-    const nextCategory = (route.query.get("category") as Category | null) || "All finds";
-    const nextQuery = route.query.get("q") || "";
-    setCategory(nextCategory);
-    setQuery(nextQuery);
+    setCategory(keyForQuery(route.query.get("category")));
+    setQuery(route.query.get("q") || "");
   }, [route.query]);
 
-  useEffect(() => {
-    return () => {
-      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
-    };
-  }, []);
-
   const active = useMemo(
-    () =>
-      db.products.filter(
-        (product) => product.status === "active" || product.status === "reserved",
-      ),
+    () => db.products.filter((product) => product.status === "active" || product.status === "reserved"),
     [db.products],
   );
-
-  const highestPrice = Math.max(...active.map((product) => product.askingPrice), 100000);
-
-  useEffect(() => {
-    if (!maxPrice) setMaxPrice(highestPrice);
-  }, [highestPrice, maxPrice]);
+  const highestPrice = Math.max(10000, ...active.map((product) => product.askingPrice));
+  useEffect(() => setMaxPrice(highestPrice), [highestPrice]);
 
   const visible = useMemo(() => {
     const search = query.trim().toLowerCase();
-    let list = active.filter((product) => {
-      if (category !== "All finds" && product.category !== category) return false;
-      if (condition !== "All" && product.condition !== condition) return false;
-      if (offersOnly && !product.allowOffers) return false;
-      if (product.askingPrice > maxPrice) return false;
-      if (search) {
-        const haystack = `${product.title} ${product.description} ${product.brand ?? ""} ${product.category} ${product.sellerName}`.toLowerCase();
-        if (!haystack.includes(search)) return false;
-      }
-      return true;
-    });
-    list = [...list].sort((a, b) => {
-      if (sort === "price-asc") return a.askingPrice - b.askingPrice;
-      if (sort === "price-desc") return b.askingPrice - a.askingPrice;
-      if (sort === "offers") return Number(b.allowOffers) - Number(a.allowOffers);
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-    return list;
-  }, [active, category, condition, offersOnly, maxPrice, query, sort]);
+    return active
+      .filter((product) => {
+        if (!matchesCategory(product, category)) return false;
+        if (condition !== "All" && product.condition !== condition) return false;
+        if (product.askingPrice > maxPrice) return false;
+        if (
+          selectedSizes.length &&
+          !selectedSizes.some((size) => (product.size || "").toLowerCase().includes(size.toLowerCase()))
+        ) {
+          return false;
+        }
+        if (
+          search &&
+          !`${product.title} ${product.description} ${product.brand ?? ""} ${product.category} ${product.sellerName}`
+            .toLowerCase()
+            .includes(search)
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (sort === "price-asc") return a.askingPrice - b.askingPrice;
+        if (sort === "price-desc") return b.askingPrice - a.askingPrice;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+  }, [active, category, condition, maxPrice, query, selectedSizes, sort]);
 
-  const counts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const product of active) {
-      map.set(product.category, (map.get(product.category) ?? 0) + 1);
-    }
-    return map;
-  }, [active]);
+  const pageSize = 9;
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  const pageProducts = visible.slice((page - 1) * pageSize, page * pageSize);
 
-  const openMenu = () => {
-    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
-    setMenuOpen(true);
-  };
-  const scheduleClose = () => {
-    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => setMenuOpen(false), 150);
-  };
-  const chooseCategory = (next: Category | "All finds") => {
-    setCategory(next);
-    setMenuOpen(false);
-  };
-  const liveAuctions = db.auctions.filter((auction) => auction.status === "live");
+  useEffect(() => setPage(1), [category, condition, maxPrice, query, selectedSizes, sort]);
 
   const reset = () => {
-    setQuery("");
-    setCategory("All finds");
+    setCategory("all");
     setCondition("All");
     setSort("newest");
-    setOffersOnly(false);
+    setSelectedSizes([]);
     setMaxPrice(highestPrice);
+    setQuery("");
   };
 
+  const toggleSize = (size: string) =>
+    setSelectedSizes((previous) =>
+      previous.includes(size) ? previous.filter((item) => item !== size) : [...previous, size],
+    );
+
   return (
-    <main className="page-shell">
-      <div className="section-wrap">
-        <PageHeader
-          eyebrow="SHOP THE ARCHIVE"
-          title={
-            <>
-              Every piece, <em>one of one.</em>
-            </>
-          }
-          description="Buy instantly at the asking price, add to your cart, or send a private offer. Bidding only appears on the few pieces a seller has opted into an auction."
-          action={
-            liveAuctions.length > 0 ? (
-              <Link href="#/auctions" className="live-callout">
-                <span className="live-dot" /> {liveAuctions.length} live auction
-                {liveAuctions.length === 1 ? "" : "s"} <Gavel size={14} />
-              </Link>
-            ) : undefined
-          }
-        />
-
-        <div className="catalog-toolbar">
-          <div
-            className={`category-dropdown ${menuOpen ? "is-open" : ""}`}
-            onMouseEnter={openMenu}
-            onMouseLeave={scheduleClose}
-            onBlur={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setMenuOpen(false);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") setMenuOpen(false);
-            }}
-          >
-            <button
-              type="button"
-              className="category-dropdown-trigger"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              aria-controls="catalog-category-menu"
-              onClick={() => setMenuOpen(true)}
-            >
-              <SlidersHorizontal size={16} />
-              <span>{category === "All finds" ? "All categories" : category}</span>
-              <ChevronDown size={16} className="category-dropdown-chevron" />
-            </button>
-            <div
-              id="catalog-category-menu"
-              className="category-dropdown-panel"
-              role="menu"
-              aria-label="Filter by category"
-            >
-              <span className="category-dropdown-label">Shop by category</span>
-              {categoryNames.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={category === name}
-                  className={category === name ? "is-active" : ""}
-                  onClick={() => chooseCategory(name)}
-                >
-                  <span>
-                    {name === "All finds" ? "All pieces" : name}
-                    <em>{name === "All finds" ? active.length : counts.get(name) ?? 0}</em>
-                  </span>
-                  {category === name && <Check size={15} />}
-                </button>
-              ))}
+    <main className="page-shell shop-page">
+      <section className="shop-sheet" aria-labelledby="shop-title">
+        <div className="shop-layout">
+          <aside className="shop-filters" aria-label="Filters">
+            <div className="shop-filter-paper">
+            <div className="shop-filter-title">
+              <h2>Filter</h2>
+              <Filter size={17} strokeWidth={1.4} />
             </div>
-          </div>
 
-          <label className="catalog-search">
-            <Search size={16} />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search the archive"
-              aria-label="Search listings"
-            />
-            {query && (
-              <button type="button" onClick={() => setQuery("")} aria-label="Clear search">
-                <X size={14} />
-              </button>
-            )}
-          </label>
+            <section className="shop-filter-group">
+              <h3>
+                Category <ChevronDown size={15} strokeWidth={1.4} className="is-up" />
+              </h3>
+              {shopCategories.map((option) => (
+                <label key={option.key} className="shop-check">
+                  <input
+                    type="checkbox"
+                    checked={category === option.key}
+                    onChange={() => setCategory(option.key)}
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </section>
 
-          <select
-            className="catalog-select"
-            value={condition}
-            onChange={(event) => setCondition(event.target.value as Condition | "All")}
-            aria-label="Filter by condition"
-          >
-            <option value="All">Any condition</option>
-            <option value="New">New</option>
-            <option value="Like new">Like new</option>
-            <option value="Good">Good</option>
-            <option value="Fair">Fair</option>
-          </select>
+            <section className="shop-filter-group">
+              <h3>Condition</h3>
+              {conditionOptions.map((option) => (
+                <label key={option.value} className="shop-check">
+                  <input
+                    type="checkbox"
+                    checked={condition === option.value}
+                    onChange={() =>
+                      setCondition(condition === option.value ? "All" : option.value)
+                    }
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </section>
 
-          <select
-            className="catalog-select"
-            value={sort}
-            onChange={(event) => setSort(event.target.value as Sort)}
-            aria-label="Sort listings"
-          >
-            <option value="newest">Newest first</option>
-            <option value="price-asc">Price: low to high</option>
-            <option value="price-desc">Price: high to low</option>
-            <option value="offers">Open to offers</option>
-          </select>
-        </div>
-
-        <div className="catalog-subbar">
-          <div className="catalog-checks">
-            <label>
-              <input
-                type="checkbox"
-                checked={offersOnly}
-                onChange={(event) => setOffersOnly(event.target.checked)}
-              />
-              <span>Open to offers</span>
-            </label>
-            <label className="price-filter">
-              <span>Under {formatMoney(maxPrice)}</span>
+            <section className="shop-filter-group shop-price">
+              <h3>Price Range</h3>
               <input
                 type="range"
-                min={10000}
+                className="shop-range"
+                min={0}
                 max={highestPrice}
                 step={5000}
-                value={maxPrice}
+                value={Math.min(maxPrice, highestPrice)}
                 onChange={(event) => setMaxPrice(Number(event.target.value))}
+                aria-label="Maximum price"
               />
-            </label>
-          </div>
-          <span className="catalog-count">
-            {visible.length} {visible.length === 1 ? "piece" : "pieces"}
-          </span>
-        </div>
+              <div className="shop-price-ends">
+                <span>₹0</span>
+                <span>{formatMoney(Math.min(maxPrice, highestPrice))}+</span>
+              </div>
+            </section>
 
-        {visible.length ? (
-          <div className="product-grid catalog-grid">
-            {visible.map((product: Product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state page-empty">
-            <Search size={34} />
-            <h2>Nothing on this rail right now.</h2>
-            <p>Try a different category, widen the price range, or clear the search.</p>
-            <button type="button" className="button button-olive" onClick={reset}>
-              Reset filters
-            </button>
-          </div>
-        )}
-        {visible.length > 0 && (
-          <div className="catalog-foot">
-            <span>
-              Every listing is one seller&apos;s piece. Prices are set by the seller, in Indian rupees.
-            </span>
-            <button type="button" onClick={reset} className="text-link">
-              Reset filters
-            </button>
-          </div>
-        )}
-      </div>
+            <section className="shop-filter-group">
+              <h3>Size</h3>
+              <div className="shop-size-list">
+                {sizes.map((size) => (
+                  <button
+                    type="button"
+                    key={size}
+                    className={selectedSizes.includes(size) ? "selected" : ""}
+                    onClick={() => toggleSize(size)}
+                    aria-pressed={selectedSizes.includes(size)}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="shop-sort">
+              <h3>Sort By</h3>
+              <div className="shop-select-wrap">
+                <select value={sort} onChange={(event) => setSort(event.target.value as Sort)} aria-label="Sort by">
+                  <option value="newest">Recently Listed</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                </select>
+                <ChevronDown size={14} strokeWidth={1.5} />
+              </div>
+            </section>
+
+            </div>
+            <img className="shop-flowers" src="/ass/dried-flowers.png" alt="" aria-hidden="true" />
+          </aside>
+
+          <section className="shop-results">
+            <header className="shop-heading">
+              <div>
+                <h1 id="shop-title" className="shop-title">
+                  Shop All <em>Items</em>
+                  <span className="shop-doodle" aria-hidden="true" />
+                </h1>
+                <p className="shop-found">{visible.length} Items found</p>
+              </div>
+              <div className="shop-view">
+                <span>View:</span>
+                <button
+                  type="button"
+                  aria-label="Grid view"
+                  aria-pressed={view === "grid"}
+                  className={view === "grid" ? "is-active" : ""}
+                  onClick={() => setView("grid")}
+                >
+                  <Grid2X2 size={15} strokeWidth={1.7} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="List view"
+                  aria-pressed={view === "list"}
+                  className={view === "list" ? "is-active" : ""}
+                  onClick={() => setView("list")}
+                >
+                  <List size={18} strokeWidth={1.7} />
+                </button>
+              </div>
+            </header>
+
+            {pageProducts.length ? (
+              <div className={`shop-grid is-${view}`}>
+                {pageProducts.map((product) => (
+                  <ShopCard key={product.id} product={product} />
+                ))}
+              </div>
+            ) : (
+              <div className="shop-empty">
+                <h2>No finds here yet</h2>
+                <p>Try another category, size or price range.</p>
+                <button type="button" onClick={reset}>
+                  Clear filters
+                </button>
+              </div>
+            )}
+
+            {visible.length > 0 && (
+              <nav className="shop-pagination" aria-label="Pagination">
+                <button
+                  type="button"
+                  aria-label="Previous page"
+                  disabled={page === 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                >
+                  <ChevronLeft size={15} strokeWidth={1.7} />
+                </button>
+                {pageItems(page, pageCount).map((item, index) =>
+                  item === "…" ? (
+                    <span key={`gap-${index}`}>…</span>
+                  ) : (
+                    <button
+                      type="button"
+                      key={item}
+                      aria-current={page === item ? "page" : undefined}
+                      className={page === item ? "is-active" : ""}
+                      onClick={() => setPage(item)}
+                    >
+                      {item}
+                    </button>
+                  ),
+                )}
+                <button
+                  type="button"
+                  aria-label="Next page"
+                  disabled={page === pageCount}
+                  onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+                >
+                  <ChevronRight size={15} strokeWidth={1.7} />
+                </button>
+              </nav>
+            )}
+          </section>
+        </div>
+      </section>
     </main>
   );
 }
