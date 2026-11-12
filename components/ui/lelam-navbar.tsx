@@ -95,11 +95,12 @@ export function LelamNavbar({
         >
           <span
             style={{
-              fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif',
-              fontSize: "clamp(28px, 2.4vw, 36px)",
-              fontWeight: 500,
-              letterSpacing: "-0.02em",
+              fontFamily: '"Gumela Arabic", serif',
+              fontSize: "clamp(30px, 2.6vw, 42px)",
+              fontWeight: 800,
+              letterSpacing: "-0.03em",
               lineHeight: 1,
+              textTransform: "lowercase",
               color: "#493022",
             }}
           >
