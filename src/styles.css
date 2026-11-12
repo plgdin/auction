@@ -4855,26 +4855,50 @@ body {
   z-index: 20;
 }
 
-/* Liquid Glass Navbar Text - Dark Black & Bold */
+/* Liquid Glass Navbar Text - Warm Lelam Brown & Bold */
 .nimbus-nav {
-  --n-fg: #000000 !important;
-  --n-fg-soft: #000000 !important;
+  --n-fg: #493022 !important;
+  --n-fg-soft: #493022 !important;
 }
 
 .nimbus-nav .nimbus-item:not([aria-current="page"]) {
-  color: #000000 !important;
+  color: #493022 !important;
   font-weight: 700 !important;
   opacity: 1 !important;
 }
 
 .nimbus-nav .nimbus-item:not([aria-current="page"]) svg {
-  stroke: #000000 !important;
-  color: #000000 !important;
+  stroke: #493022 !important;
+  color: #493022 !important;
 }
 
 .nimbus-nav .nimbus-item:not([aria-current="page"]):hover {
-  color: #000000 !important;
+  color: #2b1810 !important;
+  background: rgba(73, 48, 34, 0.08) !important;
   opacity: 1 !important;
+}
+
+.nimbus-nav .nimbus-item:not([aria-current="page"]):hover svg {
+  stroke: #2b1810 !important;
+  color: #2b1810 !important;
+}
+
+.nimbus-nav .nimbus-item:not([aria-current="page"]) .nimbus-label,
+.nimbus-nav .nimbus-item:not([aria-current="page"]):hover .nimbus-label {
+  color: inherit !important;
+}
+
+.nimbus-nav .nimbus-item[aria-current="page"] {
+  color: #ffffff !important;
+}
+
+.nimbus-nav .nimbus-item[aria-current="page"] svg {
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+
+.nimbus-nav .nimbus-item[aria-current="page"] .nimbus-label {
+  color: #ffffff !important;
 }
 
 .lelam-action-btn {
