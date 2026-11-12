@@ -1,179 +1,387 @@
-import { useEffect, useMemo, useState } from "react";
+"use client";
+
 import { motion } from "framer-motion";
-import { ArrowDown, MoveRight, ShoppingBag, Sparkles } from "lucide-react";
-import { navigate, smoothScrollTo } from "@/src/components/Link";
-import Velaris from "@/components/ui/velaris";
+import { MoveRight, RotateCcw, ShieldCheck, Zap } from "lucide-react";
+import { navigate } from "@/src/components/Link";
 
 export interface HeroProps {
-  prefix?: string;
-  titles?: string[];
+  headlineTop?: string;
+  headlineMiddle?: string;
+  headlineAccent?: string;
   description?: string;
   primaryCtaText?: string;
   primaryCtaHref?: string;
-  secondaryCtaText?: string;
-  secondaryCtaHref?: string;
-  bg?: string;
-  colors?: string[];
-  speed?: number;
-  grain?: number;
   className?: string;
 }
 
-const DEFAULT_HERO_COLORS = ["#86efac", "#4ade80", "#059669", "#000000"];
+/** Translucent beige masking tape strip with torn edges and dashed fiber cuts */
+function MaskingTape({
+  className = "",
+  width = "w-24",
+  rotate = "-rotate-1",
+}: {
+  className?: string;
+  width?: string;
+  rotate?: string;
+}) {
+  return (
+    <div
+      className={`absolute z-30 h-6 ${width} ${rotate} pointer-events-none select-none ${className}`}
+      style={{
+        backgroundColor: "rgba(238, 226, 198, 0.88)",
+        backdropFilter: "blur(2px)",
+        boxShadow: "0 1.5px 4px rgba(73, 48, 34, 0.16)",
+        clipPath: "polygon(0% 3px, 2% 0%, 98% 2%, 100% 5%, 98% 100%, 96% 96%, 3% 98%, 0% 93%)",
+        borderLeft: "1px dashed rgba(160, 135, 95, 0.45)",
+        borderRight: "1px dashed rgba(160, 135, 95, 0.45)",
+      }}
+      aria-hidden="true"
+    />
+  );
+}
+
+/** Vintage circular rubber stamp: BUY • WEAR • REPEAT with wavy postal cancellation lines */
+function VintagePostalStamp({ className = "" }: { className?: string }) {
+  return (
+    <div
+      className={`relative inline-flex items-center gap-2 select-none pointer-events-none ${className}`}
+      aria-hidden="true"
+    >
+      {/* 3 Wavy postal cancellation lines */}
+      <svg
+        width="46"
+        height="32"
+        viewBox="0 0 46 32"
+        fill="none"
+        className="text-[#493022]/75 shrink-0 opacity-80"
+      >
+        <path
+          d="M0 5 C 8 1, 15 9, 23 5 C 31 1, 38 9, 46 5"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+        <path
+          d="M0 16 C 8 12, 15 20, 23 16 C 31 12, 38 20, 46 16"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+        <path
+          d="M0 27 C 8 23, 15 31, 23 27 C 31 23, 38 31, 46 27"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+      </svg>
+
+      {/* Double circle rubber stamp */}
+      <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center shrink-0">
+        <svg
+          viewBox="0 0 100 100"
+          className="w-full h-full text-[#493022]/85 transform -rotate-12 drop-shadow-sm"
+        >
+          {/* Outer dashed circle */}
+          <circle
+            cx="50"
+            cy="50"
+            r="46"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeDasharray="3 2"
+          />
+          {/* Inner solid circle */}
+          <circle cx="50" cy="50" r="41" fill="none" stroke="currentColor" strokeWidth="1.2" />
+
+          {/* Centered postal typography */}
+          <text
+            x="50"
+            y="37"
+            textAnchor="middle"
+            fill="currentColor"
+            fontSize="10"
+            fontFamily="'DM Sans', 'Inter', sans-serif"
+            fontWeight="700"
+            letterSpacing="0.18em"
+          >
+            SELL
+          </text>
+          <text
+            x="50"
+            y="52"
+            textAnchor="middle"
+            fill="currentColor"
+            fontSize="10.5"
+            fontFamily="'DM Sans', 'Inter', sans-serif"
+            fontWeight="700"
+            letterSpacing="0.18em"
+          >
+            WEAR
+          </text>
+          <text
+            x="50"
+            y="67"
+            textAnchor="middle"
+            fill="currentColor"
+            fontSize="10"
+            fontFamily="'DM Sans', 'Inter', sans-serif"
+            fontWeight="700"
+            letterSpacing="0.18em"
+          >
+            REPEAT
+          </text>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/** Authentic Polaroid photo frame with realistic shadows, border chin, and washi tape */
+function PolaroidPhoto({
+  src,
+  alt,
+  rotation = 0,
+  className = "",
+  tapePlacement = "top-center",
+  delay = 0,
+}: {
+  src: string;
+  alt: string;
+  rotation?: number;
+  className?: string;
+  tapePlacement?: "top-center" | "top-right" | "top-left";
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.94, rotate: rotation - 2 }}
+      animate={{ opacity: 1, scale: 1, rotate: rotation }}
+      transition={{ duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{
+        scale: 1.04,
+        rotate: 0,
+        zIndex: 40,
+        transition: { type: "spring", stiffness: 300, damping: 20 },
+      }}
+      className={`relative bg-[#FAF7F2] p-2.5 pb-8 sm:p-3 sm:pb-10 shadow-[0_20px_42px_rgba(73,48,34,0.18),0_4px_12px_rgba(0,0,0,0.08)] border border-[#E5DACB]/80 rounded-[2px] cursor-pointer group transition-shadow hover:shadow-[0_26px_56px_rgba(73,48,34,0.28)] ${className}`}
+    >
+      {/* Masking tape on polaroid */}
+      {tapePlacement === "top-center" && (
+        <MaskingTape className="-top-3 left-1/2 -translate-x-1/2" width="w-24 sm:w-28" rotate="-rotate-1" />
+      )}
+      {tapePlacement === "top-right" && (
+        <MaskingTape className="-top-3 -right-2" width="w-20 sm:w-24" rotate="rotate-6" />
+      )}
+      {tapePlacement === "top-left" && (
+        <MaskingTape className="-top-3 -left-2" width="w-20 sm:w-24" rotate="-rotate-6" />
+      )}
+
+      {/* Photo frame */}
+      <div className="relative aspect-[4/4.25] w-full overflow-hidden bg-[#E9DFC8] rounded-[1px] border border-black/5">
+        <img
+          src={src}
+          alt={alt}
+          className="w-full h-full object-cover contrast-[1.03] saturate-[0.96] transition-transform duration-500 group-hover:scale-105"
+          loading="eager"
+        />
+        {/* Soft daylight highlight overlay */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-black/8 via-transparent to-white/12 pointer-events-none" />
+      </div>
+    </motion.div>
+  );
+}
 
 function Hero({
-  prefix = "Every piece is",
-  titles: customTitles,
-  description = "A local community marketplace for pre-loved fashion and closet treasures. Discover authenticated vintage garments, place private offers directly with sellers, or bid live in real-time auctions.",
-  primaryCtaText = "Shop the rail",
-  primaryCtaHref = "#/products",
-  secondaryCtaText = "Sell your closet",
-  secondaryCtaHref = "#/sell",
-  bg = "#000000",
-  colors = DEFAULT_HERO_COLORS,
-  speed = 1.8,
-  grain = 0.28,
+  headlineTop = "Give Your",
+  headlineMiddle = "Closet a",
+  headlineAccent = "Second Life.",
+  description = "Turn your pre-loved clothes, accessories and more into cash — easily, safely, and sustainably with lelam.co.",
+  primaryCtaText = "Start Selling Now",
+  primaryCtaHref = "#/sell",
   className = "",
 }: HeroProps) {
-  const [titleNumber, setTitleNumber] = useState(0);
-  const titles = useMemo(
-    () =>
-      customTitles || [
-        "pre-loved.",
-        "vintage.",
-        "one of a kind.",
-        "timeless.",
-        "handpicked.",
-      ],
-    [customTitles]
-  );
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (titleNumber === titles.length - 1) {
-        setTitleNumber(0);
-      } else {
-        setTitleNumber(titleNumber + 1);
-      }
-    }, 2200);
-    return () => clearTimeout(timeoutId);
-  }, [titleNumber, titles]);
-
   return (
-    <Velaris
-      height="100svh"
-      bg={bg}
-      colors={colors}
-      speed={speed}
-      grain={grain}
-      className={`min-h-[100svh] ${className}`}
+    <section
+      className={`relative w-full min-h-[88vh] lg:min-h-[94vh] overflow-hidden flex flex-col justify-between select-none ${className}`}
+      style={{
+        backgroundColor: "#F5EBDD",
+        backgroundImage: `
+          radial-gradient(#D6C5B0 0.85px, transparent 0.85px),
+          radial-gradient(#D6C5B0 0.85px, #F5EBDD 0.85px)
+        `,
+        backgroundSize: "32px 32px",
+        backgroundPosition: "0 0, 16px 16px",
+      }}
     >
-      <div className="relative w-full h-full min-h-[100svh] flex flex-col justify-between items-center text-white">
-        {/* Top spacer to offset the fixed 80px navbar */}
-        <div className="h-20 sm:h-24 w-full shrink-0" aria-hidden="true" />
+      {/* Top Outer Torn Kraft-Paper Edge */}
+      <div className="absolute top-0 left-0 right-0 w-full z-20 pointer-events-none select-none">
+        <img
+          src="/images/scrapbook_torn_top.png"
+          alt=""
+          className="w-full h-12 sm:h-16 md:h-20 lg:h-24 object-cover object-left-top drop-shadow-[0_4px_12px_rgba(73,48,34,0.18)]"
+        />
+      </div>
 
-        {/* Main Hero Content - vertically centered in the viewport */}
-        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col items-center justify-center py-6 sm:py-10 z-10">
-          <div className="flex gap-6 sm:gap-8 lg:gap-10 items-center justify-center flex-col w-full max-w-5xl">
-            {/* Heading with animated titles */}
-            <div className="flex gap-4 sm:gap-6 flex-col items-center w-full">
-              <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-[5.75rem] xl:text-[6.5rem] tracking-tight text-center font-serif font-normal text-white leading-[1.08] px-2 drop-shadow-sm">
-                <span className="block text-white/95">{prefix}</span>
-                <span className="relative flex w-full justify-center overflow-hidden text-center min-h-[1.38em] h-[1.38em] pt-1 pb-2">
-                  &nbsp;
-                  {titles.map((title, index) => (
-                    <motion.span
-                      key={index}
-                      className="absolute font-serif italic text-white underline decoration-emerald-400/70 decoration-wavy decoration-1 underline-offset-8 whitespace-nowrap px-3 drop-shadow"
-                      initial={{ opacity: 0, y: "-100%" }}
-                      transition={{ type: "spring", stiffness: 50, damping: 15 }}
-                      animate={
-                        titleNumber === index
-                          ? {
-                              y: 0,
-                              opacity: 1,
-                            }
-                          : {
-                              y: titleNumber > index ? -120 : 120,
-                              opacity: 0,
-                            }
-                      }
-                    >
-                      {title}
-                    </motion.span>
-                  ))}
+      {/* Top spacer to offset the fixed glass navbar */}
+      <div className="h-20 sm:h-24 lg:h-28 w-full shrink-0" aria-hidden="true" />
+
+      {/* Main 16:9 Scrapbook Editorial Container */}
+      <div className="container relative mx-auto px-5 sm:px-8 md:px-12 lg:px-16 flex-1 flex items-center justify-center py-4 sm:py-8 z-10">
+        <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          
+          {/* ========================================================
+             LEFT SECTION — BRAND AND MESSAGE (approx 45%)
+             ======================================================== */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-5 xl:col-span-5 flex flex-col items-start gap-4 sm:gap-5 lg:gap-6 z-10"
+          >
+            {/* Main Headline: Give Your Closet a Second Life. */}
+            <div className="relative">
+              <h1
+                className="text-[#493022] text-4xl sm:text-5xl md:text-6xl lg:text-[4.25rem] xl:text-[4.75rem] leading-[1.05] tracking-tight font-normal"
+                style={{
+                  fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif',
+                }}
+              >
+                <span className="relative inline-flex items-center">
+                  <span>{headlineTop}</span>
+                  {/* Subtle pencil sketch rays mark on top right of Give Your */}
+                  <svg
+                    width="26"
+                    height="26"
+                    viewBox="0 0 26 26"
+                    fill="none"
+                    className="inline-block text-[#493022]/75 ml-2 -mt-6 sm:-mt-8"
+                    aria-hidden="true"
+                  >
+                    <path d="M4 22L12 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+                    <path d="M15 24L22 11" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <br />
+                <span>{headlineMiddle}</span>
+                <br />
+                <span className="relative inline-block italic font-serif mt-1">
+                  {/* Muted dusty-rose watercolor brush highlight strip underneath */}
+                  <span
+                    className="absolute inset-x-[-10px] inset-y-[2px] -rotate-1 rounded-[3px] -z-10"
+                    style={{
+                      backgroundColor: "rgba(201, 143, 125, 0.42)",
+                      boxShadow: "0 0 14px rgba(201, 143, 125, 0.28)",
+                    }}
+                    aria-hidden="true"
+                  />
+                  {headlineAccent}
                 </span>
               </h1>
-
-              {/* Subtitle / Ideology copy */}
-              <p className="text-lg sm:text-xl md:text-2xl leading-relaxed tracking-normal text-white/80 max-w-2xl text-center px-4 font-sans font-light drop-shadow-sm">
-                {description}
-              </p>
             </div>
 
-            {/* Call to Actions */}
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 w-full sm:w-auto items-stretch sm:items-center pt-2 sm:pt-4">
+            {/* Supporting Copy */}
+            <p className="text-base sm:text-lg md:text-xl text-[#6B5646] max-w-lg leading-relaxed font-sans font-normal">
+              {description}
+            </p>
+
+            {/* CTA Button: Start Selling Now → */}
+            <div className="pt-1 flex flex-col items-start gap-3">
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-3 rounded-full px-9 py-4 text-base sm:text-lg font-semibold shadow-2xl hover:shadow-[0_8px_30px_rgba(255,255,255,0.25)] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-                style={{
-                  backgroundColor: "#ffffff",
-                  color: "#051208",
-                  minHeight: "56px",
-                  boxShadow: "0 6px 28px rgba(0, 0, 0, 0.45)",
-                }}
                 onClick={() => navigate(primaryCtaHref)}
+                className="group relative inline-flex items-center gap-3 px-8 py-3.5 sm:px-9 sm:py-4 rounded-[10px] text-base sm:text-lg font-medium text-[#F5EBDD] bg-[#493022] hover:bg-[#382317] shadow-[0_8px_24px_rgba(73,48,34,0.28)] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
               >
-                <ShoppingBag className="w-5 h-5 text-stone-950" strokeWidth={2.2} />
-                <span className="text-stone-950 font-semibold">{primaryCtaText}</span>
-                <MoveRight className="w-4 h-4 text-stone-900" strokeWidth={2.2} />
+                <span>{primaryCtaText}</span>
+                <MoveRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
               </button>
-              <button
-                type="button"
-                className="inline-flex items-center justify-center gap-3 rounded-full px-9 py-4 text-base sm:text-lg font-semibold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group"
-                style={{
-                  backgroundColor: "rgba(255, 255, 255, 0.12)",
-                  color: "#ffffff",
-                  border: "1.5px solid rgba(255, 255, 255, 0.35)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  minHeight: "56px",
-                  boxShadow: "0 4px 18px rgba(0, 0, 0, 0.25)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.22)";
-                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.6)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.12)";
-                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.35)";
-                }}
-                onClick={() => navigate(secondaryCtaHref)}
-              >
-                <Sparkles className="w-5 h-5 text-emerald-300 group-hover:text-emerald-200 transition-colors" strokeWidth={2.2} />
-                <span className="font-semibold">{secondaryCtaText}</span>
-              </button>
+
+              {/* Trust bullets row: List in 2 minutes | Safe & trusted | Sustainable */}
+              <div className="pt-2 flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-[#6B5646] font-medium">
+                <span className="inline-flex items-center gap-1.5">
+                  <Zap size={14} className="text-[#493022]" /> List in 2 minutes
+                </span>
+                <span className="text-[#B58B64]/50">|</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-[#493022]" /> Safe & trusted
+                </span>
+                <span className="text-[#B58B64]/50">|</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <RotateCcw size={14} className="text-[#493022]" /> Sustainable
+                </span>
+              </div>
+            </div>
+
+            {/* Handmade Scrapbook Details: Vintage Stamp & Pressed Botanical Wildflower */}
+            <div className="relative pt-2 sm:pt-3 flex items-center gap-6">
+              {/* Circular vintage stamp: SELL • WEAR • REPEAT */}
+              <VintagePostalStamp />
+
+              {/* Delicate dried botanical flower stem with washi tape */}
+              <div className="relative w-28 sm:w-32 h-36 shrink-0 pointer-events-none select-none">
+                <img
+                  src="/images/flower_cutout.png"
+                  alt=""
+                  className="w-full h-full object-contain filter drop-shadow-[2px_4px_6px_rgba(73,48,34,0.18)]"
+                />
+                {/* Masking tape securing the dried flower stem */}
+                <MaskingTape
+                  className="bottom-4 left-4"
+                  width="w-16 sm:w-18"
+                  rotate="-rotate-6"
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ========================================================
+             RIGHT SECTION — SCRAPBOOK COLLAGE (approx 55%)
+             ======================================================== */}
+          <div className="lg:col-span-7 xl:col-span-7 relative flex justify-center items-center min-h-[440px] sm:min-h-[520px] md:min-h-[560px] lg:min-h-[600px] w-full">
+            <div className="relative w-full max-w-[560px] h-[440px] sm:h-[520px] md:h-[560px] lg:h-[600px]">
+              
+              {/* Photograph 2: Upper-right neatly folded pre-loved knitted sweaters */}
+              <div className="absolute top-2 sm:top-4 right-0 sm:right-2 z-10 w-[45%] sm:w-[48%] max-w-[245px]">
+                <PolaroidPhoto
+                  src="/images/scrapbook_knits.png"
+                  alt="Neatly folded pre-loved knitted sweaters"
+                  rotation={7}
+                  tapePlacement="top-right"
+                  delay={0.2}
+                />
+              </div>
+
+              {/* Photograph 1: Large central Polaroid with vintage brown leather jacket on wooden hanger */}
+              <div className="absolute top-10 sm:top-14 left-2 sm:left-4 z-20 w-[58%] sm:w-[60%] max-w-[325px]">
+                <PolaroidPhoto
+                  src="/images/scrapbook_jacket.png"
+                  alt="Vintage brown leather jacket hanging on a wooden hanger"
+                  rotation={-2}
+                  tapePlacement="top-center"
+                  delay={0.1}
+                />
+              </div>
+
+              {/* Photograph 3: Lower-right vintage film camera */}
+              <div className="absolute bottom-4 sm:bottom-6 right-2 sm:right-6 z-30 w-[50%] sm:w-[52%] max-w-[265px]">
+                <PolaroidPhoto
+                  src="/images/scrapbook_camera.png"
+                  alt="Vintage 35mm rangefinder film camera"
+                  rotation={-5.5}
+                  tapePlacement="top-right"
+                  delay={0.3}
+                />
+              </div>
+
             </div>
           </div>
-        </div>
 
-        {/* Bottom fold cue */}
-        <div className="w-full shrink-0 pb-6 sm:pb-8 flex flex-col items-center justify-center z-10">
-          <a
-            href="#rack"
-            onClick={(e) => {
-              e.preventDefault();
-              smoothScrollTo(document.getElementById("rack"));
-            }}
-            className="group inline-flex flex-col items-center gap-2 text-xs uppercase tracking-[0.22em] font-medium text-white/60 hover:text-white transition-colors"
-            aria-label="Scroll to clothing rail"
-          >
-            <span>Explore the rail</span>
-            <ArrowDown className="w-4 h-4 animate-bounce text-emerald-300/80 group-hover:text-emerald-200 transition-colors" />
-          </a>
         </div>
       </div>
-    </Velaris>
+
+      {/* Bottom margin spacer */}
+      <div className="h-6 sm:h-10 w-full shrink-0" aria-hidden="true" />
+    </section>
   );
 }
 

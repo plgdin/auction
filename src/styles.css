@@ -27,6 +27,70 @@
   font-weight: 400;
 }
 
+@font-face {
+  font-family: "Ogg";
+  src: url("/fonts/Ogg-Regular-Trial.ttf") format("truetype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Ogg";
+  src: url("/fonts/Ogg-Italic-Trial.ttf") format("truetype");
+  font-display: swap;
+  font-style: italic;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "PPEditorialNew";
+  src: url("/fonts/PPEditorialNew-Regular.otf") format("opentype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "PPEditorialNew";
+  src: url("/fonts/PPEditorialNew-Italic.otf") format("opentype");
+  font-display: swap;
+  font-style: italic;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/fonts/Canela-Regular-Trial.otf") format("opentype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/fonts/Canela-RegularItalic-Trial.otf") format("opentype");
+  font-display: swap;
+  font-style: italic;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/fonts/Canela-Medium-Trial.otf") format("opentype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: "Canela";
+  src: url("/fonts/Canela-MediumItalic-Trial.otf") format("opentype");
+  font-display: swap;
+  font-style: italic;
+  font-weight: 500;
+}
+
 :root {
   font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #000000;
@@ -4778,7 +4842,7 @@ body {
 
 
 /* ========================================================
-   Lelam Navbar Action Controls (High-Visibility & Glassmorphism)
+   Lelam Navbar Action Controls (Warm Paper & Dark Chocolate Theme)
    ======================================================== */
 .lelam-header-scrim {
   position: absolute;
@@ -4786,7 +4850,7 @@ body {
   left: 0;
   right: 0;
   height: 110px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.45) 60%, transparent 100%);
+  background: linear-gradient(180deg, rgba(245, 235, 221, 0.94) 0%, rgba(245, 235, 221, 0.6) 65%, transparent 100%) !important;
   pointer-events: none;
   z-index: 20;
 }
@@ -4798,10 +4862,10 @@ body {
   width: 42px !important;
   height: 42px !important;
   border-radius: 9999px !important;
-  background: rgba(18, 18, 22, 0.82) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.28) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.25) !important;
+  background: rgba(238, 226, 198, 0.85) !important;
+  color: #493022 !important;
+  border: 1px solid rgba(73, 48, 34, 0.16) !important;
+  box-shadow: 0 2px 8px rgba(73, 48, 34, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.5) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -4810,11 +4874,11 @@ body {
 }
 
 .lelam-action-btn:hover {
-  background: #ffffff !important;
-  color: #000000 !important;
-  border-color: #ffffff !important;
+  background: #EDE0CC !important;
+  color: #493022 !important;
+  border-color: rgba(73, 48, 34, 0.3) !important;
   transform: translateY(-2px) !important;
-  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(73, 48, 34, 0.16) !important;
 }
 
 .lelam-action-btn:active {
@@ -4838,23 +4902,23 @@ body {
   height: 42px !important;
   padding: 0 18px 0 16px !important;
   border-radius: 9999px !important;
-  background: #ffffff !important;
-  color: #000000 !important;
+  background: #493022 !important;
+  color: #F5EBDD !important;
   font-weight: 700 !important;
   font-size: 13.5px !important;
   letter-spacing: -0.01em !important;
-  border: 1px solid rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid #493022 !important;
+  box-shadow: 0 4px 16px rgba(73, 48, 34, 0.22), 0 1px 3px rgba(0, 0, 0, 0.1) !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   cursor: pointer !important;
   text-decoration: none !important;
 }
 
 .lelam-bid-btn:hover {
-  background: #f4f4f5 !important;
-  color: #000000 !important;
+  background: #382317 !important;
+  color: #F5EBDD !important;
   transform: translateY(-2px) !important;
-  box-shadow: 0 8px 26px rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 6px 20px rgba(73, 48, 34, 0.3) !important;
 }
 
 .lelam-bid-btn:active {
@@ -4862,8 +4926,8 @@ body {
 }
 
 .lelam-bid-btn svg {
-  color: #000000 !important;
-  stroke: #000000 !important;
+  color: #F5EBDD !important;
+  stroke: #F5EBDD !important;
   transition: transform 0.2s ease !important;
 }
 
@@ -4879,8 +4943,8 @@ body {
   height: 22px !important;
   padding: 0 6px !important;
   border-radius: 9999px !important;
-  background: #000000 !important;
-  color: #ffffff !important;
+  background: #F5EBDD !important;
+  color: #493022 !important;
   font-size: 11px !important;
   font-weight: 800 !important;
   margin-left: 2px !important;
@@ -4898,31 +4962,55 @@ body {
   height: 18px !important;
   padding: 0 4px !important;
   border-radius: 9999px !important;
-  background: #ffffff !important;
-  color: #000000 !important;
+  background: #C98F7D !important;
+  color: #FFFFFF !important;
   font-size: 10px !important;
   font-weight: 800 !important;
-  border: 1.5px solid #000000 !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6) !important;
+  border: 1.5px solid #F5EBDD !important;
+  box-shadow: 0 2px 6px rgba(73, 48, 34, 0.25) !important;
   line-height: 1 !important;
 }
 
-
 /* ========================================================
-   Product Clothing Rail Gallery - Black Backdrop & True Colors
+   Product Clothing Rail Gallery - Warm Scrapbook Paper Theme
    ======================================================== */
 .rail-section {
   display: block !important;
-  background: #000000 !important;
-  padding-top: 40px !important;
-  padding-bottom: 30px !important;
+  background: #EDE0CC !important;
+  padding-top: 54px !important;
+  padding-bottom: 46px !important;
   width: 100% !important;
   position: relative !important;
+  color: #493022 !important;
+  border-top: 1px dashed rgba(73, 48, 34, 0.25) !important;
+  border-bottom: 1px dashed rgba(73, 48, 34, 0.25) !important;
 }
 
 .rail-section > [data-slot="clothing-rail-hero"] {
-  background: #000000 !important;
-  border-block: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: #EDE0CC !important;
+  border-block: 1px solid rgba(73, 48, 34, 0.14) !important;
+  color: #493022 !important;
+}
+
+.rail-section [data-slot="clothing-rail-hero"] header h2 {
+  color: #493022 !important;
+  font-family: 'Canela', 'Ogg', 'PPEditorialNew', 'DM Serif Display', Georgia, serif !important;
+  font-size: clamp(28px, 3.5vw, 42px) !important;
+}
+
+.rail-section [data-slot="clothing-rail-hero"] header p {
+  color: #6B5646 !important;
+}
+
+.rail-section [data-slot="clothing-rail-hero"] .button-olive {
+  background: #493022 !important;
+  color: #F5EBDD !important;
+  border: none !important;
+}
+
+.rail-section [data-slot="clothing-rail-hero"] .button-olive:hover {
+  background: #382317 !important;
+  color: #F5EBDD !important;
 }
 
 .rail-section [data-slot="clothing-rail-hero"] img {
@@ -5080,4 +5168,135 @@ body {
   left: 0;
   right: 0;
   height: 14px;
+}
+
+/* ========================================================
+   Auctions Page - Warm Paper & Antique Scrapbook Theme
+   ======================================================== */
+.auctions-page {
+  background-color: #F5EBDD !important;
+  background-image: 
+    radial-gradient(#D6C5B0 0.85px, transparent 0.85px),
+    radial-gradient(#D6C5B0 0.85px, #F5EBDD 0.85px) !important;
+  background-size: 32px 32px !important;
+  background-position: 0 0, 16px 16px !important;
+  color: #493022 !important;
+  min-height: 100vh !important;
+  padding-top: 130px !important;
+}
+
+.auctions-page .page-header {
+  border-bottom: 1px dashed rgba(73, 48, 34, 0.25) !important;
+  padding-bottom: 24px !important;
+}
+
+.auctions-page .page-header h1 {
+  font-family: 'Canela', 'Ogg', 'PPEditorialNew', 'DM Serif Display', Georgia, serif !important;
+  color: #493022 !important;
+  font-size: clamp(34px, 4vw, 52px) !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.auctions-page .page-header p {
+  color: #6B5646 !important;
+}
+
+.auctions-page .page-header .eyebrow {
+  color: #B58B64 !important;
+}
+
+.auctions-page .auction-explain {
+  border: 1px solid rgba(73, 48, 34, 0.16) !important;
+  background: rgba(73, 48, 34, 0.12) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 16px rgba(73, 48, 34, 0.06) !important;
+}
+
+.auctions-page .auction-explain > div {
+  background: #FAF7F2 !important;
+  color: #493022 !important;
+}
+
+.auctions-page .auction-explain strong {
+  color: #493022 !important;
+}
+
+.auctions-page .auction-explain p {
+  color: #6B5646 !important;
+}
+
+.auctions-page .auction-explain svg {
+  color: #493022 !important;
+}
+
+.auctions-page .segmented-tabs {
+  background: rgba(238, 226, 198, 0.85) !important;
+  border: 1px solid rgba(73, 48, 34, 0.2) !important;
+}
+
+.auctions-page .segmented-tabs button {
+  color: #6B5646 !important;
+}
+
+.auctions-page .segmented-tabs button.is-active {
+  background: #493022 !important;
+  color: #FAF7F2 !important;
+}
+
+.auctions-page .segmented-tabs button.is-active span {
+  background: rgba(250, 247, 242, 0.25) !important;
+  color: #FAF7F2 !important;
+}
+
+.auctions-page .auction-card {
+  background: #FAF7F2 !important;
+  border: 1px solid rgba(73, 48, 34, 0.16) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 16px rgba(73, 48, 34, 0.08) !important;
+  transition: transform 0.25s ease, box-shadow 0.25s ease !important;
+}
+
+.auctions-page .auction-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 14px 32px rgba(73, 48, 34, 0.16) !important;
+}
+
+.auctions-page .auction-card-title {
+  font-family: 'Canela', 'Ogg', 'PPEditorialNew', 'DM Serif Display', Georgia, serif !important;
+  color: #493022 !important;
+}
+
+.auctions-page .auction-card-prices strong {
+  font-family: 'Canela', 'Ogg', 'PPEditorialNew', 'DM Serif Display', Georgia, serif !important;
+  color: #493022 !important;
+}
+
+.auctions-page .auction-enter {
+  color: #493022 !important;
+  font-weight: 600 !important;
+}
+
+.auctions-page .auction-finance {
+  background: #FAF7F2 !important;
+  border: 1px solid rgba(73, 48, 34, 0.18) !important;
+  box-shadow: 0 8px 24px rgba(73, 48, 34, 0.08) !important;
+}
+
+.auctions-page .auction-finance h2 {
+  font-family: 'Canela', 'Ogg', 'PPEditorialNew', 'DM Serif Display', Georgia, serif !important;
+  color: #493022 !important;
+}
+
+.auctions-page .auction-finance p {
+  color: #6B5646 !important;
+}
+
+.auctions-page .auction-finance-example {
+  background: #F5EBDD !important;
+  border: 1px solid rgba(73, 48, 34, 0.16) !important;
+}
+
+.auctions-page .auction-finance-example strong {
+  color: #493022 !important;
 }

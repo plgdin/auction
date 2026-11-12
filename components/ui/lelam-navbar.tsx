@@ -34,9 +34,6 @@ export function LelamNavbar({
 }: LelamNavbarProps) {
   const { user, logout, switchAccount, db } = useStore();
   const route = useRoute();
-  const isSellLanding = route.path === "/sell";
-  const isPaperHome = route.path === "/" || route.path === "";
-  const isPaperLanding = isSellLanding || isPaperHome;
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
 
@@ -56,15 +53,11 @@ export function LelamNavbar({
   ];
 
   const activeIndex =
-    route.path.startsWith("/auctions")
-      ? 1
-      : route.path.startsWith("/sell")
-        ? 2
-        : route.path.startsWith("/products") || route.path.startsWith("/product/")
-          ? 0
-          : 0;
-
-  const paperActive = isPaperHome ? 2 : activeIndex;
+    route.path.startsWith("/sell")
+      ? 2
+      : route.path.startsWith("/auctions")
+        ? 1
+        : 0;
 
   const handleNavChange = (_: number, item: LiquidNavItem) => {
     if (item.href) {
@@ -76,13 +69,13 @@ export function LelamNavbar({
   const demoUsers = db.users.filter((candidate) => ["u-buyer", "u-seller", "u-admin"].includes(candidate.id));
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none ${isSellLanding ? "sell-landing-header" : ""} ${isPaperHome ? "paper-home-header" : ""}`}>
+    <header className="fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none">
       <div className="lelam-header-scrim" />
 
       <div className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-auto z-30">
         <a
           href="#top"
-            className="flex items-center text-white brand-logo no-underline shrink-0"
+          className="flex items-center text-[#493022] brand-logo no-underline shrink-0"
           aria-label="lelam.co home"
           onClick={(event) => {
             event.preventDefault();
@@ -91,14 +84,12 @@ export function LelamNavbar({
         >
           <span
             style={{
-              fontFamily: isPaperLanding ? '"DM Serif Display", Georgia, serif' : '"Gumela Arabic", serif',
-              fontSize: isPaperLanding ? "27px" : "clamp(30px, 2.5vw, 42px)",
-              fontWeight: isPaperLanding ? 400 : 800,
-              letterSpacing: "-0.03em",
+              fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif',
+              fontSize: "clamp(28px, 2.4vw, 36px)",
+              fontWeight: 500,
+              letterSpacing: "-0.02em",
               lineHeight: 1,
-              textTransform: "lowercase",
-              color: isPaperLanding ? "#302116" : "#ffffff",
-              textShadow: isPaperLanding ? "none" : "0 2px 16px rgba(0,0,0,0.9), 0 0 24px rgba(0,0,0,0.5)",
+              color: "#493022",
             }}
           >
             lelam.co
@@ -106,33 +97,26 @@ export function LelamNavbar({
         </a>
 
         <div className="absolute left-1/2 top-3 hidden -translate-x-1/2 lg:block">
-          {isPaperHome ? (
-            <nav className="paper-home-nav" aria-label="Main navigation">
-              {navItems.map((item, index) => <button key={item.label} type="button" className={index === paperActive ? "is-active" : ""} onClick={() => handleNavChange(index, item)}>{item.label}</button>)}
-            </nav>
-          ) : (
+          <LiquidNavbar
+            tone="light"
+            sound={true}
+            active={activeIndex}
+            items={navItems}
+            onChange={handleNavChange}
+          />
+        </div>
+
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <div className="lelam-mobile-nav flex lg:hidden mr-1">
             <LiquidNavbar
-              tone={isSellLanding ? "light" : "dark"}
+              tone="light"
+              compact={true}
               sound={true}
               active={activeIndex}
               items={navItems}
               onChange={handleNavChange}
             />
-          )}
-        </div>
-
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          {!isPaperHome && (
-            <div className="lelam-mobile-nav flex lg:hidden mr-1">
-              <LiquidNavbar
-                tone={isSellLanding ? "light" : "dark"}
-                compact={true}
-                sound={true}
-                items={navItems}
-                onChange={handleNavChange}
-              />
-            </div>
-          )}
+          </div>
 
           <button
             type="button"
@@ -303,18 +287,6 @@ export function LelamNavbar({
           </div>
         </div>
       </div>
-
-      {isPaperHome && (
-        <div className="paper-home-mobile-row">
-          <nav className="paper-home-nav paper-home-nav-mobile" aria-label="Main navigation">
-            {navItems.map((item, index) => (
-              <button key={item.label} type="button" className={index === paperActive ? "is-active" : ""} onClick={() => handleNavChange(index, item)}>
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-      )}
     </header>
   );
 }
