@@ -5196,5 +5196,506 @@
       "sentAt": "2026-11-04T09:30:33.557Z"
     }
   },
-  "failed": {}
+  "failed": {
+    "globalrubberinc96@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:44.983Z"
+    },
+    "globalscrap8@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:45.978Z"
+    },
+    "globalscrapindore@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:47.292Z"
+    },
+    "globalscrappageyards@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:48.296Z"
+    },
+    "globalscrappers07@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:49.283Z"
+    },
+    "globalscrapzone@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:50.250Z"
+    },
+    "globalservices455@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:51.210Z"
+    },
+    "globalsolution79@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:52.483Z"
+    },
+    "globalstars2014@rediff.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:53.474Z"
+    },
+    "globalstarupl@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:54.456Z"
+    },
+    "globalsteel0004@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:55.780Z"
+    },
+    "globalsteel2008@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:56.773Z"
+    },
+    "globalsteel74@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:57.815Z"
+    },
+    "globalsteel8@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:58.817Z"
+    },
+    "globalsteels77777@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:02:59.835Z"
+    },
+    "globalsteels786@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:00.826Z"
+    },
+    "globalsteels87@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:01.825Z"
+    },
+    "globalstellate@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:03.192Z"
+    },
+    "globaltdrs@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:04.239Z"
+    },
+    "globaltechno59@rocketmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:05.195Z"
+    },
+    "globaltenders9603@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:06.242Z"
+    },
+    "globaltraders.sy@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:07.520Z"
+    },
+    "globaltraders181@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:08.508Z"
+    },
+    "globaltraders1939@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:09.471Z"
+    },
+    "globaltraders29@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:10.960Z"
+    },
+    "globaltraders9442@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:12.740Z"
+    },
+    "globaltraders9946@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:13.954Z"
+    },
+    "globaltradersscrap@yahoo.in": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:15.463Z"
+    },
+    "globaltradesteels.baroda@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:16.532Z"
+    },
+    "globaltrading721@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:18.619Z"
+    },
+    "globaltradingco9090@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:19.642Z"
+    },
+    "globaltradingcovapi@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:20.620Z"
+    },
+    "globaltradings69@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:21.621Z"
+    },
+    "globalultratech9@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:22.638Z"
+    },
+    "globalvetnkl@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:23.628Z"
+    },
+    "globebharatshilpent@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:24.584Z"
+    },
+    "globecarbon@yahoo.co.in": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:25.938Z"
+    },
+    "globecivil@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:26.925Z"
+    },
+    "globeenterprises2005@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:27.928Z"
+    },
+    "globehouse.joyesh@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:28.895Z"
+    },
+    "globeindustry1234@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:30.256Z"
+    },
+    "globemetalschennai@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:31.250Z"
+    },
+    "globenterprises@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:32.297Z"
+    },
+    "globeoverseasdelhi@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:34.237Z"
+    },
+    "globesteelalloys@yahoo.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:35.234Z"
+    },
+    "globexindia4@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:36.610Z"
+    },
+    "gloriosaenterprises@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:37.600Z"
+    },
+    "gloriousauto@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:38.566Z"
+    },
+    "glorychukhu@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:39.551Z"
+    },
+    "gloryenterprises.ge777@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:40.542Z"
+    },
+    "glouries.abisheksancheti@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:41.508Z"
+    },
+    "glovedbr@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:42.477Z"
+    },
+    "glow73494@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:43.565Z"
+    },
+    "glowide@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:44.558Z"
+    },
+    "gloworeandore@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:45.578Z"
+    },
+    "gloziyo007@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:46.555Z"
+    },
+    "glpc_rpr@yahoo.co.in": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:47.550Z"
+    },
+    "glrathore@yahoo.in": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:48.541Z"
+    },
+    "glrminerals18@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:49.871Z"
+    },
+    "glrmkt6@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:51.242Z"
+    },
+    "glsathish1987@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:52.283Z"
+    },
+    "glsdmeta@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:53.636Z"
+    },
+    "gltrading2002@yahoo.co.in": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:54.596Z"
+    },
+    "glworkspvtltd21@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:55.602Z"
+    },
+    "gm.commercial@qbpl.in": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:56.954Z"
+    },
+    "gm.entrusted@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:57.923Z"
+    },
+    "gm.ops@profexresources.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:03:59.229Z"
+    },
+    "gm.pune@jvscomatsco.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:00.221Z"
+    },
+    "gm@cauverysteel.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:01.215Z"
+    },
+    "gm@efplgroup.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:02.222Z"
+    },
+    "gm@enewr.in": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:03.375Z"
+    },
+    "gm@hassanashok.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:04.435Z"
+    },
+    "gm2024enterprise@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:05.404Z"
+    },
+    "gmadmixtures@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:06.775Z"
+    },
+    "gmaibharath@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:07.810Z"
+    },
+    "gmalinichandru0609@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:08.806Z"
+    },
+    "gmalu555@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:09.782Z"
+    },
+    "gmampvtoffice@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:10.772Z"
+    },
+    "gmanihar1999@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:12.157Z"
+    },
+    "gmanish953@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:13.156Z"
+    },
+    "gmansi732@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:14.171Z"
+    },
+    "gmarinekkl@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:16.188Z"
+    },
+    "gmarwah72@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:17.529Z"
+    },
+    "gmasne007@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:19.024Z"
+    },
+    "gmaxorthoimplant@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:20.018Z"
+    },
+    "gmbandcom@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:21.024Z"
+    },
+    "gmbansal77@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:22.042Z"
+    },
+    "gmbhirthakur779@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:23.075Z"
+    },
+    "gmc.enterprises@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:24.429Z"
+    },
+    "gmc.sap2022@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:25.414Z"
+    },
+    "gmc0181@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:26.366Z"
+    },
+    "gmchemtechind@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:27.395Z"
+    },
+    "gmcokurla@yahoo.co.in": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:28.414Z"
+    },
+    "gmctsk@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:29.409Z"
+    },
+    "gmd2624@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:30.637Z"
+    },
+    "gmeenakshi20@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:31.936Z"
+    },
+    "gmenterprises.ew@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:33.031Z"
+    },
+    "gmenterprises.gouse@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:34.015Z"
+    },
+    "gmenterprises26@gmail.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:35.012Z"
+    },
+    "gmenterprises74@yahoo.com": {
+      "company": "",
+      "error": "Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.",
+      "failedAt": "2026-11-12T14:04:35.976Z"
+    }
+  }
 }
