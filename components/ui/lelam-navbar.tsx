@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Bell,
+  Gavel,
   Heart,
   LayoutDashboard,
   LogOut,
@@ -47,17 +48,27 @@ export function LelamNavbar({
   }, [accountOpen]);
 
   const navItems: LiquidNavItem[] = [
+    { label: "Home", icon: NimbusIcons.home, fx: "glow", href: "#/" },
     { label: "Shop", icon: NimbusIcons.globe, fx: "spin", href: "#/products" },
-    { label: "Auctions", icon: NimbusIcons.home, fx: "glow", href: "#/auctions" },
+    {
+      label: "Auctions",
+      icon: <Gavel size={16} strokeWidth={2.2} />,
+      fx: "glow",
+      href: "#/auctions",
+    },
     { label: "Sell", icon: NimbusIcons.drop, fx: "drop", href: "#/sell" },
   ];
 
   const activeIndex =
-    route.path.startsWith("/sell")
-      ? 2
-      : route.path.startsWith("/auctions")
+    route.path === "/" || route.path === ""
+      ? 0
+      : route.path.startsWith("/products") || route.path.startsWith("/product/")
         ? 1
-        : 0;
+        : route.path.startsWith("/auctions") || route.path.startsWith("/auction/")
+          ? 2
+          : route.path.startsWith("/sell")
+            ? 3
+            : -1;
 
   const handleNavChange = (_: number, item: LiquidNavItem) => {
     if (item.href) {
