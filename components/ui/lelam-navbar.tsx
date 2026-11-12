@@ -56,7 +56,6 @@ export function LelamNavbar({
       fx: "glow",
       href: "#/auctions",
     },
-    { label: "Sell", icon: NimbusIcons.drop, fx: "drop", href: "#/sell" },
   ];
 
   const activeIndex =
@@ -66,9 +65,7 @@ export function LelamNavbar({
         ? 1
         : route.path.startsWith("/auctions") || route.path.startsWith("/auction/")
           ? 2
-          : route.path.startsWith("/sell")
-            ? 3
-            : -1;
+          : -1;
 
   const handleNavChange = (_: number, item: LiquidNavItem) => {
     if (item.href) {
