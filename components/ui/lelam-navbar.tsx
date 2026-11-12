@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Bell,
+  Gavel,
   Heart,
   LayoutDashboard,
   LogOut,
   Search,
   Shield,
   ShoppingBag,
+  ShoppingCart,
   Store,
   UserRound,
 } from "lucide-react";
@@ -34,6 +36,7 @@ export function LelamNavbar({
 }: LelamNavbarProps) {
   const { user, logout, switchAccount, db } = useStore();
   const route = useRoute();
+  const isHomeRoute = route.path === "/" || route.path === "";
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
 
@@ -46,20 +49,29 @@ export function LelamNavbar({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [accountOpen]);
 
-  const navItems: LiquidNavItem[] = [
+  const allNavItems: LiquidNavItem[] = [
+    { label: "Home", icon: NimbusIcons.home, fx: "glow", href: "#/" },
     { label: "Shop", icon: NimbusIcons.globe, fx: "spin", href: "#/products" },
-    { label: "Auctions", icon: NimbusIcons.home, fx: "glow", href: "#/auctions" },
+    {
+      label: "Auctions",
+      icon: <Gavel size={16} strokeWidth={2.2} />,
+      fx: "glow",
+      href: "#/auctions",
+    },
     { label: "Sell", icon: NimbusIcons.drop, fx: "drop", href: "#/sell" },
   ];
 
-  const activeIndex =
-    route.path.startsWith("/auctions")
-      ? 1
-      : route.path.startsWith("/sell")
-        ? 2
-        : route.path.startsWith("/products") || route.path.startsWith("/product/")
-          ? 0
-          : 0;
+  const navItems = isHomeRoute ? allNavItems.slice(1) : allNavItems;
+
+  const activeIndex = isHomeRoute
+    ? -1
+    : route.path.startsWith("/products") || route.path.startsWith("/product/")
+        ? 1
+        : route.path.startsWith("/auctions") || route.path.startsWith("/auction/")
+          ? 2
+          : route.path.startsWith("/sell")
+            ? 3
+            : -1;
 
   const handleNavChange = (_: number, item: LiquidNavItem) => {
     if (item.href) {
@@ -71,13 +83,13 @@ export function LelamNavbar({
   const demoUsers = db.users.filter((candidate) => ["u-buyer", "u-seller", "u-admin"].includes(candidate.id));
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none">
+    <header className={`fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none ${isHomeRoute ? "home-header" : ""}`}>
       <div className="lelam-header-scrim" />
 
       <div className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-auto z-30">
         <a
           href="#top"
-          className="flex items-center text-white brand-logo no-underline shrink-0"
+          className="flex items-center text-[#493022] brand-logo no-underline shrink-0"
           aria-label="lelam.co home"
           onClick={(event) => {
             event.preventDefault();
@@ -87,13 +99,12 @@ export function LelamNavbar({
           <span
             style={{
               fontFamily: '"Gumela Arabic", serif',
-              fontSize: "clamp(30px, 2.5vw, 42px)",
+              fontSize: "clamp(30px, 2.6vw, 42px)",
               fontWeight: 800,
               letterSpacing: "-0.03em",
               lineHeight: 1,
               textTransform: "lowercase",
-              color: "#ffffff",
-              textShadow: "0 2px 16px rgba(0,0,0,0.9), 0 0 24px rgba(0,0,0,0.5)",
+              color: "#493022",
             }}
           >
             lelam.co
@@ -102,10 +113,11 @@ export function LelamNavbar({
 
         <div className="absolute left-1/2 top-3 hidden -translate-x-1/2 lg:block">
           <LiquidNavbar
-            tone="dark"
+            tone="light"
             sound={true}
             active={activeIndex}
             items={navItems}
+            className={isHomeRoute ? "homepage-nav" : undefined}
             onChange={handleNavChange}
           />
         </div>
@@ -113,10 +125,12 @@ export function LelamNavbar({
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
           <div className="lelam-mobile-nav flex lg:hidden mr-1">
             <LiquidNavbar
-              tone="dark"
+              tone="light"
               compact={true}
               sound={true}
+              active={activeIndex}
               items={navItems}
+              className={isHomeRoute ? "homepage-nav" : undefined}
               onChange={handleNavChange}
             />
           </div>
@@ -149,7 +163,7 @@ export function LelamNavbar({
             aria-label={`Open cart, ${cartCount} items`}
             title="Cart"
           >
-            <ShoppingBag size={16} strokeWidth={2.3} />
+            {isHomeRoute ? <ShoppingCart size={18} strokeWidth={2} /> : <ShoppingBag size={16} strokeWidth={2.3} />}
             <span className="hidden xs:inline sm:inline">Cart</span>
             <span className="lelam-bid-count">{cartCount}</span>
           </button>

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Heart, LogIn, Search, ShoppingBag, UserPlus, X } from "lucide-react";
 import { LelamNavbar } from "@/components/ui/lelam-navbar";
 import HalftoneWordmarkFooter from "@/components/ui/halftone-wordmark-footer";
@@ -18,6 +18,7 @@ import { AuctionsPage } from "./pages/Auctions";
 import { AuctionDetailPage } from "./pages/AuctionDetail";
 import { AuthPage } from "./pages/Auth";
 import { SellPage } from "./pages/Sell";
+import { SellFormPage } from "./pages/SellForm";
 import { SellerDashboardPage } from "./pages/SellerDashboard";
 import { AccountPage } from "./pages/Account";
 import { AdminPage } from "./pages/Admin";
@@ -275,6 +276,7 @@ function Routes() {
   if (path === "/login") return <AuthPage mode="login" />;
   if (path === "/register") return <AuthPage mode="register" />;
   if (path === "/sell") return <SellPage />;
+  if (path === "/sell/new") return <SellFormPage />;
   if (path === "/seller") return <SellerDashboardPage />;
   if (path === "/account") return <AccountPage />;
   if (path === "/admin") return <AdminPage />;
@@ -348,14 +350,17 @@ function Shell() {
         <Routes />
       </div>
 
-      <HalftoneWordmarkFooter
-        wordmark="lelam"
-        label="lelam.co"
-        meta="©2026 · Trivandrum, Kerala"
-        preset="night"
-        columns={footerColumns}
-        height="540px"
-      />
+      {route.path !== "/" && route.path !== "" && (
+        <HalftoneWordmarkFooter
+          wordmark="lelam"
+          label="lelam.co"
+          meta="©2026 · Trivandrum, Kerala"
+          preset="paper"
+          palette={{ background: "#F5EBDD", ink: "#493022", warm: "#C98F7D" }}
+          columns={footerColumns}
+          height="540px"
+        />
+      )}
 
       {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
       {savedOpen && <SavedOverlay onClose={() => setSavedOpen(false)} />}
