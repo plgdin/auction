@@ -142,13 +142,8 @@ export function HomePage() {
       id="top"
       className="marketplace-home relative w-full overflow-hidden text-[#493022]"
       style={{
-        backgroundColor: "#F5EBDD",
-        backgroundImage: `
-          radial-gradient(#D6C5B0 0.85px, transparent 0.85px),
-          radial-gradient(#D6C5B0 0.85px, #F5EBDD 0.85px)
-        `,
-        backgroundSize: "32px 32px",
-        backgroundPosition: "0 0, 16px 16px",
+        backgroundColor: "#F4E9D9",
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.12'/%3E%3C/svg%3E")`,
       }}
     >
       {/* 1. TOP HERO SECTION */}
@@ -499,12 +494,16 @@ export function HomePage() {
             {/* Right Column: Polaroid of Rack with Dried Botanical Flowers (approx 40%) */}
             <div className="lg:col-span-5 relative flex justify-center items-center">
               {/* Delicate dried baby's breath wildflower stem behind */}
-              <div className="absolute -top-10 -right-6 sm:-right-8 w-32 sm:w-40 h-48 select-none pointer-events-none opacity-85 z-0">
-                <img
-                  src="/images/flower_cutout.png"
-                  alt=""
-                  className="w-full h-full object-contain filter drop-shadow-[2px_4px_8px_rgba(73,48,34,0.16)]"
-                />
+              <div className="absolute -top-10 -right-4 sm:-right-6 w-28 sm:w-36 h-44 select-none pointer-events-none opacity-80 z-0">
+                <svg className="w-full h-full text-[#6B5038]/75 drop-shadow-sm" viewBox="0 0 130 170" fill="none">
+                  <path
+                    d="M13 161C45 115 61 73 104 11M40 119c-16-3-24-13-27-29 16 1 27 8 27 29Zm23-42c-17-2-27-12-30-28 17 1 29 9 30 28Zm23-38c-15-4-21-14-21-29 15 3 23 12 21 29Zm-18 64c15-12 29-12 43-5-11 13-26 16-43 5Zm20-39c15-12 28-12 42-5-11 12-25 15-42 5Z"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </div>
 
               {/* Polaroid Frame of Clothing Rack */}
@@ -556,7 +555,8 @@ export function HomePage() {
             <button
               type="button"
               onClick={() => navigate("#/sell")}
-              className="group relative inline-flex items-center gap-3 px-8 py-3.5 sm:px-9 sm:py-4 rounded-[10px] text-base sm:text-lg font-medium text-[#F5EBDD] bg-[#493022] hover:bg-[#382317] shadow-[0_8px_24px_rgba(73,48,34,0.28)] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+              style={{ backgroundColor: "#493022", color: "#F5EBDD" }}
+              className="group relative inline-flex items-center gap-3 px-8 py-3.5 sm:px-9 sm:py-4 rounded-[10px] text-base sm:text-lg font-medium shadow-[0_8px_24px_rgba(73,48,34,0.28)] transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
             >
               <span>Start Selling Now</span>
               <ArrowRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />

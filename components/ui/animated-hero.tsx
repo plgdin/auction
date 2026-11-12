@@ -205,24 +205,10 @@ function Hero({
     <section
       className={`relative w-full min-h-[88vh] lg:min-h-[94vh] overflow-hidden flex flex-col justify-between select-none ${className}`}
       style={{
-        backgroundColor: "#F5EBDD",
-        backgroundImage: `
-          radial-gradient(#D6C5B0 0.85px, transparent 0.85px),
-          radial-gradient(#D6C5B0 0.85px, #F5EBDD 0.85px)
-        `,
-        backgroundSize: "32px 32px",
-        backgroundPosition: "0 0, 16px 16px",
+        backgroundColor: "#F4E9D9",
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.12'/%3E%3C/svg%3E")`,
       }}
     >
-      {/* Top Outer Torn Kraft-Paper Edge */}
-      <div className="absolute top-0 left-0 right-0 w-full z-20 pointer-events-none select-none">
-        <img
-          src="/images/scrapbook_torn_top.png"
-          alt=""
-          className="w-full h-12 sm:h-16 md:h-20 lg:h-24 object-cover object-left-top drop-shadow-[0_4px_12px_rgba(73,48,34,0.18)]"
-        />
-      </div>
-
       {/* Top spacer to offset the fixed glass navbar */}
       <div className="h-20 sm:h-24 lg:h-28 w-full shrink-0" aria-hidden="true" />
 
@@ -290,7 +276,8 @@ function Hero({
               <button
                 type="button"
                 onClick={() => navigate(primaryCtaHref)}
-                className="group relative inline-flex items-center gap-3 px-8 py-3.5 sm:px-9 sm:py-4 rounded-[10px] text-base sm:text-lg font-medium text-[#F5EBDD] bg-[#493022] hover:bg-[#382317] shadow-[0_8px_24px_rgba(73,48,34,0.28)] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                style={{ backgroundColor: "#493022", color: "#F5EBDD" }}
+                className="group relative inline-flex items-center gap-3 px-8 py-3.5 sm:px-9 sm:py-4 rounded-[10px] text-base sm:text-lg font-medium shadow-[0_8px_24px_rgba(73,48,34,0.28)] transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
               >
                 <span>{primaryCtaText}</span>
                 <MoveRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
@@ -309,27 +296,6 @@ function Hero({
                 <span className="inline-flex items-center gap-1.5">
                   <RotateCcw size={14} className="text-[#493022]" /> Sustainable
                 </span>
-              </div>
-            </div>
-
-            {/* Handmade Scrapbook Details: Vintage Stamp & Pressed Botanical Wildflower */}
-            <div className="relative pt-2 sm:pt-3 flex items-center gap-6">
-              {/* Circular vintage stamp: SELL • WEAR • REPEAT */}
-              <VintagePostalStamp />
-
-              {/* Delicate dried botanical flower stem with washi tape */}
-              <div className="relative w-28 sm:w-32 h-36 shrink-0 pointer-events-none select-none">
-                <img
-                  src="/images/flower_cutout.png"
-                  alt=""
-                  className="w-full h-full object-contain filter drop-shadow-[2px_4px_6px_rgba(73,48,34,0.18)]"
-                />
-                {/* Masking tape securing the dried flower stem */}
-                <MaskingTape
-                  className="bottom-4 left-4"
-                  width="w-16 sm:w-18"
-                  rotate="-rotate-6"
-                />
               </div>
             </div>
           </motion.div>
@@ -363,7 +329,7 @@ function Hero({
               </div>
 
               {/* Photograph 3: Lower-right vintage film camera */}
-              <div className="absolute bottom-4 sm:bottom-6 right-2 sm:right-6 z-30 w-[50%] sm:w-[52%] max-w-[265px]">
+              <div className="absolute bottom-4 sm:bottom-6 right-2 sm:right-6 z-20 w-[50%] sm:w-[52%] max-w-[265px]">
                 <PolaroidPhoto
                   src="/images/scrapbook_camera.png"
                   alt="Vintage 35mm rangefinder film camera"
@@ -371,6 +337,25 @@ function Hero({
                   tapePlacement="top-right"
                   delay={0.3}
                 />
+              </div>
+
+              {/* Vintage Postal Rubber Stamp tucked in the composition */}
+              <div className="absolute top-[48%] -left-6 sm:-left-12 z-30 pointer-events-none select-none">
+                <VintagePostalStamp />
+              </div>
+
+              {/* Delicate Botanical Wildflower Stem with Washi Tape */}
+              <div className="absolute bottom-4 left-[24%] sm:left-[28%] z-30 pointer-events-none select-none">
+                <svg className="w-20 h-28 sm:w-24 sm:h-32 text-[#6B5038]/80 drop-shadow-sm" viewBox="0 0 130 170" fill="none">
+                  <path
+                    d="M13 161C45 115 61 73 104 11M40 119c-16-3-24-13-27-29 16 1 27 8 27 29Zm23-42c-17-2-27-12-30-28 17 1 29 9 30 28Zm23-38c-15-4-21-14-21-29 15 3 23 12 21 29Zm-18 64c15-12 29-12 43-5-11 13-26 16-43 5Zm20-39c15-12 28-12 42-5-11 12-25 15-42 5Z"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <MaskingTape className="-bottom-1 -left-2" width="w-14 sm:w-16" rotate="-rotate-6" />
               </div>
 
             </div>

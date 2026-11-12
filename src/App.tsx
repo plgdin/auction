@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Heart, LogIn, Search, ShoppingBag, UserPlus, X } from "lucide-react";
 import { LelamNavbar } from "@/components/ui/lelam-navbar";
 import HalftoneWordmarkFooter from "@/components/ui/halftone-wordmark-footer";
