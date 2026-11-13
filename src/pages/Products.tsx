@@ -209,93 +209,110 @@ export function ProductsPage() {
   return (
     <main className="page-shell shop-page">
       <section className="shop-sheet" aria-labelledby="shop-title">
+        <svg width="0" height="0" className="sr-only" aria-hidden="true">
+          <defs>
+            <filter id="filter-deckle-tear" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </defs>
+        </svg>
         <div className="shop-layout">
           <aside className="shop-filters" aria-label="Filters">
             <div className="shop-filter-paper">
-            <div className="shop-filter-title">
-              <h2>Filter</h2>
-              <Filter size={17} strokeWidth={1.4} />
-            </div>
+              <div className="shop-filter-content">
+                <div className="shop-filter-title">
+                  <h2>Filter</h2>
+                  <Filter size={16} strokeWidth={1.5} />
+                </div>
 
-            <section className="shop-filter-group">
-              <h3>
-                Category <ChevronDown size={15} strokeWidth={1.4} className="is-up" />
-              </h3>
-              {shopCategories.map((option) => (
-                <label key={option.key} className="shop-check">
+                <section className="shop-filter-group">
+                  <h3>
+                    Category <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
+                  </h3>
+                  {shopCategories.map((option) => (
+                    <label key={option.key} className="shop-check">
+                      <input
+                        type="checkbox"
+                        checked={category === option.key}
+                        onChange={() => setCategory(option.key)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </section>
+
+                <section className="shop-filter-group">
+                  <h3>
+                    Condition <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
+                  </h3>
+                  {conditionOptions.map((option) => (
+                    <label key={option.value} className="shop-check">
+                      <input
+                        type="checkbox"
+                        checked={condition === option.value}
+                        onChange={() =>
+                          setCondition(condition === option.value ? "All" : option.value)
+                        }
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </section>
+
+                <section className="shop-filter-group shop-price">
+                  <h3>
+                    Price Range <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
+                  </h3>
                   <input
-                    type="checkbox"
-                    checked={category === option.key}
-                    onChange={() => setCategory(option.key)}
+                    type="range"
+                    className="shop-range"
+                    min={0}
+                    max={highestPrice}
+                    step={5000}
+                    value={Math.min(maxPrice, highestPrice)}
+                    onChange={(event) => setMaxPrice(Number(event.target.value))}
+                    aria-label="Maximum price"
                   />
-                  <span>{option.label}</span>
-                </label>
-              ))}
-            </section>
+                  <div className="shop-price-ends">
+                    <span>₹0</span>
+                    <span>{formatMoney(Math.min(maxPrice, highestPrice))}+</span>
+                  </div>
+                </section>
 
-            <section className="shop-filter-group">
-              <h3>Condition</h3>
-              {conditionOptions.map((option) => (
-                <label key={option.value} className="shop-check">
-                  <input
-                    type="checkbox"
-                    checked={condition === option.value}
-                    onChange={() =>
-                      setCondition(condition === option.value ? "All" : option.value)
-                    }
-                  />
-                  <span>{option.label}</span>
-                </label>
-              ))}
-            </section>
+                <section className="shop-filter-group">
+                  <h3>
+                    Size <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
+                  </h3>
+                  <div className="shop-size-list">
+                    {sizes.map((size) => (
+                      <button
+                        type="button"
+                        key={size}
+                        className={selectedSizes.includes(size) ? "selected" : ""}
+                        onClick={() => toggleSize(size)}
+                        aria-pressed={selectedSizes.includes(size)}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </section>
 
-            <section className="shop-filter-group shop-price">
-              <h3>Price Range</h3>
-              <input
-                type="range"
-                className="shop-range"
-                min={0}
-                max={highestPrice}
-                step={5000}
-                value={Math.min(maxPrice, highestPrice)}
-                onChange={(event) => setMaxPrice(Number(event.target.value))}
-                aria-label="Maximum price"
-              />
-              <div className="shop-price-ends">
-                <span>₹0</span>
-                <span>{formatMoney(Math.min(maxPrice, highestPrice))}+</span>
+                <section className="shop-sort">
+                  <h3>
+                    Sort By <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
+                  </h3>
+                  <div className="shop-select-wrap">
+                    <select value={sort} onChange={(event) => setSort(event.target.value as Sort)} aria-label="Sort by">
+                      <option value="newest">Recently Listed</option>
+                      <option value="price-asc">Price: Low to High</option>
+                      <option value="price-desc">Price: High to Low</option>
+                    </select>
+                    <ChevronDown size={14} strokeWidth={1.5} />
+                  </div>
+                </section>
               </div>
-            </section>
-
-            <section className="shop-filter-group">
-              <h3>Size</h3>
-              <div className="shop-size-list">
-                {sizes.map((size) => (
-                  <button
-                    type="button"
-                    key={size}
-                    className={selectedSizes.includes(size) ? "selected" : ""}
-                    onClick={() => toggleSize(size)}
-                    aria-pressed={selectedSizes.includes(size)}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="shop-sort">
-              <h3>Sort By</h3>
-              <div className="shop-select-wrap">
-                <select value={sort} onChange={(event) => setSort(event.target.value as Sort)} aria-label="Sort by">
-                  <option value="newest">Recently Listed</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                </select>
-                <ChevronDown size={14} strokeWidth={1.5} />
-              </div>
-            </section>
-
             </div>
             <img className="shop-flowers" src="/ass/dried-flowers.png" alt="" aria-hidden="true" />
           </aside>

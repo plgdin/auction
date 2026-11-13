@@ -8,4 +8,12 @@ playwright-report/
 !.env.example
 .opencode/
 scratch/
+.gemini/
+/1.png
+/2.png
+/3.png
+/Canela_Collection/
+/Ogg/
+/PPEditorialNew-Free for personal use/
+/ass/
 

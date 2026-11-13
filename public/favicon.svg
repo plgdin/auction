@@ -1,1 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="#657044"/><text x="32" y="46" text-anchor="middle" font-family="Georgia,serif" font-size="48" font-style="italic" fill="#f7f5ec">s</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+  <defs>
+    <linearGradient id="lelam-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#462d1e"/>
+      <stop offset="100%" stop-color="#342014"/>
+    </linearGradient>
+  </defs>
+  <!-- Squircle rounded container -->
+  <rect width="64" height="64" rx="16" fill="url(#lelam-bg)"/>
+  <rect x="1" y="1" width="62" height="62" rx="15" fill="none" stroke="#60422F" stroke-width="1.2" opacity="0.45"/>
+  <!-- Editorial Serif L -->
+  <path d="M 19 16 L 31 16 C 30.5 18.2 30.2 20.2 30.2 23 L 30.2 43 C 30.2 44.2 30.8 44.8 32.5 44.8 L 42.5 44.8 C 45 44.8 45.8 43.6 46.2 39.5 L 48 39.5 L 47 48 L 18 48 L 18 46 C 21.8 45.4 22.8 44.2 22.8 41 L 22.8 23 C 22.8 19.8 21.8 18.6 18 18 Z" fill="#F7F5EC"/>
+  <!-- Olive accent dot for .co -->
+  <circle cx="52" cy="45.5" r="3.4" fill="#8EA36E"/>
+</svg>

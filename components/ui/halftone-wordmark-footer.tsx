@@ -301,8 +301,11 @@ export default function HalftoneWordmarkFooter({
     const draw = (now: number) => {
       const o = opts.current
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.fillStyle = o.colors.background
-      ctx.fillRect(0, 0, w, h)
+      ctx.clearRect(0, 0, w, h)
+      if (o.colors.background && o.colors.background !== "transparent") {
+        ctx.fillStyle = o.colors.background
+        ctx.fillRect(0, 0, w, h)
+      }
 
       const r = o.interactive ? Math.max(0, o.radius) : 0
       const ringAge = ring.t < 0 ? 1e9 : now - ring.t

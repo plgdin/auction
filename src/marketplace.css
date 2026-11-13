@@ -23,7 +23,11 @@ html { scroll-behavior: smooth; }
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background-color: #F3E5D2;
+  background-image: url("/images/Warm Ivory Handmade Paper Texture.png");
+  background-size: 100% auto;
+  background-repeat: repeat-y;
+  background-position: top center;
 }
 
 .site-content { flex: 1; }
@@ -31,7 +35,7 @@ html { scroll-behavior: smooth; }
 .page-shell {
   padding-top: 116px;
   padding-bottom: 96px;
-  background: #fff;
+  background: transparent;
   color: var(--mkt-ink);
 }
 
@@ -483,7 +487,13 @@ html { scroll-behavior: smooth; }
 
 /* ---------- Home additions ---------- */
 
-.marketplace-home { background: #fff; }
+.marketplace-home {
+  background-color: #F3E5D2;
+  background-image: url("/images/Warm Ivory Handmade Paper Texture.png");
+  background-size: 100% auto;
+  background-repeat: repeat-y;
+  background-position: top center;
+}
 
 .home-search-strip {
   padding: 40px 0;
@@ -2418,77 +2428,6 @@ html { scroll-behavior: smooth; }
 .marketplace-home [role="button"] {
   font-family: "Manrope", sans-serif;
   font-weight: 600;
-}
-.home-header .lelam-header-scrim { display: none; }
-.home-header .brand-logo span { font-size: clamp(28px, 2vw, 34px) !important; }
-.home-header .lelam-action-btn,
-.home-header .lelam-bid-btn {
-  border-color: transparent !important;
-  background: transparent !important;
-  color: #302116 !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-.home-header .lelam-action-btn:hover,
-.home-header .lelam-bid-btn:hover { background: rgba(184, 139, 98, .12) !important; border-color: transparent !important; }
-.home-header .lelam-bid-btn {
-  position: relative !important;
-  width: 40px !important;
-  min-width: 40px !important;
-  height: 42px !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  gap: 0 !important;
-}
-.home-header .lelam-bid-btn > span:not(.lelam-bid-count) { display: none !important; }
-.home-header .lelam-bid-count {
-  position: absolute !important;
-  top: -4px !important;
-  right: -2px !important;
-  min-width: 16px !important;
-  height: 16px !important;
-  margin: 0 !important;
-  padding: 0 4px !important;
-  background: #302116 !important;
-  color: #fff9f0 !important;
-  font-size: 9px !important;
-}
-@media (min-width: 1024px) {
-  .home-header .homepage-nav {
-    gap: 30px;
-    padding: 0;
-    border-radius: 0;
-    background: transparent;
-  }
-  .home-header .homepage-nav .nimbus-glass,
-  .home-header .homepage-nav .nimbus-water,
-  .home-header .homepage-nav .nimbus-drop,
-  .home-header .homepage-nav .nv-ico { display: none; }
-  .home-header .homepage-nav .nimbus-item {
-    height: 38px;
-    padding: 0 8px;
-    border-radius: 2px;
-    color: #302116;
-    font-family: "Canela", Georgia, serif;
-    font-size: 15px;
-    font-weight: 500;
-    text-shadow: none;
-  }
-  .home-header .homepage-nav .nimbus-item:hover { color: #77744f; }
-  .home-header .homepage-nav .nimbus-item:last-child {
-    min-width: 76px;
-    background: rgba(184, 139, 98, .28);
-    clip-path: polygon(3% 5%, 97% 0, 100% 94%, 2% 100%, 0 22%);
-  }
-  .home-header .homepage-nav .nimbus-label {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
-    white-space: normal;
-  }
 }
 
 

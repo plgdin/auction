@@ -95,7 +95,7 @@
 :root {
   font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #000000;
-  background: #000000;
+  background: #F3E5D2;
   font-synthesis: none;
   font-weight: 400;
   --paper: #ffffff;
@@ -4856,6 +4856,14 @@ body {
   z-index: 20;
 }
 
+/* Brand Logo Gumela Arabic Bold */
+.brand-logo span {
+  font-family: "Gumela Arabic", serif !important;
+  font-weight: 800 !important;
+  -webkit-text-stroke: 1.1px #493022 !important;
+  paint-order: stroke fill !important;
+}
+
 /* Liquid Glass Navbar Text - Warm Lelam Brown & Bold */
 .nimbus-nav {
   --n-fg: #493022 !important;
@@ -5221,8 +5229,7 @@ body {
    Auctions Page - Warm Paper & Antique Scrapbook Theme
    ======================================================== */
 .auctions-page {
-  background-color: #F4E9D9 !important;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.12'/%3E%3C/svg%3E") !important;
+  background: transparent !important;
   color: #493022 !important;
   min-height: 100vh !important;
   padding-top: 130px !important;

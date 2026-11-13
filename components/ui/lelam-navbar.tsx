@@ -10,7 +10,6 @@ import {
   Search,
   Shield,
   ShoppingBag,
-  ShoppingCart,
   Store,
   UserRound,
 } from "lucide-react";
@@ -36,7 +35,6 @@ export function LelamNavbar({
 }: LelamNavbarProps) {
   const { user, logout, switchAccount, db } = useStore();
   const route = useRoute();
-  const isHomeRoute = route.path === "/" || route.path === "";
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +47,7 @@ export function LelamNavbar({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [accountOpen]);
 
-  const allNavItems: LiquidNavItem[] = [
+  const navItems: LiquidNavItem[] = [
     { label: "Home", icon: NimbusIcons.home, fx: "glow", href: "#/" },
     { label: "Shop", icon: NimbusIcons.globe, fx: "spin", href: "#/products" },
     {
@@ -58,20 +56,16 @@ export function LelamNavbar({
       fx: "glow",
       href: "#/auctions",
     },
-    { label: "Sell", icon: NimbusIcons.drop, fx: "drop", href: "#/sell" },
   ];
 
-  const navItems = isHomeRoute ? allNavItems.slice(1) : allNavItems;
-
-  const activeIndex = isHomeRoute
-    ? -1
-    : route.path.startsWith("/products") || route.path.startsWith("/product/")
+  const activeIndex =
+    route.path === "/" || route.path === ""
+      ? 0
+      : route.path.startsWith("/products") || route.path.startsWith("/product/")
         ? 1
         : route.path.startsWith("/auctions") || route.path.startsWith("/auction/")
           ? 2
-          : route.path.startsWith("/sell")
-            ? 3
-            : -1;
+          : -1;
 
   const handleNavChange = (_: number, item: LiquidNavItem) => {
     if (item.href) {
@@ -83,8 +77,22 @@ export function LelamNavbar({
   const demoUsers = db.users.filter((candidate) => ["u-buyer", "u-seller", "u-admin"].includes(candidate.id));
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none ${isHomeRoute ? "home-header" : ""}`}>
+    <header className="fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none">
       <div className="lelam-header-scrim" />
+
+      {/* Top Paper Craft Torn Edge — sits in a layer below the navbar, logo, and action buttons */}
+      <div
+        className="paper-craft-top absolute top-0 left-0 right-0 w-full pointer-events-none select-none overflow-hidden"
+        style={{ height: "32px", zIndex: 25 }}
+        aria-hidden="true"
+      >
+        <img
+          src="/images/paper_craft_top.png"
+          alt=""
+          className="w-full h-full object-cover object-top"
+          style={{ borderRadius: 0 }}
+        />
+      </div>
 
       <div className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-auto z-30">
         <a
@@ -105,6 +113,8 @@ export function LelamNavbar({
               lineHeight: 1,
               textTransform: "lowercase",
               color: "#493022",
+              WebkitTextStroke: "1.1px #493022",
+              paintOrder: "stroke fill",
             }}
           >
             lelam.co
@@ -117,7 +127,6 @@ export function LelamNavbar({
             sound={true}
             active={activeIndex}
             items={navItems}
-            className={isHomeRoute ? "homepage-nav" : undefined}
             onChange={handleNavChange}
           />
         </div>
@@ -130,7 +139,6 @@ export function LelamNavbar({
               sound={true}
               active={activeIndex}
               items={navItems}
-              className={isHomeRoute ? "homepage-nav" : undefined}
               onChange={handleNavChange}
             />
           </div>
@@ -163,7 +171,7 @@ export function LelamNavbar({
             aria-label={`Open cart, ${cartCount} items`}
             title="Cart"
           >
-            {isHomeRoute ? <ShoppingCart size={18} strokeWidth={2} /> : <ShoppingBag size={16} strokeWidth={2.3} />}
+            <ShoppingBag size={16} strokeWidth={2.3} />
             <span className="hidden xs:inline sm:inline">Cart</span>
             <span className="lelam-bid-count">{cartCount}</span>
           </button>

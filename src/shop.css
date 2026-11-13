@@ -11,126 +11,21 @@
   --shop-serif: "Canela", "PPEditorialNew", Georgia, "Times New Roman", serif;
   --shop-paper: #f7edda;
 
-  padding: 0 9px 9px;
-  background: #221a12;
+  width: 100%;
+  min-height: 100vh;
+  padding: 0;
+  margin: 0;
+  background: transparent;
   color: var(--shop-ink);
 }
 
 .shop-sheet {
   position: relative;
+  width: 100%;
   padding: 118px clamp(16px, 3.4vw, 52px) 56px;
-  background: var(--shop-paper) url("/ass/parchment-tile.jpg") center top / cover no-repeat;
-  box-shadow: inset 0 0 60px rgba(105, 70, 38, 0.09);
-  clip-path: polygon(
-    0% 0%,
-    100% 0%,
-    99.85% 6.25%,
-    99.83% 12.5%,
-    99.79% 18.75%,
-    99.9% 25%,
-    99.99% 31.25%,
-    99.95% 37.5%,
-    99.98% 43.75%,
-    99.84% 50%,
-    99.97% 56.25%,
-    99.87% 62.5%,
-    99.87% 68.75%,
-    99.83% 75%,
-    99.88% 81.25%,
-    99.99% 87.5%,
-    99.91% 93.75%,
-    99.97% 100%,
-    98.65% 98.84%,
-    97.3% 98.95%,
-    95.95% 99%,
-    94.59% 98.83%,
-    93.24% 98.86%,
-    91.89% 98.81%,
-    90.54% 98.87%,
-    89.19% 98.78%,
-    87.84% 98.94%,
-    86.49% 99.23%,
-    85.14% 99.31%,
-    83.78% 99.17%,
-    82.43% 99.12%,
-    81.08% 99%,
-    79.73% 99.13%,
-    78.38% 99.21%,
-    77.03% 99.21%,
-    75.68% 98.95%,
-    74.32% 99.21%,
-    72.97% 98.96%,
-    71.62% 98.79%,
-    70.27% 98.66%,
-    68.92% 98.81%,
-    67.57% 98.88%,
-    66.22% 98.98%,
-    64.86% 98.87%,
-    63.51% 98.84%,
-    62.16% 98.83%,
-    60.81% 98.99%,
-    59.46% 99.05%,
-    58.11% 99.07%,
-    56.76% 99%,
-    55.41% 99.3%,
-    54.05% 99.23%,
-    52.7% 99.23%,
-    51.35% 99.25%,
-    50% 98.97%,
-    48.65% 98.94%,
-    47.3% 99.06%,
-    45.95% 99.19%,
-    44.59% 99.02%,
-    43.24% 99.15%,
-    41.89% 99%,
-    40.54% 98.62%,
-    39.19% 98.83%,
-    37.84% 98.76%,
-    36.49% 98.97%,
-    35.14% 98.88%,
-    33.78% 99.09%,
-    32.43% 98.8%,
-    31.08% 98.77%,
-    29.73% 99.11%,
-    28.38% 99.05%,
-    27.03% 98.95%,
-    25.68% 99.11%,
-    24.32% 99.23%,
-    22.97% 99.26%,
-    21.62% 99.01%,
-    20.27% 98.99%,
-    18.92% 99.13%,
-    17.57% 99%,
-    16.22% 99.02%,
-    14.86% 99.24%,
-    13.51% 99.05%,
-    12.16% 99.01%,
-    10.81% 98.96%,
-    9.46% 98.7%,
-    8.11% 98.68%,
-    6.76% 99.03%,
-    5.41% 98.84%,
-    4.05% 99.1%,
-    2.7% 99.09%,
-    1.35% 98.89%,
-    0% 99.02%,
-    0.06% 93.75%,
-    0.1% 87.5%,
-    0.22% 81.25%,
-    0.24% 75%,
-    0.24% 68.75%,
-    0.19% 62.5%,
-    0.08% 56.25%,
-    0.29% 50%,
-    0.07% 43.75%,
-    0.05% 37.5%,
-    0.12% 31.25%,
-    0.24% 25%,
-    0.1% 18.75%,
-    0.18% 12.5%,
-    0.05% 6.25%,
-    0.07% 0%
-  );
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
 }
 
 /* ---------- Layout ---------- */
@@ -152,118 +47,46 @@
 
 .shop-filter-paper {
   position: relative;
-  padding: 22px 22px 52px;
-  background: #f8efdd;
-  filter: drop-shadow(0 4px 5px rgba(84, 54, 26, 0.16));
-  clip-path: polygon(
-    0% 0.26%,
-    6.25% 0.37%,
-    12.5% 0.14%,
-    18.75% 0.25%,
-    25% 0.26%,
-    31.25% 0.46%,
-    37.5% 0.02%,
-    43.75% 0.81%,
-    50% 0.59%,
-    56.25% 0.87%,
-    62.5% 0.36%,
-    68.75% 0.47%,
-    75% 0.6%,
-    81.25% 0.62%,
-    87.5% 0.37%,
-    93.75% 0.02%,
-    100% 0.15%,
-    99.41% 7.14%,
-    99.92% 14.29%,
-    99.7% 21.43%,
-    98.94% 28.57%,
-    99.33% 35.71%,
-    99.15% 42.86%,
-    99.33% 50%,
-    99.24% 57.14%,
-    99.33% 64.29%,
-    99.26% 71.43%,
-    99.58% 78.57%,
-    99.79% 85.71%,
-    99.99% 92.86%,
-    99.55% 100%,
-    97.92% 98.34%,
-    95.83% 98.51%,
-    93.75% 98.37%,
-    91.67% 98.61%,
-    89.58% 98.41%,
-    87.5% 98.77%,
-    85.42% 98.89%,
-    83.33% 98.98%,
-    81.25% 99.02%,
-    79.17% 98.59%,
-    77.08% 98.7%,
-    75% 98.74%,
-    72.92% 98.83%,
-    70.83% 98.42%,
-    68.75% 98.32%,
-    66.67% 98.38%,
-    64.58% 98.81%,
-    62.5% 98.41%,
-    60.42% 98.49%,
-    58.33% 98.6%,
-    56.25% 98.81%,
-    54.17% 98.89%,
-    52.08% 98.71%,
-    50% 98.85%,
-    47.92% 98.98%,
-    45.83% 98.83%,
-    43.75% 98.84%,
-    41.67% 98.57%,
-    39.58% 98.15%,
-    37.5% 98.26%,
-    35.42% 98.48%,
-    33.33% 98.75%,
-    31.25% 98.3%,
-    29.17% 98.79%,
-    27.08% 98.53%,
-    25% 99.11%,
-    22.92% 98.8%,
-    20.83% 98.8%,
-    18.75% 98.66%,
-    16.67% 99.03%,
-    14.58% 98.78%,
-    12.5% 98.5%,
-    10.42% 98.28%,
-    8.33% 98.4%,
-    6.25% 98.43%,
-    4.17% 98.66%,
-    2.08% 98.41%,
-    0% 98.44%,
-    0.22% 92.86%,
-    0.22% 85.71%,
-    0.54% 78.57%,
-    0.18% 71.43%,
-    0.61% 64.29%,
-    0.65% 57.14%,
-    0.14% 50%,
-    1.22% 42.86%,
-    1.12% 35.71%,
-    0.45% 28.57%,
-    0.02% 21.43%,
-    0.64% 14.29%,
-    0.62% 7.14%,
-    0.08% 0%
-  );
+  width: 100%;
+  max-width: 280px;
+  padding: 22px 20px 48px;
+  filter: drop-shadow(0 6px 16px rgba(73, 48, 34, 0.22));
+}
+
+.shop-filter-paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: #F8EEDB;
+  background-image: url("/images/Warm Ivory Handmade Paper Texture.png");
+  background-size: 350px auto;
+  filter: url(#filter-deckle-tear);
+  z-index: 0;
+  box-shadow: inset 0 0 14px rgba(180, 140, 100, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.shop-filter-content {
+  position: relative;
+  z-index: 1;
 }
 
 .shop-filter-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 3px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(90, 63, 36, 0.18);
 }
 
 .shop-filter-title h2 {
   margin: 0;
-  font: 500 25px/1.1 var(--shop-serif);
-  letter-spacing: 0.005em;
-  color: #3a2919;
+  font-family: var(--shop-serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+  color: #2e1e12;
 }
 
 .shop-filter-title svg {
@@ -271,7 +94,7 @@
 }
 
 .shop-filter-group {
-  padding: 17px 0 15px;
+  padding: 13px 0 12px;
   border-bottom: 1px solid rgba(90, 63, 36, 0.16);
 }
 
@@ -280,22 +103,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 0 0 11px;
-  font: 500 13.5px/1.2 "DM Sans", sans-serif;
-  color: #3f2e1e;
+  margin: 0 0 10px;
+  font-family: var(--shop-serif);
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #2e1e12;
 }
 
-.shop-filter-group h3 .is-up {
-  transform: rotate(180deg);
+.shop-filter-group h3 svg,
+.shop-sort h3 svg {
+  color: #4c3927;
+  opacity: 0.85;
 }
 
 .shop-check {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 25px;
-  font: 400 12px/1.2 "DM Sans", sans-serif;
-  color: #4b3927;
+  gap: 9px;
+  min-height: 23px;
+  margin-bottom: 4px;
+  font: 400 12.5px/1.2 "DM Sans", sans-serif;
+  color: #3d2b1a;
   cursor: pointer;
 }
 
@@ -305,35 +133,40 @@
   flex: 0 0 auto;
   display: grid;
   place-content: center;
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   margin: 0;
-  border: 1px solid #bba582;
-  border-radius: 2.5px;
-  background: rgba(255, 252, 243, 0.55);
+  border: 1.2px solid #a89172;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.45);
   cursor: pointer;
+}
+
+.shop-check input:checked {
+  background: #fbf5e8;
+  border-color: #6b4d2e;
 }
 
 .shop-check input:checked::after {
   content: "";
   width: 9px;
   height: 9px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.6 6.3 4.6 9.2 10.4 2.9' fill='none' stroke='%23403121' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.6 6.3 4.6 9.2 10.4 2.9' fill='none' stroke='%233d2b1a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
     center / contain no-repeat;
 }
 
 /* Price */
 
 .shop-price {
-  padding-bottom: 19px;
+  padding-bottom: 14px;
 }
 
 .shop-price-ends {
   display: flex;
   justify-content: space-between;
-  margin: 1px 2px 0;
-  font: 400 10.5px/1 "DM Sans", sans-serif;
-  color: #6d5740;
+  margin: 5px 1px 0;
+  font: 500 10.5px/1 "DM Sans", sans-serif;
+  color: #7a634e;
 }
 
 .shop-range {
@@ -342,15 +175,15 @@
   display: block;
   width: 100%;
   height: 18px;
-  margin: 0;
+  margin: 8px 0 4px;
   background: transparent;
   cursor: pointer;
 }
 
 .shop-range::-webkit-slider-runnable-track {
-  height: 2px;
+  height: 3px;
   border-radius: 2px;
-  background: #b39a76;
+  background: #5a3e23;
 }
 
 .shop-range::-webkit-slider-thumb {
@@ -358,72 +191,75 @@
   -webkit-appearance: none;
   width: 14px;
   height: 14px;
-  margin-top: -6px;
-  border: 2px solid #f7edda;
+  margin-top: -5.5px;
+  border: 2px solid #f6eedc;
   border-radius: 50%;
-  background: #8d6a45;
-  box-shadow: 0 1px 2px rgba(58, 38, 18, 0.35);
+  background: #5a3e23;
+  box-shadow: 0 1px 3px rgba(58, 38, 18, 0.35);
 }
 
 .shop-range::-moz-range-track {
-  height: 2px;
+  height: 3px;
   border-radius: 2px;
-  background: #b39a76;
+  background: #5a3e23;
 }
 
 .shop-range::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border: 2px solid #f7edda;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #f6eedc;
   border-radius: 50%;
-  background: #8d6a45;
+  background: #5a3e23;
 }
 
 /* Sizes */
 
 .shop-size-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
 }
 
 .shop-size-list button {
-  min-width: 33px;
   height: 26px;
-  padding: 0 8px;
-  border: 1px solid #c6b190;
-  border-radius: 4px;
-  background: rgba(255, 251, 240, 0.35);
-  color: #4b3927;
-  font: 400 10.5px/1 "DM Sans", sans-serif;
+  padding: 0 4px;
+  border: 1px solid #c2ae91;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.4);
+  color: #3d2b1a;
+  font: 500 11px/1 "DM Sans", sans-serif;
   cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .shop-size-list button:hover {
-  border-color: #9b7d57;
+  border-color: #7a5a3a;
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .shop-size-list button.selected {
-  background: var(--shop-brown);
-  border-color: var(--shop-brown);
-  color: #fbf0dc;
+  background: #493022;
+  border-color: #493022;
+  color: #fbf5e8;
 }
 
 /* Sort */
 
 .shop-sort {
-  padding-top: 17px;
+  padding-top: 13px;
 }
 
 .shop-select-wrap {
   position: relative;
   display: flex;
   align-items: center;
-  height: 34px;
-  border: 1px solid #cdbb9d;
-  border-radius: 4px;
-  background: rgba(255, 252, 244, 0.45);
+  height: 32px;
+  border: 1px solid #c2ae91;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .shop-select-wrap select {
@@ -922,8 +758,6 @@
 
   .shop-sheet {
     padding-top: 104px;
-    background-size: 1100px auto;
-    background-repeat: repeat;
   }
 
   .shop-layout {
@@ -946,12 +780,11 @@
 
 @media (max-width: 820px) {
   .shop-page {
-    padding: 0 7px 7px;
+    padding: 0;
   }
 
   .shop-sheet {
     padding: 92px 14px 62px;
-    background-size: 700px auto;
   }
 
   .shop-layout {
@@ -969,8 +802,12 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0 20px;
     padding: 16px 18px 22px;
-    clip-path: none;
+    max-width: 100%;
     border-radius: 6px;
+    background: #f8efdd;
+  }
+  .shop-filter-paper::before {
+    display: none;
   }
 
   .shop-filter-title,

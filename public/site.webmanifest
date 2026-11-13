@@ -1,0 +1,21 @@
+{
+  "name": "lelam.co",
+  "short_name": "lelam",
+  "description": "Good finds. Better stories. Thoughtfully curated vintage clothing, one-of-a-kind pieces, and a slower way to get dressed.",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#f7f5ec",
+  "background_color": "#3d2619",
+  "display": "standalone",
+  "start_url": "/"
+}
