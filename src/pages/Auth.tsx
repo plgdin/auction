@@ -3,6 +3,7 @@ import { ArrowRight, LockKeyhole, Mail, ShieldCheck, Store, UserRound } from "lu
 import { Link, navigate } from "../components/Link";
 import { Field } from "../components/Ui";
 import { useStore } from "../lib/store";
+import { useRoute } from "../lib/router";
 import { toast } from "../lib/toast";
 
 const demoAccounts = [
@@ -13,21 +14,24 @@ const demoAccounts = [
 
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const { login, register, user } = useStore();
+  const route = useRoute();
+  const nextPath = route.query.get("next");
+  const destination = nextPath?.startsWith("/") ? `#${nextPath}` : "#/account";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [asSeller, setAsSeller] = useState(false);
 
   useEffect(() => {
-    if (user) navigate("#/account");
-  }, [user]);
+    if (user) navigate(destination);
+  }, [user, destination]);
 
   const submit = () => {
     if (mode === "login") {
       const result = login(email, password);
       if (result.ok) {
         toast("Welcome back.", "success");
-        navigate("#/account");
+        navigate(destination);
       } else {
         toast(result.error, "error");
       }
@@ -36,7 +40,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
     const result = register({ name, email, password, asSeller });
     if (result.ok) {
       toast(asSeller ? "Seller account created." : "Account created.", "success");
-      navigate(asSeller ? "#/seller" : "#/account");
+      navigate(nextPath?.startsWith("/") ? destination : asSeller ? "#/seller" : "#/account");
     } else {
       toast(result.error, "error");
     }

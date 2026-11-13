@@ -276,8 +276,9 @@ export function AuctionDetailPage() {
                 )}
                 {auction.financial && auction.financial.platformCommission > 0 && (
                   <p>
-                    Commission of {formatMoney(auction.financial.platformCommission)} on the amount
-                    above asking price.
+                    Platform charges: {formatMoney(auction.financial.platformCommission)}. This
+                    includes ₹10 per product sold; when bids clear 130% of base, 10% of the amount
+                    above base is also charged.
                   </p>
                 )}
               </div>
@@ -339,5 +340,4 @@ export function AuctionDetailPage() {
     </main>
   );
 }
-
 

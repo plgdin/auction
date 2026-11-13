@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-08T00:00:00.000Z",
+  "title": "Design System: lelam.co",
+  "extensions": {
+    "shadows": [
+      {
+        "name": "photo-lift",
+        "value": "0 30px 70px rgba(23, 21, 15, 0.16)",
+        "purpose": "Lift the overlapping sell-page product cards from the paper field."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 3px rgba(23, 21, 15, 0.07)",
+        "purpose": "Show keyboard focus on fields without adding a heavy glow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "editorial-ease",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Short, soft card and image movement."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "Disable decorative seller-surface movement and ticker animation."
+      }
+    ],
+    "breakpoints": [
+      { "name": "tablet", "value": "980px" },
+      { "name": "mobile", "value": "640px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Confident ink pill for the main action.",
+      "html": "<button class=\"ds-primary\">Start selling</button>",
+      "css": ".ds-primary{min-height:48px;padding:11px 22px;border:1px solid #17150f;border-radius:999px;background:#17150f;color:#fff;font:500 14.5px 'DM Sans',sans-serif;cursor:pointer;transition:transform 160ms ease,background 160ms ease}.ds-primary:hover{background:#343126;transform:translateY(-1px)}.ds-primary:focus-visible{outline:2px solid #5d6446;outline-offset:3px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Quiet outlined secondary action.",
+      "html": "<button class=\"ds-ghost\">See how it works</button>",
+      "css": ".ds-ghost{min-height:48px;padding:11px 22px;border:1px solid #e2ded4;border-radius:999px;background:#fff;color:#17150f;font:500 14px 'DM Sans',sans-serif;cursor:pointer;transition:background 160ms ease,border-color 160ms ease}.ds-ghost:hover{background:#f4f2ec;border-color:#c9c4b7}.ds-ghost:focus-visible{outline:2px solid #5d6446;outline-offset:3px}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Comfortable white field with a quiet border.",
+      "html": "<label class=\"ds-field\"><span>Asking price</span><input placeholder=\"1450\"></label>",
+      "css": ".ds-field{display:grid;gap:7px;color:#4f4c44;font:500 13px 'DM Sans',sans-serif}.ds-field input{min-height:48px;padding:12px 14px;border:1px solid #d8d3c7;border-radius:7px;background:#fff;color:#17150f;font:400 16px 'DM Sans',sans-serif}.ds-field input:focus{outline:0;border-color:#17150f;box-shadow:0 0 0 3px rgba(23,21,15,.07)}"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Pill filter with an obvious selected state.",
+      "html": "<button class=\"ds-chip\">Inventory <span>12</span></button>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border:1px solid #e2ded4;border-radius:999px;background:#fff;color:#17150f;font:400 13px 'DM Sans',sans-serif}.ds-chip span{font-size:12px}.ds-chip[aria-selected=true]{background:#17150f;border-color:#17150f;color:#fff}"
+    },
+    {
+      "name": "Editorial Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "White card held by a hairline border.",
+      "html": "<article class=\"ds-card\"><h3>Needs you</h3><p>One clear task.</p></article>",
+      "css": ".ds-card{padding:22px;border:1px solid #e2ded4;border-radius:12px;background:#fff;color:#17150f}.ds-card h3{margin:0 0 10px;font:400 22px 'DM Serif Display',Georgia,serif}.ds-card p{margin:0;color:#4f4c44;font:400 15px/1.6 'DM Sans',sans-serif}"
+    },
+    {
+      "name": "Segmented Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Scrollable pill tabs with ink active state.",
+      "html": "<nav class=\"ds-tabs\"><button>Today</button><button aria-current=\"page\">Inventory</button><button>Money</button></nav>",
+      "css": ".ds-tabs{display:flex;gap:4px;overflow-x:auto;padding:5px;border:1px solid #e2ded4;border-radius:999px;background:#f4f2ec}.ds-tabs button{flex:0 0 auto;min-height:40px;padding:8px 14px;border:0;border-radius:999px;background:transparent;color:#4f4c44;font:400 13px 'DM Sans',sans-serif}.ds-tabs button[aria-current=page]{background:#17150f;color:#fff}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Cream Market Ledger",
+    "overview": "lelam's visual language pairs a warm, paper-like marketplace with the clarity of an editorial ledger. Real product photography carries the emotional weight; serif headlines and restrained olive accents give the interface its recognizable voice. White cards sit quietly on cream, divided by fine rules rather than heavy panels. The seller surfaces extend the same world: a fanned deck and handwritten notes on the sell landing, then compact, scannable ledgers for daily operations.",
+    "keyCharacteristics": [
+      "Cream, ink, olive, and hairline borders.",
+      "DM Serif Display headlines; DM Sans controls and body; Caveat for brief handwritten notes.",
+      "Real product imagery, pill controls, and calm editorial spacing."
+    ],
+    "rules": [
+      { "name": "The One Olive Rule", "body": "Use olive as a focused guide, not as a full-screen wash.", "section": "colors" },
+      { "name": "The Two-Voice Rule", "body": "Serif for story and hierarchy; sans for operation. Handwriting is decorative, never the only carrier of meaning.", "section": "typography" }
+    ],
+    "dos": [
+      "Do keep the paper/ink/olive palette and DM Serif Display + DM Sans pairing.",
+      "Do use product photography as the primary visual material.",
+      "Do keep seller text at 12px or larger and controls easy to tap.",
+      "Do let borders, spacing, and type hierarchy do most of the organizing."
+    ],
+    "donts": [
+      "Don't add a new accent palette or replace the editorial type pairing without a deliberate brand change.",
+      "Don't rely on tiny metadata, decorative handwriting, or color alone to communicate a task state.",
+      "Don't turn the seller dashboard into a generic dense grid of dark panels."
+    ]
+  }
+}

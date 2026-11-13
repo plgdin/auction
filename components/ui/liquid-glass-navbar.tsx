@@ -61,8 +61,8 @@ const PAD = 16 // canvas bleed around the pill, for shadows and ripples
 const NIMBUS_CSS = `
 .nimbus-nav{
   --n-tint:rgba(255,255,255,.12);
-  --n-fg:#0B132B;
-  --n-fg-soft:rgba(11,19,43,.6);
+  --n-fg:#493022;
+  --n-fg-soft:#493022;
   --n-rim:rgba(255,255,255,.7);
   position:relative;
   display:inline-flex;
@@ -133,19 +133,21 @@ const NIMBUS_CSS = `
   border:0;
   border-radius:999px;
   background:none;
-  color:var(--n-fg-soft);
+  color:#493022;
   font-family:inherit;
-  font-weight:600;
-  font-size:13px;
+  font-weight:700;
+  font-size:13.5px;
   line-height:1;
   letter-spacing:-.01em;
   text-decoration:none;
   cursor:pointer;
   white-space:nowrap;
-  transition:color .2s ease;
+  transition:color .2s ease, background-color .2s ease;
 }
-.nimbus-item:hover{color:rgba(255,255,255,.95)}
-.nimbus-item[aria-current="page"]{color:#ffffff;text-shadow:0 1px 8px rgba(255,255,255,.3)}
+.nimbus-nav:not([data-tone="dark"]) .nimbus-item:hover{color:#2b1810;background:rgba(73,48,34,.08)}
+.nimbus-item:hover{color:#2b1810;background:rgba(73,48,34,.08)}
+.nimbus-item[aria-current="page"]{color:#ffffff;text-shadow:0 1px 8px rgba(255,255,255,.3);background:none!important}
+.nimbus-item[aria-current="page"]:hover{color:#ffffff!important;background:none!important}
 .nimbus-item:focus-visible{outline:2px solid #ffffff;outline-offset:2px}
 .nv-ico{position:relative;display:inline-flex;flex:none}
 .nv-ico svg{transition:transform .4s cubic-bezier(.3,1.6,.5,1)}
@@ -311,8 +313,7 @@ export function LiquidNavbar({
 }: LiquidNavbarProps) {
   const [inner, setInner] = React.useState(defaultActive)
   const current = active !== undefined ? active : inner
-  const [hovered, setHovered] = React.useState<number | null>(null)
-  const activeTarget = hovered !== null ? hovered : current
+  const activeTarget = current
   const navRef = React.useRef<HTMLElement>(null)
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const dropRef = React.useRef<HTMLSpanElement>(null)
@@ -627,7 +628,6 @@ export function LiquidNavbar({
       data-compact={compact ? "true" : "false"}
       onPointerMove={onMove}
       onPointerLeave={() => {
-        setHovered(null)
         st.current.mouse.on = false
         loop()
       }}
@@ -642,7 +642,6 @@ export function LiquidNavbar({
 
       {items.map((item, i) => {
         const isCurrent = i === current
-        const isTarget = i === activeTarget
         return (
           <button
             key={item.label}
@@ -654,12 +653,10 @@ export function LiquidNavbar({
             tabIndex={isCurrent ? 0 : -1}
             className="nimbus-item"
             onPointerEnter={() => {
-              setHovered(i)
               st.current.mouse.on = true
               loop()
             }}
             onClick={() => {
-              setHovered(null)
               select(i)
             }}
           >
@@ -673,7 +670,10 @@ export function LiquidNavbar({
                 {item.icon}
               </span>
             )}
-            <span className="nimbus-label" style={isTarget ? { color: "#ffffff" } : undefined}>
+            <span
+              className="nimbus-label"
+              style={isCurrent ? { color: "#ffffff" } : { color: "#493022" }}
+            >
               {item.label}
             </span>
           </button>
