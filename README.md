@@ -1,11 +1,12 @@
-# lelam.co thrift auctions
+# lelam.co marketplace
 
-A focused apparel-auction marketplace built with React, TypeScript, and Vite. It helps people browse one-of-one pre-owned clothing listings and gives thrift stores a clear path to publish auction inventory.
+A pre-owned marketplace for Trivandrum with private offers, cash-on-delivery checkout, seller tools, and an admin console. React + TypeScript + Vite on the front end, Supabase (Postgres, Auth, Storage, Realtime) on the back end.
 
 ## Run locally
 
 ```sh
 npm install
+cp .env.example .env.local   # then paste your Supabase URL + anon key
 npm run dev
 ```
 
@@ -19,37 +20,67 @@ npm test       # Playwright browser checks
 
 For a fresh machine, install the test browser with `npx playwright install chromium` before running tests.
 
-## Included
+`.env.local` is git-ignored. Only the public Supabase URL and anon key belong there.
 
-- Responsive marketplace landing page for buyers and thrift-store sellers
-- Live-auction cards with current bids, bid counts, sellers, conditions, and closing times
-- Category filtering, expanded inventory, and auction search
-- Product detail dialogs with watchlist and bid-list actions
-- Watchlist and bid list persisted in local storage for the preview
-- Clear auction policies, seller onboarding CTA, and auction-alert signup
-- Keyboard-accessible native dialogs and responsive mobile navigation
+## Backend setup
 
-## UI component setup
+The database lives in `supabase/migrations/`. Apply the files in order:
 
-This Vite app uses TypeScript, Tailwind CSS, and a shadcn-compatible `components.json` configuration. The default component import path is `@/components/ui`; keeping reusable primitives there lets shadcn CLI-generated components and application components share the same alias. Global styles live in `src/styles.css`.
+1. `supabase/migrations/20260101000000_marketplace_schema.sql`
+2. `supabase/migrations/20260101000100_supabase_backend.sql`
 
-To create the same setup in a fresh project:
+Either push them with the CLI:
 
 ```sh
-npx shadcn@latest init
-npm install -D tailwindcss @tailwindcss/vite
+npx supabase link --project-ref <your-project-ref>
+npx supabase db push
 ```
 
-The reusable UI experiments in `components/ui` are kept in the project for future use, while the homepage stays focused on the buyer and seller auction flow.
+or paste each file into the Supabase dashboard **SQL Editor** and run it. The addendum is idempotent, so re-running it is safe.
 
-## Make it your store
+The SQL creates the schema, RLS policies, RPCs, the `product-images` storage bucket, the 16 broad categories, and Realtime publications. It promotes `admin@lelam.com` to admin if that auth user exists; create that user first, or run the final `update public.profiles ...` block again after signing up.
 
-Edit inventory, current bid values (USD), descriptions, and image paths in `src/data.ts`. Auction metadata used by the preview lives in `src/App.tsx`; marketplace layout and responsive styles live in `src/styles.css`. Photography is stored in `public/images`, so browsing does not require third-party image requests.
+### Auth notes
 
-This is a frontend concept. Product records, auction metadata, condition descriptions, policies, and seller information are illustrative. Live bidding, auction closing, seller verification, payments, order fulfillment, inventory, customer support, and mailing-list delivery need real services before launch. The bid-list preview explicitly does not submit a bid or place an order.
+- New accounts are created through Supabase Auth. If email confirmation is enabled, the signup screen asks the user to confirm before signing in. Disable **Confirm email** under Authentication → Providers → Email for frictionless local testing.
+- The browser never sees the service-role key. Payment verification runs in Edge Functions.
+
+### Payments
+
+Cash on delivery is live and is the default at checkout. Online payments (UPI/card) stay disabled until the Razorpay keys are configured:
+
+```sh
+npx supabase functions deploy razorpay-create-order
+npx supabase functions deploy razorpay-verify-payment
+npx supabase secrets set RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=...
+```
+
+Then add `VITE_RAZORPAY_KEY_ID` to `.env.local`. Without it, the UPI and card options render disabled and checkout uses COD.
+
+### Auctions
+
+The auction engine is intentionally off (`auction_engine_enabled = false`). Auction tables are read-only from the client, and the UI surfaces a "not configured" message instead of accepting bids.
+
+## Included
+
+- Email/password auth with buyer, seller, and admin roles
+- Listing creation with photo upload to Supabase Storage, editing, pausing, and removal
+- 16-category catalog, search, filters, and saved products
+- Private offers with expiry, seller accept/decline, and offer checkout
+- Cart checkout grouped per seller, COD live, online payments scaffolded
+- Shipment timeline, returns, reviews, and notifications
+- Seller dashboard for listings, offers, orders, earnings, and payouts
+- Admin console for listing moderation, reports, users, settings, and settlements
+- Row Level Security on every table, with public data exposed through safe views
+
+## Ground rules
+
+- All money is stored as integer paise. The UI formats it for display.
+- Writes go through Postgres RPCs or RLS-scoped tables; the client never mutates orders, offers, products, or payments directly.
+- The legacy Express/PGlite server in `server/` is not used by this app and can be ignored.
 
 ## Visual inspiration & photography
 
 Original design informed by the editorial curation and slow-fashion approach of [Rogue + Runway](https://www.databending.ca/work/rogue-runway/), [Born Again Thrift SF](https://dianabenavides.dev/projects/born-again-thrift-sf), and [La Fair Art](https://www.lunarinnovate.com/en/portfolio/la-fair-art).
 
-Demonstration photography: [Unsplash](https://unsplash.com). Image identifiers: `photo-1539109136881-3be0616acf4b`, `photo-1483985988355-763728e1935b`, `photo-1543076447-215ad9ba6923`, `photo-1434389677669-e08b4cac3105`, `photo-1548036328-c9fa89d128fa`, `photo-1542272604-787c3835535d`, `photo-1551028719-00167b16eac5`, `photo-1521572163474-6864f9cf17ab`, and `photo-1445205170230-053b83016050`. Replace demonstration photos with your actual inventory before launch.
+Demonstration photography: [Unsplash](https://unsplash.com). Replace demonstration photos with your actual inventory before launch.

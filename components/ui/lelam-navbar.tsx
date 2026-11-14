@@ -33,7 +33,7 @@ export function LelamNavbar({
   onOpenSearch,
   onOpenSaved,
 }: LelamNavbarProps) {
-  const { user, logout, switchAccount, db } = useStore();
+  const { user, logout } = useStore();
   const route = useRoute();
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
@@ -73,8 +73,6 @@ export function LelamNavbar({
       navigate(item.href);
     }
   };
-
-  const demoUsers = db.users.filter((candidate) => ["u-buyer", "u-seller", "u-admin"].includes(candidate.id));
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none">
@@ -246,24 +244,6 @@ export function LelamNavbar({
                       </button>
                     )}
                     <div className="account-menu-sep" />
-                    <span className="account-menu-label">Demo accounts</span>
-                    {demoUsers.map((demo) => (
-                      <button
-                        key={demo.id}
-                        type="button"
-                        role="menuitem"
-                        className={demo.id === user.id ? "is-active" : ""}
-                        onClick={() => {
-                          switchAccount(demo.id);
-                          setAccountOpen(false);
-                          navigate("#/");
-                        }}
-                      >
-                        <span className="demo-dot" /> {demo.name}
-                        <em>{demo.role}</em>
-                      </button>
-                    ))}
-                    <div className="account-menu-sep" />
                     <button
                       type="button"
                       role="menuitem"
@@ -282,7 +262,7 @@ export function LelamNavbar({
                       <span className="account-avatar">?</span>
                       <div>
                         <strong>Not signed in</strong>
-                        <span>Sign in to buy, bid, and sell.</span>
+                        <span>Sign in to buy, sell, and track delivery.</span>
                       </div>
                     </div>
                     <button

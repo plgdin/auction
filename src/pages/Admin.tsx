@@ -101,8 +101,8 @@ export function AdminPage() {
             <button
               type="button"
               className="button button-ghost"
-              onClick={() => {
-                const result = generateAuctions();
+              onClick={async () => {
+                const result = await generateAuctions();
                 if (result.ok) toast("Auction schedule generated.", "success");
                 else toast(result.error, "error");
               }}
@@ -182,9 +182,10 @@ export function AdminPage() {
                         <button
                           type="button"
                           className="text-link"
-                          onClick={() => {
-                            approveProduct(product.id);
-                            toast("Listing approved.", "success");
+                          onClick={async () => {
+                            const result = await approveProduct(product.id);
+                            if (result.ok) toast("Listing approved.", "success");
+                            else toast(result.error, "error");
                           }}
                         >
                           Approve
@@ -286,9 +287,10 @@ export function AdminPage() {
                       <button
                         type="button"
                         className="button button-olive"
-                        onClick={() => {
-                          approveProduct(product.id);
-                          toast("Listing approved.", "success");
+                        onClick={async () => {
+                          const result = await approveProduct(product.id);
+                          if (result.ok) toast("Listing approved.", "success");
+                          else toast(result.error, "error");
                         }}
                       >
                         <Check size={14} /> Approve
@@ -330,14 +332,19 @@ export function AdminPage() {
                   <button
                     type="button"
                     className="button button-olive"
-                    onClick={() => {
+                    onClick={async () => {
                       if (!rejectReason.trim()) {
                         toast("Add a reason.", "error");
                         return;
                       }
-                      rejectProduct(rejectId, rejectReason.trim());
-                      toast("Listing rejected. Seller notified.");
-                      setRejectId("");
+                      const result = await rejectProduct(rejectId, rejectReason.trim());
+                      if (result.ok) {
+                        toast("Listing rejected. Seller notified.");
+                        setRejectId("");
+                        setRejectReason("");
+                      } else {
+                        toast(result.error, "error");
+                      }
                     }}
                   >
                     Send rejection
@@ -383,9 +390,10 @@ export function AdminPage() {
                             key={status}
                             type="button"
                             className="text-link"
-                            onClick={() => {
-                              resolveReport(report.id, status);
-                              toast(`Report marked ${status}.`);
+                            onClick={async () => {
+                              const result = await resolveReport(report.id, status);
+                              if (result.ok) toast(`Report marked ${status}.`);
+                              else toast(result.error, "error");
                             }}
                           >
                             {status}
@@ -437,9 +445,10 @@ export function AdminPage() {
                       <button
                         type="button"
                         className="text-link danger"
-                        onClick={() => {
-                          setUserBlocked(account.id, !account.blocked);
-                          toast(account.blocked ? "User unblocked." : "User blocked.");
+                        onClick={async () => {
+                          const result = await setUserBlocked(account.id, !account.blocked);
+                          if (result.ok) toast(account.blocked ? "User unblocked." : "User blocked.");
+                          else toast(result.error, "error");
                         }}
                       >
                         <Ban size={13} /> {account.blocked ? "Unblock" : "Block"}
@@ -459,8 +468,8 @@ export function AdminPage() {
               <button
                 type="button"
                 className="text-link"
-                onClick={() => {
-                  const result = generateAuctions();
+                onClick={async () => {
+                  const result = await generateAuctions();
                   if (result.ok) toast("Auction schedule generated.", "success");
                   else toast(result.error, "error");
                 }}
@@ -609,9 +618,10 @@ export function AdminPage() {
                             <button
                               type="button"
                               className="text-link"
-                              onClick={() => {
-                                markSettlementPaid(settlement.id);
-                                toast("Settlement marked paid.", "success");
+                              onClick={async () => {
+                                const result = await markSettlementPaid(settlement.id);
+                                if (result.ok) toast("Settlement marked paid.", "success");
+                                else toast(result.error, "error");
                               }}
                             >
                               Mark paid
@@ -633,21 +643,26 @@ export function AdminPage() {
           <div className="dashboard-section">
             <div className="panel-head">
               <h2>Platform settings</h2>
-              <span>Applies to this browser demo</span>
+              <span>Applies platform-wide</span>
             </div>
             <form
               className="panel settings-form"
-              onSubmit={(event) => {
+              onSubmit={async (event) => {
                 event.preventDefault();
-                updateSettings(settings);
-                toast("Settings saved.", "success");
+                const result = await updateSettings(settings);
+                if (result.ok) toast("Settings saved.", "success");
+                else toast(result.error, "error");
               }}
             >
               <div className="settings-grid">
-                <Field label="Auction engine">
+                <Field
+                  label="Auction engine"
+                  hint="Read-only until the auction backend ships."
+                >
                   <label className="checkbox-line">
                     <input
                       type="checkbox"
+                      disabled
                       checked={settings.auctionEngineEnabled}
                       onChange={(event) =>
                         setSettings((previous) => ({

@@ -237,7 +237,7 @@ function AuthPrompt({
           </Link>
         </div>
         <span className="auth-prompt-note">
-          Demo accounts are on the sign-in page. No real payment is taken.
+          Sign in or create a free account to buy, sell, and track delivery.
         </span>
       </div>
     </Modal>
@@ -283,7 +283,7 @@ function Routes() {
 }
 
 function Shell() {
-  const { favorites, cartCount, unreadCount, user } = useStore();
+  const { favorites, cartCount, unreadCount, user, loading } = useStore();
   const route = useRoute();
   const [searchOpen, setSearchOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
@@ -303,6 +303,17 @@ function Shell() {
       }, 80);
     }
   }, [route.path, route.anchor, lastPath]);
+
+  if (loading) {
+    return (
+      <div className="site-shell">
+        <div className="boot-screen">
+          <span className="boot-mark">lelam</span>
+          <span className="boot-copy">Opening the rail…</span>
+        </div>
+      </div>
+    );
+  }
 
   const footerColumns = [
     {
@@ -329,7 +340,7 @@ function Shell() {
         { label: "Trivandrum, Kerala" },
         { label: "Delivery in 695xxx" },
         { label: "Private offers only" },
-        { label: "Demo marketplace" },
+        { label: "Cash on delivery" },
       ],
     },
   ];

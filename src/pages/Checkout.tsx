@@ -20,12 +20,12 @@ import { toast } from "../lib/toast";
 
 export function CheckoutPage() {
   const route = useRoute();
-  const { db, user, cart, createOrders, payOrders } = useStore();
+  const { db, user, cart, createOrders, payOrders, onlinePaymentsEnabled } = useStore();
   const [selectedAddress, setSelectedAddress] = useState(
     user?.addresses.find((address) => address.isDefault)?.id || user?.addresses[0]?.id || "",
   );
   const [showAddressForm, setShowAddressForm] = useState(!user?.addresses.length);
-  const [payment, setPayment] = useState<"upi" | "card" | "cod">("upi");
+  const [payment, setPayment] = useState<"upi" | "card" | "cod">("cod");
   const [placing, setPlacing] = useState(false);
 
   const productId = route.query.get("product") || undefined;
@@ -133,7 +133,7 @@ export function CheckoutPage() {
     );
   }
 
-  const placeOrder = () => {
+  const placeOrder = async () => {
     if (!selectedAddress || !address) {
       toast("Choose or add a delivery address.", "error");
       return;
@@ -143,26 +143,32 @@ export function CheckoutPage() {
       return;
     }
     setPlacing(true);
-    const created = createOrders({ addressId: selectedAddress, productId, offerId });
+    const created = await createOrders({
+      addressId: selectedAddress,
+      productId,
+      offerId,
+      paymentMethod: payment,
+    });
     if (!created.ok) {
       setPlacing(false);
       toast(created.error, "error");
       return;
     }
-    const paid = payOrders(created.orderIds);
-    setPlacing(false);
-    if (paid.ok) {
-      toast(
-        payment === "cod"
-          ? "Order placed. Payment is due on delivery."
-          : "Order placed. Payment confirmed in demo mode.",
-        "success",
-      );
+    if (payment !== "cod") {
+      const paid = await payOrders(created.orderIds);
+      setPlacing(false);
+      if (!paid.ok) {
+        toast(paid.error, "error");
+        navigate(`#/orders/${created.orderIds[0]}`);
+        return;
+      }
+      toast("Payment confirmed. Your order is on its way to the seller.", "success");
       navigate(`#/orders/${created.orderIds[0]}`);
-    } else {
-      toast(paid.error, "error");
-      navigate(`#/orders/${created.orderIds[0]}`);
+      return;
     }
+    setPlacing(false);
+    toast("Order placed. Payment is due on delivery.", "success");
+    navigate(`#/orders/${created.orderIds[0]}`);
   };
 
   return (
@@ -249,31 +255,37 @@ export function CheckoutPage() {
                 </div>
               </div>
               <div className="payment-options">
-                <label className={`payment-option ${payment === "upi" ? "is-selected" : ""}`}>
+                <label
+                  className={`payment-option ${payment === "upi" ? "is-selected" : ""} ${onlinePaymentsEnabled ? "" : "is-disabled"}`}
+                >
                   <input
                     type="radio"
                     name="payment"
                     checked={payment === "upi"}
+                    disabled={!onlinePaymentsEnabled}
                     onChange={() => setPayment("upi")}
                   />
                   <Smartphone size={20} />
                   <span>
                     <strong>UPI</strong>
-                    <em>Google Pay, PhonePe, Paytm</em>
+                    <em>{onlinePaymentsEnabled ? "Google Pay, PhonePe, Paytm" : "Coming soon"}</em>
                   </span>
                   {payment === "upi" && <Check size={16} />}
                 </label>
-                <label className={`payment-option ${payment === "card" ? "is-selected" : ""}`}>
+                <label
+                  className={`payment-option ${payment === "card" ? "is-selected" : ""} ${onlinePaymentsEnabled ? "" : "is-disabled"}`}
+                >
                   <input
                     type="radio"
                     name="payment"
                     checked={payment === "card"}
+                    disabled={!onlinePaymentsEnabled}
                     onChange={() => setPayment("card")}
                   />
                   <CreditCard size={20} />
                   <span>
                     <strong>Card</strong>
-                    <em>Credit or debit</em>
+                    <em>{onlinePaymentsEnabled ? "Credit or debit" : "Coming soon"}</em>
                   </span>
                   {payment === "card" && <Check size={16} />}
                 </label>
@@ -293,8 +305,9 @@ export function CheckoutPage() {
                 </label>
               </div>
               <p className="payment-demo-note">
-                Frontend preview: online payment is simulated here. No card details are collected and no
-                money is charged. The real gateway connects on the backend.
+                {onlinePaymentsEnabled
+                  ? "Online payments open at checkout. Card details are handled by Razorpay, never by lelam."
+                  : "Cash on delivery is live now. UPI and card payments turn on once the Razorpay keys are added."}
               </p>
             </section>
 
@@ -359,7 +372,7 @@ export function CheckoutPage() {
               <button
                 type="button"
                 className="button button-olive summary-cta"
-                onClick={placeOrder}
+                onClick={() => void placeOrder()}
                 disabled={placing || !address || !serviceable}
               >
                 {placing ? "Placing order…" : "Place order"} <ArrowRight size={15} />

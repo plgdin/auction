@@ -82,8 +82,8 @@ export function ProductDetailPage() {
     Math.round((product.askingPrice * factor) / 100) * 100,
   );
 
-  const handleOffer = () => {
-    const result = makeOffer(product.id, offerPaise, offerMessage);
+  const handleOffer = async () => {
+    const result = await makeOffer(product.id, offerPaise, offerMessage);
     if (result.ok) {
       toast("Offer sent privately to the seller.", "success");
       setOfferOpen(false);
@@ -198,8 +198,8 @@ export function ProductDetailPage() {
                     <button
                       type="button"
                       className="button button-ghost"
-                      onClick={() => {
-                        const result = addToCart(product.id);
+                      onClick={async () => {
+                        const result = await addToCart(product.id);
                         if (result.ok) {
                           toast("Added to cart.", "success");
                         } else {
@@ -426,8 +426,8 @@ export function ProductDetailPage() {
               <button
                 type="button"
                 className="button button-olive"
-                onClick={() => {
-                  const result = reportProduct(product.id, reportReason, reportDetails);
+                onClick={async () => {
+                  const result = await reportProduct(product.id, reportReason, reportDetails);
                   if (result.ok) {
                     toast("Report sent to the admin team.", "success");
                     setReportOpen(false);

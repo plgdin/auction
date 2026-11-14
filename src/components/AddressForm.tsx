@@ -32,9 +32,9 @@ export function AddressForm({
   return (
     <form
       className="address-form"
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
-        const result = saveAddress({ ...form, id: initial?.id });
+        const result = await saveAddress({ ...form, id: initial?.id });
         if (result.ok) {
           toast("Address saved.", "success");
           onSaved?.();

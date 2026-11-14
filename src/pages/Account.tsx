@@ -90,8 +90,8 @@ export function AccountPage() {
     (order) => !["delivered", "cancelled", "expired", "returned"].includes(order.status),
   );
 
-  const submitReview = () => {
-    const result = addReview(reviewOrder, reviewRating, reviewComment);
+  const submitReview = async () => {
+    const result = await addReview(reviewOrder, reviewRating, reviewComment);
     if (result.ok) {
       toast("Review posted. Thank you.", "success");
       setReviewOrder("");
@@ -298,8 +298,8 @@ export function AccountPage() {
                           <button
                             type="button"
                             className="button button-ghost"
-                            onClick={() => {
-                              const result = cancelOffer(offer.id);
+                            onClick={async () => {
+                              const result = await cancelOffer(offer.id);
                               if (result.ok) toast("Offer withdrawn.");
                               else toast(result.error, "error");
                             }}
@@ -394,8 +394,8 @@ export function AccountPage() {
                     <button
                       type="button"
                       className="text-link danger"
-                      onClick={() => {
-                        removeAddress(address.id);
+                      onClick={async () => {
+                        await removeAddress(address.id);
                         toast("Address removed.");
                       }}
                     >
@@ -475,9 +475,9 @@ export function AccountPage() {
             <div className="profile-layout">
               <form
                 className="panel profile-form"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
-                  const result = updateProfile(profile);
+                  const result = await updateProfile(profile);
                   if (result.ok) toast("Profile updated.", "success");
                   else toast(result.error, "error");
                 }}

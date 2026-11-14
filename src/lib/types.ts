@@ -186,6 +186,7 @@ export interface Order {
   total: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  paymentMethod?: "upi" | "card" | "cod";
   source: "buy_now" | "cart" | "offer" | "auction";
   offerId?: string;
   auctionId?: string;

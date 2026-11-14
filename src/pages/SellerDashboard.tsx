@@ -447,8 +447,8 @@ export function SellerDashboardPage() {
                         <button
                           type="button"
                           className="text-link"
-                          onClick={() => {
-                            const result = toggleListingAvailability(product.id);
+                          onClick={async () => {
+                            const result = await toggleListingAvailability(product.id);
                             if (!result.ok) toast(result.error, "error");
                           }}
                         >
@@ -459,9 +459,9 @@ export function SellerDashboardPage() {
                         <button
                           type="button"
                           className="text-link danger"
-                          onClick={() => {
+                          onClick={async () => {
                             if (!window.confirm("Remove this listing?")) return;
-                            const result = removeListing(product.id);
+                            const result = await removeListing(product.id);
                             if (!result.ok) toast(result.error, "error");
                             else toast("Listing removed.");
                           }}
@@ -531,8 +531,8 @@ export function SellerDashboardPage() {
                           <button
                             type="button"
                             className="button button-olive"
-                            onClick={() => {
-                              const result = respondToOffer(offer.id, true);
+                            onClick={async () => {
+                              const result = await respondToOffer(offer.id, true);
                               if (result.ok) toast("Offer accepted. The buyer can pay now.", "success");
                               else toast(result.error, "error");
                             }}
@@ -542,8 +542,8 @@ export function SellerDashboardPage() {
                           <button
                             type="button"
                             className="button button-ghost"
-                            onClick={() => {
-                              const result = respondToOffer(offer.id, false);
+                            onClick={async () => {
+                              const result = await respondToOffer(offer.id, false);
                               if (result.ok) toast("Offer declined.");
                               else toast(result.error, "error");
                             }}
@@ -705,8 +705,8 @@ export function SellerDashboardPage() {
                               type="button"
                               className="button button-olive"
                               disabled={!nextStatus}
-                              onClick={() => {
-                                const result = advanceShipment(
+                              onClick={async () => {
+                                const result = await advanceShipment(
                                   order.id,
                                   nextStatus as NonNullable<Order["shipment"]>["status"],
                                 );
@@ -795,8 +795,8 @@ export function SellerDashboardPage() {
                   type="button"
                   className="button button-olive"
                   disabled={!auctionProduct || !auctionStart}
-                  onClick={() => {
-                    const result = scheduleAuction(
+                  onClick={async () => {
+                    const result = await scheduleAuction(
                       auctionProduct,
                       new Date(auctionStart).toISOString(),
                     );

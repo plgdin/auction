@@ -51,7 +51,7 @@ const emptyForm = {
 };
 
 export function SellPage() {
-  const { user, db, createListing, updateListing, removeListing } = useStore();
+  const { user, db, createListing, updateListing, removeListing, becomeSeller } = useStore();
   const route = useRoute();
   const editId = route.query.get("edit") || "";
   const editing = editId ? db.products.find((product) => product.id === editId) : undefined;
@@ -120,6 +120,34 @@ export function SellPage() {
     window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   };
 
+  if (user && !user.isSeller && user.role !== "admin") {
+    return (
+      <main className="page-shell">
+        <div className="section-wrap empty-state page-empty">
+          <Store size={38} />
+          <h2>Open your seller account.</h2>
+          <p>
+            Listings are tied to a seller profile so buyers know who they are buying from. It
+            takes one click to open yours.
+          </p>
+          <div className="modal-actions center">
+            <button
+              type="button"
+              className="button button-olive"
+              onClick={async () => {
+                const result = await becomeSeller(user.name);
+                if (result.ok) toast("Seller account ready. Add your first listing.", "success");
+                else toast(result.error, "error");
+              }}
+            >
+              Start selling
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (editing && user && editing.sellerId !== user.id) {
     return (
       <main className="page-shell">
@@ -145,12 +173,15 @@ export function SellPage() {
       }),
     );
     Promise.all(readers)
-      .then((results) => { setImages((previous) => [...previous, ...results].slice(0, 6)); toast("Photos added. They stay in this browser.", "success"); })
+      .then((results) => {
+        setImages((previous) => [...previous, ...results].slice(0, 6));
+        toast("Photos added. They upload when you publish.", "success");
+      })
       .catch(() => toast("Could not read that photo.", "error"))
       .finally(() => setFileBusy(false));
   };
 
-  const submit = () => {
+  const submit = async () => {
     const brand = form.brand === "Other" ? form.customBrand.trim() : form.brand.trim();
     const category = form.top;
     const subcategory = form.group === "All" ? (form.sub !== "All" && form.sub !== "Other" ? form.sub : undefined) : (form.sub !== "All" ? form.sub : form.group);
@@ -171,12 +202,23 @@ export function SellPage() {
       auctionConsent: form.auctionConsent,
     };
     if (editing) {
-      const result = updateListing(editing.id, input);
-      if (result.ok) { toast("Listing updated.", "success"); navigate(`#/product/${editing.id}`); } else toast(result.error, "error");
+      const result = await updateListing(editing.id, input);
+      if (result.ok) {
+        toast("Listing updated.", "success");
+        navigate(`#/product/${editing.id}`);
+      } else {
+        toast(result.error, "error");
+      }
       return;
     }
-    const result = createListing(input);
-    if (result.ok) { toast("Listing created.", "success"); navigate(`#/product/${result.productId}`); } else toast(result.error, "error");
+
+    const result = await createListing(input);
+    if (result.ok) {
+      toast("Listing created.", "success");
+      navigate(`#/product/${result.productId}`);
+    } else {
+      toast(result.error, "error");
+    }
   };
 
   // Promo / landing section first (not the form). CTA right at top.
@@ -251,9 +293,9 @@ export function SellPage() {
         <section className="sell-block">
           <div className="sell-block-head"><span className="step-number">02</span><div><h2>Photos</h2><p>Add up to six. The first photo is the cover.</p></div></div>
           {images.length > 0 && <div className="sell-photo-grid">{images.map((image, index) => (<div key={`${image}-${index}`} className="sell-photo"><img src={image} alt={`Listing photo ${index + 1}`} />{index === 0 && <span>COVER</span>}<button type="button" aria-label="Remove photo" onClick={() => setImages((p) => p.filter((item) => item !== image))}><X size={13} /></button></div>))}</div>}
-          <label className="sell-upload"><input type="file" accept="image/*" multiple onChange={(e) => onFiles(e.target.files)} /><Upload size={18} /><span><strong>{fileBusy ? "Reading photos…" : "Upload photos"}</strong><em>From this device. Demo only, they stay in the browser.</em></span></label>
+          <label className="sell-upload"><input type="file" accept="image/*" multiple onChange={(e) => onFiles(e.target.files)} /><Upload size={18} /><span><strong>{fileBusy ? "Reading photos…" : "Upload photos"}</strong><em>Photos upload securely to the marketplace.</em></span></label>
           <div className="sell-url-row"><input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Or paste an image URL" aria-label="Image URL" /><button type="button" className="button button-ghost" onClick={() => { if (!imageUrl.trim()) return; addImage(imageUrl.trim()); setImageUrl(""); }}><Plus size={14} /> Add</button></div>
-          <div className="sell-presets"><span>Or use a demo photo</span><div>{presetImages.map((image) => (<button key={image} type="button" className={images.includes(image) ? "is-selected" : ""} onClick={() => addImage(image)}><img src={image} alt="" />{images.includes(image) && <Check size={12} />}</button>))}</div></div>
+          <div className="sell-presets"><span>Or choose a sample photo</span><div>{presetImages.map((image) => (<button key={image} type="button" className={images.includes(image) ? "is-selected" : ""} onClick={() => addImage(image)}><img src={image} alt="" />{images.includes(image) && <Check size={12} />}</button>))}</div></div>
         </section>
 
         <section className="sell-block">
@@ -273,7 +315,7 @@ export function SellPage() {
         <div className="summary-card">
           <h2>Listing preview</h2>
           <div className="sell-preview"><div className="sell-preview-image">{images[0] ? <img src={images[0]} alt="" /> : <div><ImagePlus size={22} /><span>No photo yet</span></div>}</div><div className="sell-preview-copy"><span>{form.condition} · {form.top}{form.sub !== "All" ? ` · ${form.sub}` : ""}</span><strong>{form.title || "Untitled listing"}</strong><em>{form.price ? formatMoney(Math.round(Number(form.price) * 100)) : "₹—"}</em></div></div>
-          <p className="sell-aside-note">{db.settings.sellerAutoApprove ? "Listings go live immediately in this demo. Admins can still review reports." : "New listings wait for an admin review before going live."}</p>
+          <p className="sell-aside-note">{db.settings.sellerAutoApprove ? "Your listing is published to the live marketplace. Admins can still review reports." : "New listings wait for an admin review before going live."}</p>
           <div className="publish-steps">
             <span className="publish-steps-title">After you publish</span>
             <ol>
@@ -294,7 +336,7 @@ export function SellPage() {
   const emptyState = !editing && !showForm && !user ? (
     <div className="sell-empty-cta">
       <Store size={30} />
-      <h2>Create a free account to sell</h2>
+      <h2>Sign in to sell</h2>
       <p>Shopping works without an account — you can browse and add to cart. Selling, payouts and delivery tracking need an account.</p>
       <div className="sell-hero-actions">
         <Link href="#/register" className="button button-olive">Create account</Link>
@@ -306,7 +348,45 @@ export function SellPage() {
   return (
     <main className="page-shell sell-page">
       <div className="section-wrap">
-        <PageHeader eyebrow={editing ? "EDIT LISTING" : "SELL ON LELAM"} title={editing ? <>Tidy up the <em>details.</em></> : <>Put it back <em>in circulation.</em></>} description={editing ? "Update the details below." : "Sell any item — clothes, electronics, furniture, collectibles, toys and more. We handle shipping and delivery."} action={editing ? (<button type="button" className="text-link remove-link" onClick={() => { if (!window.confirm("Remove this listing from the rail?")) return; const result = removeListing(editing.id); if (result.ok) { toast("Listing removed."); navigate("#/seller?tab=listings"); } else toast(result.error, "error"); }}>Remove listing</button>) : undefined} />
+        <PageHeader
+          eyebrow={editing ? "EDIT LISTING" : "SELL ON LELAM"}
+          title={
+            editing ? (
+              <>
+                Tidy up the <em>details.</em>
+              </>
+            ) : (
+              <>
+                Put it back <em>in circulation.</em>
+              </>
+            )
+          }
+          description={
+            editing
+              ? "Update the details below."
+              : "Sell any item — clothes, electronics, furniture, collectibles, toys and more. We handle shipping and delivery."
+          }
+          action={
+            editing ? (
+              <button
+                type="button"
+                className="text-link remove-link"
+                onClick={async () => {
+                  if (!window.confirm("Remove this listing from the rail?")) return;
+                  const result = await removeListing(editing.id);
+                  if (result.ok) {
+                    toast("Listing removed.");
+                    navigate("#/seller?tab=listings");
+                  } else {
+                    toast(result.error, "error");
+                  }
+                }}
+              >
+                Remove listing
+              </button>
+            ) : undefined
+          }
+        />
         {promo}
         {formSection}
         {emptyState}
