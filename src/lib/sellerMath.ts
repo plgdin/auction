@@ -32,7 +32,17 @@ export function netPayout(sellerPayout: number): number {
   return Math.max(0, sellerPayout);
 }
 
-/** Starting price for a scheduled auction: asking price scaled by the platform percentage. */
+/** Tiered minimum increment in paise for the current bid level. */
+export function auctionIncrement(amountPaise: number): number {
+  if (amountPaise < 100000) return 5000;
+  if (amountPaise < 500000) return 10000;
+  if (amountPaise < 2000000) return 25000;
+  return 50000;
+}
+
+/** Starting price for a scheduled auction: max(₹199, round to ₹50 of asking × pct). */
 export function auctionStartingPrice(askingPrice: number, startPct: number): number {
-  return Math.max(100, Math.round((askingPrice * startPct) / 100 / 100) * 100);
+  const raw = Math.round((askingPrice * startPct) / 100);
+  const rounded = Math.round(raw / 5000) * 5000;
+  return Math.max(19900, rounded);
 }

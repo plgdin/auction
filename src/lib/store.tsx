@@ -9,9 +9,12 @@ import {
   type ReactNode,
 } from "react";
 import { PRODUCT_IMAGE_BUCKET, onlinePaymentsEnabled, supabase } from "./supabase";
+import { toast } from "./toast";
 import type {
   Address,
+  Auction,
   AuctionFinancial,
+  Bid,
   CartLine,
   Database,
   Notification,
@@ -64,14 +67,14 @@ const CATEGORY_NAMES = [
 ] as const;
 
 const DEFAULT_SETTINGS: PlatformSettings = {
-  auctionEngineEnabled: false,
-  auctionDailyCount: 12,
+  auctionEngineEnabled: true,
+  auctionDailyCount: 4,
   auctionStartPct: 50,
-  auctionDurationMinutes: 30,
-  auctionMinIncrement: 1000,
-  auctionAntiSnipeSeconds: 10,
-  auctionAntiSnipeTriggerSeconds: 10,
-  auctionPaymentDeadlineHours: 24,
+  auctionDurationMinutes: 45,
+  auctionMinIncrement: 5000,
+  auctionAntiSnipeSeconds: 120,
+  auctionAntiSnipeTriggerSeconds: 120,
+  auctionPaymentDeadlineHours: 1,
   auctionBudget: 5000000,
   offerValidityHours: 48,
   offerCheckoutHours: 24,
@@ -106,24 +109,20 @@ const SETTINGS_TO_DB: Record<keyof PlatformSettings, string> = {
 export function computeAuctionSettlement(
   askingPrice: number,
   winningBid: number,
-  _commissionPct: number,
+  commissionPct: number,
 ): Pick<AuctionFinancial, "sellerPayout" | "platformSubsidy" | "platformCommission"> {
-  const platformCharge = 1_000;
   if (winningBid < askingPrice) {
     return {
-      sellerPayout: Math.max(0, askingPrice - platformCharge),
+      sellerPayout: askingPrice,
       platformSubsidy: askingPrice - winningBid,
-      platformCommission: platformCharge,
+      platformCommission: 0,
     };
   }
-  const commission = winningBid > askingPrice * 1.3
-    ? Math.floor((winningBid - askingPrice) * 0.1)
-    : 0;
-  const totalCharge = commission + platformCharge;
+  const commission = Math.floor(((winningBid - askingPrice) * commissionPct) / 100);
   return {
-    sellerPayout: Math.max(0, winningBid - totalCharge),
+    sellerPayout: winningBid - commission,
     platformSubsidy: 0,
-    platformCommission: totalCharge,
+    platformCommission: commission,
   };
 }
 
@@ -555,6 +554,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [auctions, setAuctions] = useState<Auction[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
@@ -579,12 +579,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       sessionRef.current = uid;
       setSessionUserId(uid);
 
-      const [productResult, sellerResult, reviewResult, settingResult] = await Promise.all([
-        supabase.from("public_products").select("*").order("created_at", { ascending: false }),
-        supabase.from("public_sellers").select("*"),
-        supabase.from("reviews").select("*").order("created_at", { ascending: false }).limit(500),
-        supabase.from("platform_settings").select("key,value"),
-      ]);
+      const [productResult, sellerResult, reviewResult, settingResult, auctionResult, bidResult] =
+        await Promise.all([
+          supabase.from("public_products").select("*").order("created_at", { ascending: false }),
+          supabase.from("public_sellers").select("*"),
+          supabase.from("reviews").select("*").order("created_at", { ascending: false }).limit(500),
+          supabase.from("platform_settings").select("key,value"),
+          supabase.from("auctions").select("*").order("created_at", { ascending: false }),
+          supabase.from("public_bids").select("*").order("created_at", { ascending: true }),
+        ]);
 
       if (productResult.error) console.warn("[products]", productResult.error.message);
       if (sellerResult.error) console.warn("[sellers]", sellerResult.error.message);
@@ -599,6 +602,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setSellerRows(sellerData);
       setReviews(reviewRows.map(mapReview));
       setSettings(mapSettings((settingResult.data ?? []) as Row[]));
+
+      const bidsByAuction = new Map<string, Bid[]>();
+      for (const row of (bidResult.data ?? []) as Row[]) {
+        const bid: Bid = {
+          id: row.id,
+          auctionId: row.auction_id,
+          bidderId: "",
+          amount: row.amount_paise,
+          alias: row.alias ?? `Bidder #${row.anonymous_number}`,
+          createdAt: row.created_at,
+        };
+        if (!bidsByAuction.has(row.auction_id)) bidsByAuction.set(row.auction_id, []);
+        bidsByAuction.get(row.auction_id)!.push(bid);
+      }
+      setAuctions(
+        ((auctionResult.data ?? []) as Row[]).map((row) => ({
+          id: row.id,
+          productId: row.product_id,
+          sellerId: row.seller_id,
+          status: row.status,
+          startingPrice: row.starting_price_paise,
+          askingPrice: row.asking_price_paise,
+          currentBid: row.current_bid_paise ?? undefined,
+          highestBidderId: row.highest_bidder_id ?? undefined,
+          bidCount: row.bid_count ?? 0,
+          minIncrement: row.min_increment_paise ?? 5000,
+          antiSnipeSeconds: row.anti_snipe_seconds ?? 120,
+          startsAt: row.starts_at,
+          endsAt: row.ends_at,
+          originalEndsAt: row.original_ends_at,
+          bids: bidsByAuction.get(row.id) ?? [],
+          createdAt: row.created_at,
+          cancelledReason: row.cancelled_reason ?? undefined,
+          extended: row.ends_at !== row.original_ends_at,
+        })),
+      );
 
       if (!uid) {
         setAccountRows([]);
@@ -631,12 +670,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             .order("created_at", { ascending: false }),
         ]);
 
-      const [notifResult, settlementResult, reportResult, auditResult] = await Promise.all([
-        supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(200),
-        supabase.from("seller_settlements").select("*").order("created_at", { ascending: false }),
-        supabase.from("product_reports").select("*").order("created_at", { ascending: false }),
-        supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(200),
-      ]);
+      const [notifResult, settlementResult, reportResult, auditResult, financialResult, ownBidResult] =
+        await Promise.all([
+          supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(200),
+          supabase.from("seller_settlements").select("*").order("created_at", { ascending: false }),
+          supabase.from("product_reports").select("*").order("created_at", { ascending: false }),
+          supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(200),
+          supabase.from("auction_financial_records").select("*"),
+          supabase.from("bids").select("id,bidder_id"),
+        ]);
 
       if (profileResult.error) console.warn("[profiles]", profileResult.error.message);
       if (addressResult.error) console.warn("[addresses]", addressResult.error.message);
@@ -682,6 +724,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           createdAt: row.created_at,
         })),
       );
+
+      const ownBidMap = new Map<string, string>();
+      for (const row of (ownBidResult.data ?? []) as Row[]) {
+        ownBidMap.set(row.id, row.bidder_id);
+      }
+      const finByAuction = new Map<string, AuctionFinancial>();
+      for (const row of (financialResult.data ?? []) as Row[]) {
+        finByAuction.set(row.auction_id, {
+          askingPrice: row.asking_price_paise,
+          startingPrice: row.starting_price_paise,
+          winningBid: row.winning_bid_paise ?? undefined,
+          sellerPayout: row.seller_payout_paise,
+          platformSubsidy: row.platform_subsidy_paise ?? 0,
+          platformCommission: row.platform_commission_paise ?? 0,
+          outcome: row.outcome,
+        });
+      }
+      setAuctions((previous) =>
+        previous.map((auction) => ({
+          ...auction,
+          bids: auction.bids.map((bid) => ({
+            ...bid,
+            bidderId: ownBidMap.get(bid.id) ?? bid.bidderId,
+          })),
+          financial: finByAuction.get(auction.id) ?? auction.financial,
+          winnerId:
+            auction.status === "completed" ? auction.highestBidderId : auction.winnerId,
+        })),
+      );
     } catch (error) {
       console.warn("[supabase] refresh failed", messageOf(error));
     } finally {
@@ -725,6 +796,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, schedule)
       .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, schedule)
       .on("postgres_changes", { event: "*", schema: "public", table: "products" }, schedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "auctions" }, schedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "bids" }, schedule)
       .subscribe();
 
     return () => {
@@ -782,7 +855,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       products,
       offers,
       orders,
-      auctions: [],
+      auctions,
       notifications,
       settlements,
       reports,
@@ -798,6 +871,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       products,
       offers,
       orders,
+      auctions,
       notifications,
       settlements,
       reports,
@@ -1354,20 +1428,109 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [needUser],
   );
 
-  const auctionUnavailable = useCallback(
-    async (): Promise<ActionResult> => ({
-      ok: false,
-      error: "The auction backend is not configured yet.",
-    }),
-    [],
+  const placeBid = useCallback(
+    async (auctionId: string, amount: number): Promise<PlaceBidResult> => {
+      try {
+        needUser();
+        const { data, error } = await supabase.rpc("place_bid", {
+          p_auction_id: auctionId,
+          p_amount_paise: amount,
+        });
+        if (error) return { ok: false, error: messageOf(error) };
+        const row = Array.isArray(data) ? data[0] : data;
+        await refresh();
+        return {
+          ok: true,
+          amount: Number(row?.amount_paise ?? amount),
+          extended: Boolean(row?.extended),
+        };
+      } catch (error) {
+        return { ok: false, error: messageOf(error) };
+      }
+    },
+    [needUser, refresh],
   );
 
-  const placeBid = useCallback(
-    async (): Promise<PlaceBidResult> => ({
-      ok: false,
-      error: "The auction backend is not configured yet.",
-    }),
-    [],
+  const generateAuctions = useCallback(async (): Promise<ActionResult> => {
+    try {
+      needUser();
+      const { error } = await supabase.rpc("generate_auctions");
+      if (error) return { ok: false, error: messageOf(error) };
+      await refresh();
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: messageOf(error) };
+    }
+  }, [needUser, refresh]);
+
+  const scheduleAuction = useCallback(
+    async (productId: string, startsAt: string, durationMinutes?: number): Promise<ActionResult> => {
+      try {
+        needUser();
+        const { error } = await supabase.rpc("schedule_auction", {
+          p_product_id: productId,
+          p_starts_at: startsAt,
+          p_duration_minutes: durationMinutes ?? null,
+        });
+        if (error) return { ok: false, error: messageOf(error) };
+        await refresh();
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: messageOf(error) };
+      }
+    },
+    [needUser, refresh],
+  );
+
+  const startAuctionNow = useCallback(
+    async (auctionId: string) => {
+      try {
+        const { error } = await supabase.rpc("start_auction", { p_auction_id: auctionId });
+        if (error) {
+          toast(messageOf(error), "error");
+          return;
+        }
+        await refresh();
+      } catch (error) {
+        toast(messageOf(error), "error");
+      }
+    },
+    [refresh],
+  );
+
+  const endAuctionNow = useCallback(
+    async (auctionId: string) => {
+      try {
+        const { error } = await supabase.rpc("end_auction", { p_auction_id: auctionId });
+        if (error) {
+          toast(messageOf(error), "error");
+          return;
+        }
+        await refresh();
+      } catch (error) {
+        toast(messageOf(error), "error");
+      }
+    },
+    [refresh],
+  );
+
+  const cancelAuction = useCallback(
+    async (auctionId: string, reason: string) => {
+      try {
+        const { error } = await supabase.rpc("cancel_auction", {
+          p_auction_id: auctionId,
+          p_reason: reason,
+        });
+        if (error) {
+          toast(messageOf(error), "error");
+          return;
+        }
+        await refresh();
+      } catch (error) {
+        toast(messageOf(error), "error");
+      }
+    },
+    [refresh],
   );
 
   const markNotificationRead = useCallback(
@@ -1672,11 +1835,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     rejectProduct,
     setUserBlocked,
     updateSettings,
-    generateAuctions: auctionUnavailable,
-    scheduleAuction: auctionUnavailable,
-    startAuctionNow: async () => undefined,
-    endAuctionNow: async () => undefined,
-    cancelAuction: async () => undefined,
+    generateAuctions,
+    scheduleAuction,
+    startAuctionNow,
+    endAuctionNow,
+    cancelAuction,
     markSettlementPaid,
     resolveReport,
   };

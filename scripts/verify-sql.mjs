@@ -14,6 +14,10 @@ const fix = readFileSync(
   "supabase/migrations/20260102000000_fix_backend_gaps.sql",
   "utf8",
 );
+const auction = readFileSync(
+  "supabase/migrations/20260103000000_auction_engine.sql",
+  "utf8",
+);
 
 await db.exec(base);
 
@@ -48,6 +52,22 @@ await db.exec(`
 `);
 
 await db.exec(fix);
+
+// Stub Supabase-provided pieces the auction migration relies on.
+await db.exec(`
+  create sequence if not exists public.order_number_seq;
+  create or replace function public.next_order_number()
+  returns text language sql as $$ select 'LL' || lpad(nextval('public.order_number_seq')::text, 6, '0') $$;
+
+  create or replace function public.log_audit(
+    p_action text, p_entity_type text, p_entity_id text, p_metadata jsonb default '{}'::jsonb
+  ) returns void language sql as $$ select null::void $$;
+
+  create or replace function public.is_admin() returns boolean
+  language sql stable as $$ select false $$;
+`);
+
+await db.exec(auction);
 
 await db.exec(`
   set test.role = 'service_role';

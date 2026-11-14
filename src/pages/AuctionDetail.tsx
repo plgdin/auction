@@ -16,6 +16,7 @@ import { StatusPill } from "../components/Ui";
 import { formatMoney, formatDateTime, shortDate } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
+import { auctionIncrement } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 
 export function AuctionDetailPage() {
@@ -30,7 +31,8 @@ export function AuctionDetailPage() {
 
   const minimum = useMemo(() => {
     if (!auction) return 0;
-    return (auction.currentBid ?? auction.startingPrice - auction.minIncrement) + auction.minIncrement;
+    if (auction.currentBid == null) return auction.startingPrice;
+    return auction.currentBid + auctionIncrement(auction.currentBid);
   }, [auction]);
 
   useEffect(() => {
@@ -276,9 +278,8 @@ export function AuctionDetailPage() {
                 )}
                 {auction.financial && auction.financial.platformCommission > 0 && (
                   <p>
-                    Platform charges: {formatMoney(auction.financial.platformCommission)}. This
-                    includes ₹10 per product sold; when bids clear 130% of base, 10% of the amount
-                    above base is also charged.
+                    Platform charges: {formatMoney(auction.financial.platformCommission)} — 5% of
+                    the amount above the asking price.
                   </p>
                 )}
               </div>
