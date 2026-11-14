@@ -5,6 +5,7 @@ import {
   Bell,
   Gavel,
   Heart,
+  Home,
   LayoutDashboard,
   LogOut,
   Search,
@@ -13,7 +14,7 @@ import {
   Store,
   UserRound,
 } from "lucide-react";
-import { LiquidNavbar, NimbusIcons, type LiquidNavItem } from "@/components/ui/liquid-glass-navbar";
+import { BookmarkNav, type BookmarkNavItem } from "@/components/ui/bookmark-nav";
 import { navigate } from "@/src/components/Link";
 import { useRoute } from "@/src/lib/router";
 import { useStore } from "@/src/lib/store";
@@ -47,15 +48,10 @@ export function LelamNavbar({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [accountOpen]);
 
-  const navItems: LiquidNavItem[] = [
-    { label: "Home", icon: NimbusIcons.home, fx: "glow", href: "#/" },
-    { label: "Shop", icon: NimbusIcons.globe, fx: "spin", href: "#/products" },
-    {
-      label: "Auctions",
-      icon: <Gavel size={16} strokeWidth={2.2} />,
-      fx: "glow",
-      href: "#/auctions",
-    },
+  const navItems: BookmarkNavItem[] = [
+    { label: "Home", icon: Home, href: "#/" },
+    { label: "Shop", icon: ShoppingBag, href: "#/products" },
+    { label: "Auctions", icon: Gavel, href: "#/auctions" },
   ];
 
   const activeIndex =
@@ -65,9 +61,9 @@ export function LelamNavbar({
         ? 1
         : route.path.startsWith("/auctions") || route.path.startsWith("/auction/")
           ? 2
-          : -1;
+          : 0;
 
-  const handleNavChange = (_: number, item: LiquidNavItem) => {
+  const handleNavChange = (_: number, item: BookmarkNavItem) => {
     if (item.href) {
       setAccountOpen(false);
       navigate(item.href);
@@ -91,6 +87,15 @@ export function LelamNavbar({
           alt=""
           className="w-full h-full object-cover object-top"
           style={{ borderRadius: 0 }}
+        />
+      </div>
+
+      {/* Animated Hanging Bookmark Navigation — hanging from top-center across the torn paper edge */}
+      <div className="absolute left-1/2 top-0 -translate-x-1/2 pointer-events-auto z-40">
+        <BookmarkNav
+          items={navItems}
+          active={activeIndex}
+          onChange={handleNavChange}
         />
       </div>
 
@@ -121,28 +126,7 @@ export function LelamNavbar({
           </span>
         </a>
 
-        <div className="absolute left-1/2 top-3 hidden -translate-x-1/2 lg:block">
-          <LiquidNavbar
-            tone="light"
-            sound={true}
-            active={activeIndex}
-            items={navItems}
-            onChange={handleNavChange}
-          />
-        </div>
-
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          <div className="lelam-mobile-nav flex lg:hidden mr-1">
-            <LiquidNavbar
-              tone="light"
-              compact={true}
-              sound={true}
-              active={activeIndex}
-              items={navItems}
-              onChange={handleNavChange}
-            />
-          </div>
-
           <button
             type="button"
             onClick={onOpenSearch}
