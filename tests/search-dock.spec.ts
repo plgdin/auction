@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("search dock opens with macOS Genie transition, filters products, and navigates", async ({ page }) => {
+test("search dock opens with fluid macOS Genie deformation, filters products, and navigates", async ({ page }) => {
   await page.goto("http://localhost:5173/#/");
   await page.waitForTimeout(500);
 
@@ -9,27 +9,21 @@ test("search dock opens with macOS Genie transition, filters products, and navig
   await expect(searchBtn).toBeVisible();
   await searchBtn.click();
 
-  // Capture early Genie animation frame
-  await page.waitForTimeout(80);
-  await page.screenshot({ path: "test-results/search-genie-early.png" });
+  // Capture early Genie animation frame (funnel pouring out of button)
+  await page.waitForTimeout(110);
+  await page.screenshot({ path: "test-results/search-genie-open-early.png" });
 
-  // Capture mid-Genie animation frame
-  await page.waitForTimeout(140);
-  await page.screenshot({ path: "test-results/search-genie-mid.png" });
+  // Capture mid-Genie animation frame (trumpet bell flaring into center)
+  await page.waitForTimeout(110);
+  await page.screenshot({ path: "test-results/search-genie-open-mid.png" });
 
-  // Wait for full Genie animation to complete and modal to be interactive
+  // Wait for full Genie animation to settle and modal to become interactive
   await page.waitForTimeout(400);
   await page.evaluate(() => document.fonts.ready);
 
-  // Search input should be visible
+  // Search input should be visible and interactive
   const searchInput = page.getByPlaceholder("Denim, a leather jacket, homeware…");
   await expect(searchInput).toBeVisible();
-
-  const cardHeight = await page.evaluate(() => {
-    const el = document.querySelector(".search-modal-card") || document.querySelector("input")?.closest(".rounded-3xl");
-    return el ? el.getBoundingClientRect().height : 0;
-  });
-  console.log("ACTUAL CARD HEIGHT IS:", cardHeight);
 
   // Take screenshot of fully opened search
   await page.screenshot({ path: "test-results/search-opened.png" });
