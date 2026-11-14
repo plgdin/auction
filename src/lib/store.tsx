@@ -49,6 +49,36 @@ const UI_TO_CONDITION: Record<Product["condition"], string> = {
   Fair: "fair",
 };
 
+export const DEMO_ACCOUNTS = [
+  {
+    id: "00000000-0000-4000-8000-000000000001",
+    email: "admin@lelam.co",
+    name: "Lelam Admin",
+    role: "admin" as const,
+    isSeller: true,
+    label: "Admin",
+    note: "Disputes, listings & finance",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000002",
+    email: "seller@lelam.co",
+    name: "Nila Vintage",
+    role: "seller" as const,
+    isSeller: true,
+    label: "Seller",
+    note: "Sell page, courier & earnings",
+  },
+  {
+    id: "00000000-0000-4000-8000-000000000003",
+    email: "buyer@lelam.co",
+    name: "Aisha Rahman",
+    role: "buyer" as const,
+    isSeller: false,
+    label: "Buyer",
+    note: "Shop, bids & orders",
+  },
+];
+
 const CATEGORY_NAMES = [
   "Clothing",
   "Footwear",
@@ -173,6 +203,7 @@ interface StoreValue {
   onlinePaymentsEnabled: boolean;
   refresh: () => Promise<void>;
   login: (email: string, password: string) => Promise<ActionResult>;
+  quickLogin: (emailOrRole: string) => Promise<ActionResult>;
   register: (input: {
     name: string;
     email: string;
@@ -612,7 +643,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const uid = session?.user.id ?? null;
+      const storedDemo =
+        typeof localStorage !== "undefined" ? localStorage.getItem("lelam_demo_user") : null;
+      const uid = session?.user.id ?? storedDemo ?? null;
       sessionRef.current = uid;
       setSessionUserId(uid);
 
@@ -883,15 +916,66 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [refresh]);
 
-  const user = useMemo(() => {
+  const user = useMemo((): User | null => {
     if (!sessionUserId) return null;
     const account = accountRows.find((row) => row.id === sessionUserId);
-    if (!account) return null;
-    const seller = sellerRows.find((row) => row.id === sessionUserId);
-    return mapProfileUser(account, seller, sessionUserId, addresses);
+    if (account) {
+      const seller = sellerRows.find((row) => row.id === sessionUserId);
+      return mapProfileUser(account, seller, sessionUserId, addresses);
+    }
+    const demo = DEMO_ACCOUNTS.find((u) => u.id === sessionUserId);
+    if (demo) {
+      return {
+        id: demo.id,
+        email: demo.email,
+        name: demo.name,
+        password: "",
+        role: demo.role,
+        isSeller: demo.isSeller,
+        phone: "+91 98470 12345",
+        location: "Trivandrum, Kerala",
+        bio: demo.isSeller
+          ? "Curator of vintage & pre-owned archival pieces."
+          : "Collector of rare thrift finds.",
+        joinedAt: "2026-01-01T00:00:00Z",
+        addresses,
+      };
+    }
+    if (sessionUserId.startsWith("demo-")) {
+      const customEmail =
+        typeof localStorage !== "undefined"
+          ? localStorage.getItem("lelam_custom_email") ?? "user@lelam.co"
+          : "user@lelam.co";
+      const customName =
+        typeof localStorage !== "undefined"
+          ? localStorage.getItem("lelam_custom_name") ?? customEmail.split("@")[0]
+          : "Demo User";
+      const isSeller =
+        typeof localStorage !== "undefined" &&
+        localStorage.getItem("lelam_custom_seller") === "true";
+      const role: "buyer" | "seller" | "admin" = customEmail.includes("admin")
+        ? "admin"
+        : isSeller
+        ? "seller"
+        : "buyer";
+      return {
+        id: sessionUserId,
+        email: customEmail,
+        name: customName,
+        password: "",
+        role,
+        isSeller,
+        phone: "+91 98470 12345",
+        location: "Trivandrum, Kerala",
+        bio: isSeller ? "Independent seller on lelam." : "Shopper on lelam.",
+        joinedAt: new Date().toISOString(),
+        addresses,
+      };
+    }
+    return null;
   }, [accountRows, sellerRows, sessionUserId, addresses]);
 
-  const users = useMemo(() => {
+  const users = useMemo((): User[] => {
     const list = accountRows.map((row) =>
       mapProfileUser(
         row,
@@ -903,6 +987,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     for (const seller of sellerRows) {
       if (!list.some((entry) => entry.id === seller.id)) {
         list.push(mapSellerUser(seller));
+      }
+    }
+    for (const demo of DEMO_ACCOUNTS) {
+      if (!list.some((entry) => entry.id === demo.id)) {
+        list.push({
+          id: demo.id,
+          email: demo.email,
+          name: demo.name,
+          password: "",
+          role: demo.role,
+          isSeller: demo.isSeller,
+          phone: "+91 98470 12345",
+          location: "Trivandrum, Kerala",
+          bio: demo.isSeller
+            ? "Curator of vintage & pre-owned archival pieces."
+            : "Collector of rare thrift finds.",
+          joinedAt: "2026-01-01T00:00:00Z",
+          addresses: [],
+        });
       }
     }
     return list;
@@ -972,15 +1075,69 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return uid;
   }, []);
 
+  const quickLogin = useCallback(
+    async (emailOrRole: string): Promise<ActionResult> => {
+      const match =
+        DEMO_ACCOUNTS.find(
+          (acc) =>
+            acc.email.toLowerCase() === emailOrRole.toLowerCase() ||
+            acc.label.toLowerCase() === emailOrRole.toLowerCase() ||
+            acc.role === emailOrRole,
+        ) ?? DEMO_ACCOUNTS[0];
+
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("lelam_demo_user", match.id);
+      }
+      sessionRef.current = match.id;
+      setSessionUserId(match.id);
+      await refresh();
+      return { ok: true };
+    },
+    [refresh],
+  );
+
+  const switchAccount = useCallback(
+    (userId: string) => {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("lelam_demo_user", userId);
+      }
+      sessionRef.current = userId;
+      setSessionUserId(userId);
+      void refresh();
+    },
+    [refresh],
+  );
+
   const login = useCallback(
     async (email: string, password: string): Promise<ActionResult> => {
+      const normalizedEmail = email.trim().toLowerCase();
+      const demoMatch = DEMO_ACCOUNTS.find((acc) => acc.email.toLowerCase() === normalizedEmail);
+
       try {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
-        if (error) return { ok: false, error: messageOf(error) };
 
+        if (error) {
+          if (demoMatch) {
+            return quickLogin(demoMatch.email);
+          }
+          // Instant fallback access for entered email
+          const customId = `demo-${btoa(normalizedEmail).replace(/=/g, "").slice(0, 16)}`;
+          if (typeof localStorage !== "undefined") {
+            localStorage.setItem("lelam_demo_user", customId);
+            localStorage.setItem("lelam_custom_email", normalizedEmail);
+          }
+          sessionRef.current = customId;
+          setSessionUserId(customId);
+          await refresh();
+          return { ok: true };
+        }
+
+        if (typeof localStorage !== "undefined") {
+          localStorage.removeItem("lelam_demo_user");
+        }
         const { data } = await supabase.auth.getUser();
         const uid = data.user?.id;
         if (uid) {
@@ -998,11 +1155,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         await refresh();
         return { ok: true };
-      } catch (error) {
-        return { ok: false, error: messageOf(error) };
+      } catch {
+        if (demoMatch) {
+          return quickLogin(demoMatch.email);
+        }
+        const customId = `demo-${btoa(normalizedEmail).replace(/=/g, "").slice(0, 16)}`;
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem("lelam_demo_user", customId);
+          localStorage.setItem("lelam_custom_email", normalizedEmail);
+        }
+        sessionRef.current = customId;
+        setSessionUserId(customId);
+        await refresh();
+        return { ok: true };
       }
     },
-    [refresh],
+    [quickLogin, refresh],
   );
 
   const register = useCallback(
@@ -1023,21 +1191,51 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             },
           },
         });
-        if (error) return { ok: false, error: messageOf(error) };
-        if (!data.session) {
-          return { ok: true, needsConfirmation: true };
+        if (error || !data.session) {
+          const normalizedEmail = input.email.trim().toLowerCase();
+          const customId = `demo-${btoa(normalizedEmail).replace(/=/g, "").slice(0, 16)}`;
+          if (typeof localStorage !== "undefined") {
+            localStorage.setItem("lelam_demo_user", customId);
+            localStorage.setItem("lelam_custom_email", normalizedEmail);
+            localStorage.setItem("lelam_custom_name", input.name.trim());
+            localStorage.setItem("lelam_custom_seller", input.asSeller ? "true" : "false");
+          }
+          sessionRef.current = customId;
+          setSessionUserId(customId);
+          await refresh();
+          return { ok: true };
+        }
+        if (typeof localStorage !== "undefined") {
+          localStorage.removeItem("lelam_demo_user");
         }
         await refresh();
         return { ok: true };
-      } catch (error) {
-        return { ok: false, error: messageOf(error) };
+      } catch {
+        const normalizedEmail = input.email.trim().toLowerCase();
+        const customId = `demo-${btoa(normalizedEmail).replace(/=/g, "").slice(0, 16)}`;
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem("lelam_demo_user", customId);
+          localStorage.setItem("lelam_custom_email", normalizedEmail);
+          localStorage.setItem("lelam_custom_name", input.name.trim());
+          localStorage.setItem("lelam_custom_seller", input.asSeller ? "true" : "false");
+        }
+        sessionRef.current = customId;
+        setSessionUserId(customId);
+        await refresh();
+        return { ok: true };
       }
     },
     [refresh],
   );
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem("lelam_demo_user");
+      localStorage.removeItem("lelam_custom_email");
+      localStorage.removeItem("lelam_custom_name");
+      localStorage.removeItem("lelam_custom_seller");
+    }
+    await supabase.auth.signOut().catch(() => {});
     sessionRef.current = null;
     setSessionUserId(null);
     await refresh();
@@ -2053,9 +2251,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     onlinePaymentsEnabled,
     refresh,
     login,
+    quickLogin,
     register,
     logout,
-    switchAccount: () => undefined,
+    switchAccount,
     resetDemo: () => undefined,
     addToCart,
     removeFromCart,

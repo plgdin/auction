@@ -444,3 +444,4 @@ begin
 end;
 $$;
 grant execute on function public.run_maintenance() to authenticated, anon;
+

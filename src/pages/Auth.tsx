@@ -7,7 +7,7 @@ import { useRoute } from "../lib/router";
 import { toast } from "../lib/toast";
 
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
-  const { login, register, user } = useStore();
+  const { login, register, user, quickLogin } = useStore();
   const route = useRoute();
   const nextPath = route.query.get("next");
   const destination = nextPath?.startsWith("/") ? `#${nextPath}` : "#/account";
@@ -172,9 +172,54 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
             )}
           </div>
 
-          <div className="auth-demo-note">
-            <UserRound size={14} />
-            Your account is securely managed by Supabase. We never store your password in the browser.
+          <div className="auth-quick-access" style={{ marginTop: "22px", paddingTop: "18px", borderTop: "1px dashed var(--mkt-line)" }}>
+            <span style={{ display: "block", fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", color: "var(--mkt-muted)", marginBottom: "10px", textTransform: "uppercase" }}>
+              Instant 1-Click Access
+            </span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+              <button
+                type="button"
+                className="button button-ghost"
+                style={{ padding: "10px 6px", fontSize: "11.5px", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", background: "#fff" }}
+                onClick={async () => {
+                  await quickLogin("admin@lelam.co");
+                  toast("Signed in as Admin.", "success");
+                  navigate(nextPath?.startsWith("/") ? destination : "#/admin");
+                }}
+              >
+                <ShieldCheck size={18} style={{ color: "#2e7d32" }} />
+                <strong>Admin</strong>
+                <span style={{ fontSize: "9.5px", color: "var(--mkt-muted)" }}>Full portal</span>
+              </button>
+              <button
+                type="button"
+                className="button button-ghost"
+                style={{ padding: "10px 6px", fontSize: "11.5px", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", background: "#fff" }}
+                onClick={async () => {
+                  await quickLogin("seller@lelam.co");
+                  toast("Signed in as Seller.", "success");
+                  navigate(nextPath?.startsWith("/") ? destination : "#/seller");
+                }}
+              >
+                <Store size={18} style={{ color: "#d97706" }} />
+                <strong>Seller</strong>
+                <span style={{ fontSize: "9.5px", color: "var(--mkt-muted)" }}>Sell & money</span>
+              </button>
+              <button
+                type="button"
+                className="button button-ghost"
+                style={{ padding: "10px 6px", fontSize: "11.5px", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", background: "#fff" }}
+                onClick={async () => {
+                  await quickLogin("buyer@lelam.co");
+                  toast("Signed in as Buyer.", "success");
+                  navigate(nextPath?.startsWith("/") ? destination : "#/account");
+                }}
+              >
+                <UserRound size={18} style={{ color: "#1976d2" }} />
+                <strong>Buyer</strong>
+                <span style={{ fontSize: "9.5px", color: "var(--mkt-muted)" }}>Shop & bids</span>
+              </button>
+            </div>
           </div>
         </section>
       </div>
