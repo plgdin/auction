@@ -100,8 +100,8 @@ export function OrdersTab() {
                   <button
                     type="button"
                     className="button button-olive order-card-btn"
-                    onClick={() => {
-                      const result = advanceShipment(order.id, action.status);
+                    onClick={async () => {
+                      const result = await advanceShipment(order.id, action.status);
                       if (result.ok) toast("Delivery updated. The buyer sees it instantly.", "success");
                       else toast(result.error, "error");
                     }}

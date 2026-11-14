@@ -38,13 +38,13 @@ export function OffersTab() {
             offer={offer}
             product={db.products.find((item) => item.id === offer.productId)}
             buyer={db.users.find((item) => item.id === offer.buyerId)}
-            onAccept={() => {
-              const result = respondToOffer(offer.id, true);
+            onAccept={async () => {
+              const result = await respondToOffer(offer.id, true);
               if (result.ok) toast("Offer accepted. The buyer can pay now.", "success");
               else toast(result.error, "error");
             }}
-            onDecline={() => {
-              const result = respondToOffer(offer.id, false);
+            onDecline={async () => {
+              const result = await respondToOffer(offer.id, false);
               if (result.ok) toast("Offer declined.");
               else toast(result.error, "error");
             }}

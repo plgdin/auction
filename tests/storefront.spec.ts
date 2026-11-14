@@ -11,7 +11,7 @@ test("the marketplace shell loads", async ({ page }) => {
 
 test("the catalog route renders its heading", async ({ page }) => {
   await page.goto("/#/products");
-  await expect(page.getByRole("heading", { name: /every piece/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /shop all/i })).toBeVisible();
 });
 
 test("the sign-in page has no demo accounts", async ({ page }) => {

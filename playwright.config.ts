@@ -5,6 +5,8 @@ const port = 5180;
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
+  timeout: 30_000,
+  expect: { timeout: 15_000 },
   use: {
     baseURL: `http://localhost:${port}`,
     channel: "chromium",

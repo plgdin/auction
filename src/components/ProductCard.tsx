@@ -1,4 +1,5 @@
 import { ArrowUpRight, Check, Heart, ShoppingBag, Tag } from "lucide-react";
+import { promptAuth } from "../lib/authGate";
 import { formatMoney } from "../lib/format";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
@@ -7,7 +8,7 @@ import { Link, navigate } from "./Link";
 import { StatusPill } from "./Ui";
 
 export function ProductCard({ product, compact = false }: { product: Product; compact?: boolean }) {
-  const { db, favorites, toggleFavorite, addToCart, cart } = useStore();
+  const { db, user, favorites, toggleFavorite, addToCart, cart } = useStore();
   const saved = favorites.includes(product.id);
   const inCart = cart.some((entry) => entry.product.id === product.id);
   const auction = db.auctions.find(
@@ -29,7 +30,11 @@ export function ProductCard({ product, compact = false }: { product: Product; co
           aria-label={`${saved ? "Unsave" : "Save"} ${product.title}`}
           aria-pressed={saved}
           onClick={() => {
-            toggleFavorite(product.id);
+            if (!user) {
+              promptAuth(`#/product/${product.id}`, "Sign in to save pieces to your watchlist.");
+              return;
+            }
+            void toggleFavorite(product.id);
             toast(saved ? "Removed from saved." : "Saved to your watchlist.", "success");
           }}
         >
@@ -51,6 +56,10 @@ export function ProductCard({ product, compact = false }: { product: Product; co
             type="button"
             className="quick-add"
             onClick={async () => {
+              if (!user) {
+                promptAuth(`#/product/${product.id}`, "Sign in to add this piece to your cart.");
+                return;
+              }
               if (inCart) {
                 navigate("#/cart");
                 return;

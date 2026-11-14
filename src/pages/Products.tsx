@@ -114,12 +114,12 @@ function ShopCard({ product }: { product: Product }) {
             type="button"
             className={`shop-cart ${inCart ? "is-in-cart" : ""}`}
             aria-label={inCart ? `View cart with ${product.title}` : `Add ${product.title} to cart`}
-            onClick={() => {
+            onClick={async () => {
               if (inCart) {
                 navigate("#/cart");
                 return;
               }
-              const result = addToCart(product.id);
+              const result = await addToCart(product.id);
               if (result.ok) toast("Added to cart.", "success");
               else toast(result.error, "error");
             }}

@@ -20,7 +20,6 @@ import type {
   OrderItem,
   PlatformSettings,
   Product,
-  ProductStatus,
   Report,
   Review,
   Settlement,
@@ -202,7 +201,7 @@ interface StoreValue {
   ) => Promise<{ ok: true; productId: string } | { ok: false; error: string }>;
   updateListing: (
     productId: string,
-    patch: Partial<ListingInput> & { status?: ProductStatus },
+    patch: Partial<ListingInput>,
   ) => Promise<ActionResult>;
   removeListing: (productId: string) => Promise<ActionResult>;
   toggleListingAvailability: (productId: string) => Promise<ActionResult>;
@@ -694,6 +693,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let active = true;
     void refresh();
 
+    // Never leave the shell on the boot screen if the backend is unreachable.
+    // Slow requests can still finish later and hydrate the store.
+    const bootTimer = window.setTimeout(() => setLoading(false), 8_000);
+
     const { data: subscription } = supabase.auth.onAuthStateChange(() => {
       window.setTimeout(() => {
         if (active) void refresh();
@@ -702,6 +705,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     return () => {
       active = false;
+      window.clearTimeout(bootTimer);
       subscription.subscription.unsubscribe();
     };
   }, [refresh]);
@@ -1247,7 +1251,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateListing = useCallback(
     async (
       productId: string,
-      patch: Partial<ListingInput> & { status?: ProductStatus },
+      patch: Partial<ListingInput>,
     ): Promise<ActionResult> => {
       try {
         const uid = needUser();
@@ -1290,14 +1294,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           p_images: images,
         });
         if (error) return { ok: false, error: messageOf(error) };
-
-        if (patch.status) {
-          const { error: statusError } = await supabase
-            .from("products")
-            .update({ status: patch.status })
-            .eq("id", productId);
-          if (statusError) return { ok: false, error: messageOf(statusError) };
-        }
 
         await refresh();
         return { ok: true };

@@ -141,8 +141,8 @@ export function InventoryTab() {
                     <button
                       type="button"
                       className="text-link"
-                      onClick={() => {
-                        const result = toggleListingAvailability(product.id);
+                      onClick={async () => {
+                        const result = await toggleListingAvailability(product.id);
                         if (!result.ok) toast(result.error, "error");
                         else toast(product.status === "active" ? "Listing paused." : "Listing back on the rail.");
                       }}
@@ -154,9 +154,9 @@ export function InventoryTab() {
                     <button
                       type="button"
                       className="text-link danger"
-                      onClick={() => {
+                      onClick={async () => {
                         if (!window.confirm("Remove this listing from the rail?")) return;
-                        const result = removeListing(product.id);
+                        const result = await removeListing(product.id);
                         if (!result.ok) toast(result.error, "error");
                         else toast("Listing removed.");
                       }}
@@ -200,8 +200,8 @@ export function InventoryTab() {
                 type="button"
                 className="button button-olive"
                 disabled={!auctionStart}
-                onClick={() => {
-                  const result = scheduleAuction(target.id, new Date(auctionStart).toISOString());
+                onClick={async () => {
+                  const result = await scheduleAuction(target.id, new Date(auctionStart).toISOString());
                   if (result.ok) {
                     toast("Auction scheduled. The hall does the rest.", "success");
                     setAuctionTarget("");

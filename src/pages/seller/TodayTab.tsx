@@ -84,13 +84,13 @@ export function TodayTab({ onGoToTab }: { onGoToTab: (tab: string) => void }) {
                 offer={offer}
                 product={db.products.find((item) => item.id === offer.productId)}
                 buyer={db.users.find((item) => item.id === offer.buyerId)}
-                onAccept={() => {
-                  const result = respondToOffer(offer.id, true);
+                onAccept={async () => {
+                  const result = await respondToOffer(offer.id, true);
                   if (result.ok) toast("Offer accepted. The buyer can pay now.", "success");
                   else toast(result.error, "error");
                 }}
-                onDecline={() => {
-                  const result = respondToOffer(offer.id, false);
+                onDecline={async () => {
+                  const result = await respondToOffer(offer.id, false);
                   if (result.ok) toast("Offer declined.");
                   else toast(result.error, "error");
                 }}
@@ -120,8 +120,8 @@ export function TodayTab({ onGoToTab }: { onGoToTab: (tab: string) => void }) {
                     <button
                       type="button"
                       className="button button-olive today-hand-btn"
-                      onClick={() => {
-                        const result = advanceShipment(order.id, action.status);
+                      onClick={async () => {
+                        const result = await advanceShipment(order.id, action.status);
                         if (result.ok) toast("Delivery updated. The buyer sees it instantly.", "success");
                         else toast(result.error, "error");
                       }}

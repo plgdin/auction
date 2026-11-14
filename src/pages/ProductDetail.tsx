@@ -14,9 +14,9 @@ import {
   UserRound,
 } from "lucide-react";
 import { Modal } from "../components/Modal";
-import { Link, navigate } from "../components/Link";
-import { ProductCard } from "../components/ProductCard";
+import { Link, navigate } from "../components/Link";import { ProductCard } from "../components/ProductCard";
 import { StatusPill, Field } from "../components/Ui";
+import { promptAuth } from "../lib/authGate";
 import { formatDate, formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
@@ -117,7 +117,11 @@ export function ProductDetailPage() {
                 type="button"
                 className={`gallery-save ${saved ? "is-saved" : ""}`}
                 onClick={() => {
-                  toggleFavorite(product.id);
+                  if (!user) {
+                    promptAuth(`#/product/${product.id}`, "Sign in to save pieces to your watchlist.");
+                    return;
+                  }
+                  void toggleFavorite(product.id);
                   toast(saved ? "Removed from saved." : "Saved to your watchlist.", "success");
                 }}
                 aria-label={saved ? "Unsave" : "Save"}
@@ -186,8 +190,7 @@ export function ProductDetailPage() {
                       className="button button-olive"
                       onClick={() => {
                         if (!user) {
-                          toast("Sign in to buy this piece.", "error");
-                          navigate("#/login");
+                          promptAuth(`#/checkout?product=${product.id}`, "Sign in to buy this piece.");
                           return;
                         }
                         navigate(`#/checkout?product=${product.id}`);
@@ -215,8 +218,7 @@ export function ProductDetailPage() {
                         className="button button-ghost"
                         onClick={() => {
                           if (!user) {
-                            toast("Sign in to make an offer.", "error");
-                            navigate("#/login");
+                            promptAuth(`#/product/${product.id}`, "Sign in to make an offer.");
                             return;
                           }
                           setOfferOpen(true);
@@ -295,8 +297,7 @@ export function ProductDetailPage() {
                 className="text-link report-link"
                 onClick={() => {
                   if (!user) {
-                    toast("Sign in to report a listing.", "error");
-                    navigate("#/login");
+                    promptAuth(`#/product/${product.id}`, "Sign in to report a listing.");
                     return;
                   }
                   setReportOpen(true);
