@@ -282,7 +282,9 @@ export function ProductDetailPage() {
                 <span>Sold by</span>
                 <strong>{product.sellerName}</strong>
                 <p>
-                  {seller?.bio || "An independent seller on lelam.co."}
+                  {seller?.bio || (
+                    <>An independent seller on <span className="brand-wordmark">lelam.co</span>.</>
+                  )}
                   {rating && <em> · {rating} ★ from {reviews.length} reviews</em>}
                 </p>
                 <span className="seller-location">

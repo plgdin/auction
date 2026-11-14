@@ -102,7 +102,7 @@
   --ink: #000000;
   --olive: #000000;
   --line: #e4e4e7;
-  --serif: "DM Serif Display", Georgia, serif;
+  --serif: "Playfair Display", Georgia, serif;
   --background: #ffffff;
   --foreground: #09090b;
   --primary: #18181b;
@@ -243,6 +243,14 @@ em {
   position: relative;
   width: auto;
   white-space: nowrap;
+}
+.brand-wordmark {
+  font-family: "Gumela Arabic", var(--serif);
+  font-weight: 800;
+  font-synthesis: weight;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-transform: lowercase;
 }
 .desktop-nav {
   display: flex;
@@ -5049,7 +5057,7 @@ body {
 
 .rail-section [data-slot="clothing-rail-hero"] header h2 {
   color: #493022 !important;
-  font-family: 'Canela', 'Ogg', 'PPEditorialNew', 'DM Serif Display', Georgia, serif !important;
+  font-family: 'Playfair Display', Georgia, serif !important;
   font-size: clamp(28px, 3.5vw, 42px) !important;
 }
 
@@ -5241,7 +5249,7 @@ body {
 }
 
 .auctions-page .page-header h1 {
-  font-family: 'Canela', 'Ogg', 'PPEditorialNew', 'DM Serif Display', Georgia, serif !important;
+  font-family: 'Playfair Display', Georgia, serif !important;
   color: #493022 !important;
   font-size: clamp(34px, 4vw, 52px) !important;
   font-weight: 400 !important;
@@ -5313,12 +5321,12 @@ body {
 }
 
 .auctions-page .auction-card-title {
-  font-family: 'Canela', 'Ogg', 'PPEditorialNew', 'DM Serif Display', Georgia, serif !important;
+  font-family: 'Playfair Display', Georgia, serif !important;
   color: #493022 !important;
 }
 
 .auctions-page .auction-card-prices strong {
-  font-family: 'Canela', 'Ogg', 'PPEditorialNew', 'DM Serif Display', Georgia, serif !important;
+  font-family: 'Playfair Display', Georgia, serif !important;
   color: #493022 !important;
 }
 
@@ -5334,7 +5342,7 @@ body {
 }
 
 .auctions-page .auction-finance h2 {
-  font-family: 'Canela', 'Ogg', 'PPEditorialNew', 'DM Serif Display', Georgia, serif !important;
+  font-family: 'Playfair Display', Georgia, serif !important;
   color: #493022 !important;
 }
 

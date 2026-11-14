@@ -8,7 +8,7 @@
   --shop-line: #d3c0a2;
   --shop-brown: #7b5737;
   --shop-olive: #4d5434;
-  --shop-serif: "Canela", "PPEditorialNew", Georgia, "Times New Roman", serif;
+  --shop-serif: "Playfair Display", Georgia, "Times New Roman", serif;
   --shop-paper: #f7edda;
 
   width: 100%;
@@ -82,8 +82,7 @@
 .shop-filter-title h2 {
   margin: 0;
   font-family: var(--shop-serif);
-  font-style: italic;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 24px;
   letter-spacing: -0.01em;
   color: #2e1e12;
@@ -106,7 +105,7 @@
   margin: 0 0 10px;
   font-family: var(--shop-serif);
   font-size: 14.5px;
-  font-weight: 700;
+  font-weight: 600;
   color: #2e1e12;
 }
 
@@ -153,6 +152,13 @@
   height: 9px;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.6 6.3 4.6 9.2 10.4 2.9' fill='none' stroke='%233d2b1a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
     center / contain no-repeat;
+}
+
+.shop-check-count {
+  margin-left: auto;
+  font: 400 11px/1 "DM Sans", sans-serif;
+  color: #8a7458;
+  font-style: normal;
 }
 
 /* Price */
@@ -338,7 +344,7 @@
   position: relative;
   display: inline-block;
   margin: 0;
-  font: 500 clamp(38px, 4.5vw, 56px)/1.05 var(--shop-serif);
+  font: 700 clamp(38px, 4.5vw, 56px)/1.05 var(--shop-serif);
   letter-spacing: -0.02em;
   color: #3a2816;
 }
@@ -588,7 +594,7 @@
 .shop-card-title {
   display: block;
   overflow: hidden;
-  font: 500 16px/1.25 var(--shop-serif);
+  font: 600 16px/1.25 "DM Sans", sans-serif;
   color: #332417;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -622,7 +628,7 @@
 }
 
 .shop-card-price {
-  font: 600 18px/1 var(--shop-serif);
+  font: 700 18px/1 "DM Sans", sans-serif;
   letter-spacing: 0.005em;
   color: #2f2114;
 }
@@ -693,7 +699,7 @@
 
 .shop-empty h2 {
   margin: 0;
-  font: 500 26px/1.2 var(--shop-serif);
+  font: 600 26px/1.2 var(--shop-serif);
 }
 
 .shop-empty p {
@@ -726,7 +732,7 @@
   height: 27px;
   border-radius: 50%;
   color: #4a3520;
-  font: 400 12.5px/1 var(--shop-serif);
+  font: 400 12.5px/1 "DM Sans", sans-serif;
 }
 
 .shop-pagination button:hover:not(:disabled) {

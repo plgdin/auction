@@ -324,7 +324,7 @@ function Shell() {
       ],
     },
     {
-      title: "lelam.co",
+      title: <span className="brand-wordmark">lelam.co</span>,
       links: [
         { label: "Trivandrum, Kerala" },
         { label: "Delivery in 695xxx" },
@@ -350,7 +350,7 @@ function Shell() {
 
       <HalftoneWordmarkFooter
         wordmark="lelam"
-        label="lelam.co"
+        label={<span className="brand-wordmark">lelam.co</span>}
         meta="©2026 · Trivandrum, Kerala"
         preset="paper"
         palette={{ background: "transparent", ink: "#493022", warm: "#C98F7D" }}

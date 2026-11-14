@@ -3,11 +3,13 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
+  ChevronDown,
   ImagePlus,
   Info,
   LockKeyhole,
   PackageCheck,
   Plus,
+  Search,
   ShieldCheck,
   Store,
   Truck,
@@ -15,6 +17,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { Link, navigate } from "../components/Link";
 import { Field, PageHeader } from "../components/Ui";
 import { APPAREL_SIZES, CLOTHING_BRANDS, ELECTRONICS_BRANDS, SHOE_SIZES, VINTED_CATALOG, groupsFor, subsFor } from "../lib/categories";
@@ -32,6 +35,208 @@ const presetImages = [
   "/images/bag.jpg", "/images/tee.jpg", "/images/editorial.jpg", "/images/detail.jpg",
 ];
 
+const categoryDetails: Record<string, { note: string }> = {
+  Women: { note: "Clothes, bags & more" },
+  Men: { note: "Everyday essentials" },
+  Designer: { note: "Labels & special finds" },
+  Kids: { note: "Little ones & play" },
+  Home: { note: "Pieces for your place" },
+  Electronics: { note: "Tech, audio & devices" },
+  "Books & Media": { note: "Books, records & films" },
+  "Hobbies & collectibles": { note: "Games, art & oddities" },
+  Sports: { note: "Active & outdoor gear" },
+};
+
+function CategoryArtwork({ category }: { category: string }) {
+  const common = {
+    fill: "none",
+    stroke: "currentColor",
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+
+  return (
+    <svg viewBox="0 0 80 72" aria-hidden="true" {...common}>
+      {category === "Women" && (
+        <>
+          <path d="m28 13 12 5 12-5 10 11-8 7-4-4 8 31H22l8-31-4 4-8-7z" fill="#d7aaa0" />
+          <path d="m28 13 12 11 12-11M40 24v34M22 58q18 4 36 0M33 14q7-7 14 0" />
+          <path d="M40 34v2m0 7v2" stroke="#9f7759" />
+        </>
+      )}
+      {category === "Men" && (
+        <>
+          <path d="m28 16 9-5h7l9 5 12 10-7 9-7-6v28H28V29l-7 6-7-9z" fill="#8ca19a" />
+          <path d="m37 11 4 8 3-8M40 19v38M30 30h20M30 37h20M30 44h20M32 51h16" />
+        </>
+      )}
+      {category === "Designer" && (
+        <>
+          <path d="M18 29h44l-4 32H22z" fill="#b38b68" />
+          <path d="M27 30q0-18 13-18t13 18M22 37h36M29 44h22M25 55h30" />
+          <path d="M36 40h9v11h-9z" fill="#dfc995" />
+          <circle cx="40.5" cy="45.5" r="1.5" fill="#625238" stroke="none" />
+        </>
+      )}
+      {category === "Kids" && (
+        <>
+          <path d="m30 16 10 5 10-5 8 10-6 6-5-4 7 26H26l7-26-5 4-6-6z" fill="#d7aaa0" />
+          <path d="m30 16 10 9 10-9M40 25v28M26 54q14 4 28 0M35 16q5-6 10 0" />
+          <path d="M33 35h3m8 0h3M33 42h3m8 0h3" stroke="#9f7759" />
+          <path d="m26 53 3 5m22-5-3 5" stroke="#c58a70" />
+        </>
+      )}
+      {category === "Home" && (
+        <>
+          <path d="M20 59h40M25 57V36h30v21M30 36V21q0-10 10-10t10 10v15" fill="#d9c69d" />
+          <path d="M26 43h28M31 58V45h18v13M40 11V7" />
+          <path d="M33 25h14" />
+        </>
+      )}
+      {category === "Electronics" && (
+        <>
+          <rect x="25" y="7" width="30" height="58" rx="6" fill="#81948b" />
+          <rect x="29" y="14" width="22" height="42" rx="2" fill="#f0e5d1" />
+          <path d="M34 21h12m-12 6h8m-8 8h12m-12 6h7" />
+          <circle cx="40" cy="60" r="1.5" fill="#d6c18c" />
+        </>
+      )}
+      {category === "Books & Media" && (
+        <>
+          <path d="M13 17q14-5 27 4v40q-13-9-27-4z" fill="#d6c392" />
+          <path d="M67 17q-14-5-27 4v40q13-9 27-4z" fill="#91a198" />
+          <path d="M40 21v40" />
+          <path d="M19 27q7-2 14 1M19 35q7-2 14 1M19 43q7-2 14 1M19 51q7-2 14 1M47 28q6-3 12-2M47 36q6-3 12-2M47 44q6-3 12-2M47 52q6-3 12-2" stroke="#76684e" strokeWidth="1.2" />
+        </>
+      )}
+      {category === "Hobbies & collectibles" && (
+        <>
+          <path d="M17 10h46v43H17z" fill="#b58d62" />
+          <path d="M21 14h38v35H21z" fill="#252721" stroke="#554632" strokeWidth="1.4" />
+          <path d="M28 28q7-10 13 0t13 0" stroke="#6d5942" strokeWidth="2" />
+          <path d="M26 40q7-9 14-1t15-3" stroke="#dfaa91" strokeWidth="3" />
+          <path d="M26 33q5-5 10 0m11 10 7 4" stroke="#d3c18d" strokeWidth="2.2" />
+        </>
+      )}
+      {category === "Sports" && (
+        <>
+          <g transform="rotate(-35 22 18)">
+            <ellipse cx="22" cy="18" rx="8" ry="11" fill="#e8ddc8" />
+            <path d="m16 10 12 16m0-16L16 26m-2-8h16m-15 5h14m-13-11v13m5-15v15" strokeWidth="0.8" />
+          </g>
+          <path d="M28 28 51 52" stroke="#a47959" strokeWidth="2.6" />
+          <path d="m51 52 7 9" stroke="#554637" strokeWidth="3.5" />
+          <g transform="rotate(35 58 18)">
+            <ellipse cx="58" cy="18" rx="8" ry="11" fill="#e8ddc8" />
+            <path d="m52 10 12 16m0-16L52 26m-2-8h16m-15 5h14m-13-11v13m5-15v15" strokeWidth="0.8" />
+          </g>
+          <path d="M52 28 29 52" stroke="#9c7254" strokeWidth="2.6" />
+          <path d="m29 52-7 9" stroke="#554637" strokeWidth="3.5" />
+          <path d="m50 54 5 4m-31-4-5 4" stroke="#d5c09a" strokeWidth="1" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function SearchableSelect({
+  label,
+  value,
+  options,
+  onChange,
+  hint,
+  placeholder = "Choose an option",
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  hint?: string;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const filteredOptions = useMemo(
+    () => options.filter((option) => option.toLowerCase().includes(query.trim().toLowerCase())),
+    [options, query],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    searchRef.current?.focus();
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  const choose = (option: string) => {
+    onChange(option);
+    setQuery("");
+    setOpen(false);
+  };
+
+  return (
+    <div className={`sell-select-field ${open ? "is-open" : ""}`} ref={rootRef}>
+      <span className="field-label">{label}</span>
+      <button
+        type="button"
+        className={`sell-select-trigger ${open ? "is-open" : ""}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((previous) => !previous)}
+      >
+        <span className={value ? "" : "is-placeholder"}>{value || placeholder}</span>
+        <ChevronDown size={16} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="sell-select-menu">
+          <div className="sell-select-search">
+            <Search size={15} aria-hidden="true" />
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={`Search ${label.toLowerCase()}…`}
+              aria-label={`Search ${label.toLowerCase()}`}
+            />
+          </div>
+          <div role="listbox" aria-label={label} className="sell-select-options">
+            {filteredOptions.length ? (
+              filteredOptions.map((option) => (
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={value === option}
+                  key={option}
+                  className={`sell-select-option ${value === option ? "is-selected" : ""}`}
+                  onClick={() => choose(option)}
+                >
+                  {option}
+                  {value === option && <Check size={15} aria-hidden="true" />}
+                </button>
+              ))
+            ) : (
+              <p className="sell-select-empty">No matching options.</p>
+            )}
+          </div>
+        </div>
+      )}
+      {hint && <span className="field-hint">{hint}</span>}
+    </div>
+  );
+}
+
 const emptyForm = {
   title: "",
   description: "",
@@ -39,7 +244,7 @@ const emptyForm = {
   customBrand: "",
   condition: "Good" as Condition,
   top: "Women",
-  group: "All",
+  group: "Clothing",
   sub: "All",
   price: "",
   size: "",
@@ -67,6 +272,12 @@ export function SellPage() {
   useEffect(() => {
     if (editing) {
       const top = VINTED_CATALOG.some((c) => c.top === editing.category) ? editing.category : "Women";
+      const categoryGroups = groupsFor(top);
+      const matchingGroup = categoryGroups.find(
+        (group) => group.name === editing.subcategory || group.subs.includes(editing.subcategory ?? ""),
+      );
+      const group = matchingGroup?.name ?? categoryGroups[0]?.name ?? "All";
+      const sub = matchingGroup && matchingGroup.name !== editing.subcategory ? editing.subcategory || "All" : "All";
       setForm({
         ...emptyForm,
         title: editing.title,
@@ -75,8 +286,8 @@ export function SellPage() {
         customBrand: editing.brand && !CLOTHING_BRANDS.includes(editing.brand) ? editing.brand : "",
         condition: editing.condition,
         top,
-        group: "All",
-        sub: editing.subcategory || "All",
+        group,
+        sub,
         price: String(editing.askingPrice / 100),
         size: editing.size || "",
         quantity: String(editing.quantity),
@@ -95,8 +306,10 @@ export function SellPage() {
   const groups = useMemo(() => groupsFor(form.top).map((g) => g.name), [form.top]);
   const subs = useMemo(() => (form.group === "All" ? ["All", "Other"] : subsFor(form.top, form.group)), [form.top, form.group]);
 
-  const needsApparelSize = ["Women", "Men", "Designer", "Kids"].includes(form.top);
-  const isShoes = form.group.toLowerCase().includes("shoe");
+  const needsApparelSize =
+    ["Women", "Men", "Designer", "Kids"].includes(form.top) &&
+    /clothing|apparel|designer/i.test(form.group);
+  const isShoes = `${form.group} ${form.sub}`.toLowerCase().includes("shoe");
   const isElectronics = form.top === "Electronics";
   const brandOptions = isElectronics ? ELECTRONICS_BRANDS : CLOTHING_BRANDS;
   const sizeOptions = isShoes ? SHOE_SIZES : APPAREL_SIZES;
@@ -104,7 +317,12 @@ export function SellPage() {
   const update = (key: keyof typeof form, value: string | boolean) => {
     setForm((previous) => {
       const next = { ...previous, [key]: value };
-      if (key === "top") { next.group = "All"; next.sub = "All"; }
+      if (key === "top") {
+        next.group = groupsFor(String(value))[0]?.name ?? "All";
+        next.sub = "All";
+        next.brand = "";
+        next.size = "";
+      }
       if (key === "group") { next.sub = "All"; }
       return next;
     });
@@ -215,35 +433,93 @@ export function SellPage() {
       <div className="sell-main">
         <section className="sell-block">
           <div className="sell-block-head"><span className="step-number">01</span><div><h2>What are you selling?</h2><p>Pick the category — the form adapts to it.</p></div></div>
-          <div className="field-row three">
-            <Field label="Category *"><select value={form.top} onChange={(e) => update("top", e.target.value)}>{VINTED_CATALOG.map((c) => <option key={c.top} value={c.top}>{c.top}</option>)}</select></Field>
-            <Field label="Type *"><select value={form.group} onChange={(e) => update("group", e.target.value)}><option value="All">All</option>{groups.map((g) => <option key={g} value={g}>{g}</option>)}</select></Field>
-            {form.group !== "All" && <Field label="Subcategory"><select value={form.sub} onChange={(e) => update("sub", e.target.value)}>{subs.map((s) => <option key={s} value={s}>{s}</option>)}</select></Field>}
+          <div className="sell-category-picker">
+            <span className="field-label" id="sell-category-label">Choose a category <span aria-hidden="true">*</span></span>
+            <div className="sell-category-grid" role="group" aria-labelledby="sell-category-label">
+              {VINTED_CATALOG.map((category) => (
+                <motion.button
+                  type="button"
+                  key={category.top}
+                  className={`sell-category-tile ${form.top === category.top ? "is-selected" : ""}`}
+                  aria-pressed={form.top === category.top}
+                  onClick={() => update("top", category.top)}
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 26, mass: 0.7 }}
+                >
+                  {form.top === category.top && (
+                    <motion.span
+                      className="sell-category-highlight"
+                      layoutId="sell-category-highlight"
+                      transition={{ type: "spring", stiffness: 420, damping: 30, mass: 0.75 }}
+                    />
+                  )}
+                  <span className="sell-category-art"><CategoryArtwork category={category.top} /></span>
+                  <span className="sell-category-copy">
+                    <strong>{category.top}</strong>
+                    <small>{categoryDetails[category.top]?.note}</small>
+                  </span>
+                  <span className="sell-category-check" aria-hidden="true"><Check size={13} /></span>
+                </motion.button>
+              ))}
+            </div>
+            <p className="sell-category-hint">Choose one. We’ll show the matching item types next.</p>
           </div>
 
-          <Field label="Title *"><input value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="e.g. Levi's 501 jeans" maxLength={80} /></Field>
+          <div className="field-row two">
+            <SearchableSelect
+              label="Type *"
+              value={form.group}
+              options={groups}
+              onChange={(value) => update("group", value)}
+              placeholder="Choose a type"
+            />
+            <SearchableSelect
+              label="Subcategory"
+              value={form.sub}
+              options={subs}
+              onChange={(value) => update("sub", value)}
+              placeholder="Choose a subcategory"
+            />
+          </div>
+
+          <Field label="Listing title *"><input value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="e.g. Levi's 501 jeans" maxLength={80} /></Field>
 
           {(needsApparelSize || isElectronics || form.top === "Sports") && (
             <div className="field-row two">
-              <Field label="Brand" hint={form.brand === "Other" ? "Type your own below" : "Optional"}>{brandOptions.length ? (
-                <select value={form.brand} onChange={(e) => update("brand", e.target.value)}>
-                  <option value="">No brand / unbranded</option>
-                  {brandOptions.map((b) => <option key={b} value={b}>{b}</option>)}
-                </select>
-              ) : <input value={form.brand} onChange={(e) => update("brand", e.target.value)} placeholder="Brand" />}</Field>
+              <SearchableSelect
+                label="Brand"
+                value={form.brand || ""}
+                options={["No brand / unbranded", ...brandOptions]}
+                onChange={(value) => update("brand", value === "No brand / unbranded" ? "" : value)}
+                placeholder="Search or choose a brand"
+                hint={form.brand === "Other" ? "Type your own below" : "Optional"}
+              />
               {form.brand === "Other" && <Field label="Your brand"><input value={form.customBrand} onChange={(e) => update("customBrand", e.target.value)} placeholder="Type your brand" /></Field>}
             </div>
           )}
-          {needsApparelSize && <Field label="Size *"><select value={form.size} onChange={(e) => update("size", e.target.value)}><option value="">Select size</option>{sizeOptions.map((s) => <option key={s} value={s}>{s}</option>)}</select></Field>}
+          {needsApparelSize || isShoes ? (
+            <SearchableSelect
+              label={needsApparelSize ? "Size *" : "Shoe size *"}
+              value={form.size}
+              options={sizeOptions}
+              onChange={(value) => update("size", value)}
+              placeholder="Search sizes"
+            />
+          ) : null}
           {form.top === "Home" && <Field label="Size / dimensions" hint="Optional"><input value={form.size} onChange={(e) => update("size", e.target.value)} placeholder="e.g. 40 × 40 cm" /></Field>}
           {form.top === "Books & Media" && <Field label="Format / size" hint="Optional"><input value={form.size} onChange={(e) => update("size", e.target.value)} placeholder="e.g. Paperback" /></Field>}
 
-          <Field label="Condition *"><select value={form.condition} onChange={(e) => update("condition", e.target.value)}>{conditions.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+          <SearchableSelect
+            label="Condition *"
+            value={form.condition}
+            options={conditions}
+            onChange={(value) => update("condition", value as Condition)}
+          />
           <Field label="Description *" hint="Mention fit, flaws, measurements, anything a buyer should know."><textarea rows={5} value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Describe it honestly…" /></Field>
-          <div className="field-row three">
+          <div className="field-row two">
             <Field label="Quantity"><input type="number" min={1} value={form.quantity} onChange={(e) => update("quantity", e.target.value)} inputMode="numeric" /></Field>
             <Field label="Location"><input value={form.location} onChange={(e) => update("location", e.target.value)} /></Field>
-            <Field label="Asking price (₹) *"><input type="number" min={1} inputMode="numeric" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="1450" /></Field>
           </div>
           <p className="sell-inline-note"><Truck size={14} /> Shipping & delivery handled by us after you list. You don&apos;t arrange the courier.</p>
         </section>
@@ -259,12 +535,15 @@ export function SellPage() {
         <section className="sell-block">
           <div className="sell-block-head"><span className="step-number">03</span><div><h2>Price & options</h2><p>Set the asking price. Buyers can buy instantly or send a private offer.</p></div></div>
           <div className="field-row two">
-            <Field label="Shipping fee (₹)" hint="We handle delivery; you can cover it or leave it free."><input type="number" min={0} inputMode="numeric" value={form.shipping} onChange={(e) => update("shipping", e.target.value)} /></Field>
+            <Field label="Asking price (₹) *" hint="Buyers pay this for Buy now, or bid in auctions."><input type="number" min={1} inputMode="numeric" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="1450" /></Field>
             <Field label="You receive" hint="The full asking price comes to you. Shipping is collected separately at checkout."><div className="sell-payout">{formatMoney(Math.round((Number(form.price) || 0) * 100))}</div></Field>
+          </div>
+          <div className="field-row two">
+            <Field label="Shipping fee (₹)" hint="We handle delivery; you can cover it or leave it free."><input type="number" min={0} inputMode="numeric" value={form.shipping} onChange={(e) => update("shipping", e.target.value)} /></Field>
           </div>
           <div className="sell-options">
             <label><input type="checkbox" checked={form.allowOffers} onChange={(e) => update("allowOffers", e.target.checked)} /><span><strong>Allow private offers</strong><em>Buyers can send a price privately. You choose whether to accept — an offer you ignore expires on its own.</em></span></label>
-            <label><input type="checkbox" checked={form.auctionConsent} onChange={(e) => update("auctionConsent", e.target.checked)} /><span><strong>Opt in to random live auctions</strong><em>Your listing may be picked for a short live auction that starts at {db.settings.auctionStartPct}% of your asking price, so buyers have room to win. You are always paid at least your asking price — the platform tops up any shortfall. If bids go higher, you keep the winning bid.</em></span></label>
+            <label><input type="checkbox" checked={form.auctionConsent} onChange={(e) => update("auctionConsent", e.target.checked)} /><span><strong>Opt in to random live auctions</strong><em>Your listing may be picked for a short live auction that starts at {db.settings.auctionStartPct}% of your asking price, so buyers have room to win. If bids go higher, you keep the winning bid.</em></span></label>
           </div>
         </section>
       </div>
@@ -286,7 +565,7 @@ export function SellPage() {
           <button type="button" className="button button-olive summary-cta" onClick={submit}>{editing ? "Save changes" : "Publish listing"} <ArrowUpRight size={15} /></button>
           <Link href="#/seller" className="button button-ghost summary-cta">Seller dashboard</Link>
         </div>
-        <div className="sell-tips"><h3><Info size={14} /> Good to know</h3><ul><li>Every piece is one seller&apos;s own item.</li><li>We handle shipping & delivery for you.</li><li>Auctions are optional and only run if you opt in.</li><li>Offers are private. No public bidding on normal listings.</li></ul><div className="sell-trust"><ShieldCheck size={15} /> Asking price protected in auctions</div></div>
+        <div className="sell-tips"><h3><Info size={14} /> Good to know</h3><ul><li>Every piece is one seller&apos;s own item.</li><li>We handle shipping & delivery for you.</li><li>Auctions are optional and only run if you opt in.</li><li>Offers are private. No public bidding on normal listings.</li></ul><div className="sell-trust"><ShieldCheck size={15} /> You keep any bid above your asking price</div></div>
       </aside>
     </div>
   ) : null;

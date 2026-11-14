@@ -73,7 +73,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               <ShieldCheck size={16} /> Private offers, never public bidding
             </li>
             <li>
-              <Store size={16} /> Seller payouts protected at asking price in auctions
+              <Store size={16} /> You keep any bid above your asking price in auctions
             </li>
             <li>
               <LockKeyhole size={16} /> Delivery only within Trivandrum 695xxx

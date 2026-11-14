@@ -162,8 +162,7 @@ export function TodayTab({ onGoToTab }: { onGoToTab: (tab: string) => void }) {
           </div>
         ) : (
           <p className="panel-empty">
-            No piece of yours is running in the hall right now. Schedule one from Inventory — you are
-            always guaranteed your asking price.
+            No piece of yours is running in the hall right now. Schedule one from Inventory.
           </p>
         )}
       </section>

@@ -172,9 +172,8 @@ export function AuctionDetailPage() {
             <div className="auction-guarantee">
               <Info size={16} />
               <p>
-                <strong>Seller guarantee:</strong> if bidding ends below the{" "}
-                {formatMoney(auction.askingPrice)} asking price, lelam pays the difference. Sellers
-                never receive less than their asking price.
+                Sellers receive their full winning bid. A small platform commission applies only to
+                the amount above the asking price.
               </p>
             </div>
 
@@ -271,9 +270,6 @@ export function AuctionDetailPage() {
                   <span>Seller payout</span>
                   <strong>{formatMoney(auction.financial?.sellerPayout ?? auction.askingPrice)}</strong>
                 </div>
-                {auction.financial && auction.financial.platformSubsidy > 0 && (
-                  <p>Platform subsidy of {formatMoney(auction.financial.platformSubsidy)} applied.</p>
-                )}
                 {auction.financial && auction.financial.platformCommission > 0 && (
                   <p>
                     Platform charges: {formatMoney(auction.financial.platformCommission)}. This
@@ -330,7 +326,7 @@ export function AuctionDetailPage() {
                 <div>
                   <span>Offered by</span>
                   <strong>{seller.name}</strong>
-                  <p>{seller.bio || "Independent seller on lelam.co"}</p>
+                  <p>{seller.bio || <>Independent seller on <span className="brand-wordmark">lelam.co</span></>}</p>
                 </div>
               </div>
             )}

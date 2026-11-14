@@ -125,7 +125,7 @@ function Hero({
               <h1
                 className="text-[#493022] text-4xl sm:text-5xl md:text-6xl lg:text-[3.5rem] xl:text-[4.25rem] 2xl:text-[4.75rem] leading-[1.05] tracking-tight font-normal"
                 style={{
-                  fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif',
+                  fontFamily: '"Playfair Display", Georgia, serif',
                 }}
               >
                 <span className="relative inline-flex items-center">

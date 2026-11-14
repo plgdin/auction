@@ -183,9 +183,8 @@ export function InventoryTab() {
         <Modal title={`Schedule a live auction · ${target.title}`} onClose={() => setAuctionTarget("")}>
           <div className="auction-modal-body">
             <p>
-              Bidding opens at <strong>{formatMoney(auctionStartingPrice(target.askingPrice, startPct))}</strong> —
-              but you are always guaranteed <strong>{formatMoney(target.askingPrice)}</strong>. If bids stop short,
-              lelam covers the difference.
+              Bidding opens at{" "}
+              <strong>{formatMoney(auctionStartingPrice(target.askingPrice, startPct))}</strong>.
             </p>
             <div className="auction-modal-row">
               <label>

@@ -89,7 +89,7 @@ function StepPolaroidCard({
         </div>
         <h3
           className="text-xl sm:text-2xl font-medium text-[#493022] tracking-tight mb-1"
-          style={{ fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif' }}
+          style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
         >
           {title}
         </h3>
@@ -196,12 +196,12 @@ export function HomePage() {
             <div>
               <h2
                 className="text-3xl sm:text-4xl md:text-5xl text-[#493022] font-normal tracking-tight"
-                style={{ fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif' }}
+                style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
               >
                 <span>How Selling</span>
                 <br />
                 <span>on </span>
-                <span className="italic font-serif">lelam.co</span>
+                <span className="brand-wordmark">lelam.co</span>
                 <span> Works</span>
               </h2>
               {/* Hand-drawn pencil squiggle underline */}
@@ -333,7 +333,7 @@ export function HomePage() {
             <div className="flex-1 text-center md:text-left">
               <blockquote
                 className="text-3xl sm:text-4xl md:text-[2.75rem] text-[#493022] leading-tight font-normal"
-                style={{ fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif' }}
+                style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
               >
                 “Good Clothes <br className="hidden sm:block" />
                 Deserve{" "}
@@ -350,7 +350,7 @@ export function HomePage() {
             {/* Supporting paragraph */}
             <div className="md:w-[38%] text-base sm:text-lg text-[#6B5646] leading-relaxed text-center md:text-left">
               From clearing out what you no longer wear to earning from it — selling on{" "}
-              <span className="font-serif italic text-[#493022] font-semibold">lelam.co</span> is a smarter, more sustainable choice.
+              <span className="brand-wordmark text-[#493022]">lelam.co</span> is a smarter, more sustainable choice.
             </div>
           </motion.div>
         </div>
@@ -362,9 +362,9 @@ export function HomePage() {
           <div className="mb-8 sm:mb-10">
             <h2
               className="text-3xl sm:text-4xl md:text-5xl text-[#493022] font-normal tracking-tight"
-              style={{ fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif' }}
+              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
             >
-              Why Sell on <span className="italic font-serif">lelam.co?</span>
+              Why Sell on <span className="brand-wordmark">lelam.co?</span>
             </h2>
           </div>
 
@@ -384,7 +384,7 @@ export function HomePage() {
                 </div>
                 <h3
                   className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif' }}
+                  style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
                 >
                   Turn clutter into cash
                 </h3>
@@ -406,7 +406,7 @@ export function HomePage() {
                 </div>
                 <h3
                   className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif' }}
+                  style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
                 >
                   A more sustainable you
                 </h3>
@@ -428,7 +428,7 @@ export function HomePage() {
                 </div>
                 <h3
                   className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif' }}
+                  style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
                 >
                   Simple & secure
                 </h3>
@@ -450,7 +450,7 @@ export function HomePage() {
                 </div>
                 <h3
                   className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif' }}
+                  style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
                 >
                   A community that values pre-loved
                 </h3>
@@ -510,7 +510,7 @@ export function HomePage() {
             </svg>
             <h2
               className="text-4xl sm:text-5xl md:text-6xl text-[#493022] font-serif italic font-normal"
-              style={{ fontFamily: '"Canela", "Ogg", "PPEditorialNew", "DM Serif Display", Georgia, serif' }}
+              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
             >
               Ready to sell?
             </h2>

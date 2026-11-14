@@ -14,17 +14,14 @@ import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { formatMoney } from "../lib/format";
 import { toast } from "../lib/toast";
+import { CATEGORIES, findTopForLegacy, groupsFor } from "../lib/categories";
 import type { Condition, Product } from "../lib/types";
 
-type FilterKey = "all" | "clothes" | "accessories" | "bags" | "shoes" | "others";
+type FilterKey = "all" | string;
 
 const shopCategories: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "All items" },
-  { key: "clothes", label: "Clothes" },
-  { key: "accessories", label: "Accessories" },
-  { key: "bags", label: "Bags" },
-  { key: "shoes", label: "Shoes" },
-  { key: "others", label: "Others" },
+  ...CATEGORIES.map((name) => ({ key: name as FilterKey, label: name })),
 ];
 
 const conditionOptions: Array<{ value: Condition; label: string }> = [
@@ -34,25 +31,20 @@ const conditionOptions: Array<{ value: Condition; label: string }> = [
 ];
 
 const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
-const coreCategories = ["Clothing", "Footwear", "Bags & accessories"];
 
 type Sort = "newest" | "price-asc" | "price-desc";
 type View = "grid" | "list";
 
 function keyForQuery(category: string | null): FilterKey {
   if (!category) return "all";
-  if (category === "Clothing") return "clothes";
-  if (category === "Footwear") return "shoes";
-  if (category === "Bags & accessories") return "accessories";
-  return "others";
+  if (CATEGORIES.includes(category)) return category;
+  const legacy = findTopForLegacy(category);
+  return CATEGORIES.includes(legacy) ? legacy : "all";
 }
 
 function matchesCategory(product: Product, key: FilterKey) {
   if (key === "all") return true;
-  if (key === "clothes") return product.category === "Clothing";
-  if (key === "accessories" || key === "bags") return product.category === "Bags & accessories";
-  if (key === "shoes") return product.category === "Footwear";
-  return !coreCategories.includes(product.category);
+  return product.category === key || findTopForLegacy(product.category) === key;
 }
 
 function pageItems(current: number, total: number): Array<number | "…"> {
@@ -136,6 +128,7 @@ export function ProductsPage() {
   const { db } = useStore();
   const route = useRoute();
   const [category, setCategory] = useState<FilterKey>(keyForQuery(route.query.get("category")));
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [query, setQuery] = useState(route.query.get("q") || "");
   const [condition, setCondition] = useState<Condition | "All">("All");
   const [sort, setSort] = useState<Sort>("newest");
@@ -156,11 +149,38 @@ export function ProductsPage() {
   const highestPrice = Math.max(10000, ...active.map((product) => product.askingPrice));
   useEffect(() => setMaxPrice(highestPrice), [highestPrice]);
 
+  const counts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const product of active) {
+      const top = CATEGORIES.includes(product.category) ? product.category : findTopForLegacy(product.category);
+      if (CATEGORIES.includes(top)) map.set(top, (map.get(top) ?? 0) + 1);
+    }
+    return map;
+  }, [active]);
+
+  const groupOptions = useMemo(() => (category === "all" ? [] : groupsFor(category).map((group) => group.name)), [category]);
+
+  const groupMatches = useMemo(() => {
+    if (category === "all" || selectedGroups.length === 0) return () => true;
+    const chosen = new Set<string>();
+    for (const group of groupsFor(category)) {
+      if (!selectedGroups.includes(group.name)) continue;
+      for (const sub of group.subs) {
+        if (sub !== "All") chosen.add(sub);
+      }
+      chosen.add(group.name);
+    }
+    return (product: Product) => chosen.has(product.subcategory ?? "");
+  }, [category, selectedGroups]);
+
+  useEffect(() => setSelectedGroups([]), [category]);
+
   const visible = useMemo(() => {
     const search = query.trim().toLowerCase();
     return active
       .filter((product) => {
         if (!matchesCategory(product, category)) return false;
+        if (!groupMatches(product)) return false;
         if (condition !== "All" && product.condition !== condition) return false;
         if (product.askingPrice > maxPrice) return false;
         if (
@@ -184,19 +204,20 @@ export function ProductsPage() {
         if (sort === "price-desc") return b.askingPrice - a.askingPrice;
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [active, category, condition, maxPrice, query, selectedSizes, sort]);
+  }, [active, category, condition, groupMatches, maxPrice, query, selectedSizes, sort]);
 
   const pageSize = 9;
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const pageProducts = visible.slice((page - 1) * pageSize, page * pageSize);
 
-  useEffect(() => setPage(1), [category, condition, maxPrice, query, selectedSizes, sort]);
+  useEffect(() => setPage(1), [category, condition, maxPrice, query, selectedSizes, selectedGroups, sort]);
 
   const reset = () => {
     setCategory("all");
     setCondition("All");
     setSort("newest");
     setSelectedSizes([]);
+    setSelectedGroups([]);
     setMaxPrice(highestPrice);
     setQuery("");
   };
@@ -204,6 +225,11 @@ export function ProductsPage() {
   const toggleSize = (size: string) =>
     setSelectedSizes((previous) =>
       previous.includes(size) ? previous.filter((item) => item !== size) : [...previous, size],
+    );
+
+  const toggleGroup = (group: string) =>
+    setSelectedGroups((previous) =>
+      previous.includes(group) ? previous.filter((item) => item !== group) : [...previous, group],
     );
 
   return (
@@ -238,9 +264,30 @@ export function ProductsPage() {
                         onChange={() => setCategory(option.key)}
                       />
                       <span>{option.label}</span>
+                      {option.key !== "all" && counts.get(option.key as string) ? (
+                        <em className="shop-check-count">{counts.get(option.key as string)}</em>
+                      ) : null}
                     </label>
                   ))}
                 </section>
+
+                {groupOptions.length > 0 && (
+                  <section className="shop-filter-group">
+                    <h3>
+                      Type <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
+                    </h3>
+                    {groupOptions.map((group) => (
+                      <label key={group} className="shop-check">
+                        <input
+                          type="checkbox"
+                          checked={selectedGroups.includes(group)}
+                          onChange={() => toggleGroup(group)}
+                        />
+                        <span>{group}</span>
+                      </label>
+                    ))}
+                  </section>
+                )}
 
                 <section className="shop-filter-group">
                   <h3>
@@ -320,10 +367,6 @@ export function ProductsPage() {
           <section className="shop-results">
             <header className="shop-heading">
               <div>
-                <h1 id="shop-title" className="shop-title">
-                  Shop All <em>Items</em>
-                  <span className="shop-doodle" aria-hidden="true" />
-                </h1>
                 <p className="shop-found">{visible.length} Items found</p>
               </div>
               <div className="shop-view">
