@@ -297,7 +297,7 @@ end;
 $$;
 
 -- =========================================================
--- 4. MESSAGING QUEUE (WhatsApp / SMS)
+-- 4. MESSAGING QUEUE (SMS / Email)
 -- =========================================================
 create table if not exists public.outbound_messages (
   id uuid primary key default gen_random_uuid(),

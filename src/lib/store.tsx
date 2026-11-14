@@ -141,6 +141,16 @@ export type ListingInput = {
   shippingFee: number;
   allowOffers: boolean;
   auctionConsent: boolean;
+  measurements?: Record<string, number>;
+  flaws?: string[];
+  hasFlaws?: boolean;
+  gender?: string;
+  fit?: string;
+  countryOfOrigin?: string;
+  weightGrams?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
 };
 
 type ActionResult = { ok: true } | { ok: false; error: string };
@@ -190,6 +200,13 @@ interface StoreValue {
   acceptOrder: (orderId: string) => Promise<ActionResult>;
   openDispute: (orderId: string, reason: string, description: string, photos?: string[]) => Promise<ActionResult>;
   setProxyBid: (auctionId: string, maxAmount: number) => Promise<ActionResult>;
+  cancelProxyBid: (auctionId: string) => Promise<ActionResult>;
+  resolveDispute: (
+    disputeId: string,
+    status: string,
+    notes?: string,
+    refundBuyer?: boolean,
+  ) => Promise<ActionResult>;
   bookCourierPickup: (orderId: string) => Promise<ActionResult>;
   requestReturn: (orderId: string) => Promise<ActionResult>;
   addReview: (orderId: string, rating: number, comment: string) => Promise<ActionResult>;
@@ -1277,6 +1294,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const cancelProxyBid = useCallback(
+    async (auctionId: string): Promise<ActionResult> => {
+      try {
+        const { error } = await supabase.rpc("cancel_proxy_bid", {
+          p_auction_id: auctionId,
+        });
+        if (error) return { ok: false, error: messageOf(error) };
+        await refresh();
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: messageOf(error) };
+      }
+    },
+    [refresh],
+  );
+
+  const resolveDispute = useCallback(
+    async (
+      disputeId: string,
+      status: string,
+      notes?: string,
+      refundBuyer: boolean = false,
+    ): Promise<ActionResult> => {
+      try {
+        const { error } = await supabase.rpc("admin_resolve_dispute", {
+          p_dispute_id: disputeId,
+          p_status: status,
+          p_admin_notes: notes ?? null,
+          p_refund_buyer: refundBuyer,
+        });
+        if (error) return { ok: false, error: messageOf(error) };
+        await refresh();
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: messageOf(error) };
+      }
+    },
+    [refresh],
+  );
+
   const bookCourierPickup = useCallback(
     async (orderId: string): Promise<ActionResult> => {
       try {
@@ -1388,6 +1445,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             shipping_fee_paise: input.shippingFee,
             allow_offers: input.allowOffers,
             auction_consent: input.auctionConsent,
+            measurements: input.measurements ?? {},
+            flaws: input.flaws ?? [],
+            has_flaws: input.hasFlaws ?? false,
+            gender: input.gender ?? null,
+            fit: input.fit ?? null,
+            country_of_origin: input.countryOfOrigin ?? null,
+            weight_grams: input.weightGrams ?? null,
+            length_cm: input.lengthCm ?? null,
+            width_cm: input.widthCm ?? null,
+            height_cm: input.heightCm ?? null,
           },
           p_images: images,
         });
@@ -1426,6 +1493,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           shippingFee: patch.shippingFee ?? current.shippingFee,
           allowOffers: patch.allowOffers ?? current.allowOffers,
           auctionConsent: patch.auctionConsent ?? current.auctionConsent,
+          measurements: patch.measurements ?? current.measurements,
+          flaws: patch.flaws ?? current.flaws,
+          hasFlaws: patch.hasFlaws ?? current.hasFlaws,
+          gender: patch.gender ?? current.gender,
+          fit: patch.fit ?? current.fit,
+          countryOfOrigin: patch.countryOfOrigin ?? current.countryOfOrigin,
+          weightGrams: patch.weightGrams ?? current.weightGrams,
         };
 
         const images = await uploadListingImages(uid, merged.images);
@@ -1444,6 +1518,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             shipping_fee_paise: merged.shippingFee,
             allow_offers: merged.allowOffers,
             auction_consent: merged.auctionConsent,
+            measurements: merged.measurements ?? {},
+            flaws: merged.flaws ?? [],
+            has_flaws: merged.hasFlaws ?? false,
+            gender: merged.gender ?? null,
+            fit: merged.fit ?? null,
+            country_of_origin: merged.countryOfOrigin ?? null,
+            weight_grams: merged.weightGrams ?? null,
+            length_cm: merged.lengthCm ?? null,
+            width_cm: merged.widthCm ?? null,
+            height_cm: merged.heightCm ?? null,
           },
           p_images: images,
         });
@@ -1898,6 +1982,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     acceptOrder,
     openDispute,
     setProxyBid,
+    cancelProxyBid,
+    resolveDispute,
     bookCourierPickup,
     requestReturn,
     addReview,
