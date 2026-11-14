@@ -16,6 +16,7 @@ Open the localhost URL printed by Vite (usually http://localhost:5173).
 npm run build  # Type check and production build
 npm run preview
 npm test       # Playwright browser checks
+npm run verify:sql  # Money/expiry rules against an in-memory Postgres
 ```
 
 For a fresh machine, install the test browser with `npx playwright install chromium` before running tests.
@@ -28,6 +29,7 @@ The database lives in `supabase/migrations/`. Apply the files in order:
 
 1. `supabase/migrations/20260101000000_marketplace_schema.sql`
 2. `supabase/migrations/20260101000100_supabase_backend.sql`
+3. `supabase/migrations/20260102000000_fix_backend_gaps.sql`
 
 Either push them with the CLI:
 
@@ -39,6 +41,26 @@ npx supabase db push
 or paste each file into the Supabase dashboard **SQL Editor** and run it. The addendum is idempotent, so re-running it is safe.
 
 The SQL creates the schema, RLS policies, RPCs, the `product-images` storage bucket, the 16 broad categories, and Realtime publications. It promotes `admin@lelam.com` to admin if that auth user exists; create that user first, or run the final `update public.profiles ...` block again after signing up.
+
+### Demo users and catalog
+
+After the migrations are applied, seed three auth users and a small catalog:
+
+```sh
+# .env.local needs VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+npm run seed
+```
+
+The script creates `admin@lelam.com`, `buyer@lelam.co`, and `seller@lelam.co` (default password `lelam-demo-2026`, override with `SEED_PASSWORD`) and six active listings from the seller account. Re-running it is safe.
+
+The third migration also schedules `public.run_maintenance()` every five minutes with pg_cron (when available) to expire unpaid orders and lapsed offers. If pg_cron is unavailable, deploy the maintenance function and call it from an external scheduler:
+
+```sh
+npx supabase functions deploy maintenance --no-verify-jwt
+npx supabase secrets set MAINTENANCE_SECRET=...
+curl -X POST "https://<project-ref>.supabase.co/functions/v1/maintenance" \
+  -H "x-maintenance-secret: $MAINTENANCE_SECRET"
+```
 
 ### Auth notes
 
@@ -52,10 +74,15 @@ Cash on delivery is live and is the default at checkout. Online payments (UPI/ca
 ```sh
 npx supabase functions deploy razorpay-create-order
 npx supabase functions deploy razorpay-verify-payment
-npx supabase secrets set RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=...
+npx supabase functions deploy razorpay-webhook --no-verify-jwt
+npx supabase secrets set RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... RAZORPAY_WEBHOOK_SECRET=...
 ```
 
 Then add `VITE_RAZORPAY_KEY_ID` to `.env.local`. Without it, the UPI and card options render disabled and checkout uses COD.
+
+Register the webhook URL (`https://<project-ref>.supabase.co/functions/v1/razorpay-webhook`) in the Razorpay dashboard for `payment.captured`, `payment.failed`, and `refund.processed`, using the same `RAZORPAY_WEBHOOK_SECRET`. The webhook is what confirms a payment when the buyer closes the tab before verification runs.
+
+Payment confirmation is bound to the Razorpay order that `razorpay-create-order` created for that exact lelam order, so a signature from one payment cannot be replayed onto another order.
 
 ### Auctions
 
