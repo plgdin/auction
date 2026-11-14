@@ -26,6 +26,14 @@ const remaining = readFileSync(
   "supabase/migrations/20260105000000_remaining_gaps.sql",
   "utf8",
 );
+const fixes = readFileSync(
+  "supabase/migrations/20260106000000_security_and_wiring_fixes.sql",
+  "utf8",
+);
+const auctionComplete = readFileSync(
+  "supabase/migrations/20260107000000_auction_backend_complete.sql",
+  "utf8",
+);
 
 await db.exec(base);
 
@@ -78,6 +86,8 @@ await db.exec(`
 await db.exec(auction);
 await db.exec(thrift);
 await db.exec(remaining);
+await db.exec(fixes);
+await db.exec(auctionComplete);
 
 await db.exec(`
   set test.role = 'service_role';

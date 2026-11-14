@@ -8,6 +8,7 @@ import {
   IndianRupee,
   Settings2,
   Shield,
+  ShieldAlert,
   Sparkles,
   Tag,
   Wallet,
@@ -35,12 +36,17 @@ export function AdminPage() {
     markSettlementPaid,
     updateSettings,
     resolveReport,
+    resolveDispute,
   } = useStore();
   const route = useRoute();
   const [tab, setTab] = useState(route.query.get("tab") || "overview");
   const [rejectId, setRejectId] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [settings, setSettings] = useState(db.settings);
+  const [selectedDisputeId, setSelectedDisputeId] = useState<string | null>(null);
+  const [disputeNotes, setDisputeNotes] = useState<string>("");
+  const [disputeFilter, setDisputeFilter] = useState<"all" | "open">("open");
+  const [resolvingDispute, setResolvingDispute] = useState(false);
 
   useEffect(() => {
     setTab(route.query.get("tab") || "overview");
@@ -72,6 +78,9 @@ export function AdminPage() {
 
   const pending = db.products.filter((product) => product.status === "pending");
   const reports = db.reports.filter((report) => report.status === "open" || report.status === "reviewing");
+  const allDisputes = db.disputes ?? [];
+  const openDisputes = allDisputes.filter((d) => ["opened", "seller_response", "under_review"].includes(d.status));
+  const filteredDisputes = disputeFilter === "open" ? openDisputes : allDisputes;
   const liveAuctions = db.auctions.filter((auction) => auction.status === "live");
   const scheduledAuctions = db.auctions.filter((auction) => auction.status === "scheduled");
   const paidOrders = db.orders.filter((order) => order.paymentStatus === "paid");
@@ -151,6 +160,7 @@ export function AdminPage() {
             { id: "overview", label: "Overview" },
             { id: "listings", label: "Listings", count: pending.length },
             { id: "reports", label: "Reports", count: reports.length },
+            { id: "disputes", label: "Disputes", count: openDisputes.length },
             { id: "users", label: "Users", count: db.users.length },
             { id: "auctions", label: "Auctions", count: db.auctions.length },
             { id: "finance", label: "Finance", count: pendingSettlements.length },
@@ -409,6 +419,266 @@ export function AdminPage() {
                 icon={<Shield size={34} />}
                 title="No reports."
                 body="Buyer reports about listings will appear here."
+              />
+            )}
+          </div>
+        )}
+
+        {tab === "disputes" && (
+          <div className="dashboard-section">
+            <div className="panel-head" style={{ marginBottom: "16px" }}>
+              <div>
+                <h2>Order Disputes & SNAD Claims</h2>
+                <span>48-hour buyer protection inspection disputes</span>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  type="button"
+                  className={`button ${disputeFilter === "open" ? "button-olive" : "button-ghost"}`}
+                  style={{ padding: "6px 14px", fontSize: "12px" }}
+                  onClick={() => setDisputeFilter("open")}
+                >
+                  Open Claims ({openDisputes.length})
+                </button>
+                <button
+                  type="button"
+                  className={`button ${disputeFilter === "all" ? "button-olive" : "button-ghost"}`}
+                  style={{ padding: "6px 14px", fontSize: "12px" }}
+                  onClick={() => setDisputeFilter("all")}
+                >
+                  All History ({allDisputes.length})
+                </button>
+              </div>
+            </div>
+
+            {filteredDisputes.length ? (
+              <div className="admin-dispute-list" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {filteredDisputes.map((dispute) => {
+                  const order = db.orders.find((item) => item.id === dispute.orderId);
+                  const buyer = db.users.find((item) => item.id === dispute.buyerId);
+                  const seller = db.users.find((item) => item.id === dispute.sellerId);
+                  const product = order?.items[0]
+                    ? db.products.find((p) => p.id === order.items[0].productId)
+                    : undefined;
+                  const isPending = ["opened", "seller_response", "under_review"].includes(dispute.status);
+
+                  return (
+                    <article
+                      key={dispute.id}
+                      className="panel"
+                      style={{
+                        padding: "20px",
+                        border: isPending ? "1px solid #d39e00" : "1px solid #e0ddd0",
+                        background: isPending ? "rgba(255, 193, 7, 0.03)" : undefined,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          marginBottom: 12,
+                          flexWrap: "wrap",
+                          gap: 10,
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <strong style={{ fontSize: "16px" }}>
+                              Order {order?.number ?? dispute.orderId.slice(0, 8)}
+                            </strong>
+                            <StatusPill status={dispute.status} />
+                            <span style={{ fontSize: "12px", color: "#666" }}>
+                              {timeAgo(dispute.createdAt)}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "13px", color: "#555", marginTop: 4 }}>
+                            Buyer: <strong>{buyer?.name ?? "Buyer"}</strong> · Seller: <strong>{seller?.name ?? "Seller"}</strong> · Amount: <strong>{order ? formatMoney(order.total) : "—"}</strong>
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: "4px",
+                            background: "#fff3cd",
+                            color: "#856404",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {dispute.reason.replace(/_/g, " ")}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "20px",
+                          marginTop: "14px",
+                          padding: "16px",
+                          background: "#fcfbf7",
+                          borderRadius: 8,
+                        }}
+                      >
+                        {/* Buyer Claim */}
+                        <div>
+                          <h4
+                            style={{
+                              margin: "0 0 8px",
+                              fontSize: "12px",
+                              textTransform: "uppercase",
+                              letterSpacing: 0.5,
+                              color: "#856404",
+                            }}
+                          >
+                            Buyer Claim & Evidence
+                          </h4>
+                          <p style={{ margin: "0 0 10px", fontSize: "13px", lineHeight: 1.5, color: "#222" }}>
+                            "{dispute.description}"
+                          </p>
+                          {dispute.photoEvidence.length > 0 && (
+                            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: 8 }}>
+                              {dispute.photoEvidence.map((url, i) => (
+                                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                                  <img
+                                    src={url}
+                                    alt="Dispute evidence"
+                                    style={{
+                                      width: 64,
+                                      height: 64,
+                                      objectFit: "cover",
+                                      borderRadius: 4,
+                                      border: "1px solid #ccc",
+                                    }}
+                                  />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Listing Reference */}
+                        <div>
+                          <h4
+                            style={{
+                              margin: "0 0 8px",
+                              fontSize: "12px",
+                              textTransform: "uppercase",
+                              letterSpacing: 0.5,
+                              color: "#333",
+                            }}
+                          >
+                            Original Listing & Disclosure
+                          </h4>
+                          <div style={{ fontSize: "13px", color: "#444" }}>
+                            <div>
+                              Item: <strong>{product?.title ?? order?.items[0]?.title ?? "Product"}</strong>
+                            </div>
+                            <div>
+                              Condition: <strong>{product?.condition ?? "—"}</strong>
+                            </div>
+                            {product?.hasFlaws ? (
+                              <div style={{ color: "#d9534f", marginTop: 4 }}>
+                                Disclosed Flaw:{" "}
+                                <strong>
+                                  {Array.isArray(product.flaws) && product.flaws.length > 0
+                                    ? product.flaws.join(", ")
+                                    : "Flaws disclosed by seller"}
+                                </strong>
+                              </div>
+                            ) : (
+                              <div style={{ color: "#28a745", marginTop: 4 }}>
+                                Flaw disclosure: <em>No flaws disclosed at listing</em>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Admin Resolution Area */}
+                      {isPending ? (
+                        <div
+                          style={{
+                            marginTop: 16,
+                            paddingTop: 16,
+                            borderTop: "1px solid #eee",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            flexWrap: "wrap",
+                            gap: 12,
+                          }}
+                        >
+                          <input
+                            type="text"
+                            placeholder="Optional resolution note to buyer & seller..."
+                            style={{ flex: 1, minWidth: 240, padding: "8px 12px", fontSize: "13px" }}
+                            value={selectedDisputeId === dispute.id ? disputeNotes : ""}
+                            onChange={(e) => {
+                              setSelectedDisputeId(dispute.id);
+                              setDisputeNotes(e.target.value);
+                            }}
+                          />
+                          <div style={{ display: "flex", gap: "10px" }}>
+                            <button
+                              type="button"
+                              className="button button-olive"
+                              style={{ padding: "8px 16px", fontSize: "12px", background: "#2e7d32" }}
+                              disabled={resolvingDispute}
+                              onClick={async () => {
+                                setResolvingDispute(true);
+                                const notes = selectedDisputeId === dispute.id ? disputeNotes : undefined;
+                                const res = await resolveDispute(dispute.id, "approved_refund", notes, true);
+                                setResolvingDispute(false);
+                                if (res.ok) {
+                                  toast("Refund approved. Buyer refunded & order closed.", "success");
+                                  setDisputeNotes("");
+                                } else {
+                                  toast(res.error, "error");
+                                }
+                              }}
+                            >
+                              <Check size={14} /> Approve Refund to Buyer
+                            </button>
+                            <button
+                              type="button"
+                              className="button button-ghost"
+                              style={{ padding: "8px 16px", fontSize: "12px" }}
+                              disabled={resolvingDispute}
+                              onClick={async () => {
+                                setResolvingDispute(true);
+                                const notes = selectedDisputeId === dispute.id ? disputeNotes : undefined;
+                                const res = await resolveDispute(dispute.id, "rejected", notes, false);
+                                setResolvingDispute(false);
+                                if (res.ok) {
+                                  toast("Dispute rejected. Escrow released to seller.", "success");
+                                  setDisputeNotes("");
+                                } else {
+                                  toast(res.error, "error");
+                                }
+                              }}
+                            >
+                              <X size={14} /> Reject (Release Payout)
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: 12, fontSize: "12px", color: "#666" }}>
+                          Resolved status: <strong>{dispute.status}</strong>
+                          {dispute.adminNotes && ` · Note: ${dispute.adminNotes}`}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState
+                icon={<ShieldAlert size={34} />}
+                title="No disputes found."
+                body="Buyer inspection and SNAD claims will appear here for mediation."
               />
             )}
           </div>

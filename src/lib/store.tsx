@@ -20,11 +20,13 @@ import type {
   Notification,
   Offer,
   Order,
+  OrderDispute,
   OrderItem,
   PlatformSettings,
   Product,
   Report,
   Review,
+  SecondChanceOffer,
   Settlement,
   Shipment,
   User,
@@ -208,6 +210,11 @@ interface StoreValue {
     refundBuyer?: boolean,
   ) => Promise<ActionResult>;
   bookCourierPickup: (orderId: string) => Promise<ActionResult>;
+  acceptSecondChanceOffer: (
+    offerId: string,
+    addressId?: string,
+  ) => Promise<{ ok: true; orderId: string } | { ok: false; error: string }>;
+  declineSecondChanceOffer: (offerId: string) => Promise<ActionResult>;
   requestReturn: (orderId: string) => Promise<ActionResult>;
   addReview: (orderId: string, rating: number, comment: string) => Promise<ActionResult>;
   advanceShipment: (
@@ -592,6 +599,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [cartLines, setCartLines] = useState<CartLine[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [disputes, setDisputes] = useState<OrderDispute[]>([]);
+  const [secondChanceOffers, setSecondChanceOffers] = useState<SecondChanceOffer[]>([]);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -698,15 +707,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             .order("created_at", { ascending: false }),
         ]);
 
-      const [notifResult, settlementResult, reportResult, auditResult, financialResult, ownBidResult] =
-        await Promise.all([
-          supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(200),
-          supabase.from("seller_settlements").select("*").order("created_at", { ascending: false }),
-          supabase.from("product_reports").select("*").order("created_at", { ascending: false }),
-          supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(200),
-          supabase.from("auction_financial_records").select("*"),
-          supabase.from("bids").select("id,bidder_id"),
-        ]);
+      const [
+        notifResult,
+        settlementResult,
+        reportResult,
+        auditResult,
+        financialResult,
+        ownBidResult,
+        disputeResult,
+        secondChanceResult,
+      ] = await Promise.all([
+        supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(200),
+        supabase.from("seller_settlements").select("*").order("created_at", { ascending: false }),
+        supabase.from("product_reports").select("*").order("created_at", { ascending: false }),
+        supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(200),
+        supabase.from("auction_financial_records").select("*"),
+        supabase.from("bids").select("id,bidder_id"),
+        supabase.from("order_disputes").select("*").order("created_at", { ascending: false }),
+        supabase.from("second_chance_offers").select("*").order("created_at", { ascending: false }),
+      ]);
 
       if (profileResult.error) console.warn("[profiles]", profileResult.error.message);
       if (addressResult.error) console.warn("[addresses]", addressResult.error.message);
@@ -741,6 +760,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setNotifications(((notifResult.data ?? []) as Row[]).map(mapNotification));
       setSettlements(((settlementResult.data ?? []) as Row[]).map(mapSettlement));
       setReports(((reportResult.data ?? []) as Row[]).map(mapReport));
+      setDisputes(
+        ((disputeResult.data ?? []) as Row[]).map((row) => ({
+          id: row.id,
+          orderId: row.order_id,
+          buyerId: row.buyer_id,
+          sellerId: row.seller_id,
+          reason: row.reason,
+          description: row.description,
+          photoEvidence: row.photo_evidence ?? [],
+          unboxingVideoUrl: row.unboxing_video_url ?? undefined,
+          status: row.status,
+          sellerResponse: row.seller_response ?? undefined,
+          adminNotes: row.admin_notes ?? undefined,
+          createdAt: row.created_at,
+          resolvedAt: row.resolved_at ?? undefined,
+        })),
+      );
+      setSecondChanceOffers(
+        ((secondChanceResult.data ?? []) as Row[]).map((row) => ({
+          id: row.id,
+          auctionId: row.auction_id,
+          productId: row.product_id,
+          sellerId: row.seller_id,
+          buyerId: row.buyer_id,
+          amountPaise: row.amount_paise,
+          status: row.status,
+          expiresAt: row.expires_at,
+          createdAt: row.created_at,
+        })),
+      );
       setAuditLogs(
         ((auditResult.data ?? []) as Row[]).map((row) => ({
           id: row.id,
@@ -893,6 +942,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       sessionUserId,
       carts: { [key]: cartLines },
       favorites: { [key]: favorites },
+      disputes,
+      secondChanceOffers,
     }),
     [
       users,
@@ -910,6 +961,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       key,
       cartLines,
       favorites,
+      disputes,
+      secondChanceOffers,
     ],
   );
 
@@ -1338,6 +1391,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (orderId: string): Promise<ActionResult> => {
       try {
         const { error } = await supabase.rpc("book_courier_pickup", { p_order_id: orderId });
+        if (error) return { ok: false, error: messageOf(error) };
+        await refresh();
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: messageOf(error) };
+      }
+    },
+    [refresh],
+  );
+
+  const acceptSecondChanceOffer = useCallback(
+    async (
+      offerId: string,
+      addressId?: string,
+    ): Promise<{ ok: true; orderId: string } | { ok: false; error: string }> => {
+      try {
+        const { data, error } = await supabase.rpc("accept_second_chance_offer", {
+          p_offer_id: offerId,
+          p_address_id: addressId ?? null,
+        });
+        if (error) return { ok: false, error: messageOf(error) };
+        await refresh();
+        return { ok: true, orderId: data as string };
+      } catch (error) {
+        return { ok: false, error: messageOf(error) };
+      }
+    },
+    [refresh],
+  );
+
+  const declineSecondChanceOffer = useCallback(
+    async (offerId: string): Promise<ActionResult> => {
+      try {
+        const { error } = await supabase.rpc("decline_second_chance_offer", {
+          p_offer_id: offerId,
+        });
         if (error) return { ok: false, error: messageOf(error) };
         await refresh();
         return { ok: true };
@@ -1985,6 +2074,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     cancelProxyBid,
     resolveDispute,
     bookCourierPickup,
+    acceptSecondChanceOffer,
+    declineSecondChanceOffer,
     requestReturn,
     addReview,
     advanceShipment,

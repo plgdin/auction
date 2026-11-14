@@ -8,11 +8,13 @@ import {
   Package,
   Plus,
   Tag,
+  Trophy,
   Truck,
   UserRound,
 } from "lucide-react";
 import { Link, navigate } from "../components/Link";
 import { AddressForm } from "../components/AddressForm";
+import { Countdown } from "../components/Countdown";
 import { EmptyState, Field, StatusPill, Tabs } from "../components/Ui";
 import { ProductCard } from "../components/ProductCard";
 import { formatDate, formatDateTime, formatMoney, timeAgo } from "../lib/format";
@@ -28,6 +30,8 @@ export function AccountPage() {
     notifications,
     unreadCount,
     cancelOffer,
+    acceptSecondChanceOffer,
+    declineSecondChanceOffer,
     addReview,
     removeAddress,
     updateProfile,
@@ -85,6 +89,10 @@ export function AccountPage() {
   const myOrders = db.orders.filter((order) => order.buyerId === user.id);
   const myOffers = db.offers.filter((offer) => offer.buyerId === user.id);
   const pendingOffers = myOffers.filter((offer) => offer.status === "pending");
+  const mySecondChance = (db.secondChanceOffers ?? []).filter((o) => o.buyerId === user.id);
+  const activeSecondChance = mySecondChance.filter(
+    (o) => o.status === "pending" && new Date(o.expiresAt).getTime() > Date.now(),
+  );
   const savedProducts = db.products.filter((product) => favorites.includes(product.id));
   const openOrders = myOrders.filter(
     (order) => !["delivered", "cancelled", "expired", "returned"].includes(order.status),
@@ -133,10 +141,79 @@ export function AccountPage() {
           </div>
         </div>
 
+        {activeSecondChance.map((offer) => {
+          const product = db.products.find((p) => p.id === offer.productId);
+          return (
+            <div
+              key={offer.id}
+              className="account-callout"
+              style={{
+                background: "rgba(217, 119, 6, 0.08)",
+                border: "1px dashed rgba(217, 119, 6, 0.5)",
+                padding: "16px 20px",
+                marginBottom: "20px",
+                borderRadius: "8px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "12px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Trophy size={22} style={{ color: "#d97706", flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 600, color: "#92400e", fontSize: "14px" }}>
+                    Second-Chance Offer Available: "{product?.title ?? "Auction Item"}"
+                  </div>
+                  <div style={{ fontSize: "13px", color: "#78350f" }}>
+                    The winner forfeited. You can claim this item at your runner-up bid of{" "}
+                    <strong>{formatMoney(offer.amountPaise)}</strong> within{" "}
+                    <Countdown to={offer.expiresAt} />.
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  type="button"
+                  className="button button-olive"
+                  style={{ fontSize: "12px", padding: "8px 16px" }}
+                  onClick={async () => {
+                    const res = await acceptSecondChanceOffer(offer.id);
+                    if (res.ok) {
+                      toast("Second-chance offer claimed! Proceeding to checkout...", "success");
+                      navigate(`#/order/${res.orderId}`);
+                    } else {
+                      toast(res.error, "error");
+                    }
+                  }}
+                >
+                  Claim & Checkout
+                </button>
+                <button
+                  type="button"
+                  className="button button-ghost"
+                  style={{ fontSize: "12px", padding: "8px 14px" }}
+                  onClick={async () => {
+                    const res = await declineSecondChanceOffer(offer.id);
+                    if (res.ok) {
+                      toast("Offer declined.", "success");
+                    } else {
+                      toast(res.error, "error");
+                    }
+                  }}
+                >
+                  Decline
+                </button>
+              </div>
+            </div>
+          );
+        })}
+
         <Tabs
           tabs={[
             { id: "orders", label: "Orders", count: myOrders.length },
-            { id: "offers", label: "Offers", count: pendingOffers.length },
+            { id: "offers", label: "Offers", count: pendingOffers.length + activeSecondChance.length },
             { id: "saved", label: "Saved", count: savedProducts.length },
             { id: "addresses", label: "Addresses", count: user.addresses.length },
             { id: "notifications", label: "Notifications", count: unreadCount },
@@ -249,6 +326,86 @@ export function AccountPage() {
 
         {tab === "offers" && (
           <div className="account-section">
+            {mySecondChance.length > 0 && (
+              <div style={{ marginBottom: "36px" }}>
+                <div className="account-section-head">
+                  <h2>Second-Chance Auction Offers</h2>
+                  <span>Offered to you when an auction winner forfeits</span>
+                </div>
+                <div className="offer-table">
+                  {mySecondChance.map((offer) => {
+                    const product = db.products.find((item) => item.id === offer.productId);
+                    const seller = db.users.find((item) => item.id === offer.sellerId);
+                    const isPending =
+                      offer.status === "pending" && new Date(offer.expiresAt).getTime() > Date.now();
+                    return (
+                      <article key={offer.id} className="offer-row">
+                        <div className="offer-product">
+                          {product?.images[0] && <img src={product.images[0]} alt={product.title} />}
+                          <div>
+                            <strong>{product?.title ?? "Auction Lot"}</strong>
+                            <span>{seller?.name ?? "Seller"} · Runner-up offer</span>
+                          </div>
+                        </div>
+                        <div className="offer-amount">
+                          <span>Offer price</span>
+                          <strong>{formatMoney(offer.amountPaise)}</strong>
+                        </div>
+                        <div className="offer-status">
+                          <StatusPill status={isPending ? "pending" : offer.status} />
+                          <span>
+                            {isPending ? (
+                              <Countdown to={offer.expiresAt} prefix="Expires in" />
+                            ) : (
+                              formatDate(offer.createdAt)
+                            )}
+                          </span>
+                        </div>
+                        <div className="offer-actions">
+                          {isPending ? (
+                            <>
+                              <button
+                                type="button"
+                                className="button button-olive"
+                                style={{ padding: "6px 14px", fontSize: "12px" }}
+                                onClick={async () => {
+                                  const res = await acceptSecondChanceOffer(offer.id);
+                                  if (res.ok) {
+                                    toast("Offer accepted! Proceeding to checkout...", "success");
+                                    navigate(`#/order/${res.orderId}`);
+                                  } else {
+                                    toast(res.error, "error");
+                                  }
+                                }}
+                              >
+                                Claim
+                              </button>
+                              <button
+                                type="button"
+                                className="button button-ghost"
+                                style={{ padding: "6px 12px", fontSize: "12px" }}
+                                onClick={async () => {
+                                  const res = await declineSecondChanceOffer(offer.id);
+                                  if (res.ok) toast("Offer declined.", "success");
+                                  else toast(res.error, "error");
+                                }}
+                              >
+                                Decline
+                              </button>
+                            </>
+                          ) : (
+                            <span style={{ fontSize: "12px", color: "#888", textTransform: "capitalize" }}>
+                              {offer.status}
+                            </span>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="account-section-head">
               <h2>Your private offers</h2>
               <span>Offers are never visible to other buyers.</span>

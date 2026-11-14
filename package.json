@@ -9,7 +9,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "playwright test",
     "seed": "node scripts/seed.mjs",
-    "verify:sql": "node scripts/verify-sql.mjs"
+    "verify:sql": "node scripts/verify-sql.mjs",
+    "worker:auction": "tsx scripts/auction-worker.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.15",
