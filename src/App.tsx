@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Heart, LogIn, Search, ShoppingBag, Tag, UserPlus, X } from "lucide-react";
+import { ArrowRight, Heart, LogIn, Search, ShoppingBag, UserPlus, X } from "lucide-react";
 import { LelamNavbar } from "@/components/ui/lelam-navbar";
 import HalftoneWordmarkFooter from "@/components/ui/halftone-wordmark-footer";
 import { Link, navigate } from "./components/Link";
@@ -111,10 +111,19 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[#E8DCCB] px-6 py-4 bg-[#FAF4EB]">
             <div>
-              <h2 className="font-serif text-xl sm:text-2xl font-normal text-[#332417] tracking-tight">
+              <h2
+                className="text-2xl sm:text-3xl tracking-tight select-none"
+                style={{
+                  fontFamily: '"Gumela Arabic", serif',
+                  fontWeight: 800,
+                  color: "#493022",
+                  WebkitTextStroke: "0.8px #493022",
+                  paintOrder: "stroke fill",
+                }}
+              >
                 Search lelam
               </h2>
-              <p className="text-xs text-[#8C745A]">
+              <p className="text-xs text-[#8C745A] mt-0.5">
                 Discover archive denim, knitwear, and vintage pieces
               </p>
             </div>
@@ -169,34 +178,6 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
                 )}
               </div>
             </form>
-
-            {/* Quick Categories */}
-            <div>
-              <div className="mb-2 flex items-center gap-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-[#8C745A]">
-                <Tag size={12} />
-                <span>Popular Categories</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {["Denim", "Knitwear", "Leather", "Tops", "Accessories"].map((tag) => {
-                  const isActive = query.toLowerCase() === tag.toLowerCase();
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setQuery(tag)}
-                      className="rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all"
-                      style={{
-                        backgroundColor: isActive ? "#493022" : "#F3E7D3",
-                        color: isActive ? "#FAF4EB" : "#493022",
-                        borderColor: isActive ? "#493022" : "#D5C2A5",
-                      }}
-                    >
-                      {tag}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Live Search Results */}
             <div>

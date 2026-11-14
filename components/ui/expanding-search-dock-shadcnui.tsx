@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, X, ArrowRight, Tag } from "lucide-react";
+import { Search, X, ArrowRight } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
 
 export type SearchResultItem = {
@@ -16,15 +16,12 @@ export type ExpandingSearchDockProps = {
   onSearch?: (query: string) => void;
   placeholder?: string;
   results?: SearchResultItem[];
-  suggestions?: string[];
   onSelectResult?: (item: SearchResultItem) => void;
   onSeeAll?: (query: string) => void;
   align?: "left" | "right" | "center";
   className?: string;
   defaultExpanded?: boolean;
 };
-
-const DEFAULT_SUGGESTIONS = ["Denim", "Knitwear", "Leather", "Tops", "Accessories"];
 
 const FALLBACK_DEMO_RESULTS: SearchResultItem[] = [
   {
@@ -69,7 +66,6 @@ export function ExpandingSearchDock({
   onSearch,
   placeholder = "Search...",
   results,
-  suggestions = DEFAULT_SUGGESTIONS,
   onSelectResult,
   onSeeAll,
   align = "right",
@@ -131,15 +127,6 @@ export function ExpandingSearchDock({
       }
       setShowDropdown(false);
     }
-  };
-
-  const handleSuggestionClick = (tag: string) => {
-    setQuery(tag);
-    setShowDropdown(true);
-    if (onSearch) {
-      onSearch(tag);
-    }
-    inputRef.current?.focus();
   };
 
   // Determine active search results
@@ -268,28 +255,6 @@ export function ExpandingSearchDock({
                     boxShadow: "0 18px 40px -10px rgba(50, 32, 20, 0.25), 0 0 0 1px rgba(197, 172, 140, 0.45)",
                   }}
                 >
-                  {/* Suggestions Chips */}
-                  {suggestions && suggestions.length > 0 && (
-                    <div className="mb-2.5 pb-2 border-b border-[#E7D7C1]">
-                      <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[11px] font-medium tracking-wide uppercase text-[#8C745A]">
-                        <Tag className="h-3 w-3" />
-                        <span>Quick categories</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {suggestions.map((tag) => (
-                          <button
-                            key={tag}
-                            type="button"
-                            onClick={() => handleSuggestionClick(tag)}
-                            className="rounded-full border border-[#D5C2A5] bg-[#F3E7D3]/80 px-2.5 py-1 text-xs font-medium text-[#493022] transition-colors hover:bg-[#493022] hover:text-[#FAF4EB] hover:border-[#493022]"
-                          >
-                            {tag}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Results Section */}
                   <div>
                     <div className="flex items-center justify-between px-1 mb-1.5">
@@ -376,3 +341,4 @@ export function ExpandingSearchDock({
 }
 
 export default ExpandingSearchDock;
+

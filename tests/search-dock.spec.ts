@@ -12,6 +12,7 @@ test("search dock opens beautifully, filters products, and navigates", async ({ 
   // Search overlay should appear centered with vintage styling
   const searchInput = page.getByPlaceholder("Denim, a leather jacket, homeware…");
   await expect(searchInput).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(400);
 
   // Take screenshot of opened search
