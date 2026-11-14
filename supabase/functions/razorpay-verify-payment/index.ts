@@ -53,11 +53,12 @@ Deno.serve(async (request) => {
     } = await caller.auth.getUser();
     if (!user) return json({ error: "Sign in required" }, 401);
 
-    // Confirm the caller can see this order (buyer, seller, or admin).
+    // Only the buyer can complete payment for their own order.
     const { data: order } = await caller
       .from("orders")
-      .select("id")
+      .select("id, buyer_id")
       .eq("id", orderId)
+      .eq("buyer_id", user.id)
       .maybeSingle();
     if (!order) return json({ error: "Order not found" }, 404);
 
@@ -73,6 +74,7 @@ Deno.serve(async (request) => {
     const { error } = await admin.rpc("confirm_order_payment", {
       p_order_id: orderId,
       p_provider: "razorpay",
+      p_provider_order_id: razorpayOrderId,
       p_provider_payment_id: razorpayPaymentId,
     });
     if (error) {

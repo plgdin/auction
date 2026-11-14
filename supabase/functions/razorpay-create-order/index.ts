@@ -35,6 +35,7 @@ Deno.serve(async (request) => {
       .from("orders")
       .select("id, order_number, total_paise, payment_status, status, payment_method")
       .eq("id", orderId)
+      .eq("buyer_id", user.id)
       .maybeSingle();
 
     if (orderError || !order) return json({ error: "Order not found" }, 404);
@@ -76,6 +77,11 @@ Deno.serve(async (request) => {
 
     // Record the attempt for auditing; failures here must not block checkout.
     const admin = createClient(url, serviceKey);
+    await admin
+      .from("payments")
+      .update({ status: "failed" })
+      .eq("order_id", order.id)
+      .eq("status", "created");
     await admin.from("payments").insert({
       order_id: order.id,
       provider: "razorpay",
