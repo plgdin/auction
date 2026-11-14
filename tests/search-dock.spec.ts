@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("search dock opens beautifully, filters products, and navigates", async ({ page }) => {
+test("search dock opens with macOS Genie transition, filters products, and navigates", async ({ page }) => {
   await page.goto("http://localhost:5173/#/");
   await page.waitForTimeout(500);
 
@@ -9,13 +9,29 @@ test("search dock opens beautifully, filters products, and navigates", async ({ 
   await expect(searchBtn).toBeVisible();
   await searchBtn.click();
 
-  // Search overlay should appear centered with vintage styling
+  // Capture early Genie animation frame
+  await page.waitForTimeout(80);
+  await page.screenshot({ path: "test-results/search-genie-early.png" });
+
+  // Capture mid-Genie animation frame
+  await page.waitForTimeout(140);
+  await page.screenshot({ path: "test-results/search-genie-mid.png" });
+
+  // Wait for full Genie animation to complete and modal to be interactive
+  await page.waitForTimeout(400);
+  await page.evaluate(() => document.fonts.ready);
+
+  // Search input should be visible
   const searchInput = page.getByPlaceholder("Denim, a leather jacket, homeware…");
   await expect(searchInput).toBeVisible();
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForTimeout(400);
 
-  // Take screenshot of opened search
+  const cardHeight = await page.evaluate(() => {
+    const el = document.querySelector(".search-modal-card") || document.querySelector("input")?.closest(".rounded-3xl");
+    return el ? el.getBoundingClientRect().height : 0;
+  });
+  console.log("ACTUAL CARD HEIGHT IS:", cardHeight);
+
+  // Take screenshot of fully opened search
   await page.screenshot({ path: "test-results/search-opened.png" });
 
   // Type "denim"

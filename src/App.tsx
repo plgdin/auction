@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Heart, LogIn, Search, ShoppingBag, UserPlus, X } from "lucide-react";
 import { LelamNavbar } from "@/components/ui/lelam-navbar";
+import { GenieSearchModal } from "@/components/ui/genie-search-modal";
 import HalftoneWordmarkFooter from "@/components/ui/halftone-wordmark-footer";
 import { Link, navigate } from "./components/Link";
 import { Modal } from "./components/Modal";
@@ -61,6 +62,173 @@ function ToastHost() {
   );
 }
 
+function SearchModalCard({
+  query,
+  setQuery,
+  results,
+  search,
+  onClose,
+}: {
+  query: string;
+  setQuery: (val: string) => void;
+  results: any[];
+  search: string;
+  onClose?: () => void;
+}) {
+  return (
+    <div
+      className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-[#D5C2A5] shadow-[0_24px_64px_rgba(40,24,14,0.4)]"
+      style={{ backgroundColor: "#FAF4EB" }}
+    >
+      {/* Header */}
+      <div className="relative pt-6 pb-2 px-6 text-center">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[#6D533E] hover:bg-[#EBDDC8] hover:text-[#332417] transition-all"
+          aria-label="Close search"
+        >
+          <X size={18} strokeWidth={2.4} />
+        </button>
+
+        <h2 className="text-xl sm:text-2xl tracking-tight select-none inline-flex items-baseline justify-center gap-1.5">
+          <span className="text-[#6D533E] font-medium font-sans">
+            search on
+          </span>
+          <span
+            style={{
+              fontFamily: '"Gumela Arabic", serif',
+              fontWeight: 800,
+              textTransform: "lowercase",
+              color: "#493022",
+              WebkitTextStroke: "0.8px #493022",
+              paintOrder: "stroke fill",
+              fontSize: "1.25em",
+              lineHeight: 1,
+            }}
+          >
+            lelam
+          </span>
+        </h2>
+      </div>
+
+      <div className="p-5 sm:p-6 space-y-5">
+        {/* Search Input Bar with Framer Motion */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (query.trim()) {
+              onClose?.();
+              navigate(`#/products?q=${encodeURIComponent(query.trim())}`);
+            }
+          }}
+          className="relative"
+        >
+          <div
+            className="relative flex items-center gap-2 overflow-hidden rounded-full border border-[#CBB693] bg-[#FFFDF9] shadow-[0_2px_12px_rgba(73,48,34,0.08)] transition-shadow"
+            style={{ backgroundColor: "#FFFDF9", borderColor: "#CBB693" }}
+          >
+            <div className="ml-4 flex items-center justify-center text-[#8C745A]">
+              <Search size={18} strokeWidth={2.2} />
+            </div>
+            <input
+              autoFocus
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Denim, a leather jacket, homeware…"
+              aria-label="Search listings"
+              className="h-12 flex-1 bg-transparent pr-3 font-sans text-sm sm:text-base text-[#332417] placeholder:text-[#9C856C] outline-none"
+              style={{ color: "#332417" }}
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="mr-2 flex h-7 w-7 items-center justify-center rounded-full text-[#8C745A] hover:bg-[#EBDDC8] hover:text-[#493022] transition-colors"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </form>
+
+        {/* Live Search Results */}
+        <div>
+          <div className="mb-2 flex items-center justify-between px-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8C745A]">
+              {search ? `${results.length} results` : "Fresh on the rail"}
+            </span>
+          </div>
+
+          <div className="max-h-[260px] overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+            {results.length ? (
+              results.map((product) => (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => {
+                    onClose?.();
+                    navigate(`#/product/${product.id}`);
+                  }}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-[#FFFDF9] border border-[#E8DCCB] text-left transition-all hover:border-[#CBB693] hover:shadow-sm group"
+                  style={{ backgroundColor: "#FFFDF9", borderColor: "#E8DCCB" }}
+                >
+                  <img
+                    src={product.images[0]}
+                    alt=""
+                    className="h-12 w-12 rounded-xl object-cover border border-[#D5C2A5]/70 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <strong
+                      className="block text-sm font-semibold truncate group-hover:text-[#8C5E3C] transition-colors"
+                      style={{ color: "#332417" }}
+                    >
+                      {product.title}
+                    </strong>
+                    <span className="text-xs text-[#8C745A]">
+                      {product.condition} · {product.sellerName}
+                    </span>
+                  </div>
+                  <strong
+                    className="font-serif text-sm font-semibold shrink-0"
+                    style={{ color: "#493022" }}
+                  >
+                    {formatMoney(product.askingPrice)}
+                  </strong>
+                </button>
+              ))
+            ) : (
+              <div
+                className="py-8 text-center rounded-2xl border border-dashed border-[#D5C2A5] text-[#8C745A]"
+                style={{ backgroundColor: "#F4E9D8" }}
+              >
+                <p className="text-sm font-medium">Nothing matched &ldquo;{query}&rdquo;</p>
+                <p className="text-xs mt-1">Try a different keyword or browse categories above.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* See All Listings CTA */}
+        <button
+          type="button"
+          onClick={() => {
+            onClose?.();
+            navigate(`#/products${search ? `?q=${encodeURIComponent(query.trim())}` : ""}`);
+          }}
+          className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 px-4 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
+          style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
+        >
+          <span>See all listings {search ? `for "${query.trim()}"` : ""}</span>
+          <ArrowRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SearchOverlay({ onClose }: { onClose: () => void }) {
   const { db } = useStore();
   const [query, setQuery] = useState("");
@@ -78,184 +246,16 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
       .slice(0, 6);
   }, [db.products, search]);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 p-4">
-        {/* Scrim Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-[#25170F]/60 backdrop-blur-md"
-        />
-
-        {/* Modal Window */}
-        <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -16, scale: 0.96 }}
-          transition={{ type: "spring", stiffness: 380, damping: 30 }}
-          className="relative z-10 w-full max-w-lg overflow-hidden rounded-3xl border border-[#D5C2A5] shadow-[0_24px_64px_rgba(40,24,14,0.4)]"
-          style={{ backgroundColor: "#FAF4EB" }}
-        >
-          {/* Header */}
-          <div className="relative pt-6 pb-2 px-6 text-center">
-            <button
-              type="button"
-              onClick={onClose}
-              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[#6D533E] hover:bg-[#EBDDC8] hover:text-[#332417] transition-all"
-              aria-label="Close search"
-            >
-              <X size={18} strokeWidth={2.4} />
-            </button>
-
-            <h2 className="text-xl sm:text-2xl tracking-tight select-none inline-flex items-baseline justify-center gap-1.5">
-              <span className="text-[#6D533E] font-medium font-sans">
-                search on
-              </span>
-              <span
-                style={{
-                  fontFamily: '"Gumela Arabic", serif',
-                  fontWeight: 800,
-                  textTransform: "lowercase",
-                  color: "#493022",
-                  WebkitTextStroke: "0.8px #493022",
-                  paintOrder: "stroke fill",
-                  fontSize: "1.25em",
-                  lineHeight: 1,
-                }}
-              >
-                lelam
-              </span>
-            </h2>
-          </div>
-
-          <div className="p-5 sm:p-6 space-y-5">
-            {/* Search Input Bar with Framer Motion */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (query.trim()) {
-                  onClose();
-                  navigate(`#/products?q=${encodeURIComponent(query.trim())}`);
-                }
-              }}
-              className="relative"
-            >
-              <div
-                className="relative flex items-center gap-2 overflow-hidden rounded-full border border-[#CBB693] bg-[#FFFDF9] shadow-[0_2px_12px_rgba(73,48,34,0.08)] transition-shadow"
-                style={{ backgroundColor: "#FFFDF9", borderColor: "#CBB693" }}
-              >
-                <div className="ml-4 flex items-center justify-center text-[#8C745A]">
-                  <Search size={18} strokeWidth={2.2} />
-                </div>
-                <input
-                  autoFocus
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Denim, a leather jacket, homeware…"
-                  aria-label="Search listings"
-                  className="h-12 flex-1 bg-transparent pr-3 font-sans text-sm sm:text-base text-[#332417] placeholder:text-[#9C856C] outline-none"
-                  style={{ color: "#332417" }}
-                />
-                {query && (
-                  <button
-                    type="button"
-                    onClick={() => setQuery("")}
-                    className="mr-2 flex h-7 w-7 items-center justify-center rounded-full text-[#8C745A] hover:bg-[#EBDDC8] hover:text-[#493022] transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-            </form>
-
-            {/* Live Search Results */}
-            <div>
-              <div className="mb-2 flex items-center justify-between px-1">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8C745A]">
-                  {search ? `${results.length} results` : "Fresh on the rail"}
-                </span>
-              </div>
-
-              <div className="max-h-[260px] overflow-y-auto space-y-2 pr-1 scrollbar-thin">
-                {results.length ? (
-                  results.map((product) => (
-                    <button
-                      key={product.id}
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        navigate(`#/product/${product.id}`);
-                      }}
-                      className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-[#FFFDF9] border border-[#E8DCCB] text-left transition-all hover:border-[#CBB693] hover:shadow-sm group"
-                      style={{ backgroundColor: "#FFFDF9", borderColor: "#E8DCCB" }}
-                    >
-                      <img
-                        src={product.images[0]}
-                        alt=""
-                        className="h-12 w-12 rounded-xl object-cover border border-[#D5C2A5]/70 shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <strong
-                          className="block text-sm font-semibold truncate group-hover:text-[#8C5E3C] transition-colors"
-                          style={{ color: "#332417" }}
-                        >
-                          {product.title}
-                        </strong>
-                        <span className="text-xs text-[#8C745A]">
-                          {product.condition} · {product.sellerName}
-                        </span>
-                      </div>
-                      <strong
-                        className="font-serif text-sm font-semibold shrink-0"
-                        style={{ color: "#493022" }}
-                      >
-                        {formatMoney(product.askingPrice)}
-                      </strong>
-                    </button>
-                  ))
-                ) : (
-                  <div
-                    className="py-8 text-center rounded-2xl border border-dashed border-[#D5C2A5] text-[#8C745A]"
-                    style={{ backgroundColor: "#F4E9D8" }}
-                  >
-                    <p className="text-sm font-medium">Nothing matched &ldquo;{query}&rdquo;</p>
-                    <p className="text-xs mt-1">Try a different keyword or browse categories above.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* See All Listings CTA */}
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                navigate(`#/products${search ? `?q=${encodeURIComponent(query.trim())}` : ""}`);
-              }}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 px-4 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
-              style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
-            >
-              <span>See all listings {search ? `for "${query.trim()}"` : ""}</span>
-              <ArrowRight size={16} />
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+    <GenieSearchModal isOpen={true} onClose={onClose} originSelector=".lelam-search-toggle">
+      <SearchModalCard
+        query={query}
+        setQuery={setQuery}
+        results={results}
+        search={search}
+        onClose={onClose}
+      />
+    </GenieSearchModal>
   );
 }
 
