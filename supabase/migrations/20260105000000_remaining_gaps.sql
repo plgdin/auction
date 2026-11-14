@@ -302,7 +302,7 @@ $$;
 create table if not exists public.outbound_messages (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references public.profiles(id) on delete set null,
-  channel text not null check (channel in ('whatsapp', 'sms', 'email')),
+  channel text not null check (channel in ('sms', 'email')),
   template text not null,
   payload jsonb not null default '{}'::jsonb,
   status text not null default 'queued'
@@ -312,33 +312,6 @@ create table if not exists public.outbound_messages (
   sent_at timestamptz
 );
 create index if not exists outbound_messages_status_idx on public.outbound_messages (status, created_at);
-
--- Override notify_user to also enqueue a WhatsApp message when a phone exists.
-create or replace function public.notify_user(
-  p_user uuid,
-  p_type text,
-  p_title text,
-  p_body text default '',
-  p_data jsonb default '{}'::jsonb
-)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_phone text;
-begin
-  insert into public.notifications (user_id, type, title, body, data)
-  values (p_user, p_type, p_title, p_body, p_data);
-
-  select phone into v_phone from public.profiles where id = p_user;
-  if v_phone is not null and v_phone <> '' then
-    insert into public.outbound_messages (user_id, channel, template, payload)
-    values (p_user, 'whatsapp', p_type, jsonb_build_object('title', p_title, 'body', p_body, 'data', p_data));
-  end if;
-end;
-$$;
 
 -- =========================================================
 -- 5. GRANTS
