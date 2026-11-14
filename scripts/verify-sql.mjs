@@ -22,6 +22,10 @@ const thrift = readFileSync(
   "supabase/migrations/20260104000000_thrift_backend_gaps.sql",
   "utf8",
 );
+const remaining = readFileSync(
+  "supabase/migrations/20260105000000_remaining_gaps.sql",
+  "utf8",
+);
 
 await db.exec(base);
 
@@ -73,6 +77,7 @@ await db.exec(`
 
 await db.exec(auction);
 await db.exec(thrift);
+await db.exec(remaining);
 
 await db.exec(`
   set test.role = 'service_role';

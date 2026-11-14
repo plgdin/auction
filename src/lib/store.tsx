@@ -189,6 +189,8 @@ interface StoreValue {
   cancelOrder: (orderId: string) => Promise<ActionResult>;
   acceptOrder: (orderId: string) => Promise<ActionResult>;
   openDispute: (orderId: string, reason: string, description: string, photos?: string[]) => Promise<ActionResult>;
+  setProxyBid: (auctionId: string, maxAmount: number) => Promise<ActionResult>;
+  bookCourierPickup: (orderId: string) => Promise<ActionResult>;
   requestReturn: (orderId: string) => Promise<ActionResult>;
   addReview: (orderId: string, rating: number, comment: string) => Promise<ActionResult>;
   advanceShipment: (
@@ -1258,6 +1260,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const setProxyBid = useCallback(
+    async (auctionId: string, maxAmount: number): Promise<ActionResult> => {
+      try {
+        const { error } = await supabase.rpc("set_proxy_bid", {
+          p_auction_id: auctionId,
+          p_max_amount_paise: maxAmount,
+        });
+        if (error) return { ok: false, error: messageOf(error) };
+        await refresh();
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: messageOf(error) };
+      }
+    },
+    [refresh],
+  );
+
+  const bookCourierPickup = useCallback(
+    async (orderId: string): Promise<ActionResult> => {
+      try {
+        const { error } = await supabase.rpc("book_courier_pickup", { p_order_id: orderId });
+        if (error) return { ok: false, error: messageOf(error) };
+        await refresh();
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: messageOf(error) };
+      }
+    },
+    [refresh],
+  );
+
   const requestReturn = useCallback(
     async (orderId: string): Promise<ActionResult> => {
       try {
@@ -1864,6 +1897,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     cancelOrder,
     acceptOrder,
     openDispute,
+    setProxyBid,
+    bookCourierPickup,
     requestReturn,
     addReview,
     advanceShipment,
