@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ShieldCheck, Truck } from "lucide-react";
 import { Link } from "../../components/Link";
 import { ShipmentStepper, nextShipmentAction } from "../../components/seller/Parts";
 import { StatusPill } from "../../components/Ui";
@@ -11,7 +11,7 @@ import { toast } from "../../lib/toast";
  * the seller packs the parcel and confirms the hand-over. One button per state.
  */
 export function OrdersTab() {
-  const { db, user, advanceShipment } = useStore();
+  const { db, user, advanceShipment, bookCourierPickup } = useStore();
   if (!user) return null;
 
   const myOrders = [...db.orders.filter((order) => order.sellerId === user.id)].sort(
@@ -96,20 +96,44 @@ export function OrdersTab() {
             {!awaitingPayment && !closed && (
               <footer className="order-card-delivery">
                 <ShipmentStepper order={order} />
-                {action && (
-                  <button
-                    type="button"
-                    className="button button-olive order-card-btn"
-                    onClick={async () => {
-                      const result = await advanceShipment(order.id, action.status);
-                      if (result.ok) toast("Delivery updated. The buyer sees it instantly.", "success");
-                      else toast(result.error, "error");
-                    }}
-                  >
-                    {action.label}
-                  </button>
-                )}
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                  {order.status === "processing" && (!order.shipment || order.shipment.status === "pending_pickup") && (
+                    <button
+                      type="button"
+                      className="button button-olive order-card-btn"
+                      onClick={async () => {
+                        const result = await bookCourierPickup(order.id);
+                        if (result.ok) toast("Courier pickup booked! Shipping label ready.", "success");
+                        else toast(result.error, "error");
+                      }}
+                    >
+                      <Truck size={14} /> Book Courier Pickup
+                    </button>
+                  )}
+                  {action && (
+                    <button
+                      type="button"
+                      className="button button-ghost order-card-btn"
+                      onClick={async () => {
+                        const result = await advanceShipment(order.id, action.status);
+                        if (result.ok) toast("Delivery updated. The buyer sees it instantly.", "success");
+                        else toast(result.error, "error");
+                      }}
+                    >
+                      {action.label}
+                    </button>
+                  )}
+                </div>
               </footer>
+            )}
+
+            {order.status === "delivered" && (
+              <div className="order-card-waiting" style={{ background: "rgba(235, 230, 215, 0.5)", borderRadius: "6px", padding: "10px 14px", marginTop: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                <ShieldCheck size={16} />
+                <span>
+                  <strong>Escrow Hold Active:</strong> Funds locked until buyer inspects or 48h passes. Payout is released automatically once approved.
+                </span>
+              </div>
             )}
             {awaitingPayment && <p className="order-card-waiting">Buyer's payment is {order.paymentStatus}. Nothing to do yet.</p>}
             {closed && <p className="order-card-waiting">This order is closed ({order.status.replace("_", " ")}). No payout from it.</p>}

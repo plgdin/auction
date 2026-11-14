@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowUpRight,
   Check,
@@ -7,8 +8,10 @@ import {
   Heart,
   MapPin,
   Package,
+  Ruler,
   ShieldCheck,
   ShoppingBag,
+  Sparkles,
   Tag,
   Truck,
   UserRound,
@@ -261,6 +264,46 @@ export function ProductDetailPage() {
                 <strong>{product.quantity === 1 ? "One of one" : `${product.quantity} available`}</strong>
               </div>
             </div>
+
+            {/* Thrift Flaw Disclosure */}
+            <div className={`thrift-flaw-card ${product.hasFlaws ? "has-flaws" : "is-clean"}`}>
+              <div className="thrift-flaw-head">
+                {product.hasFlaws ? <AlertTriangle size={15} /> : <Sparkles size={15} />}
+                <strong>{product.hasFlaws ? "Flaw & Wear Disclosure" : "Condition Transparency"}</strong>
+                <span className={`flaw-tag ${product.hasFlaws ? "flaw-tag-warm" : "flaw-tag-clean"}`}>
+                  {product.hasFlaws ? "Has Disclosed Wear" : "Clean · No Defects"}
+                </span>
+              </div>
+              {product.hasFlaws && product.flaws && product.flaws.length > 0 && (
+                <ul className="thrift-flaw-list">
+                  {product.flaws.map((flaw, idx) => (
+                    <li key={idx}>{flaw}</li>
+                  ))}
+                </ul>
+              )}
+              {!product.hasFlaws && (
+                <p className="thrift-flaw-note">Seller inspected this piece: no holes, stains, or tears found.</p>
+              )}
+            </div>
+
+            {/* Garment Measurements Table */}
+            {product.measurements && Object.keys(product.measurements).length > 0 && (
+              <div className="thrift-measurements-card">
+                <div className="thrift-measurements-head">
+                  <Ruler size={15} />
+                  <strong>Flat Measurements</strong>
+                  <span>Compare against your best-fitting garment</span>
+                </div>
+                <div className="thrift-measurements-grid">
+                  {Object.entries(product.measurements).map(([name, val]) => (
+                    <div key={name} className="thrift-measure-cell">
+                      <span>{name.replace(/([A-Z])/g, " $1").toLowerCase()}</span>
+                      <strong>{val} {name.toLowerCase().includes("waist") || name.toLowerCase().includes("inseam") ? '" / cm' : "cm"}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="product-delivery">
               <Truck size={18} />

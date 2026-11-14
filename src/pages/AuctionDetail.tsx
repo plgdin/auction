@@ -9,23 +9,30 @@ import {
   ShieldCheck,
   Trophy,
   Users,
+  Zap,
 } from "lucide-react";
 import { Countdown } from "../components/Countdown";
 import { Link } from "../components/Link";
-import { StatusPill } from "../components/Ui";
+import { Modal } from "../components/Modal";
+import { Field, StatusPill } from "../components/Ui";
 import { formatMoney, formatDateTime, shortDate } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
+import { supabase } from "../lib/supabase";
 import { auctionIncrement } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 
 export function AuctionDetailPage() {
   const route = useRoute();
-  const { db, user, placeBid, toggleFavorite, favorites } = useStore();
+  const { db, user, placeBid, setProxyBid, cancelProxyBid, toggleFavorite, favorites } = useStore();
   const auctionId = route.path.split("/")[2] || "";
   const auction = db.auctions.find((item) => item.id === auctionId);
   const [bidRupees, setBidRupees] = useState("");
   const [lastResult, setLastResult] = useState<string>("");
+  const [proxyBid, setProxyBidData] = useState<{ id: string; max_amount_paise: number; active: boolean } | null>(null);
+  const [autoBidModalOpen, setAutoBidModalOpen] = useState(false);
+  const [maxAutoBidRupees, setMaxAutoBidRupees] = useState("");
+  const [autoBidBusy, setAutoBidBusy] = useState(false);
 
   const product = auction ? db.products.find((item) => item.id === auction.productId) : undefined;
 
@@ -39,6 +46,63 @@ export function AuctionDetailPage() {
     setBidRupees("");
     setLastResult("");
   }, [auctionId]);
+
+  useEffect(() => {
+    if (!user || !auctionId) {
+      setProxyBidData(null);
+      return;
+    }
+    let cancelled = false;
+    async function loadProxyBid() {
+      const { data } = await supabase
+        .from("auction_proxy_bids")
+        .select("id, max_amount_paise, active")
+        .eq("auction_id", auctionId)
+        .eq("bidder_id", user?.id)
+        .eq("active", true)
+        .maybeSingle();
+      if (!cancelled) {
+        setProxyBidData(data);
+      }
+    }
+    loadProxyBid();
+    return () => {
+      cancelled = true;
+    };
+  }, [auctionId, user, auction?.currentBid]);
+
+  const handleSaveAutoBid = async () => {
+    if (!user || !auction) {
+      toast("Sign in to set an auto-bid.", "error");
+      return;
+    }
+    const amount = Math.round(Number(maxAutoBidRupees) * 100);
+    if (!maxAutoBidRupees.trim() || Number.isNaN(amount) || amount < minimum) {
+      toast(`Enter a maximum ceiling of at least ${formatMoney(minimum)}.`, "error");
+      return;
+    }
+    setAutoBidBusy(true);
+    const res = await setProxyBid(auction.id, amount);
+    setAutoBidBusy(false);
+    if (res.ok) {
+      toast("Max auto-bid set. Engine will bid for you.", "success");
+      setProxyBidData({ id: "active", max_amount_paise: amount, active: true });
+      setAutoBidModalOpen(false);
+    } else {
+      toast(res.error, "error");
+    }
+  };
+
+  const handleCancelAutoBid = async () => {
+    if (!auction) return;
+    const res = await cancelProxyBid(auction.id);
+    if (res.ok) {
+      toast("Auto-bid cancelled.", "success");
+      setProxyBidData(null);
+    } else {
+      toast(res.error, "error");
+    }
+  };
 
   if (!auction || !product) {
     return (
@@ -182,6 +246,43 @@ export function AuctionDetailPage() {
 
             {live && !ownAuction && (
               <div className="auction-bid-form">
+                {proxyBid?.active && (
+                  <div
+                    className="auction-proxy-indicator"
+                    style={{
+                      padding: "12px 14px",
+                      background: "rgba(46, 125, 50, 0.08)",
+                      border: "1px dashed rgba(46, 125, 50, 0.4)",
+                      borderRadius: "8px",
+                      marginBottom: "14px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "10px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <Zap size={18} style={{ color: "#2e7d32", flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: "13px", fontWeight: 600, color: "#1e3a1e" }}>
+                          Your max bid is {formatMoney(proxyBid.max_amount_paise)}. Engine is bidding for you.
+                        </div>
+                        <div style={{ fontSize: "11px", color: "#3a5a3a" }}>
+                          Auto-bid active up to your ceiling.
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="button button-ghost"
+                      style={{ padding: "4px 8px", fontSize: "11px", whiteSpace: "nowrap" }}
+                      onClick={handleCancelAutoBid}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
                 <label className="field">
                   <span className="field-label">Your bid (₹)</span>
                   <input
@@ -213,6 +314,21 @@ export function AuctionDetailPage() {
                 </div>
                 <button type="button" className="button button-olive auction-bid-submit" onClick={submitBid}>
                   Place bid <Gavel size={15} />
+                </button>
+                <button
+                  type="button"
+                  className="button button-ghost"
+                  style={{ width: "100%", marginTop: "8px" }}
+                  onClick={() => {
+                    if (!user) {
+                      toast("Sign in to set an auto-bid.", "error");
+                      return;
+                    }
+                    setMaxAutoBidRupees(proxyBid ? String(proxyBid.max_amount_paise / 100) : "");
+                    setAutoBidModalOpen(true);
+                  }}
+                >
+                  <Zap size={14} /> {proxyBid?.active ? "Update Max Auto-Bid" : "Set Max Auto-Bid"}
                 </button>
                 {participating && (
                   <p className="auction-anon-note">
@@ -338,6 +454,60 @@ export function AuctionDetailPage() {
           </div>
         </div>
       </div>
+
+      {autoBidModalOpen && (
+        <Modal title="Set Max Auto-Bid" onClose={() => setAutoBidModalOpen(false)}>
+          <div className="autobid-modal-body">
+            <p className="fineprint" style={{ marginBottom: "14px" }}>
+              Set your maximum ceiling amount. Whenever another user places a bid, the proxy engine will automatically place the next minimum increment on your behalf until your ceiling is reached.
+            </p>
+            <Field label="Your Maximum Bid (₹) *" hint={`Minimum: ${formatMoney(minimum)}`}>
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder={String(minimum / 100)}
+                min={minimum / 100}
+                value={maxAutoBidRupees}
+                onChange={(e) => setMaxAutoBidRupees(e.target.value)}
+                autoFocus
+              />
+            </Field>
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "10px 12px",
+                background: "rgba(0,0,0,0.03)",
+                borderRadius: "6px",
+                fontSize: "12px",
+                color: "#555",
+              }}
+            >
+              <strong>How it works:</strong> Your max bid remains confidential. If no one challenges you, you win at the lowest possible price.
+            </div>
+            <div
+              className="modal-actions"
+              style={{ marginTop: "18px", display: "flex", gap: "10px", justifyContent: "flex-end" }}
+            >
+              <button
+                type="button"
+                className="button button-ghost"
+                disabled={autoBidBusy}
+                onClick={() => setAutoBidModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button button-olive"
+                disabled={autoBidBusy || !maxAutoBidRupees.trim()}
+                onClick={handleSaveAutoBid}
+              >
+                {autoBidBusy ? "Saving..." : "Confirm Max Auto-Bid"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowUpRight,
   Check,
@@ -12,6 +13,8 @@ import {
   Truck,
   X,
 } from "lucide-react";
+import { Countdown } from "../components/Countdown";
+import { Modal } from "../components/Modal";
 import { Link, navigate } from "../components/Link";
 import { Field, StatusPill } from "../components/Ui";
 import { formatDate, formatDateTime, formatMoney } from "../lib/format";
@@ -44,6 +47,8 @@ export function OrderDetailPage() {
     user,
     payOrders,
     cancelOrder,
+    acceptOrder,
+    openDispute,
     requestReturn,
     addReview,
     advanceShipment,
@@ -54,6 +59,11 @@ export function OrderDetailPage() {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [shipmentStatus, setShipmentStatus] = useState("");
+  const [disputeModalOpen, setDisputeModalOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState("not_as_described");
+  const [disputeDesc, setDisputeDesc] = useState("");
+  const [disputePhoto, setDisputePhoto] = useState("");
+  const [disputeBusy, setDisputeBusy] = useState(false);
 
   if (!order) {
     return (
@@ -105,6 +115,14 @@ export function OrderDetailPage() {
   const existingReview = db.reviews.find((review) => review.orderId === order.id);
   const activeIndex = order.shipment ? shipmentSteps.indexOf(order.shipment.status) : -1;
   const canPay = isBuyer && order.status === "pending_payment";
+
+  const deliveredEvent = order.shipment?.events?.find((item) => item.status === "delivered");
+  const deliveredTime = deliveredEvent
+    ? new Date(deliveredEvent.at).getTime()
+    : new Date(order.paidAt ?? order.createdAt).getTime();
+  const escrowDeadline = new Date(deliveredTime + 48 * 3600 * 1000).toISOString();
+  const escrowActive = isBuyer && order.status === "delivered" && new Date(escrowDeadline).getTime() > Date.now();
+
   const canUpdateDelivery =
     (isSeller || isAdmin) &&
     (order.paymentStatus === "paid" ||
@@ -180,6 +198,25 @@ export function OrderDetailPage() {
               Payment is due by {formatDateTime(order.paymentDeadline)}. The item stays reserved
               until then.
             </span>
+          </div>
+        )}
+
+        {order.status === "delivered" && (
+          <div className={`order-callout ${escrowActive ? "is-escrow" : ""}`}>
+            <ShieldCheck size={18} />
+            <div>
+              <strong>48-Hour Buyer Protection & Escrow Window</strong>
+              <p>
+                {escrowActive ? (
+                  <>
+                    Your payment is safely held in escrow. Payout to seller auto-releases in{" "}
+                    <Countdown to={escrowDeadline} compact /> unless an issue is reported.
+                  </>
+                ) : (
+                  "The 48-hour inspection period has completed. Settlement released to the seller."
+                )}
+              </p>
+            </div>
           </div>
         )}
 
@@ -414,6 +451,30 @@ export function OrderDetailPage() {
                   </button>
                 )}
 
+              {isBuyer && order.status === "delivered" && (
+                <>
+                  <button
+                    type="button"
+                    className="button button-olive summary-cta"
+                    onClick={async () => {
+                      if (!window.confirm("Confirm item matches description? This releases the seller's payment immediately.")) return;
+                      const result = await acceptOrder(order.id);
+                      if (result.ok) toast("Item accepted! Funds released to seller.", "success");
+                      else toast(result.error, "error");
+                    }}
+                  >
+                    <Check size={15} /> Accept item & release payout
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-ghost summary-cta text-warm"
+                    onClick={() => setDisputeModalOpen(true)}
+                  >
+                    <AlertTriangle size={15} /> Report an issue / dispute
+                  </button>
+                </>
+              )}
+
               {canReturn && (
                 <button
                   type="button"
@@ -496,6 +557,70 @@ export function OrderDetailPage() {
           </button>
         </div>
       </div>
+
+      {disputeModalOpen && (
+        <Modal title={`Report an issue · Order ${order.number}`} onClose={() => setDisputeModalOpen(false)}>
+          <div className="dispute-modal-body">
+            <p className="fineprint" style={{ marginBottom: "16px" }}>
+              If the item has undisclosed flaws, is counterfeit, or does not match the description, you can open a dispute.
+              This immediately freezes seller payout while admin reviews evidence.
+            </p>
+            <Field label="Issue category *">
+              <select value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)}>
+                <option value="not_as_described">Significantly not as described</option>
+                <option value="fake_counterfeit">Suspected counterfeit / unauthentic</option>
+                <option value="wrong_item">Received wrong item</option>
+                <option value="undisclosed_damage">Undisclosed stain, tear, or damage</option>
+                <option value="package_empty">Package was empty / transit damaged</option>
+              </select>
+            </Field>
+            <Field label="Describe the issue in detail *">
+              <textarea
+                rows={4}
+                value={disputeDesc}
+                onChange={(e) => setDisputeDesc(e.target.value)}
+                placeholder="Explain the discrepancy (e.g. measurements don't match, hidden tear under arm)..."
+              />
+            </Field>
+            <Field label="Photo evidence URL" hint="Optional, image link showing the issue">
+              <input
+                value={disputePhoto}
+                onChange={(e) => setDisputePhoto(e.target.value)}
+                placeholder="https://... photo link"
+              />
+            </Field>
+            <div className="modal-actions" style={{ marginTop: "18px", display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="button button-ghost"
+                onClick={() => setDisputeModalOpen(false)}
+                disabled={disputeBusy}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button button-olive"
+                disabled={disputeBusy || !disputeDesc.trim()}
+                onClick={async () => {
+                  setDisputeBusy(true);
+                  const photos = disputePhoto.trim() ? [disputePhoto.trim()] : [];
+                  const result = await openDispute(order.id, disputeReason, disputeDesc.trim(), photos);
+                  setDisputeBusy(false);
+                  if (result.ok) {
+                    toast("Dispute opened. Seller payout frozen.", "success");
+                    setDisputeModalOpen(false);
+                  } else {
+                    toast(result.error, "error");
+                  }
+                }}
+              >
+                {disputeBusy ? "Submitting…" : "Submit dispute"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </main>
   );
 }

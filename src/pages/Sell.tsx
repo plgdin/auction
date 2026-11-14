@@ -48,6 +48,21 @@ const emptyForm = {
   shipping: "49",
   allowOffers: true,
   auctionConsent: false,
+  hasFlaws: false,
+  flawsText: "",
+  vintageWearNote: "",
+  chest: "",
+  length: "",
+  shoulder: "",
+  sleeve: "",
+  waist: "",
+  inseam: "",
+  rise: "",
+  insoleLength: "",
+  weightGrams: "500",
+  lengthCm: "25",
+  widthCm: "20",
+  heightCm: "5",
 };
 
 export function SellPage() {
@@ -84,6 +99,21 @@ export function SellPage() {
         shipping: String(editing.shippingFee / 100),
         allowOffers: editing.allowOffers,
         auctionConsent: editing.auctionConsent,
+        hasFlaws: Boolean(editing.hasFlaws),
+        flawsText: Array.isArray(editing.flaws) ? editing.flaws.filter((f) => !f.startsWith("Wear: ")).join(", ") : "",
+        vintageWearNote: editing.flaws?.find((f) => f.startsWith("Wear: "))?.replace("Wear: ", "") || "",
+        chest: editing.measurements?.chest ? String(editing.measurements.chest) : "",
+        length: editing.measurements?.length ? String(editing.measurements.length) : "",
+        shoulder: editing.measurements?.shoulder ? String(editing.measurements.shoulder) : "",
+        sleeve: editing.measurements?.sleeve ? String(editing.measurements.sleeve) : "",
+        waist: editing.measurements?.waist ? String(editing.measurements.waist) : "",
+        inseam: editing.measurements?.inseam ? String(editing.measurements.inseam) : "",
+        rise: editing.measurements?.rise ? String(editing.measurements.rise) : "",
+        insoleLength: editing.measurements?.insole ? String(editing.measurements.insole) : "",
+        weightGrams: editing.weightGrams ? String(editing.weightGrams) : "500",
+        lengthCm: "25",
+        widthCm: "20",
+        heightCm: "5",
       });
       setImages(editing.images);
       setShowForm(true);
@@ -97,6 +127,10 @@ export function SellPage() {
 
   const needsApparelSize = ["Women", "Men", "Designer", "Kids"].includes(form.top);
   const isShoes = form.group.toLowerCase().includes("shoe");
+  const isBottom = ["pants", "jeans", "shorts", "skirts", "trousers", "denim", "bottoms"].some(
+    (k) => form.group.toLowerCase().includes(k) || form.sub.toLowerCase().includes(k),
+  );
+  const isTop = (needsApparelSize || form.top === "Women" || form.top === "Men") && !isShoes && !isBottom;
   const isElectronics = form.top === "Electronics";
   const brandOptions = isElectronics ? ELECTRONICS_BRANDS : CLOTHING_BRANDS;
   const sizeOptions = isShoes ? SHOE_SIZES : APPAREL_SIZES;
@@ -185,6 +219,24 @@ export function SellPage() {
     const brand = form.brand === "Other" ? form.customBrand.trim() : form.brand.trim();
     const category = form.top;
     const subcategory = form.group === "All" ? (form.sub !== "All" && form.sub !== "Other" ? form.sub : undefined) : (form.sub !== "All" ? form.sub : form.group);
+    const measurements: Record<string, number> = {};
+    if (form.chest && !Number.isNaN(Number(form.chest))) measurements.chest = Number(form.chest);
+    if (form.length && !Number.isNaN(Number(form.length))) measurements.length = Number(form.length);
+    if (form.shoulder && !Number.isNaN(Number(form.shoulder))) measurements.shoulder = Number(form.shoulder);
+    if (form.sleeve && !Number.isNaN(Number(form.sleeve))) measurements.sleeve = Number(form.sleeve);
+    if (form.waist && !Number.isNaN(Number(form.waist))) measurements.waist = Number(form.waist);
+    if (form.inseam && !Number.isNaN(Number(form.inseam))) measurements.inseam = Number(form.inseam);
+    if (form.rise && !Number.isNaN(Number(form.rise))) measurements.rise = Number(form.rise);
+    if (form.insoleLength && !Number.isNaN(Number(form.insoleLength))) measurements.insole = Number(form.insoleLength);
+
+    const flawsList: string[] = [];
+    if (form.flawsText.trim()) {
+      flawsList.push(...form.flawsText.split(",").map((s) => s.trim()).filter(Boolean));
+    }
+    if (form.vintageWearNote.trim()) {
+      flawsList.push(`Wear: ${form.vintageWearNote.trim()}`);
+    }
+
     const input = {
       title: form.title,
       description: form.description,
@@ -200,6 +252,13 @@ export function SellPage() {
       shippingFee: Math.round(Number(form.shipping) * 100),
       allowOffers: form.allowOffers,
       auctionConsent: form.auctionConsent,
+      measurements: Object.keys(measurements).length ? measurements : undefined,
+      flaws: flawsList.length ? flawsList : undefined,
+      hasFlaws: form.hasFlaws,
+      weightGrams: form.weightGrams ? Number(form.weightGrams) : 500,
+      lengthCm: form.lengthCm ? Number(form.lengthCm) : 25,
+      widthCm: form.widthCm ? Number(form.widthCm) : 20,
+      heightCm: form.heightCm ? Number(form.heightCm) : 5,
     };
     if (editing) {
       const result = await updateListing(editing.id, input);
@@ -281,7 +340,82 @@ export function SellPage() {
           {form.top === "Books & Media" && <Field label="Format / size" hint="Optional"><input value={form.size} onChange={(e) => update("size", e.target.value)} placeholder="e.g. Paperback" /></Field>}
 
           <Field label="Condition *"><select value={form.condition} onChange={(e) => update("condition", e.target.value)}>{conditions.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+
+          {/* Thrift condition & flaw disclosure */}
+          <div className="sell-option-card">
+            <label className="sell-checkbox-row">
+              <input type="checkbox" checked={form.hasFlaws} onChange={(e) => update("hasFlaws", e.target.checked)} />
+              <span>
+                <strong>Disclose flaws or vintage wear</strong>
+                <em>Honest disclosure eliminates disputes and protects your seller payout.</em>
+              </span>
+            </label>
+            {form.hasFlaws && (
+              <div className="field-row two" style={{ marginTop: "12px" }}>
+                <Field label="Flaw details" hint="e.g. Small pinhole on hem, faint cuff stain">
+                  <input value={form.flawsText} onChange={(e) => update("flawsText", e.target.value)} placeholder="Describe flaws clearly…" />
+                </Field>
+                <Field label="Vintage wear note" hint="e.g. Natural wash patina from 1996">
+                  <input value={form.vintageWearNote} onChange={(e) => update("vintageWearNote", e.target.value)} placeholder="e.g. Authentic vintage fade" />
+                </Field>
+              </div>
+            )}
+          </div>
+
+          {/* Category-aware garment measurements */}
+          {isTop && (
+            <div className="sell-option-card">
+              <div className="sell-card-head">
+                <strong>Garment measurements (cm / inches)</strong>
+                <span>Measured flat. Crucial for vintage sizing.</span>
+              </div>
+              <div className="field-row four">
+                <Field label="Pit-to-pit / Chest"><input value={form.chest} onChange={(e) => update("chest", e.target.value)} placeholder="e.g. 54" /></Field>
+                <Field label="Back length"><input value={form.length} onChange={(e) => update("length", e.target.value)} placeholder="e.g. 70" /></Field>
+                <Field label="Shoulder width"><input value={form.shoulder} onChange={(e) => update("shoulder", e.target.value)} placeholder="e.g. 48" /></Field>
+                <Field label="Sleeve length"><input value={form.sleeve} onChange={(e) => update("sleeve", e.target.value)} placeholder="e.g. 62" /></Field>
+              </div>
+            </div>
+          )}
+
+          {isBottom && (
+            <div className="sell-option-card">
+              <div className="sell-card-head">
+                <strong>Garment measurements (inches / cm)</strong>
+                <span>Measured flat across waistband and inseam.</span>
+              </div>
+              <div className="field-row three">
+                <Field label="Waist (in/cm)"><input value={form.waist} onChange={(e) => update("waist", e.target.value)} placeholder="e.g. 32" /></Field>
+                <Field label="Inseam length"><input value={form.inseam} onChange={(e) => update("inseam", e.target.value)} placeholder="e.g. 30" /></Field>
+                <Field label="Front rise"><input value={form.rise} onChange={(e) => update("rise", e.target.value)} placeholder="e.g. 11" /></Field>
+              </div>
+            </div>
+          )}
+
+          {isShoes && (
+            <div className="sell-option-card">
+              <Field label="Insole length (cm)" hint="Length of footbed from heel to toe.">
+                <input value={form.insoleLength} onChange={(e) => update("insoleLength", e.target.value)} placeholder="e.g. 27.5" />
+              </Field>
+            </div>
+          )}
+
           <Field label="Description *" hint="Mention fit, flaws, measurements, anything a buyer should know."><textarea rows={5} value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Describe it honestly…" /></Field>
+
+          {/* Package details for courier rate and pickup */}
+          <div className="sell-option-card">
+            <div className="sell-card-head">
+              <strong>Package weight & size (for courier pickup)</strong>
+              <span>Used by the courier partner for vehicle assignment and rate verification.</span>
+            </div>
+            <div className="field-row four">
+              <Field label="Est. weight (g)"><input type="number" min={50} value={form.weightGrams} onChange={(e) => update("weightGrams", e.target.value)} placeholder="500" /></Field>
+              <Field label="Length (cm)"><input type="number" min={1} value={form.lengthCm} onChange={(e) => update("lengthCm", e.target.value)} placeholder="25" /></Field>
+              <Field label="Width (cm)"><input type="number" min={1} value={form.widthCm} onChange={(e) => update("widthCm", e.target.value)} placeholder="20" /></Field>
+              <Field label="Height (cm)"><input type="number" min={1} value={form.heightCm} onChange={(e) => update("heightCm", e.target.value)} placeholder="5" /></Field>
+            </div>
+          </div>
+
           <div className="field-row three">
             <Field label="Quantity"><input type="number" min={1} value={form.quantity} onChange={(e) => update("quantity", e.target.value)} inputMode="numeric" /></Field>
             <Field label="Location"><input value={form.location} onChange={(e) => update("location", e.target.value)} /></Field>
@@ -314,7 +448,7 @@ export function SellPage() {
       <aside className="sell-aside">
         <div className="summary-card">
           <h2>Listing preview</h2>
-          <div className="sell-preview"><div className="sell-preview-image">{images[0] ? <img src={images[0]} alt="" /> : <div><ImagePlus size={22} /><span>No photo yet</span></div>}</div><div className="sell-preview-copy"><span>{form.condition} · {form.top}{form.sub !== "All" ? ` · ${form.sub}` : ""}</span><strong>{form.title || "Untitled listing"}</strong><em>{form.price ? formatMoney(Math.round(Number(form.price) * 100)) : "₹—"}</em></div></div>
+          <div className="sell-preview"><div className="sell-preview-image">{images[0] ? <img src={images[0]} alt="" /> : <div><ImagePlus size={22} /><span>No photo yet</span></div>}</div><div className="sell-preview-copy"><span>{form.condition} · {form.top}{form.sub !== "All" ? ` · ${form.sub}` : ""}{form.hasFlaws ? " · Disclosed flaws" : ""}</span><strong>{form.title || "Untitled listing"}</strong><em>{form.price ? formatMoney(Math.round(Number(form.price) * 100)) : "₹—"}</em></div></div>
           <p className="sell-aside-note">{db.settings.sellerAutoApprove ? "Your listing is published to the live marketplace. Admins can still review reports." : "New listings wait for an admin review before going live."}</p>
           <div className="publish-steps">
             <span className="publish-steps-title">After you publish</span>
