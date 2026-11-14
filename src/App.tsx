@@ -263,47 +263,166 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
   const { db, favorites, toggleFavorite } = useStore();
   const saved = db.products.filter((product) => favorites.includes(product.id));
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   return (
-    <Modal title="Saved finds" onClose={onClose} drawer>
-      <div className="saved-overlay">
-        {saved.length ? (
-          saved.map((product) => (
-            <div key={product.id} className="saved-row">
-              <Link href={`#/product/${product.id}`} onClick={onClose} className="saved-image">
-                <img src={product.images[0]} alt={product.title} />
-              </Link>
-              <div>
-                <Link href={`#/product/${product.id}`} onClick={onClose}>
-                  {product.title}
-                </Link>
-                <span>
-                  {product.condition} · {formatMoney(product.askingPrice)}
-                </span>
-              </div>
-              <button
-                type="button"
-                aria-label={`Remove ${product.title} from saved`}
-                onClick={() => {
-                  toggleFavorite(product.id);
-                  toast("Removed from saved.");
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex justify-end">
+        {/* Scrim Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={onClose}
+          className="fixed inset-0 bg-[#25170F]/60 backdrop-blur-md"
+        />
+
+        {/* Drawer Window */}
+        <motion.div
+          initial={{ x: "100%", opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: "100%", opacity: 0 }}
+          transition={{ type: "spring", stiffness: 350, damping: 32 }}
+          className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-[#D5C2A5] shadow-[-20px_0_60px_rgba(40,24,14,0.35)]"
+          style={{ backgroundColor: "#FAF4EB" }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-[#E8DCCB] px-6 py-5 bg-[#FAF4EB]">
+            <div className="flex items-center gap-2.5">
+              <Heart size={18} className="text-[#8C5E3C] fill-[#8C5E3C]/20" />
+              <h2
+                className="text-xl sm:text-2xl tracking-tight select-none inline-flex items-baseline gap-1.5"
+                style={{
+                  fontFamily: '"Gumela Arabic", serif',
+                  fontWeight: 800,
+                  color: "#493022",
+                  textTransform: "lowercase",
+                  WebkitTextStroke: "0.6px #493022",
+                  paintOrder: "stroke fill",
                 }}
               >
-                <X size={14} />
+                saved finds
+              </h2>
+              {saved.length > 0 && (
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#EBDDC8] text-[#493022]">
+                  {saved.length}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[#6D533E] hover:bg-[#EBDDC8] hover:text-[#332417] transition-all"
+              aria-label="Close saved drawer"
+            >
+              <X size={18} strokeWidth={2.4} />
+            </button>
+          </div>
+
+          {/* Drawer Body */}
+          <div className="flex-1 overflow-y-auto p-5 sm:p-6 scrollbar-thin flex flex-col">
+            {saved.length ? (
+              <div className="space-y-3 flex-1">
+                {saved.map((product) => (
+                  <div
+                    key={product.id}
+                    className="flex items-center gap-3.5 p-3 rounded-2xl bg-[#FFFDF9] border border-[#E8DCCB] transition-all hover:border-[#CBB693] hover:shadow-sm group"
+                    style={{ backgroundColor: "#FFFDF9", borderColor: "#E8DCCB" }}
+                  >
+                    <Link
+                      href={`#/product/${product.id}`}
+                      onClick={onClose}
+                      className="h-14 w-14 rounded-xl overflow-hidden border border-[#D5C2A5]/70 shrink-0 bg-[#F4E9D8]"
+                    >
+                      <img src={product.images[0]} alt={product.title} className="h-full w-full object-cover" />
+                    </Link>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={`#/product/${product.id}`}
+                        onClick={onClose}
+                        className="block text-sm font-semibold truncate hover:text-[#8C5E3C] transition-colors"
+                        style={{ color: "#332417" }}
+                      >
+                        {product.title}
+                      </Link>
+                      <p className="text-xs text-[#8C745A] mt-0.5">
+                        {product.condition} ·{" "}
+                        <span className="font-serif font-semibold" style={{ color: "#493022" }}>
+                          {formatMoney(product.askingPrice)}
+                        </span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${product.title} from saved`}
+                      onClick={() => {
+                        toggleFavorite(product.id);
+                        toast("Removed from saved.");
+                      }}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-[#8C745A] hover:bg-[#F3E7D3] hover:text-[#9A3412] transition-colors"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="my-auto flex flex-col items-center justify-center py-12 px-4 text-center">
+                <div
+                  className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[#DECDB4] shadow-sm"
+                  style={{ backgroundColor: "#F3E7D3" }}
+                >
+                  <Heart size={28} className="text-[#8C5E3C]" />
+                </div>
+                <h3 className="font-serif text-2xl font-normal text-[#332417] mb-1.5">
+                  Nothing saved yet.
+                </h3>
+                <p className="text-xs sm:text-sm text-[#8C745A] max-w-[260px] leading-relaxed mb-6">
+                  Tap the heart on any piece you love to keep it here for later.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate("#/products");
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl py-3 px-6 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
+                  style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
+                >
+                  <span>Browse the rail</span>
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Drawer Footer if items exist */}
+          {saved.length > 0 && (
+            <div className="border-t border-[#E8DCCB] p-4 bg-[#FAF4EB]">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate("#/products");
+                }}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 px-4 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
+                style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
+              >
+                <span>Browse more pieces</span>
+                <ArrowRight size={16} />
               </button>
             </div>
-          ))
-        ) : (
-          <div className="empty-state drawer-empty">
-            <Heart size={32} />
-            <h2>Nothing saved yet.</h2>
-            <p>Tap the heart on a listing to keep it here for later.</p>
-            <Link href="#/products" className="button button-olive" onClick={onClose}>
-              Browse the rail
-            </Link>
-          </div>
-        )}
+          )}
+        </motion.div>
       </div>
-    </Modal>
+    </AnimatePresence>
   );
 }
 
