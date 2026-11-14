@@ -63,6 +63,13 @@ export interface Product {
   views: number;
   tag?: string;
   color: string;
+  measurements?: Record<string, number>;
+  flaws?: string[];
+  hasFlaws?: boolean;
+  gender?: string;
+  fit?: string;
+  countryOfOrigin?: string;
+  weightGrams?: number;
   moderationNote?: string;
   rejectionReason?: string;
 }

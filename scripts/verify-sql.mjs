@@ -18,6 +18,10 @@ const auction = readFileSync(
   "supabase/migrations/20260103000000_auction_engine.sql",
   "utf8",
 );
+const thrift = readFileSync(
+  "supabase/migrations/20260104000000_thrift_backend_gaps.sql",
+  "utf8",
+);
 
 await db.exec(base);
 
@@ -68,6 +72,7 @@ await db.exec(`
 `);
 
 await db.exec(auction);
+await db.exec(thrift);
 
 await db.exec(`
   set test.role = 'service_role';

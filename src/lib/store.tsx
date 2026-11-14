@@ -187,6 +187,8 @@ interface StoreValue {
   }) => Promise<{ ok: true; orderIds: string[] } | { ok: false; error: string }>;
   payOrders: (orderIds: string[]) => Promise<ActionResult>;
   cancelOrder: (orderId: string) => Promise<ActionResult>;
+  acceptOrder: (orderId: string) => Promise<ActionResult>;
+  openDispute: (orderId: string, reason: string, description: string, photos?: string[]) => Promise<ActionResult>;
   requestReturn: (orderId: string) => Promise<ActionResult>;
   addReview: (orderId: string, rating: number, comment: string) => Promise<ActionResult>;
   advanceShipment: (
@@ -281,6 +283,13 @@ function mapProduct(row: Row): Product {
     views: row.views ?? 0,
     tag: row.tag ?? undefined,
     color: row.color ?? "#e8e6df",
+    measurements: row.measurements ?? {},
+    flaws: row.flaws ?? [],
+    hasFlaws: Boolean(row.has_flaws),
+    gender: row.gender ?? undefined,
+    fit: row.fit ?? undefined,
+    countryOfOrigin: row.country_of_origin ?? undefined,
+    weightGrams: row.weight_grams ?? undefined,
     moderationNote: row.moderation_note ?? undefined,
     rejectionReason: row.moderation_note ?? undefined,
   };
@@ -1211,6 +1220,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const acceptOrder = useCallback(
+    async (orderId: string): Promise<ActionResult> => {
+      try {
+        const { error } = await supabase.rpc("accept_order", { p_order_id: orderId });
+        if (error) return { ok: false, error: messageOf(error) };
+        await refresh();
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: messageOf(error) };
+      }
+    },
+    [refresh],
+  );
+
+  const openDispute = useCallback(
+    async (
+      orderId: string,
+      reason: string,
+      description: string,
+      photos: string[] = [],
+    ): Promise<ActionResult> => {
+      try {
+        const { error } = await supabase.rpc("open_dispute", {
+          p_order_id: orderId,
+          p_reason: reason,
+          p_description: description,
+          p_photo_evidence: photos,
+        });
+        if (error) return { ok: false, error: messageOf(error) };
+        await refresh();
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: messageOf(error) };
+      }
+    },
+    [refresh],
+  );
+
   const requestReturn = useCallback(
     async (orderId: string): Promise<ActionResult> => {
       try {
@@ -1815,6 +1862,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     createOrders,
     payOrders,
     cancelOrder,
+    acceptOrder,
+    openDispute,
     requestReturn,
     addReview,
     advanceShipment,
