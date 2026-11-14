@@ -109,32 +109,35 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
           style={{ backgroundColor: "#FAF4EB" }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-[#E8DCCB] px-6 py-4 bg-[#FAF4EB]">
-            <div>
-              <h2
-                className="text-2xl sm:text-3xl tracking-tight select-none"
-                style={{
-                  fontFamily: '"Gumela Arabic", serif',
-                  fontWeight: 800,
-                  color: "#493022",
-                  WebkitTextStroke: "0.8px #493022",
-                  paintOrder: "stroke fill",
-                }}
-              >
-                Search lelam
-              </h2>
-              <p className="text-xs text-[#8C745A] mt-0.5">
-                Discover archive denim, knitwear, and vintage pieces
-              </p>
-            </div>
+          <div className="relative pt-6 pb-2 px-6 text-center">
             <button
               type="button"
               onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-[#6D533E] hover:bg-[#EBDDC8] hover:text-[#332417] transition-all"
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[#6D533E] hover:bg-[#EBDDC8] hover:text-[#332417] transition-all"
               aria-label="Close search"
             >
               <X size={18} strokeWidth={2.4} />
             </button>
+
+            <h2 className="text-xl sm:text-2xl tracking-tight select-none inline-flex items-baseline justify-center gap-1.5">
+              <span className="text-[#6D533E] font-medium font-sans">
+                search on
+              </span>
+              <span
+                style={{
+                  fontFamily: '"Gumela Arabic", serif',
+                  fontWeight: 800,
+                  textTransform: "lowercase",
+                  color: "#493022",
+                  WebkitTextStroke: "0.8px #493022",
+                  paintOrder: "stroke fill",
+                  fontSize: "1.25em",
+                  lineHeight: 1,
+                }}
+              >
+                lelam
+              </span>
+            </h2>
           </div>
 
           <div className="p-5 sm:p-6 space-y-5">
