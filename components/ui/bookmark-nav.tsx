@@ -88,26 +88,25 @@ function BookmarkSvgBackdrop({
 }) {
   const halfW = width / 2;
   const innerInset = 4;
-  const bleedTop = -32; // Extends paper well above top edge
+  const topBleed = 64; // Extends paper well above button top to eliminate any header gap
+  const totalH = height + topBleed;
 
   // Outer paper path extending upward past top edge with bottom V-notch
-  const outerPath = `M 0 ${bleedTop} L ${width} ${bleedTop} L ${width} ${height} L ${halfW} ${
-    height - notchDepth
-  } L 0 ${height} Z`;
+  const outerPath = `M 0 0 L ${width} 0 L ${width} ${totalH} L ${halfW} ${
+    totalH - notchDepth
+  } L 0 ${totalH} Z`;
 
-  // Inner dashed stitch path precisely tracking the V-notch and running up the sides
-  const innerStitchPath = `M ${innerInset} ${bleedTop} L ${
-    width - innerInset
-  } ${bleedTop} L ${width - innerInset} ${height - innerInset} L ${halfW} ${
-    height - notchDepth - innerInset
-  } L ${innerInset} ${height - innerInset} Z`;
+  // Inner dashed stitch path precisely tracking the V-notch and running up the sides into the header
+  const innerStitchPath = `M ${innerInset} 0 L ${innerInset} ${totalH - innerInset} L ${halfW} ${
+    totalH - notchDepth - innerInset
+  } L ${width - innerInset} ${totalH - innerInset} L ${width - innerInset} 0`;
 
   const creamGradId = `bm-cream-${uniqueId}`;
   const brownGradId = `bm-brown-${uniqueId}`;
 
   return (
     <svg
-      viewBox={`0 ${bleedTop} ${width} ${height - bleedTop}`}
+      viewBox={`0 0 ${width} ${totalH}`}
       preserveAspectRatio="none"
       className="absolute inset-0 w-full h-full pointer-events-none select-none overflow-visible"
       style={{
@@ -296,11 +295,11 @@ export function BookmarkNav({
           const isActive = localActive === index;
 
           // Resting (not interacted) vs Pulled-down (interacted) levels:
-          // In resting state: moved UP (-52px) so icons are tucked completely above the viewport,
-          // and ONLY the text labels (positioned a bit down towards the notch) and V-notches peek down.
-          // In pulled-down state: slides down (+12px), revealing the full paper bookmarks & icons with playful animations.
-          const tuckedY = -52;
-          const pulledY = 12;
+          // Unsquashed natural 1:1 scale (scaleY: 1, scaleX: 1) so font typography is clean, crisp, and never squished.
+          // Tucked state sits at -42px so bookmarks hang down with comfortable exposed length,
+          // while text labels ("Home", "Shop", "Auctions") and V-notches hang naturally in full view.
+          const tuckedY = -42;
+          const pulledY = 8;
 
           return (
             <motion.div
@@ -312,11 +311,11 @@ export function BookmarkNav({
               initial={false}
               animate={
                 shouldReduceMotion
-                  ? { y: isExpanded ? pulledY : tuckedY }
+                  ? { y: isExpanded ? pulledY : tuckedY, scaleY: 1, scaleX: 1 }
                   : {
                       y: isExpanded ? pulledY : tuckedY,
-                      scaleY: isExpanded ? [0.72, 1.07, 0.98, 1] : [1, 0.68, 0.72],
-                      scaleX: isExpanded ? [0.92, 0.96, 1.02, 1] : [1, 0.94, 0.92],
+                      scaleY: isExpanded ? [0.96, 1.04, 0.99, 1] : [1, 1.03, 0.98, 1],
+                      scaleX: isExpanded ? [1.02, 0.98, 1.01, 1] : [1, 0.98, 1.01, 1],
                       rotate: isExpanded ? swingRotations[index] : 0,
                       transition: {
                         type: "spring",
@@ -373,8 +372,8 @@ export function BookmarkNav({
                 }}
                 className="group relative flex flex-col items-center cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#493022] focus-visible:ring-offset-2 rounded-t-sm w-[56px] h-[92px] sm:w-[68px] sm:h-[100px]"
               >
-                {/* Bookmark Paper SVG backdrop with top edge extending seamlessly up */}
-                <div className="absolute inset-0 w-full h-full z-20">
+                {/* Bookmark Paper SVG backdrop with top edge extending seamlessly up into the header */}
+                <div className="absolute -top-16 inset-x-0 bottom-0 z-20 pointer-events-none">
                   <BookmarkSvgBackdrop
                     width={68}
                     height={100}
@@ -384,45 +383,78 @@ export function BookmarkNav({
                   />
                 </div>
 
-                {/* Bookmark Content: Text positioned down towards the notch; Icon sits above text */}
-                <div className="absolute inset-0 z-25 flex flex-col items-center justify-end pb-3 sm:pb-3.5">
-                  {/* Icon with playful light animation when pulled down (hidden when resting) */}
-                  <motion.div
-                    animate={
-                      isExpanded && !shouldReduceMotion
-                        ? index === 0
-                          ? { scale: [1, 1.2, 0.94, 1], y: [0, -3, 1, 0] } // Home gentle bounce
-                          : index === 1
-                          ? { rotate: [0, -14, 10, -4, 0], scale: [1, 1.12, 1] } // Shop tote bag swing
-                          : { rotate: [0, -24, 6, -2, 0], scale: [1, 1.14, 1] } // Auctions gavel tap
-                        : { scale: 1, rotate: 0, y: 0 }
-                    }
-                    transition={{
-                      duration: 0.45,
-                      delay: staggerDelays[index] + 0.12,
-                      ease: "easeOut",
-                    }}
-                    style={{
-                      transformOrigin: index === 2 ? "bottom left" : "center",
-                      color: isActive ? "#F7EDDB" : "#493022",
-                    }}
-                    className="transition-colors duration-200 mb-1.5 sm:mb-2"
-                  >
-                    <ItemIcon size={18} strokeWidth={2.2} className="sm:hidden" />
-                    <ItemIcon size={21} strokeWidth={2.2} className="hidden sm:block" />
-                  </motion.div>
+                {/* Bookmark Content:
+                    - Tucked state: Only text label is visible peeking out from under header edge; icon is hidden (opacity 0).
+                    - Pulled-down state: Text smoothly transitions out (opacity 0, subtle drift & dissolve);
+                                         Only the icon is displayed, centered on the bookmark body with playful spring physics.
+                */}
+                <div className="absolute inset-0 z-25 pointer-events-none">
+                  {/* Hero Icon - centered in bookmark body above the bottom notch; visible ONLY in pulled-down state */}
+                  <div className="absolute inset-x-0 top-0 bottom-4 sm:bottom-5 flex items-center justify-center">
+                    <motion.div
+                      animate={
+                        isExpanded && !shouldReduceMotion
+                          ? index === 0
+                            ? { opacity: 1, scale: [0.55, 1.18, 0.94, 1], y: [6, -3, 1, 0] } // Home gentle bounce
+                            : index === 1
+                            ? { opacity: 1, rotate: [0, -14, 10, -4, 0], scale: [0.55, 1.14, 1], y: [6, 0] } // Shop tote bag swing
+                            : { opacity: 1, rotate: [0, -22, 6, -2, 0], scale: [0.55, 1.15, 1], y: [6, 0] } // Auctions gavel tap
+                          : {
+                              opacity: isExpanded ? 1 : 0,
+                              scale: isExpanded ? 1 : 0.65,
+                              rotate: 0,
+                              y: isExpanded ? 0 : -8,
+                            }
+                      }
+                      transition={{
+                        duration: isExpanded ? 0.36 : 0.18,
+                        delay: isExpanded ? staggerDelays[index] + 0.08 : 0,
+                        ease: isExpanded ? "easeOut" : "easeIn",
+                      }}
+                      style={{
+                        transformOrigin: index === 2 ? "bottom left" : "center",
+                        color: isActive ? "#F7EDDB" : "#493022",
+                      }}
+                      className="transition-colors duration-200"
+                    >
+                      <ItemIcon size={21} strokeWidth={2.2} className="sm:hidden" />
+                      <ItemIcon size={25} strokeWidth={2.2} className="hidden sm:block" />
+                    </motion.div>
+                  </div>
 
-                  {/* Text Label - sits a little bit down towards the V-notch */}
-                  <span
-                    className="text-[11px] sm:text-[12.5px] leading-tight tracking-[-0.01em] transition-colors duration-200"
-                    style={{
-                      fontFamily: '"DM Sans", system-ui, sans-serif',
-                      fontWeight: isActive ? 800 : 700,
-                      color: isActive ? "#F7EDDB" : "#493022",
-                    }}
+                  {/* Text Label - centered vertically within the visible tucked bookmark tab; smoothly transitions out when pulled down */}
+                  <div
+                    className={`absolute inset-x-0 flex items-center justify-center ${
+                      index === 2
+                        ? "bottom-[18px] sm:bottom-[22.5px]"
+                        : "bottom-[19px] sm:bottom-[23.5px]"
+                    }`}
                   >
-                    {item.label}
-                  </span>
+                    <motion.span
+                      animate={
+                        isExpanded
+                          ? shouldReduceMotion
+                            ? { opacity: 0 }
+                            : { opacity: 0, y: 7, scale: 0.85, filter: "blur(1.2px)" }
+                          : shouldReduceMotion
+                          ? { opacity: 1 }
+                          : { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }
+                      }
+                      transition={{
+                        duration: isExpanded ? 0.18 : 0.22,
+                        delay: isExpanded ? 0 : 0.12,
+                        ease: "easeOut",
+                      }}
+                      className="text-[11.5px] sm:text-[13px] leading-tight tracking-[0.01em] transition-colors duration-200 select-none whitespace-nowrap"
+                      style={{
+                        fontFamily: '"DM Sans", system-ui, -apple-system, sans-serif',
+                        fontWeight: isActive ? 800 : 700,
+                        color: isActive ? "#F7EDDB" : "#493022",
+                      }}
+                    >
+                      {item.label}
+                    </motion.span>
+                  </div>
                 </div>
               </button>
             </motion.div>
