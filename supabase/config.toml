@@ -1,0 +1,15 @@
+project_id = "lelam-co"
+
+[functions.razorpay-create-order]
+verify_jwt = true
+
+[functions.razorpay-verify-payment]
+verify_jwt = true
+
+# Razorpay cannot send a Supabase JWT; the webhook verifies its own HMAC.
+[functions.razorpay-webhook]
+verify_jwt = false
+
+# Secured with the MAINTENANCE_SECRET header instead of a Supabase JWT.
+[functions.maintenance]
+verify_jwt = false

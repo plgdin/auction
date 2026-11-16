@@ -63,6 +63,13 @@ export interface Product {
   views: number;
   tag?: string;
   color: string;
+  measurements?: Record<string, number>;
+  flaws?: string[];
+  hasFlaws?: boolean;
+  gender?: string;
+  fit?: string;
+  countryOfOrigin?: string;
+  weightGrams?: number;
   moderationNote?: string;
   rejectionReason?: string;
 }
@@ -186,6 +193,7 @@ export interface Order {
   total: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  paymentMethod?: "upi" | "card" | "cod";
   source: "buy_now" | "cart" | "offer" | "auction";
   offerId?: string;
   auctionId?: string;
@@ -276,6 +284,34 @@ export interface PlatformSettings {
   serviceablePrefixes: string[];
 }
 
+export interface OrderDispute {
+  id: string;
+  orderId: string;
+  buyerId: string;
+  sellerId: string;
+  reason: string;
+  description: string;
+  photoEvidence: string[];
+  unboxingVideoUrl?: string;
+  status: "opened" | "seller_response" | "under_review" | "approved_refund" | "approved_return" | "rejected";
+  sellerResponse?: string;
+  adminNotes?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface SecondChanceOffer {
+  id: string;
+  auctionId: string;
+  productId: string;
+  sellerId: string;
+  buyerId: string;
+  amountPaise: number;
+  status: "pending" | "accepted" | "declined" | "expired";
+  expiresAt: string;
+  createdAt: string;
+}
+
 export interface CartLine {
   productId: string;
   quantity: number;
@@ -297,4 +333,6 @@ export interface Database {
   sessionUserId: string | null;
   carts: Record<string, CartLine[]>;
   favorites: Record<string, string[]>;
+  disputes?: OrderDispute[];
+  secondChanceOffers?: SecondChanceOffer[];
 }

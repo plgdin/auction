@@ -7,12 +7,16 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "playwright test"
+    "test": "playwright test",
+    "seed": "node scripts/seed.mjs",
+    "verify:sql": "node scripts/verify-sql.mjs",
+    "worker:auction": "tsx scripts/auction-worker.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.15",
     "@radix-ui/react-slot": "^1.2.5",
     "@studio-freight/lenis": "^1.0.42",
+    "@supabase/supabase-js": "^2.119.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
