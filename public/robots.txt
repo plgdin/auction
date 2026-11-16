@@ -1,0 +1,5 @@
+# lelam.co — pre-loved marketplace demo for Trivandrum
+User-agent: *
+Allow: /
+
+Sitemap: https://lelam.co/sitemap.xml

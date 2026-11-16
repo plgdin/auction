@@ -74,12 +74,10 @@ export function LelamNavbar({
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none">
-      <div className="lelam-header-scrim" />
-
-      {/* Top Paper Craft Torn Edge — sits in a layer below the navbar, logo, and action buttons */}
+      {/* Top Paper Craft Torn Edge — sits above the bookmark anchors, seamlessly tucking them into the top edge */}
       <div
         className="paper-craft-top absolute top-0 left-0 right-0 w-full pointer-events-none select-none overflow-hidden"
-        style={{ height: "32px", zIndex: 25 }}
+        style={{ height: "32px", zIndex: 35 }}
         aria-hidden="true"
       >
         <img
@@ -90,8 +88,8 @@ export function LelamNavbar({
         />
       </div>
 
-      {/* Animated Hanging Bookmark Navigation — hanging from top-center across the torn paper edge */}
-      <div className="absolute left-1/2 top-0 -translate-x-1/2 pointer-events-auto z-40">
+      {/* Animated Hanging Bookmark Navigation — emerging seamlessly from underneath the torn paper edge */}
+      <div className="absolute left-1/2 top-0 -translate-x-1/2 pointer-events-auto z-30">
         <BookmarkNav
           items={navItems}
           active={activeIndex}
@@ -99,10 +97,10 @@ export function LelamNavbar({
         />
       </div>
 
-      <div className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-auto z-30">
+      <div className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-none z-40">
         <a
           href="#top"
-          className="flex items-center text-[#493022] brand-logo no-underline shrink-0"
+          className="flex items-center text-[#493022] brand-logo no-underline shrink-0 pointer-events-auto"
           aria-label="lelam.co home"
           onClick={(event) => {
             event.preventDefault();
@@ -126,7 +124,7 @@ export function LelamNavbar({
           </span>
         </a>
 
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 pointer-events-auto">
           <button
             type="button"
             onClick={onOpenSearch}
@@ -165,7 +163,7 @@ export function LelamNavbar({
               type="button"
               onClick={() => setAccountOpen((open) => !open)}
               className="lelam-action-btn lelam-account-btn"
-              aria-label={user ? `Account menu for ${user.name}` : "Sign in"}
+              aria-label={`${user ? `Account menu for ${user.name}` : "Sign in"}${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
               aria-expanded={accountOpen}
               title={user ? "Account" : "Sign in"}
             >

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Check, ImagePlus, Info, LockKeyhole, Plus, ShieldCheck, Upload, X } from "lucide-react";
 import { Link, navigate } from "../components/Link";
-import { Field, PageHeader } from "../components/Ui";
+import { Field, PageHeader, SelectMenu } from "../components/Ui";
 import { CATEGORIES } from "../lib/categories";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
@@ -372,25 +372,18 @@ export function SellFormPage() {
                   />
                 </Field>
                 <Field label="Category">
-                  <select value={form.category} onChange={(event) => update("category", event.target.value)}>
-                    {CATEGORIES.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
+                  <SelectMenu
+                    value={form.category}
+                    options={CATEGORIES.map((category) => ({ value: category, label: category }))}
+                    onChange={(value) => update("category", value)}
+                  />
                 </Field>
                 <Field label="Condition">
-                  <select
+                  <SelectMenu
                     value={form.condition}
-                    onChange={(event) => update("condition", event.target.value)}
-                  >
-                    {conditions.map((condition) => (
-                      <option key={condition} value={condition}>
-                        {condition}
-                      </option>
-                    ))}
-                  </select>
+                    options={conditions.map((condition) => ({ value: condition, label: condition }))}
+                    onChange={(value) => update("condition", value)}
+                  />
                 </Field>
               </div>
 

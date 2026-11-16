@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Gavel, Pencil } from "lucide-react";
 import { Link } from "../../components/Link";
 import { Modal } from "../../components/Modal";
-import { StatusPill, EmptyState } from "../../components/Ui";
+import { EmptyState, ScheduleDateTime, StatusPill } from "../../components/Ui";
 import { formatMoney } from "../../lib/format";
 import { auctionStartingPrice } from "../../lib/sellerMath";
 import { useStore } from "../../lib/store";
@@ -51,13 +51,12 @@ export function InventoryTab() {
   return (
     <div className="dashboard-section">
       <div className="inventory-toolbar">
-        <div className="inventory-chips" role="tablist" aria-label="Filter listings">
+        <div className="inventory-chips" role="group" aria-label="Filter listings">
           {FILTERS.map((id) => (
             <button
               key={id}
               type="button"
-              role="tab"
-              aria-selected={filter === id}
+              aria-pressed={filter === id}
               className={`content-chip ${filter === id ? "is-active" : ""}`}
               onClick={() => setFilter(id)}
             >
@@ -189,10 +188,9 @@ export function InventoryTab() {
             <div className="auction-modal-row">
               <label>
                 <span>Opens</span>
-                <input
-                  type="datetime-local"
+                <ScheduleDateTime
                   value={auctionStart}
-                  onChange={(event) => setAuctionStart(event.target.value)}
+                  onChange={setAuctionStart}
                 />
               </label>
               <button

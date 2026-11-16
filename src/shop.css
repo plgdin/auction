@@ -4,11 +4,11 @@
 
 .shop-page {
   --shop-ink: #3a2a1b;
-  --shop-muted: #857058;
+  --shop-muted: #756147;
   --shop-line: #d3c0a2;
   --shop-brown: #7b5737;
   --shop-olive: #4d5434;
-  --shop-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --shop-serif: "DM Serif Display", Georgia, "Times New Roman", serif;
   --shop-paper: #f7edda;
 
   width: 100%;
@@ -58,7 +58,7 @@
   position: absolute;
   inset: 0;
   background-color: #F8EEDB;
-  background-image: url("/images/Warm Ivory Handmade Paper Texture.png");
+  background-image: url("/images/warm-ivory-paper.jpg");
   background-size: 350px auto;
   filter: url(#filter-deckle-tear);
   z-index: 0;
@@ -609,7 +609,7 @@
   margin: 3px 0 0;
   overflow: hidden;
   font: 400 10.5px/1.3 "DM Sans", sans-serif;
-  color: #8b745a;
+  color: #756147;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

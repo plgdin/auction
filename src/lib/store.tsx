@@ -80,7 +80,7 @@ function loadDatabase(): Database {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Database;
-      if (parsed.version === 1) return parsed;
+      if (parsed.version === 1 || parsed.version === 2) return parsed;
     }
   } catch {
     /* fall through to a clean seed */
@@ -563,7 +563,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (event.key !== STORAGE_KEY || !event.newValue) return;
       try {
         const parsed = JSON.parse(event.newValue) as Database;
-        if (parsed.version === 1) {
+        if (parsed.version === 1 || parsed.version === 2) {
           dbRef.current = parsed;
           setDb(parsed);
         }

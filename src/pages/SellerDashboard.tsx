@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Link, navigate } from "../components/Link";
 import { Countdown } from "../components/Countdown";
-import { EmptyState, StatusPill, Tabs } from "../components/Ui";
+import { EmptyState, ScheduleDateTime, SelectMenu, StatusPill, Tabs } from "../components/Ui";
 import { formatDate, formatMoney, timeAgo } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
@@ -683,22 +683,17 @@ export function SellerDashboardPage() {
                                     ? " · suggested next: Pickup scheduled"
                                     : ""}
                               </span>
-                              <select
+                              <SelectMenu
                                 value={nextStatus}
-                                onChange={(event) =>
+                                placeholder="Choose a status"
+                                options={shipmentOptions}
+                                onChange={(value) =>
                                   setShipmentDraft((previous) => ({
                                     ...previous,
-                                    [order.id]: event.target.value,
+                                    [order.id]: value,
                                   }))
                                 }
-                              >
-                                <option value="">Choose a status</option>
-                                {shipmentOptions.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
+                              />
                             </label>
                             <button
                               type="button"
@@ -766,26 +761,23 @@ export function SellerDashboardPage() {
               <div className="auction-schedule-form">
                 <label>
                   <span>Listing</span>
-                  <select
+                  <SelectMenu
                     value={auctionProduct}
-                    onChange={(event) => setAuctionProduct(event.target.value)}
-                  >
-                    <option value="">Choose a listing</option>
-                    {myProducts
+                    placeholder="Choose a listing"
+                    options={myProducts
                       .filter((product) => product.status === "active")
-                      .map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.title} · {formatMoney(product.askingPrice)}
-                        </option>
-                      ))}
-                  </select>
+                      .map((product) => ({
+                        value: product.id,
+                        label: `${product.title} · ${formatMoney(product.askingPrice)}`,
+                      }))}
+                    onChange={setAuctionProduct}
+                  />
                 </label>
                 <label>
                   <span>Starts</span>
-                  <input
-                    type="datetime-local"
+                  <ScheduleDateTime
                     value={auctionStart}
-                    onChange={(event) => setAuctionStart(event.target.value)}
+                    onChange={setAuctionStart}
                   />
                 </label>
                 <button

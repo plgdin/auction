@@ -156,7 +156,8 @@ const HWF_CSS = `
 .hwf-col h3 { margin: 0; font: inherit; opacity: .4; font-weight: 500; }
 .hwf-col ul { list-style: none; margin: 0; padding: 0; }
 .hwf-col a, .hwf-up {
-  color: inherit; text-decoration: none; opacity: .78; background: none; border: 0; padding: 0;
+  color: inherit; text-decoration: none; opacity: .78; background: none; border: 0;
+  display: inline-flex; align-items: center; min-height: 24px;
   font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer;
   background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1px;
   background-repeat: no-repeat; background-position: 0 100%; transition: opacity .25s ease, background-size .35s cubic-bezier(.2,.7,.1,1);
