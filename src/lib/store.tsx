@@ -10,8 +10,17 @@ import {
 } from "react";
 import { createSeedDatabase } from "./seed";
 import { supabase, PRODUCT_IMAGE_BUCKET } from "./supabase";
+import {
+  captureRef,
+  codeForUser,
+  findAffiliateByCode,
+  getStoredRef,
+  normaliseCode,
+} from "./affiliate";
 import type {
   Address,
+  AffiliateAccount,
+  AffiliateCommission,
   Auction,
   AuctionFinancial,
   CartLine,
@@ -76,16 +85,19 @@ function clone(db: Database): Database {
 }
 
 function loadDatabase(): Database {
+  const seeded = createSeedDatabase();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Database;
-      if (parsed.version === 1 || parsed.version === 2) return parsed;
+      if (parsed.version === 1 || parsed.version === 2) {
+        // Older demo saves may miss newer settings keys.
+        return { ...parsed, settings: { ...seeded.settings, ...parsed.settings } };
+      }
     }
   } catch {
     /* fall through to a clean seed */
   }
-  const seeded = createSeedDatabase();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
   } catch {
@@ -207,6 +219,104 @@ function createOrder(
   };
   next.orders.unshift(order);
   return order;
+}
+
+function ensureAffiliateAccounts(next: Database): boolean {
+  const accounts = next.affiliates ?? [];
+  let changed = false;
+
+  for (const user of next.users) {
+    if (accounts.some((account) => account.userId === user.id)) continue;
+    let code = codeForUser(user.id);
+    while (accounts.some((account) => account.code === code)) {
+      code = `${code.slice(0, 16)}${Math.floor(Math.random() * 90 + 10)}`;
+    }
+    accounts.push({
+      id: `aff-${user.id}`,
+      userId: user.id,
+      name: user.name,
+      code,
+      kind: "creator",
+      email: user.email,
+      commissionRate: (next.settings.affiliateCommissionPct || 5) / 100,
+      status: "active",
+      createdAt: user.joinedAt,
+    });
+    changed = true;
+  }
+
+  if (changed) next.affiliates = accounts;
+  return changed;
+}
+
+function affiliateAccount(next: Database, id: string | undefined) {
+  if (!id) return null;
+  return (next.affiliates ?? []).find((account) => account.id === id) ?? null;
+}
+
+function creditAffiliate(next: Database, order: Order): void {
+  const buyer = next.users.find((item) => item.id === order.buyerId);
+  const account = affiliateAccount(next, buyer?.referredBy);
+  if (!account || account.status !== "active") return;
+
+  const existing = next.affiliateCommissions ?? [];
+  if (existing.some((entry) => entry.orderId === order.id)) return;
+
+  const amount = Math.floor(order.subtotal * account.commissionRate);
+  if (amount <= 0) return;
+
+  const commission: AffiliateCommission = {
+    id: uid("ac"),
+    affiliateId: account.id,
+    orderId: order.id,
+    buyerId: order.buyerId,
+    subtotal: order.subtotal,
+    rate: account.commissionRate,
+    amount,
+    status: "pending",
+    returnWindowDays: next.settings.returnWindowDays,
+    createdAt: nowIso(),
+  };
+  next.affiliateCommissions = [...existing, commission];
+}
+
+function voidAffiliateForOrder(next: Database, orderId: string): boolean {
+  let changed = false;
+  for (const entry of next.affiliateCommissions ?? []) {
+    if (entry.orderId === orderId && (entry.status === "pending" || entry.status === "approved")) {
+      entry.status = "void";
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+function releaseDueCommissions(next: Database, now: number): boolean {
+  let changed = false;
+  for (const entry of next.affiliateCommissions ?? []) {
+    if (entry.status !== "pending" || !entry.eligibleAt) continue;
+    if (new Date(entry.eligibleAt).getTime() > now) continue;
+
+    const order = next.orders.find((item) => item.id === entry.orderId);
+    if (!order) continue;
+    if (["returned", "cancelled"].includes(order.status) || order.paymentStatus === "refunded") {
+      entry.status = "void";
+      changed = true;
+      continue;
+    }
+
+    const openDispute = (next.disputes ?? []).some(
+      (dispute) =>
+        dispute.orderId === order.id &&
+        ["opened", "seller_response", "under_review"].includes(dispute.status),
+    );
+    if (openDispute) continue;
+
+    entry.status = "approved";
+    entry.approvedAt = nowIso();
+    changed = true;
+  }
+  return changed;
 }
 
 function markProductsReserved(next: Database, productIds: string[]) {
@@ -536,6 +646,28 @@ interface StoreValue {
   cancelAuction: (auctionId: string, reason: string) => void;
   markSettlementPaid: (settlementId: string) => void;
   resolveReport: (reportId: string, status: Report["status"]) => void;
+  createAffiliate: (input: {
+    name: string;
+    email?: string;
+    code?: string;
+    kind: AffiliateAccount["kind"];
+    commissionPct: number;
+  }) => { ok: true; affiliateId: string } | { ok: false; error: string };
+  updateAffiliate: (
+    affiliateId: string,
+    patch: {
+      name?: string;
+      email?: string;
+      code?: string;
+      kind?: AffiliateAccount["kind"];
+      commissionPct?: number;
+      status?: AffiliateAccount["status"];
+    },
+  ) => ActionResult;
+  reviewAffiliateCommission: (
+    commissionId: string,
+    action: "approve" | "pay" | "void",
+  ) => ActionResult;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -543,6 +675,7 @@ const StoreContext = createContext<StoreValue | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [db, setDb] = useState<Database>(loadDatabase);
   const dbRef = useRef(db);
+  const affiliateCaptureRef = useRef(false);
 
   const commit = useCallback((next: Database) => {
     dbRef.current = next;
@@ -557,6 +690,45 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     dbRef.current = db;
   }, [db]);
+
+  // Personal affiliate accounts, incoming ?ref= clicks, and return-window
+  // releases all happen on boot; the interval keeps releases ticking.
+  useEffect(() => {
+    if (affiliateCaptureRef.current) return;
+    affiliateCaptureRef.current = true;
+
+    const next = clone(dbRef.current);
+    let changed = ensureAffiliateAccounts(next);
+
+    const captured = captureRef();
+    if (captured?.firstSeen) {
+      const account = findAffiliateByCode(captured.code, next.affiliates);
+      if (account) {
+        next.affiliateClicks = [
+          {
+            id: uid("ac"),
+            code: account.code,
+            affiliateId: account.id,
+            path: window.location.hash || "/",
+            createdAt: nowIso(),
+          },
+          ...(next.affiliateClicks ?? []),
+        ].slice(0, 500);
+        changed = true;
+      }
+    }
+
+    if (releaseDueCommissions(next, Date.now())) changed = true;
+    if (changed) commit(next);
+  }, [commit]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const next = clone(dbRef.current);
+      if (releaseDueCommissions(next, Date.now())) commit(next);
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [commit]);
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
@@ -729,6 +901,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: "Use at least 8 characters for your password." };
       }
       const next = clone(current);
+      const referralCode = getStoredRef();
+      ensureAffiliateAccounts(next);
+      const referrer = referralCode
+        ? findAffiliateByCode(referralCode, next.affiliates)
+        : null;
       const newUser: User = {
         id: uid("u"),
         name: input.name.trim(),
@@ -740,8 +917,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         joinedAt: nowIso(),
         auctionConsent: input.asSeller,
         location: "Trivandrum, Kerala",
+        referredBy: referrer?.id,
       };
       next.users.push(newUser);
+      ensureAffiliateAccounts(next);
       const guestCart = next.carts.guest ?? [];
       next.carts[newUser.id] = guestCart;
       next.carts.guest = [];
@@ -1247,6 +1426,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: "This order is not awaiting payment." };
       }
       const next = clone(current);
+      // A customer who arrived through a link but was already signed in gets
+      // credited on their first paid order. First attribution always wins.
+      const buyer = next.users.find((item) => item.id === activeUser.id);
+      if (buyer && !buyer.referredBy) {
+        const storedCode = getStoredRef();
+        const account = storedCode ? findAffiliateByCode(storedCode, next.affiliates) : null;
+        if (account && account.status === "active") buyer.referredBy = account.id;
+      }
       for (const target of next.orders.filter((order) => orderIds.includes(order.id))) {
         target.status = "paid";
         target.paymentStatus = "paid";
@@ -1272,6 +1459,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             product.status = "sold";
           }
         }
+        creditAffiliate(next, target);
         if (target.offerId) {
           const offer = next.offers.find((item) => item.id === target.offerId);
           if (offer) offer.status = "converted";
@@ -1350,6 +1538,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const target = next.orders.find((item) => item.id === orderId)!;
       target.status = "cancelled";
       target.cancelledAt = nowIso();
+      voidAffiliateForOrder(next, target.id);
       void Promise.resolve(supabase.rpc("cancel_order", { p_order_id: orderId, p_reason: "Cancelled by user/admin" })).catch((err: any) => console.warn("[Supabase cancel_order]:", err?.message));
       if (target.paymentStatus === "paid") target.paymentStatus = "refunded";
       for (const item of target.items) {
@@ -1380,6 +1569,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const next = clone(current);
       const target = next.orders.find((item) => item.id === orderId)!;
       target.status = "returned";
+      voidAffiliateForOrder(next, target.id);
       if (target.shipment) {
         target.shipment.status = "returned";
         target.shipment.events.push({
@@ -1474,6 +1664,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       if (status === "delivered") {
         target.status = "delivered";
+        const deliveredAt = Date.now();
+        for (const entry of next.affiliateCommissions ?? []) {
+          if (entry.orderId === target.id && entry.status === "pending") {
+            const days = entry.returnWindowDays || next.settings.returnWindowDays || 7;
+            entry.eligibleAt = new Date(deliveredAt + days * 86_400_000).toISOString();
+          }
+        }
         pushNotification(
           next,
           target.buyerId,
@@ -2191,6 +2388,178 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
+  const createAffiliate = useCallback(
+    (input: {
+      name: string;
+      email?: string;
+      code?: string;
+      kind: AffiliateAccount["kind"];
+      commissionPct: number;
+    }): { ok: true; affiliateId: string } | { ok: false; error: string } => {
+      const current = dbRef.current;
+      const actor = current.users.find((item) => item.id === current.sessionUserId);
+      if (actor?.role !== "admin") return { ok: false, error: "Admins only." };
+
+      const name = input.name.trim();
+      if (name.length < 2) return { ok: false, error: "Add a name for this link." };
+
+      const accounts = current.affiliates ?? [];
+      let code: string;
+      if (input.code?.trim()) {
+        const supplied = normaliseCode(input.code);
+        if (!supplied) return { ok: false, error: "Codes use 4–20 letters or numbers." };
+        if (accounts.some((account) => account.code === supplied)) {
+          return { ok: false, error: "That link code is already in use." };
+        }
+        code = supplied;
+      } else {
+        const fallback = name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12) || "link";
+        code = normaliseCode(fallback) ?? `link${Date.now() % 1000}`;
+        while (accounts.some((account) => account.code === code)) {
+          code = `${code.slice(0, 17)}${Math.floor(Math.random() * 90 + 10)}`;
+        }
+      }
+
+      const next = clone(current);
+      const account: AffiliateAccount = {
+        id: uid("aff"),
+        name,
+        code,
+        kind: input.kind,
+        email: input.email?.trim() || undefined,
+        commissionRate: Math.min(50, Math.max(0, input.commissionPct)) / 100,
+        status: "active",
+        createdAt: nowIso(),
+      };
+      next.affiliates = [...(next.affiliates ?? []), account];
+      next.auditLogs.unshift({
+        id: uid("al"),
+        actorId: next.sessionUserId ?? "",
+        action: "affiliate.create",
+        entityType: "affiliate",
+        entityId: account.id,
+        detail: `${account.name} (${account.code}) at ${(account.commissionRate * 100).toFixed(1)}%`,
+        createdAt: nowIso(),
+      });
+      commit(next);
+      return { ok: true, affiliateId: account.id };
+    },
+    [commit],
+  );
+
+  const updateAffiliate = useCallback(
+    (
+      affiliateId: string,
+      patch: {
+        name?: string;
+        email?: string;
+        code?: string;
+        kind?: AffiliateAccount["kind"];
+        commissionPct?: number;
+        status?: AffiliateAccount["status"];
+      },
+    ): ActionResult => {
+      const current = dbRef.current;
+      const actor = current.users.find((item) => item.id === current.sessionUserId);
+      if (actor?.role !== "admin") return { ok: false, error: "Admins only." };
+
+      const account = (current.affiliates ?? []).find((item) => item.id === affiliateId);
+      if (!account) return { ok: false, error: "Link not found." };
+
+      const nextCode = patch.code === undefined ? undefined : normaliseCode(patch.code);
+      if (patch.code !== undefined && !nextCode) {
+        return { ok: false, error: "Codes use 4–20 letters or numbers." };
+      }
+      if (
+        nextCode &&
+        (current.affiliates ?? []).some(
+          (item) => item.id !== affiliateId && item.code === nextCode,
+        )
+      ) {
+        return { ok: false, error: "That link code is already in use." };
+      }
+
+      const next = clone(current);
+      const target = next.affiliates!.find((item) => item.id === affiliateId)!;
+      if (patch.name !== undefined && patch.name.trim().length >= 2) target.name = patch.name.trim();
+      if (patch.email !== undefined) target.email = patch.email.trim() || undefined;
+      if (nextCode) target.code = nextCode;
+      if (patch.kind) target.kind = patch.kind;
+      if (patch.status) target.status = patch.status;
+      if (patch.commissionPct !== undefined) {
+        target.commissionRate = Math.min(50, Math.max(0, patch.commissionPct)) / 100;
+      }
+
+      next.auditLogs.unshift({
+        id: uid("al"),
+        actorId: next.sessionUserId ?? "",
+        action: "affiliate.update",
+        entityType: "affiliate",
+        entityId: target.id,
+        detail: `${target.name} (${target.code}) at ${(target.commissionRate * 100).toFixed(1)}%`,
+        createdAt: nowIso(),
+      });
+      commit(next);
+      return { ok: true };
+    },
+    [commit],
+  );
+
+  const reviewAffiliateCommission = useCallback(
+    (commissionId: string, action: "approve" | "pay" | "void"): ActionResult => {
+      const current = dbRef.current;
+      const actor = current.users.find((item) => item.id === current.sessionUserId);
+      if (actor?.role !== "admin") return { ok: false, error: "Admins only." };
+
+      const commission = (current.affiliateCommissions ?? []).find(
+        (item) => item.id === commissionId,
+      );
+      if (!commission) return { ok: false, error: "Earning not found." };
+
+      if (action === "approve") {
+        if (commission.status !== "pending") {
+          return { ok: false, error: "Only pending earnings can be approved." };
+        }
+        if (!commission.eligibleAt || new Date(commission.eligibleAt).getTime() > Date.now()) {
+          return {
+            ok: false,
+            error: "The return window has not ended yet. This earning unlocks after delivery plus the return period.",
+          };
+        }
+      }
+      if (action === "pay" && commission.status !== "approved") {
+        return { ok: false, error: "Release the earning before marking it paid." };
+      }
+      if (action === "void" && commission.status === "paid") {
+        return { ok: false, error: "Paid earnings must be reversed by a payout adjustment." };
+      }
+
+      const next = clone(current);
+      const target = next.affiliateCommissions!.find((item) => item.id === commissionId)!;
+      if (action === "approve") {
+        target.status = "approved";
+        target.approvedAt = nowIso();
+      } else if (action === "pay") {
+        target.status = "paid";
+        target.paidAt = nowIso();
+      } else {
+        target.status = "void";
+      }
+      next.auditLogs.unshift({
+        id: uid("al"),
+        actorId: next.sessionUserId ?? "",
+        action: `affiliate.${action}`,
+        entityType: "affiliate_commission",
+        entityId: target.id,
+        detail: `Order ${target.orderId} · ₹${(target.amount / 100).toLocaleString("en-IN")}`,
+        createdAt: nowIso(),
+      });
+      commit(next);
+      return { ok: true };
+    },
+    [commit],
+  );
+
   const value: StoreValue = {
     db,
     user,
@@ -2242,6 +2611,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     cancelAuction,
     markSettlementPaid,
     resolveReport,
+    createAffiliate,
+    updateAffiliate,
+    reviewAffiliateCommission,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

@@ -10,6 +10,7 @@
     "test": "playwright test",
     "seed": "node scripts/seed.mjs",
     "verify:sql": "node scripts/verify-sql.mjs",
+    "verify:auction": "node scripts/verify-auction.mjs",
     "worker:auction": "tsx scripts/auction-worker.ts"
   },
   "dependencies": {

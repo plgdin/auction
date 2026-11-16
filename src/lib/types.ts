@@ -22,8 +22,48 @@ export interface User {
   location?: string;
   auctionConsent?: boolean;
   blocked?: boolean;
+  /** Affiliate account that referred this buyer, if any. */
+  referredBy?: string;
   addresses: Address[];
   joinedAt: string;
+}
+
+export interface AffiliateAccount {
+  id: string;
+  userId?: string;
+  name: string;
+  code: string;
+  kind: "creator" | "college" | "partner";
+  email?: string;
+  /** 0.05 = 5% of the item subtotal. Set per link by an admin. */
+  commissionRate: number;
+  status: "active" | "paused" | "banned";
+  createdAt: string;
+}
+
+export interface AffiliateClick {
+  id: string;
+  code: string;
+  affiliateId: string;
+  path: string;
+  createdAt: string;
+}
+
+export interface AffiliateCommission {
+  id: string;
+  affiliateId: string;
+  orderId: string;
+  buyerId: string;
+  subtotal: number;
+  rate: number;
+  amount: number;
+  status: "pending" | "approved" | "paid" | "void";
+  returnWindowDays: number;
+  /** Delivery time + return window. Unlocks the earning when it passes. */
+  eligibleAt?: string;
+  createdAt: string;
+  approvedAt?: string;
+  paidAt?: string;
 }
 
 export interface Address {
@@ -286,6 +326,10 @@ export interface PlatformSettings {
   platformCommissionPct: number;
   bidRateLimitPerMinute: number;
   serviceablePrefixes: string[];
+  /** Default share for new affiliate links, as a percentage (5 = 5%). */
+  affiliateCommissionPct: number;
+  /** Days after delivery before affiliate earnings unlock. */
+  returnWindowDays: number;
 }
 
 export interface OrderDispute {
@@ -339,4 +383,7 @@ export interface Database {
   favorites: Record<string, string[]>;
   disputes?: OrderDispute[];
   secondChanceOffers?: SecondChanceOffer[];
+  affiliates?: AffiliateAccount[];
+  affiliateClicks?: AffiliateClick[];
+  affiliateCommissions?: AffiliateCommission[];
 }
