@@ -925,6 +925,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (accept) {
         target.status = "accepted";
         target.checkoutExpiresAt = futureIso(next.settings.offerCheckoutHours);
+        void Promise.resolve(supabase.rpc("respond_to_offer", { p_offer_id: offerId, p_accept: true })).catch((err: any) => console.warn("[Supabase respond_to_offer accept]:", err?.message));
         for (const other of next.offers) {
           if (
             other.id !== target.id &&
@@ -1231,6 +1232,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const target = next.orders.find((item) => item.id === orderId)!;
       target.status = "cancelled";
       target.cancelledAt = nowIso();
+      void Promise.resolve(supabase.rpc("cancel_order", { p_order_id: orderId, p_reason: "Cancelled by user/admin" })).catch((err: any) => console.warn("[Supabase cancel_order]:", err?.message));
       if (target.paymentStatus === "paid") target.paymentStatus = "refunded";
       for (const item of target.items) {
         const product = next.products.find((candidate) => candidate.id === item.productId);
@@ -1339,6 +1341,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const target = next.orders.find((item) => item.id === orderId)!;
       const shipment = target.shipment ?? { status, events: [] };
       shipment.status = status;
+      void Promise.resolve(supabase.rpc("advance_shipment", { p_order_id: orderId, p_status: status, p_provider: detail?.provider || null, p_awb: detail?.awb || null, p_tracking_url: detail?.trackingUrl || null, p_note: detail?.note || "" })).catch((err: any) => console.warn("[Supabase advance_shipment]:", err?.message));
       if (detail?.provider) shipment.provider = detail.provider;
       if (detail?.awb) shipment.awb = detail.awb;
       if (detail?.trackingUrl) shipment.trackingUrl = detail.trackingUrl;
@@ -1771,6 +1774,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!product) return;
       product.status = "active";
       product.moderationNote = undefined;
+      void Promise.resolve(supabase.rpc("admin_review_product", { p_product_id: productId, p_approved: true })).catch((err: any) => console.warn("[Supabase admin_review_product approve]:", err?.message));
       pushNotification(
         next,
         product.sellerId,
@@ -1800,6 +1804,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!product) return;
       product.status = "rejected";
       product.rejectionReason = reason;
+      void Promise.resolve(supabase.rpc("admin_review_product", { p_product_id: productId, p_approved: false, p_note: reason })).catch((err: any) => console.warn("[Supabase admin_review_product reject]:", err?.message));
       pushNotification(
         next,
         product.sellerId,
@@ -1828,6 +1833,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const target = next.users.find((item) => item.id === userId);
       if (!target) return;
       target.blocked = blocked;
+      void Promise.resolve(supabase.rpc("admin_set_user_blocked", { p_user_id: userId, p_blocked: blocked })).catch((err: any) => console.warn("[Supabase admin_set_user_blocked]:", err?.message));
       next.auditLogs.unshift({
         id: uid("al"),
         actorId: next.sessionUserId ?? "",
@@ -2042,6 +2048,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!settlement) return;
       settlement.status = "paid";
       settlement.paidAt = nowIso();
+      void Promise.resolve(supabase.rpc("admin_mark_settlement_paid", { p_settlement_id: settlementId })).catch((err: any) => console.warn("[Supabase admin_mark_settlement_paid]:", err?.message));
       pushNotification(
         next,
         settlement.sellerId,
