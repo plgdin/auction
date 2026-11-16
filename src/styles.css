@@ -251,6 +251,8 @@ em {
   letter-spacing: -0.03em;
   line-height: 1;
   text-transform: lowercase;
+  -webkit-text-stroke: 1.1px currentColor;
+  paint-order: stroke fill;
 }
 .desktop-nav {
   display: flex;

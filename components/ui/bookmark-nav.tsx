@@ -296,9 +296,9 @@ export function BookmarkNav({
 
           // Resting (not interacted) vs Pulled-down (interacted) levels:
           // Unsquashed natural 1:1 scale (scaleY: 1, scaleX: 1) so font typography is clean, crisp, and never squished.
-          // Tucked state sits at -48px so icons are completely hidden behind header (with opacity 0),
+          // Tucked state sits at -42px so bookmarks hang down with comfortable exposed length,
           // while text labels ("Home", "Shop", "Auctions") and V-notches hang naturally in full view.
-          const tuckedY = -48;
+          const tuckedY = -42;
           const pulledY = 8;
 
           return (
@@ -427,8 +427,8 @@ export function BookmarkNav({
                   <div
                     className={`absolute inset-x-0 flex items-center justify-center ${
                       index === 2
-                        ? "bottom-[16px] sm:bottom-[20px]"
-                        : "bottom-[17px] sm:bottom-[21px]"
+                        ? "bottom-[18px] sm:bottom-[22.5px]"
+                        : "bottom-[19px] sm:bottom-[23.5px]"
                     }`}
                   >
                     <motion.span

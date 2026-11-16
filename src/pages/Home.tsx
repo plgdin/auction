@@ -201,7 +201,16 @@ export function HomePage() {
                 <span>How Selling</span>
                 <br />
                 <span>on </span>
-                <span className="brand-wordmark">lelam.co</span>
+                <span
+                  className="brand-wordmark font-bold"
+                  style={{
+                    fontWeight: 800,
+                    WebkitTextStroke: "1.1px currentColor",
+                    paintOrder: "stroke fill",
+                  }}
+                >
+                  lelam.co
+                </span>
                 <span> Works</span>
               </h2>
               {/* Hand-drawn pencil squiggle underline */}
@@ -364,7 +373,17 @@ export function HomePage() {
               className="text-3xl sm:text-4xl md:text-5xl text-[#493022] font-normal tracking-tight"
               style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
             >
-              Why Sell on <span className="brand-wordmark">lelam.co?</span>
+              Why Sell on{" "}
+              <span
+                className="brand-wordmark font-bold"
+                style={{
+                  fontWeight: 800,
+                  WebkitTextStroke: "1.1px currentColor",
+                  paintOrder: "stroke fill",
+                }}
+              >
+                lelam.co?
+              </span>
             </h2>
           </div>
 
