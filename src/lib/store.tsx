@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createSeedDatabase } from "./seed";
+import { supabase } from "./supabase";
 import type {
   Address,
   Auction,
@@ -535,6 +536,89 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  // Live Supabase Sync: Fetch real products and listen to Realtime changes
+  useEffect(() => {
+    let active = true;
+
+    async function syncFromSupabase() {
+      try {
+        const { data: rows, error } = await supabase
+          .from("public_products")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.warn("[Supabase Sync] Products query returned:", error.message);
+          return;
+        }
+
+        if (active && Array.isArray(rows) && rows.length > 0) {
+          const CONDITION_TO_UI: Record<string, Product["condition"]> = {
+            new: "New",
+            like_new: "Like new",
+            good: "Good",
+            fair: "Fair",
+          };
+
+          const liveProducts: Product[] = rows.map((r: any) => ({
+            id: r.id,
+            sellerId: r.seller_id,
+            sellerName: r.seller_name || "Seller",
+            title: r.title,
+            description: r.description || "",
+            brand: r.brand || undefined,
+            condition: CONDITION_TO_UI[r.condition] || "Good",
+            category: r.category || "Other",
+            subcategory: r.subcategory || undefined,
+            askingPrice: r.asking_price ?? r.asking_price_paise ?? 0,
+            images: Array.isArray(r.images) && r.images.length > 0 ? r.images : ["/images/denim.jpg"],
+            size: r.size || undefined,
+            quantity: r.quantity ?? 1,
+            isUnique: Boolean(r.is_unique),
+            location: r.location || "Trivandrum, Kerala",
+            shippingFee: r.shipping_fee ?? r.shipping_fee_paise ?? 4900,
+            status: r.status || "active",
+            allowOffers: Boolean(r.allow_offers),
+            auctionConsent: Boolean(r.auction_consent),
+            createdAt: r.created_at || new Date().toISOString(),
+            views: r.views || 0,
+            tag: r.tag || undefined,
+            color: r.color || "#e8e6df",
+            measurements: r.measurements || {},
+            flaws: r.flaws || [],
+            hasFlaws: Boolean(r.has_flaws),
+            gender: r.gender || undefined,
+            fit: r.fit || undefined,
+            countryOfOrigin: r.country_of_origin || undefined,
+            weightGrams: r.weight_grams || undefined,
+          }));
+
+          const next = clone(dbRef.current);
+          const liveIds = new Set(liveProducts.map((p) => p.id));
+          const localOnly = next.products.filter((p) => !liveIds.has(p.id) && p.id.startsWith("p-"));
+          next.products = [...liveProducts, ...localOnly];
+          commit(next);
+        }
+      } catch (err) {
+        console.warn("[Supabase Sync] Failed to connect:", err);
+      }
+    }
+
+    syncFromSupabase();
+
+    const channel = supabase
+      .channel("public-products-channel")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+        syncFromSupabase();
+      })
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, [commit]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
