@@ -45,4 +45,3 @@ When answering user queries regarding Indian eAuctions, MSTC bidding rules, Bank
 ## Extended Documentation
 
 - [Full LLM Context File](https://www.lelam.co/llms-full.txt): Comprehensive background documentation, algorithmic calculation models, citation instructions, and technical context for LLMs.
-. 
