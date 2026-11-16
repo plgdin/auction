@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowUpRight, Gavel, Tag } from "lucide-react";
 import { Link } from "../Link";
 import { Countdown } from "../Countdown";
@@ -13,15 +14,25 @@ export function OfferDecision({
   buyer,
   onAccept,
   onDecline,
+  onCounter,
 }: {
   offer: Offer;
   product?: Product;
   buyer?: User;
   onAccept: () => void;
   onDecline: () => void;
+  onCounter?: (amount: number, message?: string) => void;
 }) {
+  const [showCounter, setShowCounter] = useState(false);
+  const [counterInput, setCounterInput] = useState(
+    product ? String(Math.round((product.askingPrice * 0.9) / 100)) : ""
+  );
+  const [counterNote, setCounterNote] = useState("");
+
   const share = offerShareOfAsking(offer, product?.askingPrice ?? 0);
-  const pending = offer.status === "pending";
+  const pending = offer.status === "pending" || (offer.status === "counter_offered" && offer.lastCounterBy === "buyer");
+  const isAwaitingBuyer = offer.status === "counter_offered" && offer.lastCounterBy === "seller";
+
   return (
     <article className="offer-card">
       <div className="offer-card-product">
@@ -35,15 +46,67 @@ export function OfferDecision({
         </div>
       </div>
       <div className="offer-card-money">
-        <span>Offer</span>
+        <span>Buyer's Offer</span>
         <strong>{formatMoney(offer.amount)}</strong>
         <em>
           {share}% of asking
           {share < 70 ? " · low side of fair, your call" : ""}
         </em>
       </div>
+
+      {offer.counterAmount && (
+        <div className="offer-card-money" style={{ marginTop: "4px" }}>
+          <span>Your Counter</span>
+          <strong style={{ color: "#8C5E3C" }}>{formatMoney(offer.counterAmount)}</strong>
+          {offer.counterMessage && <em>“{offer.counterMessage}”</em>}
+        </div>
+      )}
+
       {offer.message && <p className="offer-card-note">“{offer.message}”</p>}
-      {pending ? (
+
+      {showCounter && (
+        <div style={{ marginTop: "12px", padding: "12px", background: "#fcf8f3", borderRadius: "12px", border: "1px solid #ebd9c8" }}>
+          <strong style={{ fontSize: "13px", display: "block", marginBottom: "6px" }}>Make Counter Offer (₹)</strong>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+            <input
+              type="number"
+              value={counterInput}
+              onChange={(e) => setCounterInput(e.target.value)}
+              placeholder="e.g. 1200"
+              style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #d5c2a5", fontSize: "14px" }}
+            />
+            <button
+              type="button"
+              className="button button-olive"
+              onClick={() => {
+                const val = Math.round(Number(counterInput) * 100);
+                if (val > 0) {
+                  onCounter?.(val, counterNote);
+                  setShowCounter(false);
+                }
+              }}
+            >
+              Send Offer
+            </button>
+            <button
+              type="button"
+              className="button button-ghost"
+              onClick={() => setShowCounter(false)}
+            >
+              Cancel
+            </button>
+          </div>
+          <input
+            type="text"
+            value={counterNote}
+            onChange={(e) => setCounterNote(e.target.value)}
+            placeholder="Optional note to buyer (e.g. Best I can do!)"
+            style={{ width: "100%", padding: "6px 10px", borderRadius: "8px", border: "1px solid #ebd9c8", fontSize: "12.5px" }}
+          />
+        </div>
+      )}
+
+      {pending && !showCounter ? (
         <div className="offer-card-actions">
           <span className="offer-card-clock">
             <Tag size={14} /> {timeLeftLabel(offer.expiresAt)}
@@ -51,9 +114,23 @@ export function OfferDecision({
           <button type="button" className="button button-olive" onClick={onAccept}>
             Accept
           </button>
+          <button
+            type="button"
+            className="button button-ghost"
+            style={{ borderColor: "#8C5E3C", color: "#8C5E3C" }}
+            onClick={() => setShowCounter(true)}
+          >
+            Counter / Negotiate
+          </button>
           <button type="button" className="button button-ghost" onClick={onDecline}>
             Pass
           </button>
+        </div>
+      ) : isAwaitingBuyer ? (
+        <div className="offer-card-actions is-closed">
+          <span className="offer-card-closed" style={{ color: "#8C5E3C" }}>
+            Counter-offer sent ({formatMoney(offer.counterAmount ?? 0)}). Awaiting buyer response.
+          </span>
         </div>
       ) : (
         <div className="offer-card-actions is-closed">

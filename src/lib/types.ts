@@ -76,6 +76,7 @@ export interface Product {
 
 export type OfferStatus =
   | "pending"
+  | "counter_offered"
   | "accepted"
   | "rejected"
   | "expired"
@@ -89,6 +90,9 @@ export interface Offer {
   sellerId: string;
   amount: number;
   message?: string;
+  counterAmount?: number;
+  counterMessage?: string;
+  lastCounterBy?: "seller" | "buyer";
   status: OfferStatus;
   createdAt: string;
   respondedAt?: string;

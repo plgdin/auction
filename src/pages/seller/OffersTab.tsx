@@ -9,14 +9,14 @@ import { toast } from "../../lib/toast";
  * with a clock; settled ones sink into a quiet ledger.
  */
 export function OffersTab() {
-  const { db, user, respondToOffer } = useStore();
+  const { db, user, respondToOffer, counterOffer } = useStore();
   if (!user) return null;
 
   const myOffers = [...db.offers.filter((offer) => offer.sellerId === user.id)].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
-  const pending = myOffers.filter((offer) => offer.status === "pending");
-  const settled = myOffers.filter((offer) => offer.status !== "pending");
+  const pending = myOffers.filter((offer) => ["pending", "counter_offered"].includes(offer.status));
+  const settled = myOffers.filter((offer) => !["pending", "counter_offered"].includes(offer.status));
 
   if (!myOffers.length) {
     return (
@@ -46,6 +46,11 @@ export function OffersTab() {
             onDecline={() => {
               const result = respondToOffer(offer.id, false);
               if (result.ok) toast("Offer declined.");
+              else toast(result.error, "error");
+            }}
+            onCounter={(amount, message) => {
+              const result = counterOffer(offer.id, amount, message);
+              if (result.ok) toast("Counter-offer sent to the buyer.", "success");
               else toast(result.error, "error");
             }}
           />

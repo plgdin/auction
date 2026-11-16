@@ -28,6 +28,8 @@ export function AccountPage() {
     notifications,
     unreadCount,
     cancelOffer,
+    counterOffer,
+    respondToOffer,
     addReview,
     removeAddress,
     updateProfile,
@@ -41,6 +43,9 @@ export function AccountPage() {
   const [reviewOrder, setReviewOrder] = useState("");
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
+  const [counterOfferId, setCounterOfferId] = useState<string | null>(null);
+  const [counterAmount, setCounterAmount] = useState<string>("");
+  const [counterNote, setCounterNote] = useState<string>("");
 
   useEffect(() => {
     setTab(route.query.get("tab") || "orders");
@@ -84,7 +89,7 @@ export function AccountPage() {
 
   const myOrders = db.orders.filter((order) => order.buyerId === user.id);
   const myOffers = db.offers.filter((offer) => offer.buyerId === user.id);
-  const pendingOffers = myOffers.filter((offer) => offer.status === "pending");
+  const pendingOffers = myOffers.filter((offer) => ["pending", "counter_offered"].includes(offer.status));
   const savedProducts = db.products.filter((product) => favorites.includes(product.id));
   const openOrders = myOrders.filter(
     (order) => !["delivered", "cancelled", "expired", "returned"].includes(order.status),
@@ -271,17 +276,29 @@ export function AccountPage() {
                         </div>
                       </div>
                       <div className="offer-amount">
-                        <span>Your offer</span>
-                        <strong>{formatMoney(offer.amount)}</strong>
+                        <span>{offer.status === "counter_offered" ? "Counter-offer" : "Your offer"}</span>
+                        <strong>{formatMoney(offer.counterAmount ?? offer.amount)}</strong>
+                        {offer.counterMessage && (
+                          <span className="fineprint" style={{ fontStyle: "italic" }}>
+                            "{offer.counterMessage}"
+                          </span>
+                        )}
+                        {offer.message && !offer.counterMessage && (
+                          <span className="fineprint">{offer.message}</span>
+                        )}
                       </div>
                       <div className="offer-status">
                         <StatusPill status={offer.status} />
                         <span>
-                          {offer.status === "pending"
-                            ? `Expires ${formatDate(offer.expiresAt)}`
-                            : offer.status === "accepted" && offer.checkoutExpiresAt
-                              ? `Pay by ${formatDateTime(offer.checkoutExpiresAt)}`
-                              : formatDate(offer.respondedAt || offer.createdAt)}
+                          {offer.status === "counter_offered"
+                            ? offer.lastCounterBy === "seller"
+                              ? "Seller made a counter-offer"
+                              : "Counter sent to seller"
+                            : offer.status === "pending"
+                              ? `Expires ${formatDate(offer.expiresAt)}`
+                              : offer.status === "accepted" && offer.checkoutExpiresAt
+                                ? `Pay by ${formatDateTime(offer.checkoutExpiresAt)}`
+                                : formatDate(offer.respondedAt || offer.createdAt)}
                         </span>
                       </div>
                       <div className="offer-actions">
@@ -293,6 +310,43 @@ export function AccountPage() {
                           >
                             Pay {formatMoney(offer.amount)}
                           </button>
+                        )}
+                        {offer.status === "counter_offered" && offer.lastCounterBy === "seller" && (
+                          <>
+                            <button
+                              type="button"
+                              className="button button-olive"
+                              onClick={() => {
+                                const result = respondToOffer(offer.id, true);
+                                if (result.ok) toast("Counter-offer accepted! Proceed to checkout.", "success");
+                                else toast(result.error, "error");
+                              }}
+                            >
+                              Accept {formatMoney(offer.counterAmount ?? offer.amount)}
+                            </button>
+                            <button
+                              type="button"
+                              className="button button-ghost"
+                              onClick={() => {
+                                setCounterOfferId(offer.id);
+                                setCounterAmount(String(Math.round(((offer.counterAmount ?? offer.amount) * 0.95) / 100)));
+                                setCounterNote("");
+                              }}
+                            >
+                              Counter / Negotiate
+                            </button>
+                            <button
+                              type="button"
+                              className="button button-ghost"
+                              onClick={() => {
+                                const result = respondToOffer(offer.id, false);
+                                if (result.ok) toast("Counter-offer declined.");
+                                else toast(result.error, "error");
+                              }}
+                            >
+                              Decline
+                            </button>
+                          </>
                         )}
                         {["pending", "accepted"].includes(offer.status) && (
                           <button
@@ -313,6 +367,91 @@ export function AccountPage() {
                           </Link>
                         )}
                       </div>
+                      {counterOfferId === offer.id && (
+                        <div
+                          className="counter-offer-box"
+                          style={{
+                            gridColumn: "1 / -1",
+                            padding: "12px",
+                            background: "var(--color-bg-subtle, #f7f7f5)",
+                            borderRadius: "8px",
+                            marginTop: "8px",
+                          }}
+                        >
+                          <p style={{ margin: "0 0 8px 0", fontSize: "0.875rem", fontWeight: 600 }}>
+                            Propose your counter-price to seller:
+                          </p>
+                          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                            <div style={{ position: "relative", width: "140px" }}>
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  left: "8px",
+                                  top: "50%",
+                                  transform: "translateY(-50%)",
+                                  color: "#666",
+                                }}
+                              >
+                                ₹
+                              </span>
+                              <input
+                                type="number"
+                                style={{
+                                  width: "100%",
+                                  paddingLeft: "24px",
+                                  height: "36px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #ccc",
+                                }}
+                                placeholder="Price"
+                                value={counterAmount}
+                                onChange={(e) => setCounterAmount(e.target.value)}
+                              />
+                            </div>
+                            <input
+                              type="text"
+                              style={{
+                                flex: 1,
+                                minWidth: "180px",
+                                height: "36px",
+                                padding: "0 8px",
+                                borderRadius: "6px",
+                                border: "1px solid #ccc",
+                              }}
+                              placeholder="Add a note (optional)"
+                              value={counterNote}
+                              onChange={(e) => setCounterNote(e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className="button button-olive"
+                              onClick={() => {
+                                const val = Math.round(Number(counterAmount) * 100);
+                                if (!val || val <= 0) {
+                                  toast("Enter a valid price in rupees.", "error");
+                                  return;
+                                }
+                                const res = counterOffer(offer.id, val, counterNote);
+                                if (res.ok) {
+                                  toast("Counter-offer sent to seller!", "success");
+                                  setCounterOfferId(null);
+                                } else {
+                                  toast(res.error, "error");
+                                }
+                              }}
+                            >
+                              Send Counter
+                            </button>
+                            <button
+                              type="button"
+                              className="button button-ghost"
+                              onClick={() => setCounterOfferId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </article>
                   );
                 })}

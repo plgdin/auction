@@ -497,6 +497,7 @@ interface StoreValue {
   toggleFavorite: (productId: string) => void;
   makeOffer: (productId: string, amount: number, message?: string) => ActionResult;
   respondToOffer: (offerId: string, accept: boolean) => ActionResult;
+  counterOffer: (offerId: string, counterAmount: number, message?: string) => ActionResult;
   cancelOffer: (offerId: string) => ActionResult;
   createOrders: (input: {
     addressId: string;
@@ -915,22 +916,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const activeUser = current.users.find((item) => item.id === current.sessionUserId);
       const offer = current.offers.find((item) => item.id === offerId);
       if (!activeUser || !offer) return { ok: false, error: "Offer not found." };
-      if (offer.sellerId !== activeUser.id) return { ok: false, error: "Only the seller can respond." };
-      if (offer.status !== "pending") return { ok: false, error: "This offer is no longer pending." };
+      if (!["pending", "counter_offered"].includes(offer.status)) {
+        return { ok: false, error: "This offer is no longer open for responses." };
+      }
+
+      const isSeller = offer.sellerId === activeUser.id;
+      const isBuyer = offer.buyerId === activeUser.id;
+      if (offer.status === "counter_offered" && offer.lastCounterBy === "seller") {
+        if (!isBuyer && activeUser.role !== "admin") {
+          return { ok: false, error: "Only the buyer can respond to this counter-offer." };
+        }
+      } else {
+        if (!isSeller && activeUser.role !== "admin") {
+          return { ok: false, error: "Only the seller can respond to this offer." };
+        }
+      }
+
       const product = current.products.find((item) => item.id === offer.productId);
       if (!product) return { ok: false, error: "Listing not found." };
       const next = clone(current);
       const target = next.offers.find((item) => item.id === offerId)!;
       target.respondedAt = nowIso();
+
       if (accept) {
         target.status = "accepted";
+        if (target.counterAmount) {
+          target.amount = target.counterAmount;
+        }
         target.checkoutExpiresAt = futureIso(next.settings.offerCheckoutHours);
         void Promise.resolve(supabase.rpc("respond_to_offer", { p_offer_id: offerId, p_accept: true })).catch((err: any) => console.warn("[Supabase respond_to_offer accept]:", err?.message));
         for (const other of next.offers) {
           if (
             other.id !== target.id &&
             other.productId === target.productId &&
-            other.status === "pending"
+            ["pending", "counter_offered"].includes(other.status)
           ) {
             other.status = "rejected";
             other.respondedAt = nowIso();
@@ -947,14 +966,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         next.products = next.products.map((item) =>
           item.id === product.id ? { ...item, status: "reserved" } : item,
         );
-        pushNotification(
-          next,
-          target.buyerId,
-          "offer_accepted",
-          "Your offer was accepted",
-          `${activeUser.name} accepted your offer on ${product.title}. Complete payment within ${next.settings.offerCheckoutHours} hours.`,
-          "#/account?tab=offers",
-        );
+
+        if (isSeller) {
+          pushNotification(
+            next,
+            target.buyerId,
+            "offer_accepted",
+            "Your offer was accepted",
+            `${activeUser.name} accepted your offer on ${product.title}. Complete payment within ${next.settings.offerCheckoutHours} hours.`,
+            "#/account?tab=offers",
+          );
+        } else {
+          pushNotification(
+            next,
+            target.sellerId,
+            "offer_accepted",
+            "Counter-offer accepted",
+            `${activeUser.name} accepted your counter-offer on ${product.title}. Item reserved for checkout.`,
+            "#/seller?tab=offers",
+          );
+        }
+
         next.auditLogs.unshift({
           id: uid("al"),
           actorId: activeUser.id,
@@ -966,16 +998,102 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         });
       } else {
         target.status = "rejected";
+        void Promise.resolve(supabase.rpc("respond_to_offer", { p_offer_id: offerId, p_accept: false })).catch((err: any) => console.warn("[Supabase respond_to_offer reject]:", err?.message));
+        if (isSeller) {
+          pushNotification(
+            next,
+            target.buyerId,
+            "offer_rejected",
+            "Offer not accepted",
+            `The seller passed on your offer for ${product.title}. The listing is still available.`,
+            "#/account?tab=offers",
+          );
+        } else {
+          pushNotification(
+            next,
+            target.sellerId,
+            "offer_rejected",
+            "Counter-offer declined",
+            `The buyer declined your counter-offer for ${product.title}.`,
+            "#/seller?tab=offers",
+          );
+        }
+      }
+      commit(next);
+      return { ok: true };
+    },
+    [commit],
+  );
+
+  const counterOffer = useCallback(
+    (offerId: string, counterAmount: number, message?: string): ActionResult => {
+      const current = dbRef.current;
+      const activeUser = current.users.find((item) => item.id === current.sessionUserId);
+      const offer = current.offers.find((item) => item.id === offerId);
+      if (!activeUser || !offer) return { ok: false, error: "Offer not found." };
+      if (offer.sellerId !== activeUser.id && offer.buyerId !== activeUser.id) {
+        return { ok: false, error: "Unauthorized to counter this offer." };
+      }
+      if (!["pending", "counter_offered"].includes(offer.status)) {
+        return { ok: false, error: "This offer can no longer be negotiated." };
+      }
+      if (!Number.isInteger(counterAmount) || counterAmount <= 0) {
+        return { ok: false, error: "Enter a valid counter offer amount." };
+      }
+      const product = current.products.find((item) => item.id === offer.productId);
+      if (!product) return { ok: false, error: "Listing not found." };
+      if (counterAmount >= product.askingPrice) {
+        return { ok: false, error: "Counter offer must be below the original asking price." };
+      }
+
+      const next = clone(current);
+      const target = next.offers.find((item) => item.id === offerId)!;
+      const isSeller = activeUser.id === offer.sellerId;
+
+      if (isSeller) {
+        target.status = "counter_offered";
+        target.counterAmount = counterAmount;
+        target.counterMessage = message?.trim() || undefined;
+        target.lastCounterBy = "seller";
+        target.expiresAt = futureIso(48);
+
         pushNotification(
           next,
           target.buyerId,
-          "offer_rejected",
-          "Offer not accepted",
-          `The seller passed on your offer for ${product.title}. The listing is still available.`,
+          "offer_countered",
+          "Counter-offer received",
+          `The seller countered with ₹${(counterAmount / 100).toLocaleString("en-IN")} on ${product.title}.`,
           "#/account?tab=offers",
         );
+      } else {
+        target.status = "pending";
+        target.amount = counterAmount;
+        target.counterAmount = undefined;
+        target.counterMessage = undefined;
+        target.message = message?.trim() || undefined;
+        target.lastCounterBy = "buyer";
+        target.expiresAt = futureIso(48);
+
+        pushNotification(
+          next,
+          target.sellerId,
+          "offer_countered",
+          "Buyer counter-offer received",
+          `The buyer sent a counter-offer of ₹${(counterAmount / 100).toLocaleString("en-IN")} on ${product.title}.`,
+          "#/seller?tab=offers",
+        );
       }
+
       commit(next);
+
+      void Promise.resolve(
+        supabase.rpc("counter_offer", {
+          p_offer_id: offerId,
+          p_counter_amount_paise: counterAmount,
+          p_message: message || "",
+        })
+      ).catch((err: any) => console.warn("[Supabase counter_offer error]:", err?.message));
+
       return { ok: true };
     },
     [commit],
@@ -2094,6 +2212,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     toggleFavorite,
     makeOffer,
     respondToOffer,
+    counterOffer,
     cancelOffer,
     createOrders,
     payOrders,
