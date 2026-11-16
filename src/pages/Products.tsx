@@ -5,15 +5,13 @@ import {
   ChevronRight,
   Filter,
   Grid2X2,
-  Heart,
   List,
-  ShoppingBag,
 } from "lucide-react";
-import { Link, navigate } from "../components/Link";
+import { ShopCard } from "../components/ShopCard";
+import { SelectMenu } from "../components/Ui";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { formatMoney } from "../lib/format";
-import { toast } from "../lib/toast";
 import { CATEGORIES, findTopForLegacy, groupsFor } from "../lib/categories";
 import type { Condition, Product } from "../lib/types";
 
@@ -57,71 +55,6 @@ function pageItems(current: number, total: number): Array<number | "…"> {
   if (current < total - 2) items.push("…");
   items.push(total);
   return items;
-}
-
-function ShopCard({ product }: { product: Product }) {
-  const { favorites, toggleFavorite, addToCart, cart } = useStore();
-  const saved = favorites.includes(product.id);
-  const inCart = cart.some((entry) => entry.product.id === product.id);
-  const condition =
-    product.condition === "Good"
-      ? "Gently Used"
-      : product.condition === "Fair"
-        ? "Well Used"
-        : product.condition === "Like new"
-          ? "Like New"
-          : product.condition;
-
-  return (
-    <article className="shop-card">
-      <div className="shop-card-media">
-        <Link href={`#/product/${product.id}`} aria-label={`View ${product.title}`}>
-          <img src={product.images[0]} alt={product.title} loading="lazy" />
-        </Link>
-        <span className="shop-card-tape" aria-hidden="true" />
-        <button
-          type="button"
-          className={`shop-heart ${saved ? "is-saved" : ""}`}
-          aria-label={`${saved ? "Unsave" : "Save"} ${product.title}`}
-          aria-pressed={saved}
-          onClick={() => {
-            toggleFavorite(product.id);
-            toast(saved ? "Removed from saved." : "Saved to your watchlist.", "success");
-          }}
-        >
-          <Heart size={13} strokeWidth={1.8} fill={saved ? "currentColor" : "none"} />
-        </button>
-      </div>
-
-      <div className="shop-card-info">
-        <Link href={`#/product/${product.id}`} className="shop-card-title">
-          {product.title}
-        </Link>
-        <p className="shop-card-meta">
-          Size: {product.size || "One size"} <span>·</span> {condition}
-        </p>
-        <div className="shop-card-buy">
-          <strong className="shop-card-price">{formatMoney(product.askingPrice)}</strong>
-          <button
-            type="button"
-            className={`shop-cart ${inCart ? "is-in-cart" : ""}`}
-            aria-label={inCart ? `View cart with ${product.title}` : `Add ${product.title} to cart`}
-            onClick={() => {
-              if (inCart) {
-                navigate("#/cart");
-                return;
-              }
-              const result = addToCart(product.id);
-              if (result.ok) toast("Added to cart.", "success");
-              else toast(result.error, "error");
-            }}
-          >
-            <ShoppingBag size={14} strokeWidth={1.7} />
-          </button>
-        </div>
-      </div>
-    </article>
-  );
 }
 
 export function ProductsPage() {
@@ -351,12 +284,16 @@ export function ProductsPage() {
                     Sort By <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
                   </h3>
                   <div className="shop-select-wrap">
-                    <select value={sort} onChange={(event) => setSort(event.target.value as Sort)} aria-label="Sort by">
-                      <option value="newest">Recently Listed</option>
-                      <option value="price-asc">Price: Low to High</option>
-                      <option value="price-desc">Price: High to Low</option>
-                    </select>
-                    <ChevronDown size={14} strokeWidth={1.5} />
+                    <SelectMenu
+                      value={sort}
+                      ariaLabel="Sort by"
+                      options={[
+                        { value: "newest", label: "Recently Listed" },
+                        { value: "price-asc", label: "Price: Low to High" },
+                        { value: "price-desc", label: "Price: High to Low" },
+                      ]}
+                      onChange={(value) => setSort(value as Sort)}
+                    />
                   </div>
                 </section>
               </div>

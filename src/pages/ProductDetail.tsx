@@ -16,7 +16,7 @@ import {
 import { Modal } from "../components/Modal";
 import { Link, navigate } from "../components/Link";
 import { ProductCard } from "../components/ProductCard";
-import { StatusPill, Field } from "../components/Ui";
+import { StatusPill, Field, SelectMenu } from "../components/Ui";
 import { formatDate, formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
@@ -405,17 +405,18 @@ export function ProductDetailPage() {
         <Modal title="Report this listing" onClose={() => setReportOpen(false)}>
           <div className="report-modal">
             <Field label="Reason">
-              <select
+              <SelectMenu
                 value={reportReason}
-                onChange={(event) => setReportReason(event.target.value)}
-              >
-                <option value="">Choose a reason</option>
-                <option value="Counterfeit or replica">Counterfeit or replica</option>
-                <option value="Item not as described">Item not as described</option>
-                <option value="Prohibited item">Prohibited item</option>
-                <option value="Suspicious seller">Suspicious seller</option>
-                <option value="Other">Other</option>
-              </select>
+                placeholder="Choose a reason"
+                options={[
+                  { value: "Counterfeit or replica", label: "Counterfeit or replica" },
+                  { value: "Item not as described", label: "Item not as described" },
+                  { value: "Prohibited item", label: "Prohibited item" },
+                  { value: "Suspicious seller", label: "Suspicious seller" },
+                  { value: "Other", label: "Other" },
+                ]}
+                onChange={setReportReason}
+              />
             </Field>
             <Field label="Details" hint="Optional, but helpful for the admin review.">
               <textarea

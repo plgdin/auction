@@ -48,6 +48,9 @@ function PolaroidPhoto({
   className = "",
   tapePlacement = "top-center",
   delay = 0,
+  width,
+  height,
+  priority = false,
 }: {
   src: string;
   alt: string;
@@ -55,6 +58,9 @@ function PolaroidPhoto({
   className?: string;
   tapePlacement?: "top-center" | "top-right" | "top-left";
   delay?: number;
+  width?: number;
+  height?: number;
+  priority?: boolean;
 }) {
   return (
     <motion.div
@@ -84,8 +90,11 @@ function PolaroidPhoto({
       <img
         src={src}
         alt={alt}
+        width={width}
+        height={height}
         className="block h-auto w-full transition-transform duration-500 group-hover:scale-[1.015]"
         loading="eager"
+        fetchPriority={priority ? "high" : undefined}
       />
     </motion.div>
   );
@@ -196,8 +205,10 @@ function Hero({
               {/* Photograph 2: Upper-right neatly folded pre-loved knitted sweaters */}
               <div className="absolute top-0 sm:top-2 right-0 sm:right-2 z-10 w-[40%] sm:w-[42%] max-w-[270px]">
                 <PolaroidPhoto
-                  src="/images/gpt/hero-knit.png.png"
+                  src="/images/gpt/hero-knit.jpg"
                   alt="Neatly folded pre-loved knitted sweaters"
+                  width={1122}
+                  height={1402}
                   rotation={7}
                   tapePlacement="top-right"
                   delay={0.2}
@@ -207,19 +218,24 @@ function Hero({
               {/* Photograph 1: Large central Polaroid with vintage brown leather jacket on wooden hanger */}
               <div className="absolute top-10 sm:top-14 left-2 sm:left-4 z-20 w-[54%] sm:w-[56%] max-w-[350px]">
                 <PolaroidPhoto
-                  src="/images/gpt/hero-jacket.png"
+                  src="/images/gpt/hero-jacket.jpg"
                   alt="Vintage brown leather jacket hanging on a wooden hanger"
+                  width={1122}
+                  height={1402}
                   rotation={-2}
                   tapePlacement="top-center"
                   delay={0.1}
+                  priority
                 />
               </div>
 
               {/* Photograph 3: Lower-right vintage film camera */}
               <div className="absolute bottom-4 sm:bottom-6 right-2 sm:right-6 z-20 w-[43%] sm:w-[45%] max-w-[300px]">
                 <PolaroidPhoto
-                  src="/images/gpt/hero-bag.png"
+                  src="/images/gpt/hero-bag.jpg"
                   alt="Vintage leather handbag with a gold chain strap"
+                  width={1448}
+                  height={1086}
                   rotation={-5.5}
                   tapePlacement="top-right"
                   delay={0.3}
@@ -238,18 +254,8 @@ function Hero({
       {/* Asset 08 — Torn Cream Paper Strip along the hero's bottom boundary */}
       <div
         aria-hidden="true"
-        className="pointer-events-none select-none absolute inset-x-0 bottom-0 z-[5] h-16 sm:h-20 md:h-24"
-      >
-        <img
-          src="/images/Torn Cream Paper Strip.png"
-          alt=""
-          className="h-full w-full object-cover object-top"
-          style={{
-            WebkitMaskImage: "linear-gradient(to bottom, black 64%, transparent 100%)",
-            maskImage: "linear-gradient(to bottom, black 64%, transparent 100%)",
-          }}
-        />
-      </div>
+        className="paper-strip paper-strip-hero pointer-events-none select-none absolute inset-x-0 bottom-0 z-[5] h-16 sm:h-20 md:h-24"
+      />
     </section>
   );
 }

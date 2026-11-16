@@ -287,7 +287,7 @@ export function BookmarkNav({
 
       {/* The 3 Bookmarks */}
       <div
-        role="menubar"
+        role="group"
         aria-label="Sections"
         className="relative flex items-start justify-center gap-2 sm:gap-2.5"
       >
@@ -350,7 +350,6 @@ export function BookmarkNav({
                   bookmarkButtonsRef.current[index] = el;
                 }}
                 type="button"
-                role="menuitem"
                 tabIndex={0}
                 aria-label={`${item.label}${isActive ? " (current page)" : ""}`}
                 aria-current={isActive ? "page" : undefined}

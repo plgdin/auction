@@ -14,7 +14,7 @@ import {
 import { Link, navigate } from "../components/Link";
 import { AddressForm } from "../components/AddressForm";
 import { EmptyState, Field, StatusPill, Tabs } from "../components/Ui";
-import { ProductCard } from "../components/ProductCard";
+import { ShopCard } from "../components/ShopCard";
 import { formatDate, formatDateTime, formatMoney, timeAgo } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
@@ -338,7 +338,7 @@ export function AccountPage() {
             {savedProducts.length ? (
               <div className="product-grid">
                 {savedProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                  <ShopCard key={product.id} product={product} />
                 ))}
               </div>
             ) : (

@@ -165,7 +165,7 @@ export function LelamNavbar({
               type="button"
               onClick={() => setAccountOpen((open) => !open)}
               className="lelam-action-btn lelam-account-btn"
-              aria-label={user ? `Account menu for ${user.name}` : "Sign in"}
+              aria-label={`${user ? `Account menu for ${user.name}` : "Sign in"}${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
               aria-expanded={accountOpen}
               title={user ? "Account" : "Sign in"}
             >

@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { Link, navigate } from "../components/Link";
-import { Field, StatusPill } from "../components/Ui";
+import { Field, SelectMenu, StatusPill } from "../components/Ui";
 import { formatDate, formatDateTime, formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
@@ -271,17 +271,12 @@ export function OrderDetailPage() {
                 </div>
                 <div className="inline-form-row">
                   <Field label="New status">
-                    <select
+                    <SelectMenu
                       value={shipmentStatus}
-                      onChange={(event) => setShipmentStatus(event.target.value)}
-                    >
-                      <option value="">Choose a status</option>
-                      {sellerShipmentOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="Choose a status"
+                      options={sellerShipmentOptions}
+                      onChange={setShipmentStatus}
+                    />
                   </Field>
                   <button
                     type="button"

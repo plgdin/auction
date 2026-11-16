@@ -89,7 +89,7 @@ function StepPolaroidCard({
         </div>
         <h3
           className="text-xl sm:text-2xl font-medium text-[#493022] tracking-tight mb-1"
-          style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+          style={{ fontFamily: "var(--serif)" }}
         >
           {title}
         </h3>
@@ -143,7 +143,7 @@ export function HomePage() {
       className="marketplace-home relative w-full overflow-hidden text-[#302116]"
       style={{
         backgroundColor: "#F3E5D2",
-        backgroundImage: 'url("/images/Warm Ivory Handmade Paper Texture.png")',
+        backgroundImage: 'url("/images/warm-ivory-paper.jpg")',
         backgroundSize: "100% auto",
         backgroundRepeat: "repeat-y",
         backgroundPosition: "top center",
@@ -196,7 +196,7 @@ export function HomePage() {
             <div>
               <h2
                 className="text-3xl sm:text-4xl md:text-5xl text-[#493022] font-normal tracking-tight"
-                style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+                style={{ fontFamily: "var(--serif)" }}
               >
                 <span>How Selling</span>
                 <br />
@@ -232,15 +232,8 @@ export function HomePage() {
             >
               <span
                 aria-hidden="true"
-                className="pointer-events-none select-none absolute inset-0 -z-10"
-              >
-                <img
-                  src="/images/Vintage Torn Paper Sheet.png"
-                  alt=""
-                  loading="lazy"
-                  className="h-full w-full object-fill drop-shadow-[0_6px_16px_rgba(73,48,34,0.16)]"
-                />
-              </span>
+                className="paper-note pointer-events-none select-none absolute inset-0 -z-10 drop-shadow-[0_6px_16px_rgba(73,48,34,0.16)]"
+              />
               <WashiTape className="-top-3 left-1/2 -translate-x-1/2" width="w-20" rotate="rotate-2" />
               <p
                 className="relative z-10 text-2xl sm:text-[1.7rem] text-[#493022] leading-tight text-center"
@@ -257,7 +250,7 @@ export function HomePage() {
               stepNumber={1}
               title="List Your Item"
               description="Add photos, a short description, and your price in just a few clicks."
-              imageSrc="/images/gpt/step-list.png"
+              imageSrc="/images/gpt/step-list.jpg"
               imageAlt="Folded knitwear ready to be photographed"
               rotate="-rotate-1"
               delay={0.1}
@@ -269,7 +262,7 @@ export function HomePage() {
               stepNumber={2}
               title="Get Discovered"
               description="Your item goes live on lelam.co for buyers to find and buy."
-              imageSrc="/images/gpt/step-discover.png"
+              imageSrc="/images/gpt/step-discover.jpg"
               imageAlt="Laptop displaying closet listings"
               rotate="rotate-1"
               delay={0.2}
@@ -281,7 +274,7 @@ export function HomePage() {
               stepNumber={3}
               title="Sell & Ship"
               description="Accept an order, pack it neatly, and hand it over to our pickup partner."
-              imageSrc="/images/gpt/step-ship.png"
+              imageSrc="/images/gpt/step-ship.jpg"
               imageAlt="Shipping cardboard box packed with tissue paper"
               rotate="-rotate-1.5"
               delay={0.3}
@@ -293,7 +286,7 @@ export function HomePage() {
               stepNumber={4}
               title="Get Paid"
               description="Receive your earnings safely and directly to your account."
-              imageSrc="/images/gpt/step-paid.png"
+              imageSrc="/images/gpt/step-paid.jpg"
               imageAlt="Mobile screen showing payment received checkmark"
               rotate="rotate-2"
               delay={0.4}
@@ -304,13 +297,7 @@ export function HomePage() {
 
       {/* 5. EDITORIAL MANIFESTO on one un-cropped torn paper strip */}
       <section className="relative w-full overflow-hidden">
-        <img
-          src="/images/Torn Cream Paper Strip.png"
-          alt=""
-          aria-hidden="true"
-          loading="lazy"
-          className="pointer-events-none absolute inset-0 h-full w-full object-fill"
-        />
+        <div aria-hidden="true" className="paper-strip paper-strip-fill pointer-events-none absolute inset-0" />
 
         <div className="relative z-10 max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-14 sm:py-16 md:py-20">
           <motion.div
@@ -323,8 +310,10 @@ export function HomePage() {
             {/* Real cardboard hangtag on twine string */}
             <div className="shrink-0 -mt-6 sm:-mt-10 md:-mt-0 md:-ml-14 w-32 sm:w-40 md:w-48 select-none pointer-events-none">
               <img
-                src="/images/Kraft Tag with Recycled Symbol and Twine.png"
+                src="/images/texture-kraft-tag.png"
                 alt="Recycled cardboard hangtag"
+                width={1024}
+                height={1536}
                 className="w-full h-auto object-contain"
               />
             </div>
@@ -333,7 +322,7 @@ export function HomePage() {
             <div className="flex-1 text-center md:text-left">
               <blockquote
                 className="text-3xl sm:text-4xl md:text-[2.75rem] text-[#493022] leading-tight font-normal"
-                style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+                style={{ fontFamily: "var(--serif)" }}
               >
                 “Good Clothes <br className="hidden sm:block" />
                 Deserve{" "}
@@ -362,7 +351,7 @@ export function HomePage() {
           <div className="mb-8 sm:mb-10">
             <h2
               className="text-3xl sm:text-4xl md:text-5xl text-[#493022] font-normal tracking-tight"
-              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+              style={{ fontFamily: "var(--serif)" }}
             >
               Why Sell on <span className="brand-wordmark">lelam.co?</span>
             </h2>
@@ -384,7 +373,7 @@ export function HomePage() {
                 </div>
                 <h3
                   className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+                  style={{ fontFamily: "var(--serif)" }}
                 >
                   Turn clutter into cash
                 </h3>
@@ -406,7 +395,7 @@ export function HomePage() {
                 </div>
                 <h3
                   className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+                  style={{ fontFamily: "var(--serif)" }}
                 >
                   A more sustainable you
                 </h3>
@@ -428,7 +417,7 @@ export function HomePage() {
                 </div>
                 <h3
                   className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+                  style={{ fontFamily: "var(--serif)" }}
                 >
                   Simple & secure
                 </h3>
@@ -450,7 +439,7 @@ export function HomePage() {
                 </div>
                 <h3
                   className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+                  style={{ fontFamily: "var(--serif)" }}
                 >
                   A community that values pre-loved
                 </h3>
@@ -487,7 +476,7 @@ export function HomePage() {
                 <WashiTape className="-top-3 left-1/2 -translate-x-1/2" width="w-24 sm:w-28" rotate="-rotate-1" />
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#E9DFC8] rounded-[1px] border border-black/5">
                   <img
-                    src="/images/gpt/wardrobe-rail.png"
+                    src="/images/gpt/wardrobe-rail.jpg"
                     alt="Wooden clothing rack full of pre-loved coats"
                     className="w-full h-full object-cover"
                     loading="lazy"
@@ -510,7 +499,7 @@ export function HomePage() {
             </svg>
             <h2
               className="text-4xl sm:text-5xl md:text-6xl text-[#493022] font-serif italic font-normal"
-              style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+              style={{ fontFamily: "var(--serif)" }}
             >
               Ready to sell?
             </h2>

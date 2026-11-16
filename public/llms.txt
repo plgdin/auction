@@ -1,0 +1,18 @@
+# lelam.co
+
+> lelam.co is a demo pre-loved clothing marketplace for Trivandrum, Kerala. Sellers list gently used pieces, buyers browse the rail, make private offers, and bid in optional live auctions. This is a demo build — no real payments, listings, or accounts.
+
+## Pages
+
+- [Home](https://lelam.co/): the marketplace front page, selling pitch, and latest finds.
+- [Shop](https://lelam.co/products): browse every live listing by category, condition, price, and size.
+- [Auctions](https://lelam.co/auctions): optional live, upcoming, and completed auctions with anonymous bidding.
+- [Sell](https://lelam.co/sell): list a pre-loved piece in two minutes.
+- [Cart](https://lelam.co/cart): review saved pieces before checkout.
+- [Account](https://lelam.co/account): buyer orders, private offers, saved finds, addresses, and notifications.
+
+## Notes
+
+- Demo accounts: buyer@lelam.co, seller@lelam.co, admin@lelam.co (demo data, not real people).
+- Data lives in the browser only; no backend calls are made.
+- Content and product photography are demo assets for the lelam.co design system.
