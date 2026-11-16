@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Heart, LogIn, Search, ShoppingBag, UserPlus, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, Heart, LogIn, Search, ShoppingBag, UserPlus, X } from "lucide-react";
 import { LelamNavbar } from "@/components/ui/lelam-navbar";
+import { GenieSearchModal } from "@/components/ui/genie-search-modal";
 import HalftoneWordmarkFooter from "@/components/ui/halftone-wordmark-footer";
 import { Link, navigate } from "./components/Link";
 import { Modal } from "./components/Modal";
@@ -60,6 +62,173 @@ function ToastHost() {
   );
 }
 
+function SearchModalCard({
+  query,
+  setQuery,
+  results,
+  search,
+  onClose,
+}: {
+  query: string;
+  setQuery: (val: string) => void;
+  results: any[];
+  search: string;
+  onClose?: () => void;
+}) {
+  return (
+    <div
+      className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-[#D5C2A5] shadow-[0_24px_64px_rgba(40,24,14,0.4)]"
+      style={{ backgroundColor: "#FAF4EB" }}
+    >
+      {/* Header */}
+      <div className="relative pt-6 pb-2 px-6 text-center">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[#6D533E] hover:bg-[#EBDDC8] hover:text-[#332417] transition-all"
+          aria-label="Close search"
+        >
+          <X size={18} strokeWidth={2.4} />
+        </button>
+
+        <h2 className="text-xl sm:text-2xl tracking-tight select-none inline-flex items-baseline justify-center gap-1.5">
+          <span className="text-[#6D533E] font-medium font-sans">
+            search on
+          </span>
+          <span
+            style={{
+              fontFamily: '"Gumela Arabic", serif',
+              fontWeight: 800,
+              textTransform: "lowercase",
+              color: "#493022",
+              WebkitTextStroke: "0.8px #493022",
+              paintOrder: "stroke fill",
+              fontSize: "1.25em",
+              lineHeight: 1,
+            }}
+          >
+            lelam
+          </span>
+        </h2>
+      </div>
+
+      <div className="p-5 sm:p-6 space-y-5">
+        {/* Search Input Bar with Framer Motion */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (query.trim()) {
+              onClose?.();
+              navigate(`#/products?q=${encodeURIComponent(query.trim())}`);
+            }
+          }}
+          className="relative"
+        >
+          <div
+            className="relative flex items-center gap-2 overflow-hidden rounded-full border border-[#CBB693] bg-[#FFFDF9] shadow-[0_2px_12px_rgba(73,48,34,0.08)] transition-shadow"
+            style={{ backgroundColor: "#FFFDF9", borderColor: "#CBB693" }}
+          >
+            <div className="ml-4 flex items-center justify-center text-[#8C745A]">
+              <Search size={18} strokeWidth={2.2} />
+            </div>
+            <input
+              autoFocus
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Denim, a leather jacket, homeware…"
+              aria-label="Search listings"
+              className="h-12 flex-1 bg-transparent pr-3 font-sans text-sm sm:text-base text-[#332417] placeholder:text-[#9C856C] outline-none"
+              style={{ color: "#332417" }}
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="mr-2 flex h-7 w-7 items-center justify-center rounded-full text-[#8C745A] hover:bg-[#EBDDC8] hover:text-[#493022] transition-colors"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </form>
+
+        {/* Live Search Results */}
+        <div>
+          <div className="mb-2 flex items-center justify-between px-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8C745A]">
+              {search ? `${results.length} results` : "Fresh on the rail"}
+            </span>
+          </div>
+
+          <div className="max-h-[260px] overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+            {results.length ? (
+              results.map((product) => (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => {
+                    onClose?.();
+                    navigate(`#/product/${product.id}`);
+                  }}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-[#FFFDF9] border border-[#E8DCCB] text-left transition-all hover:border-[#CBB693] hover:shadow-sm group"
+                  style={{ backgroundColor: "#FFFDF9", borderColor: "#E8DCCB" }}
+                >
+                  <img
+                    src={product.images[0]}
+                    alt=""
+                    className="h-12 w-12 rounded-xl object-cover border border-[#D5C2A5]/70 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <strong
+                      className="block text-sm font-semibold truncate group-hover:text-[#8C5E3C] transition-colors"
+                      style={{ color: "#332417" }}
+                    >
+                      {product.title}
+                    </strong>
+                    <span className="text-xs text-[#8C745A]">
+                      {product.condition} · {product.sellerName}
+                    </span>
+                  </div>
+                  <strong
+                    className="font-serif text-sm font-semibold shrink-0"
+                    style={{ color: "#493022" }}
+                  >
+                    {formatMoney(product.askingPrice)}
+                  </strong>
+                </button>
+              ))
+            ) : (
+              <div
+                className="py-8 text-center rounded-2xl border border-dashed border-[#D5C2A5] text-[#8C745A]"
+                style={{ backgroundColor: "#F4E9D8" }}
+              >
+                <p className="text-sm font-medium">Nothing matched &ldquo;{query}&rdquo;</p>
+                <p className="text-xs mt-1">Try a different keyword or browse categories above.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* See All Listings CTA */}
+        <button
+          type="button"
+          onClick={() => {
+            onClose?.();
+            navigate(`#/products${search ? `?q=${encodeURIComponent(query.trim())}` : ""}`);
+          }}
+          className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 px-4 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
+          style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
+        >
+          <span>See all listings {search ? `for "${query.trim()}"` : ""}</span>
+          <ArrowRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SearchOverlay({ onClose }: { onClose: () => void }) {
   const { db } = useStore();
   const [query, setQuery] = useState("");
@@ -78,79 +247,15 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   }, [db.products, search]);
 
   return (
-    <Modal title="Search lelam" onClose={onClose} wide>
-      <div className="search-overlay">
-        <div className="search-overlay-input">
-          <Search size={18} />
-          <input
-            autoFocus
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Denim, a leather jacket, homeware…"
-            aria-label="Search listings"
-          />
-          {query && (
-            <button type="button" onClick={() => setQuery("")} aria-label="Clear search">
-              <X size={15} />
-            </button>
-          )}
-        </div>
-
-        <div className="search-suggestions">
-          {["Denim", "Knitwear", "Leather", "Tops", "Accessories"].map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              className="chip-button"
-              onClick={() => setQuery(tag)}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-
-        <div className="search-results">
-          <span className="search-results-label">
-            {search ? `${results.length} results` : "Fresh on the rail"}
-          </span>
-          {results.length ? (
-            results.map((product) => (
-              <button
-                key={product.id}
-                type="button"
-                className="search-result"
-                onClick={() => {
-                  onClose();
-                  navigate(`#/product/${product.id}`);
-                }}
-              >
-                <img src={product.images[0]} alt="" />
-                <span>
-                  <strong>{product.title}</strong>
-                  <em>
-                    {product.condition} · {product.sellerName}
-                  </em>
-                </span>
-                <strong>{formatMoney(product.askingPrice)}</strong>
-              </button>
-            ))
-          ) : (
-            <p className="panel-empty">Nothing matched. Try a shorter word.</p>
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="button button-olive search-overlay-all"
-          onClick={() => {
-            onClose();
-            navigate(`#/products${search ? `?q=${encodeURIComponent(query.trim())}` : ""}`);
-          }}
-        >
-          See all listings
-        </button>
-      </div>
-    </Modal>
+    <GenieSearchModal isOpen={true} onClose={onClose} originSelector=".lelam-search-toggle">
+      <SearchModalCard
+        query={query}
+        setQuery={setQuery}
+        results={results}
+        search={search}
+        onClose={onClose}
+      />
+    </GenieSearchModal>
   );
 }
 
@@ -158,47 +263,166 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
   const { db, favorites, toggleFavorite } = useStore();
   const saved = db.products.filter((product) => favorites.includes(product.id));
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   return (
-    <Modal title="Saved finds" onClose={onClose} drawer>
-      <div className="saved-overlay">
-        {saved.length ? (
-          saved.map((product) => (
-            <div key={product.id} className="saved-row">
-              <Link href={`#/product/${product.id}`} onClick={onClose} className="saved-image">
-                <img src={product.images[0]} alt={product.title} />
-              </Link>
-              <div>
-                <Link href={`#/product/${product.id}`} onClick={onClose}>
-                  {product.title}
-                </Link>
-                <span>
-                  {product.condition} · {formatMoney(product.askingPrice)}
-                </span>
-              </div>
-              <button
-                type="button"
-                aria-label={`Remove ${product.title} from saved`}
-                onClick={() => {
-                  toggleFavorite(product.id);
-                  toast("Removed from saved.");
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex justify-end">
+        {/* Scrim Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={onClose}
+          className="fixed inset-0 bg-[#25170F]/60 backdrop-blur-md"
+        />
+
+        {/* Drawer Window */}
+        <motion.div
+          initial={{ x: "100%", opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: "100%", opacity: 0 }}
+          transition={{ type: "spring", stiffness: 350, damping: 32 }}
+          className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-[#D5C2A5] shadow-[-20px_0_60px_rgba(40,24,14,0.35)]"
+          style={{ backgroundColor: "#FAF4EB" }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-[#E8DCCB] px-6 py-5 bg-[#FAF4EB]">
+            <div className="flex items-center gap-2.5">
+              <Heart size={18} className="text-[#8C5E3C] fill-[#8C5E3C]/20" />
+              <h2
+                className="text-xl sm:text-2xl tracking-tight select-none inline-flex items-baseline gap-1.5"
+                style={{
+                  fontFamily: '"Gumela Arabic", serif',
+                  fontWeight: 800,
+                  color: "#493022",
+                  textTransform: "lowercase",
+                  WebkitTextStroke: "0.6px #493022",
+                  paintOrder: "stroke fill",
                 }}
               >
-                <X size={14} />
+                saved finds
+              </h2>
+              {saved.length > 0 && (
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#EBDDC8] text-[#493022]">
+                  {saved.length}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[#6D533E] hover:bg-[#EBDDC8] hover:text-[#332417] transition-all"
+              aria-label="Close saved drawer"
+            >
+              <X size={18} strokeWidth={2.4} />
+            </button>
+          </div>
+
+          {/* Drawer Body */}
+          <div className="flex-1 overflow-y-auto p-5 sm:p-6 scrollbar-thin flex flex-col">
+            {saved.length ? (
+              <div className="space-y-3 flex-1">
+                {saved.map((product) => (
+                  <div
+                    key={product.id}
+                    className="flex items-center gap-3.5 p-3 rounded-2xl bg-[#FFFDF9] border border-[#E8DCCB] transition-all hover:border-[#CBB693] hover:shadow-sm group"
+                    style={{ backgroundColor: "#FFFDF9", borderColor: "#E8DCCB" }}
+                  >
+                    <Link
+                      href={`#/product/${product.id}`}
+                      onClick={onClose}
+                      className="h-14 w-14 rounded-xl overflow-hidden border border-[#D5C2A5]/70 shrink-0 bg-[#F4E9D8]"
+                    >
+                      <img src={product.images[0]} alt={product.title} className="h-full w-full object-cover" />
+                    </Link>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={`#/product/${product.id}`}
+                        onClick={onClose}
+                        className="block text-sm font-semibold truncate hover:text-[#8C5E3C] transition-colors"
+                        style={{ color: "#332417" }}
+                      >
+                        {product.title}
+                      </Link>
+                      <p className="text-xs text-[#8C745A] mt-0.5">
+                        {product.condition} ·{" "}
+                        <span className="font-serif font-semibold" style={{ color: "#493022" }}>
+                          {formatMoney(product.askingPrice)}
+                        </span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${product.title} from saved`}
+                      onClick={() => {
+                        toggleFavorite(product.id);
+                        toast("Removed from saved.");
+                      }}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-[#8C745A] hover:bg-[#F3E7D3] hover:text-[#9A3412] transition-colors"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="my-auto flex flex-col items-center justify-center py-12 px-4 text-center">
+                <div
+                  className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[#DECDB4] shadow-sm"
+                  style={{ backgroundColor: "#F3E7D3" }}
+                >
+                  <Heart size={28} className="text-[#8C5E3C]" />
+                </div>
+                <h3 className="font-serif text-2xl font-normal text-[#332417] mb-1.5">
+                  Nothing saved yet.
+                </h3>
+                <p className="text-xs sm:text-sm text-[#8C745A] max-w-[260px] leading-relaxed mb-6">
+                  Tap the heart on any piece you love to keep it here for later.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate("#/products");
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl py-3 px-6 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
+                  style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
+                >
+                  <span>Browse the rail</span>
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Drawer Footer if items exist */}
+          {saved.length > 0 && (
+            <div className="border-t border-[#E8DCCB] p-4 bg-[#FAF4EB]">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate("#/products");
+                }}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 px-4 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
+                style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
+              >
+                <span>Browse more pieces</span>
+                <ArrowRight size={16} />
               </button>
             </div>
-          ))
-        ) : (
-          <div className="empty-state drawer-empty">
-            <Heart size={32} />
-            <h2>Nothing saved yet.</h2>
-            <p>Tap the heart on a listing to keep it here for later.</p>
-            <Link href="#/products" className="button button-olive" onClick={onClose}>
-              Browse the rail
-            </Link>
-          </div>
-        )}
+          )}
+        </motion.div>
       </div>
-    </Modal>
+    </AnimatePresence>
   );
 }
 

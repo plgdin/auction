@@ -315,6 +315,8 @@ export function BookmarkNav({
                   ? { y: isExpanded ? pulledY : tuckedY }
                   : {
                       y: isExpanded ? pulledY : tuckedY,
+                      scaleY: isExpanded ? [0.72, 1.07, 0.98, 1] : [1, 0.68, 0.72],
+                      scaleX: isExpanded ? [0.92, 0.96, 1.02, 1] : [1, 0.94, 0.92],
                       rotate: isExpanded ? swingRotations[index] : 0,
                       transition: {
                         type: "spring",
