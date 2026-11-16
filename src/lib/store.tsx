@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createSeedDatabase } from "./seed";
-import { supabase } from "./supabase";
+import { supabase, PRODUCT_IMAGE_BUCKET } from "./supabase";
 import type {
   Address,
   Auction,
@@ -29,6 +29,43 @@ import type {
 } from "./types";
 
 const STORAGE_KEY = "lelam-marketplace-v1";
+
+const UI_TO_CONDITION_MAP: Record<Product["condition"], string> = {
+  New: "new",
+  "Like new": "like_new",
+  Good: "good",
+  Fair: "fair",
+};
+
+
+async function uploadListingImages(uid: string, images: string[]): Promise<string[]> {
+  const uploaded: string[] = [];
+  for (const image of images) {
+    if (!image.startsWith("data:")) {
+      uploaded.push(image);
+      continue;
+    }
+    try {
+      const blob = await (await fetch(image)).blob();
+      const extension = (blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
+      const path = `${uid}/${crypto.randomUUID()}.${extension}`;
+      const { error } = await supabase.storage
+        .from(PRODUCT_IMAGE_BUCKET)
+        .upload(path, blob, { contentType: blob.type, upsert: false });
+      if (error) {
+        console.warn("[Storage upload error]:", error.message);
+        uploaded.push(image);
+        continue;
+      }
+      const { data } = supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path);
+      uploaded.push(data.publicUrl);
+    } catch {
+      uploaded.push(image);
+    }
+  }
+  return uploaded;
+}
+
 
 function uid(prefix: string) {
   return `${prefix}-${crypto.randomUUID()}`;
@@ -726,6 +763,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const next = clone(dbRef.current);
     next.sessionUserId = null;
     commit(next);
+    supabase.auth.signOut().catch((err) => {
+      console.warn("[Supabase Auth signOut]:", err.message);
+    });
   }, [commit]);
 
   const switchAccount = useCallback(
@@ -1406,7 +1446,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
       }
       commit(next);
-      return { ok: true as const, productId: product.id };
+      // Supabase Realtime Persistence
+        (async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user?.id) {
+              const uploadedImages = await uploadListingImages(session.user.id, input.images);
+              await supabase.rpc("save_listing", {
+                p_payload: {
+                  title: input.title.trim(),
+                  description: input.description.trim(),
+                  brand: input.brand?.trim() || null,
+                  condition: UI_TO_CONDITION_MAP[input.condition] || "good",
+                  category: input.category,
+                  subcategory: input.subcategory || null,
+                  asking_price_paise: input.askingPrice,
+                  size: input.size?.trim() || null,
+                  quantity: input.quantity,
+                  location: input.location || "Trivandrum, Kerala",
+                  shipping_fee_paise: input.shippingFee,
+                  allow_offers: input.allowOffers,
+                  auction_consent: input.auctionConsent,
+                },
+                p_images: uploadedImages,
+              });
+            }
+          } catch (err) {
+            console.warn("[Supabase save_listing error]:", err);
+          }
+        })();
+
+        return { ok: true as const, productId: product.id };
     },
     [commit],
   );
