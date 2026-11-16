@@ -231,7 +231,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 4900,
       'active', true, true, now(), 'A GOOD FIND', '#e4e7e1'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/denim.jpg', 0) on conflict do nothing;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/editorial.jpg', 1) on conflict do nothing;
 
@@ -250,7 +251,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 4900,
       'active', true, true, now(), null, '#e9e5dc'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/knit.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -268,7 +270,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 4900,
       'active', true, true, now(), 'ONE OF ONE', '#e8e0d7'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/bag.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -286,7 +289,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 4900,
       'active', true, true, now(), null, '#e1e4e4'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/jeans.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -304,7 +308,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 4900,
       'active', true, true, now(), 'ARCHIVE FAVORITE', '#dfded9'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/leather.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -322,7 +327,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 4900,
       'active', false, false, now(), null, '#e8e6df'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/tee.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -340,7 +346,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 4900,
       'active', true, true, now(), 'ON THE RAIL', '#EFEBE2'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/tee.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -358,7 +365,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 4900,
       'active', false, true, now(), 'ON THE RAIL', '#101214'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/tee.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -376,7 +384,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 4900,
       'active', true, true, now(), 'NEW LISTING', '#A3D3EB'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/editorial.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -394,7 +403,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 4900,
       'active', true, true, now(), 'HOT FIND', '#758151'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/knit.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -412,7 +422,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 4900,
       'active', true, true, now(), null, '#A0A5AB'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/denim.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -430,7 +441,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 4900,
       'active', true, false, now(), null, '#CCB2E0'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/knit.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -448,7 +460,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 4900,
       'active', true, true, now(), 'ON THE RAIL', '#185B37'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/tee.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -466,7 +479,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 4900,
       'active', true, true, now(), 'ON THE RAIL', '#B05139'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/tee.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Women' limit 1;
@@ -484,7 +498,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 4900,
       'active', true, true, now(), 'ON THE RAIL', '#E4DFD3'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, '/images/knit.jpg', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Electronics' limit 1;
@@ -502,7 +517,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 7900,
       'active', true, false, now(), 'JUST LISTED', '#e6e4df'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Home' limit 1;
@@ -520,7 +536,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 14900,
       'active', true, false, now(), null, '#e4ded4'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Home' limit 1;
@@ -538,7 +555,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 9900,
       'active', true, false, now(), null, '#e7e2da'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1585515320310-259814833e62?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Electronics' limit 1;
@@ -556,7 +574,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 14900,
       'active', true, false, now(), 'TESTED', '#e3e6ea'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1578303512597-81e6cc155b3e?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Books & Media' limit 1;
@@ -574,7 +593,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 7900,
       'active', true, false, now(), null, '#e8e2d8'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Men' limit 1;
@@ -592,7 +612,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 7900,
       'active', true, true, now(), 'A GOOD FIND', '#e5e2dd'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1520975954732-35dd22299614?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Men' limit 1;
@@ -610,7 +631,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 7900,
       'active', true, false, now(), null, '#eae8e2'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Kids' limit 1;
@@ -628,7 +650,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 4900,
       'active', false, false, now(), null, '#ece5d7'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Kids' limit 1;
@@ -646,7 +669,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 4900,
       'active', true, false, now(), null, '#e2e6de'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Sports' limit 1;
@@ -664,7 +688,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 7900,
       'active', true, false, now(), null, '#e7e3d6'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1592432678016-e910b452f9a2?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Sports' limit 1;
@@ -682,7 +707,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 9900,
       'active', true, true, now(), 'TESTED', '#e6e0d2'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Books & Media' limit 1;
@@ -700,7 +726,8 @@ begin
       1, true, 'Kowdiar, Trivandrum', 7900,
       'active', true, false, now(), null, '#e9e4da'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1603048588665-791ca818222a?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
     select id into v_cat_id from public.categories where name = 'Hobbies & collectibles' limit 1;
@@ -718,7 +745,8 @@ begin
       1, true, 'Vazhuthacaud, Trivandrum', 7900,
       'active', true, false, now(), null, '#e5e4da'
     )
-    on conflict do nothing;
+    on conflict (slug) do update set subcategory = excluded.subcategory returning id into v_prod_id;
+    delete from public.product_images where product_id = v_prod_id;
     insert into public.product_images (product_id, url, sort_order) values (v_prod_id, 'https://images.unsplash.com/photo-1608885898447-3e970a2b1a14?q=80&w=1200&auto=format&fit=crop', 0) on conflict do nothing;
 
   end if;
