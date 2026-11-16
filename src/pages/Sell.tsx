@@ -25,6 +25,7 @@ import { promptAuth, withNext } from "../lib/authGate";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
+import { SELLER_COMMISSION_PERCENT, sellerNetPayout } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 import type { Condition } from "../lib/types";
 
@@ -250,7 +251,6 @@ const emptyForm = {
   size: "",
   quantity: "1",
   location: "Trivandrum, Kerala",
-  shipping: "49",
   allowOffers: true,
   auctionConsent: false,
 };
@@ -292,7 +292,6 @@ export function SellPage() {
         size: editing.size || "",
         quantity: String(editing.quantity),
         location: editing.location,
-        shipping: String(editing.shippingFee / 100),
         allowOffers: editing.allowOffers,
         auctionConsent: editing.auctionConsent,
       });
@@ -384,7 +383,7 @@ export function SellPage() {
       size: form.size,
       quantity: Math.max(1, Number(form.quantity) || 1),
       location: form.location,
-      shippingFee: Math.round(Number(form.shipping) * 100),
+      shippingFee: 0,
       allowOffers: form.allowOffers,
       auctionConsent: form.auctionConsent,
     };
@@ -536,14 +535,11 @@ export function SellPage() {
           <div className="sell-block-head"><span className="step-number">03</span><div><h2>Price & options</h2><p>Set the asking price. Buyers can buy instantly or send a private offer.</p></div></div>
           <div className="field-row two">
             <Field label="Asking price (₹) *" hint="Buyers pay this for Buy now, or bid in auctions."><input type="number" min={1} inputMode="numeric" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="1450" /></Field>
-            <Field label="You receive" hint="The full asking price comes to you. Shipping is collected separately at checkout."><div className="sell-payout">{formatMoney(Math.round((Number(form.price) || 0) * 100))}</div></Field>
-          </div>
-          <div className="field-row two">
-            <Field label="Shipping fee (₹)" hint="We handle delivery; you can cover it or leave it free."><input type="number" min={0} inputMode="numeric" value={form.shipping} onChange={(e) => update("shipping", e.target.value)} /></Field>
+            <Field label="You receive" hint={`${SELLER_COMMISSION_PERCENT}% commission is deducted from each completed sale.`}><div className="sell-payout">{formatMoney(sellerNetPayout(Math.round((Number(form.price) || 0) * 100)))}</div></Field>
           </div>
           <div className="sell-options">
             <label><input type="checkbox" checked={form.allowOffers} onChange={(e) => update("allowOffers", e.target.checked)} /><span><strong>Allow private offers</strong><em>Buyers can send a price privately. You choose whether to accept — an offer you ignore expires on its own.</em></span></label>
-            <label><input type="checkbox" checked={form.auctionConsent} onChange={(e) => update("auctionConsent", e.target.checked)} /><span><strong>Opt in to random live auctions</strong><em>Your listing may be picked for a short live auction that starts at {db.settings.auctionStartPct}% of your asking price, so buyers have room to win. If bids go higher, you keep the winning bid.</em></span></label>
+            <label><input type="checkbox" checked={form.auctionConsent} onChange={(e) => update("auctionConsent", e.target.checked)} /><span><strong>Opt in to random live auctions</strong><em>Your listing may be picked for a short live auction. Your payout is 90% of the final winning bid, whether it lands above or below your asking price.</em></span></label>
           </div>
         </section>
       </div>
@@ -565,7 +561,7 @@ export function SellPage() {
           <button type="button" className="button button-olive summary-cta" onClick={submit}>{editing ? "Save changes" : "Publish listing"} <ArrowUpRight size={15} /></button>
           <Link href="#/seller" className="button button-ghost summary-cta">Seller dashboard</Link>
         </div>
-        <div className="sell-tips"><h3><Info size={14} /> Good to know</h3><ul><li>Every piece is one seller&apos;s own item.</li><li>We handle shipping & delivery for you.</li><li>Auctions are optional and only run if you opt in.</li><li>Offers are private. No public bidding on normal listings.</li></ul><div className="sell-trust"><ShieldCheck size={15} /> You keep any bid above your asking price</div></div>
+        <div className="sell-tips"><h3><Info size={14} /> Good to know</h3><ul><li>Every piece is one seller&apos;s own item.</li><li>We handle shipping & delivery for you.</li><li>Auctions are optional and only run if you opt in.</li><li>Offers are private. No public bidding on normal listings.</li></ul><div className="sell-trust"><ShieldCheck size={15} /> You receive 90% of the completed sale price</div></div>
       </aside>
     </div>
   ) : null;

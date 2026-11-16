@@ -82,7 +82,8 @@ export function AdminPage() {
     0,
   );
   const platformRevenue = db.settlements.reduce(
-    (total, settlement) => total + settlement.platformCommission,
+    (total, settlement) =>
+      total + settlement.platformCommission + (settlement.buyerPlatformFee ?? 0),
     0,
   );
 
@@ -142,7 +143,7 @@ export function AdminPage() {
               <Wallet size={15} /> Payouts due
             </span>
             <strong>{formatMoney(payoutDue)}</strong>
-            <em>{formatMoney(platformRevenue)} commission earned</em>
+            <em>{formatMoney(platformRevenue)} platform revenue</em>
           </div>
         </div>
 
@@ -570,10 +571,10 @@ export function AdminPage() {
               </div>
               <div className="stat-card">
                 <span>
-                  <BadgeCheck size={15} /> Commission
+                  <BadgeCheck size={15} /> Platform revenue
                 </span>
                 <strong>{formatMoney(platformRevenue)}</strong>
-                <em>Above asking price only</em>
+                <em>Seller commission + buyer fees</em>
               </div>
             </div>
 
@@ -760,33 +761,7 @@ export function AdminPage() {
                     }
                   />
                 </Field>
-                <Field label="Shipping fee (₹)">
-                  <input
-                    type="number"
-                    min={0}
-                    value={settings.shippingFee / 100}
-                    onChange={(event) =>
-                      setSettings((previous) => ({
-                        ...previous,
-                        shippingFee: Math.round(Number(event.target.value) * 100),
-                      }))
-                    }
-                  />
-                </Field>
-                <Field label="Free shipping over (₹)">
-                  <input
-                    type="number"
-                    min={0}
-                    value={settings.freeShippingThreshold / 100}
-                    onChange={(event) =>
-                      setSettings((previous) => ({
-                        ...previous,
-                        freeShippingThreshold: Math.round(Number(event.target.value) * 100),
-                      }))
-                    }
-                  />
-                </Field>
-                <Field label="Commission on extra (past 130% of base)" hint="Fixed at 10% of the amount above base.">
+                <Field label="Seller commission (%)" hint="Fixed at 10% of the full sale price.">
                   <input
                     type="number"
                     value={10}

@@ -26,6 +26,11 @@ import type {
   Review,
   User,
 } from "./types";
+import {
+  BUYER_PLATFORM_FEE_PAISE,
+  sellerCommission,
+  sellerNetPayout,
+} from "./sellerMath";
 
 const STORAGE_KEY = "lelam-marketplace-v1";
 
@@ -65,26 +70,15 @@ function futureIso(hours: number) {
 }
 
 export function computeAuctionSettlement(
-  askingPrice: number,
+  _askingPrice: number,
   winningBid: number,
   _commissionPct: number,
 ): Pick<AuctionFinancial, "sellerPayout" | "platformSubsidy" | "platformCommission"> {
-  const platformCharge = 1_000;
-  if (winningBid < askingPrice) {
-    return {
-      sellerPayout: Math.max(0, askingPrice - platformCharge),
-      platformSubsidy: askingPrice - winningBid,
-      platformCommission: platformCharge,
-    };
-  }
-  const commission = winningBid > askingPrice * 1.3
-    ? Math.floor((winningBid - askingPrice) * 0.1)
-    : 0;
-  const totalCharge = commission + platformCharge;
+  const commission = sellerCommission(winningBid);
   return {
-    sellerPayout: Math.max(0, winningBid - totalCharge),
+    sellerPayout: sellerNetPayout(winningBid),
     platformSubsidy: 0,
-    platformCommission: totalCharge,
+    platformCommission: commission,
   };
 }
 
@@ -112,15 +106,6 @@ function orderNumber(next: Database) {
   return `LEL-${24200 + next.orders.length + Math.floor(Math.random() * 40)}`;
 }
 
-function shippingFor(
-  items: { product: Product; quantity: number }[],
-  settings: PlatformSettings,
-): number {
-  const subtotal = items.reduce((total, item) => total + item.product.askingPrice * item.quantity, 0);
-  if (subtotal >= settings.freeShippingThreshold) return 0;
-  return Math.max(...items.map((item) => item.product.shippingFee ?? settings.shippingFee));
-}
-
 function createOrder(
   next: Database,
   input: {
@@ -132,13 +117,14 @@ function createOrder(
     offerId?: string;
     auctionId?: string;
     checkoutGroupId?: string;
+    platformFee?: number;
   },
 ): Order {
   const subtotal = input.items.reduce(
     (total, item) => total + (item.unitPrice ?? item.product.askingPrice) * item.quantity,
     0,
   );
-  const shipping = shippingFor(input.items, next.settings);
+  const platformFee = input.platformFee ?? 0;
   const order: Order = {
     id: uid("o"),
     number: orderNumber(next),
@@ -156,8 +142,9 @@ function createOrder(
       sellerName: item.product.sellerName,
     })),
     subtotal,
-    shipping,
-    total: subtotal + shipping,
+    shipping: 0,
+    platformFee,
+    total: subtotal + platformFee,
     status: "pending_payment",
     paymentStatus: "pending",
     source: input.source,
@@ -286,6 +273,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
             address,
             source: "auction",
             auctionId: auction.id,
+            platformFee: BUYER_PLATFORM_FEE_PAISE,
           });
           auction.orderId = order.id;
           markProductsReserved(next, [product.id]);
@@ -952,7 +940,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const next = clone(current);
       const checkoutGroupId = uid("cg");
       const orderIds: string[] = [];
-      for (const group of groups) {
+      for (const [index, group] of groups.entries()) {
         const order = createOrder(next, {
           buyerId: activeUser.id,
           sellerId: group.sellerId,
@@ -961,6 +949,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           source,
           offerId: offer?.id,
           checkoutGroupId,
+          platformFee: index === 0 ? BUYER_PLATFORM_FEE_PAISE : 0,
         });
         orderIds.push(order.id);
         pushNotification(
@@ -1047,22 +1036,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               sellerPayout: auction.financial.sellerPayout,
               platformSubsidy: auction.financial.platformSubsidy,
               platformCommission: auction.financial.platformCommission,
+              buyerPlatformFee: target.platformFee ?? 0,
               paymentFee: 0,
               status: "pending",
               createdAt: nowIso(),
             });
           }
         } else {
-          const platformCharge = target.items.length * 1_000;
+          const commission = sellerCommission(target.subtotal);
           next.settlements.unshift({
             id: uid("s"),
             sellerId: target.sellerId,
             orderId: target.id,
             source: target.source === "offer" ? "offer" : "marketplace",
             askingPrice: target.subtotal,
-            sellerPayout: Math.max(0, target.subtotal - platformCharge),
+            sellerPayout: sellerNetPayout(target.subtotal),
             platformSubsidy: 0,
-            platformCommission: platformCharge,
+            platformCommission: commission,
+            buyerPlatformFee: target.platformFee ?? 0,
             paymentFee: 0,
             status: "pending",
             createdAt: nowIso(),

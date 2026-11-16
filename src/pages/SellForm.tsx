@@ -6,7 +6,7 @@ import { CATEGORIES } from "../lib/categories";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
-import { PLATFORM_CHARGE_PAISE } from "../lib/sellerMath";
+import { sellerNetPayout, SELLER_COMMISSION_PERCENT } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 import type { Category, Condition } from "../lib/types";
 
@@ -33,7 +33,6 @@ const emptyForm = {
   size: "",
   quantity: "1",
   location: "Trivandrum, Kerala",
-  shipping: "49",
   allowOffers: true,
   auctionConsent: false,
 };
@@ -66,7 +65,6 @@ export function SellFormPage() {
         size: editing.size || "",
         quantity: String(editing.quantity),
         location: editing.location,
-        shipping: String(editing.shippingFee / 100),
         allowOffers: editing.allowOffers,
         auctionConsent: editing.auctionConsent,
       });
@@ -164,7 +162,7 @@ export function SellFormPage() {
       size: form.size,
       quantity: Math.max(1, Number(form.quantity) || 1),
       location: form.location,
-      shippingFee: Math.round(Number(form.shipping) * 100),
+      shippingFee: 0,
       allowOffers: form.allowOffers,
       auctionConsent: form.auctionConsent,
     };
@@ -436,26 +434,17 @@ export function SellFormPage() {
                     placeholder="1450"
                   />
                 </Field>
-                <Field label="Shipping fee (₹)" hint="Free over ₹1,999 by default.">
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={form.shipping}
-                    onChange={(event) => update("shipping", event.target.value)}
-                  />
-                </Field>
               </div>
 
               {form.price && (
                 <div className="sell-payout-card" role="status">
                   <div>
                     <span>You pocket</span>
-                    <strong>{formatMoney(Math.max(0, Math.round(Number(form.price) * 100) - PLATFORM_CHARGE_PAISE))}</strong>
+                    <strong>{formatMoney(sellerNetPayout(Math.round(Number(form.price) * 100)))}</strong>
                   </div>
                   <p>
-                    Your asking price in full, minus a flat ₹10 platform charge per product. Credited
-                    within 5 business days after the buyer confirms arrival.
+                    After {SELLER_COMMISSION_PERCENT}% seller commission. Credited within 5 business
+                    days after the buyer confirms arrival.
                   </p>
                 </div>
               )}
@@ -481,8 +470,8 @@ export function SellFormPage() {
                   <span>
                     <strong>Open my listing to the twist</strong>
                     <em>
-                      It may be picked at random for a short live auction — faster sale, never under
-                      your base, and only 10% of the extra above base if it clears 130%.
+                      It may be picked at random for a short live auction. You receive 90% of the
+                      final winning bid, whether it falls above or below your asking price.
                     </em>
                   </span>
                 </label>
@@ -534,11 +523,11 @@ export function SellFormPage() {
               </h3>
               <ul>
                 <li>Delivery covers Trivandrum pincodes starting 695.</li>
-                <li>A flat ₹10 platform charge applies per product sold.</li>
+                <li>{SELLER_COMMISSION_PERCENT}% seller commission is deducted from the full sale price.</li>
                 <li>Offers stay private; there is no public haggling.</li>
               </ul>
               <div className="sell-trust">
-                <ShieldCheck size={16} /> Your asking price is a promise, not a hope
+                <ShieldCheck size={16} /> You receive 90% of the completed sale price
               </div>
             </div>
           </aside>

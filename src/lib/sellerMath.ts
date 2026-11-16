@@ -4,10 +4,20 @@ import type { Offer } from "./types";
  * Seller-side money logic. Every figure on the sell page and seller dashboard
  * must come from these helpers so the demo never shows invented numbers.
  *
- * Marketplace and offer sales carry no commission: the seller pockets the
- * asking price. Live auctions guarantee the asking price; commission is taken
- * only on the overage when a winning bid clears it (see store.computeAuctionSettlement).
+ * Seller commission applies to the full sale amount on marketplace, offer,
+ * and auction sales. Buyer platform fee is separate and charged once at checkout.
  */
+
+export const SELLER_COMMISSION_PERCENT = 10;
+export const BUYER_PLATFORM_FEE_PAISE = 1_000;
+
+export function sellerCommission(amount: number): number {
+  return Math.round(Math.max(0, amount) * (SELLER_COMMISSION_PERCENT / 100));
+}
+
+export function sellerNetPayout(amount: number): number {
+  return Math.max(0, amount - sellerCommission(amount));
+}
 
 export function timeLeftLabel(iso: string, now = Date.now()): string {
   const ms = new Date(iso).getTime() - now;
@@ -24,10 +34,7 @@ export function offerShareOfAsking(offer: Pick<Offer, "amount">, askingPrice: nu
   return Math.round((offer.amount / askingPrice) * 100);
 }
 
-/** Flat platform charge per product sold, disclosed on every seller-facing money surface. */
-export const PLATFORM_CHARGE_PAISE = 1_000;
-
-/** Settlement sellerPayout already stores the amount after platform charges. */
+/** Settlement sellerPayout already stores the amount after seller commission. */
 export function netPayout(sellerPayout: number): number {
   return Math.max(0, sellerPayout);
 }

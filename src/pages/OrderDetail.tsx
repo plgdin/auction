@@ -213,10 +213,12 @@ export function OrderDetailPage() {
                   <span>Subtotal</span>
                   <strong>{formatMoney(order.subtotal)}</strong>
                 </div>
-                <div>
-                  <span>Shipping</span>
-                  <strong>{order.shipping ? formatMoney(order.shipping) : "Free"}</strong>
-                </div>
+                {order.platformFee ? (
+                  <div>
+                    <span>Platform fee</span>
+                    <strong>{formatMoney(order.platformFee)}</strong>
+                  </div>
+                ) : null}
                 <div className="is-total">
                   <span>Total</span>
                   <strong>{formatMoney(order.total)}</strong>
@@ -363,10 +365,12 @@ export function OrderDetailPage() {
                 <span>Subtotal</span>
                 <strong>{formatMoney(order.subtotal)}</strong>
               </div>
-              <div className="summary-row">
-                <span>Shipping</span>
-                <strong>{order.shipping ? formatMoney(order.shipping) : "Free"}</strong>
-              </div>
+              {order.platformFee ? (
+                <div className="summary-row">
+                  <span>Platform fee</span>
+                  <strong>{formatMoney(order.platformFee)}</strong>
+                </div>
+              ) : null}
               <div className="summary-row summary-total">
                 <span>Total</span>
                 <strong>{formatMoney(order.total)}</strong>

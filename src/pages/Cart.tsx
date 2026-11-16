@@ -8,17 +8,6 @@ export function CartPage() {
   const { cart, cartSubtotal, user, setCartQuantity, removeFromCart, db } = useStore();
 
   const sellers = [...new Set(cart.map((entry) => entry.product.sellerId))];
-  const shipping = sellers.reduce((total, sellerId) => {
-    const items = cart.filter((entry) => entry.product.sellerId === sellerId);
-    const subtotal = items.reduce(
-      (sum, entry) => sum + entry.product.askingPrice * entry.line.quantity,
-      0,
-    );
-    if (subtotal >= db.settings.freeShippingThreshold) return total;
-    return total + Math.max(...items.map((entry) => entry.product.shippingFee));
-  }, 0);
-  const total = cartSubtotal + shipping;
-
   if (!cart.length) {
     return (
       <main className="page-shell">
@@ -117,11 +106,6 @@ export function CartPage() {
                       <div className="cart-item-price">
                         <strong>{formatMoney(product.askingPrice * line.quantity)}</strong>
                         {line.quantity > 1 && <span>{formatMoney(product.askingPrice)} each</span>}
-                        <em>
-                          {product.shippingFee === 0
-                            ? "Free shipping"
-                            : `+ ${formatMoney(product.shippingFee)} shipping`}
-                        </em>
                       </div>
                     </article>
                   ))}
@@ -131,8 +115,7 @@ export function CartPage() {
             <div className="cart-note">
               <Truck size={16} />
               <span>
-                Shipping is calculated per seller. Free over {formatMoney(db.settings.freeShippingThreshold)}.
-                Delivery is available across Trivandrum pincodes starting with 695.
+                Delivery is arranged by lelam after checkout. Available across Trivandrum pincodes starting with 695.
               </span>
             </div>
           </div>
@@ -144,13 +127,9 @@ export function CartPage() {
                 <span>Subtotal</span>
                 <strong>{formatMoney(cartSubtotal)}</strong>
               </div>
-              <div className="summary-row">
-                <span>Shipping</span>
-                <strong>{shipping ? formatMoney(shipping) : "Free"}</strong>
-              </div>
               <div className="summary-row summary-total">
                 <span>Total</span>
-                <strong>{formatMoney(total)}</strong>
+                <strong>{formatMoney(cartSubtotal)}</strong>
               </div>
               <p className="summary-note">
                 {sellers.length > 1

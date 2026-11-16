@@ -16,6 +16,7 @@ import { Field } from "../components/Ui";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
+import { BUYER_PLATFORM_FEE_PAISE } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 
 export function CheckoutPage() {
@@ -57,13 +58,8 @@ export function CheckoutPage() {
 
   const subtotal = lines.reduce((total, line) => total + line.unitPrice * line.quantity, 0);
   const sellerIds = [...new Set(lines.map((line) => line.product.sellerId))];
-  const shipping = sellerIds.reduce((total, sellerId) => {
-    const group = lines.filter((line) => line.product.sellerId === sellerId);
-    const groupSubtotal = group.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-    if (groupSubtotal >= db.settings.freeShippingThreshold) return total;
-    return total + Math.max(...group.map((line) => line.product.shippingFee));
-  }, 0);
-  const total = subtotal + shipping;
+  const platformFee = BUYER_PLATFORM_FEE_PAISE;
+  const total = subtotal + platformFee;
   const address = user?.addresses.find((item) => item.id === selectedAddress);
   const serviceable = address
     ? db.settings.serviceablePrefixes.some((prefix) => address.pincode.startsWith(prefix))
@@ -335,8 +331,8 @@ export function CheckoutPage() {
                 <strong>{formatMoney(subtotal)}</strong>
               </div>
               <div className="summary-row">
-                <span>Shipping</span>
-                <strong>{shipping ? formatMoney(shipping) : "Free"}</strong>
+                <span>Platform fee</span>
+                <strong>{formatMoney(platformFee)}</strong>
               </div>
               {offer && (
                 <div className="summary-row offer-savings">
