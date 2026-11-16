@@ -144,6 +144,8 @@ revoke all on function public.save_listing(jsonb, text[]) from public;
 grant execute on function public.save_listing(jsonb, text[]) to authenticated;
 
 -- 3. Update public_products view to expose subcategory
+drop view if exists public.public_products cascade;
+
 create or replace view public.public_products
 with (security_invoker = false)
 as
