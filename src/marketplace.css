@@ -54,11 +54,7 @@ html { scroll-behavior: smooth; }
 /* ---------- Navbar ---------- */
 
 .lelam-header-scrim {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 116px;
-  background: linear-gradient(to bottom, rgba(6, 6, 5, 0.82), rgba(6, 6, 5, 0.32) 60%, transparent);
-  pointer-events: none;
+  display: none !important;
 }
 
 .brand-logo { text-decoration: none; }
@@ -3496,8 +3492,7 @@ html { scroll-behavior: smooth; }
 
 /* Sell landing hero: paper collage, as a real responsive page section. */
 .site-shell:has(.sell-page) .sell-landing-header .lelam-header-scrim {
-  height: 96px;
-  background: linear-gradient(to bottom, rgba(242, 226, 205, .96), rgba(242, 226, 205, .78) 68%, transparent);
+  display: none !important;
 }
 .site-shell:has(.sell-page) .sell-landing-header .lelam-header-bar { color: #2c1e13; }
 .site-shell:has(.sell-page) .sell-landing-header .lelam-action-btn,
@@ -3774,8 +3769,7 @@ html { scroll-behavior: smooth; }
 
 /* ---- Fixed paper header ---- */
 .paper-home-header .lelam-header-scrim {
-  height: 118px;
-  background: linear-gradient(to bottom, #f2e2cc 0%, rgba(242, 226, 204, .96) 62%, rgba(242, 226, 204, 0));
+  display: none !important;
 }
 .paper-home-header .lelam-header-bar { color: var(--paper-ink, #2c1c12); }
 .paper-home-header .lelam-action-btn,

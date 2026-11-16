@@ -4854,14 +4854,7 @@ body {
    Lelam Navbar Action Controls (Warm Paper & Dark Chocolate Theme)
    ======================================================== */
 .lelam-header-scrim {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 110px;
-  background: linear-gradient(180deg, rgba(245, 235, 221, 0.94) 0%, rgba(245, 235, 221, 0.6) 65%, transparent 100%) !important;
-  pointer-events: none;
-  z-index: 20;
+  display: none !important;
 }
 
 /* Brand Logo Gumela Arabic Bold */

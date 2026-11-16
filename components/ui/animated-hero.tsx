@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { MoveRight, RotateCcw, ShieldCheck, Zap } from "lucide-react";
+import { MoveRight } from "lucide-react";
 import { navigate } from "@/src/components/Link";
 
 export interface HeroProps {
@@ -169,21 +169,6 @@ function Hero({
                 <span>{primaryCtaText}</span>
                 <MoveRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
               </button>
-
-              {/* Trust bullets row */}
-              <div className="relative pt-2 flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-1 xl:gap-3 text-xs sm:text-sm lg:text-xs xl:text-sm text-[#302116] font-medium">
-                <span className="inline-flex items-center gap-1.5">
-                  <Zap size={14} className="text-[#493022]" /> List in 2 minutes
-                </span>
-                <span className="text-[#B58B64]/50">|</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="text-[#493022]" /> Safe & trusted
-                </span>
-                <span className="text-[#B58B64]/50">|</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <RotateCcw size={14} className="text-[#493022]" /> Sustainable
-                </span>
-              </div>
             </div>
           </motion.div>
 
