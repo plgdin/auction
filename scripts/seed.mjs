@@ -182,7 +182,7 @@ async function main() {
       const rows = p.images.map((url, pos) => ({
         product_id: prod.id,
         url,
-        position: pos,
+        sort_order: pos,
       }));
       await admin.from("product_images").insert(rows);
     }
