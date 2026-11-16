@@ -1573,7 +1573,7 @@ export function createSeedDatabase(): Database {
       freeShippingThreshold: p(1999),
       platformCommissionPct: 10,
       bidRateLimitPerMinute: 20,
-      serviceablePrefixes: ["695"],
+      serviceablePrefixes: [],
     },
     sessionUserId: "u-buyer",
     carts: { "u-buyer": [], guest: [] },

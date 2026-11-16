@@ -125,7 +125,7 @@ export function AuctionDetailPage() {
             </div>
             <p className="auction-detail-description">{product.description}</p>
             <div className="auction-trust-line">
-              <ShieldCheck size={15} /> Delivery across Trivandrum pincodes starting with 695.
+              <ShieldCheck size={15} /> Doorstep delivery across India.
             </div>
           </div>
 

@@ -522,7 +522,7 @@ export function SellFormPage() {
                 <Info size={15} /> Good to know
               </h3>
               <ul>
-                <li>Delivery covers Trivandrum pincodes starting 695.</li>
+                <li>Doorstep delivery is available across India.</li>
                 <li>{SELLER_COMMISSION_PERCENT}% seller commission is deducted from the full sale price.</li>
                 <li>Offers stay private; there is no public haggling.</li>
               </ul>

@@ -524,7 +524,6 @@ export function SellerDashboardPage() {
                               : timeAgo(offer.createdAt)}
                         </span>
                       </div>
-                      {offer.message && <p className="offer-message">“{offer.message}”</p>}
                       {offer.status === "pending" ? (
                         <div className="offer-actions">
                           <button

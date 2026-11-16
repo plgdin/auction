@@ -31,6 +31,7 @@ import {
   sellerCommission,
   sellerNetPayout,
 } from "./sellerMath";
+import { isValidIndianPincode } from "./delivery";
 
 const STORAGE_KEY = "lelam-marketplace-v1";
 
@@ -261,8 +262,8 @@ function settleDueAuctions(next: Database, now: number): boolean {
           name: buyer.name,
           phone: buyer.phone ?? "",
           line1: "",
-          city: "Trivandrum",
-          state: "Kerala",
+          city: "",
+          state: "",
           pincode: "",
         };
         if (address) {
@@ -445,7 +446,7 @@ interface StoreValue {
   setCartQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   toggleFavorite: (productId: string) => void;
-  makeOffer: (productId: string, amount: number, message?: string) => ActionResult;
+  makeOffer: (productId: string, amount: number) => ActionResult;
   respondToOffer: (offerId: string, accept: boolean) => ActionResult;
   cancelOffer: (offerId: string) => ActionResult;
   createOrders: (input: {
@@ -725,7 +726,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const makeOffer = useCallback(
-    (productId: string, amount: number, message?: string): ActionResult => {
+    (productId: string, amount: number): ActionResult => {
       const current = dbRef.current;
       const activeUser = current.users.find((item) => item.id === current.sessionUserId);
       if (!activeUser) return { ok: false, error: "Sign in to make an offer." };
@@ -753,7 +754,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         buyerId: activeUser.id,
         sellerId: product.sellerId,
         amount,
-        message: message?.trim() || undefined,
+        message: undefined,
         status: "pending",
         createdAt: nowIso(),
         expiresAt: futureIso(next.settings.offerValidityHours),
@@ -868,13 +869,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!activeUser) return { ok: false as const, error: "Sign in to check out." };
       const address = activeUser.addresses.find((item) => item.id === input.addressId);
       if (!address) return { ok: false as const, error: "Choose a delivery address." };
-      const serviceable = current.settings.serviceablePrefixes.some((prefix) =>
-        address.pincode.startsWith(prefix),
-      );
-      if (!serviceable) {
+      if (!isValidIndianPincode(address.pincode)) {
         return {
           ok: false as const,
-          error: `We do not deliver to ${address.pincode} yet. Service area: ${current.settings.serviceablePrefixes.map((prefix) => `${prefix}xxx`).join(", ")}.`,
+          error: "Enter a valid six-digit Indian PIN code.",
         };
       }
 
@@ -1535,8 +1533,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!address.line1.trim() || !address.pincode.trim()) {
         return { ok: false, error: "Address line and pincode are required." };
       }
-      if (!/^\d{6}$/.test(address.pincode.trim())) {
-        return { ok: false, error: "Enter a 6-digit pincode." };
+      if (!isValidIndianPincode(address.pincode.trim())) {
+        return { ok: false, error: "Enter a valid six-digit Indian PIN code." };
       }
       const next = clone(current);
       const user = next.users.find((item) => item.id === activeUser.id)!;

@@ -5,6 +5,8 @@ interface GenieSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   originSelector?: string;
+  textureKind?: "search" | "cart";
+  skipOpenAnimation?: boolean;
   children: ReactNode;
 }
 
@@ -39,6 +41,7 @@ function renderCardTexture(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
+  kind: "search" | "cart",
 ) {
   ctx.clearRect(0, 0, width, height);
 
@@ -58,12 +61,12 @@ function renderCardTexture(
   // Header: 'search on' in sans-serif + 'lelam' in bold Gumela Arabic
   ctx.textBaseline = "middle";
 
-  const searchOnText = "search on ";
+  const searchOnText = kind === "search" ? "search on " : "your ";
   ctx.font = "500 22px system-ui, -apple-system, sans-serif";
   ctx.fillStyle = "#6D533E";
   const searchOnWidth = ctx.measureText(searchOnText).width;
 
-  const lelamText = "lelam";
+  const lelamText = kind === "search" ? "lelam" : "cart";
   ctx.font = '800 26px "Gumela Arabic", serif';
   ctx.fillStyle = "#493022";
   const lelamWidth = ctx.measureText(lelamText).width;
@@ -131,11 +134,16 @@ function renderCardTexture(
   ctx.fillText("FRESH ON THE RAIL", inputMargin + 4, 150);
 
   // 4 Sample listing rows
-  const items = [
+  const items = kind === "search" ? [
     { title: "Jacket", sub: "Good · Nila Vintage", price: "₹12,345", color: "#2B3747" },
     { title: "The worn-in denim jacket", sub: "Like new · Nila Vintage", price: "₹1,450", color: "#3B5C75" },
     { title: "Sunday morning knit", sub: "Good · Nila Vintage", price: "₹980", color: "#D3C2A9" },
     { title: "The quilted leather bag", sub: "Good · Nila Vintage", price: "₹1,250", color: "#2A1F18" },
+  ] : [
+    { title: "Selected piece", sub: "Condition · Size", price: "₹—", color: "#D3C2A9" },
+    { title: "Your shortlist", sub: "One-of-one finds", price: "₹—", color: "#3B5C75" },
+    { title: "Order summary", sub: "Subtotal · platform fee", price: "", color: "#2B3747" },
+    { title: "Doorstep delivery", sub: "Across India", price: "", color: "#D3C2A9" },
   ];
 
   let itemY = 168;
@@ -189,7 +197,7 @@ function renderCardTexture(
   ctx.fillStyle = "#FAF4EB";
   ctx.font = "600 14px system-ui, -apple-system, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("See all listings →", width / 2, btnY + 27);
+  ctx.fillText(kind === "search" ? "See all listings →" : "Review your cart →", width / 2, btnY + 27);
   ctx.textAlign = "left";
 }
 
@@ -197,6 +205,8 @@ export function GenieSearchModal({
   isOpen,
   onClose,
   originSelector = ".lelam-search-toggle",
+  textureKind = "search",
+  skipOpenAnimation = false,
   children,
 }: GenieSearchModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -233,8 +243,8 @@ export function GenieSearchModal({
     const targetH = originRect ? originRect.height : 42;
 
     const modalW = Math.min(512, window.innerWidth - 32);
-    const modalH = 538;
-    const modalTop = window.innerWidth < 640 ? 64 : 96;
+    const modalH = Math.min(538, window.innerHeight - 32);
+    const modalTop = Math.max(16, (window.innerHeight - modalH) / 2);
     const modalX = window.innerWidth / 2;
     const modalY = modalTop + modalH / 2;
 
@@ -258,7 +268,7 @@ export function GenieSearchModal({
       return;
     }
 
-    if (prefersReducedMotion) {
+    if (prefersReducedMotion || skipOpenAnimation) {
       setAnimState("settled");
       return;
     }
@@ -278,7 +288,7 @@ export function GenieSearchModal({
     const offCtx = offscreen.getContext("2d");
     if (offCtx) {
       offCtx.scale(dpr, dpr);
-      renderCardTexture(offCtx, geom.modalW, geom.modalH);
+      renderCardTexture(offCtx, geom.modalW, geom.modalH, textureKind);
     }
 
     const duration = 460; // ms
@@ -439,7 +449,7 @@ export function GenieSearchModal({
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current);
     };
-  }, [isOpen, prefersReducedMotion]);
+  }, [isOpen, prefersReducedMotion, textureKind, skipOpenAnimation]);
 
   // Handle closing with Genie suction animation back into search button
   const handleClose = () => {
@@ -613,7 +623,7 @@ export function GenieSearchModal({
 
       {/* Real Interactive React Modal Card (Shown when settled) */}
       {animState === "settled" && (
-        <div className="fixed inset-0 z-30 flex items-start justify-center pt-16 sm:pt-24 p-4 pointer-events-auto">
+          <div className="genie-modal-shell fixed inset-0 z-30 flex items-center justify-center p-4 pointer-events-auto">
           <div className="w-full max-w-lg">
             {React.cloneElement(children as React.ReactElement<any>, {
               onClose: handleClose,

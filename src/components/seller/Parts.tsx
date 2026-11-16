@@ -42,7 +42,6 @@ export function OfferDecision({
           {share < 70 ? " · low side of fair, your call" : ""}
         </em>
       </div>
-      {offer.message && <p className="offer-card-note">“{offer.message}”</p>}
       {pending ? (
         <div className="offer-card-actions">
           <span className="offer-card-clock">

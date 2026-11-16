@@ -12,12 +12,12 @@ import {
 } from "lucide-react";
 import { AddressForm } from "../components/AddressForm";
 import { Link, navigate } from "../components/Link";
-import { Field } from "../components/Ui";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { BUYER_PLATFORM_FEE_PAISE } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
+import { isValidIndianPincode } from "../lib/delivery";
 
 export function CheckoutPage() {
   const route = useRoute();
@@ -62,7 +62,7 @@ export function CheckoutPage() {
   const total = subtotal + platformFee;
   const address = user?.addresses.find((item) => item.id === selectedAddress);
   const serviceable = address
-    ? db.settings.serviceablePrefixes.some((prefix) => address.pincode.startsWith(prefix))
+    ? isValidIndianPincode(address.pincode)
     : false;
 
   if (!user) {
@@ -135,7 +135,7 @@ export function CheckoutPage() {
       return;
     }
     if (!serviceable) {
-      toast("We do not deliver to this pincode yet.", "error");
+      toast("Enter a valid six-digit Indian PIN code.", "error");
       return;
     }
     setPlacing(true);
@@ -162,15 +162,13 @@ export function CheckoutPage() {
   };
 
   return (
-    <main className="page-shell">
+    <main className="page-shell checkout-page">
       <div className="section-wrap">
         <div className="page-header">
           <div>
             <div className="eyebrow">CHECKOUT</div>
-            <h1>
-              Almost <em>yours.</em>
-            </h1>
-            <p>Confirm the address, then complete the order.</p>
+            <h1>Complete your order.</h1>
+            <p>Review delivery, payment, and your final total.</p>
           </div>
           <Link href={offer ? "#/account?tab=offers" : "#/cart"} className="text-link">
             Back
@@ -184,7 +182,7 @@ export function CheckoutPage() {
                 <span className="step-number">01</span>
                 <div>
                   <h2>Delivery address</h2>
-                  <p>Doorstep delivery only. No meeting the seller.</p>
+                  <p>Doorstep delivery across India. Add a valid six-digit PIN code.</p>
                 </div>
                 <button type="button" className="text-link" onClick={() => setShowAddressForm((open) => !open)}>
                   {showAddressForm ? "Cancel" : "Add new"}
@@ -215,8 +213,8 @@ export function CheckoutPage() {
                           {item.line1}
                           {item.line2 ? `, ${item.line2}` : ""}, {item.city}, {item.state} {item.pincode}
                         </p>
-                        {!db.settings.serviceablePrefixes.some((prefix) => item.pincode.startsWith(prefix)) && (
-                          <span className="address-warning">Not in our delivery area yet</span>
+                        {!isValidIndianPincode(item.pincode) && (
+                          <span className="address-warning">Enter a valid six-digit Indian PIN code</span>
                         )}
                       </div>
                     </label>
@@ -365,7 +363,7 @@ export function CheckoutPage() {
                   <ShieldCheck size={13} /> Secure checkout
                 </span>
                 <span>
-                  <Truck size={13} /> Trivandrum delivery
+                  <Truck size={13} /> Delivery across India
                 </span>
               </div>
             </div>
@@ -373,9 +371,6 @@ export function CheckoutPage() {
               <strong>Need to change something?</strong>
               <p>You can cancel before the seller arranges pickup.</p>
             </div>
-            <Field label="Order note" hint="Optional. Visible to the seller.">
-              <textarea rows={2} placeholder="Gate code, delivery preference…" />
-            </Field>
           </aside>
         </div>
       </div>

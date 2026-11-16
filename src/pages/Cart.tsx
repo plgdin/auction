@@ -2,6 +2,7 @@ import { ArrowRight, LockKeyhole, Minus, Plus, ShoppingBag, Trash2, Truck } from
 import { Link, navigate } from "../components/Link";
 import { formatMoney } from "../lib/format";
 import { useStore } from "../lib/store";
+import { BUYER_PLATFORM_FEE_PAISE } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 
 export function CartPage() {
@@ -115,7 +116,7 @@ export function CartPage() {
             <div className="cart-note">
               <Truck size={16} />
               <span>
-                Delivery is arranged by lelam after checkout. Available across Trivandrum pincodes starting with 695.
+                Doorstep delivery is available across India. Enter a valid six-digit PIN code at checkout.
               </span>
             </div>
           </div>
@@ -127,9 +128,13 @@ export function CartPage() {
                 <span>Subtotal</span>
                 <strong>{formatMoney(cartSubtotal)}</strong>
               </div>
+              <div className="summary-row">
+                <span>Platform fee</span>
+                <strong>{formatMoney(BUYER_PLATFORM_FEE_PAISE)}</strong>
+              </div>
               <div className="summary-row summary-total">
                 <span>Total</span>
-                <strong>{formatMoney(cartSubtotal)}</strong>
+                <strong>{formatMoney(cartSubtotal + BUYER_PLATFORM_FEE_PAISE)}</strong>
               </div>
               <p className="summary-note">
                 {sellers.length > 1

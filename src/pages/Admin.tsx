@@ -781,20 +781,10 @@ export function AdminPage() {
                     }
                   />
                 </Field>
-                <Field label="Serviceable pincode prefixes" hint="Comma separated. Trivandrum is 695.">
-                  <input
-                    value={settings.serviceablePrefixes.join(", ")}
-                    onChange={(event) =>
-                      setSettings((previous) => ({
-                        ...previous,
-                        serviceablePrefixes: event.target.value
-                          .split(",")
-                          .map((value) => value.trim())
-                          .filter(Boolean),
-                      }))
-                    }
-                  />
-                </Field>
+                <div className="admin-setting-note">
+                  <strong>Delivery coverage</strong>
+                  <span>Pan-India. Checkout accepts valid six-digit Indian PIN codes.</span>
+                </div>
                 <Field label="Seller auto-approve listings">
                   <label className="checkbox-line">
                     <input
