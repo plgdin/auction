@@ -10,7 +10,6 @@ import {
   Plus,
   Store,
   Tag,
-  TrendingUp,
   Truck,
   Wallet,
 } from "lucide-react";
@@ -752,10 +751,8 @@ export function SellerDashboardPage() {
             <div className="seller-explain">
               <p>
                 How an auction pays you: bidding opens at {db.settings.auctionStartPct}% of your asking
-                price, so buyers have room to win. If the winning bid comes in under your asking price,{" "}
-                <strong>the platform tops up the difference</strong> and you still receive your asking
-                price. If it goes above, you receive the winning bid and a small commission comes off the
-                surplus.
+                price, so buyers have room to win. If the winning bid goes above your asking price, you
+                receive the winning bid and a small commission comes off the surplus.
               </p>
             </div>
 
@@ -830,11 +827,11 @@ export function SellerDashboardPage() {
                             {formatMoney(auction.startingPrice)}
                           </span>
                           {auction.status === "scheduled" && (
-                            <span className="auction-state">Your price is protected while bids run.</span>
+                            <span className="auction-state">Bids open at the scheduled time.</span>
                           )}
                           {auction.status === "live" && (
                             <span className="auction-state">
-                              Highest bid wins. Your payout will be at least your asking price.
+                              Highest bid wins. Commission applies only on the amount above your asking price.
                             </span>
                           )}
                           {auction.status === "completed" && (
@@ -902,11 +899,6 @@ export function SellerDashboardPage() {
                           <span>
                             Your payout <strong>{formatMoney(auction.financial.sellerPayout)}</strong>
                           </span>
-                          {auction.financial.platformSubsidy > 0 && (
-                            <span>
-                              Subsidy <strong>{formatMoney(auction.financial.platformSubsidy)}</strong>
-                            </span>
-                          )}
                           <span>
                             Commission{" "}
                             <strong>{formatMoney(auction.financial.platformCommission)}</strong>
@@ -969,17 +961,6 @@ export function SellerDashboardPage() {
                 </span>
                 <strong>{formatMoney(pendingPayout)}</strong>
                 <em>Awaiting admin approval</em>
-              </div>
-              <div className="stat-card">
-                <span>
-                  <TrendingUp size={15} /> Auction subsidy
-                </span>
-                <strong>
-                  {formatMoney(
-                    mySettlements.reduce((total, item) => total + item.platformSubsidy, 0),
-                  )}
-                </strong>
-                <em>Platform tops up auction shortfalls</em>
               </div>
             </div>
 

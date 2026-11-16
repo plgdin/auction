@@ -31,7 +31,7 @@ export interface FooterLink {
 }
 
 export interface FooterColumn {
-  title: string
+  title: React.ReactNode
   links: FooterLink[]
 }
 
@@ -39,7 +39,7 @@ export interface HalftoneWordmarkFooterProps {
   /** The giant word printed in dots. Lowercase reads best. */
   wordmark?: string
   /** Top-left studio line. */
-  label?: string
+  label?: React.ReactNode
   /** The muted line under it. */
   meta?: string
   /** Link columns along the top. */
@@ -490,7 +490,7 @@ export default function HalftoneWordmarkFooter({
           <span>{meta}</span>
         </div>
         {columns.map((col) => (
-          <nav className="hwf-col" key={col.title} aria-label={col.title}>
+          <nav className="hwf-col" key={typeof col.title === "string" ? col.title : "brand"} aria-label={typeof col.title === "string" ? col.title : "lelam.co"}>
             <h3>{col.title}</h3>
             <ul>
               {col.links.map((l) => (

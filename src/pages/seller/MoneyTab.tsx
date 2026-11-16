@@ -1,4 +1,4 @@
-import { Banknote, Clock3, TrendingUp } from "lucide-react";
+import { Banknote, Clock3 } from "lucide-react";
 import { SettlementLedgerRow } from "../../components/seller/Parts";
 import { formatMoney } from "../../lib/format";
 import { netPayout } from "../../lib/sellerMath";
@@ -24,7 +24,6 @@ export function MoneyTab() {
   const pending = mySettlements
     .filter((settlement) => settlement.status !== "paid")
     .reduce((total, settlement) => total + netPayout(settlement.sellerPayout), 0);
-  const subsidy = mySettlements.reduce((total, settlement) => total + settlement.platformSubsidy, 0);
 
   return (
     <div className="dashboard-section">
@@ -42,13 +41,6 @@ export function MoneyTab() {
           </span>
           <strong>{formatMoney(pending)}</strong>
           <em>credited ≤5 business days after buyer approval</em>
-        </div>
-        <div className="stat-card">
-          <span>
-            <TrendingUp size={16} /> Platform covered
-          </span>
-          <strong>{formatMoney(subsidy)}</strong>
-          <em>bids below your base — lelam paid the gap</em>
         </div>
       </div>
 
@@ -92,7 +84,6 @@ export function MoneyTab() {
             orderId={settlement.orderId}
             asking={settlement.askingPrice}
             payout={netPayout(settlement.sellerPayout)}
-            subsidy={settlement.platformSubsidy}
             status={settlement.status}
             createdAt={settlement.createdAt}
           />

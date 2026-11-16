@@ -303,7 +303,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
           auction.sellerId,
           "auction_sold",
           "Your auction has a winner",
-          `${product.title} ended at a winning bid. Your guaranteed payout is protected.`,
+          `${product.title} ended at a winning bid. Check your payout in the seller dashboard.`,
           "#/seller?tab=auctions",
         );
       }

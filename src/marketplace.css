@@ -4440,3 +4440,190 @@ html { scroll-behavior: smooth; }
   .paper-primary-cta { transition: none; }
 }
 .paper-quote-band > .paper-tear.is-bottom { position: absolute; bottom: -24px; left: 0; transform: rotate(180deg); }
+
+/* Scrapbook listing form category tiles and searchable dropdowns. */
+.sell-page .sell-block {
+  background: #fbf6eb;
+  border-color: #d7c7ac;
+  box-shadow: 0 8px 24px rgba(73, 48, 34, 0.06);
+}
+.sell-category-picker { display: grid; gap: 10px; }
+.sell-category-picker > .field-label { font-size: 12px; font-weight: 600; }
+.sell-category-picker > .field-label > span { color: #a65d49; }
+.sell-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.sell-category-tile {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 92px;
+  gap: 11px;
+  padding: 9px;
+  overflow: hidden;
+  border: 1px solid #d4c3a5;
+  border-radius: 8px;
+  background: #fffaf1;
+  color: #51412d;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease, color 180ms ease;
+}
+.sell-category-tile:hover {
+  border-color: #9d946e;
+  box-shadow: 0 5px 13px rgba(57, 41, 27, 0.08);
+}
+.sell-category-tile.is-selected { border-color: #74794c; color: #454b2b; }
+.sell-category-highlight {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: #eeeddf;
+  box-shadow: inset 0 0 0 1px rgba(104, 112, 70, 0.18);
+}
+.sell-category-art {
+  display: grid;
+  flex: 0 0 58px;
+  width: 58px;
+  height: 70px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 5px;
+  background: #eee5d3;
+  color: #514c3b;
+}
+.sell-category-tile:nth-child(3n + 2) .sell-category-art { background: #e8e8dd; }
+.sell-category-tile:nth-child(3n) .sell-category-art { background: #f0e3d8; }
+.sell-category-art svg { width: 54px; height: 54px; stroke-width: 1.5; }
+.sell-category-copy { display: grid; gap: 4px; min-width: 0; }
+.sell-category-copy strong { font-size: 11.5px; line-height: 1.25; font-weight: 600; }
+.sell-category-copy small { color: #89765f; font-size: 9.5px; line-height: 1.3; }
+.sell-category-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: #62683c;
+  color: #fffaf1;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 160ms ease, transform 280ms cubic-bezier(.3, 1.6, .5, 1);
+}
+.sell-category-tile.is-selected .sell-category-check { opacity: 1; transform: scale(1); }
+.sell-category-hint { color: #89765f; font-size: 11px; line-height: 1.5; }
+
+.sell-select-field { position: relative; min-width: 0; }
+.sell-select-field.is-open { z-index: 8; }
+.sell-select-field > .field-label { display: block; margin-bottom: 8px; }
+.sell-select-trigger {
+  display: flex;
+  width: 100%;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 15px;
+  border: 1px solid #cdbb9e;
+  border-radius: 8px;
+  background: #fffaf1;
+  color: #39291b;
+  text-align: left;
+  font: 400 15px/1.35 "DM Sans", sans-serif;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+.sell-select-trigger:hover,
+.sell-select-trigger.is-open { border-color: #74794c; background: #fffdf7; }
+.sell-select-trigger:focus-visible { outline: 3px solid rgba(98, 104, 60, 0.2); outline-offset: 2px; }
+.sell-select-trigger > svg { flex: 0 0 auto; color: #75664e; transition: transform 180ms ease; }
+.sell-select-trigger.is-open > svg { transform: rotate(180deg); }
+.sell-select-trigger .is-placeholder { color: #9b8b74; }
+.sell-select-menu {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 7px);
+  right: 0;
+  left: 0;
+  padding: 8px;
+  border: 1px solid #cdbb9e;
+  border-radius: 9px;
+  background: #fffaf1;
+  box-shadow: 0 16px 34px rgba(57, 41, 27, 0.18);
+  animation: sell-menu-arrive 160ms ease-out both;
+}
+@keyframes sell-menu-arrive {
+  from { opacity: 0; transform: translateY(-5px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.sell-select-search {
+  display: flex;
+  min-height: 39px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid #e0d4c2;
+  border-radius: 6px;
+  background: #fffdf8;
+  color: #89765f;
+}
+.sell-select-search:focus-within { border-color: #74794c; box-shadow: 0 0 0 3px rgba(98, 104, 60, 0.12); }
+.sell-select-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #39291b;
+  font: 400 12px/1.4 "DM Sans", sans-serif;
+}
+.sell-select-options { max-height: 250px; overflow-y: auto; padding-top: 5px; }
+.sell-select-option {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  color: #51412d;
+  text-align: left;
+  font: 400 12px/1.35 "DM Sans", sans-serif;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.sell-select-option:hover { background: #f1ebdf; }
+.sell-select-option.is-selected { background: #e9eadc; color: #454b2b; font-weight: 600; }
+.sell-select-option > svg { flex: 0 0 auto; }
+.sell-select-empty { padding: 12px 10px; color: #89765f; font-size: 11px; }
+.sell-select-field > .field-hint { display: block; margin-top: 6px; }
+
+@media (max-width: 700px) {
+  .sell-category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .sell-category-tile { min-height: 82px; gap: 8px; padding: 7px; }
+  .sell-category-art { flex-basis: 48px; width: 48px; height: 62px; }
+  .sell-category-art svg { width: 46px; height: 48px; }
+  .sell-category-copy strong { font-size: 10.5px; }
+  .sell-category-copy small { font-size: 9px; }
+}
+@media (max-width: 380px) {
+  .sell-category-grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sell-category-tile,
+  .sell-category-check,
+  .sell-select-trigger,
+  .sell-select-trigger > svg,
+  .sell-select-option { transition: none; }
+  .sell-select-menu { animation: none; }
+}

@@ -107,10 +107,9 @@ export function AuctionsPage() {
         <section className="auction-finance section-wrap-inner">
           <div className="auction-finance-copy">
             <div className="eyebrow">HOW THE MONEY WORKS</div>
-            <h2>The seller never earns less than their asking price.</h2>
+            <h2>A small commission, only on what sells above asking.</h2>
             <p>
-              If the winning bid is below the asking price, lelam covers the difference as a
-              platform subsidy. If the bid is above it, a small platform commission applies only to
+              If the winning bid is above the asking price, a small platform commission applies only to
               the amount above the asking price. The seller keeps the rest.
             </p>
             <Link href="#/seller" className="text-link">
@@ -124,13 +123,13 @@ export function AuctionsPage() {
             </div>
             <div>
               <span>Winning bid</span>
-              <strong>{formatMoney(110000)}</strong>
+              <strong>{formatMoney(160000)}</strong>
             </div>
             <div className="is-highlight">
               <span>Seller payout</span>
               <strong>{formatMoney(145000)}</strong>
             </div>
-            <p>Platform subsidy {formatMoney(35000)} · commission {formatMoney(0)}</p>
+            <p>Platform subsidy {formatMoney(0)} · commission {formatMoney(15000)}</p>
           </div>
         </section>
       </div>

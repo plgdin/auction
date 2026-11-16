@@ -162,7 +162,7 @@ export function AuctionRailCard({
         </Link>
         <span>
           {formatMoney(auction.currentBid ?? auction.startingPrice)} · {auction.bidCount} bids ·{" "}
-          your floor {formatMoney(auction.askingPrice)} locked
+          asking {formatMoney(auction.askingPrice)}
         </span>
       </div>
       <div className="auction-rail-side">
@@ -191,7 +191,6 @@ export function SettlementLedgerRow({
   orderId,
   asking,
   payout,
-  subsidy,
   status,
   createdAt,
 }: {
@@ -199,7 +198,6 @@ export function SettlementLedgerRow({
   orderId?: string;
   asking: number;
   payout: number;
-  subsidy: number;
   status: string;
   createdAt: string;
 }) {
@@ -224,7 +222,6 @@ export function SettlementLedgerRow({
       <span className="ledger-ask">{formatMoney(asking)}</span>
       <span className="ledger-payout">
         {formatMoney(payout)}
-        {subsidy > 0 && <em>incl. {formatMoney(subsidy)} platform cover</em>}
       </span>
       <span className={`status-pill ${tone}`}>{label}</span>
     </div>
