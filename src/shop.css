@@ -45,7 +45,8 @@
 
 .shop-filters {
   position: sticky;
-  top: 80px;
+  top: 128px;
+  margin-top: 48px;
   align-self: start;
   z-index: 20;
   filter: drop-shadow(0 4px 10px rgba(60, 40, 20, 0.16)) drop-shadow(0 14px 28px rgba(60, 40, 20, 0.18));
@@ -980,6 +981,7 @@
 
   .shop-filters {
     width: 100%;
+    margin-top: 0;
     filter: none;
   }
 
@@ -1113,7 +1115,8 @@
   }
 
   .shop-filters {
-    top: 68px;
+    top: 116px;
+    margin-top: 48px;
   }
 
   .shop-heading {
