@@ -781,9 +781,9 @@ html { scroll-behavior: smooth; }
   padding: 20px;
   background: #f8eedb;
 }
-.auction-explain svg { color: #7b5737; margin-bottom: 4px; }
-.auction-explain strong { font-size: 12.5px; font-weight: 600; color: #332417; }
-.auction-explain p { font-size: 11.5px; line-height: 1.55; color: #756147; }
+.auction-explain svg { color: #7b5737; margin-bottom: 4px; stroke-width: 2.2px; }
+.auction-explain strong { font-size: 14.5px; font-weight: 700; color: #27170a; }
+.auction-explain p { font-size: 12.5px; line-height: 1.55; color: #543f30; font-weight: 500; }
 .auctions-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .auction-finance {
   display: grid;

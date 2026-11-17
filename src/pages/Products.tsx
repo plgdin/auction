@@ -420,9 +420,10 @@ export function ProductsPage() {
 
           <section className="shop-results">
             <header className="shop-heading">
-              <div>
-                <p className="shop-found">{visible.length} Items found</p>
-              </div>
+              <p className="shop-found">{visible.length} Items found</p>
+            </header>
+
+            <div className="shop-view-sticky-wrap">
               <div className="shop-view">
                 <span>View:</span>
                 <button
@@ -444,7 +445,7 @@ export function ProductsPage() {
                   <List size={18} strokeWidth={1.7} />
                 </button>
               </div>
-            </header>
+            </div>
 
             {pageProducts.length ? (
               <div className={`shop-grid is-${view}`}>

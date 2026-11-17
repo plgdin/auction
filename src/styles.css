@@ -5238,7 +5238,7 @@ body {
 }
 
 .auctions-page .page-header {
-  border-bottom: 1px dashed rgba(73, 48, 34, 0.25) !important;
+  border-bottom: none !important;
   padding-bottom: 24px !important;
 }
 
@@ -5271,15 +5271,22 @@ body {
 }
 
 .auctions-page .auction-explain strong {
-  color: #493022 !important;
+  font-size: 14.5px !important;
+  font-weight: 700 !important;
+  color: #27170a !important;
+  letter-spacing: -0.01em !important;
 }
 
 .auctions-page .auction-explain p {
-  color: #6B5646 !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  line-height: 1.55 !important;
+  color: #543f30 !important;
 }
 
 .auctions-page .auction-explain svg {
-  color: #493022 !important;
+  color: #27170a !important;
+  stroke-width: 2.2px !important;
 }
 
 .auctions-page .segmented-tabs {

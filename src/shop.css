@@ -435,19 +435,23 @@
 }
 
 .shop-heading {
-  position: sticky;
-  top: 80px;
-  z-index: 15;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-  padding: 10px 4px 10px 2px;
-  background: rgba(243, 229, 210, 0.94);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(73, 48, 34, 0.12);
+  margin-bottom: 8px;
+  padding: 4px 2px;
+  background: transparent;
+  border-bottom: none;
+}
+
+.shop-view-sticky-wrap {
+  position: sticky;
+  top: 86px;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -36px;
+  margin-bottom: 12px;
+  pointer-events: none;
 }
 
 .shop-title {
@@ -485,10 +489,17 @@
 }
 
 .shop-view {
+  pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding-bottom: 0;
+  gap: 5px;
+  padding: 3px 8px 3px 11px;
+  background: rgba(250, 247, 242, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(73, 48, 34, 0.16);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(73, 48, 34, 0.08);
 }
 
 .shop-view span {
@@ -1262,8 +1273,8 @@
     margin-top: 48px;
   }
 
-  .shop-heading {
-    top: 68px;
+  .shop-view-sticky-wrap {
+    top: 72px;
   }
 
   .shop-filter-paper {
