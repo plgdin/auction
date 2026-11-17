@@ -339,27 +339,52 @@
 
 .shop-select-wrap {
   position: relative;
-  display: flex;
-  align-items: center;
-  min-height: 30px;
-  border-radius: 5px;
+  width: 100%;
+  margin-top: 4px;
 }
 
 .shop-select-wrap .select-menu {
   position: relative;
   width: 100%;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .shop-select-wrap .select-menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   min-height: 28px;
   height: 28px;
   padding: 0 10px;
-  border: 1.3px solid #826444;
+  border: 1.3px solid #826444 !important;
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.88);
   color: #0e0703;
   font: 600 12px/1 "DM Sans", sans-serif;
   cursor: pointer;
+  box-shadow: none !important;
+  box-sizing: border-box;
+}
+
+.shop-select-wrap .select-menu-trigger:hover {
+  background: #fff;
+  border-color: #5a3818 !important;
+}
+
+.shop-select-wrap .select-menu-trigger svg {
+  position: static !important;
+  flex: 0 0 auto;
+  color: #1a0e05;
+  transition: transform 180ms ease;
+}
+
+.shop-select-wrap .select-menu-trigger[aria-expanded="true"] svg {
+  transform: rotate(180deg);
 }
 
 .shop-select-wrap .select-menu-popover {
@@ -369,45 +394,26 @@
   width: 100%;
   min-width: 180px;
   border: 1.5px solid #826444;
+  border-radius: 8px;
   background: #fbf7ee;
   box-shadow: 0 -6px 20px rgba(50, 30, 15, 0.22);
   z-index: 1000;
+  padding: 4px;
 }
 
 .shop-select-wrap .select-menu-popover button {
   font-size: 12px;
   font-weight: 500;
   color: #27170a;
-  min-height: 32px;
+  min-height: 30px;
   padding: 6px 10px;
+  border-radius: 6px;
 }
 
 .shop-select-wrap .select-menu-popover button:hover,
 .shop-select-wrap .select-menu-popover button.is-selected {
   background: rgba(73, 48, 34, 0.12);
   color: #0e0703;
-}
-
-.shop-select-wrap select {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 100%;
-  height: 100%;
-  padding: 0 30px 0 10px;
-  border: 1.3px solid #826444;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.75);
-  color: #0e0703;
-  font: 600 12px/1 "DM Sans", sans-serif;
-  cursor: pointer;
-  outline: none;
-}
-
-.shop-select-wrap svg {
-  position: absolute;
-  right: 9px;
-  pointer-events: none;
-  color: #1a0e05;
 }
 
 .shop-clear {

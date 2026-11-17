@@ -169,7 +169,7 @@ export function ProductsPage() {
 
   const toggleSize = (size: string) =>
     setSelectedSizes((previous) =>
-      previous.includes(size) ? previous.filter((item) => item !== size) : [...previous, size],
+      previous.includes(size) ? [] : [size],
     );
 
   const toggleGroup = (group: string) =>
