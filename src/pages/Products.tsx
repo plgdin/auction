@@ -78,6 +78,28 @@ export function ProductsPage() {
     sort: true,
   });
 
+  const scrollToProducts = () => {
+    const target = document.querySelector<HTMLElement>(".shop-results");
+    if (target) {
+      const navOffset = 80;
+      const elementPosition = target.getBoundingClientRect().top + window.scrollY;
+      const offsetPosition = Math.max(0, elementPosition - navOffset);
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    setPage(nextPage);
+    requestAnimationFrame(() => {
+      scrollToProducts();
+    });
+  };
+
   const toggleSection = (key: string) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -446,7 +468,7 @@ export function ProductsPage() {
                   type="button"
                   aria-label="Previous page"
                   disabled={page === 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  onClick={() => handlePageChange(Math.max(1, page - 1))}
                 >
                   <ChevronLeft size={15} strokeWidth={1.7} />
                 </button>
@@ -459,7 +481,7 @@ export function ProductsPage() {
                       key={item}
                       aria-current={page === item ? "page" : undefined}
                       className={page === item ? "is-active" : ""}
-                      onClick={() => setPage(item)}
+                      onClick={() => handlePageChange(item)}
                     >
                       {item}
                     </button>
@@ -469,7 +491,7 @@ export function ProductsPage() {
                   type="button"
                   aria-label="Next page"
                   disabled={page === pageCount}
-                  onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+                  onClick={() => handlePageChange(Math.min(pageCount, page + 1))}
                 >
                   <ChevronRight size={15} strokeWidth={1.7} />
                 </button>

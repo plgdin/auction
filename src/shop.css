@@ -431,6 +431,7 @@
 .shop-results {
   min-width: 0;
   padding-top: 0;
+  scroll-margin-top: 80px;
 }
 
 .shop-heading {
