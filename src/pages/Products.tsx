@@ -298,7 +298,6 @@ export function ProductsPage() {
                 </section>
               </div>
             </div>
-            <img className="shop-flowers" src="/ass/dried-flowers.png" alt="" aria-hidden="true" />
           </aside>
 
           <section className="shop-results">
