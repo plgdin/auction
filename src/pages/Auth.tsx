@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, LockKeyhole, Mail, ShieldCheck, Store, UserRound } from "lucide-react";
+import { ArrowRight, LockKeyhole, Mail, ShieldCheck, Store } from "lucide-react";
 import { Link, navigate } from "../components/Link";
 import { Field } from "../components/Ui";
 import { useStore } from "../lib/store";
 import { useRoute } from "../lib/router";
 import { toast } from "../lib/toast";
-
-const demoAccounts = [
-  { label: "Client Account (Aisha)", email: "buyer@lelam.co", password: "demo1234", note: "Browse, buy, and sell items" },
-  { label: "Admin Account", email: "admin@lelam.co", password: "admin1234", note: "Reviews, settings, platform" },
-];
 
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const { login, register, signInWithGoogle, user } = useStore();
@@ -130,28 +125,6 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               <LockKeyhole size={16} /> Doorstep delivery across India
             </li>
           </ul>
-
-          <div className="auth-demo">
-            <span className="auth-demo-label">TRY A DEMO ACCOUNT</span>
-            {demoAccounts.map((account) => (
-              <button
-                key={account.email}
-                type="button"
-                onClick={() => {
-                  setEmail(account.email);
-                  setPassword(account.password);
-                  if (mode === "register") navigate("#/login");
-                }}
-              >
-                <div>
-                  <strong>{account.label}</strong>
-                  <em>{account.note}</em>
-                </div>
-                <span>{account.email}</span>
-              </button>
-            ))}
-            <p>Click a demo account to fill the form. No real account is created.</p>
-          </div>
         </section>
 
         <section className="auth-card">
@@ -277,11 +250,6 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
                 Already have an account? <Link href="#/login">Sign in</Link>
               </>
             )}
-          </div>
-
-          <div className="auth-demo-note">
-            <UserRound size={14} />
-            This is a frontend demo. Accounts and passwords live in your browser only.
           </div>
         </section>
       </div>

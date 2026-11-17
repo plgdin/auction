@@ -466,7 +466,7 @@ function AuthPrompt({
           </Link>
         </div>
         <span className="auth-prompt-note">
-          Demo accounts are on the sign-in page. No real payment is taken.
+          Sign in or create an account to bid, buy, and sell.
         </span>
       </div>
     </Modal>

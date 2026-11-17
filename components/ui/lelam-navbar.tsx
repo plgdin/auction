@@ -36,7 +36,7 @@ export function LelamNavbar({
   onOpenSaved,
   onOpenCart,
 }: LelamNavbarProps) {
-  const { user, logout, switchAccount, db } = useStore();
+  const { user, logout } = useStore();
   const route = useRoute();
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
@@ -72,7 +72,6 @@ export function LelamNavbar({
     }
   };
 
-  const demoUsers = db.users.filter((candidate) => ["u-buyer", "u-admin"].includes(candidate.id));
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none">
@@ -216,36 +215,16 @@ export function LelamNavbar({
                       {unreadCount > 0 && <em>{unreadCount}</em>}
                     </button>
                     {user.role === "admin" && (
-                      <>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => {
-                            setAccountOpen(false);
-                            navigate("#/admin");
-                          }}
-                        >
-                          <Shield size={16} /> Admin panel
-                        </button>
-                        <div className="account-menu-sep" />
-                        <span className="account-menu-label">Demo accounts</span>
-                        {demoUsers.map((demo) => (
-                          <button
-                            key={demo.id}
-                            type="button"
-                            role="menuitem"
-                            className={demo.id === user.id ? "is-active" : ""}
-                            onClick={() => {
-                              switchAccount(demo.id);
-                              setAccountOpen(false);
-                              navigate("#/");
-                            }}
-                          >
-                            <span className="demo-dot" /> {demo.name}
-                            <em>{demo.role}</em>
-                          </button>
-                        ))}
-                      </>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setAccountOpen(false);
+                          navigate("#/admin");
+                        }}
+                      >
+                        <Shield size={16} /> Admin panel
+                      </button>
                     )}
                     <div className="account-menu-sep" />
                     <button
