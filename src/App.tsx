@@ -125,10 +125,10 @@ function SearchModalCard({
           className="relative"
         >
           <div
-            className="relative flex items-center gap-2 overflow-hidden rounded-full border border-[#CBB693] bg-[#FFFDF9] shadow-[0_2px_12px_rgba(73,48,34,0.08)] transition-shadow"
+            className="relative flex items-center gap-2.5 overflow-hidden rounded-full border border-[#CBB693] bg-[#FFFDF9] shadow-[0_2px_12px_rgba(73,48,34,0.08)] transition-all focus-within:border-[#8C745A] focus-within:shadow-[0_2px_16px_rgba(73,48,34,0.14)]"
             style={{ backgroundColor: "#FFFDF9", borderColor: "#CBB693" }}
           >
-            <div className="ml-4 flex items-center justify-center text-[#8C745A]">
+            <div className="ml-4 flex items-center justify-center text-[#8C745A] shrink-0 pointer-events-none">
               <Search size={18} strokeWidth={2.2} />
             </div>
             <input
@@ -138,8 +138,12 @@ function SearchModalCard({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Denim, a leather jacket, homeware…"
               aria-label="Search listings"
-              className="h-12 flex-1 bg-transparent pr-3 font-sans text-sm sm:text-base text-[#332417] placeholder:text-[#9C856C] outline-none"
-              style={{ color: "#332417" }}
+              className="flex-1 bg-transparent py-2.5 sm:py-3 pl-1 pr-3 font-sans text-sm sm:text-base text-[#332417] placeholder:text-[#9C856C] outline-none leading-normal"
+              style={{
+                color: "#332417",
+                caretColor: "#493022",
+                lineHeight: "1.4",
+              }}
             />
             {query && (
               <button
@@ -548,7 +552,7 @@ function Shell() {
       ],
     },
     {
-      title: <span className="brand-wordmark">lelam.co</span>,
+      title: "",
       links: [
         { label: "Trivandrum, Kerala" },
         { label: "Delivery in 695xxx" },

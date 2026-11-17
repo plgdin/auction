@@ -490,9 +490,13 @@ export default function HalftoneWordmarkFooter({
           <strong>{label}</strong>
           <span>{meta}</span>
         </div>
-        {columns.map((col) => (
-          <nav className="hwf-col" key={typeof col.title === "string" ? col.title : "brand"} aria-label={typeof col.title === "string" ? col.title : "lelam.co"}>
-            <h3>{col.title}</h3>
+        {columns.map((col, idx) => (
+          <nav
+            className="hwf-col"
+            key={typeof col.title === "string" && col.title ? col.title : `col-${idx}`}
+            aria-label={typeof col.title === "string" && col.title ? col.title : "Information"}
+          >
+            <h3>{col.title || <span className="invisible select-none" aria-hidden="true">&nbsp;</span>}</h3>
             <ul>
               {col.links.map((l) => (
                 <li key={l.label}>
