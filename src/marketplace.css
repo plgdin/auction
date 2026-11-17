@@ -454,7 +454,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
   border-color: var(--mkt-ink);
   box-shadow: 0 0 0 3px rgba(23, 21, 15, 0.07);
 }
-.field-row { display: grid; gap: 15px; }
+.field-row { display: grid; gap: 15px; align-items: start; }
 .field-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .field-row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
@@ -556,8 +556,9 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
   font-weight: 700;
   transition: background 150ms ease, color 150ms ease;
 }
-.segmented-tabs button:hover { color: var(--mkt-ink); }
+.segmented-tabs button:not(.is-active):hover { color: var(--mkt-ink); }
 .segmented-tabs button.is-active { background: transparent; color: #fff; }
+.segmented-tabs button.is-active:hover { color: #fff; }
 .segmented-tabs button.is-active .segmented-tab-label { font-weight: 700; color: #fff; }
 .segmented-tabs button.is-active .segmented-tab-count { background: rgba(255, 255, 255, 0.2); color: #fff; }
 
@@ -1388,7 +1389,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 .offer-savings strong { color: var(--mkt-olive); }
 .checkout-address-mini { display: flex; gap: 6px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--mkt-line); font-size: 10.5px; line-height: 1.5; color: var(--mkt-muted); }
 .checkout-aside .field { padding: 16px; border: 1px solid var(--mkt-line); border-radius: 11px; }
-.address-form { display: grid; gap: 13px; }
+.address-form { display: grid; gap: 14px; }
+.address-form .field-row { align-items: start; }
 .address-form-panel { margin-bottom: 18px; }
 
 /* ---------- Auth ---------- */
@@ -1683,7 +1685,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 .address-card > span { font-size: 12px; color: var(--mkt-muted); }
 .address-card p { margin: 5px 0; font-size: 12.5px; line-height: 1.5; }
 .address-card .text-link { margin-top: 8px; font-size: 12px; }
-.address-card-actions { display: flex; gap: 14px; }
+.address-card-actions { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
+.address-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
 
 .notification-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .notification-list li { display: flex; align-items: flex-start; gap: 11px; padding: 14px 0; border-bottom: 1px solid var(--mkt-line); }

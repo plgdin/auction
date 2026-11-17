@@ -5313,8 +5313,14 @@ body {
   transition: color 150ms ease !important;
 }
 
-.auctions-page .segmented-tabs button:hover {
+.auctions-page .segmented-tabs button:not(.is-active):hover {
   color: #27170a !important;
+}
+
+.auctions-page .segmented-tabs button.is-active:hover,
+.auctions-page .segmented-tabs button.is-active:hover .segmented-tab-label,
+.auctions-page .segmented-tabs button.is-active:hover .segmented-tab-count {
+  color: #FAF7F2 !important;
 }
 
 .auctions-page .segmented-tabs .segmented-tab-label {
