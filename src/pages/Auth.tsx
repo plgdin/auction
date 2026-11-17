@@ -245,6 +245,11 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               className="button button-ghost button-google"
               disabled={isGoogleLoading}
               onClick={async () => {
+                const google = (window as any).google;
+                if (google?.accounts?.id) {
+                  google.accounts.id.prompt();
+                  return;
+                }
                 setIsGoogleLoading(true);
                 const res = await signInWithGoogle();
                 setIsGoogleLoading(false);
