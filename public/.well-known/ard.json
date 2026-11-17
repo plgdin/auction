@@ -3,11 +3,11 @@
     {
       "@context": "https://agenticresourcediscovery.org/context/v1",
       "identifier": "urn:air:lelam.co:web:marketplace",
-      "displayName": "lelam.co marketplace",
+      "displayName": "Lelam pre-loved fashion marketplace",
       "type": "application/agent-card+json",
       "url": "https://lelam.co/",
-      "description": "Demo pre-loved clothing marketplace for Trivandrum, Kerala: browse listings, make private offers, and bid in optional live auctions. Demo data only — no real payments.",
-      "tags": ["marketplace", "pre-loved", "secondhand", "fashion", "auctions", "demo"],
+      "description": "A marketplace for one-of-a-kind pre-loved fashion. Browse curated finds, make private offers, and bid in surprise auctions.",
+      "tags": ["marketplace", "pre-loved", "secondhand", "fashion", "auctions"],
       "capabilities": ["browse-listings", "private-offers", "live-auction-bidding", "seller-listing"],
       "representativeQueries": [
         "find a pre-loved denim jacket in Trivandrum",
