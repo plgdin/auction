@@ -287,6 +287,7 @@ export function GenieSearchModal({
   children,
 }: GenieSearchModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const domModalRef = useRef<HTMLDivElement | null>(null);
   const [animState, setAnimState] = useState<"idle" | "opening" | "settled" | "closing">("idle");
   const animRef = useRef<number | null>(null);
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -351,6 +352,10 @@ export function GenieSearchModal({
     }
 
     setAnimState("opening");
+    if (domModalRef.current) {
+      domModalRef.current.style.opacity = "0";
+      domModalRef.current.style.pointerEvents = "none";
+    }
 
     const geom = getGeometry();
     const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
@@ -414,19 +419,12 @@ export function GenieSearchModal({
       for (let i = 0; i < N; i++) {
         const v = i / (N - 1); // 0 at top, 1 at bottom
 
-        // Wave propagation: bottom slices lead outward, top slices stream from target
-        const delay = (1 - v) * 0.34;
-        const localT = Math.max(0, Math.min(1, (p - delay) / (1 - 0.34)));
+        // Soft progressive wave propagation: all slices glide to a stop smoothly by p = 0.90
+        const waveDelay = (1 - v) * 0.14;
+        const localP = Math.max(0, Math.min(1, (p - waveDelay) / (1 - 0.14)));
 
-        // Smooth cubic hermite flow
-        const ease = localT * localT * (3 - 2 * localT);
-
-        // Elastic overshoot settling bounce as card expands into position
-        let settle = 1;
-        if (p > 0.8) {
-          const settleP = (p - 0.8) / 0.2;
-          settle = 1 + Math.sin(settleP * Math.PI) * 0.016 * (1 - v * 0.4);
-        }
+        // Luxurious cubic ease-out: reaches exact destination smoothly with zero velocity
+        const ease = 1 - Math.pow(1 - localP, 3);
 
         // Spine position sampled along cubic Bézier trajectory
         const spine = cubicBezierPoint(p0, p1, p2, p3, ease);
@@ -436,9 +434,9 @@ export function GenieSearchModal({
         const currY = geom.targetY + (destY - geom.targetY) * ease;
         const currX = spine.x;
 
-        // Fluid trumpet / funnel curved width expansion
+        // Fluid trumpet curved width expansion
         const currW =
-          (geom.targetW + (geom.modalW - geom.targetW) * Math.pow(ease, 1.7)) * settle;
+          geom.targetW + (geom.modalW - geom.targetW) * Math.pow(ease, 1.4);
 
         leftPoints.push({ x: currX - currW / 2, y: currY });
         rightPoints.push({ x: currX + currW / 2, y: currY });
@@ -460,6 +458,10 @@ export function GenieSearchModal({
       ctx.save();
       ctx.clip(boundaryPath);
 
+      // Taper slice overlap to eliminate fuzzy banding at the end
+      const overlapX = Math.max(0.4, (1 - p) * 2.0);
+      const overlapY = Math.max(0.2, (1 - p) * 1.0);
+
       // Draw horizontal slices of offscreen card texture
       for (let i = 0; i < N; i++) {
         const sy = i * (offscreen.height / N);
@@ -469,11 +471,11 @@ export function GenieSearchModal({
         const currY = leftPoints[i].y;
         const currW = rightPoints[i].x - leftPoints[i].x;
 
-        const dx = currX - currW / 2 - 2;
-        const dy = currY - 0.5;
-        const dw = currW + 4;
+        const dx = currX - currW / 2 - overlapX;
+        const dy = currY - overlapY * 0.5;
+        const dw = currW + overlapX * 2;
         const nextY = i < N - 1 ? leftPoints[i + 1].y : currY + geom.modalH / N;
-        const dh = Math.max(geom.modalH / N, nextY - currY + 1.2);
+        const dh = Math.max(geom.modalH / N, nextY - currY + overlapY);
 
         ctx.drawImage(offscreen, 0, sy, offscreen.width, sh, dx, dy, dw, dh);
       }
@@ -484,10 +486,25 @@ export function GenieSearchModal({
       ctx.lineWidth = 1.5;
       ctx.stroke(boundaryPath);
 
+      // Smooth cross-fade handover during the final frames
+      if (p >= 0.86) {
+        const fadeP = Math.min(1, (p - 0.86) / 0.14);
+        if (domModalRef.current) {
+          domModalRef.current.style.opacity = String(fadeP);
+        }
+        canvas.style.opacity = String(1 - fadeP);
+      }
+
       if (p < 1) {
         animRef.current = requestAnimationFrame(renderFrame);
       } else {
         // Animation finished: swap smoothly to the real interactive React DOM modal
+        if (domModalRef.current) {
+          domModalRef.current.style.opacity = "1";
+          domModalRef.current.style.pointerEvents = "auto";
+        }
+        canvas.style.display = "none";
+        canvas.style.opacity = "1";
         setAnimState("settled");
       }
     };
@@ -509,6 +526,14 @@ export function GenieSearchModal({
     }
 
     setAnimState("closing");
+    if (domModalRef.current) {
+      domModalRef.current.style.opacity = "0";
+      domModalRef.current.style.pointerEvents = "none";
+    }
+    if (canvasRef.current) {
+      canvasRef.current.style.display = "block";
+      canvasRef.current.style.opacity = "1";
+    }
 
     const geom = getGeometry();
     const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
@@ -558,11 +583,11 @@ export function GenieSearchModal({
       // When closing: TOP slice leads the suction into the button, bottom follows
       for (let i = 0; i < N; i++) {
         const v = i / (N - 1);
-        const delayClose = v * 0.34; // top (v=0) gets sucked first
-        const localQ = Math.max(0, Math.min(1, (q - delayClose) / (1 - 0.34)));
+        const delayClose = v * 0.18; // top (v=0) gets sucked first
+        const localQ = Math.max(0, Math.min(1, (q - delayClose) / (1 - 0.18)));
 
         // Suction acceleration into button
-        const easeClose = Math.pow(localQ, 2.6);
+        const easeClose = Math.pow(localQ, 2.4);
         const remaining = 1 - easeClose;
 
         const spine = cubicBezierPoint(p0, p1, p2, p3, remaining);
@@ -571,7 +596,7 @@ export function GenieSearchModal({
         const currY = geom.targetY + (destY - geom.targetY) * remaining;
         const currX = spine.x;
 
-        const currW = geom.targetW + (geom.modalW - geom.targetW) * Math.pow(remaining, 1.7);
+        const currW = geom.targetW + (geom.modalW - geom.targetW) * Math.pow(remaining, 1.4);
 
         leftPoints.push({ x: currX - currW / 2, y: currY });
         rightPoints.push({ x: currX + currW / 2, y: currY });
@@ -593,6 +618,9 @@ export function GenieSearchModal({
       ctx.save();
       ctx.clip(boundaryPath);
 
+      const overlapCloseX = Math.max(0.4, (1 - q) * 2.0);
+      const overlapCloseY = Math.max(0.2, (1 - q) * 1.0);
+
       for (let i = 0; i < N; i++) {
         const sy = i * (offscreen.height / N);
         const sh = offscreen.height / N;
@@ -601,11 +629,11 @@ export function GenieSearchModal({
         const currY = leftPoints[i].y;
         const currW = rightPoints[i].x - leftPoints[i].x;
 
-        const dx = currX - currW / 2 - 2;
-        const dy = currY - 0.5;
-        const dw = currW + 4;
+        const dx = currX - currW / 2 - overlapCloseX;
+        const dy = currY - overlapCloseY * 0.5;
+        const dw = currW + overlapCloseX * 2;
         const nextY = i < N - 1 ? leftPoints[i + 1].y : currY + geom.modalH / N;
-        const dh = Math.max(geom.modalH / N, nextY - currY + 1.2);
+        const dh = Math.max(geom.modalH / N, nextY - currY + overlapCloseY);
 
         ctx.drawImage(offscreen, 0, sy, offscreen.width, sh, dx, dy, dw, dh);
       }
@@ -661,9 +689,16 @@ export function GenieSearchModal({
         className="pointer-events-none fixed inset-0 z-20 h-full w-full"
       />
 
-      {/* Real Interactive React Modal Card (Shown when settled) */}
-      {animState === "settled" && (
-          <div className="genie-modal-shell fixed inset-0 z-30 flex items-center justify-center p-4 pointer-events-auto">
+      {/* Real Interactive React Modal Card */}
+      {animState !== "idle" && (
+        <div
+          ref={domModalRef}
+          style={{
+            opacity: animState === "settled" ? 1 : 0,
+            pointerEvents: animState === "settled" ? "auto" : "none",
+          }}
+          className="genie-modal-shell fixed inset-0 z-30 flex items-center justify-center p-4 pointer-events-auto"
+        >
           <div className="w-full max-w-lg">
             {React.cloneElement(children as React.ReactElement<any>, {
               onClose: handleClose,
