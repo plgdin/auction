@@ -183,7 +183,7 @@ const HWF_CSS = `
   letter-spacing: .04em;
   color: #493022;
 }
-.hwf-col h3 {
+.hwf-col h2 {
   margin: 0 0 6px 0;
   font: inherit;
   font-size: 12px;
@@ -556,7 +556,7 @@ export default function HalftoneWordmarkFooter({
             key={typeof col.title === "string" && col.title ? col.title : `col-${idx}`}
             aria-label={typeof col.title === "string" && col.title ? col.title : "Information"}
           >
-            <h3>{col.title || <span className="invisible select-none" aria-hidden="true">&nbsp;</span>}</h3>
+            <h2>{col.title || <span className="invisible select-none" aria-hidden="true">&nbsp;</span>}</h2>
             <ul>
               {col.links.map((l) => (
                 <li key={l.label}>

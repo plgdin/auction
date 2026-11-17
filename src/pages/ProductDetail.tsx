@@ -21,13 +21,14 @@ import { formatDate, formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
-import { animateProductPageToCart } from "../lib/cartAnimation";
+import { animateCartAdded } from "../lib/cartAnimation";
 
 export function ProductDetailPage() {
   const route = useRoute();
   const { db, user, favorites, toggleFavorite, addToCart, makeOffer, reportProduct } = useStore();
   const productId = route.path.split("/")[2] || "";
   const product = db.products.find((item) => item.id === productId);
+  const productPath = `/product/${productId}`;
   const [imageIndex, setImageIndex] = useState(0);
   const [offerOpen, setOfferOpen] = useState(route.query.get("offer") === "1");
   const [reportOpen, setReportOpen] = useState(false);
@@ -185,7 +186,7 @@ export function ProductDetailPage() {
                         onClick={() => {
                           if (!user) {
                             toast("Sign in to buy this piece.", "error");
-                            navigate("#/login");
+                            navigate(`#/login?next=${encodeURIComponent(productPath)}`);
                             return;
                           }
                           navigate(`#/checkout?product=${product.id}`);
@@ -200,11 +201,8 @@ export function ProductDetailPage() {
                           onClick={() => {
                             const result = addToCart(product.id);
                             if (result.ok) {
-                              animateProductPageToCart(() => {
-                                window.dispatchEvent(
-                                  new CustomEvent("lelam-open-cart", { detail: { instant: true } }),
-                                );
-                              });
+                              animateCartAdded();
+                              toast("Added to cart.", "success");
                             } else {
                               toast(result.error, "error");
                             }
@@ -219,7 +217,9 @@ export function ProductDetailPage() {
                             onClick={() => {
                               if (!user) {
                                 toast("Sign in to make an offer.", "error");
-                                navigate("#/login");
+                                navigate(
+                                  `#/login?next=${encodeURIComponent(`${productPath}?offer=1`)}`,
+                                );
                                 return;
                               }
                               setOfferOpen(true);

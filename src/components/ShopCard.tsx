@@ -4,11 +4,12 @@ import { useStore } from "../lib/store";
 import { formatMoney } from "../lib/format";
 import { toast } from "../lib/toast";
 import type { Product } from "../lib/types";
+import { animateCartAdded } from "../lib/cartAnimation";
 
 /**
  * The torn-paper product card used across the shop and saved lists.
  */
-export function ShopCard({ product }: { product: Product }) {
+export function ShopCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const { favorites, toggleFavorite, addToCart, cart } = useStore();
   const saved = favorites.includes(product.id);
   const inCart = cart.some((entry) => entry.product.id === product.id);
@@ -25,7 +26,12 @@ export function ShopCard({ product }: { product: Product }) {
     <article className="shop-card">
       <div className="shop-card-media">
         <Link href={`#/product/${product.id}`} aria-label={`View ${product.title}`}>
-          <img src={product.images[0]} alt={product.title} loading="lazy" />
+          <img
+            src={product.images[0]}
+            alt={product.title}
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : undefined}
+          />
         </Link>
         <span className="shop-card-tape" aria-hidden="true" />
         <button
@@ -76,7 +82,10 @@ export function ShopCard({ product }: { product: Product }) {
                 return;
               }
               const result = addToCart(product.id);
-              if (result.ok) toast("Added to cart.", "success");
+              if (result.ok) {
+                animateCartAdded();
+                toast("Added to cart.", "success");
+              }
               else toast(result.error, "error");
             }}
           >

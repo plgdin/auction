@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bell,
   Gavel,
@@ -40,14 +40,25 @@ export function LelamNavbar({
   const route = useRoute();
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!accountOpen) return;
     const onPointerDown = (event: PointerEvent) => {
       if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
     };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAccountOpen(false);
+        accountButtonRef.current?.focus();
+      }
+    };
     document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [accountOpen]);
 
   const navItems: BookmarkNavItem[] = [
@@ -64,13 +75,19 @@ export function LelamNavbar({
         : route.path.startsWith("/auctions") || route.path.startsWith("/auction/")
           ? 2
           : 0;
+  const mobileActiveIndex =
+    route.path === "/" || route.path === ""
+      ? 0
+      : route.path.startsWith("/products") || route.path.startsWith("/product/")
+        ? 1
+        : route.path.startsWith("/auctions") || route.path.startsWith("/auction/")
+          ? 2
+          : -1;
 
   const handleNavChange = (_: number, item: BookmarkNavItem) => {
     if (item.href) {
       setAccountOpen(false);
-      startTransition(() => {
-        navigate(item.href);
-      });
+      navigate(item.href);
     }
   };
 
@@ -88,12 +105,13 @@ export function LelamNavbar({
           src="/images/paper_craft_top.png"
           alt=""
           className="w-full h-full object-cover object-top"
+          fetchPriority="high"
           style={{ borderRadius: 0 }}
         />
       </div>
 
       {/* Animated Hanging Bookmark Navigation — emerging seamlessly from underneath the torn paper edge */}
-      <div className="absolute left-1/2 top-0 -translate-x-1/2 pointer-events-auto z-30">
+      <div className="mobile-bookmark-nav absolute left-1/2 top-0 -translate-x-1/2 pointer-events-auto z-30">
         <BookmarkNav
           items={navItems}
           active={activeIndex}
@@ -154,7 +172,6 @@ export function LelamNavbar({
             type="button"
             onClick={onOpenCart}
             className="lelam-bid-btn"
-            aria-label={`Open cart, ${cartCount} items`}
             title="Cart"
           >
             <ShoppingBag size={16} strokeWidth={2.3} />
@@ -164,11 +181,13 @@ export function LelamNavbar({
 
           <div className="relative" ref={accountRef}>
             <button
+              ref={accountButtonRef}
               type="button"
               onClick={() => setAccountOpen((open) => !open)}
               className="lelam-action-btn lelam-account-btn"
               aria-label={`${user ? `Account menu for ${user.name}` : "Sign in"}${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
               aria-expanded={accountOpen}
+              aria-controls="account-menu"
               title={user ? "Account" : "Sign in"}
             >
               <UserRound size={18} strokeWidth={2.2} />
@@ -176,7 +195,20 @@ export function LelamNavbar({
             </button>
 
             {accountOpen && (
-              <div className="account-menu" role="menu">
+              <div id="account-menu" className="account-menu" role="group" aria-label="Account actions">
+                <div className="account-menu-mobile-nav">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAccountOpen(false);
+                      onOpenCart();
+                    }}
+                  >
+                    <ShoppingBag size={16} /> Your Cart
+                    {cartCount > 0 && <em>{cartCount}</em>}
+                  </button>
+                  <div className="account-menu-sep" />
+                </div>
                 {user ? (
                   <>
                     <div className="account-menu-head">
@@ -188,7 +220,6 @@ export function LelamNavbar({
                     </div>
                     <button
                       type="button"
-                      role="menuitem"
                       onClick={() => {
                         setAccountOpen(false);
                         navigate("#/account");
@@ -199,7 +230,6 @@ export function LelamNavbar({
                     {user.isSeller && (
                       <button
                         type="button"
-                        role="menuitem"
                         onClick={() => {
                           setAccountOpen(false);
                           navigate("#/seller");
@@ -210,7 +240,6 @@ export function LelamNavbar({
                     )}
                     <button
                       type="button"
-                      role="menuitem"
                       onClick={() => {
                         setAccountOpen(false);
                         navigate("#/account?tab=notifications");
@@ -222,7 +251,6 @@ export function LelamNavbar({
                     {user.role === "admin" && (
                       <button
                         type="button"
-                        role="menuitem"
                         onClick={() => {
                           setAccountOpen(false);
                           navigate("#/admin");
@@ -237,7 +265,6 @@ export function LelamNavbar({
                       <button
                         key={demo.id}
                         type="button"
-                        role="menuitem"
                         className={demo.id === user.id ? "is-active" : ""}
                         onClick={() => {
                           switchAccount(demo.id);
@@ -252,7 +279,6 @@ export function LelamNavbar({
                     <div className="account-menu-sep" />
                     <button
                       type="button"
-                      role="menuitem"
                       onClick={() => {
                         logout();
                         setAccountOpen(false);
@@ -273,7 +299,6 @@ export function LelamNavbar({
                     </div>
                     <button
                       type="button"
-                      role="menuitem"
                       onClick={() => {
                         setAccountOpen(false);
                         navigate("#/login");
@@ -283,7 +308,6 @@ export function LelamNavbar({
                     </button>
                     <button
                       type="button"
-                      role="menuitem"
                       onClick={() => {
                         setAccountOpen(false);
                         navigate("#/register");
@@ -298,6 +322,25 @@ export function LelamNavbar({
           </div>
         </div>
       </div>
+
+      <nav className="mobile-bottom-nav" aria-label="Main navigation">
+        {navItems.map((item, index) => {
+          const Icon = item.icon;
+          const isActive = mobileActiveIndex === index;
+          return (
+            <button
+              key={item.label}
+              type="button"
+              aria-current={isActive ? "page" : undefined}
+              className={isActive ? "is-active" : ""}
+              onClick={() => handleNavChange(index, item)}
+            >
+              <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </header>
   );
 }

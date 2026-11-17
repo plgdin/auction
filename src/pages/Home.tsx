@@ -11,6 +11,7 @@ import { Hero } from "@/components/ui/animated-hero";
 import { ClothingRailHero } from "@/components/ui/product-rail-gallery";
 import { Link, navigate } from "../components/Link";
 import { useStore } from "../lib/store";
+import { REDUCED_MOTION, revealDelay, revealDuration, revealLift } from "../lib/motion";
 
 /** Toggles the interactive clothing rail section on the homepage. Kept in code, hidden for now. */
 const SHOW_RAIL = false;
@@ -84,11 +85,11 @@ function StepPolaroidCard({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: revealLift(30) }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
-      transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="flex w-48 flex-col items-center text-center group relative z-10 sm:w-56 md:w-60 lg:w-44 xl:w-56 2xl:w-60"
+      transition={{ duration: revealDuration(0.6), delay: revealDelay(delay), ease: [0.16, 1, 0.3, 1] }}
+      className="step-card flex flex-col items-center text-center group relative z-10"
     >
       {/* Polaroid frame */}
       <div
@@ -203,7 +204,7 @@ export function HomePage() {
           <div className="section-wrap rail-empty">
             <div className="eyebrow">THE RAIL IS EMPTY</div>
             <h2>Be the first to hang something up.</h2>
-            <Link href="#/sell" className="button button-olive">
+            <Link href="#/sell/new" className="button button-olive">
               Start selling <ArrowUpRight size={16} />
             </Link>
           </div>
@@ -255,8 +256,13 @@ export function HomePage() {
             </div>
           </div>
 
-          {/* 4 Step Polaroid Cards with Arrows */}
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-2">
+          {/* 4 Step Polaroid Cards with Arrows — swipeable rail on touch, row on desktop */}
+          <div
+            className="steps-rail"
+            role="region"
+            aria-label="How selling on Lelam works steps"
+            tabIndex={0}
+          >
             <StepPolaroidCard
               stepNumber={1}
               title="List Your Item"
@@ -312,10 +318,10 @@ export function HomePage() {
 
         <div className="relative z-10 max-w-6xl mx-auto px-5 sm:px-8 md:px-12 py-14 sm:py-16 md:py-20">
           <motion.div
-            initial={{ opacity: 0, y: 25 }}
+            initial={{ opacity: 0, y: revealLift(25) }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.7 }}
+            transition={{ duration: revealDuration(0.7) }}
             className="relative flex flex-col md:flex-row items-center gap-6 sm:gap-10 md:gap-12"
           >
             {/* Real cardboard hangtag on twine string */}
@@ -399,10 +405,10 @@ export function HomePage() {
                 return (
                   <motion.div
                     key={benefit.title}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: revealLift(20) }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.1 * (index + 1) }}
+                    transition={{ duration: revealDuration(0.5), delay: revealDelay(0.1 * (index + 1)) }}
                     className={`group flex flex-col items-center text-center px-3 sm:px-4 lg:px-5 py-2 ${
                       index !== 3 ? "sm:border-r border-[#493022]/15" : ""
                     } ${index % 2 === 0 ? "border-r border-[#493022]/15 sm:border-r-0" : ""} ${
@@ -450,11 +456,11 @@ export function HomePage() {
 
               {/* Polaroid Frame of Clothing Rack */}
               <motion.div
-                initial={{ opacity: 0, rotate: 4, scale: 0.95 }}
+                initial={REDUCED_MOTION ? false : { opacity: 0, rotate: 4, scale: 0.95 }}
                 whileInView={{ opacity: 1, rotate: 2, scale: 1 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.7 }}
-                whileHover={{ rotate: 0, scale: 1.02 }}
+                transition={{ duration: revealDuration(0.7) }}
+                whileHover={REDUCED_MOTION ? undefined : { rotate: 0, scale: 1.02 }}
                 className="relative z-10 bg-[#FAF7F2] p-3 pb-8 sm:p-4 sm:pb-10 shadow-[0_20px_42px_rgba(73,48,34,0.18)] border border-[#E5DACB]/90 rounded-[2px] max-w-sm sm:max-w-md w-full"
               >
                 <WashiTape className="-top-3 left-1/2 -translate-x-1/2" width="w-24 sm:w-28" rotate="-rotate-1" />
@@ -496,11 +502,11 @@ export function HomePage() {
           <div>
             <button
               type="button"
-              onClick={() => navigate("#/sell")}
+              onClick={() => navigate("#/sell/new")}
               style={{ backgroundColor: "#493022", color: "#F5EBDD" }}
               className="group relative inline-flex items-center gap-3 px-8 py-3.5 sm:px-9 sm:py-4 rounded-[10px] text-base sm:text-lg font-medium shadow-[0_8px_24px_rgba(73,48,34,0.28)] transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
             >
-              <span>Start Selling Now</span>
+              <span>Start Selling</span>
               <ArrowRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
             </button>
           </div>

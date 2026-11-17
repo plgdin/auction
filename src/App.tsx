@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { ArrowRight, Heart, LogIn, Search, ShoppingBag, UserPlus, X } from "lucide-react";
 import { LelamNavbar } from "@/components/ui/lelam-navbar";
 import { GenieSearchModal } from "@/components/ui/genie-search-modal";
@@ -11,20 +11,23 @@ import { formatMoney } from "./lib/format";
 import { useRoute } from "./lib/router";
 import { StoreProvider, useStore } from "./lib/store";
 import { toast } from "./lib/toast";
-import { HomePage } from "./pages/Home";
-import { ProductsPage } from "./pages/Products";
-import { ProductDetailPage } from "./pages/ProductDetail";
-import { CartPage } from "./pages/Cart";
+import { REDUCED_MOTION } from "./lib/motion";
 import { CartOverlayCard } from "./components/CartOverlayCard";
-import { CheckoutPage } from "./pages/Checkout";
-import { AuctionsPage } from "./pages/Auctions";
-import { AuctionDetailPage } from "./pages/AuctionDetail";
-import { AuthPage } from "./pages/Auth";
-import { SellPage } from "./pages/Sell";
-import { SellerDashboardPage } from "./pages/SellerDashboard";
-import { AccountPage } from "./pages/Account";
-import { AdminPage } from "./pages/Admin";
-import { OrderDetailPage } from "./pages/OrderDetail";
+import { HomePage } from "./pages/Home";
+
+const ProductsPage = lazy(() => import("./pages/Products").then((module) => ({ default: module.ProductsPage })));
+const ProductDetailPage = lazy(() => import("./pages/ProductDetail").then((module) => ({ default: module.ProductDetailPage })));
+const CartPage = lazy(() => import("./pages/Cart").then((module) => ({ default: module.CartPage })));
+const CheckoutPage = lazy(() => import("./pages/Checkout").then((module) => ({ default: module.CheckoutPage })));
+const AuctionsPage = lazy(() => import("./pages/Auctions").then((module) => ({ default: module.AuctionsPage })));
+const AuctionDetailPage = lazy(() => import("./pages/AuctionDetail").then((module) => ({ default: module.AuctionDetailPage })));
+const AuthPage = lazy(() => import("./pages/Auth").then((module) => ({ default: module.AuthPage })));
+const SellPage = lazy(() => import("./pages/Sell").then((module) => ({ default: module.SellPage })));
+const SellFormPage = lazy(() => import("./pages/SellForm").then((module) => ({ default: module.SellFormPage })));
+const SellerDashboardPage = lazy(() => import("./pages/SellerDashboard").then((module) => ({ default: module.SellerDashboardPage })));
+const AccountPage = lazy(() => import("./pages/Account").then((module) => ({ default: module.AccountPage })));
+const AdminPage = lazy(() => import("./pages/Admin").then((module) => ({ default: module.AdminPage })));
+const OrderDetailPage = lazy(() => import("./pages/OrderDetail").then((module) => ({ default: module.OrderDetailPage })));
 
 type ToastItem = { id: number; message: string; tone: string };
 
@@ -305,14 +308,74 @@ function CartOverlay({ onClose }: { onClose: () => void }) {
 function SavedOverlay({ onClose }: { onClose: () => void }) {
   const { db, favorites, toggleFavorite } = useStore();
   const saved = db.products.filter((product) => favorites.includes(product.id));
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const closeHandlerRef = useRef(onClose);
+  closeHandlerRef.current = onClose;
 
   useEffect(() => {
+    const activeElement = document.activeElement;
+    const opener = activeElement instanceof HTMLElement ? activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const background = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".site-shell > header, .site-shell > .site-content, .site-shell > footer",
+      ),
+    ).map((element) => ({
+      element,
+      inert: element.inert,
+      ariaHidden: element.getAttribute("aria-hidden"),
+    }));
+    background.forEach(({ element }) => {
+      element.inert = true;
+      element.setAttribute("aria-hidden", "true");
+    });
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeHandlerRef.current();
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      const drawer = drawerRef.current;
+      if (!drawer) return;
+      const focusable = Array.from(
+        drawer.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.getClientRects().length > 0);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) {
+        e.preventDefault();
+        drawer.focus();
+      } else if (e.shiftKey && (document.activeElement === first || !drawer.contains(document.activeElement))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !drawer.contains(document.activeElement))) {
+        e.preventDefault();
+        first.focus();
+      }
     };
+    closeButtonRef.current?.focus();
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      background.forEach(({ element, inert, ariaHidden }) => {
+        element.inert = inert;
+        if (ariaHidden === null) element.removeAttribute("aria-hidden");
+        else element.setAttribute("aria-hidden", ariaHidden);
+      });
+      const fallback = document.querySelector<HTMLElement>(".lelam-save-toggle, .lelam-account-btn");
+      const target = opener?.isConnected && opener.getClientRects().length ? opener : fallback;
+      target?.focus();
+    };
+  }, []);
 
   return (
     <AnimatePresence>
@@ -322,25 +385,35 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: REDUCED_MOTION ? 0 : 0.2 }}
           onClick={onClose}
-          className="fixed inset-0 bg-[#25170F]/60 backdrop-blur-md"
+          className="overlay-scrim fixed inset-0 bg-[#25170F]/60 backdrop-blur-md"
         />
 
         {/* Drawer Window */}
         <motion.div
-          initial={{ x: "100%", opacity: 0 }}
+          ref={drawerRef}
+          initial={REDUCED_MOTION ? false : { x: "100%", opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          exit={{ x: "100%", opacity: 0 }}
-          transition={{ type: "spring", stiffness: 350, damping: 32 }}
+          exit={REDUCED_MOTION ? { x: 0, opacity: 1 } : { x: "100%", opacity: 0 }}
+          transition={
+            REDUCED_MOTION
+              ? { duration: 0 }
+              : { type: "spring", stiffness: 350, damping: 32 }
+          }
           className="relative z-10 flex h-full w-full max-w-md flex-col rounded-l-[28px] sm:rounded-l-[32px] overflow-hidden border-l border-[#D5C2A5] shadow-[-20px_0_60px_rgba(40,24,14,0.35)]"
           style={{ backgroundColor: "#FAF4EB" }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="saved-drawer-title"
+          tabIndex={-1}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[#E8DCCB] px-6 py-5 bg-[#FAF4EB]">
             <div className="flex items-center gap-2.5">
               <Heart size={18} className="text-[#8C5E3C] fill-[#8C5E3C]/20" />
               <h2
+                id="saved-drawer-title"
                 className="text-2xl sm:text-[26px] tracking-tight select-none inline-flex items-baseline gap-1.5 font-bold"
                 style={{
                   fontFamily: '"DM Serif Display", Georgia, serif',
@@ -358,6 +431,7 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
               )}
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={onClose}
               className="flex h-9 w-9 items-center justify-center rounded-full text-[#6D533E] hover:bg-[#EBDDC8] hover:text-[#332417] transition-all"
@@ -538,6 +612,7 @@ function Routes() {
   if (path === "/login") return <AuthPage mode="login" />;
   if (path === "/register") return <AuthPage mode="register" />;
   if (path === "/sell") return <SellPage />;
+  if (path === "/sell/new") return <SellFormPage />;
   if (path === "/seller") return <SellerDashboardPage />;
   if (path === "/account") return <AccountPage />;
   if (path === "/admin") return <AdminPage />;
@@ -564,10 +639,11 @@ function Shell() {
     return () => window.removeEventListener("lelam-open-cart", openCart);
   }, []);
 
-  useEffect(() => {
+  // Scroll reset runs before paint so the incoming page never appears at the old scroll offset.
+  useLayoutEffect(() => {
     if (route.path !== lastPath) {
       setLastPath(route.path);
-      if (!route.anchor) window.scrollTo({ top: 0 });
+      if (!route.anchor) window.scrollTo({ top: 0, behavior: "auto" });
     }
     if (route.anchor) {
       window.setTimeout(() => {
@@ -608,31 +684,40 @@ function Shell() {
         onOpenCart={() => setCartOpen(true)}
       />
 
-      <div className="site-content">
-        <AnimatePresence mode="wait" initial={false}>
+      <Suspense
+        fallback={
+          <div className="page-shell" role="status" aria-live="polite" aria-busy="true">
+            <div className="section-wrap py-12 text-center">Loading page…</div>
+          </div>
+        }
+      >
+        <div className="site-content">
           <motion.div
             key={route.path.split("/")[1] || "home"}
-            initial={{ opacity: 0.88 }}
+            initial={REDUCED_MOTION ? false : { opacity: 0.88 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0.88 }}
-            transition={{ duration: 0.16, ease: "easeOut" }}
+            exit={REDUCED_MOTION ? undefined : { opacity: 0.88 }}
+            transition={{
+              duration: REDUCED_MOTION ? 0 : 0.16,
+              ease: "easeOut",
+            }}
             className="w-full"
             style={{ transform: "none" }}
           >
             <Routes />
           </motion.div>
-        </AnimatePresence>
-      </div>
+        </div>
 
-      <HalftoneWordmarkFooter
-        wordmark="lelam"
-        label={<span className="brand-wordmark">lelam.co</span>}
-        meta="©2026"
-        preset="paper"
-        palette={{ background: "transparent", ink: "#493022", warm: "#C98F7D" }}
-        columns={footerColumns}
-        height="540px"
-      />
+        <HalftoneWordmarkFooter
+          wordmark="lelam"
+          label={<span className="brand-wordmark">lelam.co</span>}
+          meta="©2026"
+          preset="paper"
+          palette={{ background: "transparent", ink: "#493022", warm: "#C98F7D" }}
+          columns={footerColumns}
+          height="540px"
+        />
+      </Suspense>
 
       {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
       <AnimatePresence>
@@ -650,7 +735,9 @@ function Shell() {
 export default function App() {
   return (
     <StoreProvider>
-      <Shell />
+      <MotionConfig reducedMotion="user">
+        <Shell />
+      </MotionConfig>
     </StoreProvider>
   );
 }
