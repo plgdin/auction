@@ -134,9 +134,6 @@
 
 .shop-filter-group h3,
 .shop-sort h3 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin: 0 0 5px;
   font-family: var(--shop-serif);
   font-size: 14px;
@@ -144,10 +141,53 @@
   color: #0e0703;
 }
 
-.shop-filter-group h3 svg,
-.shop-sort h3 svg {
+.shop-filter-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 3px 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 140ms ease;
+}
+
+.shop-filter-toggle:hover {
+  opacity: 0.8;
+}
+
+.shop-chevron {
   color: #1a0e05;
   opacity: 0.95;
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+  transform: rotate(-90deg);
+}
+
+.shop-chevron.is-open {
+  transform: rotate(0deg);
+}
+
+.shop-filter-options {
+  padding-top: 3px;
+  animation: filterFadeIn 180ms ease-out both;
+}
+
+@keyframes filterFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .shop-check {
@@ -301,20 +341,51 @@
   position: relative;
   display: flex;
   align-items: center;
-  height: 30px;
+  min-height: 30px;
   border-radius: 5px;
 }
 
-.shop-select-wrap .select-menu,
+.shop-select-wrap .select-menu {
+  position: relative;
+  width: 100%;
+}
+
 .shop-select-wrap .select-menu-trigger {
   min-height: 28px;
   height: 28px;
   padding: 0 10px;
   border: 1.3px solid #826444;
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.88);
   color: #0e0703;
   font: 600 12px/1 "DM Sans", sans-serif;
+  cursor: pointer;
+}
+
+.shop-select-wrap .select-menu-popover {
+  bottom: calc(100% + 5px) !important;
+  top: auto !important;
+  left: 0;
+  width: 100%;
+  min-width: 180px;
+  border: 1.5px solid #826444;
+  background: #fbf7ee;
+  box-shadow: 0 -6px 20px rgba(50, 30, 15, 0.22);
+  z-index: 1000;
+}
+
+.shop-select-wrap .select-menu-popover button {
+  font-size: 12px;
+  font-weight: 500;
+  color: #27170a;
+  min-height: 32px;
+  padding: 6px 10px;
+}
+
+.shop-select-wrap .select-menu-popover button:hover,
+.shop-select-wrap .select-menu-popover button.is-selected {
+  background: rgba(73, 48, 34, 0.12);
+  color: #0e0703;
 }
 
 .shop-select-wrap select {
