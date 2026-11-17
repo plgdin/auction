@@ -163,9 +163,9 @@ export function summariseAffiliate(
   return {
     code: account.code,
     link: affiliateUrl(account.code),
-    clicks: (db.affiliateClicks ?? []).filter((click) => click.affiliateId === account.id).length,
-    signups: db.users.filter((candidate) => candidate.referredBy === account.id).length,
-    orders: commissions.length,
+    clicks: account.totalClicks ?? (db.affiliateClicks ?? []).filter((click) => click.affiliateId === account.id).length,
+    signups: account.totalSignups ?? db.users.filter((candidate) => candidate.referredBy === account.id).length,
+    orders: account.totalOrders ?? commissions.length,
     pending: commissions
       .filter((entry) => entry.status === "pending")
       .reduce((total, entry) => total + entry.amount, 0),

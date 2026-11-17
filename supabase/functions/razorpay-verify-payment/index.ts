@@ -18,6 +18,13 @@ async function hmacHex(secret: string, payload: string): Promise<string> {
     .join("");
 }
 
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -36,11 +43,12 @@ Deno.serve(async (request) => {
 
     const body = await request.json().catch(() => ({}));
     const orderId = String(body.orderId ?? "");
+    const checkoutGroupId = String(body.checkoutGroupId ?? "");
     const razorpayOrderId = String(body.razorpay_order_id ?? "");
     const razorpayPaymentId = String(body.razorpay_payment_id ?? "");
     const razorpaySignature = String(body.razorpay_signature ?? "");
 
-    if (!orderId || !razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+    if ((!orderId && !checkoutGroupId) || !razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
       return json({ error: "Missing payment fields" }, 400);
     }
 
@@ -54,29 +62,36 @@ Deno.serve(async (request) => {
     if (!user) return json({ error: "Sign in required" }, 401);
 
     // Only the buyer can complete payment for their own order.
-    const { data: order } = await caller
+    let ordersQuery = caller
       .from("orders")
-      .select("id, buyer_id")
-      .eq("id", orderId)
-      .eq("buyer_id", user.id)
-      .maybeSingle();
-    if (!order) return json({ error: "Order not found" }, 404);
+      .select("id, buyer_id");
+    ordersQuery = orderId
+      ? ordersQuery.eq("id", orderId).eq("buyer_id", user.id)
+      : ordersQuery.eq("checkout_group_id", checkoutGroupId).eq("buyer_id", user.id);
+    const { data: orders } = await ordersQuery;
+    if (!orders?.length) return json({ error: "Order not found" }, 404);
 
     const expected = await hmacHex(
       keySecret,
       `${razorpayOrderId}|${razorpayPaymentId}`,
     );
-    if (expected !== razorpaySignature) {
+    if (!constantTimeEqual(expected, razorpaySignature)) {
       return json({ error: "Payment signature is invalid" }, 400);
     }
 
     const admin = createClient(url, serviceKey);
-    const { error } = await admin.rpc("confirm_order_payment", {
-      p_order_id: orderId,
-      p_provider: "razorpay",
-      p_provider_order_id: razorpayOrderId,
-      p_provider_payment_id: razorpayPaymentId,
-    });
+    const { error } = orderId
+      ? await admin.rpc("confirm_order_payment", {
+          p_order_id: orderId,
+          p_provider: "razorpay",
+          p_provider_order_id: razorpayOrderId,
+          p_provider_payment_id: razorpayPaymentId,
+        })
+      : await admin.rpc("confirm_checkout_group_payment", {
+          p_checkout_group_id: checkoutGroupId,
+          p_provider_order_id: razorpayOrderId,
+          p_provider_payment_id: razorpayPaymentId,
+        });
     if (error) {
       console.error("confirm_order_payment", error);
       return json({ error: error.message }, 400);

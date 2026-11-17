@@ -592,13 +592,14 @@ interface StoreValue {
   favorites: string[];
   notifications: Notification[];
   unreadCount: number;
-  login: (email: string, password: string) => ActionResult;
+  refreshRemoteCommerce: () => Promise<void>;
+  login: (email: string, password: string) => Promise<ActionResult>;
   register: (input: {
     name: string;
     email: string;
     password: string;
     asSeller?: boolean;
-  }) => ActionResult;
+  }) => Promise<ActionResult>;
   signInWithGoogle: (idToken?: string) => Promise<ActionResult>;
   logout: () => void;
   switchAccount: (userId: string) => void;
@@ -632,7 +633,7 @@ interface StoreValue {
   removeListing: (productId: string) => ActionResult;
   toggleListingAvailability: (productId: string) => ActionResult;
   reportProduct: (productId: string, reason: string, details?: string) => ActionResult;
-  placeBid: (auctionId: string, amount: number) => PlaceBidResult;
+  placeBid: (auctionId: string, amount: number) => Promise<PlaceBidResult>;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
   saveAddress: (address: Omit<Address, "id"> & { id?: string }) => ActionResult;
@@ -648,7 +649,7 @@ interface StoreValue {
   startAuctionNow: (auctionId: string) => void;
   endAuctionNow: (auctionId: string) => void;
   cancelAuction: (auctionId: string, reason: string) => void;
-  markSettlementPaid: (settlementId: string) => void;
+  markSettlementPaid: (settlementId: string) => Promise<ActionResult>;
   resolveReport: (reportId: string, status: Report["status"]) => void;
   createAffiliate: (input: {
     name: string;
@@ -656,7 +657,7 @@ interface StoreValue {
     code?: string;
     kind: AffiliateAccount["kind"];
     commissionPct: number;
-  }) => { ok: true; affiliateId: string } | { ok: false; error: string };
+  }) => Promise<{ ok: true; affiliateId: string } | { ok: false; error: string }>;
   updateAffiliate: (
     affiliateId: string,
     patch: {
@@ -667,11 +668,11 @@ interface StoreValue {
       commissionPct?: number;
       status?: AffiliateAccount["status"];
     },
-  ) => ActionResult;
+  ) => Promise<ActionResult>;
   reviewAffiliateCommission: (
     commissionId: string,
     action: "approve" | "pay" | "void",
-  ) => ActionResult;
+  ) => Promise<ActionResult>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -706,6 +707,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     const captured = captureRef();
     if (captured?.firstSeen) {
+      void supabase.rpc("affiliate_track_click", {
+        p_code: captured.code,
+        p_path: window.location.hash || "/",
+        p_referrer: document.referrer || null,
+        p_user_agent: navigator.userAgent,
+        p_ip_hash: null,
+      }).then(({ error }) => {
+        if (error) console.warn("[Supabase affiliate click]:", error.message);
+      });
       const account = findAffiliateByCode(captured.code, next.affiliates);
       if (account) {
         next.affiliateClicks = [
@@ -809,9 +819,61 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }));
 
           const next = clone(dbRef.current);
-          const liveIds = new Set(liveProducts.map((p) => p.id));
-          const localOnly = next.products.filter((p) => !liveIds.has(p.id) && p.id.startsWith("p-"));
-          next.products = [...liveProducts, ...localOnly];
+          // Once the server catalog is available, hide local demo listings that cannot be ordered.
+          next.products = liveProducts;
+          const [{ data: auctionRows, error: auctionError }, { data: profiles }] = await Promise.all([
+            supabase.from("auctions").select("*").order("starts_at", { ascending: true }),
+            supabase.from("profiles").select("id,email"),
+          ]);
+          if (!auctionError && auctionRows) {
+            const [{ data: publicBids }, { data: ownBids }] = await Promise.all([
+              supabase.from("public_bids").select("*").order("created_at", { ascending: false }),
+              supabase.from("bids").select("id,auction_id,bidder_id,amount_paise,created_at"),
+            ]);
+            const auth = await supabase.auth.getUser();
+            const localUser = next.users.find(
+              (item) => item.email.toLowerCase() === auth.data.user?.email?.toLowerCase(),
+            );
+            next.auctions = auctionRows.map((row: any) => {
+              const profile = profiles?.find((item: any) => item.id === row.seller_id);
+              const seller = next.users.find((item) => item.email.toLowerCase() === profile?.email?.toLowerCase());
+              const bids = (publicBids ?? [])
+                .filter((bid: any) => bid.auction_id === row.id)
+                .map((bid: any) => {
+                  const own = ownBids?.find((candidate: any) => candidate.id === bid.id);
+                  return {
+                    id: bid.id,
+                    auctionId: row.id,
+                    bidderId: own?.bidder_id === auth.data.user?.id ? localUser?.id ?? own?.bidder_id ?? "" : "",
+                    amount: bid.amount_paise,
+                    alias: bid.alias,
+                    createdAt: bid.created_at,
+                  };
+                });
+              return {
+                id: row.id,
+                productId: row.product_id,
+                sellerId: seller?.id ?? row.seller_id,
+                status: row.status,
+                startingPrice: row.starting_price_paise,
+                askingPrice: row.asking_price_paise,
+                currentBid: row.current_bid_paise ?? undefined,
+                highestBidderId: row.highest_bidder_id === auth.data.user?.id
+                  ? localUser?.id ?? row.highest_bidder_id
+                  : row.highest_bidder_id ?? undefined,
+                bidCount: row.bid_count,
+                minIncrement: row.min_increment_paise,
+                antiSnipeSeconds: row.anti_snipe_seconds,
+                startsAt: row.starts_at,
+                endsAt: row.ends_at,
+                originalEndsAt: row.original_ends_at,
+                bids,
+                createdAt: row.created_at,
+                cancelledReason: row.cancelled_reason ?? undefined,
+                winnerId: row.status === "completed" ? row.highest_bidder_id ?? undefined : undefined,
+              };
+            });
+          }
           commit(next);
         }
       } catch (err) {
@@ -833,6 +895,173 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.removeChannel(channel);
     };
   }, [commit]);
+
+  const syncRemoteCommerce = useCallback(async (authUser: any) => {
+    try {
+      const [{ data: orderRows }, { data: settlementRows }, { data: profiles }] = await Promise.all([
+        supabase.from("orders").select("*, order_items(*)").order("created_at", { ascending: false }),
+        supabase.from("seller_settlements").select("*").order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id,email,full_name"),
+      ]);
+      const next = clone(dbRef.current);
+      const localUser = next.users.find((item) => item.email.toLowerCase() === authUser.email?.toLowerCase());
+      const localId = (id: string) => {
+        if (id === authUser.id && localUser) return localUser.id;
+        const profile = profiles?.find((item: any) => item.id === id);
+        return next.users.find((item) => item.email.toLowerCase() === profile?.email?.toLowerCase())?.id ?? id;
+      };
+      if (orderRows) {
+        const remoteOrders = orderRows.map((row: any) => {
+          const address = row.shipping_address ?? {};
+          const sellerId = localId(row.seller_id);
+          return {
+            id: row.id,
+            number: row.order_number,
+            checkoutGroupId: row.checkout_group_id,
+            buyerId: localId(row.buyer_id),
+            sellerId,
+            items: (row.order_items ?? []).map((item: any) => ({
+              id: item.id,
+              productId: item.product_id ?? "",
+              title: item.title_snapshot,
+              image: item.image_snapshot || "/images/tee.jpg",
+              price: item.price_paise,
+              quantity: item.quantity,
+              sellerId,
+              sellerName: next.products.find((product) => product.sellerId === sellerId)?.sellerName ?? "Seller",
+            })),
+            subtotal: row.subtotal_paise,
+            shipping: row.shipping_paise,
+            platformFee: row.buyer_platform_fee_paise ?? 0,
+            total: row.total_paise,
+            status: row.status,
+            paymentStatus: row.payment_status,
+            paymentMethod: row.payment_method ?? undefined,
+            source: row.source,
+            offerId: row.offer_id ?? undefined,
+            auctionId: row.auction_id ?? undefined,
+            address: {
+              id: address.id ?? "server-address",
+              label: address.label ?? "Delivery",
+              name: address.name ?? address.recipient_name ?? "",
+              phone: address.phone ?? "",
+              line1: address.line1 ?? "",
+              line2: address.line2 ?? undefined,
+              city: address.city ?? "",
+              state: address.state ?? "",
+              pincode: address.pincode ?? "",
+            },
+            createdAt: row.created_at,
+            paidAt: row.paid_at ?? undefined,
+            paymentDeadline: row.payment_deadline ?? undefined,
+            cancelledAt: row.cancelled_at ?? undefined,
+          };
+        });
+        const remoteIds = new Set(remoteOrders.map((order: any) => order.id));
+        next.orders = [...remoteOrders, ...next.orders.filter((order) => !remoteIds.has(order.id) && order.id.startsWith("o-"))];
+      }
+      if (settlementRows) {
+        const remoteSettlements = settlementRows.map((row: any) => ({
+          id: row.id,
+          sellerId: localId(row.seller_id),
+          orderId: row.order_id ?? undefined,
+          auctionId: row.auction_id ?? undefined,
+          source: row.source,
+          askingPrice: row.asking_price_paise,
+          winningBid: row.winning_bid_paise ?? undefined,
+          sellerPayout: row.seller_payout_paise,
+          platformSubsidy: row.platform_subsidy_paise ?? 0,
+          platformCommission: row.platform_commission_paise,
+          paymentFee: row.payment_fee_paise ?? 0,
+          status: row.status,
+          createdAt: row.created_at,
+          paidAt: row.paid_at ?? undefined,
+        }));
+        const remoteIds = new Set(remoteSettlements.map((item: any) => item.id));
+        next.settlements = [...remoteSettlements, ...next.settlements.filter((item) => !remoteIds.has(item.id) && item.id.startsWith("s-"))];
+      }
+
+      const { data: dashboard } = await supabase.rpc("affiliate_dashboard");
+      if (dashboard?.account) {
+        const raw = dashboard.account;
+        const account: AffiliateAccount = {
+          id: raw.id,
+          userId: localUser?.id,
+          name: raw.display_name || localUser?.name || "Affiliate",
+          code: raw.code,
+          kind: raw.kind,
+          email: raw.contact_email ?? undefined,
+          commissionRate: Number(raw.commission_pct) / 100,
+          status: raw.status,
+          createdAt: raw.created_at,
+          totalClicks: Number(raw.total_clicks ?? dashboard.clicks30d ?? 0),
+          totalSignups: Number(raw.total_signups ?? 0),
+          totalOrders: Number(raw.total_orders ?? 0),
+        };
+        next.affiliates = [account, ...(next.affiliates ?? []).filter((item) => item.id !== account.id)];
+        const commissions = (dashboard.recent ?? []).map((item: any) => ({
+          id: item.id,
+          affiliateId: raw.id,
+          orderId: item.order_id,
+          buyerId: localUser?.id ?? authUser.id,
+          subtotal: item.order_subtotal_paise,
+          rate: Number(item.commission_pct) / 100,
+          amount: item.amount_paise,
+          status: item.status,
+          returnWindowDays: item.return_window_days,
+          eligibleAt: item.eligible_at ?? undefined,
+          createdAt: item.created_at,
+          approvedAt: item.approved_at ?? undefined,
+          paidAt: item.paid_at ?? undefined,
+        }));
+        const remoteIds = new Set(commissions.map((item: any) => item.id));
+        next.affiliateCommissions = [...commissions, ...(next.affiliateCommissions ?? []).filter((item) => !remoteIds.has(item.id) && item.id.startsWith("ac-"))];
+      }
+
+      if (localUser?.role === "admin") {
+        const { data: adminData } = await supabase.rpc("admin_list_affiliates");
+        if (adminData) {
+          next.affiliates = (adminData.accounts ?? []).map((raw: any) => ({
+            id: raw.id,
+            userId: raw.user_id ? localId(raw.user_id) : undefined,
+            name: raw.display_name ?? "Affiliate",
+            code: raw.code,
+            kind: raw.kind,
+            email: raw.contact_email ?? undefined,
+            commissionRate: Number(raw.commission_pct) / 100,
+            status: raw.status,
+            createdAt: raw.created_at,
+            totalClicks: Number(raw.clicks ?? 0),
+            totalSignups: Number(raw.signups ?? 0),
+            totalOrders: Number(raw.orders ?? 0),
+          }));
+          next.affiliateCommissions = (adminData.commissions ?? []).map((raw: any) => ({
+            id: raw.id,
+            affiliateId: raw.affiliate_id,
+            orderId: raw.order_id,
+            buyerId: localId(raw.referred_user_id),
+            subtotal: raw.order_subtotal_paise,
+            rate: Number(raw.commission_pct) / 100,
+            amount: raw.amount_paise,
+            status: raw.status,
+            returnWindowDays: raw.return_window_days,
+            eligibleAt: raw.eligible_at ?? undefined,
+            createdAt: raw.created_at,
+            approvedAt: raw.approved_at ?? undefined,
+            paidAt: raw.paid_at ?? undefined,
+          }));
+        }
+      }
+      commit(next);
+    } catch (error) {
+      console.warn("[Supabase commerce sync]:", error);
+    }
+  }, [commit]);
+
+  const refreshRemoteCommerce = useCallback(async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) await syncRemoteCommerce(authUser);
+  }, [syncRemoteCommerce]);
 
   // Sync Supabase Auth session into local user store (for Google OAuth redirects / GSI)
   useEffect(() => {
@@ -867,6 +1096,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         next.sessionUserId = existing.id;
         commit(next);
       }
+      const referralCode = getStoredRef();
+      if (referralCode) {
+        void supabase.rpc("affiliate_attribute_signup", { p_code: referralCode }).then(({ error }) => {
+          if (error) console.warn("[Supabase affiliate attribution]:", error.message);
+        });
+      }
+      void syncRemoteCommerce(sessionUser);
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -882,7 +1118,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [commit]);
+  }, [commit, syncRemoteCommerce]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -920,77 +1156,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const unreadCount = notifications.filter((item) => !item.readAt).length;
 
   const login = useCallback(
-    (email: string, password: string): ActionResult => {
-      const current = dbRef.current;
-      const found = current.users.find(
-        (candidate) => candidate.email.toLowerCase() === email.trim().toLowerCase(),
-      );
-      if (!found || found.password !== password) {
-        return { ok: false, error: "Email or password is incorrect." };
-      }
-      if (found.blocked) return { ok: false, error: "This account is blocked." };
-      const next = clone(current);
-      const guestCart = next.carts.guest ?? [];
-      next.carts[found.id] = [...(next.carts[found.id] ?? []), ...guestCart];
-      next.carts.guest = [];
-      const guestFavorites = next.favorites.guest ?? [];
-      next.favorites[found.id] = [
-        ...new Set([...(next.favorites[found.id] ?? []), ...guestFavorites]),
-      ];
-      next.favorites.guest = [];
-      next.sessionUserId = found.id;
-      commit(next);
-      return { ok: true };
+    async (email: string, password: string): Promise<ActionResult> => {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      return error ? { ok: false, error: error.message } : { ok: true };
     },
     [commit],
   );
 
   const register = useCallback(
-    (input: { name: string; email: string; password: string; asSeller?: boolean }): ActionResult => {
-      const current = dbRef.current;
-      if (current.users.some((candidate) => candidate.email.toLowerCase() === input.email.trim().toLowerCase())) {
-        return { ok: false, error: "An account with this email already exists." };
-      }
-      if (input.password.length < 8) {
-        return { ok: false, error: "Use at least 8 characters for your password." };
-      }
-      const next = clone(current);
-      const referralCode = getStoredRef();
-      ensureAffiliateAccounts(next);
-      const referrer = referralCode
-        ? findAffiliateByCode(referralCode, next.affiliates)
-        : null;
-      const newUser: User = {
-        id: uid("u"),
-        name: input.name.trim(),
+    async (input: { name: string; email: string; password: string; asSeller?: boolean }): Promise<ActionResult> => {
+      if (input.password.length < 8) return { ok: false, error: "Use at least 8 characters for your password." };
+      const { data, error } = await supabase.auth.signUp({
         email: input.email.trim().toLowerCase(),
         password: input.password,
-        role: "client",
-        isSeller: true,
-        addresses: [],
-        joinedAt: nowIso(),
-        auctionConsent: true,
-        location: "Trivandrum, Kerala",
-        referredBy: referrer?.id,
-      };
-      next.users.push(newUser);
-      ensureAffiliateAccounts(next);
-      const guestCart = next.carts.guest ?? [];
-      next.carts[newUser.id] = guestCart;
-      next.carts.guest = [];
-      next.sessionUserId = newUser.id;
-      pushNotification(
-        next,
-        newUser.id,
-        "welcome",
-        "Welcome to lelam.co",
-        "Browse the rail, make an offer, or list something from your own closet.",
-        "#/products",
-      );
-      commit(next);
+        options: { data: { full_name: input.name.trim() } },
+      });
+      if (error) return { ok: false, error: error.message };
+      if (!data.session) return { ok: false, error: "Check your email to confirm your account, then sign in." };
       return { ok: true };
     },
-    [commit],
+    [],
   );
 
   const signInWithGoogle = useCallback(
@@ -2027,85 +2212,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const placeBid = useCallback(
-    (auctionId: string, amount: number): PlaceBidResult => {
-      const current = dbRef.current;
-      const activeUser = current.users.find((item) => item.id === current.sessionUserId);
-      if (!activeUser) return { ok: false, error: "Sign in to bid." };
-      const auction = current.auctions.find((item) => item.id === auctionId);
-      if (!auction) return { ok: false, error: "Auction not found." };
-      const product = current.products.find((item) => item.id === auction.productId);
-      if (!product) return { ok: false, error: "Listing not found." };
-      if (auction.status !== "live" || new Date(auction.endsAt).getTime() <= Date.now()) {
-        return { ok: false, error: "Bidding has closed for this auction." };
-      }
-      if (auction.sellerId === activeUser.id) return { ok: false, error: "You cannot bid on your own item." };
+    async (auctionId: string, amount: number): Promise<PlaceBidResult> => {
       if (!Number.isInteger(amount) || amount <= 0) return { ok: false, error: "Enter a valid bid." };
-      const minimum = (auction.currentBid ?? auction.startingPrice - auction.minIncrement) + auction.minIncrement;
-      if (amount < minimum) return { ok: false, error: `Minimum next bid is ₹${(minimum / 100).toLocaleString("en-IN")}.` };
-      const oneMinuteAgo = Date.now() - 60_000;
-      const recentBids = auction.bids.filter(
-        (bid) => bid.bidderId === activeUser.id && new Date(bid.createdAt).getTime() > oneMinuteAgo,
-      );
-      if (recentBids.length >= current.settings.bidRateLimitPerMinute) {
-        return { ok: false, error: "Too many bids in a short time. Wait a minute." };
-      }
-      if (auction.bids.some((bid) => bid.bidderId === activeUser.id && bid.amount === amount)) {
-        return { ok: false, error: "You already placed that exact bid." };
-      }
-      const next = clone(current);
-      const target = next.auctions.find((item) => item.id === auctionId)!;
-      const previousLeader = target.highestBidderId;
-      const existingAlias = target.bids.find((bid) => bid.bidderId === activeUser.id)?.alias;
-      const used = new Set(target.bids.map((bid) => bid.alias));
-      let alias = existingAlias;
-      if (!alias) {
-        let number = 1000 + Math.floor(Math.random() * 9000);
-        while (used.has(`Anonymous Bidder #${number}`)) number = 1000 + Math.floor(Math.random() * 9000);
-        alias = `Anonymous Bidder #${number}`;
-      }
-      const now = Date.now();
-      const endsAt = new Date(target.endsAt).getTime();
-      const remaining = endsAt - now;
-      let extended = false;
-      if (remaining <= next.settings.auctionAntiSnipeTriggerSeconds * 1000) {
-        const newEnd = now + next.settings.auctionAntiSnipeSeconds * 1000;
-        if (newEnd > endsAt) {
-          target.endsAt = new Date(newEnd).toISOString();
-          extended = true;
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) return { ok: false, error: "Sign in to bid." };
+      const { data, error } = await supabase.rpc("place_bid", {
+        p_auction_id: auctionId,
+        p_amount_paise: amount,
+      });
+      if (error) return { ok: false, error: error.message };
+
+      const [{ data: row }, { data: publicBids }] = await Promise.all([
+        supabase.from("auctions").select("*").eq("id", auctionId).maybeSingle(),
+        supabase.from("public_bids").select("*").eq("auction_id", auctionId).order("created_at", { ascending: false }),
+      ]);
+      if (row) {
+        const next = clone(dbRef.current);
+        const auction = next.auctions.find((item) => item.id === auctionId);
+        if (auction) {
+          auction.status = row.status;
+          auction.startsAt = row.starts_at;
+          auction.endsAt = row.ends_at;
+          auction.currentBid = row.current_bid_paise ?? undefined;
+          auction.highestBidderId = row.highest_bidder_id === authData.user.id
+            ? next.users.find((item) => item.email.toLowerCase() === authData.user.email?.toLowerCase())?.id
+            : row.highest_bidder_id ?? undefined;
+          auction.bidCount = row.bid_count;
+          auction.bids = (publicBids ?? []).map((bid: any) => ({
+            id: bid.id,
+            auctionId,
+            bidderId: bid.bidder_id ?? "",
+            amount: bid.amount_paise,
+            alias: bid.alias,
+            createdAt: bid.created_at,
+          }));
+          commit(next);
         }
       }
-      target.bids.unshift({
-        id: uid("b"),
-        auctionId,
-        bidderId: activeUser.id,
-        amount,
-        alias,
-        createdAt: nowIso(),
-      });
-      target.currentBid = amount;
-      target.highestBidderId = activeUser.id;
-      target.bidCount = target.bids.length;
-      target.extended = target.extended || extended;
-      if (previousLeader && previousLeader !== activeUser.id) {
-        pushNotification(
-          next,
-          previousLeader,
-          "outbid",
-          "You were outbid",
-          `A higher bid came in for ${product.title}. Bid again to stay in.`,
-          `#/auction/${auctionId}`,
-        );
-      }
-      pushNotification(
-        next,
-        target.sellerId,
-        "new_bid",
-        "New bid on your auction",
-        `${product.title} received a new anonymous bid.`,
-        "#/seller?tab=auctions",
-      );
-      commit(next);
-      return { ok: true, amount, extended };
+      return { ok: true, amount: data.amount_paise ?? amount, extended: Boolean(data.extended) };
     },
     [commit],
   );
@@ -2507,13 +2651,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const markSettlementPaid = useCallback(
-    (settlementId: string) => {
+    async (settlementId: string): Promise<ActionResult> => {
+      const { error } = await supabase.rpc("admin_mark_settlement_paid", { p_settlement_id: settlementId });
+      if (error) return { ok: false, error: error.message };
       const next = clone(dbRef.current);
       const settlement = next.settlements.find((item) => item.id === settlementId);
-      if (!settlement) return;
+      if (!settlement) return { ok: false, error: "Settlement not found." };
       settlement.status = "paid";
       settlement.paidAt = nowIso();
-      void Promise.resolve(supabase.rpc("admin_mark_settlement_paid", { p_settlement_id: settlementId })).catch((err: any) => console.warn("[Supabase admin_mark_settlement_paid]:", err?.message));
       pushNotification(
         next,
         settlement.sellerId,
@@ -2523,6 +2668,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "#/seller?tab=earnings",
       );
       commit(next);
+      return { ok: true };
     },
     [commit],
   );
@@ -2539,13 +2685,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const createAffiliate = useCallback(
-    (input: {
+    async (input: {
       name: string;
       email?: string;
       code?: string;
       kind: AffiliateAccount["kind"];
       commissionPct: number;
-    }): { ok: true; affiliateId: string } | { ok: false; error: string } => {
+    }): Promise<{ ok: true; affiliateId: string } | { ok: false; error: string }> => {
       const current = dbRef.current;
       const actor = current.users.find((item) => item.id === current.sessionUserId);
       if (actor?.role !== "admin") return { ok: false, error: "Admins only." };
@@ -2553,33 +2699,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const name = input.name.trim();
       if (name.length < 2) return { ok: false, error: "Add a name for this link." };
 
-      const accounts = current.affiliates ?? [];
-      let code: string;
-      if (input.code?.trim()) {
-        const supplied = normaliseCode(input.code);
-        if (!supplied) return { ok: false, error: "Codes use 4–20 letters or numbers." };
-        if (accounts.some((account) => account.code === supplied)) {
-          return { ok: false, error: "That link code is already in use." };
-        }
-        code = supplied;
-      } else {
-        const fallback = name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12) || "link";
-        code = normaliseCode(fallback) ?? `link${Date.now() % 1000}`;
-        while (accounts.some((account) => account.code === code)) {
-          code = `${code.slice(0, 17)}${Math.floor(Math.random() * 90 + 10)}`;
-        }
-      }
+      const { data, error } = await supabase.rpc("admin_create_affiliate", {
+        p_name: name,
+        p_email: input.email?.trim() || null,
+        p_code: input.code?.trim() || null,
+        p_kind: input.kind,
+        p_commission_pct: input.commissionPct,
+      });
+      if (error) return { ok: false, error: error.message };
 
       const next = clone(current);
       const account: AffiliateAccount = {
-        id: uid("aff"),
-        name,
-        code,
-        kind: input.kind,
-        email: input.email?.trim() || undefined,
-        commissionRate: Math.min(50, Math.max(0, input.commissionPct)) / 100,
-        status: "active",
-        createdAt: nowIso(),
+        id: data.id,
+        name: data.display_name,
+        code: data.code,
+        kind: data.kind,
+        email: data.contact_email || undefined,
+        commissionRate: Number(data.commission_pct) / 100,
+        status: data.status,
+        createdAt: data.created_at,
       };
       next.affiliates = [...(next.affiliates ?? []), account];
       next.auditLogs.unshift({
@@ -2598,7 +2736,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const updateAffiliate = useCallback(
-    (
+    async (
       affiliateId: string,
       patch: {
         name?: string;
@@ -2608,7 +2746,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         commissionPct?: number;
         status?: AffiliateAccount["status"];
       },
-    ): ActionResult => {
+    ): Promise<ActionResult> => {
       const current = dbRef.current;
       const actor = current.users.find((item) => item.id === current.sessionUserId);
       if (actor?.role !== "admin") return { ok: false, error: "Admins only." };
@@ -2628,6 +2766,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ) {
         return { ok: false, error: "That link code is already in use." };
       }
+
+      const { error } = await supabase.rpc("admin_update_affiliate", {
+        p_affiliate_id: affiliateId,
+        p_name: patch.name ?? null,
+        p_email: patch.email ?? null,
+        p_code: patch.code ?? null,
+        p_kind: patch.kind ?? null,
+        p_commission_pct: patch.commissionPct ?? null,
+        p_status: patch.status ?? null,
+      });
+      if (error) return { ok: false, error: error.message };
 
       const next = clone(current);
       const target = next.affiliates!.find((item) => item.id === affiliateId)!;
@@ -2656,7 +2805,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const reviewAffiliateCommission = useCallback(
-    (commissionId: string, action: "approve" | "pay" | "void"): ActionResult => {
+    async (commissionId: string, action: "approve" | "pay" | "void"): Promise<ActionResult> => {
       const current = dbRef.current;
       const actor = current.users.find((item) => item.id === current.sessionUserId);
       if (actor?.role !== "admin") return { ok: false, error: "Admins only." };
@@ -2683,6 +2832,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (action === "void" && commission.status === "paid") {
         return { ok: false, error: "Paid earnings must be reversed by a payout adjustment." };
       }
+
+      const { error } = await supabase.rpc("admin_review_affiliate_commission", {
+        p_commission_id: commissionId,
+        p_action: action,
+      });
+      if (error) return { ok: false, error: error.message };
 
       const next = clone(current);
       const target = next.affiliateCommissions!.find((item) => item.id === commissionId)!;
@@ -2719,6 +2874,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     favorites,
     notifications,
     unreadCount,
+    refreshRemoteCommerce,
     login,
     register,
     signInWithGoogle,

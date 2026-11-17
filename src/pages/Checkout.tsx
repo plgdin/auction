@@ -18,10 +18,12 @@ import { useStore } from "../lib/store";
 import { BUYER_PLATFORM_FEE_PAISE } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 import { isValidIndianPincode } from "../lib/delivery";
+import { supabase } from "../lib/supabase";
+import { payWithRazorpay } from "../lib/payments";
 
 export function CheckoutPage() {
   const route = useRoute();
-  const { db, user, cart, createOrders, payOrders } = useStore();
+  const { db, user, cart, refreshRemoteCommerce } = useStore();
   const [selectedAddress, setSelectedAddress] = useState(
     user?.addresses.find((address) => address.isDefault)?.id || user?.addresses[0]?.id || "",
   );
@@ -59,7 +61,12 @@ export function CheckoutPage() {
   const subtotal = lines.reduce((total, line) => total + line.unitPrice * line.quantity, 0);
   const sellerIds = [...new Set(lines.map((line) => line.product.sellerId))];
   const platformFee = BUYER_PLATFORM_FEE_PAISE;
-  const total = subtotal + platformFee;
+  const shipping = sellerIds.reduce((sum, sellerId) => {
+    const sellerLines = lines.filter((line) => line.product.sellerId === sellerId);
+    const sellerSubtotal = sellerLines.reduce((amount, line) => amount + line.unitPrice * line.quantity, 0);
+    return sum + (sellerSubtotal >= 199900 ? 0 : Math.max(0, ...sellerLines.map((line) => line.product.shippingFee)));
+  }, 0);
+  const total = subtotal + shipping + platformFee;
   const address = user?.addresses.find((item) => item.id === selectedAddress);
   const serviceable = address
     ? isValidIndianPincode(address.pincode)
@@ -129,7 +136,15 @@ export function CheckoutPage() {
     );
   }
 
-  const placeOrder = () => {
+  const placeOrder = async () => {
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (
+      lines.some(({ product }) => !uuidPattern.test(product.id)) ||
+      (offerId && !uuidPattern.test(offerId))
+    ) {
+      toast("This is a demo listing and isn’t connected to checkout. Choose a listing from the live Supabase catalog to test payment.", "error");
+      return;
+    }
     if (!selectedAddress || !address) {
       toast("Choose or add a delivery address.", "error");
       return;
@@ -139,25 +154,36 @@ export function CheckoutPage() {
       return;
     }
     setPlacing(true);
-    const created = createOrders({ addressId: selectedAddress, productId, offerId });
-    if (!created.ok) {
+    try {
+      const { data: created, error } = await supabase.rpc("checkout_create_orders", {
+        p_address: address,
+        p_lines: productId || offerId
+          ? []
+          : lines.map(({ product, quantity }) => ({ product_id: product.id, quantity })),
+        p_product_id: productId ?? null,
+        p_offer_id: offerId ?? null,
+        p_quantity: 1,
+        p_payment_method: payment,
+      });
+      if (error) throw new Error(error.message);
+      const orderIds = created?.orderIds as string[] | undefined;
+      if (!orderIds?.length) throw new Error("The order could not be created.");
+
+      if (payment !== "cod") {
+        await payWithRazorpay(
+          { checkoutGroupId: created.checkoutGroupId },
+          { name: user.name, email: user.email, contact: user.phone },
+        );
+        toast("Payment confirmed. Your order is in progress.", "success");
+      } else {
+        toast("Order placed. Payment is due on delivery.", "success");
+      }
+      await refreshRemoteCommerce();
+      navigate(`#/orders/${orderIds[0]}`);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not complete checkout.", "error");
+    } finally {
       setPlacing(false);
-      toast(created.error, "error");
-      return;
-    }
-    const paid = payOrders(created.orderIds);
-    setPlacing(false);
-    if (paid.ok) {
-      toast(
-        payment === "cod"
-          ? "Order placed. Payment is due on delivery."
-          : "Order placed. Payment confirmed in demo mode.",
-        "success",
-      );
-      navigate(`#/orders/${created.orderIds[0]}`);
-    } else {
-      toast(paid.error, "error");
-      navigate(`#/orders/${created.orderIds[0]}`);
     }
   };
 
@@ -287,8 +313,9 @@ export function CheckoutPage() {
                 </label>
               </div>
               <p className="payment-demo-note">
-                Frontend preview: online payment is simulated here. No card details are collected and no
-                money is charged. The real gateway connects on the backend.
+                {payment === "cod"
+                  ? "No online payment is due now. Pay the delivery partner when your order arrives."
+                  : `Pay securely with ${payment === "upi" ? "UPI" : "your card"} through Razorpay. Your order is confirmed after payment.`}
               </p>
             </section>
 
@@ -329,6 +356,10 @@ export function CheckoutPage() {
                 <strong>{formatMoney(subtotal)}</strong>
               </div>
               <div className="summary-row">
+                <span>Delivery</span>
+                <strong>{formatMoney(shipping)}</strong>
+              </div>
+              <div className="summary-row">
                 <span>Platform fee</span>
                 <strong>{formatMoney(platformFee)}</strong>
               </div>
@@ -356,7 +387,7 @@ export function CheckoutPage() {
                 onClick={placeOrder}
                 disabled={placing || !address || !serviceable}
               >
-                {placing ? "Placing order…" : "Place order"} <ArrowRight size={15} />
+                {placing ? "Starting secure checkout…" : payment === "cod" ? "Place order" : `Pay ${formatMoney(total)}`} <ArrowRight size={15} />
               </button>
               <div className="summary-trust">
                 <span>

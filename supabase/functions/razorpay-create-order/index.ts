@@ -28,26 +28,24 @@ Deno.serve(async (request) => {
 
     const body = await request.json().catch(() => ({}));
     const orderId = String(body.orderId ?? "");
-    if (!orderId) return json({ error: "orderId is required" }, 400);
+    const checkoutGroupId = String(body.checkoutGroupId ?? "");
+    if (!orderId && !checkoutGroupId) return json({ error: "orderId or checkoutGroupId is required" }, 400);
 
-    // RLS lets the buyer read only their own order.
-    const { data: order, error: orderError } = await caller
+    let ordersQuery = caller
       .from("orders")
-      .select("id, order_number, total_paise, payment_status, status, payment_method")
-      .eq("id", orderId)
-      .eq("buyer_id", user.id)
-      .maybeSingle();
+      .select("id, order_number, total_paise, payment_status, status, payment_method");
+    ordersQuery = orderId
+      ? ordersQuery.eq("id", orderId).eq("buyer_id", user.id)
+      : ordersQuery.eq("checkout_group_id", checkoutGroupId).eq("buyer_id", user.id);
+    const { data: orders, error: orderError } = await ordersQuery;
 
-    if (orderError || !order) return json({ error: "Order not found" }, 404);
-    if (order.payment_method === "cod") {
-      return json({ error: "This order is cash on delivery" }, 400);
-    }
-    if (order.payment_status === "paid") {
-      return json({ error: "This order is already paid" }, 400);
-    }
-    if (order.status !== "pending_payment") {
-      return json({ error: "This order is not awaiting payment" }, 400);
-    }
+    if (orderError || !orders?.length) return json({ error: "Order not found" }, 404);
+    if (orders.some((order) => order.payment_method === "cod")) return json({ error: "Cash-on-delivery orders are not paid online" }, 400);
+    if (orders.some((order) => order.payment_status === "paid")) return json({ error: "This order is already paid" }, 400);
+    if (orders.some((order) => order.status !== "pending_payment")) return json({ error: "This order is not awaiting payment" }, 400);
+    const amountPaise = orders.reduce((sum, order) => sum + order.total_paise, 0);
+    if (!Number.isSafeInteger(amountPaise) || amountPaise <= 0) return json({ error: "Invalid order total" }, 400);
+    const receipt = orders.length === 1 ? orders[0].order_number : `checkout-${checkoutGroupId.slice(0, 24)}`;
 
     const keyId = Deno.env.get("RAZORPAY_KEY_ID");
     const keySecret = Deno.env.get("RAZORPAY_KEY_SECRET");
@@ -62,10 +60,10 @@ Deno.serve(async (request) => {
         Authorization: `Basic ${btoa(`${keyId}:${keySecret}`)}`,
       },
       body: JSON.stringify({
-        amount: order.total_paise,
+        amount: amountPaise,
         currency: "INR",
-        receipt: order.order_number,
-        notes: { order_id: order.id },
+        receipt,
+        notes: orderId ? { order_id: orderId } : { checkout_group_id: checkoutGroupId },
       }),
     });
 
@@ -75,27 +73,37 @@ Deno.serve(async (request) => {
       return json({ error: "Could not start payment" }, 502);
     }
 
-    // Record the attempt for auditing; failures here must not block checkout.
+    // Every provider order must have a matching server-side payment row before it can be confirmed.
     const admin = createClient(url, serviceKey);
-    await admin
-      .from("payments")
-      .update({ status: "failed" })
-      .eq("order_id", order.id)
-      .eq("status", "created");
-    await admin.from("payments").insert({
-      order_id: order.id,
+    const previousAttempts = orderId
+      ? admin.from("payments").update({ status: "failed" }).eq("order_id", orderId).eq("status", "created")
+      : admin.from("payments").update({ status: "failed" }).eq("checkout_group_id", checkoutGroupId).eq("status", "created");
+    const { error: previousError } = await previousAttempts;
+    if (previousError) {
+      console.error("could not close prior Razorpay attempt", previousError);
+      return json({ error: "Could not record payment attempt" }, 500);
+    }
+    const { error: paymentError } = await admin.from("payments").insert({
+      order_id: orderId || (orders.length === 1 ? orders[0].id : null),
+      checkout_group_id: orderId ? null : checkoutGroupId,
       provider: "razorpay",
       provider_order_id: razorpayOrder.id,
-      amount_paise: order.total_paise,
+      amount_paise: amountPaise,
       status: "created",
       signature_verified: false,
       raw: razorpayOrder,
     });
+    if (paymentError) {
+      console.error("could not record Razorpay order", paymentError);
+      return json({ error: "Could not record payment attempt" }, 500);
+    }
 
     return json({
       razorpayOrderId: razorpayOrder.id,
-      amountPaise: order.total_paise,
-      orderNumber: order.order_number,
+      amountPaise,
+      orderNumber: receipt,
+      checkoutGroupId: orderId ? undefined : checkoutGroupId,
+      orderId: orderId || undefined,
       keyId,
     });
   } catch (error) {

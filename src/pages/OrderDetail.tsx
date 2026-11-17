@@ -21,6 +21,7 @@ import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
 import type { Order } from "../lib/types";
+import { payWithRazorpay } from "../lib/payments";
 
 const shipmentSteps: NonNullable<Order["shipment"]>["status"][] = [
   "pending_pickup",
@@ -44,7 +45,7 @@ export function OrderDetailPage() {
   const {
     db,
     user,
-    payOrders,
+    refreshRemoteCommerce,
     cancelOrder,
     requestReturn,
     addReview,
@@ -401,10 +402,17 @@ export function OrderDetailPage() {
                 <button
                   type="button"
                   className="button button-olive summary-cta"
-                  onClick={() => {
-                    const result = payOrders([order.id]);
-                    if (result.ok) toast("Payment confirmed in demo mode.", "success");
-                    else toast(result.error, "error");
+                  onClick={async () => {
+                    try {
+                      await payWithRazorpay(
+                        order.source === "auction" ? { orderId: order.id } : { checkoutGroupId: order.checkoutGroupId },
+                        { name: user.name, email: user.email, contact: user.phone },
+                      );
+                      await refreshRemoteCommerce();
+                      toast("Payment confirmed. Your order is in progress.", "success");
+                    } catch (error) {
+                      toast(error instanceof Error ? error.message : "Payment failed.", "error");
+                    }
                   }}
                 >
                   <CreditCard size={15} /> Pay {formatMoney(order.total)}
@@ -477,10 +485,7 @@ export function OrderDetailPage() {
                 </div>
               )}
 
-              <p className="payment-demo-note">
-                Payment is simulated in this frontend demo. No money moves and no card details are
-                collected.
-              </p>
+              {canPay && <p className="payment-demo-note">Secure payment by Razorpay. Seller payout remains pending until delivery and the inspection window.</p>}
             </div>
 
             <div className="panel order-address">

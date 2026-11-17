@@ -66,20 +66,26 @@ Deno.serve(async (request) => {
 
         const { data: rows } = await admin
           .from("payments")
-          .select("order_id")
+          .select("order_id, checkout_group_id")
           .eq("provider_order_id", providerOrderId)
           .limit(1);
 
-        const orderId: string | undefined =
-          payment?.notes?.order_id ?? rows?.[0]?.order_id;
-        if (!orderId) return json({ ignored: true });
+        const orderId: string | undefined = rows?.[0]?.order_id ?? payment?.notes?.order_id;
+        const checkoutGroupId: string | undefined = rows?.[0]?.checkout_group_id ?? payment?.notes?.checkout_group_id;
+        if (!orderId && !checkoutGroupId) return json({ ignored: true });
 
-        const { error } = await admin.rpc("confirm_order_payment", {
-          p_order_id: orderId,
-          p_provider: "razorpay",
-          p_provider_order_id: providerOrderId,
-          p_provider_payment_id: providerPaymentId,
-        });
+        const { error } = orderId
+          ? await admin.rpc("confirm_order_payment", {
+              p_order_id: orderId,
+              p_provider: "razorpay",
+              p_provider_order_id: providerOrderId,
+              p_provider_payment_id: providerPaymentId,
+            })
+          : await admin.rpc("confirm_checkout_group_payment", {
+              p_checkout_group_id: checkoutGroupId,
+              p_provider_order_id: providerOrderId,
+              p_provider_payment_id: providerPaymentId,
+            });
         if (error) {
           // Returning 500 makes Razorpay retry the delivery.
           console.error("confirm_order_payment", error);
@@ -107,7 +113,7 @@ Deno.serve(async (request) => {
 
         const { data: rows } = await admin
           .from("payments")
-          .select("order_id")
+          .select("order_id, checkout_group_id")
           .eq("provider_payment_id", providerPaymentId)
           .limit(1);
 
@@ -117,11 +123,17 @@ Deno.serve(async (request) => {
           .eq("provider_payment_id", providerPaymentId);
 
         const orderId: string | undefined = rows?.[0]?.order_id;
+        const checkoutGroupId: string | undefined = rows?.[0]?.checkout_group_id;
         if (orderId) {
           await admin
             .from("orders")
             .update({ payment_status: "refunded" })
             .eq("id", orderId);
+        } else if (checkoutGroupId) {
+          await admin
+            .from("orders")
+            .update({ payment_status: "refunded" })
+            .eq("checkout_group_id", checkoutGroupId);
         }
         return json({ ok: true });
       }
