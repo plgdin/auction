@@ -333,7 +333,7 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: "100%", opacity: 0 }}
           transition={{ type: "spring", stiffness: 350, damping: 32 }}
-          className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-[#D5C2A5] shadow-[-20px_0_60px_rgba(40,24,14,0.35)]"
+          className="relative z-10 flex h-full w-full max-w-md flex-col rounded-l-[28px] sm:rounded-l-[32px] overflow-hidden border-l border-[#D5C2A5] shadow-[-20px_0_60px_rgba(40,24,14,0.35)]"
           style={{ backgroundColor: "#FAF4EB" }}
         >
           {/* Header */}
@@ -432,7 +432,7 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                     onClose();
                     navigate("#/products");
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.99]"
+                  className="inline-flex items-center gap-1.5 rounded-full px-6 py-3 text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.99]"
                   style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
                 >
                   <span>Browse pieces</span>
@@ -451,7 +451,7 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                   onClose();
                   navigate("#/products");
                 }}
-                className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 px-4 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
+                className="w-full flex items-center justify-center gap-2 rounded-full py-3.5 px-6 text-sm font-semibold transition-all hover:opacity-95 active:scale-[0.99]"
                 style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
               >
                 <span>Browse more pieces</span>
