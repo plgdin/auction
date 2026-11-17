@@ -5289,10 +5289,16 @@ body {
 
 .auctions-page .segmented-tabs button {
   color: #6B5646 !important;
+  background: transparent !important;
+}
+
+.auctions-page .segmented-tab-pill {
+  background: #493022 !important;
+  box-shadow: 0 2px 8px rgba(73, 48, 34, 0.24);
 }
 
 .auctions-page .segmented-tabs button.is-active {
-  background: #493022 !important;
+  background: transparent !important;
   color: #FAF7F2 !important;
 }
 
