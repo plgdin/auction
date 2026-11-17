@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Clock3, Gavel, ShieldCheck, Sparkles } from "lucide-react";
 import { AuctionCard } from "../components/AuctionCard";
-import { Link } from "../components/Link";
+import { navigate } from "../components/Link";
 import { PageHeader, Tabs, EmptyState } from "../components/Ui";
+import { OriginButton } from "@/components/ui/origin-button";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
@@ -111,9 +112,15 @@ export function AuctionsPage() {
               The commission applies to the full winning bid, whether it lands above or below the
               asking price.
             </p>
-            <Link href="#/seller" className="text-link">
-              Sell and opt in <ArrowUpRight size={16} />
-            </Link>
+            <div className="mt-5">
+              <OriginButton
+                onClick={() => navigate("#/seller")}
+                className="bg-[#FAF7F2] text-[#493022] border-[#493022]/20 hover:border-[#493022]"
+              >
+                <span>Sell and opt in</span>
+                <ArrowUpRight size={16} />
+              </OriginButton>
+            </div>
           </div>
           <div className="auction-finance-example">
             <div>
