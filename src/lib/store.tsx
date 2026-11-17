@@ -584,7 +584,7 @@ interface StoreValue {
     name: string;
     email: string;
     password: string;
-    asSeller: boolean;
+    asSeller?: boolean;
   }) => ActionResult;
   signInWithGoogle: (idToken?: string) => Promise<ActionResult>;
   logout: () => void;
@@ -840,11 +840,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           name,
           email,
           password: "",
-          role: "buyer",
-          isSeller: false,
+          role: "client",
+          isSeller: true,
           addresses: [],
           joinedAt: nowIso(),
-          auctionConsent: false,
+          auctionConsent: true,
           location: "Trivandrum, Kerala",
         };
         next.users.push(existing);
@@ -932,7 +932,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    (input: { name: string; email: string; password: string; asSeller: boolean }): ActionResult => {
+    (input: { name: string; email: string; password: string; asSeller?: boolean }): ActionResult => {
       const current = dbRef.current;
       if (current.users.some((candidate) => candidate.email.toLowerCase() === input.email.trim().toLowerCase())) {
         return { ok: false, error: "An account with this email already exists." };
@@ -951,11 +951,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         name: input.name.trim(),
         email: input.email.trim().toLowerCase(),
         password: input.password,
-        role: input.asSeller ? "seller" : "buyer",
-        isSeller: input.asSeller,
+        role: "client",
+        isSeller: true,
         addresses: [],
         joinedAt: nowIso(),
-        auctionConsent: input.asSeller,
+        auctionConsent: true,
         location: "Trivandrum, Kerala",
         referredBy: referrer?.id,
       };
@@ -1004,11 +1004,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 name,
                 email,
                 password: "",
-                role: "buyer",
-                isSeller: false,
+                role: "client",
+                isSeller: true,
                 addresses: [],
                 joinedAt: nowIso(),
-                auctionConsent: false,
+                auctionConsent: true,
                 location: "Trivandrum, Kerala",
               };
               next.users.push(existing);

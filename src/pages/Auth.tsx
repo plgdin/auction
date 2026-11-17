@@ -7,9 +7,9 @@ import { useRoute } from "../lib/router";
 import { toast } from "../lib/toast";
 
 const demoAccounts = [
-  { label: "Buyer demo", email: "buyer@lelam.co", password: "demo1234", note: "Shop, offers, bids" },
-  { label: "Seller demo", email: "seller@lelam.co", password: "demo1234", note: "Listings, offers, payouts" },
-  { label: "Admin demo", email: "admin@lelam.co", password: "admin1234", note: "Reviews, settings, finance" },
+  { label: "Client demo (Aisha)", email: "buyer@lelam.co", password: "demo1234", note: "Buy, bid, and sell items" },
+  { label: "Client demo (Nila)", email: "seller@lelam.co", password: "demo1234", note: "Listings, offers, buy & sell" },
+  { label: "Admin demo", email: "admin@lelam.co", password: "admin1234", note: "Reviews, settings, platform" },
 ];
 
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
@@ -20,7 +20,6 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [asSeller, setAsSeller] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isGoogleReady, setIsGoogleReady] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement>(null);
@@ -90,10 +89,10 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
       }
       return;
     }
-    const result = register({ name, email, password, asSeller });
+    const result = register({ name, email, password });
     if (result.ok) {
-      toast(asSeller ? "Seller account created." : "Account created.", "success");
-      navigate(nextPath?.startsWith("/") ? destination : asSeller ? "#/seller" : "#/account");
+      toast("Account created. Welcome to Lelam.", "success");
+      navigate(destination);
     } else {
       toast(result.error, "error");
     }
@@ -170,28 +169,15 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
             }}
           >
             {mode === "register" && (
-              <>
-                <Field label="Full name">
-                  <input
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    required
-                    autoComplete="name"
-                    placeholder="Your name"
-                  />
-                </Field>
-                <label className="auth-seller-toggle">
-                  <input
-                    type="checkbox"
-                    checked={asSeller}
-                    onChange={(event) => setAsSeller(event.target.checked)}
-                  />
-                  <span>
-                    <strong>I want to sell too</strong>
-                    <em>Adds a seller dashboard to this account.</em>
-                  </span>
-                </label>
-              </>
+              <Field label="Full name">
+                <input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  required
+                  autoComplete="name"
+                  placeholder="Your name"
+                />
+              </Field>
             )}
             <Field label="Email">
               <div className="auth-input-wrap">

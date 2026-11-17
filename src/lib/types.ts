@@ -14,7 +14,7 @@ export interface User {
   name: string;
   email: string;
   password: string;
-  role: "buyer" | "seller" | "admin";
+  role: "client" | "admin" | "buyer" | "seller";
   isSeller: boolean;
   phone?: string;
   avatar?: string;

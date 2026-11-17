@@ -140,7 +140,7 @@ export function AccountPage() {
               <div className="eyebrow">MY ACCOUNT</div>
               <h1>{user.name}</h1>
               <p>
-                {user.email} · Joined {formatDate(user.joinedAt)} · {user.role}
+                {user.email} · Joined {formatDate(user.joinedAt)} · {user.role === "admin" ? "Admin" : "Member"}
               </p>
             </div>
           </div>
@@ -865,11 +865,7 @@ export function AccountPage() {
                 </div>
                 <div>
                   <span>Role</span>
-                  <strong>{user.role}</strong>
-                </div>
-                <div>
-                  <span>Seller</span>
-                  <strong>{user.isSeller ? "Yes" : "No"}</strong>
+                  <strong>{user.role === "admin" ? "Admin" : "Member (Buyer & Seller)"}</strong>
                 </div>
                 <div>
                   <span>Auction consent</span>

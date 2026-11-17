@@ -502,7 +502,7 @@ export function AdminPage() {
               <div className="table-head">
                 <span>User</span>
                 <span>Role</span>
-                <span>Seller</span>
+                <span>Capabilities</span>
                 <span>Joined</span>
                 <span>Action</span>
               </div>
@@ -515,8 +515,8 @@ export function AdminPage() {
                       <span>{account.email}</span>
                     </div>
                   </div>
-                  <StatusPill status={account.role} />
-                  <span>{account.isSeller ? "Yes" : "No"}</span>
+                  <StatusPill status={account.role === "admin" ? "admin" : "active"} />
+                  <span>{account.role === "admin" ? "Admin" : "Buy & Sell"}</span>
                   <span>{formatDate(account.joinedAt)}</span>
                   <div className="table-actions">
                     {account.role !== "admin" && (
