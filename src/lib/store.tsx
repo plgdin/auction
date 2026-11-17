@@ -597,6 +597,7 @@ interface StoreValue {
     password: string;
     asSeller: boolean;
   }) => ActionResult;
+  signInWithGoogle: (idToken?: string) => Promise<ActionResult>;
   logout: () => void;
   switchAccount: (userId: string) => void;
   resetDemo: () => void;
@@ -830,6 +831,56 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [commit]);
 
+  // Sync Supabase Auth session into local user store (for Google OAuth redirects / GSI)
+  useEffect(() => {
+    const handleAuthUser = (sessionUser: any) => {
+      if (!sessionUser) return;
+      const current = dbRef.current;
+      const email = sessionUser.email?.toLowerCase();
+      if (!email) return;
+      const next = clone(current);
+      let existing = next.users.find((u) => u.email.toLowerCase() === email);
+      if (!existing) {
+        const name =
+          sessionUser.user_metadata?.full_name ||
+          sessionUser.user_metadata?.name ||
+          email.split("@")[0] ||
+          "Google User";
+        existing = {
+          id: sessionUser.id || uid("u"),
+          name,
+          email,
+          password: "",
+          role: "buyer",
+          isSeller: false,
+          addresses: [],
+          joinedAt: nowIso(),
+          auctionConsent: false,
+          location: "Trivandrum, Kerala",
+        };
+        next.users.push(existing);
+      }
+      if (next.sessionUserId !== existing.id) {
+        next.sessionUserId = existing.id;
+        commit(next);
+      }
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) handleAuthUser(session.user);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) handleAuthUser(session.user);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [commit]);
+
   useEffect(() => {
     const timer = window.setInterval(() => {
       const current = dbRef.current;
@@ -935,6 +986,62 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       );
       commit(next);
       return { ok: true };
+    },
+    [commit],
+  );
+
+  const signInWithGoogle = useCallback(
+    async (idToken?: string): Promise<ActionResult> => {
+      try {
+        if (idToken) {
+          const { data, error } = await supabase.auth.signInWithIdToken({
+            provider: "google",
+            token: idToken,
+          });
+          if (error) throw error;
+          if (data.user) {
+            const current = dbRef.current;
+            const email = data.user.email?.toLowerCase() || "";
+            const next = clone(current);
+            let existing = next.users.find((u) => u.email.toLowerCase() === email);
+            if (!existing) {
+              const name =
+                data.user.user_metadata?.full_name ||
+                data.user.user_metadata?.name ||
+                email.split("@")[0] ||
+                "Google User";
+              existing = {
+                id: data.user.id || uid("u"),
+                name,
+                email,
+                password: "",
+                role: "buyer",
+                isSeller: false,
+                addresses: [],
+                joinedAt: nowIso(),
+                auctionConsent: false,
+                location: "Trivandrum, Kerala",
+              };
+              next.users.push(existing);
+            }
+            next.sessionUserId = existing.id;
+            commit(next);
+            return { ok: true };
+          }
+        } else {
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+              redirectTo: `${window.location.origin}${window.location.pathname}#/account`,
+            },
+          });
+          if (error) throw error;
+          return { ok: true };
+        }
+        return { ok: true };
+      } catch (err: any) {
+        return { ok: false, error: err?.message || "Google sign in failed" };
+      }
     },
     [commit],
   );
@@ -2571,6 +2678,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     unreadCount,
     login,
     register,
+    signInWithGoogle,
     logout,
     switchAccount,
     resetDemo,
