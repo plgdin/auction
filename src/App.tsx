@@ -341,14 +341,12 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
             <div className="flex items-center gap-2.5">
               <Heart size={18} className="text-[#8C5E3C] fill-[#8C5E3C]/20" />
               <h2
-                className="text-xl sm:text-2xl tracking-tight select-none inline-flex items-baseline gap-1.5"
+                className="text-2xl sm:text-[26px] tracking-tight select-none inline-flex items-baseline gap-1.5 font-bold"
                 style={{
-                  fontFamily: '"Gumela Arabic", serif',
-                  fontWeight: 800,
-                  color: "#493022",
-                  textTransform: "lowercase",
-                  WebkitTextStroke: "0.6px #493022",
-                  paintOrder: "stroke fill",
+                  fontFamily: '"DM Serif Display", Georgia, serif',
+                  fontWeight: 700,
+                  color: "#3a2816",
+                  letterSpacing: "-0.02em",
                 }}
               >
                 saved finds
