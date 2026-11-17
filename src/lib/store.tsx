@@ -34,6 +34,7 @@ import type {
   ProductStatus,
   Report,
   Review,
+  SellerTier,
   User,
 } from "./types";
 import {
@@ -124,10 +125,11 @@ export function computeAuctionSettlement(
   _askingPrice: number,
   winningBid: number,
   _commissionPct: number,
+  sellerTier?: SellerTier,
 ): Pick<AuctionFinancial, "sellerPayout" | "platformSubsidy" | "platformCommission"> {
-  const commission = sellerCommission(winningBid);
+  const commission = sellerCommission(winningBid, sellerTier);
   return {
-    sellerPayout: sellerNetPayout(winningBid),
+    sellerPayout: sellerNetPayout(winningBid, sellerTier),
     platformSubsidy: 0,
     platformCommission: commission,
   };
@@ -390,10 +392,12 @@ function settleDueAuctions(next: Database, now: number): boolean {
       auction.highestBidderId = winnerBid.bidderId;
       auction.winnerId = winnerBid.bidderId;
       auction.status = "completed";
+      const auctionSeller = next.users.find((u) => u.id === auction.sellerId);
       const settlement = computeAuctionSettlement(
         auction.askingPrice,
         winnerBid.amount,
         next.settings.platformCommissionPct,
+        auctionSeller?.sellerTier,
       );
       auction.financial = {
         askingPrice: auction.askingPrice,
@@ -628,6 +632,7 @@ interface StoreValue {
   approveProduct: (productId: string) => void;
   rejectProduct: (productId: string, reason: string) => void;
   setUserBlocked: (userId: string, blocked: boolean) => void;
+  updateSellerTier: (userId: string, tier: SellerTier) => ActionResult;
   updateSettings: (patch: Partial<PlatformSettings>) => void;
   generateAuctions: () => ActionResult;
   scheduleAuction: (productId: string, startsAt: string, durationMinutes?: number) => ActionResult;
@@ -1579,14 +1584,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             });
           }
         } else {
-          const commission = sellerCommission(target.subtotal);
+          const seller = next.users.find((u) => u.id === target.sellerId);
+          const commission = sellerCommission(target.subtotal, seller?.sellerTier);
           next.settlements.unshift({
             id: uid("s"),
             sellerId: target.sellerId,
             orderId: target.id,
             source: target.source === "offer" ? "offer" : "marketplace",
             askingPrice: target.subtotal,
-            sellerPayout: sellerNetPayout(target.subtotal),
+            sellerPayout: sellerNetPayout(target.subtotal, seller?.sellerTier),
             platformSubsidy: 0,
             platformCommission: commission,
             buyerPlatformFee: target.platformFee ?? 0,
@@ -2274,6 +2280,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
+  const updateSellerTier = useCallback(
+    (userId: string, tier: SellerTier): ActionResult => {
+      const next = clone(dbRef.current);
+      const active = next.users.find((u) => u.id === next.sessionUserId);
+      if (active?.role !== "admin") return { ok: false, error: "Admin access required." };
+      const target = next.users.find((u) => u.id === userId);
+      if (!target) return { ok: false, error: "User not found." };
+      target.sellerTier = tier;
+      void Promise.resolve(supabase.rpc("set_seller_tier", { p_user_id: userId, p_tier: tier })).catch((err: any) => console.warn("[Supabase set_seller_tier]:", err?.message));
+      next.auditLogs.unshift({
+        id: uid("al"),
+        actorId: next.sessionUserId ?? "",
+        action: "user.tier_update",
+        entityType: "user",
+        entityId: userId,
+        detail: `Updated ${target.name} seller tier to ${tier}.`,
+        createdAt: nowIso(),
+      });
+      commit(next);
+      return { ok: true };
+    },
+    [commit],
+  );
+
   const updateSettings = useCallback(
     (patch: Partial<PlatformSettings>) => {
       const next = clone(dbRef.current);
@@ -2715,6 +2745,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     approveProduct,
     rejectProduct,
     setUserBlocked,
+    updateSellerTier,
     updateSettings,
     generateAuctions,
     scheduleAuction,

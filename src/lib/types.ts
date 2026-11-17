@@ -8,6 +8,7 @@ export type ProductStatus =
   | "removed"
   | "rejected";
 export type Category = string;
+export type SellerTier = "normal" | "verified";
 
 export interface User {
   id: string;
@@ -16,6 +17,7 @@ export interface User {
   password: string;
   role: "client" | "admin" | "buyer" | "seller";
   isSeller: boolean;
+  sellerTier?: SellerTier;
   phone?: string;
   avatar?: string;
   bio?: string;

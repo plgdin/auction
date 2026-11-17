@@ -32,6 +32,7 @@ export function AdminPage() {
     approveProduct,
     rejectProduct,
     setUserBlocked,
+    updateSellerTier,
     generateAuctions,
     startAuctionNow,
     endAuctionNow,
@@ -502,7 +503,7 @@ export function AdminPage() {
               <div className="table-head">
                 <span>User</span>
                 <span>Role</span>
-                <span>Capabilities</span>
+                <span>Seller Tier & Fee</span>
                 <span>Joined</span>
                 <span>Action</span>
               </div>
@@ -516,7 +517,37 @@ export function AdminPage() {
                     </div>
                   </div>
                   <StatusPill status={account.role === "admin" ? "admin" : "active"} />
-                  <span>{account.role === "admin" ? "Admin" : "Buy & Sell"}</span>
+                  <div>
+                    {account.role !== "admin" ? (
+                      <select
+                        aria-label={`Seller tier for ${account.name}`}
+                        value={account.sellerTier || "normal"}
+                        onChange={(e) => {
+                          const tier = e.target.value as "normal" | "verified";
+                          updateSellerTier(account.id, tier);
+                          toast(
+                            `Updated ${account.name} to ${tier === "verified" ? "Verified Big Seller (5% fee)" : "Normal Seller (10% fee)"}.`,
+                            "success",
+                          );
+                        }}
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                          border: account.sellerTier === "verified" ? "1px solid #15803d" : "1px solid #cbd5e1",
+                          background: account.sellerTier === "verified" ? "#f0fdf4" : "#ffffff",
+                          color: account.sellerTier === "verified" ? "#15803d" : "#334155",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <option value="normal">Normal Seller (10%)</option>
+                        <option value="verified">Verified Big Seller (5%)</option>
+                      </select>
+                    ) : (
+                      <span>—</span>
+                    )}
+                  </div>
                   <span>{formatDate(account.joinedAt)}</span>
                   <div className="table-actions">
                     {account.role !== "admin" && (

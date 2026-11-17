@@ -97,7 +97,7 @@ begin
   end if;
 
   v_shipping := coalesce(v_product.shipping_fee_paise, 0);
-  v_total := v_subtotal + v_shipping;
+  v_total := v_subtotal + v_shipping + 1000; -- 1000 paise = ₹10 buyer platform fee
 
   insert into public.orders (
     buyer_id, seller_id, product_id, offer_id,
@@ -112,3 +112,33 @@ begin
   return v_order_id;
 end;
 $$;
+
+-- 4. Seller Tiers (normal = 10% commission, verified = 5% commission)
+alter table public.profiles
+  add column if not exists seller_tier text not null default 'normal'
+  check (seller_tier in ('normal', 'verified'));
+
+create or replace function public.set_seller_tier(p_user_id uuid, p_tier text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then raise exception 'Admins only'; end if;
+  if p_tier not in ('normal', 'verified') then raise exception 'Invalid seller tier'; end if;
+
+  update public.profiles
+  set seller_tier = p_tier
+  where id = p_user_id;
+
+  update public.seller_profiles
+  set is_verified = (p_tier = 'verified')
+  where user_id = p_user_id;
+end;
+$$;
+
+revoke all on function public.set_seller_tier(uuid, text) from public;
+grant execute on function public.set_seller_tier(uuid, text) to authenticated;
+
+

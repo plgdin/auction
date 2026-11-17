@@ -1,7 +1,7 @@
 import { Banknote, Clock3 } from "lucide-react";
 import { SettlementLedgerRow } from "../../components/seller/Parts";
 import { formatMoney } from "../../lib/format";
-import { netPayout, SELLER_COMMISSION_PERCENT } from "../../lib/sellerMath";
+import { netPayout, sellerCommissionPercent } from "../../lib/sellerMath";
 import { useStore } from "../../lib/store";
 
 /**
@@ -12,6 +12,9 @@ import { useStore } from "../../lib/store";
 export function MoneyTab() {
   const { db, user } = useStore();
   if (!user) return null;
+
+  const commPct = sellerCommissionPercent(user.sellerTier);
+  const tierLabel = user.sellerTier === "verified" ? "Verified Big Seller (5%)" : "Normal Seller (10%)";
 
   const mySettlements = db.settlements
     .filter((settlement) => settlement.sellerId === user.id)
@@ -33,7 +36,7 @@ export function MoneyTab() {
             <Banknote size={16} /> In your pocket
           </span>
           <strong>{formatMoney(lifetime)}</strong>
-          <em>settled and credited, after {SELLER_COMMISSION_PERCENT}% seller commission</em>
+          <em>settled and credited, after {commPct}% seller commission ({tierLabel})</em>
         </div>
         <div className="stat-card">
           <span>
@@ -57,7 +60,7 @@ export function MoneyTab() {
             <span>2.</span> The buyer confirms arrival — you never chase anyone.
           </li>
           <li>
-            <span>3.</span> Your payout is credited within 5 business days, after {SELLER_COMMISSION_PERCENT}% commission on the sale price.
+            <span>3.</span> Your payout is credited within 5 business days, after {commPct}% commission on the sale price ({tierLabel}).
           </li>
         </ol>
       </section>
@@ -68,29 +71,31 @@ export function MoneyTab() {
           <span>{mySettlements.length} entries</span>
         </div>
         {mySettlements.length ? (
-          <div className="ledger ledger-head">
-            <div><strong>Paid from</strong></div>
-            <div>Sale value</div>
-            <div>You receive</div>
-            <div>Status</div>
-          </div>
+          <>
+            <div className="ledger ledger-head">
+              <div><strong>Paid from</strong></div>
+              <div>Sale value</div>
+              <div>You receive</div>
+              <div>Status</div>
+            </div>
+            {mySettlements.map((settlement) => (
+              <SettlementLedgerRow
+                key={settlement.id}
+                source={settlement.source}
+                orderId={settlement.orderId}
+                asking={settlement.askingPrice}
+                payout={netPayout(settlement.sellerPayout)}
+                status={settlement.status}
+                createdAt={settlement.createdAt}
+              />
+            ))}
+          </>
         ) : (
           <p className="panel-empty">No payouts yet. They appear the moment an order is delivered and approved.</p>
         )}
-        {mySettlements.map((settlement) => (
-          <SettlementLedgerRow
-            key={settlement.id}
-            source={settlement.source}
-            orderId={settlement.orderId}
-            asking={settlement.askingPrice}
-            payout={netPayout(settlement.sellerPayout)}
-            status={settlement.status}
-            createdAt={settlement.createdAt}
-          />
-        ))}
         {mySettlements.length > 0 && (
           <p className="fineprint">
-            {SELLER_COMMISSION_PERCENT}% seller commission is already deducted from the full sale price
+            {commPct}% seller commission ({tierLabel}) is already deducted from the full sale price
             in each row, including the final winning bid on auction lots.
           </p>
         )}

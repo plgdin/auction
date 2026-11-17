@@ -6,7 +6,7 @@ import { CATEGORIES } from "../lib/categories";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
-import { sellerNetPayout, SELLER_COMMISSION_PERCENT } from "../lib/sellerMath";
+import { sellerNetPayout, sellerCommissionPercent } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 import type { Category, Condition } from "../lib/types";
 
@@ -440,10 +440,10 @@ export function SellFormPage() {
                 <div className="sell-payout-card" role="status">
                   <div>
                     <span>You pocket</span>
-                    <strong>{formatMoney(sellerNetPayout(Math.round(Number(form.price) * 100)))}</strong>
+                    <strong>{formatMoney(sellerNetPayout(Math.round(Number(form.price) * 100), user?.sellerTier))}</strong>
                   </div>
                   <p>
-                    After {SELLER_COMMISSION_PERCENT}% seller commission. Credited within 5 business
+                    After {sellerCommissionPercent(user?.sellerTier)}% seller commission ({user?.sellerTier === "verified" ? "Verified Big Seller" : "Normal Seller"}). Credited within 5 business
                     days after the buyer confirms arrival.
                   </p>
                 </div>
@@ -523,7 +523,7 @@ export function SellFormPage() {
               </h3>
               <ul>
                 <li>Doorstep delivery is available across India.</li>
-                <li>{SELLER_COMMISSION_PERCENT}% seller commission is deducted from the full sale price.</li>
+                <li>{sellerCommissionPercent(user?.sellerTier)}% seller commission is deducted from the full sale price.</li>
                 <li>Offers stay private; there is no public haggling.</li>
               </ul>
               <div className="sell-trust">

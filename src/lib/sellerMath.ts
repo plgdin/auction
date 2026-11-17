@@ -1,22 +1,29 @@
-import type { Offer } from "./types";
+import type { Offer, SellerTier } from "./types";
 
 /**
  * Seller-side money logic. Every figure on the sell page and seller dashboard
  * must come from these helpers so the demo never shows invented numbers.
  *
- * Seller commission applies to the full sale amount on marketplace, offer,
- * and auction sales. Buyer platform fee is separate and charged once at checkout.
+ * Normal seller: 10% commission on sale price.
+ * Verified big seller: 5% commission on sale price.
+ * Buyer platform fee: ₹10 (1000 paise) charged at checkout.
  */
 
 export const SELLER_COMMISSION_PERCENT = 10;
+export const SELLER_COMMISSION_PERCENT_NORMAL = 10;
+export const SELLER_COMMISSION_PERCENT_VERIFIED = 5;
 export const BUYER_PLATFORM_FEE_PAISE = 1_000;
 
-export function sellerCommission(amount: number): number {
-  return Math.round(Math.max(0, amount) * (SELLER_COMMISSION_PERCENT / 100));
+export function sellerCommissionPercent(tier?: SellerTier): number {
+  return tier === "verified" ? SELLER_COMMISSION_PERCENT_VERIFIED : SELLER_COMMISSION_PERCENT_NORMAL;
 }
 
-export function sellerNetPayout(amount: number): number {
-  return Math.max(0, amount - sellerCommission(amount));
+export function sellerCommission(amount: number, tier?: SellerTier): number {
+  return Math.round(Math.max(0, amount) * (sellerCommissionPercent(tier) / 100));
+}
+
+export function sellerNetPayout(amount: number, tier?: SellerTier): number {
+  return Math.max(0, amount - sellerCommission(amount, tier));
 }
 
 export function timeLeftLabel(iso: string, now = Date.now()): string {
