@@ -310,21 +310,6 @@
   z-index: 1;
 }
 
-.shop-filters::after {
-  content: "";
-  position: absolute;
-  left: -14px;
-  bottom: -52px;
-  width: 132px;
-  height: 27px;
-  background: url("/ass/tape-strip.png") center / 100% 100% no-repeat;
-  mix-blend-mode: multiply;
-  transform: rotate(-9deg);
-  opacity: 0.9;
-  z-index: 2;
-  pointer-events: none;
-}
-
 /* ---------- Results header ---------- */
 
 .shop-results {
@@ -839,10 +824,6 @@
   }
 
   .shop-flowers {
-    display: none;
-  }
-
-  .shop-filters::after {
     display: none;
   }
 
