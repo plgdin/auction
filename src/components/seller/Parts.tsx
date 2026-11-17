@@ -53,7 +53,6 @@ export function OfferDecision({
           {share < 70 ? " · low side of fair, your call" : ""}
         </em>
       </div>
-
       {offer.counterAmount && (
         <div className="offer-card-money" style={{ marginTop: "4px" }}>
           <span>Your Counter</span>

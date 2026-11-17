@@ -1,12 +1,12 @@
 import { Banknote, Clock3 } from "lucide-react";
 import { SettlementLedgerRow } from "../../components/seller/Parts";
 import { formatMoney } from "../../lib/format";
-import { netPayout } from "../../lib/sellerMath";
+import { netPayout, SELLER_COMMISSION_PERCENT } from "../../lib/sellerMath";
 import { useStore } from "../../lib/store";
 
 /**
  * Money — payouts over time. Honest figures from settlements only, shown net
- * of the flat ₹10 platform charge. Story: rider delivers → buyer confirms
+ * of the seller commission. Story: rider delivers → buyer confirms
  * arrival → credited within 5 business days.
  */
 export function MoneyTab() {
@@ -33,7 +33,7 @@ export function MoneyTab() {
             <Banknote size={16} /> In your pocket
           </span>
           <strong>{formatMoney(lifetime)}</strong>
-          <em>settled and credited, minus the ₹10 charge</em>
+          <em>settled and credited, after {SELLER_COMMISSION_PERCENT}% seller commission</em>
         </div>
         <div className="stat-card">
           <span>
@@ -57,7 +57,7 @@ export function MoneyTab() {
             <span>2.</span> The buyer confirms arrival — you never chase anyone.
           </li>
           <li>
-            <span>3.</span> Your payout is credited within 5 business days, minus the flat ₹10 platform charge.
+            <span>3.</span> Your payout is credited within 5 business days, after {SELLER_COMMISSION_PERCENT}% commission on the sale price.
           </li>
         </ol>
       </section>
@@ -90,9 +90,8 @@ export function MoneyTab() {
         ))}
         {mySettlements.length > 0 && (
           <p className="fineprint">
-            A flat ₹10 platform charge per product, already deducted in each row. A live auction lot
-            never sells under your base price — lelam covers any gap; once bidding clears 30% over
-            base, lelam keeps 10% of the amount above base.
+            {SELLER_COMMISSION_PERCENT}% seller commission is already deducted from the full sale price
+            in each row, including the final winning bid on auction lots.
           </p>
         )}
       </section>

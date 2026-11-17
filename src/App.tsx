@@ -15,6 +15,7 @@ import { HomePage } from "./pages/Home";
 import { ProductsPage } from "./pages/Products";
 import { ProductDetailPage } from "./pages/ProductDetail";
 import { CartPage } from "./pages/Cart";
+import { CartOverlayCard } from "./components/CartOverlayCard";
 import { CheckoutPage } from "./pages/Checkout";
 import { AuctionsPage } from "./pages/Auctions";
 import { AuctionDetailPage } from "./pages/AuctionDetail";
@@ -125,10 +126,10 @@ function SearchModalCard({
           className="relative"
         >
           <div
-            className="relative flex items-center gap-2 overflow-hidden rounded-full border border-[#CBB693] bg-[#FFFDF9] shadow-[0_2px_12px_rgba(73,48,34,0.08)] transition-shadow"
+            className="lelam-search-field relative flex items-center gap-2.5 overflow-hidden rounded-full border border-[#CBB693] bg-[#FFFDF9] shadow-[0_2px_12px_rgba(73,48,34,0.08)] transition-all focus-within:border-[#8C745A] focus-within:shadow-[0_2px_16px_rgba(73,48,34,0.14)]"
             style={{ backgroundColor: "#FFFDF9", borderColor: "#CBB693" }}
           >
-            <div className="ml-4 flex items-center justify-center text-[#8C745A]">
+            <div className="ml-4 flex items-center justify-center text-[#8C745A] shrink-0 pointer-events-none">
               <Search size={18} strokeWidth={2.2} />
             </div>
             <input
@@ -138,8 +139,12 @@ function SearchModalCard({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Denim, a leather jacket, homeware…"
               aria-label="Search listings"
-              className="h-12 flex-1 bg-transparent pr-3 font-sans text-sm sm:text-base text-[#332417] placeholder:text-[#9C856C] outline-none"
-              style={{ color: "#332417" }}
+              className="flex-1 bg-transparent py-2.5 sm:py-3 pl-1 pr-3 font-sans text-sm sm:text-base text-[#332417] placeholder:text-[#9C856C] outline-none leading-normal"
+              style={{
+                color: "#332417",
+                caretColor: "#493022",
+                lineHeight: "1.4",
+              }}
             />
             {query && (
               <button
@@ -511,10 +516,22 @@ function Shell() {
   const route = useRoute();
   const [searchOpen, setSearchOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cartOpenInstant, setCartOpenInstant] = useState(false);
   const [authPrompt, setAuthPrompt] = useState<AuthPromptDetail | null>(null);
   const [lastPath, setLastPath] = useState(route.path);
 
   useEffect(() => onAuthPrompt(setAuthPrompt), []);
+
+  useEffect(() => {
+    const openCart = (event: Event) => {
+      const detail = (event as CustomEvent<{ instant?: boolean }>).detail;
+      setCartOpenInstant(Boolean(detail?.instant));
+      setCartOpen(true);
+    };
+    window.addEventListener("lelam-open-cart", openCart);
+    return () => window.removeEventListener("lelam-open-cart", openCart);
+  }, []);
 
   useEffect(() => {
     if (route.path !== lastPath) {
@@ -548,10 +565,10 @@ function Shell() {
       ],
     },
     {
-      title: <span className="brand-wordmark">lelam.co</span>,
+      title: "",
       links: [
-        { label: "Trivandrum, Kerala" },
-        { label: "Delivery in 695xxx" },
+        { label: "Doorstep delivery" },
+        { label: "Across India" },
         { label: "Private offers only" },
         { label: "Demo marketplace" },
       ],
@@ -566,6 +583,10 @@ function Shell() {
         unreadCount={unreadCount}
         onOpenSearch={() => setSearchOpen(true)}
         onOpenSaved={() => setSavedOpen(true)}
+        onOpenCart={() => {
+          setCartOpenInstant(false);
+          setCartOpen(true);
+        }}
       />
 
       <div className="site-content">
@@ -575,7 +596,7 @@ function Shell() {
       <HalftoneWordmarkFooter
         wordmark="lelam"
         label={<span className="brand-wordmark">lelam.co</span>}
-        meta="©2026 · Trivandrum, Kerala"
+        meta="©2026 · Doorstep delivery across India"
         preset="paper"
         palette={{ background: "transparent", ink: "#493022", warm: "#C98F7D" }}
         columns={footerColumns}
@@ -583,6 +604,20 @@ function Shell() {
       />
 
       {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
+      {cartOpen && (
+        <GenieSearchModal
+          isOpen
+          onClose={() => {
+            setCartOpen(false);
+            setCartOpenInstant(false);
+          }}
+          originSelector=".lelam-bid-btn"
+          textureKind="cart"
+          skipOpenAnimation={cartOpenInstant}
+        >
+          <CartOverlayCard />
+        </GenieSearchModal>
+      )}
       {savedOpen && <SavedOverlay onClose={() => setSavedOpen(false)} />}
       {authPrompt && <AuthPrompt detail={authPrompt} onClose={() => setAuthPrompt(null)} />}
       <ToastHost />

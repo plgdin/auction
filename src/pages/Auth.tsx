@@ -127,7 +127,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               <Store size={16} /> You keep any bid above your asking price in auctions
             </li>
             <li>
-              <LockKeyhole size={16} /> Delivery only within Trivandrum 695xxx
+              <LockKeyhole size={16} /> Doorstep delivery across India
             </li>
           </ul>
 

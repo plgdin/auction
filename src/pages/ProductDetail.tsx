@@ -21,6 +21,7 @@ import { formatDate, formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
+import { animateProductPageToCart } from "../lib/cartAnimation";
 
 export function ProductDetailPage() {
   const route = useRoute();
@@ -31,7 +32,6 @@ export function ProductDetailPage() {
   const [offerOpen, setOfferOpen] = useState(route.query.get("offer") === "1");
   const [reportOpen, setReportOpen] = useState(false);
   const [offerRupees, setOfferRupees] = useState("");
-  const [offerMessage, setOfferMessage] = useState("");
   const [reportReason, setReportReason] = useState("");
   const [reportDetails, setReportDetails] = useState("");
 
@@ -83,12 +83,11 @@ export function ProductDetailPage() {
   );
 
   const handleOffer = () => {
-    const result = makeOffer(product.id, offerPaise, offerMessage);
+    const result = makeOffer(product.id, offerPaise);
     if (result.ok) {
       toast("Offer sent privately to the seller.", "success");
       setOfferOpen(false);
       setOfferRupees("");
-      setOfferMessage("");
     } else {
       toast(result.error, "error");
     }
@@ -149,97 +148,103 @@ export function ProductDetailPage() {
               <StatusPill status={product.status} />
             </div>
             <h1>{product.title}</h1>
-            <div className="product-detail-price">
-              <strong>{formatMoney(product.askingPrice)}</strong>
-              <span>Asking price · set by the seller</span>
-            </div>
-
-            {auction ? (
-              <div className="auction-notice">
-                <div>
-                  <span className="live-dot" />
-                  <strong>
-                    {auction.status === "live" ? "This piece is in a live auction." : "This piece is scheduled for auction."}
-                  </strong>
-                  <p>
-                    {auction.status === "live"
-                      ? "Buy-now is paused while bidding is open."
-                      : "It can still be bought until the auction begins."}
-                  </p>
-                </div>
-                <Link href={`#/auction/${auction.id}`} className="button button-olive">
-                  View auction <ArrowUpRight size={15} />
-                </Link>
+            <section className="product-purchase-panel" aria-label="Purchase options">
+              <div className="product-detail-price">
+                <strong>{formatMoney(product.askingPrice)}</strong>
+                <span>Seller’s asking price</span>
               </div>
-            ) : null}
 
-            {!auction && (
-              <div className="product-actions">
-                {ownListing ? (
-                  <Link href={`#/sell?edit=${product.id}`} className="button button-olive">
-                    Manage your listing <ArrowUpRight size={16} />
+              {auction ? (
+                <div className="auction-notice">
+                  <div>
+                    <span className="live-dot" />
+                    <strong>
+                      {auction.status === "live" ? "This piece is in a live auction." : "This piece is scheduled for auction."}
+                    </strong>
+                    <p>
+                      {auction.status === "live"
+                        ? "Buy-now is paused while bidding is open."
+                        : "It can still be bought until the auction begins."}
+                    </p>
+                  </div>
+                  <Link href={`#/auction/${auction.id}`} className="button button-olive">
+                    View auction <ArrowUpRight size={15} />
                   </Link>
-                ) : available ? (
-                  <>
-                    <button
-                      type="button"
-                      className="button button-olive"
-                      onClick={() => {
-                        if (!user) {
-                          toast("Sign in to buy this piece.", "error");
-                          navigate("#/login");
-                          return;
-                        }
-                        navigate(`#/checkout?product=${product.id}`);
-                      }}
-                    >
-                      Buy now <ArrowUpRight size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      className="button button-ghost"
-                      onClick={() => {
-                        const result = addToCart(product.id);
-                        if (result.ok) {
-                          toast("Added to cart.", "success");
-                        } else {
-                          toast(result.error, "error");
-                        }
-                      }}
-                    >
-                      <ShoppingBag size={16} /> Add to cart
-                    </button>
-                    {product.allowOffers && (
+                </div>
+              ) : (
+                <div className="product-actions">
+                  {ownListing ? (
+                    <Link href={`#/sell?edit=${product.id}`} className="button button-olive">
+                      Manage your listing <ArrowUpRight size={16} />
+                    </Link>
+                  ) : available ? (
+                    <>
                       <button
                         type="button"
-                        className="button button-ghost"
+                        className="button button-olive"
                         onClick={() => {
                           if (!user) {
-                            toast("Sign in to make an offer.", "error");
+                            toast("Sign in to buy this piece.", "error");
                             navigate("#/login");
                             return;
                           }
-                          setOfferOpen(true);
+                          navigate(`#/checkout?product=${product.id}`);
                         }}
                       >
-                        <Tag size={16} /> Make an offer
+                        Buy now <ArrowUpRight size={16} />
                       </button>
-                    )}
-                  </>
-                ) : (
-                  <div className="unavailable-note">
-                    <StatusPill status={product.status} />
-                    <span>
-                      {product.status === "reserved"
-                        ? "Another buyer is completing checkout right now."
-                        : product.status === "sold"
-                          ? "This piece has found a new home."
-                          : "This listing is not available right now."}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
+                      <div className="product-secondary-actions">
+                        <button
+                          type="button"
+                          className="button button-ghost"
+                          onClick={() => {
+                            const result = addToCart(product.id);
+                            if (result.ok) {
+                              animateProductPageToCart(() => {
+                                window.dispatchEvent(
+                                  new CustomEvent("lelam-open-cart", { detail: { instant: true } }),
+                                );
+                              });
+                            } else {
+                              toast(result.error, "error");
+                            }
+                          }}
+                        >
+                          <ShoppingBag size={16} /> Add to cart
+                        </button>
+                        {product.allowOffers && (
+                          <button
+                            type="button"
+                            className="button button-ghost"
+                            onClick={() => {
+                              if (!user) {
+                                toast("Sign in to make an offer.", "error");
+                                navigate("#/login");
+                                return;
+                              }
+                              setOfferOpen(true);
+                            }}
+                          >
+                            <Tag size={16} /> Make an offer
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="unavailable-note">
+                      <StatusPill status={product.status} />
+                      <span>
+                        {product.status === "reserved"
+                          ? "Another buyer is completing checkout right now."
+                          : product.status === "sold"
+                            ? "This piece has found a new home."
+                            : "This listing is not available right now."}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
 
             <div className="product-facts">
               <div>
@@ -263,10 +268,9 @@ export function ProductDetailPage() {
             <div className="product-delivery">
               <Truck size={18} />
               <div>
-                <strong>Doorstep delivery in Trivandrum</strong>
+                <strong>Doorstep delivery across India</strong>
                 <p>
-                  Shipping {product.shippingFee === 0 ? "included" : formatMoney(product.shippingFee)} ·
-                  Delivered from {product.location}. Serviceable pincodes start with 695.
+                  Arranged by lelam after checkout · Delivered from {product.location}. Enter your PIN at checkout to confirm.
                 </p>
               </div>
             </div>
@@ -378,14 +382,6 @@ export function ProductDetailPage() {
                 </button>
               ))}
             </div>
-            <Field label="Message to the seller" hint="Optional. Friendly and clear works best.">
-              <textarea
-                rows={3}
-                value={offerMessage}
-                onChange={(event) => setOfferMessage(event.target.value)}
-                placeholder="Would you consider this? I can pay right away."
-              />
-            </Field>
             <div className="modal-actions">
               <button type="button" className="button button-olive" onClick={handleOffer}>
                 Send private offer
@@ -402,7 +398,11 @@ export function ProductDetailPage() {
       )}
 
       {reportOpen && (
-        <Modal title="Report this listing" onClose={() => setReportOpen(false)}>
+        <Modal
+          title="Report this listing"
+          onClose={() => setReportOpen(false)}
+          className="report-dialog"
+        >
           <div className="report-modal">
             <Field label="Reason">
               <SelectMenu

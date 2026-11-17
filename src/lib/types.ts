@@ -234,6 +234,7 @@ export interface Order {
   items: OrderItem[];
   subtotal: number;
   shipping: number;
+  platformFee?: number;
   total: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
@@ -260,6 +261,7 @@ export interface Settlement {
   sellerPayout: number;
   platformSubsidy: number;
   platformCommission: number;
+  buyerPlatformFee?: number;
   paymentFee: number;
   status: "pending" | "approved" | "paid" | "on_hold";
   createdAt: string;

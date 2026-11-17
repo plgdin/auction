@@ -37,7 +37,7 @@ export function AuctionsPage() {
               A few pieces go <em>live.</em>
             </>
           }
-          description="Every day a small, random selection of opted-in listings runs as a short live auction. Anonymous bidding, anti-snipe protection, and sellers always receive at least their asking price."
+          description="Every day a small, random selection of opted-in listings runs as a short live auction. Anonymous bidding, anti-snipe protection, and a clear 10% seller commission."
           action={
             live.length ? (
               <div className="auction-stat-block">
@@ -107,10 +107,10 @@ export function AuctionsPage() {
         <section className="auction-finance section-wrap-inner">
           <div className="auction-finance-copy">
             <div className="eyebrow">HOW THE MONEY WORKS</div>
-            <h2>A small commission, only on what sells above asking.</h2>
+            <h2>Seller commission is 10% of the winning bid.</h2>
             <p>
-              If the winning bid is above the asking price, a small platform commission applies only to
-              the amount above the asking price. The seller keeps the rest.
+              The commission applies to the full winning bid, whether it lands above or below the
+              asking price.
             </p>
             <Link href="#/seller" className="text-link">
               Sell and opt in <ArrowUpRight size={16} />
@@ -127,9 +127,9 @@ export function AuctionsPage() {
             </div>
             <div className="is-highlight">
               <span>Seller payout</span>
-              <strong>{formatMoney(145000)}</strong>
+              <strong>{formatMoney(144000)}</strong>
             </div>
-            <p>Platform subsidy {formatMoney(0)} · commission {formatMoney(15000)}</p>
+            <p>10% seller commission {formatMoney(16000)}</p>
           </div>
         </section>
       </div>

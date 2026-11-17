@@ -25,6 +25,7 @@ export interface LelamNavbarProps {
   unreadCount: number;
   onOpenSearch: () => void;
   onOpenSaved: () => void;
+  onOpenCart: () => void;
 }
 
 export function LelamNavbar({
@@ -33,6 +34,7 @@ export function LelamNavbar({
   unreadCount,
   onOpenSearch,
   onOpenSaved,
+  onOpenCart,
 }: LelamNavbarProps) {
   const { user, logout, switchAccount, db } = useStore();
   const route = useRoute();
@@ -148,7 +150,7 @@ export function LelamNavbar({
 
           <button
             type="button"
-            onClick={() => navigate("#/cart")}
+            onClick={onOpenCart}
             className="lelam-bid-btn"
             aria-label={`Open cart, ${cartCount} items`}
             title="Cart"

@@ -3,6 +3,7 @@ import { Field } from "./Ui";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
 import type { Address } from "../lib/types";
+import { isValidIndianPincode } from "../lib/delivery";
 
 export function AddressForm({
   initial,
@@ -20,8 +21,8 @@ export function AddressForm({
     phone: initial?.phone || "",
     line1: initial?.line1 || "",
     line2: initial?.line2 || "",
-    city: initial?.city || "Trivandrum",
-    state: initial?.state || "Kerala",
+    city: initial?.city || "",
+    state: initial?.state || "",
     pincode: initial?.pincode || "",
     isDefault: initial?.isDefault ?? true,
   });
@@ -34,6 +35,10 @@ export function AddressForm({
       className="address-form"
       onSubmit={(event) => {
         event.preventDefault();
+        if (!isValidIndianPincode(form.pincode)) {
+          toast("Enter a valid six-digit Indian PIN code.", "error");
+          return;
+        }
         const result = saveAddress({ ...form, id: initial?.id });
         if (result.ok) {
           toast("Address saved.", "success");
@@ -87,13 +92,16 @@ export function AddressForm({
         <Field label="State">
           <input value={form.state} onChange={(event) => update("state", event.target.value)} required />
         </Field>
-        <Field label="Pincode" hint="Trivandrum: 695xxx">
+        <Field label="PIN code" hint="Enter your six-digit Indian PIN code">
           <input
             value={form.pincode}
             onChange={(event) => update("pincode", event.target.value.replace(/\D/g, "").slice(0, 6))}
             required
             inputMode="numeric"
             autoComplete="postal-code"
+            minLength={6}
+            maxLength={6}
+            pattern="[1-9][0-9]{5}"
           />
         </Field>
       </div>

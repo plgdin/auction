@@ -571,7 +571,7 @@ export function AccountPage() {
               <EmptyState
                 icon={<MapPin size={34} />}
                 title="No address yet."
-                body="Add a Trivandrum address to check out. Pincodes start with 695."
+                body="Add your Indian delivery address to continue. Enter a valid six-digit PIN code."
               />
             )}
           </div>

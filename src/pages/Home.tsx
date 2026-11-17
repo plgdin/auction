@@ -348,7 +348,20 @@ export function HomePage() {
             {/* Supporting paragraph */}
             <div className="md:w-[38%] text-base sm:text-lg text-[#6B5646] leading-relaxed text-center md:text-left">
               From clearing out what you no longer wear to earning from it — selling on{" "}
-              <span className="brand-wordmark text-[#493022]">lelam.co</span> is a smarter, more sustainable choice.
+              <span
+                className="brand-wordmark text-[#493022] font-bold inline-block"
+                style={{
+                  fontSize: "1.28em",
+                  fontWeight: 800,
+                  WebkitTextStroke: "0.55px currentColor",
+                  paintOrder: "stroke fill",
+                  lineHeight: 1,
+                  verticalAlign: "baseline",
+                }}
+              >
+                lelam.co
+              </span>{" "}
+              is a smarter, more sustainable choice.
             </div>
           </motion.div>
         </div>
